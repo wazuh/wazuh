@@ -182,6 +182,8 @@ extern const char *__local_name;
 
 #define w_fclose(x) if (x) { fclose(x); x=NULL; }
 
+#define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
+
 #ifdef CLIENT
 #define isAgent 1
 #else

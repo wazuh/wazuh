@@ -48,9 +48,6 @@ int main(int argc, char **argv)
                 sub_size++;
                 ret++;
             }
-
-            /* We must free the substrings */
-            OSRegex_FreeSubStrings(&reg);
         } else {
             printf("Error: Didn't match.\n");
         }
@@ -65,4 +62,3 @@ int main(int argc, char **argv)
 
     return (r_code);
 }
-

@@ -24,7 +24,7 @@
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
 #define DEBIAN_REPO "https://www.debian.org/security/oval/oval-definitions-%s.xml"
-#define RED_HAT_REPO_MIN_YEAR 2010
+#define RED_HAT_REPO_MIN_YEAR 2018
 #define RED_HAT_REPO_MAX_ATTEMPTS 3
 #define RED_HAT_REPO_REQ_SIZE 1000
 #define RED_HAT_REPO "https://access.redhat.com/labs/securitydataapi/cve.json?after=%d-01-01&per_page=%d&page=%d"
@@ -49,7 +49,10 @@
 #define VU_MEDIUM     "Medium"
 #define VU_HIGH       "High"
 #define VU_IMPORTANT  "Important"
-#define VU_SHARED_SEVERITY 2
+// Patterns for building references
+#define VUL_BUILD_REF_MAX 100
+#define VU_BUILD_REF_CVE_RH "https://access.redhat.com/security/cve/%s"
+#define VU_BUILD_REF_BUGZ "https://bugzilla.redhat.com/show_bug.cgi?id=%s"
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
@@ -89,6 +92,10 @@ typedef enum distribution{
     DIS_JESSIE,
     DIS_STRETCH,
     DIS_WHEEZY,
+    // RedHat versions
+    DIS_RHEL5,
+    DIS_RHEL6,
+    DIS_RHEL7,
     // Windows versions
     DIS_WXP,
     DIS_W7,
@@ -232,12 +239,18 @@ typedef struct file_test {
 
 typedef struct info_cve {
     char *cveid;
-    char *title;
-    char **severity;
+    char *title; // Not available in Red Hat feed
+    char *severity;
     char *published;
     char *updated;
     char *reference;
     char *description;
+    char *cvss;
+    char *cvss3;
+    char *cvss_vector;
+    char *bugzilla_reference;
+    char *advidsories;
+    char *cwe;
     int flags;
     struct info_cve *prev;
 } info_cve;
@@ -251,8 +264,17 @@ typedef struct vulnerability {
     struct vulnerability *prev;
 } vulnerability;
 
+typedef struct rh_vulnerability {
+    char *cve_id;
+    const char *OS;
+    char *package_name;
+    char *package_version;
+    struct rh_vulnerability *prev;
+} rh_vulnerability;
+
 typedef struct wm_vulnerability_detector_db {
     vulnerability *vulnerabilities;
+    rh_vulnerability *rh_vulnerabilities;
     info_test *info_tests;
     file_test *file_tests;
     info_state *info_states;

@@ -321,6 +321,7 @@
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
+#define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
