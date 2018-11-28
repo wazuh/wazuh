@@ -904,6 +904,7 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_os_unix() sending '%s'", string);
     SendMSG(queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_DetachItemFromObject(object,"inventory");
     cJSON_Delete(object);
     free(timestamp);
     free(string);
