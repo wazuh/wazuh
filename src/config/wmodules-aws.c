@@ -219,9 +219,9 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         free(cur_bucket->aws_account_id);
                         os_strdup(children[j]->content, cur_bucket->aws_account_id);
                     } else if (!strcmp(children[j]->element, XML_REMOVE_FORM_BUCKET)) {
-                        if (strcmp(children[j]->content, "yes")) {
+                        if (!strcmp(children[j]->content, "yes")) {
                             cur_bucket->remove_from_bucket = 1;
-                        } else if (strcmp(children[j]->content, "no")) {
+                        } else if (!strcmp(children[j]->content, "no")) {
                             cur_bucket->remove_from_bucket = 0;
                         } else {
                             merror("Invalid content for tag '%s' at module '%s'.", XML_REMOVE_FORM_BUCKET, WM_AWS_CONTEXT.name);
