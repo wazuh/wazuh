@@ -200,6 +200,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 {
     Eventinfo *lf = NULL;
     OSListNode *lf_node;
+    Eventinfo *first_lf;
     int frequency_count = 0;
     OSList *list = rule->group_search;
 
@@ -228,6 +229,9 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         lf = NULL;
         goto end;
     }
+
+    first_lf = (Eventinfo *)lf_node->data;
+
     do {
         lf = (Eventinfo *)lf_node->data;
 
@@ -349,6 +353,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* If reached here, we matched */
         my_lf->matched = rule->level;
         lf->matched = rule->level;
+        first_lf->matched = rule->level;
         goto end;
     } while ((lf_node = lf_node->prev) != NULL);
 
@@ -568,6 +573,8 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->filename = NULL;
     lf->perm_before = 0;
     lf->perm_after = 0;
+    lf->win_perm_before = NULL;
+    lf->win_perm_after = NULL;
     lf->md5_before = NULL;
     lf->md5_after = NULL;
     lf->sha1_before = NULL;
@@ -606,6 +613,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->process_id = NULL;
     lf->is_a_copy = 0;
     lf->last_events = NULL;
+    lf->r_firedtimes = -1;
     lf->queue_added = 0;
     lf->rootcheck_fts = 0;
     lf->decoder_syscheck_id = 0;
@@ -658,7 +666,7 @@ void Free_Eventinfo(Eventinfo *lf)
             i = 0;
             // Remove the node from all lists
             while (i < lf->generated_rule->group_prev_matched_sz) {
-                while (lf->generated_rule->group_prev_matched[i]->count);
+                while (lf->generated_rule->group_prev_matched[i]->count > 0);
                 OSList_DeleteThisNode(lf->generated_rule->group_prev_matched[i],
                                         lf->group_node_to_delete[i]);
                 // Unblock the list
@@ -672,8 +680,13 @@ void Free_Eventinfo(Eventinfo *lf)
         }
     }
 
-    if (lf->comment)
+    if (lf->is_a_copy && lf->program_name) {
+        free(lf->program_name);
+    }
+
+    if (lf->comment) {
         free(lf->comment);
+    }
 
     if (lf->full_log) {
         free(lf->full_log);
@@ -766,6 +779,12 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->sk_tag) {
         free(lf->sk_tag);
+    }
+    if (lf->win_perm_before) {
+        free(lf->win_perm_before);
+    }
+    if (lf->win_perm_after) {
+        free(lf->win_perm_after);
     }
     if (lf->md5_before) {
         free(lf->md5_before);
@@ -994,6 +1013,10 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->hostname,lf_cpy->hostname);
     }
 
+    if(lf->program_name){
+        os_strdup(lf->program_name,lf_cpy->program_name);
+    }
+
     if(lf->comment){
         os_strdup(lf->comment,lf_cpy->comment);
     }
@@ -1115,6 +1138,14 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         os_strdup(lf->sk_tag, lf_cpy->sk_tag);
     }
 
+    if (lf->win_perm_before) {
+        os_strdup(lf->win_perm_before, lf_cpy->win_perm_before);
+    }
+
+    if (lf->win_perm_after) {
+        os_strdup(lf->win_perm_after, lf_cpy->win_perm_after);
+    }
+
     if(lf->md5_before){
         os_strdup(lf->md5_before,lf_cpy->md5_before);
     }
@@ -1138,6 +1169,9 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     if(lf->sha256_after){
         os_strdup(lf->sha256_after,lf_cpy->sha256_after);
     }
+
+    lf_cpy->attrs_before = lf->attrs_before;
+    lf_cpy->attrs_after = lf->attrs_after;
 
     if(lf->size_before){
         os_strdup(lf->size_before,lf_cpy->size_before);
@@ -1228,6 +1262,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
     lf_cpy->mtime_after = lf->mtime_after;
     lf_cpy->inode_before = lf->inode_before;
     lf_cpy->inode_after = lf->inode_after;
+    lf_cpy->r_firedtimes = lf->r_firedtimes;
 
 
     if(lf->diff){
@@ -1255,7 +1290,7 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
         lf_cpy->last_events[index] = NULL;
     }
-    
+
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;
     lf_cpy->rootcheck_fts = lf->rootcheck_fts;

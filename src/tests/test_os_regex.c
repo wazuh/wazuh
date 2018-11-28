@@ -391,7 +391,7 @@ START_TEST(test_regexextraction)
 
 
 
-        char **result = reg.sub_strings;
+        char **result = reg.d_sub_strings;
 
         int j;
         int k;

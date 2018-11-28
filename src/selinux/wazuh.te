@@ -6,13 +6,15 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-module wazuh 1.0;
+module wazuh 1.1;
 
 require {
 	type audisp_t;
 	type var_t;
+	type auditd_t;
 	type usr_t;
 	class sock_file { create setattr };
+	class process { noatsecure siginh };
 	class dir { remove_name add_name read write };
 	class file { getattr open read };
 	class capability dac_override;
@@ -32,3 +34,7 @@ allow audisp_t var_t:file getattr;
 
 allow audisp_t var_t:sock_file { create setattr };
 allow audisp_t var_t:file { open read };
+
+#============= auditd_t ==============
+
+allow auditd_t audisp_t:process { noatsecure siginh };

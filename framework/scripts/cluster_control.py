@@ -33,7 +33,7 @@ try:
 
     # Import cluster
     from wazuh.cluster.cluster import read_config
-    from wazuh.cluster.control import get_nodes, get_healthcheck, get_agents, sync, get_files
+    from wazuh.cluster.control import get_nodes, get_healthcheck, get_agents
 
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
@@ -46,7 +46,7 @@ def get_parser():
 
     class WazuhHelpFormatter(argparse.ArgumentParser):
         def format_help(self):
-            msg = """Wazuh cluster control - Master node
+            msg = """Wazuh cluster control
 
 Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 
@@ -131,50 +131,6 @@ def __print_table(data, headers, show_header=False):
 
     print (table_str)
 
-#
-# Get
-#
-
-### Get files
-def print_file_status_master(filter_file_list, filter_node_list):
-    files = __execute(my_function=get_files, my_args=(filter_file_list, filter_node_list,))
-    headers = ["Node", "File name", "Modification time", "MD5"]
-
-    node_error = {}
-
-    data = []
-    # Convert JSON data to table format
-    for node_name in sorted(files.keys()):
-
-        if not files[node_name]:
-            continue
-        if not isinstance(files[node_name], dict):
-            node_error[node_name] = files[node_name]
-            continue
-
-        for file_name in sorted(files[node_name].keys()):
-            my_file = [node_name, file_name, files[node_name][file_name]['mod_time'].split('.', 1)[0], files[node_name][file_name]['md5']]
-            data.append(my_file)
-
-    __print_table(data, headers, True)
-
-    if len(node_error) > 0:
-        print ("Error:")
-        for node, error in node_error.items():
-            print (" - {}: {}".format(node, error))
-
-
-def print_file_status_worker(filter_file_list, node_name):
-    my_files = __execute(my_function=get_files, my_args=(filter_file_list, node_name,))
-    headers = ["Node", "File name", "Modification time", "MD5"]
-    data = []
-    for file_name in sorted(my_files.keys()):
-            my_file = [node_name, file_name, my_files[file_name]['mod_time'].split('.', 1)[0], my_files[file_name]['md5']]
-            data.append(my_file)
-
-    __print_table(data, headers, True)
-    print ("(*) Workers only show their own files.")
-
 
 ### Get nodes
 def print_nodes_status(filter_node=None):
@@ -188,21 +144,8 @@ def print_nodes_status(filter_node=None):
     if len(response["node_error"]):
         print ("The following nodes could not be found: {}.".format(' ,'.join(response["node_error"])))
 
-
-### Sync
-def sync_master(filter_node):
-    node_response = __execute(my_function=sync, my_args=(filter_node,))
-    headers = ["Node", "Response"]
-    data = [[node, response] for node, response in node_response.items()]
-    __print_table(data, headers, True)
-
-
 ### Get agents
 def print_agents(filter_status, filter_node, is_master):
-    if not is_master:
-        print("This option is not available in worker nodes.")
-        exit(0)
-
     agents = get_agents(filter_status, filter_node, is_master)
     try:
         table = ["  ID: {}, Name: {}, IP: {}, Status: {},  Node: {}".format(agent['id'], agent['name'], agent['ip'],

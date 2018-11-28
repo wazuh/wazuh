@@ -83,16 +83,6 @@ def get_healthcheck(filter_node=None):
     return execute(request)
 
 
-def sync(filter_node=None):
-    request = "sync {}".format(filter_node) if filter_node else "sync"
-    return execute(request)
-
-
-def get_files(filter_file_list=None, filter_node_list=None):
-    request = "get_files {}".format(filter_file_list) if not filter_node_list else "get_files {}%--%{}".format(filter_file_list, filter_node_list)
-    return execute(request)
-
-
 def get_agents(filter_status, filter_node, is_master):
     filter_status = ["all"] if not filter_status else filter_status
     filter_node = ["all"] if not filter_node else filter_node

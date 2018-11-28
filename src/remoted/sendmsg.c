@@ -56,6 +56,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     ssize_t msg_size;
     char crypt_msg[OS_MAXSTR + 1];
     int retval = 0;
+    int error;
 
     key_lock_read();
     key_id = OS_IsAllowedID(&keys, agent_id);
@@ -68,8 +69,7 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - DISCON_TIME)) {
-        key_unlock();
-        merror(SEND_DISCON, keys.keyentries[key_id]->id);
+        mwarn(SEND_DISCON, keys.keyentries[key_id]->id);
         return (-1);
     }
 
@@ -84,9 +84,11 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     /* Send initial message */
     if (logr.proto[logr.position] == UDP_PROTO) {
         retval = sendto(logr.sock, crypt_msg, msg_size, 0, (struct sockaddr *)&keys.keyentries[key_id]->peer_info, logr.peer_size) == msg_size ? 0 : -1;
+        error = errno;
     } else if (keys.keyentries[key_id]->sock >= 0) {
         w_mutex_lock(&keys.keyentries[key_id]->mutex);
         retval = OS_SendSecureTCP(keys.keyentries[key_id]->sock, msg_size, crypt_msg);
+        error = errno;
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
     } else {
         key_unlock();
@@ -94,20 +96,28 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         return -1;
     }
 
-    key_unlock();
-
     if (retval < 0) {
-        switch (errno) {
+        switch (error) {
+        case 0:
+            mwarn(SEND_ERROR " [%d]", agent_id, "Unknown error.", keys.keyentries[key_id]->sock);
+            break;
         case EPIPE:
         case EBADF:
-            mdebug1(SEND_ERROR ". Agent might got disconnected.", agent_id, strerror(errno));
+            mdebug1(SEND_ERROR " [%d]", agent_id, "Agent may have disconnected.", keys.keyentries[key_id]->sock);
+            break;
+        case EAGAIN:
+#if EAGAIN != EWOULDBLOCK
+        case EWOULDBLOCK:
+#endif
+            mwarn(SEND_ERROR " [%d]", agent_id, "Agent is not responding.", keys.keyentries[key_id]->sock);
             break;
         default:
-            merror(SEND_ERROR, agent_id, strerror(errno));
+            merror(SEND_ERROR " [%d]", agent_id, strerror(error), keys.keyentries[key_id]->sock);
         }
     } else {
         rem_inc_msg_sent();
     }
 
+    key_unlock();
     return retval;
 }

@@ -29,13 +29,38 @@ public function removeAll()
    home_dir = Replace(args(0), Chr(34), "") 'APPLICATIONFOLDER
  
    Set objSFO = CreateObject("Scripting.FileSystemObject")
+
+   If objSFO.fileExists(home_dir & "ossec.conf.save") AND objSFO.fileExists(home_dir & "ossec.conf") Then
+      objSFO.DeleteFile(home_dir & "ossec.conf.save")
+   End If
+
+   If objSFO.fileExists(home_dir & "client.keys.save") AND objSFO.fileExists(home_dir & "client.keys") Then
+      objSFO.DeleteFile(home_dir & "client.keys.save")
+   End If
+
+   If objSFO.fileExists(home_dir & "local_internal_options.conf.save") AND objSFO.fileExists(home_dir & "local_internal_options.conf") Then
+      objSFO.DeleteFile(home_dir & "local_internal_options.conf.save")
+   End If
+
+   If objSFO.fileExists(home_dir & "ossec.conf") Then
+      objSFO.GetFile(home_dir + "\ossec.conf").Name = "ossec.conf.save"
+   End If
+
+   If objSFO.fileExists(home_dir & "client.keys") Then
+      objSFO.GetFile(home_dir + "\client.keys").Name = "client.keys.save"
+   End If
+
+   If objSFO.fileExists(home_dir & "local_internal_options.conf") Then
+      objSFO.GetFile(home_dir + "\local_internal_options.conf").Name = "local_internal_options.conf.save"
+   End If
+
    If objSFO.folderExists(home_dir) Then
       Set folder = objSFO.GetFolder(home_dir)
  
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the files specified here *will not* be deleted
-       Dim filesToKeep: filesToKeep = Array("ossec.log", _
-                                            "local_internal_options.conf")
+       Dim filesToKeep: filesToKeep = Array("ossec.conf.save", "client.keys.save", _
+                                            "local_internal_options.conf.save")
  
       ' Construct a simple dictionary to check out later whether a file is in
       ' the list or not
@@ -68,4 +93,5 @@ public function removeAll()
    removeAll = 0
 
 End Function   'removeAll
+
 

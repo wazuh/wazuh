@@ -105,7 +105,7 @@ class Response:
     def __init__(self):
         self.cond = threading.Condition()
         self.data = None
-
+        self.response_timeout = get_cluster_items_communication_intervals()['timeout_cluster_request']
 
     def read(self):
         def frange(start, stop, step):
@@ -116,7 +116,7 @@ class Response:
 
         with self.cond:
             # wait for a response for common.cluster_timeout_msg seconds
-            for _ in frange(1,common.cluster_timeout_msg,0.5):
+            for _ in frange(1,self.response_timeout,0.5):
                 self.cond.wait(timeout=0.5)
                 if self.data is not None:
                     break
@@ -419,7 +419,15 @@ class Handler(asyncore.dispatcher_with_send):
     def handle_close(self):
         self.close()
 
-        for response in self.box.values():
+        # before closing all responses, wait to let the response be written.
+        n_retries = 0
+        while len(self.box) > 0 and n_retries < 5:
+            logger.debug("{}: There are {} pending responses. Waiting 0.1s.".format(self.tag, len(self.box)))
+            time.sleep(0.1)
+            n_retries += 1
+
+        for response_id, response in self.box.items():
+            logger.debug("{}: Closing pending response with id {}.".format(self.tag, response_id))
             response.write(None)
 
 

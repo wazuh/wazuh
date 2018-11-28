@@ -41,6 +41,7 @@ int max_attempts;
 int request_pool;
 int request_timeout;
 int response_timeout;
+int guess_agent_group;
 
 // Request listener thread entry point
 void * req_main(__attribute__((unused)) void * arg) {
@@ -61,6 +62,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
+    guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
 
     // Create hash table
 
@@ -237,10 +239,10 @@ void * req_dispatch(req_node_t * node) {
             // Try to send message
 
             if (send_msg(agentid, payload, ldata)) {
-                merror("Sending request to agent '%s'.", agentid);
+                mwarn("Sending request to agent '%s'.", agentid);
 
                 if (OS_SendSecureTCP(node->sock, strlen(WR_SEND_ERROR), WR_SEND_ERROR) < 0) {
-                    merror("Couldn't report sending error to client.");
+                    mwarn("Couldn't report sending error to client.");
                 }
                 goto cleanup;
             }
@@ -268,7 +270,7 @@ void * req_dispatch(req_node_t * node) {
             merror("Couldn't send request to agent '%s': number of attempts exceeded.", agentid);
 
             if (OS_SendSecureTCP(node->sock, strlen(WR_ATTEMPT_ERROR), WR_ATTEMPT_ERROR) < 0) {
-                merror("Couldn't report error about number of attempts exceeded to client.");
+                mwarn("Couldn't report error about number of attempts exceeded to client.");
             }
 
             goto cleanup;
@@ -310,9 +312,8 @@ void * req_dispatch(req_node_t * node) {
         mdebug2("Sending response: '%s'", node->buffer);
 
         if (OS_SendSecureTCP(node->sock, node->length, node->buffer) != 0) {
-            merror("At req_dispatch(): OS_SendSecureTCP(): %s", strerror(errno));
+            mwarn("At req_dispatch(): OS_SendSecureTCP(): %s", strerror(errno));
         }
-
     }
 
 cleanup:

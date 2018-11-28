@@ -65,7 +65,7 @@ else
         DIST_NAME="suse"
         DIST_VER=`sed -rn 's/.*VERSION = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
         DIST_SUBVER=`sed -rn 's/.*PATCHLEVEL = ([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
-        if ["$DIST_SUBVER" = ""]; then #openSuse
+        if [ "$DIST_SUBVER" = "" ]; then #openSuse
           DIST_SUBVER=`sed -rn 's/.*VERSION = ([0-9]{1,2})\.([0-9]{1,2}).*/\1/p' /etc/SuSE-release`
         fi
 

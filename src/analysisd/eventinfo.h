@@ -87,6 +87,8 @@ typedef struct _Eventinfo {
     char *sk_tag;
     int perm_before;
     int perm_after;
+    char *win_perm_before;
+    char *win_perm_after;
     char *md5_before;
     char *md5_after;
     char *sha1_before;
@@ -110,6 +112,8 @@ typedef struct _Eventinfo {
     char *diff;
     char *previous;
     wlabel_t *labels;
+    unsigned int attrs_before;
+    unsigned int attrs_after;
     // Whodata fields
     char *user_id;
     char *user_name;
@@ -126,6 +130,7 @@ typedef struct _Eventinfo {
     int rootcheck_fts;
     int is_a_copy;
     char **last_events;
+    int r_firedtimes;
     int queue_added;
     // Node reference
     EventNode *node;
@@ -137,7 +142,7 @@ typedef struct _Eventinfo {
 struct _EventNode {
     Eventinfo *event;
     pthread_mutex_t mutex;
-    int count;
+    volatile int count;
     EventNode *next;
     EventNode *prev;
 };

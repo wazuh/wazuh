@@ -60,8 +60,8 @@ int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
-// Init sdb struct
-void sdb_init(_sdb *localsdb);
+// Init sdb and decoder struct
+void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
 
 /* For stats */
 static void DumpLogstats(void);
@@ -81,7 +81,6 @@ char __shost[512];
 OSDecoderInfo *NULL_Decoder;
 rlim_t nofile;
 int sys_debug_level;
-OSDecoderInfo *fim_decoder;
 int num_rule_matching_threads;
 EventList *last_events_list;
 time_t current_time;
@@ -533,7 +532,7 @@ int main_analysisd(int argc, char **argv)
                 listfiles = Config.lists;
                 while (listfiles && *listfiles) {
                     if (!test_config) {
-                        minfo("Reading loading the lists file: '%s'", *listfiles);
+                        minfo("Reading the lists file: '%s'", *listfiles);
                     }
                     if (Lists_OP_LoadList(*listfiles) < 0) {
                         merror_exit(LISTS_ERROR, *listfiles);
@@ -690,7 +689,7 @@ int main_analysisd(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     // Start com request thread
-    w_create_thread(syscom_main, NULL);
+    w_create_thread(asyscom_main, NULL);
 
     /* Going to main loop */
     OS_ReadMSG(m_queue);
@@ -788,7 +787,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Get current time before starting */
     gettime(&c_timespec);
     Start_Time();
-    
+
     /* Start the hourly/weekly stats directories*/
     if(Init_Stats_Directories() < 0) {
         Config.stats = 0;
@@ -1361,8 +1360,8 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     if (rule->context == 1) {
         if (!(rule->context_opts & SAME_DODIFF)) {
             if (rule->event_search) {
-                w_FreeArray(lf->last_events);
                 if (!rule->event_search(lf, rule, rule_match)) {
+                    w_FreeArray(lf->last_events);
                     return (NULL);
                 }
             }
@@ -1389,6 +1388,9 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
         while (child_node) {
             child_rule = OS_CheckIfRuleMatch(lf, child_node, rule_match);
             if (child_rule != NULL) {
+                if (!child_rule->prev_rule) {
+                    child_rule->prev_rule = rule;
+                }
                 return (child_rule);
             }
 
@@ -1404,7 +1406,11 @@ RuleInfo *OS_CheckIfRuleMatch(Eventinfo *lf, RuleNode *curr_node, regex_matching
     w_mutex_lock(&hourly_alert_mutex);
     hourly_alerts++;
     w_mutex_unlock(&hourly_alert_mutex);
+    w_mutex_lock(&rule->mutex);
     rule->firedtimes++;
+    lf->r_firedtimes = rule->firedtimes;
+    w_mutex_unlock(&rule->mutex);
+
     return (rule); /* Matched */
 }
 
@@ -1771,9 +1777,12 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
     Eventinfo *lf = NULL;
     char *msg = NULL;
     _sdb sdb;
+    OSDecoderInfo *fim_decoder = NULL;
+
+    os_calloc(1, sizeof(OSDecoderInfo), fim_decoder);
 
     /* Initialize the integrity database */
-    sdb_init(&sdb);
+    sdb_init(&sdb, fim_decoder);
 
     while(1){
 
@@ -1798,6 +1807,7 @@ void * w_decode_syscheck_thread(__attribute__((unused)) void * args){
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             w_inc_syscheck_decoded_events();
+            lf->decoder_info = fim_decoder;
 
             if (DecodeSyscheck(lf, &sdb) != 1) {
                 /* We don't process syscheck events further */
@@ -2130,11 +2140,16 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
                 }
                 /* If the current time - the time the rule was ignored
                     * is less than the time it should be ignored,
-                    * leave (do not alert again)
+                    * alert about the parent one instead
                     */
                 else if ((lf->generate_time - t_currently_rule->time_ignored)
                             < t_currently_rule->ignore_time) {
-                    break;
+                    if (t_currently_rule->prev_rule) {
+                        t_currently_rule = (RuleInfo*)t_currently_rule->prev_rule;
+                        w_FreeArray(lf->last_events);
+                    } else {
+                        break;
+                    }
                 } else {
                     t_currently_rule->time_ignored = lf->generate_time;
                 }
@@ -2247,7 +2262,11 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         w_inc_processed_events();
 
-        if (lf_logall && (Config.logall || Config.logall_json)){
+        if (Config.logall || Config.logall_json){
+            if (!lf_logall) {
+                os_calloc(1, sizeof(Eventinfo), lf_logall);
+                w_copy_event_for_log(lf, lf_logall);
+            }
             result = queue_push_ex(writer_queue, lf_logall);
             if (result < 0) {
                 if(!reported_writer){

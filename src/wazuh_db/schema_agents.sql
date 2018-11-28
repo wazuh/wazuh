@@ -5,7 +5,7 @@
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */
- 
+
 CREATE TABLE IF NOT EXISTS fim_entry (
     file TEXT PRIMARY KEY,
     type TEXT NOT NULL CHECK (type IN ('file', 'registry')),
@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     gname TEXT,
     mtime INTEGER,
     inode INTEGER,
-    sha256 TEXT
+    sha256 TEXT,
+    attributes INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (
