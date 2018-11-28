@@ -11,6 +11,8 @@
 
 #ifdef WIN32
 
+#include <winternl.h>
+#include <ntstatus.h>
 #include "syscollector.h"
 
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
@@ -18,6 +20,14 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
 typedef int (*CallFunc2)(char **serial);
+
+typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
+{
+    HANDLE ProcessId;
+    UNICODE_STRING ImageName;
+} SYSTEM_PROCESS_IMAGE_NAME_INFORMATION, *PSYSTEM_PROCESS_IMAGE_NAME_INFORMATION;
+
+typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
 #define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
 #define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
@@ -41,52 +51,136 @@ int isWinVistaOrLater() {
 /* From process ID get its name */
 char* get_process_name(DWORD pid){
     char read_buff[OS_MAXSTR];
-	char *string = NULL, *ptr = NULL;
-	
-	/* Check if we are dealing with a system process */
-	if (pid == 0 || pid == 4)
-	{
-		string = strdup(pid == 0 ? "System Idle Process" : "System");
-		return string;
-	}
-	
-	/* Get process handle */
-	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    char *string = NULL, *ptr = NULL;
+    
+    /* Check if we are dealing with a system process */
+    if (pid == 0 || pid == 4)
+    {
+        string = strdup(pid == 0 ? "System Idle Process" : "System");
+        return string;
+    }
+    
+    /* Get process handle */
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (hProcess == NULL && isWinVistaOrLater())
     {
         /* Try to open the process using PROCESS_QUERY_LIMITED_INFORMATION */
         hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
     }
     
-	if (hProcess != NULL)
-	{
-		/* Get full Windows kernel path for the process */
-		if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
-		{
-			/* Get only the process name from the string */
-			ptr = strrchr(read_buff, '\\');
-			if (ptr)
-			{
-				int len = (strlen(read_buff) - (ptr - read_buff + 1));
-				memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
-				read_buff[len] = '\0';
-			}
-			
-			/* Duplicate string */
-			string = strdup(read_buff);
-		} else {
-			mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID '%lu'. Error '%ld'.", pid, GetLastError());
-			string = strdup("unknown");
-		}
-		
-		/* Close process handle */
-		CloseHandle(hProcess);
-	} else {
-		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID '%lu'. Error '%ld'.", pid, GetLastError());
-		string = strdup("unknown");
-	}
-	
-	return string;
+    if (hProcess != NULL)
+    {
+        /* Get full Windows kernel path for the process */
+        if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+        {
+            /* Get only the process name from the string */
+            ptr = strrchr(read_buff, '\\');
+            if (ptr)
+            {
+                int len = (strlen(read_buff) - (ptr - read_buff + 1));
+                memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
+                read_buff[len] = '\0';
+            }
+            
+            /* Duplicate string */
+            string = strdup(read_buff);
+        } else {
+            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve name for process with PID '%lu'. Error '%ld'.", pid, GetLastError());
+        }
+        
+        /* Close process handle */
+        CloseHandle(hProcess);
+    } else {
+        if (isWinVistaOrLater())
+        {
+            /* Dinamically load the ntdll.dll library and the 'NtQuerySystemInformation' call */
+            /* References: */
+            /* http://www.rohitab.com/discuss/topic/40626-list-processes-using-ntquerysysteminformation/ */
+            /* http://wj32.org/wp/2010/03/30/get-the-image-file-name-of-any-process-from-any-user-on-vista-and-above/ */
+            tNTQSI fpQSI = NULL;
+            HANDLE hHeap = GetProcessHeap();
+            HMODULE ntdll = LoadLibrary("ntdll.dll");
+            if (ntdll == NULL)
+            {
+                DWORD error = GetLastError();
+                LPSTR messageBuffer = NULL;
+                LPSTR end;
+                
+                FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+                
+                if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
+                
+                mterror(WM_SYS_LOGTAG, "Unable to load ntdll.dll: %s (%lu)", messageBuffer, error);
+                LocalFree(messageBuffer);
+            } else {
+                fpQSI = (tNTQSI)GetProcAddress(ntdll, "NtQuerySystemInformation");
+                if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
+            }
+            
+            if (ntdll != NULL && fpQSI != NULL)
+            {
+                NTSTATUS Status;
+                PVOID pBuffer;
+                SYSTEM_PROCESS_IMAGE_NAME_INFORMATION procInfo;
+                
+                pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 0x100);
+                if (pBuffer == NULL)
+                {
+                    mterror(WM_SYS_LOGTAG, "Unable to allocate memory for 'NtQuerySystemInformation'.");
+                } else {
+                    procInfo.ProcessId = (HANDLE)pid;
+                    procInfo.ImageName.Length = 0;
+                    procInfo.ImageName.MaximumLength = (USHORT)0x100;
+                    procInfo.ImageName.Buffer = pBuffer;
+                    
+                    Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
+                    
+                    if (Status == STATUS_INFO_LENGTH_MISMATCH)
+                    {
+                        /* Our buffer was too small. The required buffer length is stored in MaximumLength */
+                        HeapFree(hHeap, 0, pBuffer);
+                        pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, procInfo.ImageName.MaximumLength);
+                        if (pBuffer == NULL)
+                        {
+                            mterror(WM_SYS_LOGTAG, "Unable to allocate memory for 'NtQuerySystemInformation'.");
+                        } else {
+                            procInfo.ImageName.Buffer = pBuffer;
+                            Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
+                        }
+                    }
+                    
+                    if (NT_SUCCESS(Status))
+                    {
+                        int size_needed = WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, NULL, 0, NULL, NULL);
+                        if (!size_needed)
+                        {
+                            mterror(WM_SYS_LOGTAG, "Error: 'WideCharToMultiByte' failed (%ld).", GetLastError());
+                        } else {
+                            string = (char*)malloc(size_needed + 1);
+                            if (string == NULL)
+                            {
+                                mterror(WM_SYS_LOGTAG, "Unable to allocate memory for UTF-16 -> UTF-8 conversion in 'get_process_name'.");
+                            } else {
+                                if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
+                                {
+                                    mterror(WM_SYS_LOGTAG, "Error: 'WideCharToMultiByte' failed (%ld).", GetLastError());
+                                    free(string);
+                                    string = NULL;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
+                }
+            }
+        } else {
+            mtwarn(WM_SYS_LOGTAG, "Unable to retrieve handle for process with PID '%lu'. Error '%ld'.", pid, GetLastError());
+        }
+    }
+    
+    if (string == NULL) string = strdup("unknown");
+    return string;
 }
 
 // Get port state
@@ -322,7 +416,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Call inet_ntop function through syscollector DLL */
     CallFunc1 _wm_inet_ntop;
-    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
     if (sys_library == NULL){
         DWORD error = GetLastError();
         LPSTR messageBuffer = NULL;
@@ -1046,7 +1140,7 @@ void sys_hw_windows(const char* LOCATION){
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
     CallFunc2 _get_baseboard_serial;
-    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
     if (sys_library == NULL)
     {
         DWORD error = GetLastError();
@@ -1182,7 +1276,7 @@ void sys_network_windows(const char* LOCATION){
     CallFunc _get_network_win;
 
     /* Load DLL with network inventory functions */
-    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
 
     if (sys_library != NULL){
         _get_network_win = (CallFunc)GetProcAddress(sys_library, "get_network");
