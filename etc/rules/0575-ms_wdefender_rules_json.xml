@@ -12,6 +12,7 @@
         <if_sid>200000</if_sid>
         <field name="WinEvtChannel.System.ProviderName">Microsoft-Windows-Windows Defender/Operational</field>
         <description>Windows Defender messages grouped.</description>
+        <options>no_full_log</options>
     </rule>
 
     <!--
@@ -21,6 +22,7 @@
         <if_sid>200300</if_sid>
         <field name="WinEvtChannel.System.EventID">1116</field>
         <description>Windows Defender: detected potentially unwanted software</description>
+        <options>no_full_log</options>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
 
@@ -31,6 +33,7 @@
         <if_sid>200300</if_sid>
         <field name="WinEvtChannel.System.EventID">1117</field>
         <description>Windows Defender: error when taking action on potentially unwanted software</description>
+        <options>no_full_log</options>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
 
