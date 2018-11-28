@@ -7,7 +7,7 @@ import asyncio
 import argparse
 import os
 import sys
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, client
+from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 from wazuh import common, configuration, pyDaemonModule
 
 
@@ -77,8 +77,9 @@ async def worker_main(args, cluster_config):
                                                concurrency_test=args.concurrency_test, configuration=cluster_config,
                                                enable_ssl=args.ssl)
     while True:
-        my_client = client.AbstractClientManager(cluster_config, args.ssl, args.performance_test,
-                                                 args.concurrency_test, args.send_file, args.send_string)
+        my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
+                                  performance_test=args.performance_test, concurrency_test=args.concurrency_test,
+                                  file=args.send_file, string=args.send_string)
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:

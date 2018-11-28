@@ -7,6 +7,7 @@ import uvloop
 from wazuh.cluster import common, cluster
 import logging
 import time
+import itertools
 
 
 class AbstractClient(common.Handler):
@@ -14,14 +15,15 @@ class AbstractClient(common.Handler):
     Defines a client protocol. Handles connection with server.
     """
 
-    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str):
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
+                 tag: str = "Client"):
         """
         Class constructor
 
         :param name: client's name
         :param loop: asyncio loop
         """
-        super().__init__(fernet_key=fernet_key, tag="Client {}".format(name))
+        super().__init__(fernet_key=fernet_key, tag="{} {}".format(tag, name))
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -143,7 +145,7 @@ class AbstractClientManager:
     Defines an abstract client. Manages connection with server.
     """
     def __init__(self, configuration: Dict, enable_ssl: bool, performance_test: int, concurrency_test: int,
-                 file: str, string: int):
+                 file: str, string: int, tag: str = "Client Manager"):
         """
         Class constructor
 
@@ -163,8 +165,25 @@ class AbstractClientManager:
         self.string = string
         self.logger = logging.getLogger('AbstractClientManager')
         # logging tag
-        self.tag = "Client Manager"
+        self.tag = tag
         self.logger.addFilter(cluster.ClusterFilter(tag=self.tag))
+        self.tasks = []
+        self.handler_class = AbstractClient
+        self.client = None
+
+    def add_tasks(self):
+        if self.performance_test:
+            task = self.client.performance_test_client, (self.performance_test,)
+        elif self.concurrency_test:
+            task = self.client.concurrency_test_client, (self.concurrency_test,)
+        elif self.file:
+            task = self.client.send_file_task, (self.file,)
+        elif self.string:
+            task = self.client.send_string_task, (self.string,)
+        else:
+            task = self.client.client_echo, tuple()
+
+        return [task]
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -178,10 +197,12 @@ class AbstractClientManager:
         while True:
             try:
                 transport, protocol = await loop.create_connection(
-                                    protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name,
-                                                                            self.configuration['key']),
+                                    protocol_factory=lambda: self.handler_class(loop=loop, on_con_lost=on_con_lost,
+                                                                                name=self.name,
+                                                                                fernet_key=self.configuration['key']),
                                     host=self.configuration['nodes'][0], port=self.configuration['port'],
                                     ssl=ssl_context)
+                self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to server. Trying again in 10 seconds.")
                 await asyncio.sleep(10)
@@ -191,21 +212,12 @@ class AbstractClientManager:
                 await asyncio.sleep(10)
                 continue
 
-            if self.performance_test:
-                task, task_args = protocol.performance_test_client, (self.performance_test,)
-            elif self.concurrency_test:
-                task, task_args = protocol.concurrency_test_client, (self.concurrency_test,)
-            elif self.file:
-                task, task_args = protocol.send_file_task, (self.file,)
-            elif self.string:
-                task, task_args = protocol.send_string_task, (self.string,)
-            else:
-                task, task_args = protocol.client_echo, tuple()
+            self.tasks.extend([(on_con_lost, None), (self.client.client_echo, tuple())] + self.add_tasks())
 
             # Wait until the protocol signals that the connection
             # is lost and close the transport.
             try:
-                await asyncio.gather(on_con_lost, protocol.client_echo(), task(*task_args))
+                await asyncio.gather(*itertools.starmap(lambda x, y: x(*y) if y is not None else x, self.tasks))
             finally:
                 transport.close()
 
