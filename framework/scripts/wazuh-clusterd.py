@@ -15,8 +15,8 @@ from wazuh import common, configuration, pyDaemonModule
 # Aux functions
 #
 def set_logging(foreground_mode=False, debug_mode=0):
-    logging.getLogger('asyncio').setLevel(logging.CRITICAL)
-    logger = logging.getLogger()
+    logger = logging.getLogger('wazuh-clusterd')
+    logger.propagate = False
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
     formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] %(message)s')
@@ -61,26 +61,26 @@ def print_version():
 #
 # Master main
 #
-async def master_main(args, cluster_config):
+async def master_main(args, cluster_config, logger):
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                              configuration=cluster_config, enable_ssl=args.ssl)
+                              configuration=cluster_config, enable_ssl=args.ssl, logger=logger)
     my_local_server = local_server.LocalServer(performance_test=args.performance_test,
                                                concurrency_test=args.concurrency_test, configuration=cluster_config,
-                                               enable_ssl=args.ssl)
+                                               enable_ssl=args.ssl, logger=logger)
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
 #
 # Worker main
 #
-async def worker_main(args, cluster_config):
+async def worker_main(args, cluster_config, logger):
     my_local_server = local_server.LocalServer(performance_test=args.performance_test,
                                                concurrency_test=args.concurrency_test, configuration=cluster_config,
-                                               enable_ssl=args.ssl)
+                                               enable_ssl=args.ssl, logger=logger)
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                                  file=args.send_file, string=args.send_string)
+                                  file=args.send_file, string=args.send_string, logger=logger)
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
@@ -141,12 +141,12 @@ if __name__ == '__main__':
         os.setgid(common.ossec_gid)
         os.seteuid(common.ossec_uid)
 
-    set_logging(args.foreground, debug_mode)
+    main_logger = set_logging(args.foreground, debug_mode)
 
     cluster_configuration = cluster.read_config()
 
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:
-        asyncio.run(main_function(args, cluster_configuration))
+        asyncio.run(main_function(args, cluster_configuration, main_logger))
     except KeyboardInterrupt:
-        logging.info("SIGINT received. Bye!")
+        main_logger.info("SIGINT received. Bye!")

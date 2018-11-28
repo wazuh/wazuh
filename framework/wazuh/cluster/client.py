@@ -16,14 +16,14 @@ class AbstractClient(common.Handler):
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
-                 tag: str = "Client"):
+                 logger: logging.Logger, tag: str = "Client"):
         """
         Class constructor
 
         :param name: client's name
         :param loop: asyncio loop
         """
-        super().__init__(fernet_key=fernet_key, tag="{} {}".format(tag, name))
+        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, name))
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -145,7 +145,7 @@ class AbstractClientManager:
     Defines an abstract client. Manages connection with server.
     """
     def __init__(self, configuration: Dict, enable_ssl: bool, performance_test: int, concurrency_test: int,
-                 file: str, string: int, tag: str = "Client Manager"):
+                 file: str, string: int, logger: logging.Logger, tag: str = "Client Manager"):
         """
         Class constructor
 
@@ -163,7 +163,7 @@ class AbstractClientManager:
         self.concurrency_test = concurrency_test
         self.file = file
         self.string = string
-        self.logger = logging.getLogger('AbstractClientManager')
+        self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
         self.logger.addFilter(cluster.ClusterFilter(tag=self.tag))
@@ -198,7 +198,7 @@ class AbstractClientManager:
             try:
                 transport, protocol = await loop.create_connection(
                                     protocol_factory=lambda: self.handler_class(loop=loop, on_con_lost=on_con_lost,
-                                                                                name=self.name,
+                                                                                name=self.name, logger=self.logger,
                                                                                 fernet_key=self.configuration['key']),
                                     host=self.configuration['nodes'][0], port=self.configuration['port'],
                                     ssl=ssl_context)

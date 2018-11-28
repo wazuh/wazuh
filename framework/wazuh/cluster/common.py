@@ -77,7 +77,7 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str, tag: str = "Handler"):
+    def __init__(self, fernet_key: str, logger: logging.Logger, tag: str = "Handler"):
         """
         Class constructor
 
@@ -113,7 +113,7 @@ class Handler(asyncio.Protocol):
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
-        self.logger = logging.getLogger(tag)
+        self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
         self.logger_filter = cluster.ClusterFilter(tag=self.tag)

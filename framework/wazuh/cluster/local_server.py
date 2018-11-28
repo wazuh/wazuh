@@ -20,7 +20,6 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.name = str(random.SystemRandom().randint(0, 2 ** 32 - 1))
         self.transport = transport
         self.server.clients[self.name] = self
-        self.logger = logging.getLogger('LocalServerHandler')
         self.tag = "Local Handler " + self.name
         self.logger_filter.update_tag(self.tag)
         self.logger.info('Connection received in local server. Client name: {}'.format(self.name))

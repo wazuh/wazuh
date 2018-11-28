@@ -15,8 +15,8 @@ class AbstractServerHandler(common.Handler):
     Defines abstract server protocol. Handles communication with a single client.
     """
 
-    def __init__(self, server, loop, fernet_key, tag="Client"):
-        super().__init__(fernet_key=fernet_key, tag="{} {}".format(tag, random.randint(0, 1000)))
+    def __init__(self, server, loop, fernet_key, logger, tag="Client"):
+        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, random.randint(0, 1000)))
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
@@ -103,13 +103,13 @@ class AbstractServer:
     """
 
     def __init__(self, performance_test, concurrency_test, configuration: Dict, enable_ssl: bool,
-                 tag: str = "Abstract Server"):
+                 logger: logging.Logger, tag: str = "Abstract Server"):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.configuration = configuration
         self.enable_ssl = enable_ssl
-        self.logger = logging.getLogger(tag)
+        self.logger = logger.getChild(tag)
         # logging tag
         self.logger.addFilter(cluster.ClusterFilter(tag=tag))
         self.tasks = [self.check_clients_keepalive]
@@ -171,7 +171,7 @@ class AbstractServer:
 
         try:
             server = await loop.create_server(
-                    protocol_factory=lambda: self.handler_class(server=self, loop=loop,
+                    protocol_factory=lambda: self.handler_class(server=self, loop=loop, logger=self.logger,
                                                                 fernet_key=self.configuration['key']),
                     host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
