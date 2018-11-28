@@ -150,11 +150,13 @@ void normalize_path(char *path);
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
 const char *get_group(int gid);
+char *get_attr_from_checksum(char *checksum, int attr);
 
 #else
 
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid);
 const char *get_group(__attribute__((unused)) int gid);
+
 
 #endif
 

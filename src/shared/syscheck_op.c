@@ -517,6 +517,22 @@ const char *get_group(int gid) {
     return group ? group->gr_name : "";
 }
 
+
+char *get_attr_from_checksum(char *checksum, int attr){
+    char *inode;
+    char *aux;
+    int i;
+    inode = strchr(checksum, ':');
+    for(i = 0; i<attr; i++){
+        inode = strchr(inode, ':');
+        inode++;
+    }
+
+    aux = strchr(inode, ':');
+    *(aux++) = '\0';
+    return inode;
+}
+
 #else
 
 char *get_user(const char *path, __attribute__((unused)) int uid, char **sid)
