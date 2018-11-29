@@ -137,7 +137,7 @@ def read_config():
     config_cluster['port'] = int(config_cluster['port'])
 
     if config_cluster['node_type'] == 'client':
-        logger.warning("Deprecated node type 'client'. Using 'worker' instead.")
+        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
         config_cluster['node_type'] = 'worker'
 
     return config_cluster
