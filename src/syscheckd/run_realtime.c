@@ -193,8 +193,9 @@ int realtime_start()
     minfo("Initializing real time file monitoring engine.");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
-    if (syscheck.realtime == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
-    
+    if (syscheck.realtime == NULL) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+    }
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
     
@@ -260,10 +261,11 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                     char *ndir;
 
                     ndir = strdup(dir);
-                    if (ndir == NULL) merror_exit("Out of memory. Exiting.");
+                    if (ndir == NULL) {
+                        merror_exit("Out of memory. Exiting.");
+                    }
 
                     if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) merror_exit("Out of memory. Exiting.");
-                    
                     mdebug1("Directory added for real time monitoring: '%s'.", ndir);
                 }
             }

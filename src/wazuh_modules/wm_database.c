@@ -1467,21 +1467,14 @@ void wm_inotify_push(const char * dirname, const char * fname) {
         mterror(WM_DATABASE_LOGTAG, "Internal queue is full (%zu).", queue->size);
         goto end;
     }
-    
-    int *ptr = NULL;
-    os_calloc(1, sizeof(int), ptr);
-    *ptr = 1;
-    
-    int res = OSHash_Add(ptable, path, ptr);
-    switch (res) {
+
+    switch (OSHash_Add(ptable, path, (void *)1)) {
     case 0:
         mterror(WM_DATABASE_LOGTAG, "Couldn't insert key into table.");
-        free(ptr);
         break;
 
     case 1:
         mtdebug2(WM_DATABASE_LOGTAG, "Adding '%s': file already exists at path table.", path);
-        free(ptr);
         break;
 
     case 2:

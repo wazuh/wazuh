@@ -25,8 +25,10 @@ OSHash *OSHash_Create()
 
     /* Allocate memory for the hash */
     self = (OSHash *) calloc(1, sizeof(OSHash));
-    if (!self) return (NULL);
-    
+    if (!self) {
+        return (NULL);
+    }
+
     /* Set default row size */
     self->rows = os_getprime(1024);
     if (self->rows == 0) {
@@ -42,7 +44,9 @@ OSHash *OSHash_Create()
     }
 
     /* Zero our tables */
-    for (i = 0; i <= self->rows; i++) self->table[i] = NULL;
+    for (i = 0; i <= self->rows; i++) {
+        self->table[i] = NULL;
+    }
 
     /* Get seed */
     srandom((unsigned int)time(0));
@@ -65,7 +69,7 @@ void *OSHash_Free(OSHash *self)
     unsigned int i = 0;
     OSHashNode *curr_node;
     OSHashNode *next_node;
-    
+
     /* Free each entry */
     while (i <= self->rows) {
         curr_node = self->table[i];
@@ -73,14 +77,8 @@ void *OSHash_Free(OSHash *self)
         while (next_node) {
             next_node = next_node->next;
             if (curr_node->key) free(curr_node->key);
-            /* Take care of the data as well */
-            if (curr_node->data) {
-                if (self->free_data_function) {
-                    self->free_data_function(curr_node->data);
-                } else {
-                    free(curr_node->data);
-                }
-            }
+            /* Take care of the data as well (if a function has been defined) */
+            if (curr_node->data && self->free_data_function) self->free_data_function(curr_node->data);
             free(curr_node);
             curr_node = next_node;
         }
@@ -120,11 +118,15 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
     OSHashNode **tmpTable = NULL;
     
     /* We can't decrease the size */
-    if (new_size <= orig_size) return (1);
+    if (new_size <= self->rows) {
+        return (1);
+    }
 
     /* Get next prime */
     self->rows = os_getprime(new_size);
-    if (self->rows == 0) return (0);
+    if (self->rows == 0) {
+        return (0);
+    }
 
     /* Resize hash table */
     /* If a call to realloc() fails, the pointer passed to it will remain unchanged */
@@ -142,21 +144,17 @@ int OSHash_setSize(OSHash *self, unsigned int new_size)
         while(next_node) {
             next_node = next_node->next;
             if (curr_node->key) free(curr_node->key);
-            /* Take care of the data as well */
-            if (curr_node->data) {
-                if (self->free_data_function) {
-                    self->free_data_function(curr_node->data);
-                } else {
-                    free(curr_node->data);
-                }
-            }
+            /* Take care of the data as well (if a function has been defined) */
+            if (curr_node->data && self->free_data_function) self->free_data_function(curr_node->data);
             free(curr_node);
             curr_node = next_node;
         }
     }
-    
+
     /* Zero our tables */
-    for (i = 0; i <= self->rows; i++) self->table[i] = NULL;
+    for (i = 0; i <= self->rows; i++) {
+        self->table[i] = NULL;
+    }
 
     /* New seed */
     self->initial_seed = os_getprime((unsigned)os_random() % self->rows);
@@ -174,6 +172,7 @@ int OSHash_setSize_ex(OSHash *self, unsigned int new_size)
     return result;
 }
 
+
 /** int OSHash_Update(OSHash *self, char *key, void *data)
  * Returns 0 on error (not found).
  * Returns 1 on successduplicated key (not added)
@@ -184,7 +183,7 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
     unsigned int hash_key;
     unsigned int index;
     OSHashNode *curr_node;
-    
+
     /* Generate hash of the message */
     hash_key = _os_genhash(self, key);
 
@@ -196,13 +195,7 @@ int OSHash_Update(OSHash *self, const char *key, void *data)
     while (curr_node) {
         /* Checking for duplicated key -- not adding */
         if (strcmp(curr_node->key, key) == 0) {
-            if (curr_node->data) {
-                if (self->free_data_function) {
-                    self->free_data_function(curr_node->data);
-                } else {
-                    free(curr_node->data);
-                }
-            }
+            if (curr_node->data && self->free_data_function) self->free_data_function(curr_node->data);
             curr_node->data = data;
             return (1);
         }
@@ -253,7 +246,7 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
     unsigned int index;
     OSHashNode *curr_node;
     OSHashNode *new_node;
-    
+
     /* Generate hash of the message */
     hash_key = _os_genhash(self, key);
 
@@ -279,22 +272,21 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
         mdebug1("hash_op: calloc() failed!");
         return (0);
     }
-    
     new_node->next = NULL;
     new_node->data = data;
     new_node->key = strdup(key);
-    
-    if (new_node->key == NULL) {
+    if ( new_node->key == NULL ) {
         free(new_node);
         mdebug1("hash_op: strdup() failed!");
         return (0);
     }
 
+    /* Add to table */
     if (!self->table[index]) {
-        /* Add to table */
         self->table[index] = new_node;
-    } else {
-        /* If there is duplicated, add to the beginning */
+    }
+    /* If there is duplicated, add to the beginning */
+    else {
         new_node->next = self->table[index];
         self->table[index] = new_node;
     }
@@ -332,6 +324,7 @@ int OSHash_Add_ex(OSHash *self, const char *key, void *data)
     w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
     result = OSHash_Add(self,key,data);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
     return result;
 }
 
@@ -386,13 +379,17 @@ void *OSHash_Get(const OSHash *self, const char *key)
 
     /* Get entry */
     curr_node = self->table[index];
-    while(curr_node != NULL) {
+    while (curr_node != NULL) {
         /* Skip null pointers */
-        if (curr_node->key == NULL) continue;
-        
+        if ( curr_node->key == NULL ) {
+            continue;
+        }
+
         /* We may have collisions, so double check with strcmp */
-        if (strcmp(curr_node->key, key) == 0) return (curr_node->data);
-        
+        if (strcmp(curr_node->key, key) == 0) {
+            return (curr_node->data);
+        }
+
         curr_node = curr_node->next;
     }
 
@@ -426,6 +423,7 @@ void *OSHash_Get_ex(const OSHash *self, const char *key)
     w_rwlock_rdlock((pthread_rwlock_t *)&self->mutex);
     result = OSHash_Get(self,key);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
     return result;
 }
 
@@ -460,9 +458,9 @@ void *OSHash_Delete(OSHash *self, const char *key)
     index = hash_key % self->rows;
 
     curr_node = self->table[index];
-    while(curr_node != NULL) {
+    while ( curr_node != NULL ) {
         if (strcmp(curr_node->key, key) == 0) {
-            if (prev_node == NULL) {
+            if ( prev_node == NULL ) {
                 self->table[index] = curr_node->next;
             } else {
                 prev_node->next = curr_node->next;
@@ -497,6 +495,7 @@ void *OSHash_Delete_ex(OSHash *self, const char *key)
     w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
     result = OSHash_Delete(self,key);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
     return result;
 }
 
@@ -527,6 +526,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
 
     for (i = 0; i <= self->rows; i++) {
         next_addr = &self->table[i];
+
         for (curr_node = hash->table[i]; curr_node; curr_node = curr_node->next) {
             os_calloc(1, sizeof(OSHashNode), *next_addr);
             (*next_addr)->key = strdup(curr_node->key);
@@ -539,6 +539,7 @@ OSHash *OSHash_Duplicate(const OSHash *hash) {
 }
 
 OSHash *OSHash_Duplicate_ex(const OSHash *hash) {
+
     OSHash *result;
 
     w_rwlock_rdlock((pthread_rwlock_t *)&hash->mutex);

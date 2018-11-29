@@ -713,7 +713,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     OS_InitLog();
 
     /* Initialize the integrity database */
-    if (!fim_init()) merror_exit("fim: ERROR: Initialization failed");
+    if (!fim_init()) merror_exit("fim: Initialization failed");
 
     /* Initialize Rootcheck */
     RootcheckInit();

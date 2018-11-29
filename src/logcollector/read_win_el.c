@@ -115,19 +115,28 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
     HKEY key;
     DWORD ret;
     char keyname[512] = {'\0'};
-	char *skey = NULL, *sval = NULL;
+    char *skey = NULL, *sval = NULL;
 
-    snprintf(keyname, 510, "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s", evt_name, source);
+    snprintf(keyname, 510,
+             "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
+             evt_name,
+             source);
 
     /* Check if we have it in memory */
     ret_str = OSHash_Get(dll_hash, keyname + 42);
-    if (ret_str) return (ret_str);
+    if (ret_str) {
+        return (ret_str);
+    }
 
     /* Open Registry */
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0, KEY_ALL_ACCESS, &key) != ERROR_SUCCESS) return (NULL);
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0,
+                     KEY_ALL_ACCESS, &key) != ERROR_SUCCESS) {
+        return (NULL);
+    }
 
     ret = MAX_PATH - 1;
-    if (RegQueryValueEx(key, "EventMessageFile", NULL, NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS) {
+    if (RegQueryValueEx(key, "EventMessageFile", NULL,
+                        NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS) {
         event[0] = '\0';
         RegCloseKey(key);
         return (NULL);
@@ -144,9 +153,9 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
             if (skey != NULL) free(skey);
             if (sval != NULL) free(sval);
         }
-		
-		skey = NULL;
-		sval = NULL;
+        
+        skey = NULL;
+        sval = NULL;
     }
 
     RegCloseKey(key);
@@ -527,20 +536,25 @@ void win_read_vista_sec()
     /* Read the whole file and add it to memory */
     while (fgets(buf, OS_MAXSTR, fp) != NULL) {
         /* Get the last occurrence of \n */
-        if ((p = strrchr(buf, '\n')) != NULL) *p = '\0';
-        
+        if ((p = strrchr(buf, '\n')) != NULL) {
+            *p = '\0';
+        }
+
         p = strchr(buf, ',');
         if (!p) {
-            merror("Invalid entry on the Vista security description.");
+            merror("Invalid entry on the Vista security "
+                   "description.");
             continue;
         }
-        
+
         *p = '\0';
         p++;
         
         /* Remove whitespace */
-        while(*p == ' ') p++;
-        
+        while (*p == ' ') {
+            p++;
+        }
+
         /* Allocate memory */
         key = strdup(buf);
         desc = strdup(p);

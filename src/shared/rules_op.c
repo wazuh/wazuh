@@ -22,6 +22,7 @@ static int _OS_GetRulesAttributes(char **attributes,
 static RuleInfo *_OS_AllocateRule(void);
 static void _OS_FreeRule(RuleInfo *ruleinfo);
 
+
 /* Read the log rules */
 int OS_ReadXMLRules(const char *rulefile,
                     void *(*ruleact_function)(RuleInfo *rule_1, void *data_1),

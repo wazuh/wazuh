@@ -57,8 +57,7 @@ int Accumulate_Init()
     if (!acm_store) {
         merror(LIST_ERROR);
         return (0);
-    }
-    
+    }    
     if (!OSHash_setSize(acm_store, 2048)) {
         merror(LIST_ERROR);
         return (0);
@@ -207,7 +206,7 @@ Eventinfo *Accumulate(Eventinfo *lf)
             mdebug1("accumulator: DEBUG: Updated stored data for %s", _key);
         }
     } else {
-        if ((result = OSHash_Add_ex(acm_store, _key, stored_data)) != 2) {
+        if ((result = OSHash_Add_ex(acm_store, _key, stored_data)) != 2 ) {
             FreeACMStore(stored_data);
             merror("accumulator: ERROR: Addition of stored data for %s failed (%d).", _key, result);
         } else {

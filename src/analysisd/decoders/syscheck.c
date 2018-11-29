@@ -67,12 +67,6 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fts = 0;
 
     os_calloc(Config.decoder_order_size, sizeof(char *), fim_decoder->fields);
-    if (!fim_decoder->fields) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        free(fim_decoder);
-        return;
-    }
-    
     fim_decoder->fields[SK_FILE] = "file";
     fim_decoder->fields[SK_SIZE] = "size";
     fim_decoder->fields[SK_PERM] = "perm";
@@ -924,7 +918,8 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
 
                 if (result = OSHash_Add_ex(fim_agentinfo, lf->agent_id, ts_end), result != 2) {
                     os_free(ts_end);
-                    merror("Unable to add last scan_info to hash table for agent: %s. Error: %d.", lf->agent_id, result);
+                    merror("Unable to add last scan_info to hash table for agent: %s. Error: %d.",
+                            lf->agent_id, result);
                 }
             }
             else {

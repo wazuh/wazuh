@@ -17,8 +17,10 @@ int main(int argc, char **argv)
     while (1) {
         fgets(buf, 1024, stdin);
         tmp = strchr(buf, '\n');
-        if (tmp) *tmp = '\0';
-        
+        if (tmp) {
+            *tmp = '\0';
+        }
+
         if (strncmp(buf, "get ", 4) == 0) {
             printf("Getting key: '%s'\n", buf + 4);
             buf_dup = (char *)OSHash_Get(mhash, buf + 4);

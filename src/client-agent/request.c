@@ -47,22 +47,23 @@ void req_init() {
     char *socket_agent = NULL;
     
     // Get values from internal options
+
     request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
 
     // Create hash table and request pool
-    if (req_table = OSHash_Create(), !req_table) merror_exit("At req_main(): OSHash_Create()");
+
+    if (req_table = OSHash_Create(), !req_table) {
+        merror_exit("At req_main(): OSHash_Create()");
+    }
     OSHash_SetFreeDataPointer(req_table, (void (*)(void *))req_free);
 
     os_calloc(request_pool, sizeof(req_node_t *), req_pool);
-    if (!req_pool) {
-        merror("At req_main(): failed to allocate request pool");
-        goto ret;
-    }
 
     // Create hash table allowed sockets
+
     if (allowed_sockets = OSHash_Create(), !allowed_sockets) {
         merror("At req_main(): OSHash_Create()");
         goto ret;
@@ -229,8 +230,11 @@ void * req_receiver(__attribute__((unused)) void * arg) {
     char *buffer = NULL;
     char response[REQ_RESPONSE_LENGTH];
     int rlen;
-    
+
+
+
     while (1) {
+
         // Get next node from queue
 
         w_mutex_lock(&mutex_pool);

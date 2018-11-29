@@ -582,13 +582,15 @@ void OS_ReadMSG(char *ut_str)
                     unsigned int i = 0;
 
                     while (i < currently_rule->group_prev_matched_sz) {
-                        if (!OSList_AddData(currently_rule->group_prev_matched[i], lf)) {
+                        if (!OSList_AddData(
+                                    currently_rule->group_prev_matched[i],
+                                    lf)) {
                             merror("Unable to add data to grp list.");
                         }
                         i++;
                     }
                 }
-                
+
                 OS_AddEvent(lf, last_events_list);
                 break;
 
