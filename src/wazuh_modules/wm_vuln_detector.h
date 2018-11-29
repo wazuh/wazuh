@@ -53,6 +53,7 @@
 #define VUL_BUILD_REF_MAX 100
 #define VU_BUILD_REF_CVE_RH "https://access.redhat.com/security/cve/%s"
 #define VU_BUILD_REF_BUGZ "https://bugzilla.redhat.com/show_bug.cgi?id=%s"
+#define VU_BUILD_REF_RHSA "https://access.redhat.com/errata/%s"
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 
@@ -280,7 +281,7 @@ typedef struct wm_vulnerability_detector_db {
     info_state *info_states;
     info_cve *info_cves;
     oval_metadata metadata;
-    char *OS;
+    const char *OS;
 } wm_vulnerability_detector_db;
 
 typedef struct last_scan {
