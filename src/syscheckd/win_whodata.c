@@ -451,7 +451,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
     whodata_directory *w_dir;
     SYSTEMTIME system_time;
     syscheck_node *s_node;
-    unsigned int *fields_dup = NULL;
 
     if (action == EvtSubscribeActionDeliver) {
         char hash_id[21];
