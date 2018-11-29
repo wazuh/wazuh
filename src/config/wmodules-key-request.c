@@ -7,6 +7,7 @@ static const char *XML_TIMEOUT= "timeout";
 static const char *XML_THREADS = "threads";
 static const char *XML_QUEUE_SIZE = "queue_size";
 static const char *XML_SCRIPT = "script";
+static const char *XML_SOCKET = "socket";
 
 static short eval_bool(const char *str)
 {
@@ -55,6 +56,18 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
             key_request->script = strdup(nodes[i]->content);
+        }
+        else if(!strcmp(nodes[i]->element, XML_SOCKET))
+        {
+            if(key_request->socket) {
+                free(key_request->socket);
+            }
+
+            if(strlen(nodes[i]->content) >= PATH_MAX) {
+                merror("Socket path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                return OS_INVALID;
+            }
+            key_request->socket = strdup(nodes[i]->content);
         }
         else if(!strcmp(nodes[i]->element, XML_TIMEOUT))
         {

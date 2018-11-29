@@ -28,6 +28,8 @@ void * w_request_thread(const wm_krequest_t *data);
 // Dispatch request. Write the output into the same input buffer.
 static int wm_key_request_dispatch(char * buffer,const wm_krequest_t * data);
 
+static int external_socket_connect();
+
 /* Decode rootcheck input queue */
 static w_queue_t * request_queue;
 
@@ -73,15 +75,20 @@ void * wm_key_request_main(wm_krequest_t * data) {
         pthread_exit(NULL);
     }
 
-    /* Init the decode rootcheck queue input */
-    request_queue = queue_init(data->queue_size);
-
-    for(i = 0; i < data->threads;i++){
-        w_create_thread(w_request_thread,data);
+    /* Check if we have script and socket at the same time */
+    if(data->socket && data->script) {
+        mwarn("Script tag and socket tag defined. Using socket tag");
     }
+
+    /* Init the queue input */
+    request_queue = queue_init(data->queue_size);
 
     if ((sock = StartMQ(WM_KEY_REQUEST_SOCK_PATH, READ)) < 0) {
         merror_exit(QUEUE_ERROR, WM_KEY_REQUEST_SOCK_PATH, strerror(errno));
+    }
+
+    for(i = 0; i < data->threads;i++){
+        w_create_thread(w_request_thread,data);
     }
 
     while (1) {
@@ -168,9 +175,6 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             return -1;
     }
 
-    // Run external query
-    mdebug1("Getting key from script '%s'", data->script);
-    
     char *command = NULL;
     os_calloc(OS_MAXSTR + 1,sizeof(char),command);
 
@@ -181,120 +185,165 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         return -1;
     }
 
-    if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
+    /* Send request to external script by socket */
+    if(data->socket) {
+        int sock;
+        if (sock = external_socket_connect(data->socket), sock < 0) { 
+            mdebug1("Could not connect to external socket. Is the process running?");
+        } else {
+            char msg[OS_SIZE_128] = {0};
+            int msg_len = snprintf(msg,OS_SIZE_128,"%s:%s",script_params[type],request);
+
+            if( msg_len > OS_SIZE_128) {
+                mdebug1("Request is too long for socket.");
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                return -1;
+            }
+
+            if (OS_SendSecureTCP(sock, msg_len, msg) < 0) {
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                close(sock);
+                return -1;
+            }
+
+            ssize_t length;
+            os_calloc(OS_MAXSTR + 1,sizeof(char),output);
+            if (length = OS_RecvSecureTCP(sock, output, OS_MAXSTR), length < 0) {
+                mdebug1("No data received from external socket");
+                os_free(output);
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                close(sock);
+                return -1;
+            } else if (length == 0) {
+                os_free(output);
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                close(sock);
+                return -1;
+            } else {
+                output[length] = '\0';
+            }
+            close(sock);
+        }
+    }
+    /* Execute external script */
+    else if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
         mdebug1("At wm_key_request_dispatch(): Error executing script [%s]", data->script);
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
         return -1;
-    } else {
-        agent_infoJSON = cJSON_Parse(output);
-
-        if (!agent_infoJSON) {
-            mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
-        } else {
-
-            int error = 0;
-            cJSON *error_message = NULL;
-            cJSON *data_json = NULL;
-            cJSON *agent_id = NULL;
-            cJSON *agent_name = NULL;
-            cJSON *agent_address = NULL;
-            cJSON *agent_key = NULL;
-            char id[257 + 1] = { '\0' };
-
-            cJSON *json_field;
-
-            if (json_field = cJSON_GetObjectItem(agent_infoJSON,"error"), !json_field) {
-                mdebug1("Malformed JSON output received. No 'error' field found");
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            error = json_field->valueint;
-
-            if(error) {
-                error_message = cJSON_GetObjectItem(agent_infoJSON, "message");
-                if (!error_message) {
-                    mdebug1("Malformed JSON output received. No 'message' field found");
-                    cJSON_Delete (agent_infoJSON);
-                    os_free(command);
-                    OSHash_Delete_ex(request_hash,buffer);
-                    os_free(output);
-                    return -1;
-                }
-                merror("%s",error_message->valuestring);
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            data_json = cJSON_GetObjectItem(agent_infoJSON, "data");
-            if (!data_json) {
-                mdebug1("Agent data not found.");
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            agent_id = cJSON_GetObjectItem(data_json, "id");
-            if (!agent_id) {
-                mdebug1("Agent ID not found.");
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            agent_name = cJSON_GetObjectItem(data_json, "name");
-            if (!agent_name) {
-                mdebug1("Agent name not found.");
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            agent_address = cJSON_GetObjectItem(data_json, "ip");
-            if (!agent_address) {
-                mdebug1("Agent address not found.");
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            agent_key = cJSON_GetObjectItem(data_json, "key");
-            if (!agent_key) {
-                mdebug1("Agent key not found.");
-                cJSON_Delete (agent_infoJSON);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                os_free(output);
-                return -1;
-            }
-
-            int sock;
-            if (sock = auth_connect(), sock < 0) { 
-                mdebug1("Could not connect to authd socket. Is authd running?");
-            } else {
-                auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring,0);
-                close(sock);
-            }
-
-            cJSON_Delete(agent_infoJSON);
-        }
-        os_free(output);
     }
+
+    agent_infoJSON = cJSON_Parse(output);
+
+    if (!agent_infoJSON) {
+        mdebug1("Error parsing JSON event. %s", cJSON_GetErrorPtr());
+    } else {
+
+        int error = 0;
+        cJSON *error_message = NULL;
+        cJSON *data_json = NULL;
+        cJSON *agent_id = NULL;
+        cJSON *agent_name = NULL;
+        cJSON *agent_address = NULL;
+        cJSON *agent_key = NULL;
+        char id[257 + 1] = { '\0' };
+
+        cJSON *json_field;
+
+        if (json_field = cJSON_GetObjectItem(agent_infoJSON,"error"), !json_field) {
+            mdebug1("Malformed JSON output received. No 'error' field found");
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        error = json_field->valueint;
+
+        if(error) {
+            error_message = cJSON_GetObjectItem(agent_infoJSON, "message");
+            if (!error_message) {
+                mdebug1("Malformed JSON output received. No 'message' field found");
+                cJSON_Delete (agent_infoJSON);
+                os_free(command);
+                OSHash_Delete_ex(request_hash,buffer);
+                os_free(output);
+                return -1;
+            }
+            merror("%s",error_message->valuestring);
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        data_json = cJSON_GetObjectItem(agent_infoJSON, "data");
+        if (!data_json) {
+            mdebug1("Agent data not found.");
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        agent_id = cJSON_GetObjectItem(data_json, "id");
+        if (!agent_id) {
+            mdebug1("Agent ID not found.");
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        agent_name = cJSON_GetObjectItem(data_json, "name");
+        if (!agent_name) {
+            mdebug1("Agent name not found.");
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        agent_address = cJSON_GetObjectItem(data_json, "ip");
+        if (!agent_address) {
+            mdebug1("Agent address not found.");
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        agent_key = cJSON_GetObjectItem(data_json, "key");
+        if (!agent_key) {
+            mdebug1("Agent key not found.");
+            cJSON_Delete (agent_infoJSON);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            os_free(output);
+            return -1;
+        }
+
+        int sock;
+        if (sock = auth_connect(), sock < 0) { 
+            mdebug1("Could not connect to authd socket. Is authd running?");
+        } else {
+            auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring,0);
+            close(sock);
+        }
+        cJSON_Delete(agent_infoJSON);
+    }
+    os_free(output);
+    
     OSHash_Delete_ex(request_hash,buffer);
     os_free(command);
 
@@ -338,12 +387,18 @@ void * w_request_thread(const wm_krequest_t *data) {
 
         /* Receive request from queue */
         if (msg = queue_pop_ex(request_queue), msg) {
-
-            /* Dispatch the request */
             if(wm_key_request_dispatch(msg,data) < 0) {
                 mdebug1("At w_request_thread(): Error getting external key");
             }
             os_free(msg);
         }
     }
+}
+
+static int external_socket_connect(char * socket) {
+#ifndef WIN32
+    return OS_ConnectUnixDomain(socket, SOCK_STREAM, OS_MAXSTR);
+#else
+    return -1;
+#endif
 }

@@ -20,6 +20,7 @@ typedef struct wm_krequest_t {
     unsigned int threads;
     unsigned int queue_size;
     char* script;
+    char* socket;
 } wm_krequest_t;
 
 extern const wm_context WM_KEY_REQUEST_CONTEXT;
