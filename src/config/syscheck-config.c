@@ -306,6 +306,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_inode = "check_inode";
+    const char *xml_check_attrs = "check_attrs";
     const char *xml_real_time = "realtime";
     const char *xml_report_changes = "report_changes";
     const char *xml_restrict = "restrict";
@@ -382,9 +383,10 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_GROUP;
                     opts |= CHECK_MTIME;
                     opts |= CHECK_INODE;
+                    opts |= CHECK_ATTRS;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
-                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+                            | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;
@@ -519,6 +521,18 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_INODE;
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ CHECK_INODE;
+                } else {
+                    merror(SK_INV_OPT, *values, *attrs);
+                    ret = 0;
+                    goto out_free;
+                }
+            }
+            /* Check attributes */
+            else if (strcmp(*attrs, xml_check_attrs) == 0) {
+                if (strcmp(*values, "yes") == 0) {
+                    opts |= CHECK_ATTRS;
+                } else if (strcmp(*values, "no") == 0) {
+                    opts &= ~ CHECK_ATTRS;
                 } else {
                     merror(SK_INV_OPT, *values, *attrs);
                     ret = 0;
@@ -759,7 +773,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_registry_ignore = "registry_ignore";
     const char *xml_auto_ignore = "auto_ignore";
     const char *xml_alert_new_files = "alert_new_files";
-    const char *xml_remove_old_diff = "remove_old_diff";
+    const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
     const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
@@ -1196,14 +1210,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 }
             }
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                syscheck->remove_old_diff = 1;
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                syscheck->remove_old_diff = 0;
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+            // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
@@ -1278,6 +1285,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_MTIME,
         CHECK_INODE,
         CHECK_WHODATA,
+        CHECK_ATTRS,
 	0
 	};
     char *check_strings[] = {
@@ -1293,6 +1301,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "mtime",
         "inode",
         "whodata",
+        "attributes",
 	NULL
 	};
 

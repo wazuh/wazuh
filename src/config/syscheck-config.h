@@ -31,6 +31,7 @@
 #define CHECK_INODE         0001000
 #define CHECK_SHA256SUM     0002000
 #define CHECK_WHODATA       0004000
+#define CHECK_ATTRS         0010000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -168,8 +169,6 @@ typedef struct _config {
     int scan_on_start;
     int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
-
-    int remove_old_diff;            /* delete not monitored files history */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */

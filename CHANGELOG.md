@@ -1,6 +1,20 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.8.0]
+
+### Added
+
+- Add options to detect changes attributes and file permissions for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
+- Add a manifest to run `agent-auth.exe` with elevated privileges. ([#1998](https://github.com/wazuh/wazuh/pull/1998))
+
+### Changed
+
+- Deprecated the Syscheck option `<remove_old_diff>` by making it mandatory. ([#1915](https://github.com/wazuh/wazuh/pull/1915))
+
+### Fixed
+
+
 ## [v3.7.1]
 
 ### Added
@@ -42,6 +56,7 @@ All notable changes to this project will be documented in this file.
 - Fix FIM decoder to accept Windows user containing spaces. ([#1930](https://github.com/wazuh/wazuh/pull/1930))
 - Add missing field `restrict` when querying the FIM configuration remotely. ([#1931](https://github.com/wazuh/wazuh/pull/1931))
 - Fix values of FIM scan showed in agent_control info. ([#1940](https://github.com/wazuh/wazuh/pull/1940))
+
 
 ## [v3.7.0] - 2018-11-10
 

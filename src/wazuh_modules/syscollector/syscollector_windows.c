@@ -16,9 +16,6 @@
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
 
-#define MALLOC(x) HeapAlloc(GetProcessHeap(), 0, (x))
-#define FREE(x) HeapFree(GetProcessHeap(), 0, (x))
-
 hw_info *get_system_windows();
 
 /* From process ID get its name */
@@ -176,7 +173,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* TCP opened ports inventory */
 
-    pTcpTable = (MIB_TCPTABLE_OWNER_PID *) MALLOC(sizeof(MIB_TCPTABLE_OWNER_PID));
+    pTcpTable = (MIB_TCPTABLE_OWNER_PID *) win_alloc(sizeof(MIB_TCPTABLE_OWNER_PID));
 
     if (pTcpTable == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcpTable'.");
@@ -187,8 +184,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
     if ((dwRetVal = GetExtendedTcpTable(pTcpTable, &dwSize, bOrder, AF_INET, TableClass, 0)) == ERROR_INSUFFICIENT_BUFFER){
-        FREE(pTcpTable);
-        pTcpTable = (MIB_TCPTABLE_OWNER_PID *) MALLOC(dwSize);
+        win_free(pTcpTable);
+        pTcpTable = (MIB_TCPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcpTable == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcpTable'.");
             return;
@@ -254,18 +251,18 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
-        FREE(pTcpTable);
+        win_free(pTcpTable);
         return;
     }
 
     if (pTcpTable != NULL) {
-        FREE(pTcpTable);
+        win_free(pTcpTable);
         pTcpTable = NULL;
     }
 
     /* TCP6 opened ports inventory */
 
-    pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) MALLOC(sizeof(MIB_TCP6TABLE_OWNER_PID));
+    pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) win_alloc(sizeof(MIB_TCP6TABLE_OWNER_PID));
 
     if (pTcp6Table == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcp6Table'.");
@@ -276,8 +273,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
     if ((dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0)) == ERROR_INSUFFICIENT_BUFFER){
-        FREE(pTcp6Table);
-        pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) MALLOC(dwSize);
+        win_free(pTcp6Table);
+        pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcp6Table == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcp6Table'.");
             return;
@@ -369,12 +366,12 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
-        FREE(pTcp6Table);
+        win_free(pTcp6Table);
         return;
     }
 
     if (pTcp6Table != NULL) {
-        FREE(pTcp6Table);
+        win_free(pTcp6Table);
         pTcp6Table = NULL;
     }
 
@@ -396,7 +393,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* UDP opened ports inventory */
 
-    pUdpTable = (MIB_UDPTABLE_OWNER_PID *) MALLOC(sizeof(MIB_UDPTABLE_OWNER_PID));
+    pUdpTable = (MIB_UDPTABLE_OWNER_PID *) win_alloc(sizeof(MIB_UDPTABLE_OWNER_PID));
 
     if (pUdpTable == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdpTable'.");
@@ -407,8 +404,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
     if ((dwRetVal = GetExtendedUdpTable(pUdpTable, &dwSize, bOrder, AF_INET, TableClassUdp, 0)) == ERROR_INSUFFICIENT_BUFFER){
-        FREE(pUdpTable);
-        pUdpTable = (MIB_UDPTABLE_OWNER_PID *) MALLOC(dwSize);
+        win_free(pUdpTable);
+        pUdpTable = (MIB_UDPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdpTable == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdpTable'.");
             return;
@@ -454,18 +451,18 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
-        FREE(pUdpTable);
+        win_free(pUdpTable);
         return;
     }
 
     if (pUdpTable != NULL) {
-        FREE(pUdpTable);
+        win_free(pUdpTable);
         pUdpTable = NULL;
     }
 
     /* UDP6 opened ports inventory */
 
-    pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) MALLOC(sizeof(MIB_UDP6TABLE_OWNER_PID));
+    pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) win_alloc(sizeof(MIB_UDP6TABLE_OWNER_PID));
 
     if (pUdp6Table == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdp6Table'.");
@@ -476,8 +473,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Initial call to the function to get the necessary size into the dwSize variable */
     if ((dwRetVal = GetExtendedUdpTable(pUdp6Table, &dwSize, bOrder, AF_INET6, TableClassUdp, 0)) == ERROR_INSUFFICIENT_BUFFER){
-        FREE(pUdp6Table);
-        pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) MALLOC(dwSize);
+        win_free(pUdp6Table);
+        pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdp6Table == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdp6Table'.");
             return;
@@ -523,12 +520,12 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
-        FREE(pUdp6Table);
+        win_free(pUdp6Table);
         return;
     }
 
     if (pUdp6Table != NULL) {
-        FREE(pUdp6Table);
+        win_free(pUdp6Table);
         pUdp6Table = NULL;
     }
 
@@ -1192,7 +1189,7 @@ void sys_network_windows(const char* LOCATION){
 
             do {
 
-                pAddresses = (IP_ADAPTER_ADDRESSES *) MALLOC(outBufLen);
+                pAddresses = (IP_ADAPTER_ADDRESSES *) win_alloc(outBufLen);
 
                 if (pAddresses == NULL) {
                     mterror_exit(WM_SYS_LOGTAG, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct.");
@@ -1201,7 +1198,7 @@ void sys_network_windows(const char* LOCATION){
                 dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, pAddresses, &outBufLen);
 
                 if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
-                    FREE(pAddresses);
+                    win_free(pAddresses);
                     pAddresses = NULL;
                 } else {
                     break;
@@ -1247,13 +1244,13 @@ void sys_network_windows(const char* LOCATION){
                         mterror(WM_SYS_LOGTAG, "Error: %s", (char *)lpMsgBuf);
                         LocalFree(lpMsgBuf);
                         if (pAddresses)
-                            FREE(pAddresses);
+                            win_free(pAddresses);
                     }
                 }
             }
 
             if (pAddresses) {
-                FREE(pAddresses);
+                win_free(pAddresses);
             }
 
             FreeLibrary(sys_library);

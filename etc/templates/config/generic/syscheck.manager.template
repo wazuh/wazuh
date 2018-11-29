@@ -38,9 +38,6 @@
 
     <skip_nfs>yes</skip_nfs>
 
-    <!-- Remove not monitored files -->
-    <remove_old_diff>yes</remove_old_diff>
-
     <!-- Allow the system to restart Auditd after installing the plugin -->
     <restart_audit>yes</restart_audit>
   </syscheck>
