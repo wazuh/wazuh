@@ -505,6 +505,35 @@ void normalize_path(char * path) {
     }
 }
 
+char *get_attr_from_checksum(char *checksum, int attr) {
+    char *str_attr = NULL;
+    char *str_end = NULL;
+    int i;
+
+    if (attr < 1 || attr > FIM_NATTR) {
+        return NULL;
+    }
+
+    str_attr = checksum;
+
+    for(i = 2; i <= attr && str_attr; i++){
+        str_attr = strchr(str_attr, ':');
+        if(str_attr) {
+            str_attr++;
+        }
+    }
+
+    if (str_attr) {
+        if(str_end = strchr(str_attr, ':'), str_end) {
+            *(str_end++) = '\0';
+        }
+        return str_attr;
+    }
+
+    return NULL;
+}
+
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid) {
@@ -515,22 +544,6 @@ const char *get_user(__attribute__((unused)) const char *path, int uid, __attrib
 const char *get_group(int gid) {
     struct group *group = getgrgid(gid);
     return group ? group->gr_name : "";
-}
-
-
-char *get_attr_from_checksum(char *checksum, int attr){
-    char *inode;
-    char *aux;
-    int i;
-    inode = strchr(checksum, ':');
-    for(i = 0; i<attr; i++){
-        inode = strchr(inode, ':');
-        inode++;
-    }
-
-    aux = strchr(inode, ':');
-    *(aux++) = '\0';
-    return inode;
 }
 
 #else

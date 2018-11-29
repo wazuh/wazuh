@@ -364,11 +364,13 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             }
         }
         else {
-             if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
+            if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
                 char *inode_str;
                 char *checksum_inode;
+
                 os_strdup(s_node->checksum, checksum_inode);
                 inode_str = get_attr_from_checksum(checksum_inode, SK_INODE);
+                
                 if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
                     free(w_inode);
                 }
