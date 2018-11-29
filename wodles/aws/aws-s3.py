@@ -467,6 +467,7 @@ class AWSBucket(WazuhIntegration):
         return filter_args
 
     def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
         def single_element_list_to_dictionary(my_event):
             for name, value in my_event.items():
                 if isinstance(value, list) and len(value) == 1:
@@ -635,9 +636,6 @@ class AWSLogsBucket(AWSBucket):
         alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
 
-    def reformat_msg(self, event):
-        raise NotImplementedError
-
     def find_account_ids(self):
         return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
                 self.client.list_objects_v2(Bucket=self.bucket,
@@ -692,7 +690,6 @@ class AWSCloudTrailBucket(AWSLogsBucket):
         self.field_to_load = 'Records'
 
     def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
         AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
@@ -713,12 +710,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         AWSLogsBucket.__init__(self, *args)
         self.service = 'vpcflowlogs'
 
-    def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-
-        return event
-
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
             fieldnames = (
@@ -737,12 +728,6 @@ class AWSConfigBucket(AWSLogsBucket):
         AWSLogsBucket.__init__(self, *args)
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
-
-    def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-
-        return event
 
 
 class AWSCustomBucket(AWSBucket):
@@ -816,6 +801,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                     self.send_msg(msg)
 
     def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
             'action' in event['aws']['service'] and \
             'portProbeAction' in event['aws']['service']['action'] and \
