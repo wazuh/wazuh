@@ -2,6 +2,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import errno
+import functools
+import operator
 import os
 import shutil
 from typing import Tuple, Dict
@@ -9,7 +11,7 @@ from wazuh.cluster import client, cluster, common as c_common
 from wazuh import common
 
 
-class WorkerHandler(client.AbstractClient):
+class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs, tag="Worker")
@@ -26,15 +28,10 @@ class WorkerHandler(client.AbstractClient):
             return super().process_request(command, data)
 
     def setup_receive_files_from_master(self):
-        my_task = c_common.TaskWithId(self.process_files_from_master)
-        self.sync_tasks[my_task.name] = my_task
-        return b'ok', str(my_task).encode()
+        return super().setup_receive_file(self.process_files_from_master)
 
     def end_receiving_integrity(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
-        task_name, filename = task_and_file_names.split(' ', 1)
-        self.sync_tasks[task_name].filename = filename
-        self.sync_tasks[task_name].received_information.set()
-        return b'ok', b'Updating files from master'
+        return super().end_receiving_file(task_and_file_names)
 
     async def sync_integrity(self):
         while True:
@@ -52,11 +49,9 @@ class WorkerHandler(client.AbstractClient):
                 self.logger.info("Permission granted. Synchronizing integrity.")
 
             # Job: synchronize master files
-            cluster_control = {'master_files': cluster.get_files_status('master'), 'worker_files': None}
-
             self.logger.info("Compressing files")
             compressed_data_path = cluster.compress_files(name=self.name, list_path=None,
-                                                          cluster_control_json=cluster_control)
+                                                          cluster_control_json=cluster.get_files_status('master'))
             task_id = await self.send_request(command=b'sync_i_w_m', data=b'')
 
             self.logger.info("Sending file to master")
@@ -101,7 +96,7 @@ class WorkerHandler(client.AbstractClient):
                 # Full path
                 my_zip_path = "{}/{}".format(zip_path, filename)
                 # File content and time
-                with open(my_zip_path, 'r') as f:
+                with open(my_zip_path, 'rb') as f:
                     file_data = f.read()
             else:
                 file_data = content
@@ -111,7 +106,7 @@ class WorkerHandler(client.AbstractClient):
             cluster._update_file(file_path=filename, new_content=file_data, umask_int=umask, w_mode=w_mode,
                                  tmp_dir=tmp_path, whoami='worker')
 
-        cluster_items = cluster.get_cluster_items()['files']
+        cluster_items, errors = cluster.get_cluster_items()['files'], {'shared': 0, 'missing': 0, 'extra': 0}
         for filetype, files in ko_files.items():
             if filetype == 'shared' or filetype == 'missing':
                 self.logger.debug("Received {} {} files to update from master.".format(len(ko_files[filetype]),
@@ -125,7 +120,8 @@ class WorkerHandler(client.AbstractClient):
                         else:
                             overwrite_or_create_files(filename, data)
                     except Exception as e:
-                        self.logger.debug2("Error processing {} file '{}': {}".format(filetype, filename, e))
+                        errors[filetype] += 1
+                        self.logger.error("Error processing {} file '{}': {}".format(filetype, filename, e))
                         continue
             else:
                 for file_to_remove in files:
@@ -141,6 +137,7 @@ class WorkerHandler(client.AbstractClient):
                             else:
                                 raise e
                     except Exception as e:
+                        errors['extra'] += 1
                         self.logger.debug2("Error removing file '{}': {}".format(file_to_remove, str(e)))
                         continue
 
@@ -153,8 +150,14 @@ class WorkerHandler(client.AbstractClient):
                     if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
                         shutil.rmtree(full_path)
                 except Exception as e:
+                    errors['extra'] += 1
                     self.logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
                     continue
+
+            if functools.reduce(operator.add, errors.values()) > 0:
+                self.logger.error("Found errors: {} overwriting, {} creating and {} removing".format(errors['shared'],
+                                                                                                     errors['missing'],
+                                                                                                     errors['extra']))
 
 
 class Worker(client.AbstractClientManager):

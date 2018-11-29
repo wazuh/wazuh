@@ -1,15 +1,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import fnmatch
+import functools
+import operator
 import os
-import random
 from typing import Tuple
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import common, utils
 
 
-class MasterHandler(server.AbstractServerHandler):
+class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs, tag="Worker")
@@ -38,55 +38,31 @@ class MasterHandler(server.AbstractServerHandler):
 
     def setup_sync_integrity(self) -> Tuple[bytes, bytes]:
         self.sync_integrity_free = False
-        my_task = c_common.TaskWithId(self.sync_integrity)
-        self.sync_tasks[my_task.name] = my_task
-        return b'ok', str(my_task).encode()
+        return super().setup_receive_file(self.sync_integrity)
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
-        task_name, filename = task_and_file_names.split(' ', 1)
-        self.sync_tasks[task_name].filename = filename
-        self.sync_tasks[task_name].received_information.set()
-        return b'ok', b'Checking worker integrity'
+        return super().end_receiving_file(task_and_file_names)
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
         self.logger.info("Waiting to receive zip file from worker")
         await received_file.wait()
-        self.logger.info("File received")
+        received_filename = self.sync_tasks[task_name].filename
+        self.logger.debug("Received file from worker: '{}'".format(received_filename))
 
-        json_file, zip_dir_path = cluster.decompress_files(self.sync_tasks[task_name].filename)
+        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
-        self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(json_file['master_files'])))
-
-        worker_files_ko = cluster.compare_files(self.server.integrity_control, json_file['master_files'])
-        agent_groups_to_merge = {key: fnmatch.filter(values.keys(), '*/agent-groups/*') for key, values in
-                                 worker_files_ko.items()}
-        merged_files = {key: cluster.merge_agent_info(merge_type='agent-groups', files=values, file_type='-'+key,
-                                                      time_limit_seconds=0)
-                        for key, values in agent_groups_to_merge.items()}
-        for ko, merged in zip(worker_files_ko.items(), agent_groups_to_merge.items()):
-            ko_type, ko_files = ko
-            if ko_type == "extra" or "extra_valid":
-                continue
-            _, merged_filenames = merged
-            for m in merged_filenames:
-                del ko_files[m]
-            n_files, merged_file = merged_files[ko_type]
-            if n_files > 0:
-                ko_files[merged_file] = {'cluster_item_key': '/queue/agent-groups/', 'merged': True}
-
-        if len(list(filter(lambda x: x == {}, worker_files_ko.values()))) == len(worker_files_ko):
+        # classify files in shared, missing, extra and extra valid.
+        worker_files_ko = cluster.compare_files(self.server.integrity_control, files_checksums)
+        if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             self.logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
             result = await self.send_request(command=b'sync_m_c_ok', data=b'')
-
         else:
             self.logger.info("Analyzing worker integrity: Files checked. There are KO files.")
 
             # Compress data: master files (only KO shared and missing)
             self.logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
-
-            master_files_paths = [item for item in worker_files_ko['shared']]
-            master_files_paths.extend([item for item in worker_files_ko['missing']])
-
+            master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
             self.logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")

@@ -1,5 +1,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+import itertools
 from typing import Set, Dict, Callable
 
 from wazuh.utils import md5, mkdir_with_mode
@@ -268,7 +269,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
         if whoami =='worker':
-            _check_removed_agents(new_content.split('\n'))
+            _check_removed_agents(new_content.decode().split('\n'))
         else:
             logger.warning("[Cluster] Client.keys file received in a master node.")
             raise WazuhException(3007)
@@ -315,13 +316,13 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         oldumask = umask(umask_int)
 
     try:
-        dest_file = open(f_temp, "w")
+        dest_file = open(f_temp, "wb")
     except IOError as e:
         if e.errno == errno.ENOENT:
             dirpath = path.dirname(f_temp)
             mkdir_with_mode(dirpath)
             chmod(dirpath, S_IRWXU | S_IRWXG)
-            dest_file = open(f_temp, "w")
+            dest_file = open(f_temp, "wb")
         else:
             raise e
 
@@ -347,25 +348,35 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
 
 
 def compare_files(good_files, check_files):
-    def get_file_set(set_to_check: Set, cluster_items_keys: Dict, condition: Callable):
-        return {file: {'cluster_item_key': cluster_items_keys[file], 'merged': False}
-                for file in set_to_check if condition(file)}
+    def split_on_condition(seq, condition):
+        """
+        Splits a sequence into two generators based on a conditon
+        :param seq: sequence to split
+        :param condition: function base splitting on
+        :return: two generators
+        """
+        l1, l2 = itertools.tee((condition(item), item) for item in seq)
+        return (i for p, i in l1 if p), (i for p, i in l2 if not p)
 
     cluster_items = get_cluster_items()['files']
 
-    missing_files = get_file_set(good_files.keys() - check_files.keys(),
-                                 {key: value['cluster_item_key'] for key, value in good_files.items()}, lambda _: True)
+    # missing files will be the ones that are present in good files but not in the check files
+    missing_files = {key: good_files[key] for key in good_files.keys() - check_files.keys()}
 
-    extra_and_extra_valid = check_files.keys() - good_files.keys()
-    cluster_items_keys = {key: value['cluster_item_key'] for key, value in check_files.items()}
-    extra_files = get_file_set(extra_and_extra_valid, cluster_items_keys,
-                               lambda x: not cluster_items[cluster_items_keys[x]]['extra_valid'])
-    extra_valid_files = get_file_set(extra_and_extra_valid, cluster_items_keys,
-                               lambda x: cluster_items[cluster_items_keys[x]]['extra_valid'])
-
-    shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
-                          'merged':False} for name, data in good_files.items()
-                          if name in check_files and data['md5'] != check_files[name]['md5']}
+    # extra files are the ones present in check files but not in good files and aren't extra valid
+    extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),
+                                            lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    extra_files = {key: check_files[key] for key in extra}
+    extra_valid_files = {key: check_files[key] for key in extra_valid}
+    # shared files are the ones present in both sets.
+    shared_e_v, shared = split_on_condition(check_files.keys() & good_files.keys(),
+                                            lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    # merge all shared extra valid files into a single one.
+    # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded agent-groups
+    shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
+                                       time_limit_seconds=0)[1],
+                      {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
+    shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
 
     return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files,
             'extra_valid': extra_valid_files}
@@ -481,14 +492,14 @@ def run_logtest(synchronized=False):
 # Agents-info
 #
 
-def merge_agent_info(merge_type, files="all", file_type="", time_limit_seconds=1800):
+def merge_agent_info(merge_type, files=None, file_type="", time_limit_seconds=1800):
     if time_limit_seconds:
         min_mtime = time() - time_limit_seconds
     merge_path = "{}/queue/{}".format(common.ossec_path, merge_type)
     output_file = "/queue/cluster/{}{}.merged".format(merge_type, file_type)
     o_f = None
     files_to_send = 0
-    files = "all" if files == "all" else {path.basename(f) for f in files}
+    files = "all" if files is None else {path.basename(f) for f in files}
 
     for filename in os.listdir(merge_path):
         if files != "all" and filename not in files:
@@ -523,14 +534,14 @@ def unmerge_agent_info(merge_type, path_file, filename):
 
     bytes_read = 0
     total_bytes = os.stat(src_agent_info_path).st_size
-    src_f = open(src_agent_info_path, 'r')
+    src_f = open(src_agent_info_path, 'rb')
 
     while bytes_read < total_bytes:
         # read header
         header = src_f.readline()
         bytes_read += len(header)
         try:
-            st_size, name, st_mtime = header[:-1].split(' ',2)
+            st_size, name, st_mtime = header[:-1].split(b' ',2)
             st_size = int(st_size)
         except ValueError:
             raise Exception("Malformed agent-info.merged file")
@@ -539,7 +550,7 @@ def unmerge_agent_info(merge_type, path_file, filename):
         data = src_f.read(st_size)
         bytes_read += st_size
 
-        yield dst_agent_info_path + '/' + name, data, st_mtime
+        yield dst_agent_info_path + '/' + name.decode(), data, st_mtime
 
     src_f.close()
 

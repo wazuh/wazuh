@@ -9,7 +9,7 @@ import random
 import struct
 import traceback
 import cryptography.fernet
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Callable
 from wazuh.cluster import cluster
 
 
@@ -72,7 +72,7 @@ class InBuffer:
         return data[len_data:]
 
 
-class TaskWithId:
+class ReceiveFileTask:
     """
     Implements an asyncio task but including a name or ID for it.
     """
@@ -155,7 +155,6 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         self.logger_filter = cluster.ClusterFilter(tag=self.tag)
         self.logger.addFilter(self.logger_filter)
-        self.sync_tasks = {}
 
     def push(self, message: bytes):
         """
@@ -462,6 +461,25 @@ class Handler(asyncio.Protocol):
         :return: Nothing
         """
         return b"Error processing request: " + data
+
+
+class WazuhCommon:
+    """
+    Task implementing common methods for both clients and servers that are Wazuh specific.
+    """
+    def __init__(self):
+        self.sync_tasks = {}
+
+    def setup_receive_file(self, coro: Callable):
+        my_task = ReceiveFileTask(coro)
+        self.sync_tasks[my_task.name] = my_task
+        return b'ok', str(my_task).encode()
+
+    def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        task_name, filename = task_and_file_names.split(' ', 1)
+        self.sync_tasks[task_name].filename = filename
+        self.sync_tasks[task_name].received_information.set()
+        return b'ok', b'File correctly received'
 
 
 def asyncio_exception_handler(loop, context: Dict):
