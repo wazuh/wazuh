@@ -135,7 +135,7 @@ void HandleSecure()
                     }
 
                     rem_inc_tcp();
-                    mdebug1("New TCP connection at %s.", OS_GetAddress(peer_info));
+                    mdebug1("New TCP connection at %s [%d]", OS_GetAddress(peer_info), sock_client);
 
                     if (wnotify_add(notify, sock_client) < 0) {
                         merror("wnotify_add(%d, %d): %s (%d)", notify->fd, sock_client, strerror(errno), errno);
