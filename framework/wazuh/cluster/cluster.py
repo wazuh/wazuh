@@ -12,7 +12,7 @@ from wazuh.InputValidator import InputValidator
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink, environ
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
@@ -30,6 +30,7 @@ from random import random
 import glob
 import gzip
 from functools import reduce
+from socket import gethostname
 
 # import the C accelerated API of ElementTree
 try:
@@ -114,9 +115,17 @@ def get_cluster_items_worker_intervals():
 
 
 def read_config():
-    cluster_default_configuration = {'disabled': 'no', 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                                     'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'],
-                                     'hidden': 'no'}
+    cluster_default_configuration = {
+        'disabled': 'no',
+        'node_type': 'master',
+        'name': 'wazuh',
+        'node_name': 'node01',
+        'key': '',
+        'port': 1516,
+        'bind_addr': '0.0.0.0',
+        'nodes': ['NODE_IP'],
+        'hidden': 'no'
+    }
 
     try:
         config_cluster = get_ossec_conf('cluster')
@@ -133,6 +142,16 @@ def read_config():
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
+
+    if config_cluster['node_name'].upper() == '$HOSTNAME':
+        # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
+        config_cluster['node_name'] = gethostname()
+
+    if config_cluster['node_type'].upper() == '$NODE_TYPE':
+        if 'NODE_TYPE' in environ:
+            config_cluster['node_type'] = environ['NODE_TYPE']
+        else:
+            raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
 
     return config_cluster
 
