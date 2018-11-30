@@ -138,7 +138,7 @@ class Handler(asyncio.Protocol):
         # stores last received message
         self.in_msg = InBuffer()
         # stores incoming file information from file commands
-        self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+        self.in_file = {}
         # stores incoming string information from string commands
         self.in_str = InBuffer()
         # maximum message length to send in a single request
@@ -241,7 +241,7 @@ class Handler(asyncio.Protocol):
         :return: response from peer.
         """
         if len(data) > self.request_chunk:
-            return b"Error: Max msg length exceeded."
+            return b"Error: Command '" + command + b"' Max msg length exceeded."
 
         response = Response()
         msg_counter = self.next_counter()
@@ -264,19 +264,20 @@ class Handler(asyncio.Protocol):
             if not os.path.exists(filename):
                 return "File {} not found.".format(filename).encode()
 
-            response = await self.send_request(command=b'new_file', data=filename.encode())
+            filename = filename.encode()
+            response = await self.send_request(command=b'new_file', data=filename)
             if response.startswith(b"Error"):
                 return response
 
             file_hash = hashlib.sha256()
             with open(filename, 'rb') as f:
-                for chunk in iter(lambda: f.read(self.request_chunk), b''):
-                    response = await self.send_request(command=b'file_upd', data=chunk)
+                for chunk in iter(lambda: f.read(self.request_chunk - len(filename) - 1), b''):
+                    response = await self.send_request(command=b'file_upd', data=filename + b' ' + chunk)
                     if response.startswith(b"Error"):
                         return response
                     file_hash.update(chunk)
 
-            response = await self.send_request(command=b'file_end', data=file_hash.digest())
+            response = await self.send_request(command=b'file_end', data=filename + b' ' + file_hash.digest())
             if response.startswith(b"Error"):
                 return response
 
@@ -391,9 +392,7 @@ class Handler(asyncio.Protocol):
         :param data: File name
         :return: Message
         """
-        self.in_file['fd'] = open(data, 'wb')
-        self.in_file['filename'] = data
-        self.in_file['checksum'] = hashlib.sha256()
+        self.in_file[data] = {'fd': open(data, 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -403,8 +402,9 @@ class Handler(asyncio.Protocol):
         :param data: file content
         :return: Message
         """
-        self.in_file['fd'].write(data)
-        self.in_file['checksum'].update(data)
+        name, chunk = data.split(b' ', 1)
+        self.in_file[name]['fd'].write(chunk)
+        self.in_file[name]['checksum'].update(chunk)
         return b"ok", b"File updated"
 
     def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -414,12 +414,13 @@ class Handler(asyncio.Protocol):
         :param data: file sha256
         :return: Message
         """
-        self.in_file['fd'].close()
-        if self.in_file['checksum'].digest() == data:
-            self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+        name, checksum = data.split(b' ', 1)
+        self.in_file[name]['fd'].close()
+        if self.in_file[name]['checksum'].digest() == checksum:
+            del self.in_file[name]
             return b"ok", b"File received correctly"
         else:
-            self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+            del self.in_file[name]
             return b"err", b"File wasn't correctly received. Checksums aren't equal."
 
     def receive_str(self, data: bytes) -> Tuple[bytes, bytes]:
