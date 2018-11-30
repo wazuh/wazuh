@@ -14,6 +14,7 @@
 #include <winternl.h>
 #include <ntstatus.h>
 #include "syscollector.h"
+#include "file_op.h"
 
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
@@ -30,20 +31,6 @@ typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInfor
 hw_info *get_system_windows();
 int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
-/* Check if the Windows version is equal to Vista (6.0) or greater */
-int isWinVistaOrGreater() {
-    OSVERSIONINFOA osvi;
-    
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOA));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
-    
-    GetVersionEx(&osvi);
-    
-    if (osvi.dwMajorVersion >= 6) return (1);
-    
-    return (0);
-}
-
 /* From process ID get its name */
 char* get_process_name(DWORD pid){
     char read_buff[OS_MAXSTR];
@@ -58,7 +45,7 @@ char* get_process_name(DWORD pid){
     
     /* Get process handle */
     HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
-    if (hProcess == NULL && isWinVistaOrGreater())
+    if (hProcess == NULL && checkVista())
     {
         /* Try to open the process using PROCESS_QUERY_LIMITED_INFORMATION */
         hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
@@ -87,7 +74,7 @@ char* get_process_name(DWORD pid){
         /* Close process handle */
         CloseHandle(hProcess);
     } else {
-        if (isWinVistaOrGreater())
+        if (checkVista())
         {
             /* Dinamically load the ntdll.dll library and the 'NtQuerySystemInformation' call to retrieve the process image name */
             /* Only works under Windows Vista and greater */
@@ -1664,7 +1651,7 @@ void sys_proc_windows(const char* LOCATION) {
 							/* Convert Windows kernel path to a valid Win32 filepath */
 							/* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
                             /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
-							if (!isWinVistaOrGreater() || !ntpath_to_win32path(read_buff, &exec_path))
+							if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
 							{
 								/* If there were any errors, the read_buff array will remain intact */
 								/* In that case, let's just use the Windows kernel path. It's better than nothing */
