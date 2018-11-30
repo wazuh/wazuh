@@ -78,6 +78,9 @@ void LogCollectorStart()
     IT_control f_control = 0;
     char keepalive[1024];
     logreader *current;
+    const char *m_uname;
+
+    m_uname = getuname();
 
     set_sockets();
     pthread_rwlock_init(&files_update_rwlock, NULL);
@@ -95,7 +98,11 @@ void LogCollectorStart()
     int r;
 
     /* Check if we are on Windows Vista */
-    checkVista();
+    if (!checkVista()) {
+        minfo("Windows version is older than 6.0. (%s).", m_uname);
+    } else {
+        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
+    }
 
     /* Read vista descriptions */
     if (isVista) {
