@@ -491,5 +491,6 @@ def asyncio_exception_handler(loop, context: Dict):
     :param context: A dictionary containing fields explained in
                     https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler
     """
-    logging.error("Unhandled exception: " + str(context['exception']))
+    logging.warning(context)
+    logging.error("Unhandled exception: {} {}".format(str(context['exception']), context['message']))
     logging.debug(traceback.format_exc())
