@@ -38,10 +38,10 @@ class SyncWorker:
                                                       cluster_control_json=self.checksums)
         task_id = await self.worker.send_request(command=self.cmd, data=b'')
 
-        self.worker.logger.info("Sending file to master")
+        self.worker.logger.info("Sending {} compressed file to master".format(self.reason))
         result = await self.worker.send_file(filename=compressed_data_path)
         if result.startswith(b'Error'):
-            self.worker.logger.error(b"Error sending worker files information: " + result)
+            self.worker.logger.error(b"Error sending " + self.reason.encode() + b" files information: " + result)
             return
         else:
             self.worker.logger.info("Worker files integrity sent to master.")
@@ -75,9 +75,19 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
     async def sync_integrity(self):
         while True:
-            await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=cluster.get_files_status('master'),
-                             reason='integrity', worker=self).sync()
+            if self.connected:
+                await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=cluster.get_files_status('master'),
+                                 reason='integrity', worker=self).sync()
             await asyncio.sleep(10)
+
+    async def sync_agent_info(self):
+        while True:
+            if self.connected:
+                self.logger.info("Starting to send agent status files")
+                worker_files = cluster.get_files_status('worker', get_md5=False)
+                await SyncWorker(cmd=b'sync_a_w_m', files_to_sync=worker_files, checksums=worker_files,
+                                 reason='agent info', worker=self).sync()
+            await asyncio.sleep(20)
 
     async def sync_extra_valid(self, extra_valid: Dict):
         self.logger.debug("Starting to send extra valid files")
@@ -194,4 +204,4 @@ class Worker(client.AbstractClientManager):
         self.handler_class = WorkerHandler
 
     def add_tasks(self):
-        return super().add_tasks() + [(self.client.sync_integrity, tuple())]
+        return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple())]

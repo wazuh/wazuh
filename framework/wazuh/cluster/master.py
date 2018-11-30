@@ -17,14 +17,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         super().__init__(**kwargs, tag="Worker")
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
+        self.sync_agent_info_free = True
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: {}".format(command))
-        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p':
+        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p' or command == b'sync_a_w_m_p':
             return self.get_permission(command)
-        elif command == b'sync_i_w_m' or command == b'sync_e_w_m':
+        elif command == b'sync_i_w_m' or command == b'sync_e_w_m' or command == b'sync_a_w_m':
             return self.setup_sync_integrity(command)
-        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e':
+        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e' or command == b'sync_a_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
         else:
             return super().process_request(command, data)
@@ -41,6 +42,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             permission = self.sync_integrity_free
         elif sync_type == b'sync_e_w_m_p':
             permission = self.sync_extra_valid_free
+        elif sync_type == b'sync_a_w_m_p':
+            permission = self.sync_agent_info_free
         else:
             permission = False
 
@@ -51,6 +54,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.sync_integrity_free, sync_function = False, self.sync_integrity
         elif sync_type == b'sync_e_w_m':
             self.sync_extra_valid_free, sync_function = False, self.sync_extra_valid
+        elif sync_type == b'sync_a_w_m':
+            self.sync_agent_info_free, sync_function = False, self.sync_extra_valid
         else:
             sync_function = None
 
@@ -59,7 +64,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)
 
-    async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
+    async def sync_worker_files(self, task_name: str, received_file: asyncio.Task):
         self.logger.info("Waiting to receive zip file from worker")
         await received_file.wait()
         received_filename = self.sync_tasks[task_name].filename
@@ -69,6 +74,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
         self.process_files_from_worker(files_checksums, decompressed_files_path)
 
+    async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
+        await self.sync_worker_files(task_name, received_file)
+        self.sync_extra_valid_free = True
+
+    async def sync_agent_info(self, task_name: str, received_file: asyncio.Task):
+        await self.sync_worker_files(task_name, received_file)
+        self.sync_agent_info_free = True
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
         self.logger.info("Waiting to receive zip file from worker")
@@ -78,6 +90,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
         self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
+        self.logger.debug2(files_checksums)
 
         # classify files in shared, missing, extra and extra valid.
         worker_files_ko = cluster.compare_files(self.server.integrity_control, files_checksums)
@@ -95,10 +108,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")
             task_name = await self.send_request(command=b'sync_m_c', data=b'')
             if task_name.startswith(b'Error'):
+                self.logger.error(task_name)
                 return task_name
 
             result = await self.send_file(compressed_data)
             if result.startswith(b'Error'):
+                self.logger.error(result)
                 return result
 
             result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + compressed_data.encode())
