@@ -1694,8 +1694,13 @@ void sys_proc_windows(const char* LOCATION) {
 						/* Close process handle */
 						CloseHandle(hProcess);
 					} else {
-						mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process handle for PID %lu (%ld).", pid, GetLastError());
-						exec_path = strdup("unknown");
+						/* Silence access denied errors under Windows Vista or greater */
+                        DWORD lastError = GetLastError();
+                        if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
+                        {
+                            mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process handle for PID %lu (%ld).", pid, lastError);
+                            exec_path = strdup("unknown");
+                        }
 					}
 				}
 				
