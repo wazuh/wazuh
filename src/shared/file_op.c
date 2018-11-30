@@ -1103,10 +1103,7 @@ void goDaemon()
 int checkVista()
 {
     /* Check if the system is Vista (must be called during the startup) */
-    const char *m_uname;
     isVista = 0;
-
-    m_uname = getuname();
 
     OSVERSIONINFOEX osvi;
     BOOL bOsVersionInfoEx;
@@ -1124,10 +1121,7 @@ int checkVista()
 
     if (osvi.dwMajorVersion >= 6) {
         isVista = 1;
-        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
     }
-    else
-        minfo("Windows version is older than 6.0. (%s).", m_uname);
 
     return (isVista);
 }
