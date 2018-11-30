@@ -11,6 +11,46 @@ from wazuh.cluster import client, cluster, common as c_common
 from wazuh import common
 
 
+class SyncWorker:
+    """
+    Defines methods to synchronize files with master
+    """
+    def __init__(self, cmd: bytes, files_to_sync: Dict, checksums: Dict, reason: str, worker):
+        self.cmd = cmd
+        self.files_to_sync = files_to_sync
+        self.checksums = checksums
+        self.reason = reason
+        self.worker = worker
+
+    async def sync(self):
+        result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
+        if result.startswith(b'Error'):
+            self.worker.logger.error(b'Error asking for permission: ' + result)
+            return
+        elif result == b'False':
+            self.worker.logger.info('Master didnt grant permission to synchronize {}'.format(self.reason))
+            return
+        else:
+            self.worker.logger.info("Permission to synchronize {} granted.".format(self.reason))
+
+        self.worker.logger.info("Compressing {} files".format(self.reason))
+        compressed_data_path = cluster.compress_files(name=self.worker.name, list_path=self.files_to_sync,
+                                                      cluster_control_json=self.checksums)
+        task_id = await self.worker.send_request(command=self.cmd, data=b'')
+
+        self.worker.logger.info("Sending file to master")
+        result = await self.worker.send_file(filename=compressed_data_path)
+        if result.startswith(b'Error'):
+            self.worker.logger.error(b"Error sending worker files information: " + result)
+            return
+        else:
+            self.worker.logger.info("Worker files integrity sent to master.")
+
+        result = await self.worker.send_request(command=self.cmd+b'_e', data=task_id + b' ' + compressed_data_path.encode())
+        if result.startswith(b'Error'):
+            self.worker.logger.error(result)
+
+
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
     def __init__(self, **kwargs):
@@ -35,35 +75,21 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
     async def sync_integrity(self):
         while True:
-            await asyncio.sleep(5)
-            self.logger.info("Synchronizing integrity.")
-            # ask for permission
-            result = await self.send_request(command=b'sync_i_w_m_p', data=b'')
-            if result.startswith(b'Error'):
-                self.logger.error(b"Error asking for permission: " + result)
-                continue
-            elif result == b'False':
-                self.logger.info("Master didn't grant permission to synchronize integrity")
-                continue
-            else:
-                self.logger.info("Permission granted. Synchronizing integrity.")
+            await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=cluster.get_files_status('master'),
+                             reason='integrity', worker=self).sync()
+            await asyncio.sleep(10)
 
-            # Job: synchronize master files
-            self.logger.info("Compressing files")
-            compressed_data_path = cluster.compress_files(name=self.name, list_path=None,
-                                                          cluster_control_json=cluster.get_files_status('master'))
-            task_id = await self.send_request(command=b'sync_i_w_m', data=b'')
-
-            self.logger.info("Sending file to master")
-            result = await self.send_file(filename=compressed_data_path)
-            if result.startswith(b'Error'):
-                self.logger.error(b"Error sending worker files information: " + result)
-            else:
-                self.logger.info("Worker files integrity sent to master.")
-
-            result = await self.send_request(command=b'sync_i_w_m_e', data=task_id + b' ' + compressed_data_path.encode())
-            if result.startswith(b'Error'):
-                self.logger.error(result)
+    async def sync_extra_valid(self, extra_valid: Dict):
+        self.logger.debug("Starting to send extra valid files")
+        # TODO: Add support for more extra valid file types if ever added
+        n_files, merged_file = cluster.merge_agent_info(merge_type='agent-groups', files=extra_valid.keys(),
+                                                        time_limit_seconds=0)
+        if n_files:
+            files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
+                                           'cluster_item_key': '/queue/agent-groups/'}}
+            my_worker = SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, checksums=files_to_sync,
+                                   reason='extra valid', worker=self)
+            await my_worker.sync()
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
         await file_received.wait()
@@ -75,7 +101,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         # Update files
         if ko_files['extra_valid']:
-            self.logger.info("Master requires some worker files. Not Implemented Yet.")
+            self.logger.info("Master requires some worker files.")
+            asyncio.create_task(self.sync_extra_valid(ko_files['extra_valid']))
 
         if not ko_files['shared'] and not ko_files['missing'] and not ko_files['extra']:
             self.logger.info("Worker meets integrity checks. No actions.")
@@ -123,7 +150,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         errors[filetype] += 1
                         self.logger.error("Error processing {} file '{}': {}".format(filetype, filename, e))
                         continue
-            else:
+            elif filetype == 'extra':
                 for file_to_remove in files:
                     try:
                         self.logger.debug2("Remove file: '{}'".format(file_to_remove))

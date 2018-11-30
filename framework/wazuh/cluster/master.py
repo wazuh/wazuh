@@ -4,9 +4,11 @@ import asyncio
 import functools
 import operator
 import os
-from typing import Tuple
+from typing import Tuple, Dict, Callable
+import fcntl
+from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
-from wazuh import common, utils
+from wazuh import common, utils, WazuhException
 
 
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
@@ -14,14 +16,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     def __init__(self, **kwargs):
         super().__init__(**kwargs, tag="Worker")
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
+        self.sync_extra_valid_free = True
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: {}".format(command))
-        if command == b'sync_i_w_m_p':
-            return self.get_permission_sync_integrity()
-        elif command == b'sync_i_w_m':
-            return self.setup_sync_integrity()
-        elif command == b'sync_i_w_m_e':
+        if command == b'sync_i_w_m_p' or command == b'sync_e_w_m_p':
+            return self.get_permission(command)
+        elif command == b'sync_i_w_m' or command == b'sync_e_w_m':
+            return self.setup_sync_integrity(command)
+        elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
         else:
             return super().process_request(command, data)
@@ -33,15 +36,39 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
 
-    def get_permission_sync_integrity(self) -> Tuple[bytes, bytes]:
-        return b'ok', str(self.sync_integrity_free).encode()
+    def get_permission(self, sync_type: bytes) -> Tuple[bytes, bytes]:
+        if sync_type == b'sync_i_w_m_p':
+            permission = self.sync_integrity_free
+        elif sync_type == b'sync_e_w_m_p':
+            permission = self.sync_extra_valid_free
+        else:
+            permission = False
 
-    def setup_sync_integrity(self) -> Tuple[bytes, bytes]:
-        self.sync_integrity_free = False
-        return super().setup_receive_file(self.sync_integrity)
+        return b'ok', str(permission).encode()
+
+    def setup_sync_integrity(self, sync_type: bytes) -> Tuple[bytes, bytes]:
+        if sync_type == b'sync_i_w_m':
+            self.sync_integrity_free, sync_function = False, self.sync_integrity
+        elif sync_type == b'sync_e_w_m':
+            self.sync_extra_valid_free, sync_function = False, self.sync_extra_valid
+        else:
+            sync_function = None
+
+        return super().setup_receive_file(sync_function)
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)
+
+    async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
+        self.logger.info("Waiting to receive zip file from worker")
+        await received_file.wait()
+        received_filename = self.sync_tasks[task_name].filename
+        self.logger.debug("Received file from worker: '{}'".format(received_filename))
+
+        files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
+        self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
+        self.process_files_from_worker(files_checksums, decompressed_files_path)
+
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
         self.logger.info("Waiting to receive zip file from worker")
@@ -77,6 +104,97 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + compressed_data.encode())
         self.sync_integrity_free = True
         return result
+
+    def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str):
+        def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
+            # Full path
+            full_path = common.ossec_path + name
+            error_updating_file = False
+
+            # Cluster items information: write mode and umask
+            w_mode = cluster_items[data['cluster_item_key']]['write_mode']
+            umask = cluster_items[data['cluster_item_key']]['umask']
+
+            if content is None:
+                zip_path = "{}/{}".format(decompressed_files_path, name)
+                with open(zip_path, 'rb') as f:
+                    content = f.read()
+
+            lock_full_path = "{}/queue/cluster/lockdir/{}.lock".format(common.ossec_path, os.path.basename(full_path))
+            lock_file = open(lock_full_path, 'a+')
+            try:
+                fcntl.lockf(lock_file, fcntl.LOCK_EX)
+                cluster._update_file(file_path=name, new_content=content,
+                             umask_int=umask, mtime=file_time, w_mode=w_mode,
+                             tmp_dir=tmp_path, whoami='master', agents=agents)
+
+            except WazuhException as e:
+                self.logger.debug2("Warning updating file '{}': {}".format(name, e))
+                error_tag = 'warnings'
+                error_updating_file = True
+            except Exception as e:
+                self.logger.debug2("Error updating file '{}': {}".format(name, e))
+                error_tag = 'errors'
+                error_updating_file = True
+
+            if error_updating_file:
+                n_errors[error_tag][data['cluster_item_key']] = 1 if not n_errors[error_tag].get(
+                    data['cluster_item_key']) \
+                    else n_errors[error_tag][data['cluster_item_key']] + 1
+
+            fcntl.lockf(lock_file, fcntl.LOCK_UN)
+            lock_file.close()
+
+            return n_errors, error_updating_file
+
+        # tmp path
+        tmp_path = "/queue/cluster/{}/tmp_files".format(self.name)
+        cluster_items = cluster.get_cluster_items()['files']
+        n_merged_files = 0
+        n_errors = {'errors': {}, 'warnings': {}}
+
+        # create temporary directory for lock files
+        lock_directory = "{}/queue/cluster/lockdir".format(common.ossec_path)
+        if not os.path.exists(lock_directory):
+            utils.mkdir_with_mode(lock_directory)
+
+        try:
+            agents = Agent.get_agents_overview(select={'fields': ['name']}, limit=None)['items']
+            agent_names = set(map(operator.itemgetter('name'), agents))
+            agent_ids = set(map(operator.itemgetter('id'), agents))
+        except Exception as e:
+            self.logger.debug2("Error getting agent ids and names: {}".format(e))
+            agent_names, agent_ids = {}, {}
+
+        try:
+            for filename, data in files_checksums.items():
+                if data['merged']:
+                    for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
+                                                                                      decompressed_files_path,
+                                                                                      data['merge_name']):
+                        n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data,
+                                                                    (agent_names, agent_ids))
+                        if not error_updating_file:
+                            n_merged_files += 1
+
+                else:
+                    n_errors, _ = update_file(n_errors, filename, data)
+
+        except Exception as e:
+            self.logger.error("Error updating worker files: '{}'.".format(e))
+            raise e
+
+        if sum(n_errors['errors'].values()) > 0:
+            self.logger.error("Errors updating worker files: {}".format(' | '.join(
+                ['{}: {}'.format(key, value) for key, value
+                 in n_errors['errors'].items()])
+            ))
+        if sum(n_errors['warnings'].values()) > 0:
+            for key, value in n_errors['warnings'].items():
+                if key == '/queue/agent-info/':
+                    self.logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
+                elif key == '/queue/agent-groups/':
+                    self.logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
 
 class Master(server.AbstractServer):
