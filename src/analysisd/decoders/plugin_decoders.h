@@ -12,6 +12,8 @@
 
 #include "eventinfo.h"
 
+#define JSON_ARRAY_ELEMENT_TAG "#{!-*-¿?="
+
 /* Decoder for Cis-cat events */
 int DecodeCiscat(Eventinfo *lf);
 

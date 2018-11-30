@@ -208,6 +208,7 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
     cJSON *next, *array;
     char *key = NULL;
     char *value = NULL;
+    int array_elements = 0;
     size_t  n;
 
     while (logJSON) {
@@ -304,6 +305,19 @@ static void readJSON (cJSON *logJSON, char *parent, Eventinfo *lf)
                             *value = '\0';
                             break;
                         }
+                    }
+                    else if (array->type == cJSON_Object) {
+                        char *array_key;
+                        size_t p_size = strlen(key);
+                        size_t element_key_size = strlen(JSON_ARRAY_ELEMENT_TAG) + 10;
+
+                        array_key = malloc(p_size + element_key_size);
+                        strcpy(array_key, key);
+                        snprintf(array_key + p_size, element_key_size, ".%s%d__", JSON_ARRAY_ELEMENT_TAG, array_elements);
+                        readJSON (array->child, array_key, lf);
+                        array_elements++;
+                        free(array_key);
+                        continue;
                     } else {
                         continue;
                     }

@@ -423,14 +423,80 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     // DecoderInfo
     if(lf->decoder_info) {
-
-        cJSON* decoder;
+        cJSON *array_obj;
+        cJSON *decoder;
+        char *array_obj_key;
 
         // Dynamic fields, except for syscheck events
         if (lf->fields && !lf->filename) {
             for (i = 0; i < lf->nfields; i++) {
                 if (lf->fields[i].value && *lf->fields[i].value) {
-                    W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
+                    // Check object arrays
+                    if (array_obj_key = strstr(lf->fields[i].key, JSON_ARRAY_ELEMENT_TAG), array_obj_key) {
+                        char *key_copy = strdup(lf->fields[i].key);
+                        char *tag_key = strstr(key_copy, JSON_ARRAY_ELEMENT_TAG);
+                        char *nested_key;
+                        char *array_key;
+                        cJSON *internal_object;
+                        char *found;
+
+                        if (nested_key = strchr(tag_key, '.'), !nested_key) {
+                            free(key_copy);
+                            break;
+                        } else {
+                            *(nested_key++) = '\0';
+                        }
+
+                        if (array_key = strrchr(key_copy, '.'), !array_key) {
+                            free(key_copy);
+                            break;
+                        } else {
+                            *(array_key++) = '\0';
+                            if (array_key = strrchr(key_copy, '.'), !array_key) {
+                                array_key = key_copy;
+                            } else {
+                                array_key++;
+                            }
+                        }
+
+                        if (found = strchr(array_key, '.'), found) {
+                            *(found++) = '\0';
+                        }
+
+                        // Check if the array has already been created
+                        if (array_obj = cJSON_GetObjectItem(data, array_key), !array_obj) {
+                            array_obj = cJSON_CreateArray();
+                            cJSON_AddItemToObject(data, array_key, array_obj);
+                        } else if (!cJSON_IsArray(array_obj)) {
+                            free(key_copy);
+                            break;
+                        }
+
+                        internal_object = cJSON_CreateObject();
+                        cJSON_AddItemToArray(array_obj, internal_object);
+
+                        // Add the fields that belong to the same subobject
+                        while (1) {
+                            char *new_key;
+                            if (new_key = strstr(lf->fields[i].key, tag_key), new_key) {
+                                if (new_key = strchr(new_key, '.'), new_key) {
+                                    new_key++;
+                                    W_JSON_AddField(internal_object, new_key, lf->fields[i].value);
+                                }
+                            } else {
+                                i--;
+                                break;
+                            }
+
+                            i++;
+                            if (i >= lf->nfields  || !lf->fields[i].value || !*lf->fields[i].value) {
+                                break;
+                            }
+                        }
+                        free(key_copy);
+                    } else {
+                        W_JSON_AddField(data, lf->fields[i].key, lf->fields[i].value);
+                    }
                 }
             }
         }
