@@ -44,6 +44,13 @@ int LogCollectorConfig(const char *cfgfile)
     maximum_files = getDefine_Int("logcollector", "max_files", 1, 100000);
     sock_fail_time = getDefine_Int("logcollector", "sock_fail_time", 1, 3600);
     sample_log_length = getDefine_Int("logcollector", "sample_log_length", 1, 4096);
+    force_reload = getDefine_Int("logcollector", "force_reload", 0, 1);
+    reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
+
+    if (force_reload && reload_interval < vcheck_files) {
+        mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", reload_interval, vcheck_files);
+    }
+
 #ifndef WIN32
     nofile = getDefine_Int("logcollector", "rlimit_nofile", 1024, 1048576);
 #endif
@@ -202,6 +209,8 @@ cJSON *getLogcollectorInternalOptions(void) {
     cJSON_AddNumberToObject(logcollector,"sample_log_length",sample_log_length);
     cJSON_AddNumberToObject(logcollector,"queue_size",OUTPUT_QUEUE_SIZE);
     cJSON_AddNumberToObject(logcollector,"input_threads",N_INPUT_THREADS);
+    cJSON_AddNumberToObject(logcollector,"force_reload",force_reload);
+    cJSON_AddNumberToObject(logcollector,"reload_interval",reload_interval);
 #ifndef WIN32
     cJSON_AddNumberToObject(logcollector,"rlimit_nofile",nofile);
 #endif
