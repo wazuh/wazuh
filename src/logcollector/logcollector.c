@@ -35,6 +35,9 @@ int maximum_files;
 int sample_log_length;
 int current_files = 0;
 int total_files = 0;
+int force_reload;
+int reload_interval;
+
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
 int OUTPUT_QUEUE_SIZE = OUTPUT_MIN_QUEUE_SIZE;
@@ -75,6 +78,7 @@ void LogCollectorStart()
 {
     int i = 0, j = -1, tg;
     int f_check = 0;
+    int f_reload = 0;
     IT_control f_control = 0;
     char keepalive[1024];
     logreader *current;
@@ -237,14 +241,12 @@ void LogCollectorStart()
 
     /* Daemon loop */
     while (1) {
-
-        f_check++;
-
-        if(f_check > vcheck_files) {
+        if (f_check >= vcheck_files) {
             w_rwlock_wrlock(&files_update_rwlock);
-            f_check = 0;
             int i;
             int j = -1;
+            f_reload += f_check;
+
             /* Check if any file has been renamed/removed */
             for (i = 0, j = -1;; i++) {
                 if (f_control = update_current(&current, &i, &j), f_control) {
@@ -289,6 +291,32 @@ void LogCollectorStart()
 
                 /* Check for file change -- if the file is open already */
                 if (current->fp) {
+
+                    // Force reload, if enabled
+
+                    if (force_reload && f_reload >= reload_interval) {
+                        if (reload_file(current) == -1) {
+                            if (current->exists){
+                                minfo(FORGET_FILE, current->file);
+                                current->exists = 0;
+                            }
+
+                            current->ign++;
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+
+                            // Only expanded files that have been deleted will be forgotten
+
+                            if (j >= 0) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                    merror(REM_ERROR, current->file);
+                                } else {
+                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    i--;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
 #ifndef WIN32
 
                     /* To help detect a file rollover, temporarily open the file a second time.
@@ -413,7 +441,7 @@ void LogCollectorStart()
                         CloseHandle(h1);
 #endif
                         current->fp = NULL;
-                        if (handle_file(i, j, 1, 1) ) {
+                        if (handle_file(i, j, 0, 1) ) {
                             current->ign++;
                             mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                         }
@@ -490,10 +518,19 @@ void LogCollectorStart()
             }
 #endif
             w_rwlock_unlock(&files_update_rwlock);
+
+            if (f_reload >= reload_interval) {
+                f_reload = 0;
+            }
+
+            f_check = 0;
         }
+
         rand_keepalive_str(keepalive, KEEPALIVE_SIZE);
         SendMSG(logr_queue, keepalive, "ossec-keepalive", LOCALFILE_MQ);
         sleep(1);
+
+        f_check++;
     }
 }
 
@@ -638,6 +675,57 @@ int handle_file(int i, int j, int do_fseek, int do_log)
     /* Set ignore to zero */
     lf->ign = 0;
     return (0);
+}
+
+/* Reload file: close and reopen */
+int reload_file(logreader * lf) {
+    fpos_t position;
+
+    if (!(lf && lf->fp)) {
+        return 0;
+    }
+
+    fgetpos(lf->fp, &position);
+    fclose(lf->fp);
+    lf->fp = NULL;
+
+#ifndef WIN32
+    lf->fp = fopen(lf->file, "r");
+
+    if (!lf->fp) {
+        return -1;
+    }
+#else
+    int fd;
+
+    CloseHandle(lf->h);
+
+    lf->h = CreateFile(lf->file, GENERIC_READ,
+                            FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                            NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    if (lf->h == INVALID_HANDLE_VALUE) {
+        DWORD error = GetLastError();
+        return (-1);
+    }
+
+    fd = _open_osfhandle((long)lf->h, 0);
+
+    if (fd == -1) {
+        CloseHandle(lf->h);
+        return (-1);
+    }
+
+    lf->fp = _fdopen(fd, "r");
+
+    if (!lf->fp) {
+        CloseHandle(lf->h);
+        return (-1);
+    }
+#endif
+
+    fsetpos(lf->fp, &position);
+    return 0;
 }
 
 #ifdef WIN32
