@@ -163,6 +163,11 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
         return (OS_SOCKTERR);
     }
 
+    // Set close-on-exec
+    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
+    }
+
     return (ossock);
 }
 
@@ -196,6 +201,11 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
     if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
+    }
+
+    // Set close-on-exec
+    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
     }
 
     return (ossock);
