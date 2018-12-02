@@ -37,6 +37,7 @@ int current_files = 0;
 int total_files = 0;
 int force_reload;
 int reload_interval;
+int reload_delay;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -247,6 +248,74 @@ void LogCollectorStart()
             int j = -1;
             f_reload += f_check;
 
+            // Force reload, if enabled
+
+            if (force_reload && f_reload >= reload_interval) {
+                struct timespec delay = { reload_delay / 1000, (reload_delay % 1000) * 1000000 };
+
+                // Close files
+
+                for (i = 0, j = -1;; i++) {
+                    if (f_control = update_current(&current, &i, &j), f_control) {
+                        if (f_control == NEXT_IT) {
+                            continue;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (current->file && current->fp) {
+                        close_file(current);
+                    }
+                }
+
+                // Delay: yield mutex
+
+                w_rwlock_unlock(&files_update_rwlock);
+
+                if (reload_delay) {
+                    nanosleep(&delay, NULL);
+                }
+
+                w_rwlock_wrlock(&files_update_rwlock);
+
+                // Open files again, and restore position
+
+                for (i = 0, j = -1;; i++) {
+                    if (f_control = update_current(&current, &i, &j), f_control) {
+                        if (f_control == NEXT_IT) {
+                            continue;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    if (current->file) {
+                        if (reload_file(current) == -1) {
+                            if (current->exists){
+                                minfo(FORGET_FILE, current->file);
+                                current->exists = 0;
+                            }
+
+                            current->ign++;
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+
+                            // Only expanded files that have been deleted will be forgotten
+
+                            if (j >= 0) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                    merror(REM_ERROR, current->file);
+                                } else {
+                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    i--;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             /* Check if any file has been renamed/removed */
             for (i = 0, j = -1;; i++) {
                 if (f_control = update_current(&current, &i, &j), f_control) {
@@ -291,32 +360,6 @@ void LogCollectorStart()
 
                 /* Check for file change -- if the file is open already */
                 if (current->fp) {
-
-                    // Force reload, if enabled
-
-                    if (force_reload && f_reload >= reload_interval) {
-                        if (reload_file(current) == -1) {
-                            if (current->exists){
-                                minfo(FORGET_FILE, current->file);
-                                current->exists = 0;
-                            }
-
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-
-                            // Only expanded files that have been deleted will be forgotten
-
-                            if (j >= 0) {
-                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
-                                    merror(REM_ERROR, current->file);
-                                } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
-                                    i--;
-                                    continue;
-                                }
-                            }
-                        }
-                    }
 #ifndef WIN32
 
                     /* To help detect a file rollover, temporarily open the file a second time.
@@ -677,18 +720,8 @@ int handle_file(int i, int j, int do_fseek, int do_log)
     return (0);
 }
 
-/* Reload file: close and reopen */
+/* Reload file: open after close, and restore position */
 int reload_file(logreader * lf) {
-    fpos_t position;
-
-    if (!(lf && lf->fp)) {
-        return 0;
-    }
-
-    fgetpos(lf->fp, &position);
-    fclose(lf->fp);
-    lf->fp = NULL;
-
 #ifndef WIN32
     lf->fp = fopen(lf->file, "r");
 
@@ -697,8 +730,6 @@ int reload_file(logreader * lf) {
     }
 #else
     int fd;
-
-    CloseHandle(lf->h);
 
     lf->h = CreateFile(lf->file, GENERIC_READ,
                             FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -724,8 +755,25 @@ int reload_file(logreader * lf) {
     }
 #endif
 
-    fsetpos(lf->fp, &position);
+    fsetpos(lf->fp, &lf->position);
     return 0;
+}
+
+/* Close file and save position */
+void close_file(logreader * lf) {
+    if (!(lf && lf->fp)) {
+        // This should not occur.
+        return;
+    }
+
+    fgetpos(lf->fp, &lf->position);
+    fclose(lf->fp);
+    lf->fp = NULL;
+
+#ifdef WIN32
+    CloseHandle(lf->h);
+    lf->h = NULL;
+#endif
 }
 
 #ifdef WIN32
