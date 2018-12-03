@@ -813,6 +813,34 @@ cJSON *attrs_to_json(unsigned int attributes) {
     return ab_array;
 }
 
+char *get_attr_from_checksum(char *checksum, int attr) {
+    char *str_attr = NULL;
+    char *str_end = NULL;
+    int i;
+
+    if (attr < 1 || attr > FIM_NATTR) {
+        return NULL;
+    }
+
+    str_attr = checksum;
+
+    for(i = 2; i <= attr && str_attr; i++){
+        str_attr = strchr(str_attr, ':');
+        if(str_attr) {
+            str_attr++;
+        }
+    }
+
+    if (str_attr) {
+        if(str_end = strchr(str_attr, ':'), str_end) {
+            *(str_end++) = '\0';
+        }
+        return str_attr;
+    }
+
+    return NULL;
+}
+
 #else
 
 char *escape_perm_sum(char *sum) {

@@ -75,6 +75,7 @@ typedef struct _logreader {
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
     FILE *fp;
+    fpos_t position; // Pointer offset when closed
 } logreader;
 
 typedef struct _logreader_glob {

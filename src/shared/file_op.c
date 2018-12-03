@@ -1858,7 +1858,7 @@ const char *getuname()
 // Move to the directory where this executable lives in
 
 void w_ch_exec_dir() {
-    TCHAR path[2048];
+    TCHAR path[2048] = { 0 };
     DWORD last_error;
     int ret;
 
@@ -1867,19 +1867,21 @@ void w_ch_exec_dir() {
 
     /* Check for errors */
     if (!ret) {
-        merror_exit(GMF_ERROR);
-    }
+        print_out(GMF_ERROR);
 
-    /* Get last error */
-    last_error = GetLastError();
+        /* Get last error */
+        last_error = GetLastError();
 
-    /* Look for errors */
-    if (last_error != ERROR_SUCCESS) {
-        if (last_error == ERROR_INSUFFICIENT_BUFFER) {
-            merror_exit(GMF_BUFF_ERROR, ret, sizeof(path));
-        } else {
-            merror_exit(GMF_UNKN_ERROR, last_error);
+        /* Look for errors */
+        switch (last_error) {
+        case ERROR_INSUFFICIENT_BUFFER:
+            print_out(GMF_BUFF_ERROR, ret, sizeof(path));
+            break;
+        default:
+            print_out(GMF_UNKN_ERROR, last_error);
         }
+
+        exit(EXIT_FAILURE);
     }
 
     /* Remove file name from path */
@@ -1887,7 +1889,8 @@ void w_ch_exec_dir() {
 
     /* Move to correct directory */
     if (chdir(path)) {
-        merror_exit(CHDIR_ERROR, path, errno, strerror(errno));
+        print_out(CHDIR_ERROR, path, errno, strerror(errno));
+        exit(EXIT_FAILURE);
     }
 }
 

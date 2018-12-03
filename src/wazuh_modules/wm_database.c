@@ -371,7 +371,9 @@ void wm_sync_agents() {
             continue;
         }
 
-        get_agent_group(entry->id, group, OS_SIZE_65536 + 1);
+        if (get_agent_group(entry->id, group, OS_SIZE_65536 + 1) < 0) {
+            *group = 0;
+        }
 
         if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL) || module->full_sync)) {
 

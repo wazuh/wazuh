@@ -1973,11 +1973,22 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            if (msg[0] == CISCAT_MQ) {
+                if (!DecodeCiscat(lf)) {
+                    w_free_event_info(lf);
+                    free(msg);
+                    continue;
+                }
+            } else {
+                DecodeEvent(lf, &decoder_match);
+            }
+
             free(msg);
+
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            DecodeEvent(lf, &decoder_match);
+
 
             if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
                 Free_Eventinfo(lf);

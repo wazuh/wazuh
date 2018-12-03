@@ -57,6 +57,10 @@ All notable changes to this project will be documented in this file.
 - Fix FIM decoder to accept Windows user containing spaces. ([#1930](https://github.com/wazuh/wazuh/pull/1930))
 - Add missing field `restrict` when querying the FIM configuration remotely. ([#1931](https://github.com/wazuh/wazuh/pull/1931))
 - Fix values of FIM scan showed in agent_control info. ([#1940](https://github.com/wazuh/wazuh/pull/1940))
+- Fix agent group updating in database module. ([#2004](https://github.com/wazuh/wazuh/pull/2004))
+- Logcollector prevents vmhgfs from synchronizing the inode. ([#2022](https://github.com/wazuh/wazuh/pull/2022/files))
+- File descriptor leak that may impact agents running on UNIX platforms. ([#2021](https://github.com/wazuh/wazuh/pull/2021/files))
+- CIS-CAT events were being processed by a wrong decoder ([#2014](https://github.com/wazuh/wazuh/pull/2014/files))
 
 
 ## [v3.7.0] - 2018-11-10
