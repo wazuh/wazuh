@@ -373,7 +373,7 @@ def compare_files(good_files, check_files):
     extra_files = {key: check_files[key] for key in extra}
     extra_valid_files = {key: check_files[key] for key in extra_valid}
     # shared files are the ones present in both sets.
-    all_shared = check_files.keys() & good_files.keys()
+    all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
     shared_e_v, shared = split_on_condition(all_shared,
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     # merge all shared extra valid files into a single one.
