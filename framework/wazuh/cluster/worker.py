@@ -8,6 +8,7 @@ import os
 import shutil
 from typing import Tuple, Dict
 from wazuh.cluster import client, cluster, common as c_common
+from wazuh import cluster as metadata
 from wazuh import common
 
 
@@ -53,8 +54,9 @@ class SyncWorker:
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
-    def __init__(self, **kwargs):
+    def __init__(self, version, node_type, cluster_name, **kwargs):
         super().__init__(**kwargs, tag="Worker")
+        self.client_data = "{} {} {} {}".format(self.name, cluster_name, node_type, version).encode()
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: '{}'".format(command))
@@ -201,7 +203,11 @@ class Worker(client.AbstractClientManager):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs, tag="Worker manager")
+        self.cluster_name = self.configuration['name']
+        self.version = metadata.__version__
+        self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
+        self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
 
     def add_tasks(self):
         return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple())]

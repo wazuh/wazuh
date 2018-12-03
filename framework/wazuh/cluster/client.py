@@ -28,6 +28,7 @@ class AbstractClient(common.Handler):
         self.name = name
         self.on_con_lost = on_con_lost
         self.connected = False
+        self.client_data = self.name.encode()
 
     def connection_made(self, transport):
         """
@@ -45,7 +46,7 @@ class AbstractClient(common.Handler):
                 self.connected = True
 
         self.transport = transport
-        future_response = asyncio.gather(self.send_request(command=b'hello', data=self.name.encode()))
+        future_response = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
         future_response.add_done_callback(connection_result)
 
     def connection_lost(self, exc):
@@ -170,6 +171,7 @@ class AbstractClientManager:
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
+        self.extra_args = {}
 
     def add_tasks(self):
         if self.performance_test:
@@ -199,7 +201,8 @@ class AbstractClientManager:
                 transport, protocol = await loop.create_connection(
                                     protocol_factory=lambda: self.handler_class(loop=loop, on_con_lost=on_con_lost,
                                                                                 name=self.name, logger=self.logger,
-                                                                                fernet_key=self.configuration['key']),
+                                                                                fernet_key=self.configuration['key'],
+                                                                                **self.extra_args),
                                     host=self.configuration['nodes'][0], port=self.configuration['port'],
                                     ssl=ssl_context)
                 self.client = protocol

@@ -4,10 +4,11 @@ import asyncio
 import functools
 import operator
 import os
-from typing import Tuple, Dict, Callable
+from typing import Tuple, Dict
 import fcntl
 from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
+from wazuh import cluster as metadata
 from wazuh import common, utils, WazuhException
 
 
@@ -18,6 +19,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
         self.sync_agent_info_free = True
+        self.version = ""
+        self.cluster_name = ""
+        self.node_type = ""
+
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: {}".format(command))
@@ -31,7 +36,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return super().process_request(command, data)
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
-        cmd, payload = super().hello(data)
+        name, cluster_name, node_type, version = data.split(b' ')
+        cmd, payload = super().hello(name)
+
+        self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
+
+        if self.cluster_name != self.server.configuration['name']:
+            cmd, payload = b'err', b'Worker does not belong to the same cluster'
+        elif self.version != metadata.__version__:
+            cmd, payload = b'err', b'Worker and master versions are not the same'
+
         worker_dir = '{}/queue/cluster/{}'.format(common.ossec_path, self.name)
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
