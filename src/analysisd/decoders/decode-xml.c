@@ -251,7 +251,7 @@ int ReadDecodeXML(const char *file)
 
         /* Check for additional entries */
         if (node[i]->attributes[1] && node[i]->values[1]) {
-            if (strcasecmp(node[i]->attributes[0], xml_decoder_status) != 0) {
+            if (strcasecmp(node[i]->attributes[1], xml_decoder_status) != 0) {
                 merror(XML_INVELEM, node[i]->element);
                 goto cleanup;
             }
@@ -388,6 +388,7 @@ int ReadDecodeXML(const char *file)
 
             /* Get the FTS comment */
             else if (strcasecmp(elements[j]->element, xml_ftscomment) == 0) {
+                pi->ftscomment = _loadmemory(pi->ftscomment, elements[j]->content);
             }
 
             else if (strcasecmp(elements[j]->element, xml_usename) == 0) {
