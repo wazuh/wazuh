@@ -1620,7 +1620,7 @@ int get_info_attributes(char **attributes, char **values)
             } else if (strcmp(values[k], "osvdb") == 0) {
                 return (RULEINFODETAIL_OSVDB);
             } else {
-                merror("rules_op: Element info attribute \"%s\" has invalid value \"%s\",
+                merror("rules_op: Element info attribute \"%s\" has invalid value \"%s\"",
                        attributes[k], values[k]);
                 return (-1);
             }
