@@ -126,7 +126,7 @@ class AbstractServer:
         self.handler_class = AbstractServerHandler
 
     def __dict__(self):
-        return {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}
+        return {'info': {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
 
     def get_connected_nodes(self, filter_nodes) -> Dict:
         """
@@ -134,7 +134,7 @@ class AbstractServer:
         :return: A dictionary containing data from each node
         """
         filter_nodes = json.loads(filter_nodes)
-        nodes = {self.configuration['node_name']: self.__dict__()} if filter_nodes is None or self.configuration['node_name'] in filter_nodes else {}
+        nodes = {self.configuration['node_name']: self.__dict__()['info']} if filter_nodes is None or self.configuration['node_name'] in filter_nodes else {}
         return {**nodes, **{key: val.__dict__()['info'] for key, val in self.clients.items() if filter_nodes is None or key in filter_nodes}}
 
     async def check_clients_keepalive(self):
