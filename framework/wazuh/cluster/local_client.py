@@ -42,17 +42,10 @@ class LocalClient(client.AbstractClientManager):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
-        try:
-            transport, protocol = await loop.create_unix_connection(
-                                protocol_factory=lambda: LocalClientHandler(loop, on_con_lost, self.name,
-                                                                            self.configuration['key'], self.logger),
-                                path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
-        except ConnectionRefusedError:
-            self.logger.error("Could not connect to server.")
-            return
-        except OSError as e:
-            self.logger.error("Could not connect to server: {}.".format(e))
-            return
+        transport, protocol = await loop.create_unix_connection(
+                            protocol_factory=lambda: LocalClientHandler(loop, on_con_lost, self.name,
+                                                                        self.configuration['key'], self.logger),
+                            path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
 
         self.client = protocol
 
@@ -66,5 +59,6 @@ async def execute(command: bytes, data: bytes):
     my_client = LocalClient()
     try:
         await asyncio.gather(my_client.start(), my_client.send_request(command=command, data=data))
-    finally:
-        return my_client.request_result
+    except asyncio.CancelledError:
+        pass
+    return my_client.request_result
