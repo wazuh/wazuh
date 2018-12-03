@@ -27,15 +27,20 @@ class LocalServerHandler(server.AbstractServerHandler):
         if command == b'get_config':
             return self.get_config()
         elif command == b'get_nodes':
-            return self.get_nodes()
+            return self.get_nodes(data)
+        elif command == b'get_health':
+            return self.get_health(data)
         else:
             return super().process_request(command, data)
 
     def get_config(self) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.configuration).encode()
 
-    def get_nodes(self) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.node.get_connected_nodes()).encode()
+    def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
+        return b'ok', json.dumps(self.server.node.get_connected_nodes(filter_nodes)).encode()
+
+    def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
+        return b'ok', json.dumps(self.server.node.get_health(filter_nodes)).encode()
 
 
 class LocalServer(server.AbstractServer):

@@ -1,11 +1,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-from wazuh.cluster.client import AbstractClient, AbstractClientManager
+import json
+import logging
+from wazuh.cluster import client, cluster
 import uvloop
 
 
-class LocalClientHandler(AbstractClient):
+class LocalClientHandler(client.AbstractClient):
 
     def connection_made(self, transport):
         """
@@ -16,14 +18,22 @@ class LocalClientHandler(AbstractClient):
         self.transport = transport
 
 
-class LocalClient(AbstractClientManager):
+class LocalClient(client.AbstractClientManager):
 
-    async def send_request_and_close(self, command, data):
+    def __init__(self):
+        super().__init__(configuration=cluster.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
+                         file='', string=0, logger=logging.getLogger(), tag="Local Client")
+        self.request_result = None
+
+    async def send_request(self, command, data):
         while self.client is None:
             await asyncio.sleep(0.5)
         result = await self.client.send_request(command, data)
+        if result.startswith(b'Error'):
+            self.request_result = {'error': 1000, 'message': result}
+        else:
+            self.request_result = json.loads(result)
         self.client.close()
-        return result
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -50,3 +60,11 @@ class LocalClient(AbstractClientManager):
             await on_con_lost
         finally:
             transport.close()
+
+
+async def execute(command: bytes, data: bytes):
+    my_client = LocalClient()
+    try:
+        await asyncio.gather(my_client.start(), my_client.send_request(command=command, data=data))
+    finally:
+        return my_client.request_result

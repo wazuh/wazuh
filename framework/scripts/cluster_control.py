@@ -8,7 +8,7 @@ import json
 import logging
 import argparse
 import sys
-from wazuh.cluster import local_client, cluster
+from wazuh.cluster import control, cluster
 
 
 def __print_table(data, headers, show_header=False):
@@ -45,30 +45,92 @@ async def print_agents(filter_status, filter_node):
     pass
 
 
-async def print_nodes(filter_node, client):
-    result = json.loads(await client.send_request_and_close(command=b'get_nodes', data=b''))
-    headers = [x.capitalize() for x in next(iter(result.values())).keys()]
+async def print_nodes(filter_node):
+    result = await control.get_nodes(filter_node)
+    headers = ["Name", "Type", "Version", "Address"]
     data = map(lambda x: list(x.values()), result.values())
     __print_table(data, headers, True)
 
 
 async def print_health(config, more, filter_node):
-    pass
+    result = await control.get_health(filter_node)
+    msg1 = ""
+    msg2 = ""
 
+    msg1 += "Cluster name: {}\n\n".format(config['name'])
 
-async def async_main(my_function, func_args, configuration, enable_ssl):
-    my_client = local_client.LocalClient(configuration=configuration, enable_ssl=enable_ssl, performance_test=0,
-                                         concurrency_test=0, file='', string=0, logger=logging.getLogger(),
-                                         tag="Cluster control")
-    try:
-        await asyncio.gather(my_client.start(), my_function(*func_args, my_client))
-    except asyncio.CancelledError:
-        pass
+    if not more:
+        msg1 += "Last completed synchronization for connected nodes ({}):\n".format(result["n_connected_nodes"])
+    else:
+        msg1 += "Connected nodes ({}):".format(result["n_connected_nodes"])
+
+    for node, node_info in sorted(result["nodes"].items()):
+
+        msg2 += "\n    {} ({})\n".format(node, node_info['info']['address'])
+        msg2 += "        Version: {}\n".format(node_info['info']['version'])
+        msg2 += "        Type: {}\n".format(node_info['info']['type'])
+        msg2 += "        Active agents: {}\n".format(node_info['info']['n_active_agents'])
+
+        if node_info['info']['type'] != "master":
+
+            if not more:
+                msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {} | Last keep alive: {}.\n".format(
+                    node, node_info['info']['address'], node_info['status']['last_sync_integrity']['date_end_master'],
+                    node_info['status']['last_sync_agent_info']['date_end_master'],
+                    node_info['status']['last_sync_agent_groups']['date_end_master'],
+                    node_info['status']['last_keep_alive']
+                )
+
+            msg2 += "        Status:\n"
+
+            # Last Keep Alive
+            msg2 += "            Last keep Alive:\n"
+            msg2 += "                Last received: {0}.\n".format(node_info['status']['last_keep_alive'])
+
+            # Integrity
+            msg2 += "            Integrity\n"
+            msg2 += "                Last synchronization: {0} - {1}.\n".format(
+                node_info['status']['last_sync_integrity']['date_start_master'],
+                node_info['status']['last_sync_integrity']['date_end_master'])
+
+            n_shared = str(node_info['status']['last_sync_integrity']['total_files']["shared"])
+            n_missing = str(node_info['status']['last_sync_integrity']['total_files']["missing"])
+            n_extra = str(node_info['status']['last_sync_integrity']['total_files']["extra"])
+            n_extra_valid = str(node_info['status']['last_sync_integrity']['total_files']["extra_valid"])
+
+            msg2 += "                Synchronized files: Shared: {} | Missing: {} | Extra: {} | Extra valid: {}.\n".format(
+                n_shared, n_missing, n_extra, n_extra_valid)
+            msg2 += "                Permission to synchronize: {}.\n".format(
+                str(node_info['status']['sync_integrity_free']))
+
+            # Agent info
+            msg2 += "            Agents-info\n"
+            msg2 += "                Last synchronization: {0} - {1}.\n".format(
+                node_info['status']['last_sync_agent_info']['date_start_master'],
+                node_info['status']['last_sync_agent_info']['date_end_master'])
+            msg2 += "                Synchronized files: {}.\n".format(
+                str(node_info['status']['last_sync_agent_info']['total_agent_info']))
+            msg2 += "                Permission to synchronize: {}.\n".format(
+                str(node_info['status']['sync_agent_info_free']))
+
+            # Agent groups
+            msg2 += "            Agents-group\n"
+            msg2 += "                Last synchronization: {0} - {1}.\n".format(
+                node_info['status']['last_sync_agent_groups']['date_start_master'],
+                node_info['status']['last_sync_agent_groups']['date_end_master'])
+            msg2 += "                Synchronized files: {}.\n".format(
+                str(node_info['status']['last_sync_agent_groups']['total_extra_valid']))
+            msg2 += "                Permission to synchronize: {}.\n".format(
+                str(node_info['status']['sync_extra_valid_free']))
+
+    print(msg1)
+
+    if more:
+        print(msg2)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
     parser.add_argument('-d', '--debug', action='store_true', dest='debug', help="Enable debug mode")
     parser.add_argument('-fn', '--filter-node', dest='filter_node', nargs='*', type=str, help="Filter by node name")
     parser.add_argument('-fs', '--filter-agent-status', dest='filter_status', nargs='*', type=str,
@@ -90,7 +152,7 @@ if __name__ == '__main__':
             parser.print_help()
             sys.exit(1)
         elif args.list_agents:
-            my_function, my_args = print_agents, (args.filter_status, args.filter_node)
+            my_function, my_args = print_agents, (args.filter_status, args.filter_node,)
         elif args.list_nodes:
             my_function, my_args = print_nodes, (args.filter_node,)
         elif args.health:
@@ -100,7 +162,7 @@ if __name__ == '__main__':
             parser.print_help()
             sys.exit(0)
 
-        asyncio.run(async_main(my_function, my_args, cluster_config, args.ssl))
+        asyncio.run(my_function(*my_args))
     except KeyboardInterrupt:
         pass
     except Exception as e:

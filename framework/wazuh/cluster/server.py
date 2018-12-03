@@ -1,6 +1,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import json
 import ssl
 import uvloop
 import time
@@ -27,7 +28,7 @@ class AbstractServerHandler(common.Handler):
         self.transport = None
 
     def __dict__(self):
-        return {'address': self.ip, 'name': self.name}
+        return {'info': {'address': self.ip, 'name': self.name}}
 
     def connection_made(self, transport):
         """
@@ -127,13 +128,14 @@ class AbstractServer:
     def __dict__(self):
         return {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}
 
-    def get_connected_nodes(self) -> Dict:
+    def get_connected_nodes(self, filter_nodes) -> Dict:
         """
         Return all connected nodes, including the master node
         :return: A dictionary containing data from each node
         """
-        nodes = {self.configuration['node_name']: self.__dict__()}
-        return {**nodes, **{key: val.__dict__() for key, val in self.clients.items()}}
+        filter_nodes = json.loads(filter_nodes)
+        nodes = {self.configuration['node_name']: self.__dict__()} if filter_nodes is None or self.configuration['node_name'] in filter_nodes else {}
+        return {**nodes, **{key: val.__dict__()['info'] for key, val in self.clients.items() if filter_nodes is None or key in filter_nodes}}
 
     async def check_clients_keepalive(self):
         """

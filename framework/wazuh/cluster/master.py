@@ -1,6 +1,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import json
+from datetime import datetime
 import functools
 import operator
 import os
@@ -19,12 +21,22 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_free = True  # the worker isn't currently synchronizing integrity
         self.sync_extra_valid_free = True
         self.sync_agent_info_free = True
+        self.sync_integrity_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
+                                      'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
+        self.sync_agent_info_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
+                                       'total_agent_info': 0}
+        self.sync_extra_valid_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
+                                        'total_extra_valid': 0}
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
 
     def __dict__(self):
-        return {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip}
+        return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
+                'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
+                           'sync_agent_info_free': self.sync_agent_info_free, 'last_sync_agent_info': self.sync_agent_info_status,
+                           'sync_extra_valid_free': self.sync_extra_valid_free, 'last_sync_agent_groups': self.sync_extra_valid_status,
+                           'last_keep_alive': self.last_keepalive}}
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: {}".format(command))
@@ -91,14 +103,20 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.process_files_from_worker(files_checksums, decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
+        self.sync_extra_valid_status['date_start_master'] = str(datetime.now())
         await self.sync_worker_files(task_name, received_file)
         self.sync_extra_valid_free = True
+        self.sync_extra_valid_status['date_end_master'] = str(datetime.now())
 
     async def sync_agent_info(self, task_name: str, received_file: asyncio.Task):
+        self.sync_agent_info_status['date_start_master'] = str(datetime.now())
         await self.sync_worker_files(task_name, received_file)
         self.sync_agent_info_free = True
+        self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
+        self.sync_integrity_status['date_start_master'] = str(datetime.now())
+
         self.logger.info("Waiting to receive zip file from worker")
         await received_file.wait()
         received_filename = self.sync_tasks[task_name].filename
@@ -109,7 +127,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.logger.debug2(files_checksums)
 
         # classify files in shared, missing, extra and extra valid.
-        worker_files_ko = cluster.compare_files(self.server.integrity_control, files_checksums)
+        worker_files_ko, counts = cluster.compare_files(self.server.integrity_control, files_checksums)
+
+        # health check
+        self.sync_integrity_status['total_files'] = counts
+
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             self.logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
             result = await self.send_request(command=b'sync_m_c_ok', data=b'')
@@ -133,6 +155,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 return result
 
             result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + compressed_data.encode())
+
+        self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
         return result
 
@@ -208,6 +232,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                         if not error_updating_file:
                             n_merged_files += 1
 
+                    if data['merge_type'] == 'agent-info':
+                        self.sync_agent_info_status['total_agent_info'] = n_merged_files
+                    else:
+                        self.sync_extra_valid_status['total_extra_valid'] = n_merged_files
+
                 else:
                     n_errors, _ = update_file(n_errors, filename, data)
 
@@ -237,8 +266,8 @@ class Master(server.AbstractServer):
         self.handler_class = MasterHandler
 
     def __dict__(self):
-        return {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
-                'version': metadata.__version__, 'address': self.configuration['nodes'][0]}
+        return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
+                'version': metadata.__version__, 'address': self.configuration['nodes'][0]}}
 
     async def file_status_update(self):
         while True:
@@ -250,3 +279,25 @@ class Master(server.AbstractServer):
             self.logger.debug("File integrity calculated.")
 
             await asyncio.sleep(30)
+
+    def get_health(self, filter_node) -> Dict:
+        """
+        Return healthcheck data
+
+        :param filter_node: Node to filter by
+        :return: Dictionary
+        """
+        filter_node = json.loads(filter_node)
+        workers_info = {key: val.__dict__() for key, val in self.clients.items() if filter_node is None or key in filter_node}
+        n_connected_nodes = len(workers_info) + 1  # all workers + 1 master
+        if filter_node is None or self.configuration['node_name'] in filter_node:
+            workers_info.update({self.configuration['node_name']: self.__dict__()})
+
+        # Get active agents by node and format last keep alive date format
+        for node_name in workers_info.keys():
+            workers_info[node_name]["info"]["n_active_agents"] = Agent.get_agents_overview(filters={'status': 'Active', 'node_name': node_name})['totalItems']
+            if workers_info[node_name]['info']['type'] != 'master':
+                workers_info[node_name]['status']['last_keep_alive'] = str(
+                    datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
+
+        return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}

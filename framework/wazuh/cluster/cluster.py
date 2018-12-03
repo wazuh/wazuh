@@ -373,7 +373,8 @@ def compare_files(good_files, check_files):
     extra_files = {key: check_files[key] for key in extra}
     extra_valid_files = {key: check_files[key] for key in extra_valid}
     # shared files are the ones present in both sets.
-    shared_e_v, shared = split_on_condition(check_files.keys() & good_files.keys(),
+    all_shared = check_files.keys() & good_files.keys()
+    shared_e_v, shared = split_on_condition(all_shared,
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
     # merge all shared extra valid files into a single one.
     # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded agent-groups
@@ -382,8 +383,11 @@ def compare_files(good_files, check_files):
                       {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
     shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
 
-    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files,
-            'extra_valid': extra_valid_files}
+    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files, 'extra_valid': extra_valid_files}
+    count = {'missing': len(missing_files), 'extra': len(extra_files), 'extra_valid': len(extra_valid_files),
+             'shared': len(all_shared)}
+
+    return files, count
 
 
 def clean_up(node_name=""):
