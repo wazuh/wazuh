@@ -522,6 +522,9 @@ static void c_files()
     FILE *fp;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char *key;
+    char *data;
+    os_sha256 multi_group_hash;
+    char _hash[9] = {0};
 
     mdebug2("Updating shared files sums.");
 
@@ -666,7 +669,11 @@ static void c_files()
                 continue;
             }
             fclose(fp);
-            if(OSHash_Add(m_hash, groups_info,(void*)1)!= 2){
+
+            OS_SHA256_String(groups_info,multi_group_hash);
+            strncpy(_hash,multi_group_hash,8);
+
+            if(OSHash_Add(m_hash, groups_info,_hash)!= 2){
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
@@ -676,16 +683,16 @@ static void c_files()
     unsigned int *i;
     os_calloc(1, sizeof(unsigned int *), i);
 
-    os_sha256 multi_group_hash;
-    char _hash[9] = {0};
-
     for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
         os_strdup(my_node->key, key);
+        if(my_node->data){
+            os_strdup(my_node->data, data);
+        }
+        else {
+            return;
+        }
 
-        OS_SHA256_String(key,multi_group_hash);
-        strncpy(_hash,multi_group_hash,8);
-
-        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", _hash) > PATH_MAX) {
+        if (snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", data) > PATH_MAX) {
             merror("At c_files(): path '%s' too long.",path);
             break;
         }
@@ -720,6 +727,7 @@ static void c_files()
         c_multi_group(key,&groups[p_size]->f_sum,_hash);
         free_strarray(subdir);
         free(key);
+        free(data);
         p_size++;
     }
 
