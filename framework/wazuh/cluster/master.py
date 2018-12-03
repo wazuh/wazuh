@@ -124,7 +124,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
         self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
-        self.logger.debug2(files_checksums)
 
         # classify files in shared, missing, extra and extra valid.
         worker_files_ko, counts = cluster.compare_files(self.server.integrity_control, files_checksums)
