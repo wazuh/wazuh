@@ -23,6 +23,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.cluster_name = ""
         self.node_type = ""
 
+    def __dict__(self):
+        return {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip}
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: {}".format(command))
@@ -233,6 +235,10 @@ class Master(server.AbstractServer):
         self.integrity_control = {}
         self.tasks.append(self.file_status_update)
         self.handler_class = MasterHandler
+
+    def __dict__(self):
+        return {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
+                'version': metadata.__version__, 'address': self.configuration['nodes'][0]}
 
     async def file_status_update(self):
         while True:

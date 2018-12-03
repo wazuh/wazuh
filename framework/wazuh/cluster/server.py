@@ -27,7 +27,7 @@ class AbstractServerHandler(common.Handler):
         self.transport = None
 
     def __dict__(self):
-        return {'ip': self.ip, 'name': self.name}
+        return {'address': self.ip, 'name': self.name}
 
     def connection_made(self, transport):
         """
@@ -124,13 +124,15 @@ class AbstractServer:
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
 
+    def __dict__(self):
+        return {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}
+
     def get_connected_nodes(self) -> Dict:
         """
         Return all connected nodes, including the master node
         :return: A dictionary containing data from each node
         """
-        nodes = {self.configuration['node_name']: {'ip': self.configuration['nodes'][0],
-                                                   'name': self.configuration['node_name']}}
+        nodes = {self.configuration['node_name']: self.__dict__()}
         return {**nodes, **{key: val.__dict__() for key, val in self.clients.items()}}
 
     async def check_clients_keepalive(self):

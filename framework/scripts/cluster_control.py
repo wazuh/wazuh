@@ -22,7 +22,7 @@ def __print_table(data, headers, show_header=False):
         return list(map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l))))
 
     if show_header:
-        table = list(itertools.chain.from_iterable([[headers], data]))
+        table = list(itertools.chain([headers], data))
     else:
         table = data
 
@@ -47,8 +47,8 @@ async def print_agents(filter_status, filter_node):
 
 async def print_nodes(filter_node, client):
     result = json.loads(await client.send_request_and_close(command=b'get_nodes', data=b''))
-    headers = ["Name", "Address"]
-    data = [[result[node_name]['name'], result[node_name]['ip']] for node_name in sorted(result.keys())]
+    headers = [x.capitalize() for x in next(iter(result.values())).keys()]
+    data = map(lambda x: list(x.values()), result.values())
     __print_table(data, headers, True)
 
 
