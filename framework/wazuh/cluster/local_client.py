@@ -1,18 +1,29 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import logging
-import argparse
-from client import AbstractClient, AbstractClientManager
-import time
+from wazuh.cluster.client import AbstractClient, AbstractClientManager
 import uvloop
+
+
+class LocalClientHandler(AbstractClient):
+
+    def connection_made(self, transport):
+        """
+        Defines process of connecting to the server
+
+        :param transport: socket to write data on
+        """
+        self.transport = transport
 
 
 class LocalClient(AbstractClientManager):
 
-    async def get_config(self):
-        response = await self.client.send_request(b'get_config', b'')
-        self.logger.info("Response: {}".format(response))
+    async def send_request_and_close(self, command, data):
+        while self.client is None:
+            await asyncio.sleep(0.5)
+        result = await self.client.send_request(command, data)
+        self.client.close()
+        return result
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -23,7 +34,8 @@ class LocalClient(AbstractClientManager):
 
         try:
             transport, protocol = await loop.create_unix_connection(
-                                protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key, self.logger),
+                                protocol_factory=lambda: LocalClientHandler(loop, on_con_lost, self.name,
+                                                                            self.configuration['key'], self.logger),
                                 path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
         except ConnectionRefusedError:
             self.logger.error("Could not connect to server.")
@@ -35,28 +47,6 @@ class LocalClient(AbstractClientManager):
         self.client = protocol
 
         try:
-            await asyncio.gather(on_con_lost, self.get_config())
+            await on_con_lost
         finally:
             transport.close()
-
-
-async def main():
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
-    args = parser.parse_args()
-
-    client = LocalClient(args.name, None, False, 0, 0, '', 0, logging.getLogger())
-
-    await client.start()
-
-
-try:
-    while True:
-        try:
-            asyncio.run(main())
-        except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
-            time.sleep(10)
-except KeyboardInterrupt:
-    logging.info("SIGINT received. Bye!")

@@ -5,8 +5,7 @@ import uvloop
 from typing import Tuple
 import json
 import random
-import logging
-from wazuh.cluster import server, common, cluster
+from wazuh.cluster import server, common
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -27,17 +26,23 @@ class LocalServerHandler(server.AbstractServerHandler):
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         if command == b'get_config':
             return self.get_config()
+        elif command == b'get_nodes':
+            return self.get_nodes()
         else:
             return super().process_request(command, data)
 
     def get_config(self) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.configuration).encode()
 
+    def get_nodes(self) -> Tuple[bytes, bytes]:
+        return b'ok', json.dumps(self.server.node.get_connected_nodes()).encode()
+
 
 class LocalServer(server.AbstractServer):
 
-    def __init__(self, **kwargs):
+    def __init__(self, node: server.AbstractServer, **kwargs):
         super().__init__(**kwargs, tag="Local Server")
+        self.node = node
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -48,7 +53,8 @@ class LocalServer(server.AbstractServer):
 
         try:
             server = await loop.create_unix_server(protocol_factory=lambda: LocalServerHandler(server=self, loop=loop,
-                                                                                               fernet_key=''),
+                                                                                               fernet_key='',
+                                                                                               logger=self.logger),
                                                    path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))

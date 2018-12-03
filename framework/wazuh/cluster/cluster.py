@@ -54,10 +54,6 @@ def check_cluster_config(config):
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(
             config['node_type']))
 
-    if config['disabled'] != 'yes' and config['disabled'] != 'no':
-        raise WazuhException(3004, 'Invalid value for disabled option {}. Allowed values are yes and no'.
-                             format(config['disabled']))
-
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
@@ -98,7 +94,7 @@ def get_cluster_items_worker_intervals():
 
 
 def read_config():
-    cluster_default_configuration = {'disabled': 'no', 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
+    cluster_default_configuration = {'disabled': False, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                                      'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'],
                                      'hidden': 'no'}
 
@@ -107,7 +103,7 @@ def read_config():
     except WazuhException as e:
         if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = 'yes'
+            cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
             raise WazuhException(3006, e.message)
@@ -117,6 +113,14 @@ def read_config():
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
+
+    if config_cluster['disabled'] == 'no':
+        config_cluster['disabled'] = False
+    elif config_cluster['disabled'] == 'yes':
+        config_cluster['disabled'] = True
+    else:
+        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
+            config_cluster['disabled']))
 
     return config_cluster
 
@@ -472,7 +476,7 @@ def _check_removed_agents(new_client_keys):
 # Others
 #
 
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
+get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(b" ")[:-1]
 
 
 def run_logtest(synchronized=False):

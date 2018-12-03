@@ -66,7 +66,7 @@ async def master_main(args, cluster_config, logger):
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger)
     my_local_server = local_server.LocalServer(performance_test=args.performance_test,
                                                concurrency_test=args.concurrency_test, configuration=cluster_config,
-                                               enable_ssl=args.ssl, logger=logger)
+                                               enable_ssl=args.ssl, logger=logger, node=my_server)
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
@@ -74,15 +74,12 @@ async def master_main(args, cluster_config, logger):
 # Worker main
 #
 async def worker_main(args, cluster_config, logger):
-    my_local_server = local_server.LocalServer(performance_test=args.performance_test,
-                                               concurrency_test=args.concurrency_test, configuration=cluster_config,
-                                               enable_ssl=args.ssl, logger=logger)
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                                   file=args.send_file, string=args.send_string, logger=logger)
         try:
-            await asyncio.gather(my_client.start(), my_local_server.start())
+            await my_client.start()
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(10)
@@ -144,6 +141,17 @@ if __name__ == '__main__':
     main_logger = set_logging(args.foreground, debug_mode)
 
     cluster_configuration = cluster.read_config()
+    # try:
+    #     cluster.check_cluster_config(cluster_configuration)
+    # except Exception as e:
+    #     main_logger.error(e)
+    #     sys.exit(0)
+
+    if cluster_configuration['disabled']:
+        main_logger.info("Cluster disabled. Exiting.")
+        sys.exit(0)
+
+    pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
 
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:

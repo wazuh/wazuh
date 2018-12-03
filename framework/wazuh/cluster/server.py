@@ -22,6 +22,12 @@ class AbstractServerHandler(common.Handler):
         self.last_keepalive = time.time()
         self.tag = tag
         self.logger_filter.update_tag(self.tag)
+        self.name = None
+        self.ip = None
+        self.transport = None
+
+    def __dict__(self):
+        return {'ip': self.ip, 'name': self.name}
 
     def connection_made(self, transport):
         """
@@ -31,8 +37,8 @@ class AbstractServerHandler(common.Handler):
         """
         peername = transport.get_extra_info('peername')
         self.logger.info('Connection from {}'.format(peername))
+        self.ip = peername[0]
         self.transport = transport
-        self.name = None
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
@@ -64,6 +70,9 @@ class AbstractServerHandler(common.Handler):
         if self.name in self.server.clients:
             self.logger.error("Client {} already present".format(data))
             return b'err', b'Client already present'
+        elif self.name == self.server.configuration['node_name']:
+            self.logger.error("Connected client with same name as the master: {}".format(self.name))
+            return b'err', b'Same name as master'
         else:
             self.server.clients[self.name] = self
             self.tag = '{} {}'.format(self.tag, self.name)
@@ -114,6 +123,15 @@ class AbstractServer:
         self.logger.addFilter(cluster.ClusterFilter(tag=tag))
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
+
+    def get_connected_nodes(self) -> Dict:
+        """
+        Return all connected nodes, including the master node
+        :return: A dictionary containing data from each node
+        """
+        nodes = {self.configuration['node_name']: {'ip': self.configuration['nodes'][0],
+                                                   'name': self.configuration['node_name']}}
+        return {**nodes, **{key: val.__dict__() for key, val in self.clients.items()}}
 
     async def check_clients_keepalive(self):
         """

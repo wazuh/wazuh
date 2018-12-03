@@ -155,6 +155,7 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         self.logger_filter = cluster.ClusterFilter(tag=self.tag)
         self.logger.addFilter(self.logger_filter)
+        self.transport = None
 
     def push(self, message: bytes):
         """
@@ -337,6 +338,12 @@ class Handler(asyncio.Protocol):
 
         self.push(self.msg_build(command, counter, payload))
 
+    def close(self):
+        """
+        Closes connection
+        """
+        self.transport.close()
+
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
         Defines commands for both master and clients.
@@ -492,6 +499,5 @@ def asyncio_exception_handler(loop, context: Dict):
     :param context: A dictionary containing fields explained in
                     https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler
     """
-    logging.warning(context)
     logging.error("Unhandled exception: {} {}".format(str(context['exception']), context['message']))
     logging.debug(traceback.format_exc())
