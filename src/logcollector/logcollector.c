@@ -78,9 +78,6 @@ void LogCollectorStart()
     IT_control f_control = 0;
     char keepalive[1024];
     logreader *current;
-    const char *m_uname;
-
-    m_uname = getuname();
 
     set_sockets();
     pthread_rwlock_init(&files_update_rwlock, NULL);
@@ -96,6 +93,9 @@ void LogCollectorStart()
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     int r;
+    const char *m_uname;
+
+    m_uname = getuname();
 
     /* Check if we are on Windows Vista */
     if (!checkVista()) {
