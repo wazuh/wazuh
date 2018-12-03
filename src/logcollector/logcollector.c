@@ -736,7 +736,6 @@ int reload_file(logreader * lf) {
                             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (lf->h == INVALID_HANDLE_VALUE) {
-        DWORD error = GetLastError();
         return (-1);
     }
 
