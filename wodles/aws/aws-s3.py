@@ -406,7 +406,7 @@ class AWSBucket(WazuhIntegration):
     def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
         return '{init}{only_logs_after}'.format(
             init=self.get_full_prefix(aws_account_id, aws_region),
-            only_logs_after=only_logs_after
+            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
         )
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
