@@ -99,7 +99,7 @@ int doDiff(RuleInfo *rule, Eventinfo *lf)
     }
 
     /* lf->size can't be too long */
-    if (lf->size >= OS_SIZE_8192) {
+    if (lf->size >= OS_SIZE_65536) {
         merror("Event size (%zd) too long for diff.", lf->size);
         return (0);
     }
