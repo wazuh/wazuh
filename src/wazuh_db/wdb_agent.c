@@ -17,6 +17,7 @@
 #endif
 
 static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
+static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
@@ -40,15 +41,29 @@ static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group) {
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date) {
     int result = 0;
     sqlite3_stmt *stmt;
+    const char * sql = SQL_INSERT_AGENT;
+    char *date = NULL;
 
     if (wdb_open_global() < 0)
         return -1;
+  
+    if(keep_date) {
+        sql = SQL_INSERT_AGENT_KEEP_DATE;
+        date = get_agent_date_added(id);
 
-    if (wdb_prepare(wdb_global, SQL_INSERT_AGENT, -1, &stmt, NULL)) {
+        if(!date) {
+            sql = SQL_INSERT_AGENT;
+        }
+    }
+
+    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        if(date){
+            free(date);
+        }
         return -1;
     }
 
@@ -64,10 +79,19 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
     else
         sqlite3_bind_null(stmt, 4);
 
-    sqlite3_bind_text(stmt, 5, group, -1, NULL);
-
+    if(date) {
+        sqlite3_bind_text(stmt, 5, date, -1, NULL);
+        sqlite3_bind_text(stmt, 6, group, -1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 5, group, -1, NULL);
+    }
+    
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
+
+    if(date) {
+        free(date);
+    }
 
     return result;
 }
@@ -846,4 +870,58 @@ int wdb_agent_belongs_first_time(){
     }
 
     return 0;
+}
+
+char *get_agent_date_added(int agent_id){
+    char path[PATH_MAX + 1] = {0};
+    char line[OS_BUFFER_SIZE] = {0};
+    char * sep;
+    FILE *fp;
+
+    snprintf(path,PATH_MAX,"%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
+    
+    fp = fopen(path, "r");
+
+    if (!fp) {
+        return NULL;
+    }
+
+    while (fgets(line, OS_BUFFER_SIZE, fp)) {
+        if (sep = strchr(line, ' '), sep) {
+            *sep = '\0';
+        } else {
+            continue;
+        }
+
+        if(atoi(line) == agent_id){
+            /* Extract date */
+            char **data;
+            char * date = NULL;
+            *sep = ' ';
+
+            data = OS_StrBreak(' ',line,5);
+
+            if(data == NULL) {
+                fclose(fp);
+                return NULL;      
+            }
+
+            /* Date is 3 and 4 */
+            wm_strcat(&date,data[3],' ');
+            wm_strcat(&date,data[4],' ');
+
+            char *endl = strchr(date, '\n');
+
+            if (endl) {
+                *endl = '\0';
+            }
+
+            fclose(fp);
+            free_strarray(data);
+            return date;
+        }
+    }
+
+    fclose(fp);
+    return NULL;
 }
