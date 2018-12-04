@@ -77,29 +77,20 @@ class ReceiveFileTask:
     Implements an asyncio task but including a name or ID for it.
     """
 
-    def __init__(self, coro):
+    def __init__(self, wazuh_common, logger):
         """
         Class constructor
 
         :param coro: asyncio coroutine to run in the task
         """
+        self.wazuh_common = wazuh_common
+        self.coro = self.set_up_coro()
         self.name = str(random.randint(0, 2**32))
         self.received_information = asyncio.Event()
-        self.task = asyncio.create_task(coro(self.name, self.received_information))
+        self.task = asyncio.create_task(self.coro(self.name, self.received_information))
+        self.task.add_done_callback(self.done_callback)
         self.filename = ''
-
-    def __getattr__(self, item: str):
-        """
-        Magic method getattr. It tries to get an attribute from the task, if not, then try to get the attribute from
-        self
-
-        :param item: Name of the attribute to get
-        :return: Value of the attribute
-        """
-        try:
-            return getattr(self.task, item)
-        except AttributeError:
-            return getattr(self, item)
+        self.logger = logger
 
     def __str__(self) -> str:
         """
@@ -107,6 +98,19 @@ class ReceiveFileTask:
         :return: task name
         """
         return self.name
+
+    def set_up_coro(self) -> Callable:
+        raise NotImplementedError
+
+    def done_callback(self, future=None):
+        """
+        Function to call when the task is finished
+        :return:
+        """
+        del self.wazuh_common.sync_tasks[self.name]
+        task_exc = self.task.exception()
+        if task_exc:
+            self.logger.error(task_exc)
 
 
 class Handler(asyncio.Protocol):
@@ -478,12 +482,16 @@ class WazuhCommon:
     def __init__(self):
         self.sync_tasks = {}
 
-    def setup_receive_file(self, coro: Callable):
-        my_task = ReceiveFileTask(coro)
+    def get_logger(self):
+        raise NotImplementedError
+
+    def setup_receive_file(self, ReceiveTaskClass: Callable):
+        my_task = ReceiveTaskClass(self, self.get_logger())
         self.sync_tasks[my_task.name] = my_task
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        self.get_logger().debug(task_and_file_names)
         task_name, filename = task_and_file_names.split(' ', 1)
         self.sync_tasks[task_name].filename = filename
         self.sync_tasks[task_name].received_information.set()

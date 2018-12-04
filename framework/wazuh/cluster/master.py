@@ -6,12 +6,42 @@ from datetime import datetime
 import functools
 import operator
 import os
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Callable
 import fcntl
 from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import cluster as metadata
 from wazuh import common, utils, WazuhException
+
+
+class ReceiveIntegrityTask(c_common.ReceiveFileTask):
+
+    def set_up_coro(self) -> Callable:
+        return self.wazuh_common.sync_integrity
+
+    def done_callback(self, future=None):
+        super().done_callback(future)
+        self.wazuh_common.sync_integrity_free = True
+
+
+class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
+
+    def set_up_coro(self) -> Callable:
+        return self.wazuh_common.sync_agent_info
+
+    def done_callback(self, future=None):
+        super().done_callback(future)
+        self.wazuh_common.sync_agent_info_free = True
+
+
+class ReceiveExtraValidTask(c_common.ReceiveFileTask):
+
+    def set_up_coro(self) -> Callable:
+        return self.wazuh_common.sync_extra_valid
+
+    def done_callback(self, future=None):
+        super().done_callback(future)
+        self.wazuh_common.sync_extra_valid_free = True
 
 
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
@@ -79,11 +109,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
     def setup_sync_integrity(self, sync_type: bytes) -> Tuple[bytes, bytes]:
         if sync_type == b'sync_i_w_m':
-            self.sync_integrity_free, sync_function = False, self.sync_integrity
+            self.sync_integrity_free, sync_function = False, ReceiveIntegrityTask
         elif sync_type == b'sync_e_w_m':
-            self.sync_extra_valid_free, sync_function = False, self.sync_extra_valid
+            self.sync_extra_valid_free, sync_function = False, ReceiveExtraValidTask
         elif sync_type == b'sync_a_w_m':
-            self.sync_agent_info_free, sync_function = False, self.sync_extra_valid
+            self.sync_agent_info_free, sync_function = False, ReceiveAgentInfoTask
         else:
             sync_function = None
 
@@ -115,6 +145,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
+        self.logger.critical(len(self.sync_tasks))
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
 
         self.logger.info("Waiting to receive zip file from worker")
@@ -254,6 +285,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     self.logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
                 elif key == '/queue/agent-groups/':
                     self.logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
+
+    def get_logger(self):
+        return self.logger
 
 
 class Master(server.AbstractServer):

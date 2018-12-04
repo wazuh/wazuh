@@ -6,10 +6,16 @@ import functools
 import operator
 import os
 import shutil
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Callable
 from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata
 from wazuh import common
+
+
+class ReceiveIntegrityTask(c_common.ReceiveFileTask):
+
+    def set_up_coro(self) -> Callable:
+        return self.wazuh_common.process_files_from_master
 
 
 class SyncWorker:
@@ -70,7 +76,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return super().process_request(command, data)
 
     def setup_receive_files_from_master(self):
-        return super().setup_receive_file(self.process_files_from_master)
+        return super().setup_receive_file(ReceiveIntegrityTask)
 
     def end_receiving_integrity(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)
@@ -197,6 +203,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 self.logger.error("Found errors: {} overwriting, {} creating and {} removing".format(errors['shared'],
                                                                                                      errors['missing'],
                                                                                                      errors['extra']))
+
+    def get_logger(self):
+        return self.logger
 
 
 class Worker(client.AbstractClientManager):
