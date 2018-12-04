@@ -436,7 +436,7 @@ char *seechanges_addfile(const char *filename)
 
         /* Success */
         status = 0;
-    };
+    }
 
 cleanup:
 
