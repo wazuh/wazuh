@@ -19,7 +19,8 @@
 #define NOTIFY_LIST_SIZE    32
 
 // Number of attributes in the hash table
-#define SK_DB_NATTR 10
+#define SK_DB_NATTR 11
+#define SK_DB_REPORT_CHANG 10
 
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 

@@ -3,8 +3,19 @@ All notable changes to this project will be documented in this file.
 
 ## [v3.8.0]
 
+### Added
+
+- Add options to detect changes attributes and file permissions for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
+- Add a manifest to run `agent-auth.exe` with elevated privileges. ([#1998](https://github.com/wazuh/wazuh/pull/1998))
+- Get process inventory for Windows natively. ([#1760](https://github.com/wazuh/wazuh/pull/1760))
+
+### Changed
+
+- Deprecated the Syscheck option `<remove_old_diff>` by making it mandatory. ([#1915](https://github.com/wazuh/wazuh/pull/1915))
+
 ### Fixed
 
+- Fixed the reading of the OS name and version in HP-UX systems. ([#1990](https://github.com/wazuh/wazuh/pull/1990))
 - Allow strings up to 64KB long for log difference analysis. ([#2032](https://github.com/wazuh/wazuh/pull/2032))
 
 ## [v3.7.1]
@@ -52,6 +63,7 @@ All notable changes to this project will be documented in this file.
 - Logcollector prevents vmhgfs from synchronizing the inode. ([#2022](https://github.com/wazuh/wazuh/pull/2022/files))
 - File descriptor leak that may impact agents running on UNIX platforms. ([#2021](https://github.com/wazuh/wazuh/pull/2021/files))
 - CIS-CAT events were being processed by a wrong decoder ([#2014](https://github.com/wazuh/wazuh/pull/2014/files))
+
 
 ## [v3.7.0] - 2018-11-10
 

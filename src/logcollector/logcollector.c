@@ -98,9 +98,16 @@ void LogCollectorStart()
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     int r;
+    const char *m_uname;
+
+    m_uname = getuname();
 
     /* Check if we are on Windows Vista */
-    checkVista();
+    if (!checkVista()) {
+        minfo("Windows version is older than 6.0. (%s).", m_uname);
+    } else {
+        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
+    }
 
     /* Read vista descriptions */
     if (isVista) {
@@ -736,7 +743,6 @@ int reload_file(logreader * lf) {
                             NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (lf->h == INVALID_HANDLE_VALUE) {
-        DWORD error = GetLastError();
         return (-1);
     }
 
