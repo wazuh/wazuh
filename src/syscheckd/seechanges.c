@@ -293,18 +293,18 @@ char *seechanges_addfile(const char *filename)
 {
     time_t old_date_of_change;
     time_t new_date_of_change;
-    char old_location[OS_MAXSTR + 1];
-    char tmp_location[OS_MAXSTR + 1];
-    char diff_location[OS_MAXSTR + 1];
-    char diff_cmd[OS_MAXSTR + 1];
+    char old_location[PATH_MAX + 1];
+    char tmp_location[PATH_MAX + 1];
+    char diff_location[PATH_MAX + 1];
+    char diff_cmd[PATH_MAX + 1];
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
 
-    old_location[OS_MAXSTR] = '\0';
-    tmp_location[OS_MAXSTR] = '\0';
-    diff_location[OS_MAXSTR] = '\0';
-    diff_cmd[OS_MAXSTR] = '\0';
+    old_location[PATH_MAX] = '\0';
+    tmp_location[PATH_MAX] = '\0';
+    diff_location[PATH_MAX] = '\0';
+    diff_cmd[PATH_MAX] = '\0';
     char *tmp_location_filtered = NULL;
     char *old_location_filtered = NULL;
     char *diff_location_filtered = NULL;
@@ -313,7 +313,7 @@ char *seechanges_addfile(const char *filename)
 
     snprintf(
         old_location,
-        OS_MAXSTR,
+        PATH_MAX,
         "%s/local/%s/%s",
         DIFF_DIR_PATH,
         filename + PATH_OFFSET,
@@ -350,7 +350,7 @@ char *seechanges_addfile(const char *filename)
 
     snprintf(
         tmp_location,
-        OS_MAXSTR,
+        PATH_MAX,
         "%s/local/%s/state.%d",
         DIFF_DIR_PATH,
         filename + PATH_OFFSET,
@@ -372,7 +372,7 @@ char *seechanges_addfile(const char *filename)
     /* Create diff location */
     snprintf(
         diff_location,
-        OS_MAXSTR,
+        PATH_MAX,
         "%s/local/%s/diff.%d",
         DIFF_DIR_PATH,
         filename + PATH_OFFSET,
