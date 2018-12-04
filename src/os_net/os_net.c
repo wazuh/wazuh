@@ -666,7 +666,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
+#if defined(__sparc__) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
 #else
     return value;
@@ -675,7 +675,11 @@ uint32_t wnet_order(uint32_t value) {
 
 
 uint32_t wnet_order_big(uint32_t value) {
+#if defined(__sparc__) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
+    return value;
+#else
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
+#endif
 }
 
 /* Set the maximum buffer size for the socket */
