@@ -290,13 +290,10 @@ void LogCollectorStart()
                         }
                     }
 
-                    if (current->file) {
+                    if (current->file && current->exists) {
                         if (reload_file(current) == -1) {
-                            if (current->exists){
-                                minfo(FORGET_FILE, current->file);
-                                current->exists = 0;
-                            }
-
+                            minfo(FORGET_FILE, current->file);
+                            current->exists = 0;
                             current->ign++;
                             mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
 
