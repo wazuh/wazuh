@@ -283,7 +283,7 @@ class AWSBucket(WazuhIntegration):
                                         aws_account_id='{aws_account_id}' AND
                                         aws_region = '{aws_region}'
                                     ORDER BY
-                                        created_date ASC
+                                        log_key ASC
                                     LIMIT 1;"""
 
     sql_db_maintenance = """DELETE
@@ -578,8 +578,7 @@ class AWSBucket(WazuhIntegration):
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
-            if 'NextContinuationToken' in bucket_files:
-                print("PRIMERA ITERACION continuation token -> " + bucket_files['NextContinuationToken'])
+
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
