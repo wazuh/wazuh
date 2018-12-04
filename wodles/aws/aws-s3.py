@@ -587,7 +587,7 @@ class AWSBucket(WazuhIntegration):
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
-                
+
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
