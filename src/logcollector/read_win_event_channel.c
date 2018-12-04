@@ -802,6 +802,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
                     } else if (!strcmp(child_attr[p]->element, "Keywords")) {
                         os_strdup(child_attr[p]->content, keywords);
                         cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
+                    } else if (!strcmp(child_attr[p]->element, "Correlation")) {
                     } else {
                         cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                     }
