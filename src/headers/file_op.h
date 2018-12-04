@@ -129,7 +129,7 @@ FILE * wfopen(const char * pathname, const char * mode);
 int w_remove_line_from_file(char *file, int line);
 
 // To compress an decompress a file in gzip
-void w_compress_gzfile(const char *file);
-void w_uncompress_gzfile(const char *gzfile);
+int w_compress_gzfile(const char *filesrc, const char *filedst);
+int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 
 #endif /* __FILE_H */

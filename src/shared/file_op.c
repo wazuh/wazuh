@@ -2525,10 +2525,9 @@ int w_remove_line_from_file(char *file,int line){
 
 
 /* file to gzip */
-void w_compress_gzfile(const char *file) {
+int w_compress_gzfile(const char *filesrc, const char *filedst) {
     FILE *fd;
     gzFile gz_fd;
-    char *gzip_file;
     char *buf;
     int len;
     int err;
@@ -2537,30 +2536,25 @@ void w_compress_gzfile(const char *file) {
     umask(0027);
 
     /* Read file */
-    fd = fopen(file, "rb");
+    fd = fopen(filesrc, "rb");
     if (!fd) {
         merror("in w_compress_gzfile(): fopen error %s (%d):'%s'",
-                file,
+                filesrc,
                 errno,
                 strerror(errno));
-        return;
+        return -1;
     }
 
-    /* Create the gzip file name */
-    os_calloc(sizeof(file) + 1, sizeof(char*), gzip_file);
-    snprintf(gzip_file, OS_FLSIZE, "%s.gz", file);
-
     /* Open compressed file */
-    gz_fd = gzopen(gzip_file, "w");
+    gz_fd = gzopen(filedst, "w");
     if (!gz_fd) {
         fclose(fd);
-        merror("in w_compress_gzfile(): gzopen error in %s (%d):'%s'",
-                gzip_file,
+        merror("in w_compress_gzfile(): gzopen error %s (%d):'%s'",
+                filedst,
                 errno,
                 strerror(errno));
-        free(gzip_file);
         fclose(fd);
-        return;
+        return -1;
     }
 
     os_calloc(OS_SIZE_8192 + 1, sizeof(char*), buf);
@@ -2573,67 +2567,57 @@ void w_compress_gzfile(const char *file) {
         if (gzwrite(gz_fd, buf, (unsigned)len) != len) {
             merror("in w_compress_gzfile(): Compression error: %s",
                     gzerror(gz_fd, &err));
-            break;
+            fclose(fd);
+            gzclose(gz_fd);
+            os_free(buf);
+            return -1;
         }
-    }
-
-    /* Remove uncompressed file */
-    if (unlink(file) == -1) {
-        merror("in w_compress_gzfile(): Unable to delete '%s' due to '%s'",
-                file,
-                strerror(errno));
     }
 
     fclose(fd);
     gzclose(gz_fd);
-    free(gzip_file);
-    free(buf);
-    return;
+    os_free(buf);
+    return 0;
 }
 
 /* gzip to file */
-void w_uncompress_gzfile(const char *gzfile) {
+int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     FILE *fd;
     gzFile gz_fd;
-    char *ungzip_file;
     char *buf;
     int len;
     int err;
+    struct stat statbuf;
 
+#ifdef WIN32
+    /* Win32 does not have lstat */
+    if (stat(gzfilesrc, &statbuf) < 0)
+#else
+    if (lstat(gzfilesrc, &statbuf) < 0)
+#endif
+    {
+        return -1;
+    }
     /* Set umask */
     umask(0027);
 
-    ungzip_file = strdup(gzfile);
-    if(ungzip_file[strlen(ungzip_file) - 3] == '.' &&
-            ungzip_file[strlen(ungzip_file) - 2] == 'g' &&
-            ungzip_file[strlen(ungzip_file) - 1] == 'z') {
-        ungzip_file[strlen(ungzip_file) - 3] = '\0';
-    } else {
-        merror("in w_uncompress_gzfile(): No .gz file: '%s'",
-                gzfile);
-        os_free(ungzip_file);
-        return;
-    }
-
     /* Read file */
-    fd = fopen(ungzip_file, "wb");
+    fd = fopen(gzfiledst, "wb");
     if (!fd) {
         merror("in w_uncompress_gzfile(): fopen error %s (%d):'%s'",
-                ungzip_file,
+                gzfiledst,
                 errno,
                 strerror(errno));
-        os_free(ungzip_file);
-        return;
+        return -1;
     }
 
     /* Open compressed file */
-    gz_fd = gzopen(gzfile, "rb");
+    gz_fd = gzopen(gzfilesrc, "rb");
     if (!gz_fd) {
         merror("in w_uncompress_gzfile(): gzopen error '%s'",
                 gzerror(gz_fd, &err));
-        os_free(ungzip_file);
         fclose(fd);
-        return;
+        return -1;
     }
 
     os_calloc(OS_SIZE_8192, sizeof(char*), buf);
@@ -2641,26 +2625,17 @@ void w_uncompress_gzfile(const char *gzfile) {
         if (len = gzread(gz_fd, buf, OS_SIZE_8192), len == Z_BUF_ERROR) {
             merror("in w_uncompress_gzfile(): gzfread error: '%s'",
                     gzerror(gz_fd, &err));
-            os_free(ungzip_file);
             fclose(fd);
             gzclose(gz_fd);
-            return;
+            return -1;
         }
-        if (!fwrite(buf, 1, len, fd)) {
-            merror("in w_uncompress_gzfile(): fwrite error (%d):'%s'",
-                    errno,
-                    strerror(errno));
-            free(buf);
-            fclose(fd);
-            gzclose(gz_fd);
-            return;
-        }
+        fwrite(buf, 1, len, fd);
         buf[0] = '\0';
     } while (len != Z_OK);
 
-    free(buf);
+    os_free(buf);
     fclose(fd);
     gzclose(gz_fd);
 
-    return;
+    return 0;
 }

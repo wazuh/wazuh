@@ -148,6 +148,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     char *diff_str;
     char path[PATH_MAX + 1];
     char buf[OS_MAXSTR + 1];
+    char compressed_file[PATH_MAX + 1];
 
     path[PATH_MAX] = '\0';
 
@@ -194,6 +195,19 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 #else
     diff_str = buf;
 #endif
+
+    snprintf(
+        compressed_file,
+        PATH_MAX,
+        "%s/local/%s/%s.gz",
+        DIFF_DIR_PATH,
+        filename + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    if (w_compress_gzfile(filename, compressed_file) != 0) {
+        mwarn("Cannot create a snapshot of file '%s'", filename);
+    }
 
     return (strdup(diff_str));
 }
@@ -297,6 +311,7 @@ char *seechanges_addfile(const char *filename)
     char tmp_location[PATH_MAX + 1];
     char diff_location[PATH_MAX + 1];
     char diff_cmd[PATH_MAX + 1];
+    char compressed_file[PATH_MAX + 1];
     os_md5 md5sum_old;
     os_md5 md5sum_new;
     int status = -1;
@@ -305,6 +320,7 @@ char *seechanges_addfile(const char *filename)
     tmp_location[PATH_MAX] = '\0';
     diff_location[PATH_MAX] = '\0';
     diff_cmd[PATH_MAX] = '\0';
+    compressed_file[PATH_MAX] = '\0';
     char *tmp_location_filtered = NULL;
     char *old_location_filtered = NULL;
     char *diff_location_filtered = NULL;
@@ -320,18 +336,25 @@ char *seechanges_addfile(const char *filename)
         DIFF_LAST_FILE
     );
 
-    /* If the file is not there, rename new location to last location */
-    if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
+    snprintf(
+        compressed_file,
+        PATH_MAX,
+        "%s/local/%s/%s.gz",
+        DIFF_DIR_PATH,
+        filename + PATH_OFFSET,
+        DIFF_LAST_FILE
+    );
+
+    /* If the file is not there, create compressed file*/
+    if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
         seechanges_createpath(old_location);
-        if (seechanges_dupfile(filename, old_location) != 1) {
-            switch (errno) {
-                case ENOENT:
-                    mwarn("Cannot create a snapshot of file '%s': it was removed during scan.", filename);
-                    break;
-                default:
-                    merror(RENAME_ERROR, filename, old_location, errno, strerror(errno));
-            }
+        if (w_compress_gzfile(filename, compressed_file) != 0) {
+            mwarn("Cannot create a snapshot of file '%s'", filename);
         }
+        return (NULL);
+    }
+
+    if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
         return (NULL);
     }
 
@@ -441,6 +464,7 @@ char *seechanges_addfile(const char *filename)
 cleanup:
 
     unlink(tmp_location);
+    unlink(old_location);
     free(tmp_location_filtered);
     free(old_location_filtered);
     free(diff_location_filtered);
