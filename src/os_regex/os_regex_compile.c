@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include "shared.h"
 #include "os_regex_internal.h"
+#include "shared.h"
 
 
 /* Compile a regular expression to be used later
@@ -330,7 +331,7 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
 compile_error:
     /* Error handling */
-
+	merror("Error handling regex");
     if (new_str_free) {
         free(new_str_free);
     }

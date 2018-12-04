@@ -14,7 +14,7 @@
 
 #include "os_regex.h"
 #include "os_regex_internal.h"
-
+#include "shared.h"
 
 /* Compile a pattern to be used later
  * Allowed flags are:
@@ -184,7 +184,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
 
 compile_error:
     /* Error handling */
-
+	merror("Error handling regex");
     if (new_str_free) {
         free(new_str_free);
     }
