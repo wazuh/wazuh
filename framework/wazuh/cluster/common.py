@@ -38,8 +38,8 @@ class InBuffer:
     Defines a buffer to receive incoming requests
     """
 
-    def __init__(self):
-        self.payload = bytearray()  # array to store the message's data
+    def __init__(self, total=0):
+        self.payload = bytearray(total)  # array to store the message's data
         self.total = 0  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
@@ -144,7 +144,7 @@ class Handler(asyncio.Protocol):
         # stores incoming file information from file commands
         self.in_file = {}
         # stores incoming string information from string commands
-        self.in_str = InBuffer()
+        self.in_str = {}
         # maximum message length to send in a single request
         self.request_chunk = 524288
         # stores message to be sent
@@ -159,6 +159,7 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         self.logger_filter = cluster.ClusterFilter(tag=self.tag)
         self.logger.addFilter(self.logger_filter)
+        # transports in asyncio are an abstraction of sockets
         self.transport = None
 
     def push(self, message: bytes):
@@ -300,12 +301,13 @@ class Handler(asyncio.Protocol):
         """
         try:
             total = len(my_str)
-            response = await self.send_request(command=b'new_str', data=str(total).encode())
-            if response.startswith(b"Error"):
-                return response
+            task_id = await self.send_request(command=b'new_str', data=str(total).encode())
+            if task_id.startswith(b"Error"):
+                return task_id
 
             for c in range(0, total, self.request_chunk):
-                response = await self.send_request(command=b'str_upd', data=my_str[c:c + self.request_chunk])
+                response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
+                                                                            my_str[c:c + self.request_chunk])
                 if response.startswith(b"Error"):
                     return response
 
@@ -441,9 +443,9 @@ class Handler(asyncio.Protocol):
         :param data: Request data: string size
         :return: Message
         """
-        self.in_str.total = int(data)
-        self.in_str.payload = bytearray(self.in_str.total)
-        return b"ok", b"Ready to receive string"
+        name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
+        self.in_str[name] = InBuffer(total=int(data))
+        return b"ok", name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
         """
@@ -452,7 +454,8 @@ class Handler(asyncio.Protocol):
         :param data: String contents
         :return: Message
         """
-        self.in_str.receive_data(data)
+        name, str_data = data.split(b' ', 1)
+        self.in_str[name].receive_data(str_data)
         # self.logger.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
 
