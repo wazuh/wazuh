@@ -84,7 +84,7 @@ static int read_dir_diff(char *dir_name) {
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
-        if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
+        if (strcmp(DIFF_GZ_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
             if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add != 2) {
