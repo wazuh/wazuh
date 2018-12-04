@@ -50,7 +50,9 @@ static file_sum ** find_group(const char * file, const char * md5, char group[OS
 /* Global vars */
 static group_t **groups;
 static time_t _stime;
+static time_t _clean_time;
 int INTERVAL;
+int should_clean;
 
 /* For the last message tracking */
 static char pending_queue[MAX_AGENTS][9];
@@ -561,33 +563,37 @@ static void c_files()
             groups = NULL;
         }
 
-        // Clean hash table
-        OSHash_Free(m_hash);
-        m_hash = OSHash_Create();
+        if(should_clean == 1){
+            // Clean hash table
+            OSHash_Free(m_hash);
+            m_hash = OSHash_Create();
 
-        reported_non_existing_group = 0;
+            reported_non_existing_group = 0;
 
-        dp = opendir(MULTIGROUPS_DIR);
+            dp = opendir(MULTIGROUPS_DIR);
 
-        if (!dp) {
-            /* Unlock mutex */
-            w_mutex_unlock(&files_mutex);
-            mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
-            return;
-        }
-
-        // Clean all multigroups files
-        while (entry = readdir(dp), entry) {
-            // Skip "." and ".."
-            if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
-                continue;
+            if (!dp) {
+                /* Unlock mutex */
+                w_mutex_unlock(&files_mutex);
+                mdebug1("Opening directory: '%s': %s", SHAREDCFG_DIR, strerror(errno));
+                should_clean = 0;
+                return;
             }
 
-            snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry->d_name);
-            rmdir_ex(path);
-        }
+            // Clean all multigroups files
+            while (entry = readdir(dp), entry) {
+                // Skip "." and ".."
+                if ((strcmp(entry->d_name, ".") == 0) || (strcmp(entry->d_name, "..") == 0)) {
+                    continue;
+                }
 
-        closedir(dp);
+                snprintf(path, PATH_MAX + 1, MULTIGROUPS_DIR "/%s", entry->d_name);
+                rmdir_ex(path);
+            }
+
+            closedir(dp);
+            should_clean = 0;
+        }
     }
 
     // Initialize main groups structure
@@ -1091,10 +1097,27 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
     INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
+    group_data_flush = getDefine_Int("remoted", "group_data_flush", 0, 86400);
+    should_clean = 0;
+
+    if(group_data_flush == 0){
+        mwarn("Automatic multi-group cleaning has been disabled.");
+    }
+    else if(group_data_flush < INTERVAL){
+        mwarn("group_data_flush must be greater than or equal to shared_reload. Setting value to %d seconds.", INTERVAL);
+        group_data_flush = INTERVAL;
+    }
+
     poll_interval_time = INTERVAL;
 
     while (1) {
         time_t _ctime = time(0);
+
+        // Every group_data_flush seconds, clean multigroups directory
+        if ((_ctime - _clean_time) >= group_data_flush && group_data_flush != 0) {
+            should_clean = 1;
+            _clean_time = _ctime;
+        }
 
         /* Every INTERVAL seconds, re-read the files
          * If something changed, notify all agents
@@ -1189,6 +1212,7 @@ int purge_group(char *group){
 void manager_init()
 {
     _stime = time(0);
+    _clean_time = time(0);
     m_hash = OSHash_Create();
     mdebug1("Running manager_init");
     c_files();

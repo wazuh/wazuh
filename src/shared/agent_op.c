@@ -308,7 +308,6 @@ int set_agent_group(const char * id, const char * group) {
 int set_agent_multigroup(char * group){
     int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char * buffer;
 
     if(!multigroup){
         return 0;
@@ -547,7 +546,6 @@ int w_validate_group_name(const char *group){
 void w_remove_multigroup(const char *group){
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
-    int line = 0;
 
     if(multigroup){
         sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
