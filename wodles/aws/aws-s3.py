@@ -274,6 +274,18 @@ class AWSBucket(WazuhIntegration):
                                         created_date DESC
                                     LIMIT 1;"""
 
+    sql_find_last_key_processed = """
+                                    SELECT
+                                        log_key
+                                    FROM
+                                        trail_progress
+                                    WHERE
+                                        aws_account_id='{aws_account_id}' AND
+                                        aws_region = '{aws_region}'
+                                    ORDER BY
+                                        created_date DESC
+                                    LIMIT 1;"""
+
     sql_db_maintenance = """DELETE
                         FROM
                             trail_progress
@@ -315,7 +327,7 @@ class AWSBucket(WazuhIntegration):
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
         self.legacy_db_table_name = 'log_progress'
-        self.retain_db_records = 25000
+        self.retain_db_records = 5000
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.filter_by_date =  datetime.strptime(only_logs_after, "%Y%m%d")
@@ -439,41 +451,52 @@ class AWSBucket(WazuhIntegration):
         raise NotImplementedError
 
     def build_s3_filter_args(self, aws_account_id, aws_region):
-        print("ENTRO A BUILD S3")
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.filter_by_date)
         else:
             # Where did we end last run thru on this account/region?
-            query_results = self.db_connector.execute(AWSBucket.sql_find_last_log_processed.format(aws_account_id=aws_account_id,
+            #query_date = self.db_connector.execute(AWSBucket.sql_find_last_log_processed.format(aws_account_id=aws_account_id,
+                                                                                         #aws_region=aws_region))
+            query_key = self.db_connector.execute(AWSBucket.sql_find_last_key_processed.format(aws_account_id=aws_account_id,
                                                                                          aws_region=aws_region))
             try:
-                created_date = query_results.fetchone()[0]
-                print("created date -> " + str(created_date))
+                ### unificar en una consulta!
+                #created_date = query_date.fetchone()[0]
+                last_key = query_key.fetchone()[0]
+                #print("created date -> " + str(created_date))
+                print("last key -> " + str(last_key))
                 # Existing logs processed, but older than only_logs_after
                 #if created_date > int(self.only_logs_after.strftime('%Y%m%d')):
                 #    self.only_logs_after = datetime.strptime(str(created_date), '%Y%m%d')
                 #self.only_logs_after = datetime.strptime(str(created_date), '%Y%m%d')
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, (datetime.strptime(str(created_date), '%Y%m%d')))
-                print("filter_marker -> " + str(filter_marker))
+                #filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, (datetime.strptime(str(created_date), '%Y%m%d')))
             except TypeError as e:
                 # No logs processed for this account/region, but if only_logs_after has been set
                 #if self.only_logs_after:
                 #    filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
                 # for getting logs since the start
                 #self.only_logs_after = self.filter_by_date
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.filter_by_date)
+                # if DB is empty
+                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.filter_by_date)
+                print("last_key (INICIO) -> " + str(last_key))
 
         filter_args = {
             'Bucket': self.bucket,
-            'MaxKeys': 5,
+            'MaxKeys': 1000,
             'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
+
+        if last_key: ## quitar
+            filter_args['StartAfter'] = last_key
+            debug('+++ Marker: {0}'.format(last_key), 2)
+        """
 
         if filter_marker:
             filter_args['StartAfter'] = filter_marker
             debug('+++ Marker: {0}'.format(filter_marker), 2)
+        """
         return filter_args
 
     def reformat_msg(self, event):
@@ -600,6 +623,7 @@ class AWSBucket(WazuhIntegration):
                 if self.delete_file:
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                print("file processed -> " + bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -629,6 +653,7 @@ class AWSBucket(WazuhIntegration):
                     if self.delete_file:
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                    print("file processed -> " + bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
         except SystemExit:
             raise
