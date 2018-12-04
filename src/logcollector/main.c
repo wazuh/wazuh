@@ -11,6 +11,7 @@
  * Monitor some files and forward the output to our analysis system
  */
 
+#include "shared.h"
 #include <sys/types.h>
 #include <sys/time.h>
 #include <stdio.h>
