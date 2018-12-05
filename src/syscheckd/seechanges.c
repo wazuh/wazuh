@@ -355,16 +355,19 @@ char *seechanges_addfile(const char *filename)
     }
 
     if (OS_MD5_File(old_location, md5sum_old, OS_BINARY) != 0) {
+        unlink(old_location);
         return (NULL);
     }
 
     /* Get md5sum of the new file */
     if (OS_MD5_File(filename, md5sum_new, OS_BINARY) != 0) {
+        unlink(old_location);
         return (NULL);
     }
 
     /* If they match, keep the old file and remove the new */
     if (strcmp(md5sum_new, md5sum_old) == 0) {
+        unlink(old_location);
         return (NULL);
     }
 
