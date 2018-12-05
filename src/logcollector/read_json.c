@@ -44,7 +44,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
         else if (strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)) {
             /* Message size > maximum allowed */
             __ms = 1;
-        } else {
+        } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
             mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
             fsetpos(lf->fp, &fp_pos);

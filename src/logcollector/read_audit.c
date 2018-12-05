@@ -67,7 +67,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
             if (strlen(buffer) == OS_MAXSTR - 1) {
                 // Message too large, discard line
                 while (fgets(buffer, OS_MAXSTR, lf->fp) && !strchr(buffer, '\n'));
-            } else {
+            } else if (feof(lf->fp)) {
                 mdebug1("Message not complete. Trying again: '%s'", buffer);
 
                 if (fseek(lf->fp, offset, SEEK_SET) < 0) {
