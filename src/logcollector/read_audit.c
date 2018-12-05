@@ -48,31 +48,33 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     char *id;
     char *p;
     size_t z;
-    long offset = ftell(lf->fp);
+    long offset;
+    long rbytes;
     int lines = 0;
-
-    if (offset < 0) {
-        merror(FTELL_ERROR, lf->file, errno, strerror(errno));
-        return NULL;
-    }
 
     *rc = 0;
 
-    while (fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines)) {
-
+    for (offset = ftell(lf->fp); fgets(buffer, OS_MAXSTR, lf->fp) && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+        rbytes = ftell(lf->fp) - offset;
         lines++;
-        if ((p = strchr(buffer, '\n')))
-            *p = '\0';
+
+        if (buffer[rbytes - 1] == '\n')
+            buffer[rbytes - 1] = '\0';
         else {
-            if (strlen(buffer) == OS_MAXSTR - 1) {
+            if (rbytes == OS_MAXSTR - 1) {
                 // Message too large, discard line
-                while (fgets(buffer, OS_MAXSTR, lf->fp) && !strchr(buffer, '\n'));
+                for (offset += rbytes; fgets(buffer, OS_MAXSTR, lf->fp); offset += rbytes) {
+                    rbytes = ftell(lf->fp) - offset;
+
+                    if (buffer[rbytes - 1] == '\n') {
+                        break;
+                    }
+                }
             } else if (feof(lf->fp)) {
-                mdebug1("Message not complete. Trying again: '%s'", buffer);
+                mdebug2("Message not complete. Trying again: '%s'", buffer);
 
                 if (fseek(lf->fp, offset, SEEK_SET) < 0) {
                     merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
-                    break;
                 }
             }
 
