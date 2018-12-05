@@ -4,7 +4,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import itertools
-import json
 import logging
 import argparse
 import sys
@@ -38,11 +37,14 @@ def __print_table(data, headers, show_header=False):
             table_str += header_str
     table_str += header_str
 
-    print (table_str)
+    print(table_str)
 
 
 async def print_agents(filter_status, filter_node):
-    pass
+    result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
+    headers = ['ID', 'IP', 'Name', 'Status', 'Node name']
+    data = map(lambda x: list(x.values()), result['data']['items'])
+    __print_table(data, headers, True)
 
 
 async def print_nodes(filter_node):

@@ -9,6 +9,11 @@ import uvloop
 
 class LocalClientHandler(client.AbstractClient):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.response_available = asyncio.Event()
+        self.response = b''
+
     def connection_made(self, transport):
         """
         Defines process of connecting to the server
@@ -16,6 +21,14 @@ class LocalClientHandler(client.AbstractClient):
         :param transport: socket to write data on
         """
         self.transport = transport
+
+    def process_request(self, command: bytes, data: bytes):
+        if command == b'dapi_res':
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Response received'
+        else:
+            return super().process_request(command, data)
 
 
 class LocalClient(client.AbstractClientManager):
@@ -32,7 +45,11 @@ class LocalClient(client.AbstractClientManager):
         if result.startswith(b'Error'):
             self.request_result = {'error': 1000, 'message': result}
         else:
-            self.request_result = json.loads(result)
+            if command == b'dapi':
+                await self.client.response_available.wait()
+                self.request_result = json.loads(self.client.response)
+            else:
+                self.request_result = json.loads(result)
         self.client.close()
 
     async def start(self):
@@ -43,8 +60,9 @@ class LocalClient(client.AbstractClientManager):
         on_con_lost = loop.create_future()
 
         transport, protocol = await loop.create_unix_connection(
-                            protocol_factory=lambda: LocalClientHandler(loop, on_con_lost, self.name,
-                                                                        self.configuration['key'], self.logger),
+                            protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
+                                                                        name=self.name, logger=self.logger,
+                                                                        fernet_key=self.configuration['key']),
                             path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
 
         self.client = protocol

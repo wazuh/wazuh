@@ -6,6 +6,7 @@ from typing import Tuple
 import json
 import random
 from wazuh.cluster import server, common
+from wazuh.cluster.dapi import dapi
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -30,6 +31,9 @@ class LocalServerHandler(server.AbstractServerHandler):
             return self.get_nodes(data)
         elif command == b'get_health':
             return self.get_health(data)
+        elif command == b'dapi':
+            self.server.dapi.add_request(self.name.encode() + b' ' + data)
+            return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
 
@@ -48,6 +52,9 @@ class LocalServer(server.AbstractServer):
     def __init__(self, node: server.AbstractServer, **kwargs):
         super().__init__(**kwargs, tag="Local Server")
         self.node = node
+        self.node.local_server = self
+        self.dapi = dapi.APIRequestQueue(server=self)
+        self.tasks.append(self.dapi.run)
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -67,6 +74,8 @@ class LocalServer(server.AbstractServer):
 
         self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))
 
+        self.tasks.append(server.serve_forever)
+
         async with server:
             # use asyncio.gather to run both tasks in parallel
-            await asyncio.gather(server.serve_forever(), self.check_clients_keepalive())
+            await asyncio.gather(*map(lambda x: x(), self.tasks))

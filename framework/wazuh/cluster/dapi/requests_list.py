@@ -231,15 +231,15 @@ functions = {
         'type': 'local_any'
     },
     '/cluster/nodes': {
-        'function': cluster_control.get_nodes_api,
+        'function': cluster_control.get_nodes,
         'type': 'local_master'
     },
     '/cluster/nodes/:node_name': {
-        'function': cluster_control.get_nodes_api,
+        'function': cluster_control.get_nodes,
         'type': 'local_master'
     },
     '/cluster/healthcheck': {
-        'function': cluster_control.get_healthcheck,
+        'function': cluster_control.get_health,
         'type': 'local_master'
     },
     '/cluster/:node_id/info': {
