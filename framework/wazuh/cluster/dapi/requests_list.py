@@ -1,13 +1,5 @@
-#!/usr/bin/env python
-
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-#!/usr/bin/env python
-
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 from wazuh import Wazuh
 from wazuh import common
 from wazuh.agent import Agent
