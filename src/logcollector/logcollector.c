@@ -19,7 +19,7 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 #ifndef WIN32
-static int check_pattern_expand();
+static int check_pattern_expand(int do_seek);
 #endif
 
 /* Global variables */
@@ -91,7 +91,7 @@ void LogCollectorStart()
     /* To check for inode changes */
     struct stat tmp_stat;
 
-    check_pattern_expand();
+    check_pattern_expand(1);
 
     /* Set the files mutexes */
     w_set_file_mutexes();
@@ -528,7 +528,7 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        if (handle_file(i, j, 1, 1) < 0) {
+                        if (handle_file(i, j, 0, 1) < 0) {
                             current->ign++;
                             mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                         }
@@ -539,7 +539,7 @@ void LogCollectorStart()
 
 #ifndef WIN32
             // Check for new files to be expanded
-            if (check_pattern_expand()) {
+            if (check_pattern_expand(0)) {
                 /* Remove duplicate entries */
                 for (i = 0, j = -1;; i++) {
                     if (f_control = update_current(&current, &i, &j), f_control) {
@@ -909,7 +909,7 @@ void set_read(logreader *current, int i, int j) {
 }
 
 #ifndef WIN32
-int check_pattern_expand() {
+int check_pattern_expand(int do_seek) {
     glob_t g;
     int err;
     int glob_offset;
@@ -959,7 +959,7 @@ int check_pattern_expand() {
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
-                    } else if (handle_file(i, j, 1, 1) ) {
+                    } else if (handle_file(i, j, do_seek, 1) ) {
                         globs[j].gfiles[i].ign++;
                     }
                 }
@@ -1401,7 +1401,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         current->fp = NULL;
 
                         /* Try to open it again */
-                        if (handle_file(i, j, 1, 1)) {
+                        if (handle_file(i, j, 0, 1)) {
                             current->ign++;
                             mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             pthread_mutex_unlock (&current->mutex);
