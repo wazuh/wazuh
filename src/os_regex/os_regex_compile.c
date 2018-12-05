@@ -331,7 +331,6 @@ int OSRegex_Compile(const char *pattern, OSRegex *reg, int flags)
 
 compile_error:
     /* Error handling */
-	merror("Error handling regex");
     if (new_str_free) {
         free(new_str_free);
     }

@@ -250,7 +250,10 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #ifdef CLIENT
                         char *agentname = os_read_agent_name();
 
-                        if (!agentname) {
+                        if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                            mwarn("Agent name filter exceeds limit (%d)", OS_PATTERN_MAXSIZE);
+                            passed_agent_test = 0;
+                        } else if (!agentname) {
                             passed_agent_test = 0;
                         } else {
                             if (!OS_Match2(node[i]->values[attrs], agentname)) {
