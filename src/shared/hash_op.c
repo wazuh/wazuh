@@ -554,29 +554,32 @@ OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current
     return NULL;
 }
 
-void *OSHash_Clean(OSHash *self){
-    unsigned int i = 0;
+void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
+    unsigned int *i;
+    os_calloc(1, sizeof(unsigned int *), i);
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
-    /* Free each entry */
-    while (i <= self->rows) {
-        curr_node = self->table[i];
-        next_node = curr_node;
-        while (next_node) {
-            next_node = next_node->next;
-            if(curr_node->data)
-                free(curr_node->data);
-            if(curr_node->key)
+    curr_node = OSHash_Begin(self, i);
+    if(curr_node){
+        do {
+            next_node = OSHash_Next(self, i, curr_node);
+            if(curr_node->key){
                 free(curr_node->key);
-            if(curr_node)
-                free(curr_node);
+            }
+            if(curr_node->data){
+                cleaner(curr_node->data);
+            }
+            free(curr_node);
             curr_node = next_node;
-        }
-        i++;
+        } while (curr_node);
     }
 
+    os_free(i);
+
     /* Free the hash table */
+    free(self->table);
     pthread_rwlock_destroy(&self->mutex);
-    return (NULL);
+    free(self);
+    return NULL;
 }

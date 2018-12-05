@@ -73,6 +73,6 @@ OSHash *OSHash_Duplicate_ex(const OSHash *hash);
 
 OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
 OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
-void *OSHash_Clean(OSHash *self);
+void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 
 #endif
