@@ -151,7 +151,7 @@ void LogCollectorStart()
             minfo(READING_EVTLOG, current->file);
             win_start_event_channel(current->file, current->future, 0, current->query);
 #else
-            mwarn("eventchannel not available on this version of OSSEC");
+            mwarn("eventchannel not available on this version of Windows");
 #endif
 
 #endif
@@ -165,7 +165,7 @@ void LogCollectorStart()
             minfo(READING_EVTLOG, current->file);
             win_start_event_channel(current->file, current->future, 1, current->query);
 #else
-            mwarn("eventchannel not available on this version of OSSEC");
+            mwarn("eventchannel not available on this version of Windows");
 #endif
 
 #endif
