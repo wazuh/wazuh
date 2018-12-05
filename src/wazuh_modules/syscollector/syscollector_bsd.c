@@ -40,6 +40,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
     struct dirent *de;
     DIR *dr;
     char path[PATH_LENGTH];
@@ -48,15 +51,22 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     int usec = 1000000 / wm_max_eps;
 
     // Set timestamp
-
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
+
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
@@ -313,6 +323,9 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
     int status;
 
     // Define time to sleep between messages sent
@@ -320,12 +333,20 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
+
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
@@ -414,15 +435,25 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
     if (random_id < 0)
         random_id = -random_id;
@@ -681,20 +712,30 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     int family;
     int random_id = os_random();
     char *timestamp;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
     time_t now;
     struct tm localtm;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
+    
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+    
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
     if (random_id < 0)
         random_id = -random_id;

@@ -253,15 +253,25 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
 	HANDLE hdle;
 	int privilege_enabled = 0;
@@ -681,15 +691,25 @@ void sys_programs_windows(const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
     // Set random ID for each scan
 
@@ -1090,15 +1110,25 @@ void sys_hw_windows(const char* LOCATION){
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
     // Set random ID for each scan
 
@@ -1205,19 +1235,28 @@ void sys_os_windows(const char* LOCATION){
     char *string;
 
     // Set timestamp
-
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
     // Set random ID for each scan
 
@@ -1288,15 +1327,25 @@ void sys_network_windows(const char* LOCATION){
             char *timestamp;
             time_t now;
             struct tm localtm;
+            struct tm *utctime;
+            int timezone;
+            int timezone_minutes;
 
             now = time(NULL);
             localtime_r(&now, &localtm);
+            utctime = gmtime(&now);
+
+            timezone = localtm.tm_hour - utctime->tm_hour;
+            if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+                timezone = 24 + timezone;
+            }
+            timezone_minutes = localtm.tm_min - utctime->tm_min;
 
             os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-            snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+            snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
                     localtm.tm_year + 1900, localtm.tm_mon + 1,
-                    localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+                    localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
             DWORD dwRetVal = 0;
 
@@ -1553,15 +1602,25 @@ void sys_proc_windows(const char* LOCATION) {
     char *timestamp;
     time_t now;
     struct tm localtm;
+    struct tm *utctime;
+    int timezone;
+    int timezone_minutes;
 
     now = time(NULL);
     localtime_r(&now, &localtm);
+    utctime = gmtime(&now);
+
+    timezone = localtm.tm_hour - utctime->tm_hour;
+    if (utctime->tm_mday<localtm.tm_mday && timezone < 0) {
+        timezone = 24 + timezone;
+    }
+    timezone_minutes = localtm.tm_min - utctime->tm_min;
 
     os_calloc(TIME_LENGTH, sizeof(char), timestamp);
 
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d %02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec, timezone,timezone_minutes);
 
     // Set random ID for each scan
 
