@@ -14,7 +14,6 @@
 
 #include "os_regex.h"
 #include "os_regex_internal.h"
-#include "shared.h"
 
 /* Compile a pattern to be used later
  * Allowed flags are:

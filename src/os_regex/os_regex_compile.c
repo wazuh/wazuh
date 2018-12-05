@@ -15,7 +15,6 @@
 #include <pthread.h>
 #include "shared.h"
 #include "os_regex_internal.h"
-#include "shared.h"
 
 
 /* Compile a regular expression to be used later
