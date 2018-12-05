@@ -74,6 +74,11 @@ static int poll_interval_time = 0;
 /* This variable is used to prevent flooding when deleting manually groups folders */
 static int reported_non_existing_group = 0;
 
+// Frees data in m_hash table
+void cleaner(void* data){
+    os_free(data);
+}
+
 /* Save a control message received from an agent
  * read_controlmsg (other thread) is going to deal with it
  * (only if message changed)
@@ -563,11 +568,12 @@ static void c_files()
             groups = NULL;
         }
 
-        if(should_clean == 1){
-            // Clean hash table
-            OSHash_Free(m_hash);
-            m_hash = OSHash_Create();
+        // Clean hash table
+        // OSHash_Free(m_hash);
+        OSHash_Clean(m_hash, cleaner);
+        m_hash = OSHash_Create();
 
+        if(should_clean == 1){
             reported_non_existing_group = 0;
 
             dp = opendir(MULTIGROUPS_DIR);
@@ -676,10 +682,14 @@ static void c_files()
             }
             fclose(fp);
 
+            char *endl = strchr(groups_info, '\n');
+            if (endl) {
+                *endl = '\0';
+            }
+
             OS_SHA256_String(groups_info,multi_group_hash);
             strncpy(_hash,multi_group_hash,8);
-
-            if(OSHash_Add(m_hash, groups_info,_hash)!= 2){
+            if(OSHash_Add_ex(m_hash, groups_info, strdup(_hash)) != 2){
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
@@ -695,6 +705,7 @@ static void c_files()
             os_strdup(my_node->data, data);
         }
         else {
+            free(key);
             return;
         }
 
@@ -730,7 +741,7 @@ static void c_files()
         os_calloc(1, sizeof(group_t), groups[p_size]);
         groups[p_size]->group = strdup(my_node->key);
         groups[p_size + 1] = NULL;
-        c_multi_group(key,&groups[p_size]->f_sum,_hash);
+        c_multi_group(key,&groups[p_size]->f_sum,data);
         free_strarray(subdir);
         free(key);
         free(data);
@@ -813,7 +824,7 @@ int send_file_toagent(const char *agent_id, const char *group, const char *name,
 
     fp = fopen(file, "r");
     if (!fp) {
-        merror(FOPEN_ERROR, file, errno, strerror(errno));
+        mdebug1(FOPEN_ERROR, file, errno, strerror(errno));
         return (-1);
     }
 

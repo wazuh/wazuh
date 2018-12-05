@@ -1361,7 +1361,7 @@ class Agent:
         Checks if the group exists
 
         :param group_id: Group ID.
-        :return: String of groups if group exists, False otherwise
+        :return: String of groups if group exists, an empty list otherwise
         """
 
         all_multigroups = []
@@ -1373,7 +1373,7 @@ class Agent:
         if group_id in all_multigroups:
             return all_multigroups
         else:
-            return False
+            return []
 
 
     @staticmethod
