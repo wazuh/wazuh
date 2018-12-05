@@ -18,11 +18,13 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
     int i;
-    char *p, *jsonParsed;
+    char *jsonParsed;
     char str[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
     cJSON * obj;
+    long offset;
+    long rbytes;
 
     str[OS_MAXSTR] = '\0';
     *rc = 0;
@@ -30,34 +32,37 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
-
+    for (offset = ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+        rbytes = ftell(lf->fp) - offset;
         lines++;
+
         /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
-            *p = '\0';
+        if (str[rbytes - 1] == '\n') {
+            str[rbytes - 1] = '\0';
         }
 
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)) {
+        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
         } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
-            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
             fsetpos(lf->fp, &fp_pos);
             break;
         }
 
 #ifdef WIN32
+        char * p;
+
         if ((p = strrchr(str, '\r')) != NULL) {
             *p = '\0';
         }
 
         /* Look for empty string (only on Windows) */
-        if (strlen(str) <= 2) {
+        if (rbytes <= 2) {
             fgetpos(lf->fp, &fp_pos);
             continue;
         }
@@ -78,7 +83,7 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
           cJSON_Delete(obj);
         } else {
           cJSON_Delete(obj);
-          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "", lf->file);
+          mdebug1("Line '%.*s'%s read from '%s' is not a JSON object.", sample_log_length, str, rbytes > sample_log_length ? "..." : "", lf->file);
           continue;
         }
 
@@ -99,15 +104,17 @@ void *read_json(logreader *lf, int *rc, int drop_it) {
             snprintf(buf, OUTSIZE, "%s", str);
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
             }
 
-            while (fgets(str, OS_MAXSTR - 2, lf->fp) != NULL) {
+            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+                rbytes = ftell(lf->fp) - offset;
+
                 /* Get the last occurrence of \n */
-                if (strrchr(str, '\n') != NULL) {
+                if (str[rbytes - 1] == '\n') {
                     break;
                 }
             }
