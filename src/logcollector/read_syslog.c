@@ -86,10 +86,6 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         if (__ms) {
             // strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)
             // truncate str before logging to ossec.log
-#define OUTSIZE 4096
-            char buf[OUTSIZE + 1];
-            buf[OUTSIZE] = '\0';
-            snprintf(buf, OUTSIZE, "%s", str);
 
             if (!__ms_reported) {
                 merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
