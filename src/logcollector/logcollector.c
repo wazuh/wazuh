@@ -295,7 +295,6 @@ void LogCollectorStart()
                             minfo(FORGET_FILE, current->file);
                             current->exists = 0;
                             current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
 
                             // Only expanded files that have been deleted will be forgotten
 
@@ -307,6 +306,8 @@ void LogCollectorStart()
                                     i--;
                                     continue;
                                 }
+                            } else {
+                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             }
                         }
                     }
@@ -372,7 +373,7 @@ void LogCollectorStart()
                                 current->exists = 0;
                             }
                             current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+
                             // Only expanded files that have been deleted will be forgotten
                             if (j >= 0) {
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
@@ -382,6 +383,8 @@ void LogCollectorStart()
                                     i--;
                                     continue;
                                 }
+                            } else {
+                                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             }
                         } else {
                             merror(FOPEN_ERROR, current->file, errno, strerror(errno));
