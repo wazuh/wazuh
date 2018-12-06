@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - Add options to detect changes attributes and file permissions for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
 - Add a manifest to run `agent-auth.exe` with elevated privileges. ([#1998](https://github.com/wazuh/wazuh/pull/1998))
 - Get process inventory for Windows natively. ([#1760](https://github.com/wazuh/wazuh/pull/1760))
+- IPv6 support for remoted and authd ([#2007](https://github.com/wazuh/wazuh/pull/2007))
 
 ### Changed
 
