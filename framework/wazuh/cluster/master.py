@@ -2,6 +2,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import json
+import shutil
 from datetime import datetime
 import functools
 import operator
@@ -133,7 +134,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
-        self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
+        self.logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         self.process_files_from_worker(files_checksums, decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
@@ -160,7 +161,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
-        worker_files_ko, counts = cluster.compare_files(self.server.integrity_control, files_checksums)
+        worker_files_ko, counts = cluster.compare_files(self.server.integrity_control, files_checksums, self.name)
 
         # health check
         self.sync_integrity_status['total_files'] = counts
@@ -258,6 +259,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             for filename, data in files_checksums.items():
                 if data['merged']:
                     for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
+                                                                                      self.name,
                                                                                       decompressed_files_path,
                                                                                       data['merge_name']):
                         n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data,
@@ -272,6 +274,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
                 else:
                     n_errors, _ = update_file(n_errors, filename, data)
+
+            shutil.rmtree(decompressed_files_path)
 
         except Exception as e:
             self.logger.error("Error updating worker files: '{}'.".format(e))
@@ -311,7 +315,7 @@ class Master(server.AbstractServer):
         while True:
             self.logger.debug("Calculating file integrity.")
             try:
-                self.integrity_control = cluster.get_files_status('master')
+                self.integrity_control = cluster.get_files_status('master', self.configuration['node_name'])
             except Exception as e:
                 self.logger.error("Error calculating file integrity: {}".format(e))
             self.logger.debug("File integrity calculated.")

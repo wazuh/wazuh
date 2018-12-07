@@ -494,7 +494,6 @@ class WazuhCommon:
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
-        self.get_logger().debug(task_and_file_names)
         task_name, filename = task_and_file_names.split(' ', 1)
         self.sync_tasks[task_name].filename = filename
         self.sync_tasks[task_name].received_information.set()

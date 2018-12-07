@@ -156,7 +156,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     walk_files = {}
 
     try:
-        entries = listdir(dirname)
+        entries = listdir(common.ossec_path + dirname)
     except OSError as e:
         raise WazuhException(3015, str(e))
 
@@ -167,31 +167,30 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         full_path = path.join(dirname, entry)
         if entry in files or files == ["all"]:
 
-            if not path.isdir(full_path):
-                file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
+            if not path.isdir(common.ossec_path + full_path):
+                file_mod_time = datetime.utcfromtimestamp(stat(common.ossec_path + full_path).st_mtime)
 
                 if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
                     continue
 
-                new_key = full_path.replace(common.ossec_path, "")
-                walk_files[new_key] = {"mod_time" : str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
+                walk_files[full_path] = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
                 if '.merged' in entry:
-                    walk_files[new_key]['merged'] = True
-                    walk_files[new_key]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
-                    walk_files[new_key]['merge_name'] = '/queue/cluster/' + entry
+                    walk_files[full_path]['merged'] = True
+                    walk_files[full_path]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                    walk_files[full_path]['merge_name'] = dirname + '/' + entry
                 else:
-                    walk_files[new_key]['merged'] = False
+                    walk_files[full_path]['merged'] = False
 
                 if get_md5:
-                    walk_files[new_key]['md5'] = md5(full_path)
+                    walk_files[full_path]['md5'] = md5(common.ossec_path + full_path)
 
-        if recursive and path.isdir(full_path):
+        if recursive and path.isdir(common.ossec_path + full_path):
             walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5, whoami))
 
     return walk_files
 
 
-def get_files_status(node_type, get_md5=True):
+def get_files_status(node_type, node_name, get_md5=True):
 
     cluster_items = get_cluster_items()
 
@@ -202,14 +201,15 @@ def get_files_status(node_type, get_md5=True):
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info",
+                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info", node_name=node_name,
                                                                time_limit_seconds=cluster_items\
                                                                         ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
-                fullpath = common.ossec_path + path.dirname(merged_path)
+
+                fullpath = path.dirname(merged_path)
             else:
-                fullpath = common.ossec_path + file_path
+                fullpath = file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                                             cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
@@ -228,7 +228,7 @@ def compress_files(name, list_path, cluster_control_json=None):
         if list_path:
             for f in list_path:
                 try:
-                    zf.write(filename = common.ossec_path + f, arcname=f)
+                    zf.write(filename=common.ossec_path + f, arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhException(3001, str(e))
                 except Exception as e:
@@ -245,9 +245,7 @@ def compress_files(name, list_path, cluster_control_json=None):
 def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     ko_files = ""
     zip_dir = zip_path + 'dir'
-    logger.info("A")
     mkdir_with_mode(zip_dir)
-    logger.info("B")
     with zipfile.ZipFile(zip_path) as zipf:
         for name in zipf.namelist():
             if name == ko_files_name:
@@ -351,7 +349,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         rename(f_temp, dst_path)
 
 
-def compare_files(good_files, check_files):
+def compare_files(good_files, check_files, node_name):
     def split_on_condition(seq, condition):
         """
         Splits a sequence into two generators based on a conditon
@@ -376,12 +374,18 @@ def compare_files(good_files, check_files):
     all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
     shared_e_v, shared = split_on_condition(all_shared,
                                             lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
-    # merge all shared extra valid files into a single one.
-    # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded agent-groups
-    shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
-                                       time_limit_seconds=0)[1],
-                      {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
-    shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
+    shared_e_v = list(shared_e_v)
+    if shared_e_v:
+        # merge all shared extra valid files into a single one.
+        # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded
+        # agent-groups
+        shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
+                                           node_name=node_name, time_limit_seconds=0)[1],
+                          {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
+
+        shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
+    else:
+        shared_files = {key: good_files[key] for key in shared}
 
     files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files, 'extra_valid': extra_valid_files}
     count = {'missing': len(missing_files), 'extra': len(extra_files), 'extra_valid': len(extra_valid_files),
@@ -499,68 +503,61 @@ def run_logtest(synchronized=False):
 #
 # Agents-info
 #
-
-def merge_agent_info(merge_type, files=None, file_type="", time_limit_seconds=1800):
+def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=1800):
     if time_limit_seconds:
         min_mtime = time() - time_limit_seconds
     merge_path = "{}/queue/{}".format(common.ossec_path, merge_type)
-    output_file = "/queue/cluster/{}{}.merged".format(merge_type, file_type)
-    o_f = None
+    output_file = "/queue/cluster/{}/{}{}.merged".format(node_name, merge_type, file_type)
     files_to_send = 0
     files = "all" if files is None else {path.basename(f) for f in files}
 
-    for filename in os.listdir(merge_path):
-        if files != "all" and filename not in files:
-            continue
+    with open(common.ossec_path + output_file, 'w') as o_f:
+        for filename in os.listdir(merge_path):
+            if files != "all" and filename not in files:
+                continue
 
-        full_path = "{0}/{1}".format(merge_path, filename)
-        stat_data = stat(full_path)
+            full_path = "{0}/{1}".format(merge_path, filename)
+            stat_data = stat(full_path)
 
-        if time_limit_seconds and stat_data.st_mtime < min_mtime:
-            continue
+            if time_limit_seconds and stat_data.st_mtime < min_mtime:
+                continue
 
-        files_to_send += 1
-        if not o_f:
-            o_f = open(common.ossec_path + output_file, 'w')
+            files_to_send += 1
+            if o_f is None:
+                o_f = open(common.ossec_path + output_file, 'w')
 
-        header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path,''),
-                datetime.utcfromtimestamp(stat_data.st_mtime))
-        with open(full_path, 'r') as f:
-            data = f.read()
+            header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path, ''),
+                                       datetime.utcfromtimestamp(stat_data.st_mtime))
+            with open(full_path, 'r') as f:
+                data = f.read()
 
-        o_f.write(header + '\n' + data)
-
-    if o_f:
-        o_f.close()
+            o_f.write(header + '\n' + data)
 
     return files_to_send, output_file
 
 
-def unmerge_agent_info(merge_type, path_file, filename):
-    src_agent_info_path = path.abspath("{0}/{1}".format(path_file, filename))
-    dst_agent_info_path = "/queue/{}".format(merge_type)
+def unmerge_agent_info(merge_type, node_name, path_file, filename):
+    src_agent_info_path = path.abspath("{}/{}".format(path_file, filename))
+    dst_agent_info_path = "/queue/{}/{}".format(node_name, merge_type)
 
     bytes_read = 0
     total_bytes = os.stat(src_agent_info_path).st_size
-    src_f = open(src_agent_info_path, 'rb')
+    with open(src_agent_info_path, 'rb') as src_f:
+        while bytes_read < total_bytes:
+            # read header
+            header = src_f.readline().decode()
+            bytes_read += len(header)
+            try:
+                st_size, name, st_mtime = header[:-1].split(' ', 2)
+                st_size = int(st_size)
+            except ValueError:
+                raise Exception("Malformed agent-info.merged file")
 
-    while bytes_read < total_bytes:
-        # read header
-        header = src_f.readline()
-        bytes_read += len(header)
-        try:
-            st_size, name, st_mtime = header[:-1].split(b' ',2)
-            st_size = int(st_size)
-        except ValueError:
-            raise Exception("Malformed agent-info.merged file")
+            # read data
+            data = src_f.read(st_size)
+            bytes_read += st_size
 
-        # read data
-        data = src_f.read(st_size)
-        bytes_read += st_size
-
-        yield dst_agent_info_path + '/' + name.decode(), data, st_mtime
-
-    src_f.close()
+            yield dst_agent_info_path + '/' + name, data, st_mtime
 
 
 class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
