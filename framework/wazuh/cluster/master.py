@@ -149,7 +149,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
-        self.logger.critical(len(self.sync_tasks))
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
 
         self.logger.info("Waiting to receive zip file from worker")
