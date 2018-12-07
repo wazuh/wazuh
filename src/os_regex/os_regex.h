@@ -21,7 +21,7 @@
 #define OS_CASE_SENSITIVE       0000400
 
 /* Pattern maximum size */
-#define OS_PATTERN_MAXSIZE      20479
+#define OS_PATTERN_MAXSIZE      20480
 
 /* Error codes */
 #define OS_REGEX_REG_NULL       1

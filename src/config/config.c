@@ -250,11 +250,13 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #ifdef CLIENT
                         char *agentname = os_read_agent_name();
 
-                        if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
-                            mwarn("Agent name filter exceeds limit (%d)", OS_PATTERN_MAXSIZE);
+                        if (!agentname) {
                             passed_agent_test = 0;
-                        } else if (!agentname) {
+                            merror("Reading shared configuration. Unable to retrieve the agent name.");
+                        } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                            mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", strlen(node[i]->values[attrs]), OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
+                            free(agentname);
                         } else {
                             if (!OS_Match2(node[i]->values[attrs], agentname)) {
                                 passed_agent_test = 0;
@@ -266,22 +268,27 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
 #ifdef CLIENT
                         const char *agentos = getuname();
 
-                        if (agentos) {
-                            if (!OS_Match2(node[i]->values[attrs], agentos)) {
-                                passed_agent_test = 0;
-                            }
-                        } else {
+                        if (!agentos) {
                             passed_agent_test = 0;
-                            merror("Unable to retrieve uname.");
+                            merror("Reading shared configuration. Unable to retrieve the agent OS.");
+                        } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                            mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", strlen(node[i]->values[attrs]), OS_PATTERN_MAXSIZE);
+                            passed_agent_test = 0;
+                        } else if (!OS_Match2(node[i]->values[attrs], agentos)) {
+                            passed_agent_test = 0;
                         }
 #endif
                     } else if (strcmp(xml_agent_profile, node[i]->attributes[attrs]) == 0) {
 #ifdef CLIENT
                         char *agentprofile = os_read_agent_profile();
-                        mdebug2("Read agent config profile name [%s]", agentprofile);
 
                         if (!agentprofile) {
                             passed_agent_test = 0;
+                            merror("Reading shared configuration. Unable to retrieve agent profile.");
+                        } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
+                            mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", strlen(node[i]->values[attrs]), OS_PATTERN_MAXSIZE);
+                            passed_agent_test = 0;
+                            free(agentprofile);
                         } else {
                             /* match the profile name of this <agent_config> section
                              * with a comma separated list of values in agent's

@@ -15,6 +15,7 @@
 #include "os_regex.h"
 #include "os_regex_internal.h"
 
+
 /* Compile a pattern to be used later
  * Allowed flags are:
  *      - OS_CASE_SENSITIVE
@@ -183,6 +184,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags)
 
 compile_error:
     /* Error handling */
+
     if (new_str_free) {
         free(new_str_free);
     }
