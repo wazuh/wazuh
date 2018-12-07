@@ -11,6 +11,7 @@
  * Monitor some files and forward the output to our analysis system
  */
 
+#include "shared.h"
 #include <sys/types.h>
 #include <sys/time.h>
 #include <stdio.h>
@@ -26,7 +27,6 @@
 static void help_logcollector(void) __attribute__((noreturn));
 
 int lc_debug_level;
-rlim_t nofile;
 
 /* Print help statement */
 static void help_logcollector()
