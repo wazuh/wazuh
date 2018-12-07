@@ -78,7 +78,7 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             wm_osquery_pack_t * pack;
 
             if (!(nodes[i]->attributes && *nodes[i]->attributes) || strcmp(*nodes[i]->attributes, XML_PACKNAME)) {
-                merror("No such attribute '%s' in osquery element <%s>", XML_PACKNAME, XML_PACK);
+                merror("No such attribute '%s' in osquery element <%s>", *nodes[i]->attributes, XML_PACK);
                 return OS_INVALID;
             }
 

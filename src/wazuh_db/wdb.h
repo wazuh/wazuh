@@ -187,7 +187,7 @@ int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group);
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
 
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name);
@@ -282,6 +282,9 @@ int* wdb_get_all_agents();
 
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();
+
+/* Get the agent first registration date */
+char *get_agent_date_added(int agent_id);
 
 /* Find agent by name and address. Returns ID if success or -1 on failure. */
 int wdb_find_agent(const char *name, const char *ip);

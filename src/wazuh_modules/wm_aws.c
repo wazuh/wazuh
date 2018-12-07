@@ -48,9 +48,15 @@ void* wm_aws_main(wm_aws *aws_config) {
     if (!aws_config->run_on_start) {
         time_start = time(NULL);
 
+        // On first run, take into account the interval of time specified
+        if (aws_config->state.next_time == 0) {
+            aws_config->state.next_time = time_start + aws_config->interval;
+        }
+
         if (aws_config->state.next_time > time_start) {
             mtinfo(WM_AWS_LOGTAG, "Waiting interval to start fetching.");
-            sleep(aws_config->state.next_time - time_start);
+            time_sleep = aws_config->state.next_time - time_start;
+            wm_delay(1000 * time_sleep);
         }
     }
 
@@ -92,7 +98,7 @@ void* wm_aws_main(wm_aws *aws_config) {
         }
 
         // If time_sleep=0, yield CPU
-        sleep(time_sleep);
+        wm_delay(1000 * time_sleep);
     }
 
     return NULL;
@@ -159,7 +165,7 @@ void wm_aws_setup(wm_aws *_aws_config) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        sleep(WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_AWS_LOGTAG, "Can't connect to queue.");

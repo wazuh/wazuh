@@ -54,9 +54,15 @@ void* wm_oscap_main(wm_oscap *oscap) {
     if (!oscap->flags.scan_on_start) {
         time_start = time(NULL);
 
+        // On first run, take into account the interval of time specified
+        if (oscap->state.next_time == 0) {
+            oscap->state.next_time = time_start + oscap->interval;
+        }
+
         if (oscap->state.next_time > time_start) {
             mtinfo(WM_OSCAP_LOGTAG, "Waiting for turn to evaluate.");
-            sleep(oscap->state.next_time - time_start);
+            time_sleep = oscap->state.next_time - time_start;
+            wm_delay(1000 * time_sleep);
         }
     }
 
@@ -89,7 +95,7 @@ void* wm_oscap_main(wm_oscap *oscap) {
             mterror(WM_OSCAP_LOGTAG, "Couldn't save running state.");
 
         // If time_sleep=0, yield CPU
-        sleep(time_sleep);
+        wm_delay(1000 * time_sleep);
     }
 
     return NULL;
@@ -114,7 +120,7 @@ void wm_oscap_setup(wm_oscap *_oscap) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        sleep(WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_OSCAP_LOGTAG, "Can't connect to queue.");
@@ -205,8 +211,13 @@ void wm_oscap_run(wm_oscap_eval *eval) {
     switch (wm_exec(command, &output, &status, eval->timeout, NULL)) {
     case 0:
         if (status > 0) {
-            mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
-            mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+            if (status != 2) {
+                mtwarn(WM_OSCAP_LOGTAG, "Ignoring content '%s' due to error (%d).", eval->path, status);
+                mtdebug2(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+            } else {
+                mterror(WM_OSCAP_LOGTAG, "OUTPUT: %s", output);
+                pthread_exit(NULL);
+            }
             eval->flags.error = 1;
         }
 

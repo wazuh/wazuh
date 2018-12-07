@@ -108,9 +108,9 @@ if __name__ == "__main__":
     try:
         # Read arguments
         bad_arguments = False
-        if len(sys.argv) >= 2:
-            alertfile=sys.argv[1]
-            msg = '{0} {1} {2} {3}'.format(now, sys.argv[1], sys.argv[2], sys.argv[3])
+        if len(sys.argv) >= 4:
+            msg = '{0} {1} {2} {3} {4}'.format(now, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else '')
+            debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
         else:
             msg = '{0} Wrong arguments'.format(now)
             bad_arguments = True

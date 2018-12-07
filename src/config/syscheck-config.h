@@ -31,6 +31,7 @@
 #define CHECK_INODE         0001000
 #define CHECK_SHA256SUM     0002000
 #define CHECK_WHODATA       0004000
+#define CHECK_ATTRS         0010000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
@@ -49,6 +50,9 @@
 #define WD_CHECK_REALTIME   0x0000004
 #define WD_IGNORE_REST      0x0000008
 #endif
+
+#define SK_CONF_UNPARSED -2
+#define SK_CONF_UNDEFINED -1
 
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
@@ -81,6 +85,7 @@ typedef struct whodata_evt {
     char *audit_name;  // Linux
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
+    char *inode;  // Linux
     int ppid;  // Linux
 #ifndef WIN32
     unsigned int process_id;
@@ -165,8 +170,6 @@ typedef struct _config {
     int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
 
-    int remove_old_diff;            /* delete not monitored files history */
-
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */
 
@@ -208,11 +211,12 @@ typedef struct _config {
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
 #endif
 
-    char **audit_extra_key;                // Listen audit keys
+    char **audit_key;                // Listen audit keys
 
     OSHash *fp;
     OSHash *last_check;
     OSHash *local_hash;
+    OSHash *inode_hash;
 
     rtfim *realtime;
 

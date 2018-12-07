@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "log.h"
+#include "syscheck_op.h"
 #include "alerts.h"
 #include "getloglocation.h"
 #include "rules.h"
@@ -189,25 +190,26 @@ void OS_LogOutput(Eventinfo *lf)
             printf(" - Size: %s\n", lf->size_after);
         }
 
-        if (lf->perm_after){
-            printf(" - Permissions: %6o\n", lf->perm_after);
-        }
         if (lf->mtime_after) {
             printf(" - Date: %s", ctime(&lf->mtime_after));
         }
+
         if (lf->inode_after) {
             printf(" - Inode: %ld\n", lf->inode_after);
         }
+
         if (lf->owner_after && lf->uname_after) {
             if (strcmp(lf->uname_after, "") != 0) {
                 printf(" - User: %s (%s)\n", lf->uname_after, lf->owner_after);
             }
         }
+
         if (lf->gowner_after && lf->gname_after) {
             if (strcmp(lf->gname_after, "") != 0) {
                 printf(" - Group: %s (%s)\n", lf->gname_after, lf->gowner_after);
             }
         }
+
         if (lf->md5_after) {
             if (strcmp(lf->md5_after, "xxx") != 0 && strcmp(lf->md5_after, "") != 0) {
                 printf(" - MD5: %s\n", lf->md5_after);
@@ -226,6 +228,26 @@ void OS_LogOutput(Eventinfo *lf)
             }
         }
 
+        if (lf->attrs_after != 0) {
+            char *attributes_list;
+            os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
+            decode_win_attributes(attributes_list, lf->attrs_after);
+            printf(" - File attributes: %s\n", attributes_list);
+            free(attributes_list);
+        }
+
+        if (lf->perm_after){
+            printf(" - Permissions: %6o\n", lf->perm_after);
+        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            char *permissions_list;
+            int size;
+            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
+                os_realloc(permissions_list, size + 1, permissions_list);
+                printf(" - Permissions: \n%s", permissions_list);
+                free(permissions_list);
+            }
+        }
     }
 
     if (lf->filename && lf->sk_tag) {
@@ -353,9 +375,6 @@ void OS_Log(Eventinfo *lf)
             fprintf(_aflog, " - Size: %s\n", lf->size_after);
         }
 
-        if (lf->perm_after){
-            fprintf(_aflog, " - Permissions: %6o\n", lf->perm_after);
-        }
         if (lf->mtime_after) {
             fprintf(_aflog, " - Date: %s", ctime(&lf->mtime_after));
         }
@@ -390,6 +409,26 @@ void OS_Log(Eventinfo *lf)
             }
         }
 
+        if (lf->attrs_after != 0) {
+            char *attributes_list;
+            os_calloc(OS_SIZE_256 + 1, sizeof(char), attributes_list);
+            decode_win_attributes(attributes_list, lf->attrs_after);
+            fprintf(_aflog, " - File attributes: %s\n", attributes_list);
+            free(attributes_list);
+        }
+
+        if (lf->perm_after) {
+            fprintf(_aflog, " - Permissions: %6o\n", lf->perm_after);
+        } else if (lf->win_perm_after && *lf->win_perm_after != '\0') {
+            char *permissions_list;
+            int size;
+            os_calloc(OS_SIZE_20480 + 1, sizeof(char), permissions_list);
+            if (size = decode_win_permissions(permissions_list, OS_SIZE_20480, lf->win_perm_after, 0, NULL), size > 1) {
+                os_realloc(permissions_list, size + 1, permissions_list);
+                fprintf(_aflog, " - Permissions: \n%s", permissions_list);
+                free(permissions_list);
+            }
+        }
     }
 
     if (lf->filename && lf->sk_tag) {

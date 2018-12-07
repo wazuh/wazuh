@@ -82,7 +82,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
             return NULL;
         }
 
-        if (OSHash_Add(label_cache, path, data) < 2) {
+        if (OSHash_Add(label_cache, path, data) != 2) {
             merror("Couldn't store labels for agent %s (%s) on cache.", hostname, ip);
             labels_free(data->labels);
             free(data);

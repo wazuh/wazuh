@@ -74,7 +74,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(!integrator_config[s]->hookurl)
             {
                 integrator_config[s]->enabled = 0;
-                merror("Unable to enable integration for: '%s'. Missing hookurl URL.", integrator_config[s]->name);
+                merror("Unable to enable integration for: '%s'. Missing hook URL.", integrator_config[s]->name);
                 s++;
                 continue;
             }
@@ -383,7 +383,10 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
             if(temp_file_created == 1)
             {
-                snprintf(exec_full_cmd, 4095, "%s '%s' '%s' '%s' > /dev/null 2>&1", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl);
+                int dbg_lvl = isDebug();
+                snprintf(exec_full_cmd, 4095, "%s '%s' '%s' '%s' '%s'", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+                if (dbg_lvl <= 0) strncat(exec_full_cmd, " > /dev/null 2>&1", 17);
+				
                 mdebug2("Running: %s", exec_full_cmd);
                 if(system(exec_full_cmd) != 0)
                 {

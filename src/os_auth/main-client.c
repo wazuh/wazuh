@@ -36,7 +36,7 @@ static void help_agent_auth(void) __attribute__((noreturn));
 static void help_agent_auth()
 {
     print_header();
-    print_out("  %s: -[VhdtI] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-i IP address]", ARGV0);
+    print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
     print_out("    -V          Version and license message");
     print_out("    -h          This help message");
     print_out("    -d          Execute in debug mode. This parameter");
@@ -97,6 +97,9 @@ int main(int argc, char **argv)
 
 #ifdef WIN32
     WSADATA wsaData;
+
+    // Move to the directory where this executable lives in
+    w_ch_exec_dir();
 #endif
 
     /* Set the name */
@@ -256,6 +259,7 @@ int main(int argc, char **argv)
     if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
         merror_exit("WSAStartup() failed");
     }
+
 #endif /* WIN32 */
 
     /* Start up message */
@@ -375,9 +379,17 @@ int main(int argc, char **argv)
     }
 
     if(sender_ip){
-        char opt_buf[256] = {0};
-        snprintf(opt_buf,254," IP:'%s'",sender_ip);
-        strncat(buf,opt_buf,254);
+		/* Check if this is strictly an IP address using a regex */
+		if (OS_IsValidIP(sender_ip, NULL))
+		{
+			char opt_buf[256] = {0};
+			snprintf(opt_buf,254," IP:'%s'",sender_ip);
+			strncat(buf,opt_buf,254);
+		} else {
+			merror("Invalid IP address provided with '-I' option.");
+			free(buf);
+			exit(1);
+		}
     }
 
     if(use_src_ip)
@@ -428,7 +440,7 @@ int main(int argc, char **argv)
                     *tmpstr = '\0';
                     entry = OS_StrBreak(' ', key, 4);
                     if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
-                            !OS_IsValidName(entry[2]) || !OS_IsValidName(entry[3])) {
+                            !OS_IsValidIP(entry[2], NULL) || !OS_IsValidName(entry[3])) {
                         printf("ERROR: Invalid key received (2). Closing connection.\n");
                         free(buf);
                         exit(1);

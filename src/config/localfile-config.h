@@ -70,10 +70,12 @@ typedef struct _logreader {
     int duplicated;
     wlabel_t *labels;
     pthread_mutex_t mutex;
+    int exists;
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
     FILE *fp;
+    fpos_t position; // Pointer offset when closed
 } logreader;
 
 typedef struct _logreader_glob {

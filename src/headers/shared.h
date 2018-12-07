@@ -169,7 +169,7 @@ typedef int mode_t;
 typedef int uid_t;
 typedef int gid_t;
 typedef int socklen_t;
-#define sleep(x) Sleep(x * 1000)
+#define sleep(x) Sleep((x) * 1000)
 #define lstat(x,y) stat(x,y)
 #define CloseSocket(x) closesocket(x)
 #define localtime_r(x, y) localtime_s(y, x)
