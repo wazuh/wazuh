@@ -176,7 +176,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     try:
                         self.logger.debug2("Processing file {}".format(filename))
                         if data['merged']:
-                            for name, content, _ in cluster.unmerge_agent_info('agent-groups', self.name, zip_path,
+                            for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path,
                                                                                filename):
                                 overwrite_or_create_files(name, data, content)
                         else:

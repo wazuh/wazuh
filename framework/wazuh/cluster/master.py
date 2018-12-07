@@ -259,7 +259,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             for filename, data in files_checksums.items():
                 if data['merged']:
                     for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
-                                                                                      self.name,
                                                                                       decompressed_files_path,
                                                                                       data['merge_name']):
                         n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data,
