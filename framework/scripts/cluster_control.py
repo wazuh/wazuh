@@ -42,7 +42,7 @@ def __print_table(data, headers, show_header=False):
 
 async def print_agents(filter_status, filter_node):
     result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
-    headers = ['ID', 'IP', 'Name', 'Status', 'Node name']
+    headers = ['Name', 'IP', 'ID', 'Status', 'Node name']
     data = map(lambda x: list(x.values()), result['data']['items'])
     __print_table(data, headers, True)
 
