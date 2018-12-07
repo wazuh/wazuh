@@ -41,15 +41,15 @@ class LocalClient(client.AbstractClientManager):
     async def send_request(self, command, data):
         while self.client is None:
             await asyncio.sleep(0.5)
-        result = await self.client.send_request(command, data)
-        if result.startswith(b'Error'):
-            self.request_result = {'error': 1000, 'message': result}
+        result = (await self.client.send_request(command, data)).decode()
+        if result.startswith('Error'):
+            self.request_result = json.dumps({'error': 1000, 'message': result})
         else:
             if command == b'dapi':
                 await self.client.response_available.wait()
-                self.request_result = json.loads(self.client.response)
+                self.request_result = self.client.response.decode()
             else:
-                self.request_result = json.loads(result)
+                self.request_result = result
         self.client.close()
 
     async def start(self):

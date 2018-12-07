@@ -107,9 +107,7 @@ async def execute_remote_request(input_json: Dict, pretty: bool) -> str:
     :param pretty: Whether to do pretty print or not
     :return: JSON response
     """
-    response = await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode())
-    return print_json(data=response, pretty=pretty)
-
+    return await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode())
 
 async def forward_request(input_json, master_name, debug, pretty):
     """
@@ -130,7 +128,7 @@ async def forward_request(input_json, master_name, debug, pretty):
         """
         if node_name == 'unknown' or node_name == '' or node_name == master_name:
             # The request will be executed locally if the the node to forward to is unknown, empty or the master itself
-            response = json.loads(distribute_function(copy.deepcopy(input_json), debug, pretty))
+            response = distribute_function(copy.deepcopy(input_json), debug, pretty)
         else:
             response = await local_client.execute(b'dapi_forward', json.dumps(input_json).encode())
 
@@ -144,8 +142,8 @@ async def forward_request(input_json, master_name, debug, pretty):
         final_json = {}
         response = merge_results(results, final_json, input_json)
     else:
-        response = forward(nodes[0])
-    return print_json(response)
+        response = await forward(nodes[0])
+    return response
 
 
 def get_solver_node(input_json, master_name):
