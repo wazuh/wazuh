@@ -136,6 +136,9 @@ if __name__ == '__main__':
         os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
         os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
+    # clean
+    cluster.clean_up()
+
     # Drop privileges to ossec
     if not args.root:
         os.setgid(common.ossec_gid)
