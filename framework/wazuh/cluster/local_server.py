@@ -2,10 +2,10 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import uvloop
-from typing import Tuple
+from typing import Tuple, Union
 import json
 import random
-from wazuh.cluster import server, common
+from wazuh.cluster import server, common, client
 from wazuh.cluster.dapi import dapi
 
 
@@ -31,9 +31,6 @@ class LocalServerHandler(server.AbstractServerHandler):
             return self.get_nodes(data)
         elif command == b'get_health':
             return self.get_health(data)
-        elif command == b'dapi':
-            self.server.dapi.add_request(self.name.encode() + b' ' + data)
-            return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
 
@@ -49,12 +46,10 @@ class LocalServerHandler(server.AbstractServerHandler):
 
 class LocalServer(server.AbstractServer):
 
-    def __init__(self, node: server.AbstractServer, **kwargs):
+    def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         super().__init__(**kwargs, tag="Local Server")
         self.node = node
-        self.node.local_server = self
-        self.dapi = dapi.APIRequestQueue(server=self)
-        self.tasks.append(self.dapi.run)
+        self.handler_class = LocalServerHandler
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -64,7 +59,7 @@ class LocalServer(server.AbstractServer):
         loop.set_exception_handler(common.asyncio_exception_handler)
 
         try:
-            server = await loop.create_unix_server(protocol_factory=lambda: LocalServerHandler(server=self, loop=loop,
+            server = await loop.create_unix_server(protocol_factory=lambda: self.handler_class(server=self, loop=loop,
                                                                                                fernet_key='',
                                                                                                logger=self.logger),
                                                    path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
@@ -79,3 +74,40 @@ class LocalServer(server.AbstractServer):
         async with server:
             # use asyncio.gather to run both tasks in parallel
             await asyncio.gather(*map(lambda x: x(), self.tasks))
+
+
+class LocalServerHandlerMaster(LocalServerHandler):
+
+    def process_request(self, command: bytes, data: bytes):
+        if command == b'dapi':
+            self.server.dapi.add_request(self.name.encode() + b' ' + data)
+            return b'ok', b'Added request to API requests queue'
+        else:
+            return super().process_request(command, data)
+
+
+class LocalServerMaster(LocalServer):
+
+    def __init__(self, node: server.AbstractServer, **kwargs):
+        super().__init__(node=node, **kwargs)
+        self.handler_class = LocalServerHandlerMaster
+        self.dapi = dapi.APIRequestQueue(server=self)
+        self.tasks.append(self.dapi.run)
+
+
+class LocalServerHandlerWorker(LocalServerHandler):
+
+    def process_request(self, command: bytes, data: bytes):
+        if command == b'dapi':
+            asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
+            return b'ok', b'Added request to API requests queue'
+        else:
+            return super().process_request(command, data)
+
+
+class LocalServerWorker(LocalServer):
+
+    def __init__(self, node: client.AbstractClientManager, **kwargs):
+        super().__init__(node=node, **kwargs)
+        self.handler_class = LocalServerHandlerWorker
+        self.node.local_server = self

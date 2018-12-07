@@ -64,9 +64,9 @@ def print_version():
 async def master_main(args, cluster_config, logger):
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger)
-    my_local_server = local_server.LocalServer(performance_test=args.performance_test,
-                                               concurrency_test=args.concurrency_test, configuration=cluster_config,
-                                               enable_ssl=args.ssl, logger=logger, node=my_server)
+    my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
+                                                     concurrency_test=args.concurrency_test, node=my_server,
+                                                     configuration=cluster_config, enable_ssl=args.ssl)
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
@@ -78,8 +78,11 @@ async def worker_main(args, cluster_config, logger):
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                                   file=args.send_file, string=args.send_string, logger=logger)
+        my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
+                                                         concurrency_test=args.concurrency_test, node=my_client,
+                                                         configuration=cluster_config, enable_ssl=args.ssl)
         try:
-            await my_client.start()
+            await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
             await asyncio.sleep(10)

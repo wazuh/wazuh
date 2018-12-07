@@ -12,6 +12,7 @@ from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import cluster as metadata
 from wazuh import common, utils, WazuhException
+from wazuh.cluster.dapi import dapi
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -76,6 +77,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.setup_sync_integrity(command)
         elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e' or command == b'sync_a_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
+        elif command == b'dapi':
+            self.server.dapi.add_request(self.name.encode() + b'*' + data)
+            return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
 
@@ -297,6 +301,8 @@ class Master(server.AbstractServer):
         self.integrity_control = {}
         self.tasks.append(self.file_status_update)
         self.handler_class = MasterHandler
+        self.dapi = dapi.APIRequestQueue(server=self)
+        self.tasks.append(self.dapi.run)
 
     def __dict__(self):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],

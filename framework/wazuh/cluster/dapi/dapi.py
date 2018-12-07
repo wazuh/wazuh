@@ -270,9 +270,12 @@ class APIRequestQueue:
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
-            name, request = (await self.request_queue.get()).split(' ', 1)
+            names, request = (await self.request_queue.get()).split(' ', 1)
+            names = names.split('*', 1)
             result = await distribute_function(json.loads(request))
-            result = await self.server.clients[name].send_request(b'dapi_res', result.encode())
+            name_2 = '' if len(names) == 1 else names[1]
+            result = await self.server.clients[names[0]].send_request(b'dapi_res', "{} {}".format(name_2,
+                                                                                                  result).encode())
             if result.startswith(b'Error'):
                 self.server.logger.error(result)
 

@@ -62,7 +62,8 @@ class LocalClient(client.AbstractClientManager):
         transport, protocol = await loop.create_unix_connection(
                             protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
                                                                         name=self.name, logger=self.logger,
-                                                                        fernet_key=self.configuration['key']),
+                                                                        fernet_key=self.configuration['key'],
+                                                                        manager=self),
                             path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
 
         self.client = protocol

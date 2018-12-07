@@ -72,6 +72,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.setup_receive_files_from_master()
         elif command == b'sync_m_c_e':
             return self.end_receiving_integrity(data.decode())
+        elif command == b'dapi_res':
+            self.logger.debug(data)
+            client, result = data.split(b' ', 1)
+            asyncio.create_task(self.manager.local_server.clients[client.decode()].send_request(b'dapi_res', result))
+            return b'ok', b'Response forwarded to worker'
         else:
             return super().process_request(command, data)
 
