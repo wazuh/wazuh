@@ -18,8 +18,8 @@ except ImportError:
     from io import StringIO
 
 import logging
-import hashlib
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger('wazuh')
 
 # Aux functions
 

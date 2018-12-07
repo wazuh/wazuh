@@ -15,7 +15,7 @@ from wazuh import common, configuration, pyDaemonModule
 # Aux functions
 #
 def set_logging(foreground_mode=False, debug_mode=0):
-    logger = logging.getLogger('wazuh-clusterd')
+    logger = logging.getLogger('wazuh')
     logger.propagate = False
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')

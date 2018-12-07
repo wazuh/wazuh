@@ -1,8 +1,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
-from typing import Set, Dict, Callable
-
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
@@ -32,7 +30,7 @@ import gzip
 from functools import reduce
 import zipfile
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('wazuh')
 
 #
 # Cluster

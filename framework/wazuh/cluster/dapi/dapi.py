@@ -12,7 +12,7 @@ from wazuh import exception, agent, common, utils
 import logging
 import time
 
-logger = logging.getLogger()
+logger = logging.getLogger('wazuh')
 
 
 async def distribute_function(input_json: Dict, debug: bool = False, pretty: bool = False) -> str:
