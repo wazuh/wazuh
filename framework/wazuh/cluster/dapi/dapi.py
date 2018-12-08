@@ -52,7 +52,7 @@ async def distribute_function(input_json: Dict, debug: bool = False, pretty: boo
         # Last case: execute the request remotely.
         # A request will only be executed remotely if it was made in a worker node and its type isn't local_any
         else:
-            return await execute_remote_request(input_json, pretty)
+            return await execute_remote_request(input_json)
     except exception.WazuhException as e:
         return print_json(data=e.message, error=e.code, pretty=pretty)
     except Exception as e:
@@ -100,7 +100,7 @@ def execute_local_request(input_json: Dict, debug: bool, pretty: bool) -> str:
         return print_json(data=str(e), error=1000, pretty=pretty)
 
 
-async def execute_remote_request(input_json: Dict, pretty: bool) -> str:
+async def execute_remote_request(input_json: Dict) -> str:
     """
     Executes a remote request. This function is used by worker nodes to execute master_only API requests.
     :param input_json: API request to execute. Example: {"function": "/agents", "arguments":{"limit":5}, "ossec_path": "/var/ossec", "from_cluster":false}
@@ -108,6 +108,7 @@ async def execute_remote_request(input_json: Dict, pretty: bool) -> str:
     :return: JSON response
     """
     return await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode())
+
 
 async def forward_request(input_json, master_name, debug, pretty):
     """
@@ -120,7 +121,7 @@ async def forward_request(input_json, master_name, debug, pretty):
     :param pretty: Whether to do pretty print or not
     :return: a JSON response.
     """
-    async def forward(node_name):
+    async def forward(node_name: str) -> str:
         """
         Forwards a request to a node.
         :param node_name: Node to forward a request to.
@@ -130,7 +131,8 @@ async def forward_request(input_json, master_name, debug, pretty):
             # The request will be executed locally if the the node to forward to is unknown, empty or the master itself
             response = distribute_function(copy.deepcopy(input_json), debug, pretty)
         else:
-            response = await local_client.execute(b'dapi_forward', json.dumps(input_json).encode())
+            response = await local_client.execute(b'dapi_forward',
+                                                  "{} {}".format(node_name, json.dumps(input_json)).encode())
 
         return response
 
@@ -272,8 +274,11 @@ class APIRequestQueue:
             names = names.split('*', 1)
             result = await distribute_function(json.loads(request))
             name_2 = '' if len(names) == 1 else names[1]
-            result = await self.server.clients[names[0]].send_request(b'dapi_res', "{} {}".format(name_2,
-                                                                                                  result).encode())
+            if names[0] == 'None':
+                result = await self.server.client.send_request(b'dapi_res', "{} {}".format(name_2, result).encode())
+            else:
+                result = await self.server.clients[names[0]].send_request(b'dapi_res', "{} {}".format(name_2,
+                                                                                                      result).encode())
             if result.startswith(b'Error'):
                 self.server.logger.error(result)
 

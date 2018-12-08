@@ -11,6 +11,7 @@ from typing import Tuple, Dict, Callable
 from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata
 from wazuh import common
+from wazuh.cluster.dapi import dapi
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -74,10 +75,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'sync_m_c_e':
             return self.end_receiving_integrity(data.decode())
         elif command == b'dapi_res':
-            self.logger.debug(data)
             client, result = data.split(b' ', 1)
             asyncio.create_task(self.manager.local_server.clients[client.decode()].send_request(b'dapi_res', result))
             return b'ok', b'Response forwarded to worker'
+        elif command == b'dapi':
+            self.manager.dapi.add_request(b'None*' + data)
+            return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
 
@@ -234,6 +237,8 @@ class Worker(client.AbstractClientManager):
         self.node_type = self.configuration['node_type']
         self.handler_class = WorkerHandler
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
+        self.dapi = dapi.APIRequestQueue(server=self)
 
     def add_tasks(self):
-        return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple())]
+        return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple()),
+                                      (self.dapi.run, tuple())]

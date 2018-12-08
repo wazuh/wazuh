@@ -81,6 +81,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
+        elif command == b'dapi_res':
+            client, result = data.split(b' ', 1)
+            asyncio.create_task(self.server.local_server.clients[client.decode()].send_request(b'dapi_res', result))
+            return b'ok', b'Response forwarded to worker'
         else:
             return super().process_request(command, data)
 

@@ -49,6 +49,7 @@ class LocalServer(server.AbstractServer):
     def __init__(self, node: Union[server.AbstractServer, client.AbstractClientManager], **kwargs):
         super().__init__(**kwargs, tag="Local Server")
         self.node = node
+        self.node.local_server = self
         self.handler_class = LocalServerHandler
 
     async def start(self):
@@ -82,6 +83,11 @@ class LocalServerHandlerMaster(LocalServerHandler):
         if command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b' ' + data)
             return b'ok', b'Added request to API requests queue'
+        elif command == b'dapi_forward':
+            node_name, request = data.split(b' ', 1)
+            asyncio.create_task(self.server.node.clients[node_name.decode()].
+                                send_request(b'dapi', self.name.encode() + b' ' + request))
+            return b'ok', b'Request forwarded to worker node'
         else:
             return super().process_request(command, data)
 
@@ -110,4 +116,3 @@ class LocalServerWorker(LocalServer):
     def __init__(self, node: client.AbstractClientManager, **kwargs):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerWorker
-        self.node.local_server = self
