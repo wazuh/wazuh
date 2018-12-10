@@ -144,8 +144,10 @@ class AbstractClient(common.Handler):
         :param exc: either an exception object or None. The latter means a regular EOF is received, or the connection
                     was aborted or closed by this side of the connection.
         """
-        self.logger.info('The server closed the connection' if exc is None
-                         else "Connection closed due to an unhandled error")
+        if exc is None:
+            self.logger.info('The server closed the connection')
+        else:
+            self.logger.error("Connection closed due to an unhandled error: {}".format(exc))
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
