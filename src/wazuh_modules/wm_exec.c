@@ -48,6 +48,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     PROCESS_INFORMATION pinfo = { 0 };
     ThreadInfo tinfo = { 0 };
     int retval = 0;
+    int winerror = 0;
 
     // Add environment variable if exists
 
@@ -85,16 +86,16 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         // Create stdout pipe and make it inheritable
 
         if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
-            int winerror = GetLastError();
-            merror("at wm_exec(): CreatePipe(%ld): %s", winerror, win_strerror(winerror));
+            winerror = GetLastError();
+            merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
 
         sinfo.hStdError = sinfo.hStdOutput;
 
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
-            int winerror = GetLastError();
-            merror("at wm_exec(): SetHandleInformation(%ld): %s", winerror, win_strerror(winerror));
+            winerror = GetLastError();
+            merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
     }
@@ -108,8 +109,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       IDLE_PRIORITY_CLASS;
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
-        int winerror = GetLastError();
-        merror("at wm_exec(): CreateProcess(%ld): %s", winerror, win_strerror(winerror));
+        winerror = GetLastError();
+        merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
         return -1;
     }
 
@@ -121,9 +122,9 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
         if (!hThread) {
-            int winerror = GetLastError();
-            merror("at wm_exec(): CreateThread(%ld): %s", winerror, win_strerror(winerror));
-            return -1
+            winerror = GetLastError();
+            merror("at wm_exec(): CreateThread(%d): %s", winerror, win_strerror(winerror));
+            return -1;
         }
     }
 
@@ -143,8 +144,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         break;
 
     default:
-        int winerror = GetLastError();
-        merror("at wm_exec(): WaitForSingleObject(%ld): %s", winerror, win_strerror(winerror));
+        winerror = GetLastError();
+        merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
         TerminateProcess(pinfo.hProcess, 1);
         retval = -1;
     }
