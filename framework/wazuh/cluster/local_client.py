@@ -46,8 +46,11 @@ class LocalClient(client.AbstractClientManager):
             self.request_result = json.dumps({'error': 1000, 'message': result})
         else:
             if command == b'dapi' or command == b'dapi_forward':
-                await self.client.response_available.wait()
-                self.request_result = self.client.response.decode()
+                try:
+                    await asyncio.wait_for(self.client.response_available.wait(), timeout=self.client.request_timeout)
+                    self.request_result = self.client.response.decode()
+                except asyncio.TimeoutError:
+                    self.request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
             else:
                 self.request_result = result
         self.client.close()

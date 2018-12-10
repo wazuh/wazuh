@@ -83,8 +83,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_res':
             client, result = data.split(b' ', 1)
-            asyncio.create_task(self.server.local_server.clients[client.decode()].send_request(b'dapi_res', result))
-            return b'ok', b'Response forwarded to worker'
+            client = client.decode()
+            if client in self.server.local_server.clients:
+                asyncio.create_task(self.server.local_server.clients[client].send_request(b'dapi_res', result))
+                return b'ok', b'Response forwarded to worker'
+            else:
+                return b'err', b'Could not forward request, connection is not available'
         else:
             return super().process_request(command, data)
 
