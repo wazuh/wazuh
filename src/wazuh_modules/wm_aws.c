@@ -213,9 +213,9 @@ void wm_aws_check() {
         pthread_exit(NULL);
     }
 
-    // Check if buckets defines
+    // Check if there are buckets or services
 
-    if (!aws_config->buckets || !aws_config->services) {
+    if (!aws_config->buckets && !aws_config->services) {
         mtwarn(WM_AWS_LOGTAG, "No AWS buckets or services defined. Exiting...");
         pthread_exit(NULL);
     }

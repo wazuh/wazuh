@@ -422,7 +422,7 @@ class AWSBucket(WazuhIntegration):
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
         def remove_none_fields(event):
-            for key,value in event.items():
+            for key,value in list(event.items()):
                 if isinstance(value, dict):
                     remove_none_fields(event[key])
                 elif value is None:
@@ -481,8 +481,9 @@ class AWSBucket(WazuhIntegration):
         return filter_args
 
     def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
         def single_element_list_to_dictionary(my_event):
-            for name, value in my_event.items():
+            for name, value in list(my_event.items()):
                 if isinstance(value, list) and len(value) == 1:
                     my_event[name] = value[0]
                 elif isinstance(value, dict):
@@ -686,9 +687,6 @@ class AWSLogsBucket(AWSBucket):
         alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
 
-    def reformat_msg(self, event):
-        raise NotImplementedError
-
     def find_account_ids(self):
         return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
                 self.client.list_objects_v2(Bucket=self.bucket,
@@ -743,7 +741,6 @@ class AWSCloudTrailBucket(AWSLogsBucket):
         self.field_to_load = 'Records'
 
     def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
         AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
@@ -755,6 +752,24 @@ class AWSCloudTrailBucket(AWSLogsBucket):
         return event
 
 
+class AWSVPCFlowBucket(AWSLogsBucket):
+    """
+    Represents a bucket with AWS CloudTrail logs
+    """
+
+    def __init__(self, *args):
+        AWSLogsBucket.__init__(self, *args)
+        self.service = 'vpcflowlogs'
+
+    def load_information_from_file(self, log_key):
+        with self.decompress_file(log_key=log_key) as f:
+            fieldnames = (
+            "version", "account_id", "interface_id", "srcaddr", "dstaddr", "srcport", "dstport", "protocol",
+            "packets", "bytes", "start", "end", "action", "log_status")
+            tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
+            return [dict(x, source='vpc') for x in tsv_file]
+
+
 class AWSConfigBucket(AWSLogsBucket):
     """
     Represents a bucket with AWS Config logs
@@ -764,12 +779,6 @@ class AWSConfigBucket(AWSLogsBucket):
         AWSLogsBucket.__init__(self, *args)
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
-
-    def reformat_msg(self, event):
-        debug('++ Reformat message', 3)
-        AWSBucket.reformat_msg(self, event)
-
-        return event
 
 
 class AWSCustomBucket(AWSBucket):
@@ -843,6 +852,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                     self.send_msg(msg)
 
     def reformat_msg(self, event):
+        debug('++ Reformat message', 3)
         if event['aws']['source'] == 'guardduty' and 'service' in event['aws'] and \
             'action' in event['aws']['service'] and \
             'portProbeAction' in event['aws']['service']['action'] and \
@@ -1079,6 +1089,8 @@ def main(argv):
         if options.logBucket:
             if options.type.lower() == 'cloudtrail':
                 bucket_type = AWSCloudTrailBucket
+            elif options.type.lower() == 'vpcflow':
+                bucket_type = AWSVPCFlowBucket
             elif options.type.lower() == 'config':
                 bucket_type = AWSConfigBucket
             elif options.type.lower() == 'custom':
