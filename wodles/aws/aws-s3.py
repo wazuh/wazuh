@@ -222,14 +222,14 @@ class AWSBucket(WazuhIntegration):
                           SELECT
                             count(*)
                           FROM
-                            trail_progress
+                            {table_name}
                           WHERE
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
                             log_key='{log_name}'"""
 
     sql_mark_complete = """
-                        INSERT INTO trail_progress (
+                        INSERT INTO {table_name} (
                             aws_account_id,
                             aws_region,
                             log_key,
@@ -254,7 +254,7 @@ class AWSBucket(WazuhIntegration):
 
     sql_create_table = """
                         CREATE TABLE
-                            trail_progress (
+                            {table_name} (
                             aws_account_id 'text' NOT NULL,
                             aws_region 'text' NOT NULL,
                             log_key 'text' NOT NULL,
@@ -266,7 +266,7 @@ class AWSBucket(WazuhIntegration):
                                     SELECT
                                         created_date
                                     FROM
-                                        trail_progress
+                                        {table_name}
                                     WHERE
                                         aws_account_id='{aws_account_id}' AND
                                         aws_region = '{aws_region}'
@@ -278,7 +278,7 @@ class AWSBucket(WazuhIntegration):
                                     SELECT
                                         log_key
                                     FROM
-                                        trail_progress
+                                        {table_name}
                                     WHERE
                                         aws_account_id='{aws_account_id}' AND
                                         aws_region = '{aws_region}'
@@ -288,14 +288,14 @@ class AWSBucket(WazuhIntegration):
 
     sql_db_maintenance = """DELETE
                         FROM
-                            trail_progress
+                            {table_name}
                         WHERE
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
                             rowid NOT IN
                             (SELECT ROWID
                                 FROM
-                                trail_progress
+                                {table_name}
                                 WHERE
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}'
@@ -323,7 +323,7 @@ class AWSBucket(WazuhIntegration):
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
         self.db_name = 's3_cloudtrail'
-        self.db_table_name = 'trail_progress'
+        #self.db_table_name = 'trail_progress'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
         self.legacy_db_table_name = 'log_progress'
@@ -338,6 +338,7 @@ class AWSBucket(WazuhIntegration):
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(AWSBucket.sql_already_processed.format(
+            table_name=self.db_table_name,
             aws_account_id=aws_account_id,
             aws_region=aws_region,
             log_name=downloaded_file
@@ -356,6 +357,7 @@ class AWSBucket(WazuhIntegration):
         else:
             try:
                 self.db_connector.execute(AWSBucket.sql_mark_complete.format(
+                    table_name=self.db_table_name,
                     aws_account_id=aws_account_id,
                     aws_region=aws_region,
                     log_key=log_file['Key'],
@@ -378,7 +380,7 @@ class AWSBucket(WazuhIntegration):
     def create_table(self):
         try:
             debug('+++ Table does not exist; create', 1)
-            self.db_connector.execute(AWSBucket.sql_create_table)
+            self.db_connector.execute(AWSBucket.sql_create_table.format(table_name=self.db_table_name))
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
@@ -402,6 +404,7 @@ class AWSBucket(WazuhIntegration):
         debug("+++ DB Maintenance", 1)
         try:
             self.db_connector.execute(AWSBucket.sql_db_maintenance.format(
+                table_name=self.db_table_name,
                 aws_account_id=aws_account_id,
                 aws_region=aws_region,
                 retain_db_records=self.retain_db_records
@@ -455,8 +458,9 @@ class AWSBucket(WazuhIntegration):
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
         else:
-            query_last_key = self.db_connector.execute(AWSBucket.sql_find_last_key_processed.format(aws_account_id=aws_account_id,
-                                                                                         aws_region=aws_region))
+            query_last_key = self.db_connector.execute(AWSBucket.sql_find_last_key_processed.format(table_name=self.db_table_name,
+                                                                                        aws_account_id=aws_account_id,
+                                                                                        aws_region=aws_region))
             try:
                 last_key = query_last_key.fetchone()[0]
             except TypeError as e:
@@ -736,6 +740,7 @@ class AWSCloudTrailBucket(AWSLogsBucket):
     """
 
     def __init__(self, *args):
+        self.db_table_name = 'trail_progress'
         AWSLogsBucket.__init__(self, *args)
         self.service = 'CloudTrail'
         self.field_to_load = 'Records'
@@ -758,6 +763,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     """
 
     def __init__(self, *args):
+        self.db_table_name = 'vpc'
         AWSLogsBucket.__init__(self, *args)
         self.service = 'vpcflowlogs'
 
@@ -776,6 +782,7 @@ class AWSConfigBucket(AWSLogsBucket):
     """
 
     def __init__(self, *args):
+        self.db_table_name = 'config'
         AWSLogsBucket.__init__(self, *args)
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
