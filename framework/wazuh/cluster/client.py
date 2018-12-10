@@ -36,7 +36,7 @@ class AbstractClientManager:
         self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
-        self.logger.addFilter(cluster.ClusterFilter(tag=self.tag))
+        self.logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag="Main"))
         self.tasks = []
         self.handler_class = AbstractClient
         self.client = None
@@ -52,7 +52,7 @@ class AbstractClientManager:
         elif self.string:
             task = self.client.send_string_task, (self.string,)
         else:
-            task = self.client.client_echo, tuple()
+            return []
 
         return [task]
 
@@ -182,6 +182,8 @@ class AbstractClient(common.Handler):
         return b'ok-c', data
 
     async def client_echo(self):
+        keep_alive_logger = self.setup_task_logger("Keep Alive")
+        # each subtask must have its own local logger defined
         n_attemps = 0  # number of failed attempts to send a keep alive to server
         while not self.on_con_lost.done():
             if self.connected:
@@ -189,9 +191,9 @@ class AbstractClient(common.Handler):
                 if result.startswith(b'Error'):
                     n_attemps += 1
                     if n_attemps >= 3:
-                        self.logger.error("Maximum number of failed keep alives reached. Disconnecting.")
+                        keep_alive_logger.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
-                self.logger.info(result)
+                keep_alive_logger.info(result)
             await asyncio.sleep(29)
 
     async def performance_test_client(self, test_size):

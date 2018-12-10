@@ -119,14 +119,20 @@ class AbstractServer:
         self.concurrency = concurrency_test
         self.configuration = configuration
         self.enable_ssl = enable_ssl
+        self.tag = tag
         self.logger = logger.getChild(tag)
         # logging tag
-        self.logger.addFilter(cluster.ClusterFilter(tag=tag))
+        self.logger.addFilter(cluster.ClusterFilter(tag=tag, subtag="Main"))
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
 
     def __dict__(self):
         return {'info': {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
+
+    def setup_task_logger(self, task_tag: str):
+        task_logger = self.logger.getChild(task_tag)
+        task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
+        return task_logger
 
     def get_connected_nodes(self, filter_nodes) -> Dict:
         """
@@ -141,13 +147,16 @@ class AbstractServer:
         """
         Task to check the date of the last received keep alives from clients.
         """
+        keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
+            keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
             for client_name, client in self.clients.items():
                 if curr_timestamp - client.last_keepalive > 30:
-                    self.logger.error("No keep alives have been received from {} in the last minute. Disconnecting".format(
-                        client_name))
+                    keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
+                                            "Disconnecting".format(client_name))
                     client.transport.close()
+            keep_alive_logger.debug("Calculated.")
             await asyncio.sleep(30)
 
     async def echo(self):

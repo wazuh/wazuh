@@ -19,7 +19,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
     logger.propagate = False
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
@@ -28,7 +28,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
         ch.setFormatter(formatter)
         logger.addHandler(ch)
 
-    logger.addFilter(cluster.ClusterFilter(tag='Main'))
+    logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='Main'))
 
     # add a new debug level
     logging.DEBUG2 = 5

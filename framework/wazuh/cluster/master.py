@@ -18,6 +18,10 @@ from wazuh.cluster.dapi import dapi
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger_tag = "Integrity"
+
     def set_up_coro(self) -> Callable:
         return self.wazuh_common.sync_integrity
 
@@ -28,6 +32,10 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger_tag = "Agent info"
+
     def set_up_coro(self) -> Callable:
         return self.wazuh_common.sync_agent_info
 
@@ -37,6 +45,10 @@ class ReceiveAgentInfoTask(c_common.ReceiveFileTask):
 
 
 class ReceiveExtraValidTask(c_common.ReceiveFileTask):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger_tag = "Extra valid"
 
     def set_up_coro(self) -> Callable:
         return self.wazuh_common.sync_extra_valid
@@ -62,6 +74,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
+        self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
+                             'Extra valid': self.setup_task_logger('Extra valid'),
+                             'Agent info': self.setup_task_logger('Agent info')}
 
     def __dict__(self):
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
@@ -135,38 +150,42 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)
 
-    async def sync_worker_files(self, task_name: str, received_file: asyncio.Task):
-        self.logger.info("Waiting to receive zip file from worker")
+    async def sync_worker_files(self, task_name: str, received_file: asyncio.Task, logger):
+        logger.info("Waiting to receive zip file from worker")
         await received_file.wait()
         received_filename = self.sync_tasks[task_name].filename
-        self.logger.debug("Received file from worker: '{}'".format(received_filename))
+        logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
-        self.logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
-        self.process_files_from_worker(files_checksums, decompressed_files_path)
+        logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
+        self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
+        extra_valid_logger = self.task_loggers['Extra valid']
         self.sync_extra_valid_status['date_start_master'] = str(datetime.now())
-        await self.sync_worker_files(task_name, received_file)
+        await self.sync_worker_files(task_name, received_file, extra_valid_logger)
         self.sync_extra_valid_free = True
         self.sync_extra_valid_status['date_end_master'] = str(datetime.now())
 
     async def sync_agent_info(self, task_name: str, received_file: asyncio.Task):
+        agent_info_logger = self.task_loggers['Agent info']
         self.sync_agent_info_status['date_start_master'] = str(datetime.now())
-        await self.sync_worker_files(task_name, received_file)
+        await self.sync_worker_files(task_name, received_file, agent_info_logger)
         self.sync_agent_info_free = True
         self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
     async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
+        logger = self.task_loggers['Integrity']
+
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
 
-        self.logger.info("Waiting to receive zip file from worker")
+        logger.info("Waiting to receive zip file from worker")
         await received_file.wait()
         received_filename = self.sync_tasks[task_name].filename
-        self.logger.debug("Received file from worker: '{}'".format(received_filename))
+        logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
-        self.logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
+        logger.info("Analyzing worker integrity: Received {} files to check.".format(len(files_checksums)))
 
         # classify files in shared, missing, extra and extra valid.
         worker_files_ko, counts = cluster.compare_files(self.server.integrity_control, files_checksums, self.name)
@@ -175,25 +194,25 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_status['total_files'] = counts
 
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
-            self.logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
+            logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
             result = await self.send_request(command=b'sync_m_c_ok', data=b'')
         else:
-            self.logger.info("Analyzing worker integrity: Files checked. There are KO files.")
+            logger.info("Analyzing worker integrity: Files checked. There are KO files.")
 
             # Compress data: master files (only KO shared and missing)
-            self.logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
+            logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
-            self.logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")
+            logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")
             task_name = await self.send_request(command=b'sync_m_c', data=b'')
             if task_name.startswith(b'Error'):
-                self.logger.error(task_name)
+                logger.error(task_name)
                 return task_name
 
             result = await self.send_file(compressed_data)
             if result.startswith(b'Error'):
-                self.logger.error(result)
+                logger.error(result)
                 return result
 
             result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + compressed_data.encode())
@@ -202,7 +221,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_free = True
         return result
 
-    def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str):
+    def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
         def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
             # Full path
             full_path = common.ossec_path + name
@@ -226,11 +245,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                              tmp_dir=tmp_path, whoami='master', agents=agents)
 
             except WazuhException as e:
-                self.logger.debug2("Warning updating file '{}': {}".format(name, e))
+                logger.debug2("Warning updating file '{}': {}".format(name, e))
                 error_tag = 'warnings'
                 error_updating_file = True
             except Exception as e:
-                self.logger.debug2("Error updating file '{}': {}".format(name, e))
+                logger.debug2("Error updating file '{}': {}".format(name, e))
                 error_tag = 'errors'
                 error_updating_file = True
 
@@ -260,7 +279,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             agent_names = set(map(operator.itemgetter('name'), agents))
             agent_ids = set(map(operator.itemgetter('id'), agents))
         except Exception as e:
-            self.logger.debug2("Error getting agent ids and names: {}".format(e))
+            logger.debug2("Error getting agent ids and names: {}".format(e))
             agent_names, agent_ids = {}, {}
 
         try:
@@ -289,19 +308,22 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             raise e
 
         if sum(n_errors['errors'].values()) > 0:
-            self.logger.error("Errors updating worker files: {}".format(' | '.join(
+            logger.error("Errors updating worker files: {}".format(' | '.join(
                 ['{}: {}'.format(key, value) for key, value
                  in n_errors['errors'].items()])
             ))
         if sum(n_errors['warnings'].values()) > 0:
             for key, value in n_errors['warnings'].items():
                 if key == '/queue/agent-info/':
-                    self.logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
+                    logger.debug2("Received {} agent statuses for non-existent agents. Skipping.".format(value))
                 elif key == '/queue/agent-groups/':
-                    self.logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
+                    logger.debug2("Received {} group assignments for non-existent agents. Skipping.".format(value))
 
-    def get_logger(self):
-        return self.logger
+    def get_logger(self, logger_tag: str = ''):
+        if logger_tag == '' or logger_tag not in self.task_loggers:
+            return self.logger
+        else:
+            return self.task_loggers[logger_tag]
 
 
 class Master(server.AbstractServer):
@@ -319,13 +341,14 @@ class Master(server.AbstractServer):
                 'version': metadata.__version__, 'address': self.configuration['nodes'][0]}}
 
     async def file_status_update(self):
+        file_integrity_logger = self.setup_task_logger("File integrity")
         while True:
-            self.logger.debug("Calculating file integrity.")
+            file_integrity_logger.debug("Calculating")
             try:
                 self.integrity_control = cluster.get_files_status('master', self.configuration['node_name'])
             except Exception as e:
-                self.logger.error("Error calculating file integrity: {}".format(e))
-            self.logger.debug("File integrity calculated.")
+                file_integrity_logger.error("Error calculating file integrity: {}".format(e))
+            file_integrity_logger.debug("Calculated.")
 
             await asyncio.sleep(30)
 

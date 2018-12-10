@@ -12,7 +12,8 @@ from wazuh import exception, agent, common, utils
 import logging
 import time
 
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('wazuh').getChild('dapi')
+logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='D API'))
 
 
 async def distribute_function(input_json: Dict, debug: bool = False, pretty: bool = False) -> str:
@@ -88,7 +89,7 @@ def execute_local_request(input_json: Dict, debug: bool, pretty: bool) -> str:
             data = rq.functions[input_json['function']]['function']()
 
         after = time.time()
-        logger.debug("[Cluster] [D API        ] Time calculating request result: {}s".format(after - before))
+        logger.debug("Time calculating request result: {}s".format(after - before))
         return print_json(data=data, error=0, pretty=pretty)
     except exception.WazuhException as e:
         if debug:
@@ -280,7 +281,7 @@ class APIRequestQueue:
                 result = await self.server.clients[names[0]].send_request(b'dapi_res', "{} {}".format(name_2,
                                                                                                       result).encode())
             if result.startswith(b'Error'):
-                self.server.logger.error(result)
+                logger.error(result)
 
     def add_request(self, request: bytes):
         """
@@ -288,5 +289,5 @@ class APIRequestQueue:
 
         :param request: Request to add
         """
-        self.server.logger.info("Receiving request: {}".format(request))
+        logger.info("Receiving request: {}".format(request))
         self.request_queue.put_nowait(request.decode())

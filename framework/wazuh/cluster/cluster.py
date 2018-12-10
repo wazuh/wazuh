@@ -608,18 +608,26 @@ class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.
     """
-    def __init__(self, tag: str, name: str = ''):
+    def __init__(self, tag: str, subtag: str, name: str = ''):
         """
         Class constructor
 
-        :param handler: Handler object containing a tag attribute
+        :param tag: First tag to show in the log - Usually describes class
+        :param subtag: Second tag to show in the log - Usually describes function
+        :param name: If name is specified, it names a logger which, together with its children, will have its events
+                     allowed through the filter. If name is the empty string, allows every event.
         """
         super().__init__(name=name)
         self.tag = tag
+        self.subtag = subtag
 
     def filter(self, record):
         record.tag = self.tag
+        record.subtag = self.subtag
         return True
 
     def update_tag(self, new_tag: str):
         self.tag = new_tag
+
+    def update_subtag(self, new_subtag: str):
+        self.subtag = new_subtag

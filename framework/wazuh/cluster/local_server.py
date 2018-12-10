@@ -17,10 +17,10 @@ class LocalServerHandler(server.AbstractServerHandler):
 
         :param transport: socket to write data on
         """
-        self.name = str(random.SystemRandom().randint(0, 2 ** 32 - 1))
+        self.name = str(random.SystemRandom().randint(0, 2 ** 20 - 1))
         self.transport = transport
         self.server.clients[self.name] = self
-        self.tag = "Local Handler " + self.name
+        self.tag = "Local " + self.name
         self.logger_filter.update_tag(self.tag)
         self.logger.info('Connection received in local server. Client name: {}'.format(self.name))
 

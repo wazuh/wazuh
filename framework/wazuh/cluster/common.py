@@ -157,7 +157,7 @@ class Handler(asyncio.Protocol):
         self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
-        self.logger_filter = cluster.ClusterFilter(tag=self.tag)
+        self.logger_filter = cluster.ClusterFilter(tag=self.tag, subtag="Main")
         self.logger.addFilter(self.logger_filter)
         # transports in asyncio are an abstraction of sockets
         self.transport = None
@@ -477,6 +477,11 @@ class Handler(asyncio.Protocol):
         """
         return b"Error processing request: " + data
 
+    def setup_task_logger(self, task_tag: str):
+        task_logger = self.logger.getChild(task_tag)
+        task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
+        return task_logger
+
 
 class WazuhCommon:
     """
@@ -484,12 +489,13 @@ class WazuhCommon:
     """
     def __init__(self):
         self.sync_tasks = {}
+        self.logger_tag = ''
 
-    def get_logger(self):
+    def get_logger(self, logger_tag: str = '') -> logging.Logger:
         raise NotImplementedError
 
     def setup_receive_file(self, ReceiveTaskClass: Callable):
-        my_task = ReceiveTaskClass(self, self.get_logger())
+        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
         self.sync_tasks[my_task.name] = my_task
         return b'ok', str(my_task).encode()
 
