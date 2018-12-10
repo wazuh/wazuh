@@ -58,9 +58,15 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
         rbytes = ftell(lf->fp) - offset;
         lines++;
 
-        if (buffer[rbytes - 1] == '\n')
+        if (buffer[rbytes - 1] == '\n') {
             buffer[rbytes - 1] = '\0';
-        else {
+
+            if ((long)strlen(buffer) != rbytes - 1)
+            {
+                mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(buffer), rbytes - 1);
+                continue;
+            }
+        } else {
             if (rbytes == OS_MAXSTR - 1) {
                 // Message too large, discard line
                 for (offset += rbytes; fgets(buffer, OS_MAXSTR, lf->fp); offset += rbytes) {

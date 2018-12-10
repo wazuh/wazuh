@@ -36,6 +36,12 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             str[rbytes - 1] = '\0';
+
+            if ((long)strlen(str) != rbytes - 1)
+            {
+                mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(str), rbytes - 1);
+                continue;
+            }
         }
 
         /* If we didn't get the new line, because the
