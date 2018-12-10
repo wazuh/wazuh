@@ -569,7 +569,6 @@ static void c_files()
         }
 
         // Clean hash table
-        // OSHash_Free(m_hash);
         OSHash_Clean(m_hash, cleaner);
         m_hash = OSHash_Create();
 
@@ -678,8 +677,10 @@ static void c_files()
         else if (fgets(groups_info, OS_SIZE_65536, fp)!=NULL ) {
             // If it's not a multigroup, skip it
             if(!strstr(groups_info, ",")){
+                fclose(fp);
                 continue;
             }
+
             fclose(fp);
 
             char *endl = strchr(groups_info, '\n');
