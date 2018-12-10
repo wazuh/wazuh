@@ -254,7 +254,8 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                             passed_agent_test = 0;
                             merror("Reading shared configuration. Unable to retrieve the agent name.");
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
-                            mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", strlen(node[i]->values[attrs]), OS_PATTERN_MAXSIZE);
+                            int attrlen = strlen(node[i]->values[attrs]);
+                            mwarn("Agent name filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
                             free(agentname);
                         } else {
@@ -272,7 +273,8 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                             passed_agent_test = 0;
                             merror("Reading shared configuration. Unable to retrieve the agent OS.");
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
-                            mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", strlen(node[i]->values[attrs]), OS_PATTERN_MAXSIZE);
+                            int attrlen = strlen(node[i]->values[attrs]);
+                            mwarn("Agent OS filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
                         } else if (!OS_Match2(node[i]->values[attrs], agentos)) {
                             passed_agent_test = 0;
@@ -286,7 +288,8 @@ int ReadConfig(int modules, const char *cfgfile, void *d1, void *d2)
                             passed_agent_test = 0;
                             merror("Reading shared configuration. Unable to retrieve agent profile.");
                         } else if (strlen(node[i]->values[attrs]) > OS_PATTERN_MAXSIZE) {
-                            mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", strlen(node[i]->values[attrs]), OS_PATTERN_MAXSIZE);
+                            int attrlen = strlen(node[i]->values[attrs]);
+                            mwarn("Agent profile filter (%d bytes) exceeds the limit (%d)", attrlen, OS_PATTERN_MAXSIZE);
                             passed_agent_test = 0;
                             free(agentprofile);
                         } else {
