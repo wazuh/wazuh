@@ -15,6 +15,7 @@ unsigned int s_events_syscheck_decoded = 0;
 unsigned int s_events_syscollector_decoded  = 0;
 unsigned int s_events_rootcheck_decoded = 0;
 unsigned int s_events_hostinfo_decoded  = 0;
+unsigned int s_events_winevt_decoded = 0;
 unsigned int s_events_decoded = 0;
 unsigned int s_events_processed = 0;
 unsigned int s_events_dropped = 0 ;
@@ -27,6 +28,7 @@ float s_syscheck_queue = 0;
 float s_syscollector_queue = 0;
 float s_rootcheck_queue = 0;
 float s_hostinfo_queue = 0;
+float s_winevt_queue = 0;
 float s_event_queue = 0;
 float s_process_event_queue = 0;
 
@@ -34,6 +36,7 @@ unsigned int s_syscheck_queue_size = 0;
 unsigned int s_syscollector_queue_size = 0;
 unsigned int s_rootcheck_queue_size = 0;
 unsigned int s_hostinfo_queue_size = 0;
+unsigned int s_winevt_queue_size = 0;
 unsigned int s_event_queue_size = 0;
 unsigned int s_process_event_queue_size = 0;
 
@@ -51,6 +54,7 @@ pthread_mutex_t s_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_rootcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_hostinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t s_winevt_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_process_event_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_dropped_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -122,6 +126,10 @@ int w_analysisd_write_state(){
         "hostinfo_events_decoded='%u'\n"
         "hostinfo_edps='%u'\n"
         "\n"
+        "# Winevt events decoded\n"
+        "winevt_events_decoded='%u'\n"
+        "winevt_edps='%u'\n"
+        "\n"
         "# Other events decoded\n"
         "other_events_decoded='%u'\n"
         "other_events_edps='%u'\n"
@@ -169,6 +177,12 @@ int w_analysisd_write_state(){
         "# Hostinfo queue size\n"
         "hostinfo_queue_size='%u'\n"
         "\n"
+        "# Winevt queue\n"
+        "winevt_queue_usage='%.2f'\n"
+        "\n"
+        "# Winevt queue size\n"
+        "winevt_queue_size='%u'\n"
+        "\n"
         "# Event queue\n"
         "event_queue_usage='%.2f'\n"
         "\n"
@@ -206,7 +220,7 @@ int w_analysisd_write_state(){
         "archives_queue_size='%u'\n"
         "\n",
         __local_name, 
-        s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded ,
+        s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded + s_events_winevt_decoded ,
         s_events_syscheck_decoded,
         s_events_syscheck_decoded / interval ,
         s_events_syscollector_decoded,
@@ -215,6 +229,8 @@ int w_analysisd_write_state(){
         s_events_rootcheck_decoded / interval,
         s_events_hostinfo_decoded,
         s_events_hostinfo_decoded / interval,
+        s_events_winevt_decoded,
+        s_events_winevt_decoded / interval,
         s_events_decoded,
         s_events_decoded / interval,
         s_events_processed,
@@ -232,6 +248,8 @@ int w_analysisd_write_state(){
         s_rootcheck_queue_size,
         s_hostinfo_queue,
         s_hostinfo_queue_size,
+        s_winevt_queue,
+        s_winevt_queue_size,
         s_event_queue,s_event_queue_size,
         s_process_event_queue,
         s_process_event_queue_size,
@@ -280,6 +298,12 @@ void w_inc_hostinfo_decoded_events(){
     w_mutex_lock(&s_hostinfo_mutex);
     s_events_hostinfo_decoded++;
     w_mutex_unlock(&s_hostinfo_mutex);
+}
+
+void w_inc_winevt_decoded_events(){
+    w_mutex_lock(&s_winevt_mutex);
+    s_events_winevt_decoded++;
+    w_mutex_unlock(&s_winevt_mutex);
 }
 
 void w_inc_decoded_events(){
