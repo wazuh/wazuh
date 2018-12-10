@@ -739,9 +739,9 @@ class AWSCloudTrailBucket(AWSLogsBucket):
     Represents a bucket with AWS CloudTrail logs
     """
 
-    def __init__(self, *args):
+    def __init__(self, **kwargs):
         self.db_table_name = 'trail_progress'
-        AWSLogsBucket.__init__(self, *args)
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'CloudTrail'
         self.field_to_load = 'Records'
 
@@ -762,9 +762,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     Represents a bucket with AWS CloudTrail logs
     """
 
-    def __init__(self, *args):
+    def __init__(self, **kwargs):
         self.db_table_name = 'vpc'
-        AWSLogsBucket.__init__(self, *args)
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
 
     def load_information_from_file(self, log_key):
@@ -781,17 +781,17 @@ class AWSConfigBucket(AWSLogsBucket):
     Represents a bucket with AWS Config logs
     """
 
-    def __init__(self, *args):
+    def __init__(self, **kwargs):
         self.db_table_name = 'config'
-        AWSLogsBucket.__init__(self, *args)
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
 
 
 class AWSCustomBucket(AWSBucket):
 
-    def __init__(self, *args):
-        AWSBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        AWSBucket.__init__(self, **kwargs)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
 
     def load_information_from_file(self, log_key):
@@ -846,8 +846,8 @@ class AWSCustomBucket(AWSBucket):
 
 class AWSGuardDutyBucket(AWSCustomBucket):
 
-    def __init__(self, *args):
-        AWSBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        AWSBucket.__init__(self, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
@@ -1106,11 +1106,12 @@ def main(argv):
                 bucket_type = AWSGuardDutyBucket
             else:
                 raise Exception("Invalid type of bucket")
-            bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
-                            options.aws_profile, options.iam_role_arn, options.logBucket,
-                            options.only_logs_after, options.skip_on_error,
-                            options.aws_account_alias, max_queue_buffer,
-                            options.trail_prefix, options.deleteFile)
+            bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
+                           secret_key=options.secret_key, profile=options.aws_profile,
+                           iam_role_arn=options.iam_role_arn, bucket=options.logBucket,
+                           only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
+                           account_alias=options.aws_account_alias, max_queue_buffer=max_queue_buffer,
+                           prefix=options.trail_prefix, delete_file=options.deleteFile)
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
