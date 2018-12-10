@@ -690,19 +690,17 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     PEVT_VARIANT properties_values = NULL;
     DWORD count = 0;
     int result = 0;
-    int level_n;
-    unsigned long long int keywords_n;
-    cJSON *final_event = cJSON_CreateObject();
-    cJSON *json_event = cJSON_CreateObject();
-    cJSON *json_system_in = cJSON_CreateObject();
-    cJSON *json_eventdata_in = cJSON_CreateObject();
-    OS_XML xml;
     size_t num;
-    wchar_t *wprovider_name;
-    XML_NODE node, child;
-    char *level = NULL, *keywords = NULL, *canal = NULL, *provider_name = NULL,
-        *my_msg = NULL, *message = NULL, *category, *my_event = NULL,
-        *filtered_msg = NULL, *avoid_dup = NULL;
+    wchar_t *wprovider_name = NULL;
+    cJSON *event_json = cJSON_CreateObject();
+    char *msg_sent = NULL, *provider_name = NULL;
+    char *msg_from_prov = NULL, *xml_event = NULL, *filtered_msg = NULL, *avoid_dup = NULL;
+    char *beg_prov = NULL, *end_prov = NULL, *find_prov = NULL;
+
+    os_malloc(OS_MAXSTR, filtered_msg);
+    os_malloc(OS_MAXSTR, provider_name);
+    os_malloc(OS_MAXSTR, wprovider_name);
+    os_malloc(OS_MAXSTR, xml_event);
 
     result = EvtRender(NULL,
                        evt,
@@ -742,186 +740,74 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    message = convert_windows_string((LPCWSTR) properties_values);
+    xml_event = convert_windows_string((LPCWSTR) properties_values);
 
-    if (OS_ReadXMLString(message, &xml) < 0){
-        merror("error xml file not read");
-    }
+    find_prov = strstr(xml_event, "Provider Name=");
+  
+    if(find_prov){
+        beg_prov = strchr(find_prov, '\'');
+        if(beg_prov){
+            end_prov = strchr(beg_prov+1, '\'');
 
-    node = OS_GetElementsbyNode(&xml, NULL);
-    int i = 0, l=0;
-    if (node && node[i] && (child = OS_GetElementsbyNode(&xml, node[i]))) {
-        int j = 0;
+            if (end_prov){
+                num = end_prov-1-beg_prov;
 
-        while (child && child[j]){
-
-            XML_NODE child_attr = NULL;
-            child_attr = OS_GetElementsbyNode(&xml, child[j]);
-            int p = 0;
-
-            while (child_attr && child_attr[p]){
-
-                if(child[j]->element && !strcmp(child[j]->element, "System") && child_attr[p]->element){
-
-                    if (!strcmp(child_attr[p]->element, "Provider")) {
-                        while(child_attr[p]->attributes[l]){
-                            if (!strcmp(child_attr[p]->attributes[l], "Name")){
-                                os_strdup(child_attr[p]->values[l], provider_name);
-                                cJSON_AddStringToObject(json_system_in, "ProviderName", child_attr[p]->values[l]);
-                            } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
-                                cJSON_AddStringToObject(json_system_in, "ProviderGuid", child_attr[p]->values[l]);
-                            } else if (!strcmp(child_attr[p]->attributes[l], "EventSourceName")){
-                                cJSON_AddStringToObject(json_system_in, "EventSourceName", child_attr[p]->values[l]);
-                            }
-                            l++;
-                        }
-                    } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
-                        if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
-                            cJSON_AddStringToObject(json_system_in, "SystemTime", child_attr[p]->values[0]);
-                        }
-                    } else if (!strcmp(child_attr[p]->element, "Execution")) {
-                        if(!strcmp(child_attr[p]->attributes[0], "ProcessID")){
-                            cJSON_AddStringToObject(json_system_in, "ProcessID", child_attr[p]->values[0]);
-                        }
-                        if(!strcmp(child_attr[p]->attributes[1], "ThreadID")){
-                            cJSON_AddStringToObject(json_system_in, "ThreadID", child_attr[p]->values[1]);
-                        }
-                    } else if (!strcmp(child_attr[p]->element, "Channel")) {
-                        os_strdup(child_attr[p]->content, canal);
-                        cJSON_AddStringToObject(json_system_in, "Channel", child_attr[p]->content);
-                        if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                            cJSON_AddStringToObject(json_system_in, "UserID", child_attr[p]->values[0]);
-                        }
-                    } else if (!strcmp(child_attr[p]->element, "Security")) {
-                        if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                            cJSON_AddStringToObject(json_system_in, "Security UserID", child_attr[p]->values[0]);
-                        }
-                    } else if (!strcmp(child_attr[p]->element, "Level")) {
-                        os_strdup(child_attr[p]->content, level);
-                        cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
-                    } else if (!strcmp(child_attr[p]->element, "Keywords")) {
-                        os_strdup(child_attr[p]->content, keywords);
-                        cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
-                    } else if (!strcmp(child_attr[p]->element, "Correlation")) {
-                    } else {
-                        cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
-                    }
-
-                } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
-                    if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
-                        for (l = 0; child_attr[p]->attributes[l]; l++) {
-                            if (!strcmp(child_attr[p]->attributes[l], "Name")) {
-                                cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], child_attr[p]->content);
-                                break;
-                            } else {
-                                mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
-                            }
-                        }
-                    } else if (child_attr[p]->content){
-                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, child_attr[p]->content);
-                    }
-                } else {
-                    mdebug1("Unexpected element (%s).", child[j]->element);
-                }
-                p++;
+                memcpy(provider_name, beg_prov+1, num);
+                provider_name[num] = '\0';
+                find_prov = '\0';
+                beg_prov = '\0';
+                end_prov = '\0';
             }
-
-            OS_ClearNode(child_attr);
-
-            j++;
         }
-
-        OS_ClearNode(child);
     }
+    
+    if (provider_name) {
+        wprovider_name = convert_unix_string(provider_name);
 
-    OS_ClearNode(node);
-    OS_ClearXML(&xml);
+        if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+            mferror(
+                "Could not get message for (%s)",
+                channel->evt_log);
+        }
+        else {
+            avoid_dup = strchr(msg_from_prov, '\r');
 
-    level_n = strtol(level, NULL, 10);
-    keywords_n = strtoull(keywords, NULL, 16);
-
-    switch (level_n) {
-        case WINEVENT_CRITICAL:
-            category = "CRITICAL";
-            break;
-        case WINEVENT_ERROR:
-            category = "ERROR";
-            break;
-        case WINEVENT_WARNING:
-            category = "WARNING";
-            break;
-        case WINEVENT_INFORMATION:
-            category = "INFORMATION";
-            break;
-        case WINEVENT_VERBOSE:
-            category = "DEBUG";
-            break;
-        case WINEVENT_AUDIT:
-            if (keywords_n & WINEVENT_AUDIT_FAILURE) {
-                category = "AUDIT_FAILURE";
-                break;
-            } else if (keywords_n & WINEVENT_AUDIT_SUCCESS) {
-                category = "AUDIT_SUCCESS";
-                break;
+            if (avoid_dup){
+                num = avoid_dup - msg_from_prov;
+                memcpy(filtered_msg, msg_from_prov, num);
+                filtered_msg[num] = '\0';
+                cJSON_AddStringToObject(event_json, "Message", filtered_msg);
+            } else {
+                win_format_event_string(msg_from_prov);
+                
+                cJSON_AddStringToObject(event_json, "Message", msg_from_prov);
             }
-            // fall through
-        default:
-            category = "Unknown";
-    }
-
-    wprovider_name = convert_unix_string(provider_name);
-    if ((my_msg = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-        mferror(
-            "Could not get message for (%s)",
-            channel->evt_log);
-    }
-
-    avoid_dup = strchr(my_msg, '\r');
-    os_malloc(OS_MAXSTR, filtered_msg);
-
-    if (avoid_dup){
-        num = avoid_dup - my_msg;
-        memcpy(filtered_msg, my_msg, num);
-        filtered_msg[num] = '\0';
-        cJSON_AddStringToObject(json_system_in, "Message", filtered_msg);
+            avoid_dup = '\0';
+        }
     } else {
-        cJSON_AddStringToObject(json_system_in, "Message", my_msg);
+        cJSON_AddStringToObject(event_json, "Message", "No message");
     }
 
-    cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
-
-    if(json_system_in){
-        cJSON_AddItemToObject(json_event, "System", json_system_in);
-    }
-    if (json_eventdata_in){
-        cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
-    }
-
-    cJSON_AddItemToObject(final_event, "WinEvtChannel", json_event);
-
-    my_event = cJSON_PrintUnformatted(final_event);
-
-    if (SendMSG(logr_queue, my_event, "WinEvtChannel", LOCALFILE_MQ) < 0) {
+    cJSON_AddStringToObject(event_json, "Event", xml_event);
+    msg_sent = cJSON_PrintUnformatted(event_json);
+    
+    if (SendMSG(logr_queue, msg_sent, "WinEvtChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
     }
 
-    if (channel->bookmark_enabled) {
-        update_bookmark(evt, channel);
-    }
-
 cleanup:
-    free(properties_values);
-    free(level);
-    free(keywords);
-    free(canal);
-    free(provider_name);
-    free(my_msg);
-    free(message);
-    free(my_event);
+    free(msg_from_prov);
+    free(xml_event);
     free(filtered_msg);
+    free(avoid_dup);
+    free(msg_sent);
+    free(properties_values);
+    free(beg_prov);
+    free(end_prov);
+    free(find_prov);
+    free(provider_name);
     free(wprovider_name);
-    OS_ClearXML(&xml);
-    cJSON_Delete(final_event);
+    cJSON_Delete(event_json);
 
     return;
 }
