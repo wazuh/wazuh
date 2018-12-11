@@ -326,7 +326,6 @@ class AWSBucket(WazuhIntegration):
                                     LIMIT {retain_db_records})"""
 
         self.db_name = 's3_cloudtrail'
-        #self.db_table_name = 'trail_progress'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
         self.legacy_db_table_name = 'log_progress'
@@ -567,7 +566,7 @@ class AWSBucket(WazuhIntegration):
         self.init_db()
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
-        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
+        self.db_connector.execute(self.sql_db_optimize)
         self.db_connector.close()
 
     def iter_regions_and_accounts(self, account_id, regions):
@@ -690,7 +689,7 @@ class AWSLogsBucket(AWSBucket):
         return aws_region, aws_account_id, log_key
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
-        alert_msg = self.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
+        alert_msg = AWSBucket.get_alert_msg(self, aws_account_id, log_key, event, error_msg)
         alert_msg['aws']['aws_account_id'] = aws_account_id
         return alert_msg
 
@@ -749,7 +748,7 @@ class AWSCloudTrailBucket(AWSLogsBucket):
         self.field_to_load = 'Records'
 
     def reformat_msg(self, event):
-        self.reformat_msg(self, event)
+        AWSBucket.reformat_msg(self, event)
         # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
         # turn it into a dictionary
@@ -766,94 +765,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     """
 
     def __init__(self, **kwargs):
-        # SQL queries
-
-        self.sql_already_processed = """
-                          SELECT
-                            count(*)
-                          FROM
-                            {table_name}
-                          WHERE
-                            aws_account_id='{aws_account_id}' AND
-                            aws_region='{aws_region}' AND
-                            log_key='{log_name}'"""
-
-        self.sql_mark_complete = """
-                            INSERT INTO {table_name} (
-                                aws_account_id,
-                                aws_region,
-                                flow_log_id,
-                                log_key,
-                                processed_date,
-                                created_date) VALUES (
-                                '{aws_account_id}',
-                                '{aws_region}',
-                                '{log_key}',
-                                DATETIME('now'),
-                                '{created_date}')"""
-
-        self.sql_create_table = """
-                            CREATE TABLE
-                                {table_name} (
-                                aws_account_id 'text' NOT NULL,
-                                aws_region 'text' NOT NULL,
-                                flow_log_id 'text' NOT NULL,
-                                log_key 'text' NOT NULL,
-                                processed_date 'text' NOT NULL,
-                                created_date 'integer' NOT NULL,
-                                PRIMARY KEY (aws_account_id, aws_region, log_key));"""
-
-        self.sql_find_last_log_processed = """
-                                        SELECT
-                                            created_date
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            aws_account_id='{aws_account_id}' AND
-                                            aws_region = '{aws_region}' AND
-                                            flow_log_id = '{flow_log_id}
-                                        ORDER BY
-                                            created_date DESC
-                                        LIMIT 1;"""
-
-        self.sql_find_last_key_processed = """
-                                        SELECT
-                                            log_key
-                                        FROM
-                                            {table_name}
-                                        WHERE
-                                            aws_account_id='{aws_account_id}' AND
-                                            aws_region = '{aws_region}' AND
-                                            flow_log_id = '{flow_log_id}
-                                        ORDER BY
-                                            log_key ASC
-                                        LIMIT 1;"""
-
-        self.sql_db_maintenance = """DELETE
-                            FROM
-                                {table_name}
-                            WHERE
-                                aws_account_id='{aws_account_id}' AND
-                                aws_region='{aws_region}' AND
-                                flow_log_id = '{flow_log_id} AND
-                                rowid NOT IN
-                                (SELECT ROWID
-                                    FROM
-                                    {table_name}
-                                    WHERE
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}' AND
-                                    flow_log_id = '{flow_log_id}
-                                    ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
-
-        self.db_table_name = 'vpc'
+        self.db_table_name = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
-        self.flow_logs_ids = self.get_flow_logs_ids(kwargs['access_key'],
-            kwargs['secret_key'])
-        #print("Flow logs -> " + str(self.flow_logs_ids))
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -862,139 +776,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             "packets", "bytes", "start", "end", "action", "log_status")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             return [dict(x, source='vpc') for x in tsv_file]
-
-    def get_ec2_client(self, access_key, secret_key):
-        conn_args = {}
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-
-        boto_session = boto3.Session(**conn_args)
-
-        try:
-            ec2_client = boto_session.client(service_name='ec2')
-        except Exception as e:
-            print("Error getting EC2 client: {}".format(e))
-            sys.exit(3)
-
-        return ec2_client
-
-    def get_flow_logs_ids(self, access_key, secret_key):
-        ec2_client = self.get_ec2_client(access_key, secret_key)
-        flow_logs = ec2_client.describe_flow_logs()['FlowLogs']
-        flow_logs_ids = []
-        for log_id in flow_logs:
-            flow_logs_ids.append(log_id['FlowLogId'])
-        return flow_logs_ids
-
-    def get_vpc_log_id_prefix(self, key):
-        pass
-
-
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False):
-        filter_marker = ''
-        if self.reparse:
-            if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
-        else:
-            query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
-                                                                                        aws_account_id=aws_account_id,
-                                                                                        aws_region=aws_region))
-            try:
-                last_key = query_last_key.fetchone()[0]
-            except TypeError as e:
-                # if DB is empty for a region
-                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
-
-        #### mirar si el log es de hoy datetime.datetime.utcnow() y ejecutar otra funcion para iterar sobre los flow_log_id
-        print("last key -> " + last_key)
-
-        filter_args = {
-            'Bucket': self.bucket,
-            'MaxKeys': 5,
-            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
-        }
-
-        # if nextContinuationToken is not used for processing logs in a bucket
-        if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-                debug('+++ Marker: {0}'.format(filter_marker), 2)
-            else:
-                filter_args['StartAfter'] = last_key
-                debug('+++ Marker: {0}'.format(last_key), 2)
-
-        return filter_args
-
-
-    """
-    ## solo ultimo dia
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False):
-        filter_marker = ''
-        if self.reparse:
-            if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
-        else:
-            query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
-                                                                                        aws_account_id=aws_account_id,
-                                                                                        aws_region=aws_region))
-            try:
-                last_key = query_last_key.fetchone()[0]
-            except TypeError as e:
-                # if DB is empty for a region
-                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
-        
-        ##########################
-        print("last key -> " + last_key)
-        last_key_splitted = last_key.split('_')
-        flow_log_id = last_key_splitted[-3]
-        prefix_vpc = aws_account_id.split('/')[-1] + '_' + last_key_splitted[-5] + '_' + last_key_splitted[-4] + '_' + last_key_splitted[-3] 
-        print("flow_log_id -> " + flow_log_id)
-        print("prefix_vpc -> " + prefix_vpc)
-        #### a partir de last_key comprobar si estamos en el ultimo dia
-
-        #aux = self.get_full_prefix(aws_account_id, aws_region, prefix_vpc)
-        #print("aux -> " + aux)
-        ###################
-
-        ### si estamos en el ultimo dia
-        filter_args = {
-            'Bucket': self.bucket,
-            'MaxKeys': 5,
-            'Prefix': self.get_full_prefix(aws_account_id, aws_region) + last_key.split('/')[5] + '/' + last_key.split('/')[6] + '/' + last_key.split('/')[7] + '/' + prefix_vpc
-        }
-        ### si no, hacerlo de la manera normal
-        
-        print("prefix de filter_args -> " + filter_args['Prefix'])
-
-        # if nextContinuationToken is not used for processing logs in a bucket
-        if not iterating:
-            if filter_marker:
-                filter_args['StartAfter'] = filter_marker
-                debug('+++ Marker: {0}'.format(filter_marker), 2)
-            else:
-                filter_args['StartAfter'] = last_key
-                debug('+++ Marker: {0}'.format(last_key), 2)
-
-        return filter_args
-    
-    
-
-    def get_full_prefix(self, account_id, account_region, vpc_prefix):
-        return '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/{aws_region}/{vpc_prefix}'.format( 
-            trail_prefix=self.prefix,
-            aws_account_id=account_id,
-            aws_service=self.service,
-            aws_region=account_region,
-            vpc_prefix=vpc_prefix)
-    
-    
-    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
-        return '{init}{only_logs_after}'.format(
-            init=self.get_full_prefix(aws_account_id, aws_region),
-            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
-        )
-    """
 
 
 class AWSConfigBucket(AWSLogsBucket):
@@ -1012,6 +793,7 @@ class AWSConfigBucket(AWSLogsBucket):
 class AWSCustomBucket(AWSBucket):
 
     def __init__(self, **kwargs):
+        self.db_table_name = 'custom'
         AWSBucket.__init__(self, **kwargs)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
 
@@ -1068,7 +850,7 @@ class AWSCustomBucket(AWSBucket):
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        AWSBucket.__init__(self, **kwargs)
+        AWSCustomBucket.__init__(self, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
