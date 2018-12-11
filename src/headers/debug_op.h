@@ -36,12 +36,16 @@
 #endif
 #endif
 
+#define ERROR_AT_FUNCTION "At %s(): %s(): %s"
+
 #define mdebug1(msg, ...) _mdebug1(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtdebug1(tag, msg, ...) _mtdebug1(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mdebug2(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtdebug2(tag, msg, ...) _mtdebug2(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define merror(msg, ...) _merror(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror_at(x) merror(ERROR_AT_FUNCTION, __FUNCTION__, x, strerror(errno));
 #define mterror(tag, msg, ...) _mterror(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mterror_at(tag, x) mterror(tag, ERROR_AT_FUNCTION, __FUNCTION__, x, strerror(errno));
 #define mwarn(msg, ...) _mwarn(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtwarn(tag, msg, ...) _mtwarn(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define minfo(msg, ...) _minfo(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
@@ -49,7 +53,9 @@
 #define mferror(msg, ...) _mferror(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mtferror(tag, msg, ...) _mtferror(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define merror_exit(msg, ...) _merror_exit(__FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror_exit_at(x) merror(ERROR_AT_FUNCTION, __FUNCTION__, x, strerror(errno));
 #define mterror_exit(tag, msg, ...) _mterror_exit(tag, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mterror_exit_at(tag, x) mterror_exit(tag, ERROR_AT_FUNCTION, __FUNCTION__, x, strerror(errno));
 
 void _mdebug1(const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 4, 5))) __attribute__((nonnull));
 void _mtdebug1(const char *tag, const char * file, int line, const char * func, const char *msg, ...) __attribute__((format(_PRINTF_FORMAT, 5, 6))) __attribute__((nonnull));

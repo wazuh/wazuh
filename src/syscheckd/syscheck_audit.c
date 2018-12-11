@@ -572,6 +572,7 @@ int audit_init(void) {
         while (!audit_thread_active)
             w_cond_wait(&audit_thread_started, &audit_mutex);
         w_mutex_unlock(&audit_mutex);
+
         return 1;
 
     } else {
@@ -847,6 +848,8 @@ void audit_parse(char *buffer) {
                 case 1:
                     if (cwd && path0) {
                         if (file_path = gen_audit_path(cwd, path0, NULL), file_path) {
+                            // Check if it is a health check
+                            w_evt->health_check = strcmp(file_path, WDATA_HEALTH_CHECK_PATH) ? 0 : 1;
                             w_evt->path = file_path;
                             mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -872,6 +875,8 @@ void audit_parse(char *buffer) {
                 case 2:
                     if (cwd && path0 && path1) {
                         if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
+                            // Check if it is a health check
+                            w_evt->health_check = strcmp(file_path, WDATA_HEALTH_CHECK_PATH) ? 0 : 1;
                             w_evt->path = file_path;
                             mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -911,6 +916,8 @@ void audit_parse(char *buffer) {
                         // Send event 1/2
                         char *file_path1;
                         if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
+                            // Check if it is a health check
+                            w_evt->health_check = strcmp(file_path, WDATA_HEALTH_CHECK_PATH) ? 0 : 1;
                             w_evt->path = file_path1;
                             mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -937,6 +944,8 @@ void audit_parse(char *buffer) {
                         // Send event 2/2
                         char *file_path2;
                         if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
+                            // Check if it is a health check
+                            w_evt->health_check = strcmp(file_path, WDATA_HEALTH_CHECK_PATH) ? 0 : 1;
                             w_evt->path = file_path2;
                             mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -971,6 +980,8 @@ void audit_parse(char *buffer) {
                     if (cwd && path1 && path4) {
                         char *file_path;
                         if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
+                            // Check if it is a health check
+                            w_evt->health_check = strcmp(file_path, WDATA_HEALTH_CHECK_PATH) ? 0 : 1;
                             w_evt->path = file_path;
                             mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
                                 (w_evt->user_name)?w_evt->user_name:"",
@@ -1024,6 +1035,7 @@ void * audit_main(int * audit_sock) {
     struct timeval timeout;
     count_reload_retries = 0;
     int conn_retries;
+    unsigned int *health_check_status = &syscheck.wd_checks.status;
 
     char *buffer;
     buffer = malloc(BUF_SIZE * sizeof(char));
@@ -1041,7 +1053,17 @@ void * audit_main(int * audit_sock) {
 
     minfo("Starting FIM Whodata engine...");
 
+    // Run whodata health_check
+    syscheck.wd_checks.status = WD_HC_INVALID;
+    w_create_thread(health_check_thread, &syscheck);
+    wd_hc_wait(*health_check_status, WD_HC_WAITING);
+
     while (audit_thread_active) {
+        if (!*health_check_status) { // == WD_HC_WAITING
+            *health_check_status = WD_HC_STARTING;
+            wd_hc_wait(*health_check_status, WD_HC_RUNNING);
+        }
+
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
@@ -1244,5 +1266,6 @@ int filterpath_audit_events(char *path) {
     }
     return 0;
 }
+
 #endif
 #endif

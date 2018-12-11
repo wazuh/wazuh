@@ -54,6 +54,10 @@
 #define SK_CONF_UNPARSED -2
 #define SK_CONF_UNDEFINED -1
 
+#define WDATA_HEALTH_CHECK_FILE "wdata_health_check"
+#define WDATA_HEALTH_CHECK_PATH TMP_PATH "/" WDATA_HEALTH_CHECK_FILE
+#define WDATA_HEALTH_CHECK_PATH_RENAMED WDATA_HEALTH_CHECK_PATH "-renamed"
+
 //Max allowed value for recursion
 #define MAX_DEPTH_ALLOWED 320
 
@@ -98,6 +102,7 @@ typedef struct whodata_evt {
     char scan_directory;
     whodata_event_node *wnode;
 #endif
+    char health_check;
 } whodata_evt;
 
 #ifdef WIN32
@@ -161,6 +166,18 @@ typedef struct syscheck_node {
     int dir_position;
 } syscheck_node;
 
+typedef struct syscheck_health_checks {
+    unsigned int create : 1;
+    unsigned int modify : 1;
+    unsigned int remove : 1;
+    unsigned int move : 1;
+    unsigned int change_perm : 1;
+    unsigned int change_owner : 1;
+    unsigned int change_group : 1;
+    unsigned int change_inode : 1; // ~~~~~~~~~
+    unsigned int status;
+} syscheck_health_checks;
+
 typedef struct _config {
     unsigned int tsleep;            /* sleep for sometime for daemon to settle */
     int sleep_after;
@@ -221,7 +238,7 @@ typedef struct _config {
     rtfim *realtime;
 
     char *prefilter_cmd;
-
+    syscheck_health_checks wd_checks;
 } syscheck_config;
 
 

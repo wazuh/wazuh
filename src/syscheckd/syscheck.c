@@ -14,6 +14,8 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "rootcheck/rootcheck.h"
+#include <pwd.h>
+#include <grp.h>
 
 // Global variables
 syscheck_config syscheck;
@@ -83,10 +85,130 @@ int fim_initialize() {
 #endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
+    // Whodata health check
+    memset(&syscheck.wd_checks, 0, sizeof(syscheck_health_checks));
 
     return 0;
 }
 
+void * health_check_thread(void *config) {
+    char message[OS_SIZE_256 + 1];
+    int size;
+
+    minfo("Starting Whodata health check...");
+
+    syscheck_config *syscheck = (syscheck_config *) config;
+    syscheck_health_checks *checks = &syscheck->wd_checks;
+    if (run_health_check(checks)) {
+        merror("Health check could not be completed.");
+        return NULL;
+    }
+
+    if (0) { ///////////////////
+        goto error;
+    }
+
+    return NULL;
+error:
+    size = snprintf(message, OS_SIZE_256,
+                    "The health check has not been completed successfully. Failures:%s%s%s%s%s%s%s%s",
+                    checks->create ? " CREATE," : "",
+                    checks->modify ? " MODIFY," : "",
+                    checks->remove ? " REMOVE," : "",
+                    checks->move ? " MOVE," : "",
+                    checks->change_perm ? " CHANGE PERMISSIONS," : "",
+                    checks->change_owner ? " CHANGE OWNER," : "",
+                    checks->change_group ? " CHANGE GROUP," : "",
+                    checks->change_inode ? " CHANGE INODE," : "");
+    message[size - 1] = '.';
+    minfo(message);
+    return NULL;
+}
+
+int run_health_check(syscheck_health_checks *checks) {
+    char rem_check;
+    unsigned int *status = &checks->status;
+    FILE *fp = NULL;
+    int permissions;
+    struct passwd *pwd;
+    struct group *grp;
+
+
+    // Restore checks
+    memset(checks, 0, sizeof(syscheck_health_checks));
+
+    wd_hc_wait(*status, WD_HC_STARTING);
+
+    // Remove test
+    if (remove(WDATA_HEALTH_CHECK_PATH)) {
+        if (errno != ENOENT) {
+            merror_at("remove");
+            goto error;
+        }
+        rem_check = 0;
+    } else {
+        rem_check = 1;
+    }
+
+    // Create test
+    if (fp = fopen(WDATA_HEALTH_CHECK_PATH, "w"), !fp) {
+        merror_at("fopen");
+        goto error;
+    }
+
+    // Modification test
+    fprintf(fp, "Modification test");
+    fclose(fp);
+
+    // Change permissions
+    permissions = strtol("0622", 0, 8);
+    if (chmod(WDATA_HEALTH_CHECK_PATH, permissions)) {
+        merror_at("chmod");
+        goto error;
+    }
+
+    // Rename/move test
+    if (rename(WDATA_HEALTH_CHECK_PATH, WDATA_HEALTH_CHECK_PATH_RENAMED)) {
+        merror_at("rename");
+        goto error;
+    }
+
+    // Change owner
+    if (pwd = getpwnam("ossec"), pwd == NULL) {
+        merror_at("getpwnam");
+        goto error;
+    } else if (chown(WDATA_HEALTH_CHECK_PATH_RENAMED, pwd->pw_uid, (gid_t) - 1)) {
+        merror_at("chown");
+        goto error;
+    }
+
+    // Change group
+    if (grp = getgrnam("root"), grp == NULL) {
+        merror_at("getgrnam");
+        goto error;
+    } else if (chown(WDATA_HEALTH_CHECK_PATH_RENAMED, (uid_t) - 1, grp->gr_gid)) {
+        merror_at("chown2");
+        goto error;
+    }
+
+    // Change inode
+
+    ///////////////////////////////////////////////////////////////////////////////////
+
+
+    if (!rem_check && remove(WDATA_HEALTH_CHECK_PATH_RENAMED)) {
+        merror_at("remove2");
+        goto error;
+    }
+
+    return 0;
+error:
+    if (fp) {
+        fclose(fp);
+    }
+    checks->status = WD_HC_ENDED_ERROR;
+    return OS_INVALID;
+}
 
 #ifdef WIN32
 /* syscheck main for Windows */
@@ -141,7 +263,6 @@ int Start_win32_Syscheck()
     }
 
     if (!syscheck.disabled) {
-#ifdef WIN32
 #ifndef WIN_WHODATA
         int whodata_notification = 0;
         /* Remove whodata attributes */
@@ -155,7 +276,6 @@ int Start_win32_Syscheck()
                 syscheck.opts[r] |= CHECK_REALTIME;
             }
         }
-#endif
 #endif
 
 

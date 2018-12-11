@@ -12,6 +12,9 @@
 #include "config.h"
 
 
+static int add_syscheck_dir(syscheck_config *syscheck, char *paths, char **attrs, char **values);
+static void add_wd_healthcheck_file(syscheck_config *syscheck);
+
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg,
         const char *restrictfile, int recursion_limit, const char *tag, int overwrite)
 {
@@ -806,6 +809,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     }
 
     os_calloc(1, sizeof(char *), syscheck->audit_key);
+    add_wd_healthcheck_file(syscheck);
 
     while (node && node[i]) {
         if (!node[i]->element) {
@@ -818,41 +822,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         /* Get directories */
         else if (strcmp(node[i]->element, xml_directories) == 0) {
-            char dirs[OS_MAXSTR];
-            char *ptfile;
-
-#ifdef WIN32
-            str_lowercase(node[i]->content);
-            /* Change backslashes to forwardslashes on entry */
-            ptfile = strchr(node[i]->content, '/');
-            while (ptfile) {
-                *ptfile = '\\';
-                ptfile++;
-
-                ptfile = strchr(ptfile, '/');
-            }
-#endif
-            ptfile = node[i]->content;
-            ptfile += strlen(node[i]->content + 1);
-            if (*ptfile == '/' || *ptfile == '\\') {
-                *ptfile = '\0';
-            }
-
-#ifdef WIN32
-            if(!ExpandEnvironmentStrings(node[i]->content, dirs, sizeof(dirs) - 1)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                continue;
-            }
-            str_lowercase(dirs);
-#else
-            strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
-#endif
-
-            if (!read_attr(syscheck,
-                           dirs,
-                           node[i]->attributes,
-                           node[i]->values)) {
-                return (OS_INVALID);
+            if (add_syscheck_dir(syscheck, node[i]->content, node[i]->attributes, node[i]->values)) {
+                return OS_INVALID;
             }
         }
         /* Get Windows registry */
@@ -1449,4 +1420,66 @@ char* check_ascci_hex (char *input) {
         os_strdup(input, output);
     }
     return output;
+}
+
+void add_wd_healthcheck_file(syscheck_config *syscheck) {
+    static char hc_file_added = 0;
+
+    if (!hc_file_added) {
+        char *attrs[4];
+        char *values[4];
+
+        attrs[0] = "check_all";
+        values[0] = "yes";
+        attrs[1] = "whodata";
+        values[1] = "yes";
+        attrs[2] = "restrict";
+        values[2] = WDATA_HEALTH_CHECK_PATH "$|" WDATA_HEALTH_CHECK_PATH_RENAMED "$";
+        attrs[3] = NULL;
+        values[3] = NULL;
+
+        hc_file_added = 1;
+        add_syscheck_dir(syscheck, TMP_PATH, attrs, values);
+    }
+}
+
+int add_syscheck_dir(syscheck_config *syscheck, char *paths, char **attrs, char **values) {
+    char dirs[OS_MAXSTR];
+    char *ptfile;
+
+#ifdef WIN32
+    str_lowercase(paths);
+    /* Change backslashes to forwardslashes on entry */
+    ptfile = strchr(paths, '/');
+    while (ptfile) {
+        *ptfile = '\\';
+        ptfile++;
+
+        ptfile = strchr(ptfile, '/');
+    }
+#endif
+    ptfile = paths;
+    ptfile += strlen(paths + 1);
+    if (*ptfile == '/' || *ptfile == '\\') {
+        *ptfile = '\0';
+    }
+
+#ifdef WIN32
+    if(!ExpandEnvironmentStrings(paths, dirs, sizeof(dirs) - 1)){
+        merror("Could not expand the environment variable %s (%ld)", paths, GetLastError());
+        return 0;
+    }
+    str_lowercase(dirs);
+#else
+    strncpy(dirs, paths, sizeof(dirs) - 1);
+#endif
+
+    if (!read_attr(syscheck,
+                   dirs,
+                   attrs,
+                   values)) {
+        return OS_INVALID;
+    }
+
+    return 0;
 }

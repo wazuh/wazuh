@@ -23,10 +23,22 @@
 #define SK_DB_REPORT_CHANG 10
 
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
+// Wait for a whodata health check status
+#define wd_hc_wait(x,y) while (x != y) { sleep(0.1); }
 
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
+
+/* Whodata health check states */
+enum wdata_hc_states {
+    WD_HC_WAITING,
+    WD_HC_STARTING,
+    WD_HC_RUNNING,
+    WD_HC_ENDED,
+    WD_HC_ENDED_ERROR,
+    WD_HC_INVALID
+};
 
 /** Function Prototypes **/
 
@@ -83,6 +95,8 @@ int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
 
 int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
+void *health_check_thread(void *config);
+int run_health_check(syscheck_health_checks *checks);
 
 /* Find container directory */
 int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));
