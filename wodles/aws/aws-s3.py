@@ -765,6 +765,74 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     """
 
     def __init__(self, **kwargs):
+        # SQL queries for VPC
+        self.sql_already_processed = """
+                          SELECT
+                            count(*)
+                          FROM
+                            {table_name}
+                          WHERE
+                            aws_account_id='{aws_account_id}' AND
+                            aws_region='{aws_region}' AND
+                            log_key='{log_name}'"""
+
+        self.sql_mark_complete = """
+                            INSERT INTO {table_name} (
+                                aws_account_id,
+                                aws_region,
+                                flow_log_id,
+                                log_key,
+                                processed_date,
+                                created_date) VALUES (
+                                '{aws_account_id}',
+                                '{aws_region}',
+                                '{flow_log_id}',
+                                '{log_key}',
+                                DATETIME('now'),
+                                '{created_date}')"""
+
+        self.sql_create_table = """
+                            CREATE TABLE
+                                {table_name} (
+                                aws_account_id 'text' NOT NULL,
+                                aws_region 'text' NOT NULL,
+                                flow_log_id 'text' NOT NULL,
+                                log_key 'text' NOT NULL,
+                                processed_date 'text' NOT NULL,
+                                created_date 'integer' NOT NULL,
+                                PRIMARY KEY (aws_account_id, aws_region, log_key));"""
+
+        self.sql_find_last_key_processed = """
+                                        SELECT
+                                            log_key
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            aws_account_id='{aws_account_id}' AND
+                                            aws_region = '{aws_region}' AND
+                                            flow_log_id = '{flow_log_id}
+                                        ORDER BY
+                                            log_key ASC
+                                        LIMIT 1;"""
+
+        self.sql_db_maintenance = """DELETE
+                            FROM
+                                {table_name}
+                            WHERE
+                                aws_account_id='{aws_account_id}' AND
+                                aws_region='{aws_region}' AND
+                                flow_log_id = '{flow_log_id} AND
+                                rowid NOT IN
+                                (SELECT ROWID
+                                    FROM
+                                    {table_name}
+                                    WHERE
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region='{aws_region}' AND
+                                    flow_log_id = '{flow_log_id}
+                                    ORDER BY
+                                    ROWID DESC
+                                    LIMIT {retain_db_records})"""
         self.db_table_name = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
