@@ -922,7 +922,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             last_date_processed = query_date_last_log.fetchone()[0]
         # if DB is empty
         except TypeError as e:
-            last_date_processed = '20181211' #### fix this value!
+            last_date_processed = datetime.strftime(datetime.utcnow(), "%Y%m%d") # get today date if DB is empty
         return str(last_date_processed)
 
     def iter_regions_and_accounts(self, account_id, regions):
