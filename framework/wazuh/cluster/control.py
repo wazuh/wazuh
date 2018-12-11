@@ -5,11 +5,11 @@ import json
 
 
 async def get_nodes(filter_node=None):
-    return await local_client.execute(command=b'get_nodes', data=json.dumps(filter_node).encode())
+    return json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(filter_node).encode()))
 
 
 async def get_health(filter_node=None):
-    return await local_client.execute(command=b'get_health', data=json.dumps(filter_node).encode())
+    return json.loads(await local_client.execute(command=b'get_health', data=json.dumps(filter_node).encode()))
 
 
 async def get_agents(filter_node=None, filter_status=None):
@@ -22,4 +22,4 @@ async def get_agents(filter_node=None, filter_status=None):
                       'limit': None,
                       'select': {'fields': ['id', 'ip', 'name', 'status', 'node_name']}}}
 
-    return await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode())
+    return json.loads(await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode()))
