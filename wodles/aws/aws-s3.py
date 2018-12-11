@@ -836,6 +836,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.db_table_name = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
+        self.flow_logs_ids = self.get_flow_logs_ids(kwargs['access_key'],
+            kwargs['secret_key'])
+        print("flow log ids -> " + str(self.flow_logs_ids))
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -844,6 +847,30 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             "packets", "bytes", "start", "end", "action", "log_status")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             return [dict(x, source='vpc') for x in tsv_file]
+
+    def get_ec2_client(self, access_key, secret_key):
+       conn_args = {}
+       if access_key is not None and secret_key is not None:
+           conn_args['aws_access_key_id'] = access_key
+           conn_args['aws_secret_access_key'] = secret_key
+
+       boto_session = boto3.Session(**conn_args)
+
+       try:
+           ec2_client = boto_session.client(service_name='ec2')
+       except Exception as e:
+           print("Error getting EC2 client: {}".format(e))
+           sys.exit(3)
+
+       return ec2_client
+
+    def get_flow_logs_ids(self, access_key, secret_key):
+        ec2_client = self.get_ec2_client(access_key, secret_key)
+        flow_logs = ec2_client.describe_flow_logs()['FlowLogs']
+        flow_logs_ids = []
+        for log_id in flow_logs:
+            flow_logs_ids.append(log_id['FlowLogId'])
+        return flow_logs_ids
 
 
 class AWSConfigBucket(AWSLogsBucket):
