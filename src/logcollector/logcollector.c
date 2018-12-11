@@ -306,8 +306,10 @@ void LogCollectorStart()
                                     i--;
                                     continue;
                                 }
-                            } else {
+                            } else if (open_file_attempts) {
                                 mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            } else {
+                                mdebug1(OPEN_UNABLE, current->file);
                             }
                         }
                     }
@@ -339,19 +341,14 @@ void LogCollectorStart()
 #endif
                         }
                         current->fp = NULL;
-                        if (handle_file(i, j, 0, 1)) {
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-                        }
+
+                        handle_file(i, j, 0, 1);
                         continue;
                     }
 
                     /* Variable file name */
-                    else if (!current->fp) {
-                        if (handle_file(i, j, 0, 1)) {
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-                        }
+                    else if (!current->fp && open_file_attempts - current->ign > 0) {
+                        handle_file(i, j, 0, 1);
                         continue;
                     }
                 }
@@ -383,8 +380,10 @@ void LogCollectorStart()
                                     i--;
                                     continue;
                                 }
-                            } else {
+                            } else if (open_file_attempts) {
                                 mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                            } else {
+                                mdebug1(OPEN_UNABLE, current->file);
                             }
                         } else {
                             merror(FOPEN_ERROR, current->file, errno, strerror(errno));
@@ -450,10 +449,7 @@ void LogCollectorStart()
 #endif
 
                         current->fp = NULL;
-                        if (handle_file(i, j, 0, 1) ) {
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-                        }
+                        handle_file(i, j, 0, 1);
                         continue;
                     }
 #ifdef WIN32
@@ -484,10 +480,7 @@ void LogCollectorStart()
                         CloseHandle(h1);
 #endif
                         current->fp = NULL;
-                        if (handle_file(i, j, 0, 1) ) {
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-                        }
+                        handle_file(i, j, 0, 1);
                     } else {
 #ifdef WIN32
                         CloseHandle(h1);
@@ -531,10 +524,7 @@ void LogCollectorStart()
                         continue;
                     } else {
                         /* Try for a few times to open the file */
-                        if (handle_file(i, j, 0, 1) < 0) {
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-                        }
+                        handle_file(i, j, 0, 1);
                         continue;
                     }
                 }
@@ -644,7 +634,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
             merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
             lf->exists = 0;
         }
-        return (-1);
+        goto error;
     }
     /* Get inode number for fp */
     fd = fileno(lf->fp);
@@ -652,7 +642,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         merror(FSTAT_ERROR, lf->file, errno, strerror(errno));
         fclose(lf->fp);
         lf->fp = NULL;
-        return (-1);
+        goto error;
     }
 
     lf->fd = stat_fd.st_ino;
@@ -670,19 +660,19 @@ int handle_file(int i, int j, int do_fseek, int do_log)
             DWORD error = GetLastError();
             merror(FOPEN_ERROR, lf->file, (int)error, win_strerror(error));
         }
-        return (-1);
+        goto error;
     }
     fd = _open_osfhandle((long)lf->h, 0);
     if (fd == -1) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
-        return (-1);
+        goto error;
     }
     lf->fp = _fdopen(fd, "r");
     if (!lf->fp) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
-        return (-1);
+        goto error;
     }
 
 
@@ -694,7 +684,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         fclose(lf->fp);
         CloseHandle(lf->h);
         lf->fp = NULL;
-        return (-1);
+        goto error;
     }
 
     lf->fd = (lpFileInformation.nFileIndexLow + lpFileInformation.nFileIndexHigh);
@@ -710,7 +700,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
             merror(FSEEK_ERROR, lf->file, errno, strerror(errno));
             fclose(lf->fp);
             lf->fp = NULL;
-            return (-1);
+            goto error;
         }
 #endif
     }
@@ -718,6 +708,17 @@ int handle_file(int i, int j, int do_fseek, int do_log)
     /* Set ignore to zero */
     lf->ign = 0;
     return (0);
+
+error:
+    lf->ign++;
+
+    if (open_file_attempts && j < 0) {
+        mdebug1(OPEN_ATTEMPT, lf->file, open_file_attempts - lf->ign);
+    } else {
+        mdebug1(OPEN_UNABLE, lf->file);
+    }
+
+    return -1;
 }
 
 /* Reload file: open after close, and restore position */
@@ -847,22 +848,14 @@ void set_read(logreader *current, int i, int j) {
         /* Day must be zero for all files to be initialized */
         _cday = 0;
         if (update_fname(i, j)) {
-            if (handle_file(i, j, 1, 1)) {
-                current->ign++;
-                mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-            }
+            handle_file(i, j, 1, 1);
         } else {
             merror_exit(PARSE_ERROR, current->ffile);
         }
 
     } else {
-        if (handle_file(i, j, 1, 1)) {
-            current->ign++;
-            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-        }
+        handle_file(i, j, 1, 1);
     }
-
-
 
     tg = 0;
     if (current->target) {
@@ -961,8 +954,8 @@ int check_pattern_expand(int do_seek) {
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
-                    } else if (handle_file(i, j, do_seek, 1) ) {
-                        globs[j].gfiles[i].ign++;
+                    } else {
+                        handle_file(i, j, do_seek, 1);
                     }
                 }
                 glob_offset++;
@@ -1377,7 +1370,13 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     /* Parsing error */
                     if (r != 0) {
                         current->ign++;
-                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+
+                        if (open_file_attempts && j < 0) {
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        } else {
+                            mdebug1(OPEN_UNABLE, current->file);
+                        }
+
                     }
                     pthread_mutex_unlock (&current->mutex);
                 }
@@ -1404,8 +1403,6 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
                         /* Try to open it again */
                         if (handle_file(i, j, 0, 1)) {
-                            current->ign++;
-                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                             pthread_mutex_unlock (&current->mutex);
                             w_rwlock_unlock(&files_update_rwlock);
                             continue;
@@ -1416,7 +1413,13 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     }
                     /* Increase the error count  */
                     current->ign++;
-                    mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+
+                    if (open_file_attempts && j < 0) {
+                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                    } else {
+                        mdebug1(OPEN_UNABLE, current->file);
+                    }
+
                     clearerr(current->fp);
                     pthread_mutex_unlock (&current->mutex);
                 }
