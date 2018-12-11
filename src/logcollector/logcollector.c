@@ -1194,13 +1194,13 @@ int w_msg_queue_push(w_msg_queue_t * msg, const char * buffer, char *file, unsig
     if (result < 0) {
         free(message->buffer);
         free(message);
-        mdebug2("Discarding log line from logcollector");
+        mdebug2("Discarding log line for target '%s'", log_target->log_socket->name);
 
         if (!reported) {
 #ifndef WIN32
-            mwarn("Message message queue is full (%zu). Log lines may be lost.", msg->msg_queue->size);
+            mwarn("Target '%s' message queue is full (%zu). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
 #else
-            mwarn("Message message queue is full (%u). Log lines may be lost.", msg->msg_queue->size);
+            mwarn("Target '%s' message queue is full (%u). Log lines may be lost.", log_target->log_socket->name, msg->msg_queue->size);
 #endif
             reported = 1;
         }
