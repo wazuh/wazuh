@@ -739,7 +739,6 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
             GetLastError());
         goto cleanup;
     }
-
     xml_event = convert_windows_string((LPCWSTR) properties_values);
 
     find_prov = strstr(xml_event, "Provider Name=");
@@ -750,7 +749,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
             end_prov = strchr(beg_prov+1, '\'');
 
             if (end_prov){
-                num = end_prov-1-beg_prov;
+                num = end_prov - beg_prov - 1;
 
                 memcpy(provider_name, beg_prov+1, num);
                 provider_name[num] = '\0';
@@ -798,13 +797,8 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 cleanup:
     free(msg_from_prov);
     free(xml_event);
-    free(filtered_msg);
-    free(avoid_dup);
     free(msg_sent);
     free(properties_values);
-    free(beg_prov);
-    free(end_prov);
-    free(find_prov);
     free(provider_name);
     free(wprovider_name);
     cJSON_Delete(event_json);
