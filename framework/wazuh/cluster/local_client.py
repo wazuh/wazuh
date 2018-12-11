@@ -33,27 +33,12 @@ class LocalClientHandler(client.AbstractClient):
 
 class LocalClient(client.AbstractClientManager):
 
-    def __init__(self):
+    def __init__(self, command: bytes, data: bytes):
         super().__init__(configuration=cluster.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
                          file='', string=0, logger=logging.getLogger(), tag="Local Client")
         self.request_result = None
-
-    async def send_request(self, command, data):
-        while self.client is None:
-            await asyncio.sleep(0.5)
-        result = (await self.client.send_request(command, data)).decode()
-        if result.startswith('Error'):
-            self.request_result = json.dumps({'error': 1000, 'message': result})
-        else:
-            if command == b'dapi' or command == b'dapi_forward':
-                try:
-                    await asyncio.wait_for(self.client.response_available.wait(), timeout=self.client.request_timeout)
-                    self.request_result = self.client.response.decode()
-                except asyncio.TimeoutError:
-                    self.request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
-            else:
-                self.request_result = result
-        self.client.close()
+        self.command = command
+        self.data = data
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -69,18 +54,22 @@ class LocalClient(client.AbstractClientManager):
                                                                         manager=self),
                             path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
 
-        self.client = protocol
-
-        try:
-            await on_con_lost
-        finally:
-            transport.close()
+        result = (await protocol.send_request(self.command, self.data)).decode()
+        if result.startswith('Error'):
+            request_result = json.dumps({'error': 1000, 'message': result})
+        else:
+            if self.command == b'dapi' or self.command == b'dapi_forward':
+                try:
+                    await asyncio.wait_for(protocol.response_available.wait(), timeout=protocol.request_timeout)
+                    request_result = protocol.response.decode()
+                except asyncio.TimeoutError:
+                    request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
+            else:
+                request_result = result
+        protocol.close()
+        return request_result
 
 
 async def execute(command: bytes, data: bytes):
-    my_client = LocalClient()
-    try:
-        await asyncio.gather(my_client.start(), my_client.send_request(command=command, data=data))
-    except asyncio.CancelledError:
-        pass
-    return my_client.request_result
+    return await LocalClient(command, data).start()
+
