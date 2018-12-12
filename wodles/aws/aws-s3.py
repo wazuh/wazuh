@@ -466,7 +466,7 @@ class AWSBucket(WazuhIntegration):
                                                                                         aws_region=aws_region))
             try:
                 last_key = query_last_key.fetchone()[0]
-            except TypeError as e:
+            except (TypeError, IndexError) as e:
                 # if DB is empty for a region
                 last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
 
@@ -882,10 +882,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_flow_logs_ids(self, access_key, secret_key):
         ec2_client = self.get_ec2_client(access_key, secret_key)
-        flow_logs = ec2_client.describe_flow_logs()['FlowLogs']
-        flow_logs_ids = []
-        for log_id in flow_logs:
-            flow_logs_ids.append(log_id['FlowLogId'])
+        flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         return flow_logs_ids
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
@@ -903,7 +900,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_days_since_today(self, date):
         date = datetime.strptime(date, "%Y%m%d")
-        # it is necessary to add one day
+        # it is necessary to add one day for processing the current day
         delta = datetime.utcnow() - date + timedelta(days=1)
         return delta.days
 
