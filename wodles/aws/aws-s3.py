@@ -68,6 +68,7 @@ from datetime import datetime
 from os import path
 import operator
 from datetime import datetime
+from datetime import timedelta
 
 
 ################################################################################
@@ -218,6 +219,8 @@ class AWSBucket(WazuhIntegration):
 
     This is an abstract class
     """
+
+    
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  max_queue_buffer, prefix, delete_file):
@@ -464,7 +467,7 @@ class AWSBucket(WazuhIntegration):
                                                                                         aws_region=aws_region))
             try:
                 last_key = query_last_key.fetchone()[0]
-            except TypeError as e:
+            except (TypeError, IndexError) as e:
                 # if DB is empty for a region
                 last_key = self.marker_only_logs_after(aws_region, aws_account_id)
 
@@ -767,6 +770,92 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.db_table_name = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
+        self.flow_logs_ids = self.get_flow_logs_ids(kwargs['access_key'],
+            kwargs['secret_key'])
+        self.today = self.get_today()
+        # SQL queries for VPC must be after constructor call
+        self.sql_already_processed = """
+                          SELECT
+                            count(*)
+                          FROM
+                            {table_name}
+                          WHERE
+                            aws_account_id='{aws_account_id}' AND
+                            aws_region='{aws_region}' AND
+                            flow_log_id='{flow_log_id}' AND
+                            log_key='{log_key}'"""
+
+        self.sql_mark_complete = """
+                            INSERT INTO {table_name} (
+                                aws_account_id,
+                                aws_region,
+                                flow_log_id,
+                                log_key,
+                                processed_date,
+                                created_date) VALUES (
+                                '{aws_account_id}',
+                                '{aws_region}',
+                                '{flow_log_id}',
+                                '{log_key}',
+                                DATETIME('now'),
+                                '{created_date}')"""
+
+        self.sql_create_table = """
+                            CREATE TABLE
+                                {table_name} (
+                                aws_account_id 'text' NOT NULL,
+                                aws_region 'text' NOT NULL,
+                                flow_log_id 'text' NOT NULL,
+                                log_key 'text' NOT NULL,
+                                processed_date 'text' NOT NULL,
+                                created_date 'integer' NOT NULL,
+                                PRIMARY KEY (aws_account_id, aws_region, flow_log_id, log_key));"""
+
+        self.sql_find_last_key_processed_of_day = """
+                                                SELECT
+                                                    log_key
+                                                FROM
+                                                    {table_name}
+                                                WHERE
+                                                    aws_account_id='{aws_account_id}' AND
+                                                    aws_region = '{aws_region}' AND
+                                                    flow_log_id = '{flow_log_id}' AND
+                                                    created_date = {created_date}
+                                                ORDER BY
+                                                    log_key ASC
+                                                LIMIT 1;"""
+
+        self.sql_get_date_last_log_processed = """
+                                            SELECT
+                                                created_date
+                                            FROM
+                                                {table_name}
+                                            WHERE
+                                                aws_account_id='{aws_account_id}' AND
+                                                aws_region = '{aws_region}' AND
+                                                flow_log_id = '{flow_log_id}'
+                                            ORDER BY
+                                                log_key DESC
+                                            LIMIT 1;"""
+
+        self.sql_db_maintenance = """DELETE
+                            FROM
+                                {table_name}
+                            WHERE
+                                aws_account_id='{aws_account_id}' AND
+                                aws_region='{aws_region}' AND
+                                flow_log_id='{flow_log_id}' AND
+                                rowid NOT IN
+                                (SELECT ROWID
+                                    FROM
+                                    {table_name}
+                                    WHERE
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region='{aws_region}' AND
+                                    flow_log_id='{flow_log_id}'
+                                    ORDER BY
+                                    ROWID DESC
+                                    LIMIT {retain_db_records})"""
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -775,6 +864,232 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             "packets", "bytes", "start", "end", "action", "log_status")
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             return [dict(x, source='vpc') for x in tsv_file]
+
+    def get_ec2_client(self, access_key, secret_key):
+       conn_args = {}
+       if access_key is not None and secret_key is not None:
+           conn_args['aws_access_key_id'] = access_key
+           conn_args['aws_secret_access_key'] = secret_key
+
+       boto_session = boto3.Session(**conn_args)
+
+       try:
+           ec2_client = boto_session.client(service_name='ec2')
+       except Exception as e:
+           print("Error getting EC2 client: {}".format(e))
+           sys.exit(3)
+
+       return ec2_client
+
+    def get_flow_logs_ids(self, access_key, secret_key):
+        ec2_client = self.get_ec2_client(access_key, secret_key)
+        flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
+        return flow_logs_ids
+
+    def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
+        cursor = self.db_connector.execute(self.sql_already_processed.format(
+            table_name=self.db_table_name,
+            aws_account_id=aws_account_id,
+            aws_region=aws_region,
+            flow_log_id=flow_log_id,
+            log_key=downloaded_file
+        ))
+        return cursor.fetchone()[0] > 0
+
+    def get_today(self):
+        return datetime.strftime(datetime.utcnow(), "%Y%m%d")
+
+    def get_days_since_today(self, date):
+        date = datetime.strptime(date, "%Y%m%d")
+        # it is necessary to add one day for processing the current day
+        delta = datetime.utcnow() - date + timedelta(days=1)
+        return delta.days
+
+    def get_date_list(self, aws_account_id, aws_region, flow_log_id):
+        num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region, flow_log_id))
+        date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
+        return [datetime.strftime(date, "%Y/%m/%d") for date in reversed(date_list_time)]
+
+    def get_date_last_log(self, aws_account_id, aws_region, flow_log_id):
+        try:
+            query_date_last_log = self.db_connector.execute(self.sql_get_date_last_log_processed.format(
+                                                                                        table_name=self.db_table_name,
+                                                                                        aws_account_id=aws_account_id,
+                                                                                        aws_region=aws_region,
+                                                                                        flow_log_id=flow_log_id))
+            last_date_processed = query_date_last_log.fetchone()[0]
+        # if DB is empty
+        except TypeError as e:
+            last_date_processed = datetime.strftime(datetime.utcnow(), "%Y%m%d") # get today date if DB is empty
+        return str(last_date_processed)
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        if not account_id:
+            # No accounts provided, so find which exist in s3 bucket
+            account_id = self.find_account_ids()
+        for aws_account_id in account_id:
+            # No regions provided, so find which exist for this AWS account
+            if not regions:
+                regions = self.find_regions(aws_account_id)
+                if regions == []:
+                    continue
+            for aws_region in regions:
+                debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                # for each flow log id
+                for flow_log_id in self.flow_logs_ids:
+                    date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
+                    for date in date_list:
+                        self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
+                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+
+    def db_maintenance(self, aws_account_id, aws_region, flow_log_id):
+        debug("+++ DB Maintenance", 1)
+        try:
+            self.db_connector.execute(self.sql_db_maintenance.format(
+                table_name=self.db_table_name,
+                aws_account_id=aws_account_id,
+                aws_region=aws_region,
+                flow_log_id=flow_log_id,
+                retain_db_records=self.retain_db_records
+            ))
+        except Exception as e:
+            print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                aws_account_id=aws_account_id,
+                aws_region=aws_region,
+                error_msg=e))
+            sys.exit(10)
+
+    def get_vpc_prefix(self, aws_account_id, aws_region, date, flow_log_id):
+        return self.get_full_prefix(aws_account_id, aws_region) + date \
+            + '/' + aws_account_id + '_vpcflowlogs_' + aws_region + '_' + flow_log_id
+
+    def build_s3_filter_args(self, aws_account_id, aws_region, date, flow_log_id, iterating=False):
+        filter_marker = ''
+        if self.reparse:
+            if self.only_logs_after:
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+        else:
+
+            query_last_key_of_day = self.db_connector.execute(self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
+                                                                                        aws_account_id=aws_account_id,
+                                                                                        aws_region=aws_region,
+                                                                                        flow_log_id=flow_log_id,
+                                                                                        created_date=int(date.replace('/', ''))))
+            try:
+                last_key = query_last_key_of_day.fetchone()[0]
+            except TypeError as e:
+                # if DB is empty for a region
+                last_key = self.get_full_prefix(aws_account_id, aws_region) + date
+
+        vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
+        filter_args = {
+            'Bucket': self.bucket,
+            'MaxKeys': 1000,
+            'Prefix': vpc_prefix
+            }
+
+        # if nextContinuationToken is not used for processing logs in a bucket
+        if not iterating:
+            if filter_marker:
+                filter_args['StartAfter'] = filter_marker
+                debug('+++ Marker: {0}'.format(filter_marker), 2)
+            else:
+                filter_args['StartAfter'] = last_key
+                debug('+++ Marker: {0}'.format(last_key), 2)
+
+        return filter_args
+
+    def iter_files_in_bucket(self, aws_account_id, aws_region, date, flow_log_id):
+        try:
+            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
+
+            if 'Contents' not in bucket_files:
+                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                return
+
+            for bucket_file in bucket_files['Contents']:
+                if not bucket_file['Key']:
+                    continue
+
+                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
+                    if self.reparse:
+                        debug("++ File previously processed, but reparse flag set: {file}".format(
+                            file=bucket_file['Key']), 1)
+                    else:
+                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                        continue
+
+                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                # Get the log file from S3 and decompress it
+                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
+                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
+                # Remove file from S3 Bucket
+                if self.delete_file:
+                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
+            # optimize DB
+            self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+            self.db_connector.commit()
+            # iterate if there are more logs
+            while bucket_files['IsTruncated']:
+                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id, True)
+                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                bucket_files = self.client.list_objects_v2(**new_s3_args)
+
+                if 'Contents' not in bucket_files:
+                    debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                    return
+
+                for bucket_file in bucket_files['Contents']:
+                    if not bucket_file['Key']:
+                        continue
+                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
+                        if self.reparse:
+                            debug("++ File previously processed, but reparse flag set: {file}".format(
+                                file=bucket_file['Key']), 1)
+                        else:
+                            debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
+                            continue 
+                    debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
+                    # Get the log file from S3 and decompress it
+                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
+                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
+                    # Remove file from S3 Bucket
+                    if self.delete_file:
+                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
+                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                    self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
+                # optimize DB
+                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+                self.db_connector.commit()
+        except SystemExit:
+            raise
+        except Exception as err:
+            if hasattr(err, 'message'):
+                debug("+++ Unexpected error: {}".format(err.message), 2)
+            else:
+                debug("+++ Unexpected error: {}".format(err), 2)
+            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+            sys.exit(7)
+
+    def mark_complete(self, aws_account_id, aws_region, log_file, flow_log_id):
+        if self.reparse:
+            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
+                debug('+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']), 2)
+        else:
+            try:
+                self.db_connector.execute(self.sql_mark_complete.format(
+                    table_name=self.db_table_name,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    flow_log_id=flow_log_id,
+                    log_key=log_file['Key'],
+                    created_date=self.get_creation_date(log_file)
+                ))
+            except Exception as e:
+                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+                raise e
 
 
 class AWSConfigBucket(AWSLogsBucket):
