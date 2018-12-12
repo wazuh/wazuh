@@ -138,7 +138,7 @@ class DistributedAPI:
             :return: a JSON response
             """
             node_name, agent_id = node_name
-            if agent_id:
+            if agent_id and ('agent_id' not in self.input_json['arguments'] or isinstance(self.input_json['arguments']['agent_id'], list)):
                 self.input_json['arguments']['agent_id'] = agent_id
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
