@@ -117,6 +117,12 @@ void* wm_database_main(wm_database *data) {
 
     mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
+    // Reset template. Basically, remove queue/db/.template.db
+    char path_template[PATH_MAX + 1];
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB_DIR, WDB_PROF_NAME);
+    unlink(path_template);
+    mdebug1("Template db file removed: %s", path_template);
+
     // Manager name synchronization
     if (data->sync_agents) {
         wm_sync_manager();
