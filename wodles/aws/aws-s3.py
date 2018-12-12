@@ -1224,11 +1224,13 @@ class AWSCustomBucket(AWSBucket):
     def iter_regions_and_accounts(self, account_id, regions):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
-        self.iter_files_in_bucket(account_id)
+        # no iterations for accounts_id or regions on custom buckets
+        account_id = ''
+        regions = ''
+        self.iter_files_in_bucket(account_id, regions)
         self.db_maintenance('', self.bucket)
 
-    def already_processed(self, downloaded_file, aws_account_id=None, aws_region=None):
-        print("already processed")
+    def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
             table_name=self.db_table_name,
             custom_path=self.custom_path,
@@ -1236,7 +1238,7 @@ class AWSCustomBucket(AWSBucket):
         ))
         return cursor.fetchone()[0] > 0
 
-    def mark_complete(self, log_file, aws_account_id=None, aws_region=None):
+    def mark_complete(self, aws_account_id, aws_region, log_file):
         if self.reparse:
             if self.already_processed(log_file['Key'], aws_account_id, aws_region):
                 debug(
@@ -1254,7 +1256,7 @@ class AWSCustomBucket(AWSBucket):
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
                 raise e
 
-    def db_maintenance(self, aws_account_id, aws_region=None):
+    def db_maintenance(self, aws_account_id, aws_region):
         debug("+++ DB Maintenance", 1)
         try:
             self.db_connector.execute(self.sql_db_maintenance.format(
@@ -1269,79 +1271,7 @@ class AWSCustomBucket(AWSBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
-        try:
-            bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
-            if 'Contents' not in bucket_files:
-                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
-                return
-
-            for bucket_file in bucket_files['Contents']:
-                if not bucket_file['Key']:
-                    continue
-
-                if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                    if self.reparse:
-                        debug("++ File previously processed, but reparse flag set: {file}".format(
-                            file=bucket_file['Key']), 1)
-                    else:
-                        debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                        continue
-                debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(bucket_file)
-            # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
-            self.db_connector.commit()
-            # iterate if there are more logs
-            while bucket_files['IsTruncated']:
-                new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
-                new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
-                bucket_files = self.client.list_objects_v2(**new_s3_args)
-
-                if 'Contents' not in bucket_files:
-                    debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
-                    return
-
-                for bucket_file in bucket_files['Contents']:
-                    if not bucket_file['Key']:
-                        continue
-                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
-                        if self.reparse:
-                            debug("++ File previously processed, but reparse flag set: {file}".format(
-                                file=bucket_file['Key']), 1)
-                        else:
-                            debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                            continue
-                    debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(bucket_file)
-                # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
-                self.db_connector.commit()
-        except SystemExit:
-            raise
-        except Exception as err:
-            if hasattr(err, 'message'):
-                debug("+++ Unexpected error: {}".format(err.message), 2)
-            else:
-                debug("+++ Unexpected error: {}".format(err), 2)
-            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
-            sys.exit(7)
-
-    def build_s3_filter_args(self, aws_account_id=None, aws_region=None, iterating=False):
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
@@ -1352,8 +1282,8 @@ class AWSCustomBucket(AWSBucket):
             try:
                 last_key = query_last_key.fetchone()[0]
             except TypeError as e:
-                # if DB is empty for a region
-                last_key = self.marker_only_logs_after(self.only_logs_after)
+                # if DB is empty for a service
+                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
@@ -1371,7 +1301,7 @@ class AWSCustomBucket(AWSBucket):
 
         return filter_args
 
-    def marker_only_logs_after(self, only_logs_after, aws_region=None, aws_account_id=None):
+    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
         return '{init}{only_logs_after}'.format(
             init=self.prefix,
             only_logs_after=only_logs_after.strftime('%Y/%m/%d')
@@ -1381,6 +1311,7 @@ class AWSCustomBucket(AWSBucket):
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
+        self.db_table_name = 'guardduty'
         AWSCustomBucket.__init__(self, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
