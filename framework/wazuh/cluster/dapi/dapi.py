@@ -59,7 +59,9 @@ class DistributedAPI:
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
                 del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
-                return self.execute_local_request()
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(None, self.execute_local_request)
+                # return self.execute_local_request()
 
             # Second case: forward the request
             # Only the master node will forward a request, and it will only be forwarded if its type is distributed_
