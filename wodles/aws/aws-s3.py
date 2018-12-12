@@ -95,7 +95,10 @@ class WazuhIntegration:
     :param bucket: Bucket name to extract logs from
     """
 
-    sql_find_table_names = """
+    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
+             service_name=None, region=None, bucket=None):
+        # SQL queries
+        self.sql_find_table_names = """
                             SELECT
                                 tbl_name
                             FROM
@@ -103,10 +106,8 @@ class WazuhIntegration:
                             WHERE
                                 type='table';"""
 
-    sql_db_optimize = "PRAGMA optimize;"
-
-    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-             service_name=None, region=None, bucket=None):
+        self.sql_db_optimize = "PRAGMA optimize;"
+        
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -197,7 +198,7 @@ class WazuhIntegration:
         :param sql_create_table: SQL query to create the table
         """
         try:
-            tables = set(map(operator.itemgetter(0), self.db_connector.execute(WazuhIntegration.sql_find_table_names)))
+            tables = set(map(operator.itemgetter(0), self.db_connector.execute(self.sql_find_table_names)))
         except Exception as e:
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
@@ -207,7 +208,7 @@ class WazuhIntegration:
 
     def close_db(self):
         self.db_connector.commit()
-        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
+        self.db_connector.execute(self.sql_db_optimize)
         self.db_connector.close()
 
 
@@ -217,92 +218,6 @@ class AWSBucket(WazuhIntegration):
 
     This is an abstract class
     """
-
-    sql_already_processed = """
-                          SELECT
-                            count(*)
-                          FROM
-                            trail_progress
-                          WHERE
-                            aws_account_id='{aws_account_id}' AND
-                            aws_region='{aws_region}' AND
-                            log_key='{log_name}'"""
-
-    sql_mark_complete = """
-                        INSERT INTO trail_progress (
-                            aws_account_id,
-                            aws_region,
-                            log_key,
-                            processed_date,
-                            created_date) VALUES (
-                            '{aws_account_id}',
-                            '{aws_region}',
-                            '{log_key}',
-                            DATETIME('now'),
-                            '{created_date}')"""
-
-    sql_select_migrate_legacy = """
-                                SELECT
-                                    log_name,
-                                    processed_date
-                                FROM
-                                    log_progress;"""
-
-    sql_rename_migrate_legacy = """
-                                ALTER TABLE log_progress
-                                    RENAME TO legacy_log_progress;"""
-
-    sql_create_table = """
-                        CREATE TABLE
-                            trail_progress (
-                            aws_account_id 'text' NOT NULL,
-                            aws_region 'text' NOT NULL,
-                            log_key 'text' NOT NULL,
-                            processed_date 'text' NOT NULL,
-                            created_date 'integer' NOT NULL,
-                            PRIMARY KEY (aws_account_id, aws_region, log_key));"""
-
-    sql_find_last_log_processed = """
-                                    SELECT
-                                        created_date
-                                    FROM
-                                        trail_progress
-                                    WHERE
-                                        aws_account_id='{aws_account_id}' AND
-                                        aws_region = '{aws_region}'
-                                    ORDER BY
-                                        created_date DESC
-                                    LIMIT 1;"""
-
-    sql_find_last_key_processed = """
-                                    SELECT
-                                        log_key
-                                    FROM
-                                        trail_progress
-                                    WHERE
-                                        aws_account_id='{aws_account_id}' AND
-                                        aws_region = '{aws_region}'
-                                    ORDER BY
-                                        log_key ASC
-                                    LIMIT 1;"""
-
-    sql_db_maintenance = """DELETE
-                        FROM
-                            trail_progress
-                        WHERE
-                            aws_account_id='{aws_account_id}' AND
-                            aws_region='{aws_region}' AND
-                            rowid NOT IN
-                            (SELECT ROWID
-                                FROM
-                                trail_progress
-                                WHERE
-                                aws_account_id='{aws_account_id}' AND
-                                aws_region='{aws_region}'
-                                ORDER BY
-                                ROWID DESC
-                                LIMIT {retain_db_records})"""
-
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  max_queue_buffer, prefix, delete_file):
@@ -322,8 +237,94 @@ class AWSBucket(WazuhIntegration):
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
+
+        # common SQL queries
+        self.sql_already_processed = """
+                          SELECT
+                            count(*)
+                          FROM
+                            {table_name}
+                          WHERE
+                            aws_account_id='{aws_account_id}' AND
+                            aws_region='{aws_region}' AND
+                            log_key='{log_name}'"""
+
+        self.sql_mark_complete = """
+                            INSERT INTO {table_name} (
+                                aws_account_id,
+                                aws_region,
+                                log_key,
+                                processed_date,
+                                created_date) VALUES (
+                                '{aws_account_id}',
+                                '{aws_region}',
+                                '{log_key}',
+                                DATETIME('now'),
+                                '{created_date}')"""
+
+        self.sql_select_migrate_legacy = """
+                                    SELECT
+                                        log_name,
+                                        processed_date
+                                    FROM
+                                        log_progress;"""
+
+        self.sql_rename_migrate_legacy = """
+                                    ALTER TABLE log_progress
+                                        RENAME TO legacy_log_progress;"""
+
+        self.sql_create_table = """
+                            CREATE TABLE
+                                {table_name} (
+                                aws_account_id 'text' NOT NULL,
+                                aws_region 'text' NOT NULL,
+                                log_key 'text' NOT NULL,
+                                processed_date 'text' NOT NULL,
+                                created_date 'integer' NOT NULL,
+                                PRIMARY KEY (aws_account_id, aws_region, log_key));"""
+
+        self.sql_find_last_log_processed = """
+                                        SELECT
+                                            created_date
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            aws_account_id='{aws_account_id}' AND
+                                            aws_region = '{aws_region}'
+                                        ORDER BY
+                                            created_date DESC
+                                        LIMIT 1;"""
+
+        self.sql_find_last_key_processed = """
+                                        SELECT
+                                            log_key
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            aws_account_id='{aws_account_id}' AND
+                                            aws_region = '{aws_region}'
+                                        ORDER BY
+                                            log_key ASC
+                                        LIMIT 1;"""
+
+        self.sql_db_maintenance = """DELETE
+                            FROM
+                                {table_name}
+                            WHERE
+                                aws_account_id='{aws_account_id}' AND
+                                aws_region='{aws_region}' AND
+                                rowid NOT IN
+                                (SELECT ROWID
+                                    FROM
+                                    {table_name}
+                                    WHERE
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region='{aws_region}'
+                                    ORDER BY
+                                    ROWID DESC
+                                    LIMIT {retain_db_records})"""
+
         self.db_name = 's3_cloudtrail'
-        self.db_table_name = 'trail_progress'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
         self.legacy_db_table_name = 'log_progress'
@@ -337,7 +338,8 @@ class AWSBucket(WazuhIntegration):
         self.delete_file = delete_file
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
-        cursor = self.db_connector.execute(AWSBucket.sql_already_processed.format(
+        cursor = self.db_connector.execute(self.sql_already_processed.format(
+            table_name=self.db_table_name,
             aws_account_id=aws_account_id,
             aws_region=aws_region,
             log_name=downloaded_file
@@ -355,7 +357,8 @@ class AWSBucket(WazuhIntegration):
                     2)
         else:
             try:
-                self.db_connector.execute(AWSBucket.sql_mark_complete.format(
+                self.db_connector.execute(self.sql_mark_complete.format(
+                    table_name=self.db_table_name,
                     aws_account_id=aws_account_id,
                     aws_region=aws_region,
                     log_key=log_file['Key'],
@@ -366,26 +369,26 @@ class AWSBucket(WazuhIntegration):
                 raise e
 
     def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector.execute(AWSBucket.sql_select_migrate_legacy)):
+        for row in filter(lambda x: x[0] != '', self.db_connector.execute(self.sql_select_migrate_legacy)):
             try:
                 aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
                 self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
             except Exception as e:
                 debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
         # rename log_progress table to legacy_log_progress
-        self.db_connector.execute(AWSBucket.sql_rename_migrate_legacy)
+        self.db_connector.execute(self.sql_rename_migrate_legacy)
 
     def create_table(self):
         try:
             debug('+++ Table does not exist; create', 1)
-            self.db_connector.execute(AWSBucket.sql_create_table)
+            self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name))
         except Exception as e:
             print("ERROR: Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
     def init_db(self):
         try:
-            tables = set(map(operator.itemgetter(0), self.db_connector.execute(WazuhIntegration.sql_find_table_names)))
+            tables = set(map(operator.itemgetter(0), self.db_connector.execute(self.sql_find_table_names)))
         except Exception as e:
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
@@ -401,7 +404,8 @@ class AWSBucket(WazuhIntegration):
     def db_maintenance(self, aws_account_id, aws_region):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(AWSBucket.sql_db_maintenance.format(
+            self.db_connector.execute(self.sql_db_maintenance.format(
+                table_name=self.db_table_name,
                 aws_account_id=aws_account_id,
                 aws_region=aws_region,
                 retain_db_records=self.retain_db_records
@@ -414,10 +418,10 @@ class AWSBucket(WazuhIntegration):
                     error_msg=e))
             sys.exit(10)
 
-    def marker_only_logs_after(self, aws_region, aws_account_id):
+    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
         return '{init}{only_logs_after}'.format(
             init=self.get_full_prefix(aws_account_id, aws_region),
-            only_logs_after=self.only_logs_after.strftime('%Y/%m/%d')
+            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
         )
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
@@ -453,10 +457,11 @@ class AWSBucket(WazuhIntegration):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
         else:
-            query_last_key = self.db_connector.execute(AWSBucket.sql_find_last_key_processed.format(aws_account_id=aws_account_id,
-                                                                                         aws_region=aws_region))
+            query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
+                                                                                        aws_account_id=aws_account_id,
+                                                                                        aws_region=aws_region))
             try:
                 last_key = query_last_key.fetchone()[0]
             except TypeError as e:
@@ -560,7 +565,7 @@ class AWSBucket(WazuhIntegration):
         self.init_db()
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
-        self.db_connector.execute(WazuhIntegration.sql_db_optimize)
+        self.db_connector.execute(self.sql_db_optimize)
         self.db_connector.close()
 
     def iter_regions_and_accounts(self, account_id, regions):
@@ -735,8 +740,9 @@ class AWSCloudTrailBucket(AWSLogsBucket):
     Represents a bucket with AWS CloudTrail logs
     """
 
-    def __init__(self, *args):
-        AWSLogsBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        self.db_table_name = 'trail_progress'
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'CloudTrail'
         self.field_to_load = 'Records'
 
@@ -754,11 +760,12 @@ class AWSCloudTrailBucket(AWSLogsBucket):
 
 class AWSVPCFlowBucket(AWSLogsBucket):
     """
-    Represents a bucket with AWS CloudTrail logs
+    Represents a bucket with AWS VPC logs
     """
 
-    def __init__(self, *args):
-        AWSLogsBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        self.db_table_name = 'vpcflow'
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
 
     def load_information_from_file(self, log_key):
@@ -775,16 +782,18 @@ class AWSConfigBucket(AWSLogsBucket):
     Represents a bucket with AWS Config logs
     """
 
-    def __init__(self, *args):
-        AWSLogsBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        self.db_table_name = 'config'
+        AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'Config'
         self.field_to_load = 'configurationItems'
 
 
 class AWSCustomBucket(AWSBucket):
 
-    def __init__(self, *args):
-        AWSBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        self.db_table_name = 'custom'
+        AWSBucket.__init__(self, **kwargs)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
 
     def load_information_from_file(self, log_key):
@@ -839,8 +848,8 @@ class AWSCustomBucket(AWSBucket):
 
 class AWSGuardDutyBucket(AWSCustomBucket):
 
-    def __init__(self, *args):
-        AWSBucket.__init__(self, *args)
+    def __init__(self, **kwargs):
+        AWSCustomBucket.__init__(self, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
@@ -1126,11 +1135,12 @@ def main(argv):
                 bucket_type = AWSGuardDutyBucket
             else:
                 raise Exception("Invalid type of bucket")
-            bucket = bucket_type(options.reparse, options.access_key, options.secret_key,
-                            options.aws_profile, options.iam_role_arn, options.logBucket,
-                            options.only_logs_after, options.skip_on_error,
-                            options.aws_account_alias, max_queue_buffer,
-                            options.trail_prefix, options.deleteFile)
+            bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
+                           secret_key=options.secret_key, profile=options.aws_profile,
+                           iam_role_arn=options.iam_role_arn, bucket=options.logBucket,
+                           only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
+                           account_alias=options.aws_account_alias, max_queue_buffer=max_queue_buffer,
+                           prefix=options.trail_prefix, delete_file=options.deleteFile)
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
