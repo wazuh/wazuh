@@ -944,10 +944,10 @@ class AWSInspector(AWSService):
         # insert last scan in DB
         self.db_cursor.execute(self.sql_insert_value.format(aws_region=self.region ,scan_date=datetime_current))
         # DB maintenance
-        self.db_connector.commit()
         self.db_cursor.execute(self.sql_db_maintenance.format(aws_region=self.region, \
             retain_db_records=self.retain_db_records))
         # close connection with DB
+        self.db_connector.commit()
         self.close_db()
 
 ################################################################################
