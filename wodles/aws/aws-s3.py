@@ -414,10 +414,10 @@ class AWSBucket(WazuhIntegration):
                     error_msg=e))
             sys.exit(10)
 
-    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
+    def marker_only_logs_after(self, aws_region, aws_account_id):
         return '{init}{only_logs_after}'.format(
             init=self.get_full_prefix(aws_account_id, aws_region),
-            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
+            only_logs_after=self.only_logs_after.strftime('%Y/%m/%d')
         )
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
@@ -453,7 +453,7 @@ class AWSBucket(WazuhIntegration):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         else:
             query_last_key = self.db_connector.execute(AWSBucket.sql_find_last_key_processed.format(aws_account_id=aws_account_id,
                                                                                          aws_region=aws_region))
@@ -461,7 +461,7 @@ class AWSBucket(WazuhIntegration):
                 last_key = query_last_key.fetchone()[0]
             except TypeError as e:
                 # if DB is empty for a region
-                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                last_key = self.marker_only_logs_after(aws_region, aws_account_id)
 
         filter_args = {
             'Bucket': self.bucket,
