@@ -2,6 +2,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import json
+import random
 import shutil
 from datetime import datetime
 import functools
@@ -77,6 +78,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
                              'Extra valid': self.setup_task_logger('Extra valid'),
                              'Agent info': self.setup_task_logger('Agent info')}
+        # pending API requests waiting for a response
+        self.pending_api_requests = {}
 
     def __dict__(self):
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
@@ -97,15 +100,48 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_res':
-            client, result = data.split(b' ', 1)
-            client = client.decode()
-            if client in self.server.local_server.clients:
-                asyncio.create_task(self.server.local_server.clients[client].send_request(b'dapi_res', result))
+            req_id, req_res = data.split(b' ', 1)
+            req_id = req_id.decode()
+            if req_id in self.pending_api_requests:
+                self.pending_api_requests[req_id]['Response'] = req_res.decode()
+                self.pending_api_requests[req_id]['Event'].set()
+                return b'ok', b'Forwarded response'
+            elif req_id in self.server.local_server.clients:
+                asyncio.create_task(self.server.local_server.clients[req_id].send_request(b'dapi_res', req_res))
                 return b'ok', b'Response forwarded to worker'
             else:
                 return b'err', b'Could not forward request, connection is not available'
         else:
             return super().process_request(command, data)
+
+    async def execute(self, command: bytes, data: bytes) -> str:
+        """
+        Sends a distributed API request and wait for a response in command dapi_res
+
+        :param command: Command to execute
+        :param data: Data to send
+        :return:
+        """
+        request_id = str(random.randint(0, 2**10 - 1))
+        self.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
+        if command == b'dapi_forward':
+            # dapi forward commands have the node name to forward to, but in this case it's not necessary
+            data = data.split(b' ', 1)[1]
+        result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
+        if result.startswith('Error'):
+            request_result = json.dumps({'error': 1000, 'message': result})
+        else:
+            if command == b'dapi' or command == b'dapi_forward':
+                try:
+                    await asyncio.wait_for(self.pending_api_requests[request_id]['Event'].wait(),
+                                           timeout=self.request_timeout)
+                    request_result = self.pending_api_requests[request_id]['Response']
+                except asyncio.TimeoutError:
+                    request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
+            else:
+                request_result = result
+        self.logger.debug("Received response: {}".format(request_result))
+        return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
         name, cluster_name, node_type, version = data.split(b' ')

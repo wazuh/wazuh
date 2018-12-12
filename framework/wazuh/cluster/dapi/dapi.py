@@ -1,12 +1,12 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import copy
 import itertools
 import json
 import operator
+import random
 from typing import Dict, Union, Tuple
-from wazuh.cluster import local_client, cluster
+from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh.cluster.dapi import requests_list as rq
 from wazuh import exception, agent, common, utils
 import logging
@@ -17,20 +17,24 @@ class DistributedAPI:
     """
     Represents a distributed API request
     """
-    def __init__(self, input_json: Dict, logger: logging.Logger, debug: bool = False, pretty: bool = False):
+    def __init__(self, input_json: Dict, logger: logging.Logger, node: c_common.Handler = None, debug: bool = False,
+                 pretty: bool = False):
         """
         Class constructor
 
         :param input_json: JSON containing information/arguments about the request.
         :param logger: Logging logger to use
+        :param node: Asyncio protocol object to use when sending requests to other nodes
         :param debug: Enable debug messages and raise exceptions.
         :param pretty: Return request result with pretty indent
         """
         self.logger = logger
         self.input_json = input_json
+        self.node = node if node is not None else local_client
         self.debug = debug
         self.pretty = pretty
         self.node_info = cluster.get_node()
+        self.request_id = str(random.randint(0, 2**10 - 1))
 
     async def distribute_function(self) -> str:
         """
@@ -117,7 +121,7 @@ class DistributedAPI:
 
         :return: JSON response
         """
-        return await local_client.execute(command=b'dapi', data=json.dumps(self.input_json).encode())
+        return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode())
 
     async def forward_request(self):
         """
@@ -139,10 +143,9 @@ class DistributedAPI:
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
-                response = self.distribute_function()
+                response = await self.distribute_function()
             else:
-                response = await local_client.execute(b'dapi_forward',
-                                                      "{} {}".format(node_name, json.dumps(self.input_json)).encode())
+                response = await self.node.execute(b'dapi_forward', "{} {}".format(node_name, json.dumps(self.input_json)).encode())
 
             return response
 
@@ -273,6 +276,7 @@ class APIRequestQueue:
         self.server = server
         self.logger = logging.getLogger('wazuh').getChild('dapi')
         self.logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='D API'))
+        self.pending_requests = {}
 
     async def run(self):
         while True:
@@ -281,13 +285,13 @@ class APIRequestQueue:
             # request -> JSON containing request's necessary information
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)
-            result = await DistributedAPI(input_json=json.loads(request), logger=self.logger).distribute_function()
             name_2 = '' if len(names) == 1 else names[1]
+            node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+            result = await DistributedAPI(input_json=json.loads(request), logger=self.logger, node=node).distribute_function()
             if names[0] == 'None':
-                result = await self.server.client.send_request(b'dapi_res', "{} {}".format(name_2, result).encode())
+                result = await node.send_request(b'dapi_res', "{} {}".format(name_2, result).encode())
             else:
-                result = await self.server.clients[names[0]].send_request(b'dapi_res', "{} {}".format(name_2,
-                                                                                                      result).encode())
+                result = await node.send_request(b'dapi_res', "{} {}".format(name_2, result).encode())
             if result.startswith(b'Error'):
                 self.logger.error(result)
 
