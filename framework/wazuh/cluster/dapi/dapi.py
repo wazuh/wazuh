@@ -145,17 +145,18 @@ class DistributedAPI:
                 # itself
                 response = await self.distribute_function()
             else:
-                response = await self.node.execute(b'dapi_forward', "{} {}".format(node_name, json.dumps(self.input_json)).encode())
-
+                response = await self.node.execute(b'dapi_forward', "{} {}".format(node_name,
+                                                                                   json.dumps(self.input_json)).encode()
+                                                   )
             return response
 
         # get the node(s) who has all available information to answer the request.
         nodes = self.get_solver_node()
         self.input_json['from_cluster'] = True
         if len(nodes) > 1:
-            results = await asyncio.gather(*[forward(node) for node in nodes.items()])
+            results = map(json.loads, await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()])))
             final_json = {}
-            response = self.merge_results(results, final_json)
+            response = json.dumps(self.merge_results(results, final_json))
         else:
             response = await forward(next(iter(nodes.items())))
         return response

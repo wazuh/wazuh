@@ -66,7 +66,6 @@ class LocalClient(client.AbstractClientManager):
                     request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
             else:
                 request_result = result
-        protocol.close()
         return request_result
 
 
