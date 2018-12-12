@@ -1106,8 +1106,12 @@ class AWSConfigBucket(AWSLogsBucket):
 
 class AWSCustomBucket(AWSBucket):
 
-    def __init__(self, **kwargs):
-        self.db_table_name = 'custom'
+    def __init__(self, db_table_name=None, **kwargs):
+        # only special services have a different DB table
+        if db_table_name:
+            self.db_table_name = db_table_name
+        else:
+            self.db_table_name = 'custom'
         AWSBucket.__init__(self, **kwargs)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased
         self.custom_path = self.bucket + '/' + self.prefix
@@ -1311,7 +1315,8 @@ class AWSCustomBucket(AWSBucket):
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        AWSCustomBucket.__init__(self, **kwargs)
+        db_table_name = 'guardduty'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
