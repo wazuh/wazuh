@@ -1311,7 +1311,6 @@ class AWSCustomBucket(AWSBucket):
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        self.db_table_name = 'guardduty'
         AWSCustomBucket.__init__(self, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
