@@ -125,6 +125,7 @@ class AbstractServer:
         self.logger.addFilter(cluster.ClusterFilter(tag=tag, subtag="Main"))
         self.tasks = [self.check_clients_keepalive]
         self.handler_class = AbstractServerHandler
+        self.loop = asyncio.get_running_loop()
 
     def __dict__(self):
         return {'info': {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
@@ -190,8 +191,7 @@ class AbstractServer:
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        loop = asyncio.get_running_loop()
-        loop.set_exception_handler(common.asyncio_exception_handler)
+        self.loop.set_exception_handler(common.asyncio_exception_handler)
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
@@ -201,8 +201,8 @@ class AbstractServer:
             ssl_context = None
 
         try:
-            server = await loop.create_server(
-                    protocol_factory=lambda: self.handler_class(server=self, loop=loop, logger=self.logger,
+            server = await self.loop.create_server(
+                    protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
                                                                 fernet_key=self.configuration['key']),
                     host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:

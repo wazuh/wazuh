@@ -41,6 +41,7 @@ class AbstractClientManager:
         self.handler_class = AbstractClient
         self.client = None
         self.extra_args = {}
+        self.loop = asyncio.get_running_loop()
 
     def add_tasks(self):
         if self.performance_test:
@@ -60,15 +61,14 @@ class AbstractClientManager:
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        loop = asyncio.get_running_loop()
-        loop.set_exception_handler(common.asyncio_exception_handler)
-        on_con_lost = loop.create_future()
+        self.loop.set_exception_handler(common.asyncio_exception_handler)
+        on_con_lost = self.loop.create_future()
         ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH) if self.ssl else None
 
         while True:
             try:
-                transport, protocol = await loop.create_connection(
-                                    protocol_factory=lambda: self.handler_class(loop=loop, on_con_lost=on_con_lost,
+                transport, protocol = await self.loop.create_connection(
+                                    protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
                                                                                 name=self.name, logger=self.logger,
                                                                                 fernet_key=self.configuration['key'],
                                                                                 manager=self, **self.extra_args),
