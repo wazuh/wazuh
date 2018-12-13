@@ -1277,7 +1277,7 @@ class AWSCustomBucket(AWSBucket):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_account_id, aws_region, self.only_logs_after)
+                filter_marker = self.marker_only_logs_after(aws_account_id, aws_region)
         else:
             query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
                                                                                         custom_path=self.custom_path))
@@ -1285,7 +1285,7 @@ class AWSCustomBucket(AWSBucket):
                 last_key = query_last_key.fetchone()[0]
             except TypeError as e:
                 # if DB is empty for a service
-                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                last_key = self.marker_only_logs_after(aws_region, aws_account_id)
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
@@ -1302,12 +1302,6 @@ class AWSCustomBucket(AWSBucket):
                 debug('+++ Marker: {0}'.format(last_key), 2)
 
         return filter_args
-
-    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
-        return '{init}{only_logs_after}'.format(
-            init=self.prefix,
-            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
-        )
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):
