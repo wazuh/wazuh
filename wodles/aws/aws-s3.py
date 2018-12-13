@@ -419,10 +419,10 @@ class AWSBucket(WazuhIntegration):
                     error_msg=e))
             sys.exit(10)
 
-    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
+    def marker_only_logs_after(self, aws_region, aws_account_id):
         return '{init}{only_logs_after}'.format(
             init=self.get_full_prefix(aws_account_id, aws_region),
-            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
+            only_logs_after=self.only_logs_after.strftime('%Y/%m/%d')
         )
 
     def get_alert_msg(self, aws_account_id, log_key, event, error_msg=""):
@@ -458,7 +458,7 @@ class AWSBucket(WazuhIntegration):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         else:
             query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
                                                                                         aws_account_id=aws_account_id,
@@ -1277,7 +1277,7 @@ class AWSCustomBucket(AWSBucket):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(self.only_logs_after)
+                filter_marker = self.marker_only_logs_after(aws_account_id, aws_region, self.only_logs_after)
         else:
             query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
                                                                                         custom_path=self.custom_path))
