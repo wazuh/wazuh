@@ -242,7 +242,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     }
 
     /* If we haven't specified the decoders directory, use default */
-    if (!decoder_dirs[i]) {
+    if (!decoder_dirs[0]) {
         dec_dirs_size++;
         os_realloc(decoder_dirs, sizeof(char *)*dec_dirs_size, decoder_dirs);
         os_realloc(decoder_dirs_pattern, sizeof(char *)*dec_dirs_size, decoder_dirs_pattern);
@@ -255,7 +255,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
     }
 
     /* If we haven't specified the rules directory, use default*/
-    if (!rules_dirs[i]) {
+    if (!rules_dirs[0]) {
         rul_dirs_size++;
         os_realloc(rules_dirs, sizeof(char *)*rul_dirs_size, rules_dirs);
         os_realloc(rules_dirs_pattern, sizeof(char *)*rul_dirs_size, rules_dirs_pattern);
