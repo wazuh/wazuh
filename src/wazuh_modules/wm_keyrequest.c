@@ -159,7 +159,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             break;
 
         case W_TYPE_IP:
-            tmp_buffer+=3;
+            tmp_buffer+=header_length;
             request = tmp_buffer;
 
             if(strlen(request) > 19) {
@@ -188,7 +188,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     /* Send request to external script by socket */
     if(data->socket) {
         int sock;
-        if (sock = external_socket_connect(data->socket), sock < 0) { 
+        if (sock = external_socket_connect(data->socket), sock < 0) {
             mdebug1("Could not connect to external socket. Is the process running?");
         } else {
             char msg[OS_SIZE_128] = {0};
@@ -334,7 +334,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         }
 
         int sock;
-        if (sock = auth_connect(), sock < 0) { 
+        if (sock = auth_connect(), sock < 0) {
             mdebug1("Could not connect to authd socket. Is authd running?");
         } else {
             auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring,0);
@@ -343,7 +343,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
         cJSON_Delete(agent_infoJSON);
     }
     os_free(output);
-    
+
     OSHash_Delete_ex(request_hash,buffer);
     os_free(command);
 

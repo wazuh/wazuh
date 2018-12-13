@@ -36,6 +36,10 @@ int _close_sock(keystore * keys, int sock);
 /* Decode hostinfo input queue */
 static w_queue_t * key_request_queue;
 
+/* Hash table to avoid dups */
+static OSHash *key_request_hash;
+static pthread_mutex_t key_request_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Remote key request thread */
 void * w_key_request_thread(__attribute__((unused)) void * args);
 
@@ -85,10 +89,11 @@ void HandleSecure()
     w_create_thread(rem_state_main, NULL);
 
     key_request_queue = queue_init(1024);
+    key_request_hash = OSHash_Create();
 
     // Create key request thread
     w_create_thread(w_key_request_thread, NULL);
-    
+
     /* Create wait_for_msgs threads */
 
     {
@@ -332,7 +337,9 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char srcip[IPSIZE + 1];
     char agname[KEYSIZE + 1];
     char *tmp_msg;
+    char *rsec_output;
     size_t msg_length;
+    char ip_found = 0;
 
     /* Set the source IP */
     strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
@@ -408,23 +415,27 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
                 _close_sock(&keys, sock_client);
 
             return;
+        } else {
+            ip_found = 1;
         }
+
         tmp_msg = buffer;
     }
 
     /* Decrypt the message */
-
-    tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip);
-
-    if (tmp_msg == NULL) {
-
+    if (ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &rsec_output) != KS_VALID) {
         /* If duplicated, a warning was already generated */
         key_unlock();
+        if (ip_found) {
+            push_request(srcip,"ip");
+            if (sock_client >= 0)
+                _close_sock(&keys, sock_client);
+        }
         return;
     }
 
     /* Check if it is a control message */
-    if (IsValidHeader(tmp_msg)) {
+    if (IsValidHeader(rsec_output)) {
         int r = 2;
 
         key_unlock();
@@ -448,7 +459,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             ;
         }
 
-        save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
+        save_controlmsg((unsigned)agentid, rsec_output, msg_length - 3);
         rem_inc_ctrl_msg();
         return;
     }
@@ -463,7 +474,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg,
+    if (SendMSG(logr.m_queue, rsec_output, srcmsg,
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
@@ -508,20 +519,29 @@ static int push_request(const char *request,const char *type) {
 
     snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
 
-    if(queue_push_ex(key_request_queue,msg) < 0) {
+    w_mutex_lock(&key_request_mutex);
+    if (!OSHash_Get_ex(key_request_hash, msg)) {
+        if(queue_push_ex(key_request_queue,msg) < 0) {
+            os_free(msg);
+        } else {
+            OSHash_Add_ex(key_request_hash, msg, &msg);
+        }
+    } else {
         os_free(msg);
     }
+    w_mutex_unlock(&key_request_mutex);
+
     return 0;
 }
 
-void * w_key_request_thread(__attribute__((unused)) void * args) { 
+void * w_key_request_thread(__attribute__((unused)) void * args) {
     char * msg;
     int socket = key_request_connect();
 
     int times = 4;
-    if (socket < 0) { 
+    if (socket < 0) {
         while(times > 0) {
-            if (socket = key_request_connect(), socket < 0) { 
+            if (socket = key_request_connect(), socket < 0) {
                 sleep(1);
             } else {
                 break;
@@ -534,6 +554,7 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
 
         if (msg = queue_pop_ex(key_request_queue), msg) {
             int rc;
+            OSHash_Delete_ex(key_request_hash, msg);
 send:
             if ((rc = send_key_request(socket, msg)) < 0) {
                 if (rc == OS_SOCKBUSY) {
@@ -551,7 +572,7 @@ send:
                 times = 4;
                 while(times > 0) {
 
-                    if (socket = key_request_connect(), socket < 0) { 
+                    if (socket = key_request_connect(), socket < 0) {
                         sleep(1);
                     } else {
                         goto send;

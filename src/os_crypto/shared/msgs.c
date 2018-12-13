@@ -269,12 +269,11 @@ static char *CheckSum(char *msg, size_t length)
     return (msg);
 }
 
-char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip)
+int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned int buffer_size, size_t *final_size, const char *srcip, char **output)
 {
     unsigned int msg_global = 0;
     unsigned int msg_local = 0;
     char *f_msg;
-
 
     if(strncmp(buffer, "#AES", 4)==0){
         buffer+=4;
@@ -293,7 +292,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         buffer++;
     } else {
         merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
-        return (NULL);
+        return KS_CORRUPT;
     }
 
     /* Decrypt message */
@@ -302,14 +301,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
                         buffer_size, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
-                return (NULL);
+                return KS_CORRUPT;
             }
             break;
         case W_METH_AES:
             if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
                 buffer_size-4, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
-                return (NULL);
+                return KS_CORRUPT;
             }
             break;
     }
@@ -329,14 +328,14 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         /* Uncompress */
         if (*final_size = os_zlib_uncompress(cleartext, buffer, buffer_size, OS_MAXSTR), !*final_size) {
             merror(UNCOMPRESS_ERR);
-            return (NULL);
+            return KS_CORRUPT;
         }
 
         /* Check checksum */
 
         if (f_msg = CheckSum(buffer, *final_size), !f_msg) {
             merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
-            return (NULL);
+            return KS_CORRUPT;
         }
 
         /* Remove random */
@@ -349,7 +348,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         /* Check for the right message format */
         if (*f_msg != ':') {
             merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
-            return (NULL);
+            return KS_CORRUPT;
         }
         f_msg++;
 
@@ -367,7 +366,8 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
                 rcv_count = 0;
             }
             rcv_count++;
-            return (f_msg);
+            *output = f_msg;
+            return KS_VALID;
         }
 
         if (rcv_count >= _s_recv_flush) {
@@ -386,7 +386,8 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
                 rcv_count = 0;
             }
             rcv_count++;
-            return (f_msg);
+            *output = f_msg;
+            return KS_VALID;
         }
 
         /* Check if it is a duplicated message */
@@ -400,7 +401,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
                 keys->keyentries[id]->local);
 
             merror(ENCTIME_ERROR, keys->keyentries[id]->name);
-            return (NULL);
+            return KS_RIDS;
         }
     }
 
@@ -417,7 +418,7 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
         f_msg = CheckSum(cleartext, buffer_size);
         if (f_msg == NULL) {
             merror(ENCSUM_ERROR, keys->keyentries[id]->ip->ip);
-            return (NULL);
+            return KS_CORRUPT;
         }
 
         /* Check time -- protect against replay attacks */
@@ -438,10 +439,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
             if (f_msg) {
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
-                return (f_msg);
+                *output = f_msg;
+                return KS_VALID;
             } else {
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
-                return (NULL);
+                return KS_CORRUPT;
             }
         }
 
@@ -457,17 +459,18 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
             if (f_msg) {
                 f_msg++;
                 *final_size = buffer_size - (f_msg - cleartext);
-                return (f_msg);
+                *output = f_msg;
+                return KS_VALID;
             } else {
                 merror(ENCFORMAT_ERROR, keys->keyentries[id]->id, srcip);
-                return (NULL);
+                return KS_CORRUPT;
             }
         }
 
         /* Check if it is a duplicated message */
         if ((msg_count == keys->keyentries[id]->local) &&
                 (msg_time == keys->keyentries[id]->global)) {
-            return (NULL);
+            return KS_RIDS;
         }
 
         /* Warn about duplicated message */
@@ -479,11 +482,11 @@ char *ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned
                keys->keyentries[id]->global);
 
         merror(ENCTIME_ERROR, keys->keyentries[id]->name);
-        return (NULL);
+        return KS_RIDS;
     }
 
     mwarn(ENCKEY_ERROR, srcip);
-    return (NULL);
+    return KS_CORRUPT;
 }
 
 /* Create an encrypted message

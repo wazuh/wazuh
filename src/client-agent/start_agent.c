@@ -204,8 +204,7 @@ void start_agent(int is_startup)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-            if (tmp_msg == NULL) {
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
