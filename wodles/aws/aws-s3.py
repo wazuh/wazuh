@@ -999,7 +999,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
 
             if 'Contents' not in bucket_files:
-                debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
+                    aws_account_id, aws_region), 1)
                 return
 
             for bucket_file in bucket_files['Contents']:
@@ -1033,7 +1034,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
 
                 if 'Contents' not in bucket_files:
-                    debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
+                    debug("+++ No logs to process for {} flow log ID in bucket: {}/{}".format(flow_log_id,
+                        aws_account_id, aws_region), 1)
                     return
 
                 for bucket_file in bucket_files['Contents']:
