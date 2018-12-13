@@ -1276,6 +1276,7 @@ class AWSCustomBucket(AWSBucket):
         if self.reparse:
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_account_id, aws_region)
+
         else:
             query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
                                                                                         custom_path=self.custom_path))
@@ -1284,6 +1285,7 @@ class AWSCustomBucket(AWSBucket):
             except (TypeError, IndexError) as e:
                 # if DB is empty for a service
                 last_key = self.marker_only_logs_after(aws_region, aws_account_id)
+
         filter_args = {
             'Bucket': self.bucket,
             'MaxKeys': 1000,
