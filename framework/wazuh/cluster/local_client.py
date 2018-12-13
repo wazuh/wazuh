@@ -5,6 +5,7 @@ import json
 import logging
 from wazuh.cluster import client, cluster
 import uvloop
+from wazuh import common
 
 
 class LocalClientHandler(client.AbstractClient):
@@ -53,7 +54,7 @@ class LocalClient(client.AbstractClientManager):
                                                                         name=self.name, logger=self.logger,
                                                                         fernet_key='', cluster_items=self.cluster_items,
                                                                         manager=self),
-                            path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
+                            path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
 
         result = (await protocol.send_request(self.command, self.data)).decode()
         if result.startswith('Error'):

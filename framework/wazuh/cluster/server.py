@@ -5,13 +5,14 @@ import json
 import ssl
 import uvloop
 import time
-from wazuh.cluster import common, cluster
+from wazuh.cluster import common as c_common, cluster
+from wazuh import common
 import logging
 from typing import Tuple, Dict
 import random
 
 
-class AbstractServerHandler(common.Handler):
+class AbstractServerHandler(c_common.Handler):
     """
     Defines abstract server protocol. Handles communication with a single client.
     """
@@ -193,12 +194,12 @@ class AbstractServer:
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-        self.loop.set_exception_handler(common.asyncio_exception_handler)
+        self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
         if self.enable_ssl:
             ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile='{}/etc/sslmanager.cert'.format('/var/ossec'),
-                                        keyfile='{}/etc/sslmanager.key'.format('/var/ossec'))
+            ssl_context.load_cert_chain(certfile='{}/etc/sslmanager.cert'.format(common.ossec_path),
+                                        keyfile='{}/etc/sslmanager.key'.format(common.ossec_path))
         else:
             ssl_context = None
 

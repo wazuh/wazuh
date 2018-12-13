@@ -5,7 +5,8 @@ import uvloop
 from typing import Tuple, Union
 import json
 import random
-from wazuh.cluster import server, common, client
+from wazuh.cluster import server, common as c_common, client
+from wazuh import common
 from wazuh.cluster.dapi import dapi
 
 
@@ -57,14 +58,14 @@ class LocalServer(server.AbstractServer):
         # low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
-        loop.set_exception_handler(common.asyncio_exception_handler)
+        loop.set_exception_handler(c_common.asyncio_exception_handler)
 
         try:
             server = await loop.create_unix_server(protocol_factory=lambda: self.handler_class(server=self, loop=loop,
                                                                                                fernet_key='',
                                                                                                logger=self.logger,
                                                                                                cluster_items=self.cluster_items),
-                                                   path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
+                                                   path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))
             raise KeyboardInterrupt
