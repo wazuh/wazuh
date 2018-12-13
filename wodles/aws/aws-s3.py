@@ -965,7 +965,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         else:
 
             query_last_key_of_day = self.db_connector.execute(self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
@@ -977,6 +977,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 last_key = query_last_key_of_day.fetchone()[0]
             except TypeError as e:
                 # if DB is empty for a region
+                #### hacer fix para cuando hay parametro only_logs_after
                 last_key = self.get_full_prefix(aws_account_id, aws_region) + date
 
         vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
@@ -1551,8 +1552,8 @@ def get_script_arguments():
                         help='Log prefix for S3 key',
                         default='', type=arg_valid_prefix)
     parser.add_argument('-s', '--only_logs_after', dest='only_logs_after',
-                        help='Only parse logs after this date - format YYYY-MMM-DD', default='1970-JAN-01',
-                        type=arg_valid_date)
+                        help='Only parse logs after this date - format YYYY-MMM-DD',
+                        default=datetime.strftime(datetime.utcnow(), '%Y-%b-%d'), type=arg_valid_date)
     parser.add_argument('-r', '--regions', dest='regions', help='Comma delimited list of AWS regions to parse logs',
                         default='', type=arg_valid_regions)
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
