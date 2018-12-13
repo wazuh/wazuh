@@ -6,6 +6,7 @@ import asyncio
 import itertools
 import logging
 import argparse
+import operator
 import sys
 from wazuh.cluster import control, cluster
 
@@ -42,9 +43,10 @@ def __print_table(data, headers, show_header=False):
 
 async def print_agents(filter_status, filter_node):
     result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
-    headers = ['Name', 'IP', 'ID', 'Status', 'Node name']
-    data = map(lambda x: list(x.values()), result['data']['items'])
-    __print_table(data, headers, True)
+    headers = {'name': 'Name', 'ip': 'IP', 'id': 'ID', 'status': 'Status', 'version': 'Version',
+               'node_name': 'Node name'}
+    data = map(operator.itemgetter(*headers.keys()), result['data']['items'])
+    __print_table(data, list(headers.values()), True)
 
 
 async def print_nodes(filter_node):

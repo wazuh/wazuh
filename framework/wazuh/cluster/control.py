@@ -20,6 +20,6 @@ async def get_agents(filter_node=None, filter_status=None):
                   'arguments': {
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
                       'limit': None,
-                      'select': {'fields': ['id', 'ip', 'name', 'status', 'node_name']}}}
+                      'select': {'fields': ['id', 'ip', 'name', 'status', 'node_name', 'version']}}}
 
     return json.loads(await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode()))
