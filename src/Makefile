@@ -350,8 +350,7 @@ ifdef DATABASE
 			endif
 		endif # MYSQL_LIBS
 
-		OSSEC_LDFLAGS+=${ML}
-		OSSEC_LIBS+=-lmysqlclient
+		OSSEC_LIBS+=${ML} -lmysqlclient
 
 	else # DATABASE
 
@@ -372,8 +371,7 @@ ifdef DATABASE
 
 			# XXX need some basic autodetech stuff here.
 
-			OSSEC_LDFLAGS+=${PL}
-			OSSEC_LIBS+=-lpq
+			OSSEC_LIBS+=${PL} -lpq
 
 		endif # pgsql
 	endif # mysql
