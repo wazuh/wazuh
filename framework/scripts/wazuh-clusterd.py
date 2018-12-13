@@ -61,31 +61,35 @@ def print_version():
 #
 # Master main
 #
-async def master_main(args, cluster_config, logger):
+async def master_main(args, cluster_config, cluster_items, logger):
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                              configuration=cluster_config, enable_ssl=args.ssl, logger=logger)
+                              configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
+                              cluster_items=cluster_items)
     my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
                                                      concurrency_test=args.concurrency_test, node=my_server,
-                                                     configuration=cluster_config, enable_ssl=args.ssl)
+                                                     configuration=cluster_config, enable_ssl=args.ssl,
+                                                     cluster_items=cluster_items)
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
 #
 # Worker main
 #
-async def worker_main(args, cluster_config, logger):
+async def worker_main(args, cluster_config, cluster_items, logger):
     while True:
         my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
                                   performance_test=args.performance_test, concurrency_test=args.concurrency_test,
-                                  file=args.send_file, string=args.send_string, logger=logger)
+                                  file=args.send_file, string=args.send_string, logger=logger,
+                                  cluster_items=cluster_items)
         my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
                                                          concurrency_test=args.concurrency_test, node=my_client,
-                                                         configuration=cluster_config, enable_ssl=args.ssl)
+                                                         configuration=cluster_config, enable_ssl=args.ssl,
+                                                         cluster_items=cluster_items)
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
-            await asyncio.sleep(10)
+            await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
 
 
 #
@@ -147,6 +151,7 @@ if __name__ == '__main__':
     main_logger = set_logging(args.foreground, debug_mode)
 
     cluster_configuration = cluster.read_config()
+    cluster_items = cluster.get_cluster_items()
     # try:
     #     cluster.check_cluster_config(cluster_configuration)
     # except Exception as e:
@@ -161,6 +166,6 @@ if __name__ == '__main__':
 
     main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
     try:
-        asyncio.run(main_function(args, cluster_configuration, main_logger))
+        asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")

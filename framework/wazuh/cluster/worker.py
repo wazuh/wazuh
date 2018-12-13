@@ -100,7 +100,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                  logger=integrity_logger, worker=self).sync()
                 after = time.time()
                 integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
-            await asyncio.sleep(10)
+            await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
     async def sync_agent_info(self):
         agent_info_logger = self.setup_task_logger("Agent info")
@@ -113,7 +113,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                  logger=agent_info_logger, worker=self).sync()
                 after = time.time()
                 agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
-            await asyncio.sleep(20)
+            await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
         extra_valid_logger = self.setup_task_logger("Extra valid")

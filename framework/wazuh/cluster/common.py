@@ -118,7 +118,7 @@ class Handler(asyncio.Protocol):
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str, logger: logging.Logger, tag: str = "Handler"):
+    def __init__(self, fernet_key: str, logger: logging.Logger, cluster_items: Dict, tag: str = "Handler"):
         """
         Class constructor
 
@@ -149,8 +149,6 @@ class Handler(asyncio.Protocol):
         self.request_chunk = 524288
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk*2)
-        # defines timeout for each request in seconds
-        self.request_timeout = 10
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
@@ -159,6 +157,7 @@ class Handler(asyncio.Protocol):
         self.tag = tag
         self.logger_filter = cluster.ClusterFilter(tag=self.tag, subtag="Main")
         self.logger.addFilter(self.logger_filter)
+        self.cluster_items = cluster_items
         # transports in asyncio are an abstraction of sockets
         self.transport = None
 
@@ -254,7 +253,7 @@ class Handler(asyncio.Protocol):
         self.box[msg_counter] = response
         self.push(self.msg_build(command, msg_counter, data))
         try:
-            response_data = await asyncio.wait_for(response.read(), timeout=self.request_timeout)
+            response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
         except asyncio.TimeoutError:
             return b'Error sending request: timeout expired.'
         return response_data

@@ -14,8 +14,8 @@ class AbstractClientManager:
     """
     Defines an abstract client. Manages connection with server.
     """
-    def __init__(self, configuration: Dict, enable_ssl: bool, performance_test: int, concurrency_test: int,
-                 file: str, string: int, logger: logging.Logger, tag: str = "Client Manager"):
+    def __init__(self, configuration: Dict, cluster_items: Dict, enable_ssl: bool, performance_test: int,
+                 concurrency_test: int, file: str, string: int, logger: logging.Logger, tag: str = "Client Manager"):
         """
         Class constructor
 
@@ -28,6 +28,7 @@ class AbstractClientManager:
         """
         self.name = configuration['node_name']
         self.configuration = configuration
+        self.cluster_items = cluster_items
         self.ssl = enable_ssl
         self.performance_test = performance_test
         self.concurrency_test = concurrency_test
@@ -58,8 +59,7 @@ class AbstractClientManager:
         return [task]
 
     async def start(self):
-        # Get a reference to the event loop as we plan to use
-        # low-level APIs.
+        # Get a reference to the event loop as we plan to use low-level APIs.
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(common.asyncio_exception_handler)
         on_con_lost = self.loop.create_future()
@@ -71,6 +71,7 @@ class AbstractClientManager:
                                     protocol_factory=lambda: self.handler_class(loop=self.loop, on_con_lost=on_con_lost,
                                                                                 name=self.name, logger=self.logger,
                                                                                 fernet_key=self.configuration['key'],
+                                                                                cluster_items=self.cluster_items,
                                                                                 manager=self, **self.extra_args),
                                     host=self.configuration['nodes'][0], port=self.configuration['port'],
                                     ssl=ssl_context)
@@ -86,8 +87,7 @@ class AbstractClientManager:
 
             self.tasks.extend([(on_con_lost, None), (self.client.client_echo, tuple())] + self.add_tasks())
 
-            # Wait until the protocol signals that the connection
-            # is lost and close the transport.
+            # Wait until the protocol signals that the connection is lost and close the transport.
             try:
                 await asyncio.gather(*itertools.starmap(lambda x, y: x(*y) if y is not None else x, self.tasks))
             finally:
@@ -103,14 +103,14 @@ class AbstractClient(common.Handler):
     """
 
     def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
-                 logger: logging.Logger, manager: AbstractClientManager, tag: str = "Client"):
+                 logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
         """
         Class constructor
 
         :param name: client's name
         :param loop: asyncio loop
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, name))
+        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, name), cluster_items=cluster_items)
         self.loop = loop
         self.name = name
         self.on_con_lost = on_con_lost
@@ -192,11 +192,11 @@ class AbstractClient(common.Handler):
                 result = await self.send_request(b'echo-c', b'keepalive')
                 if result.startswith(b'Error'):
                     n_attemps += 1
-                    if n_attemps >= 3:
+                    if n_attemps >= self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']:
                         keep_alive_logger.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
                 keep_alive_logger.info(result)
-            await asyncio.sleep(29)
+            await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
 
     async def performance_test_client(self, test_size):
         while not self.on_con_lost.done():

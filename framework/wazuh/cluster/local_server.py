@@ -62,7 +62,8 @@ class LocalServer(server.AbstractServer):
         try:
             server = await loop.create_unix_server(protocol_factory=lambda: self.handler_class(server=self, loop=loop,
                                                                                                fernet_key='',
-                                                                                               logger=self.logger),
+                                                                                               logger=self.logger,
+                                                                                               cluster_items=self.cluster_items),
                                                    path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))

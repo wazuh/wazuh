@@ -16,8 +16,9 @@ class AbstractServerHandler(common.Handler):
     Defines abstract server protocol. Handles communication with a single client.
     """
 
-    def __init__(self, server, loop, fernet_key, logger, tag="Client"):
-        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, random.randint(0, 1000)))
+    def __init__(self, server, loop, fernet_key, logger, cluster_items, tag="Client"):
+        super().__init__(fernet_key=fernet_key, logger=logger, tag="{} {}".format(tag, random.randint(0, 1000)),
+                         cluster_items=cluster_items)
         self.server = server
         self.loop = loop
         self.last_keepalive = time.time()
@@ -112,12 +113,13 @@ class AbstractServer:
     Defines an asynchronous server. Handles connections from all clients.
     """
 
-    def __init__(self, performance_test, concurrency_test, configuration: Dict, enable_ssl: bool,
-                 logger: logging.Logger, tag: str = "Abstract Server"):
+    def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
+                 enable_ssl: bool, logger: logging.Logger, tag: str = "Abstract Server"):
         self.clients = {}
         self.performance = performance_test
         self.concurrency = concurrency_test
         self.configuration = configuration
+        self.cluster_items = cluster_items
         self.enable_ssl = enable_ssl
         self.tag = tag
         self.logger = logger.getChild(tag)
@@ -153,12 +155,12 @@ class AbstractServer:
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
             for client_name, client in self.clients.items():
-                if curr_timestamp - client.last_keepalive > 30:
+                if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
                                             "Disconnecting".format(client_name))
                     client.transport.close()
             keep_alive_logger.debug("Calculated.")
-            await asyncio.sleep(30)
+            await asyncio.sleep(self.cluster_items['intervals']['master']['check_worker_lastkeepalive'])
 
     async def echo(self):
         while True:
@@ -203,7 +205,8 @@ class AbstractServer:
         try:
             server = await self.loop.create_server(
                     protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
-                                                                fernet_key=self.configuration['key']),
+                                                                fernet_key=self.configuration['key'],
+                                                                cluster_items=self.cluster_items),
                     host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
             self.logger.error("Could not create server: {}".format(e))

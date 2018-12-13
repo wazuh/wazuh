@@ -134,7 +134,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             if command == b'dapi' or command == b'dapi_forward':
                 try:
                     await asyncio.wait_for(self.pending_api_requests[request_id]['Event'].wait(),
-                                           timeout=self.request_timeout)
+                                           timeout=self.cluster_items['intervals']['communication']['timeout_api_request'])
                     request_result = self.pending_api_requests[request_id]['Response']
                 except asyncio.TimeoutError:
                     request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
@@ -386,7 +386,7 @@ class Master(server.AbstractServer):
                 file_integrity_logger.error("Error calculating file integrity: {}".format(e))
             file_integrity_logger.debug("Calculated.")
 
-            await asyncio.sleep(30)
+            await asyncio.sleep(self.cluster_items['intervals']['master']['recalculate_integrity'])
 
     def get_health(self, filter_node) -> Dict:
         """

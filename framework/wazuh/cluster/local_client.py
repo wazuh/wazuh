@@ -35,7 +35,8 @@ class LocalClient(client.AbstractClientManager):
 
     def __init__(self, command: bytes, data: bytes):
         super().__init__(configuration=cluster.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
-                         file='', string=0, logger=logging.getLogger(), tag="Local Client")
+                         file='', string=0, logger=logging.getLogger(), tag="Local Client",
+                         cluster_items=cluster.get_cluster_items())
         self.request_result = None
         self.command = command
         self.data = data
@@ -50,7 +51,7 @@ class LocalClient(client.AbstractClientManager):
         transport, protocol = await loop.create_unix_connection(
                             protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
                                                                         name=self.name, logger=self.logger,
-                                                                        fernet_key='',
+                                                                        fernet_key='', cluster_items=self.cluster_items,
                                                                         manager=self),
                             path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
 
@@ -60,7 +61,8 @@ class LocalClient(client.AbstractClientManager):
         else:
             if self.command == b'dapi' or self.command == b'dapi_forward':
                 try:
-                    await asyncio.wait_for(protocol.response_available.wait(), timeout=protocol.request_timeout)
+                    await asyncio.wait_for(protocol.response_available.wait(),
+                                           timeout=self.cluster_items['intervals']['communication']['timeout_api_request'])
                     request_result = protocol.response.decode()
                 except asyncio.TimeoutError:
                     request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
