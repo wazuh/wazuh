@@ -770,7 +770,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.service = 'vpcflowlogs'
         self.flow_logs_ids = self.get_flow_logs_ids(kwargs['access_key'],
             kwargs['secret_key'])
-        self.today = self.get_today()
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
                           SELECT
@@ -894,9 +893,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         ))
         return cursor.fetchone()[0] > 0
 
-    def get_today(self):
-        return datetime.strftime(datetime.utcnow(), "%Y%m%d")
-
     def get_days_since_today(self, date):
         date = datetime.strptime(date, "%Y%m%d")
         # it is necessary to add one day for processing the current day
@@ -915,11 +911,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                                                         aws_account_id=aws_account_id,
                                                                                         aws_region=aws_region,
                                                                                         flow_log_id=flow_log_id))
-            last_date_processed = query_date_last_log.fetchone()[0]
+            # query returns an integer
+            last_date_processed = str(query_date_last_log.fetchone()[0])
         # if DB is empty
-        except TypeError as e:
-            last_date_processed = datetime.strftime(datetime.utcnow(), "%Y%m%d") # get today date if DB is empty
-        return str(last_date_processed)
+        except (TypeError, IndexError) as e:
+            last_date_processed = self.only_logs_after.strftime('%Y%m%d')
+        return last_date_processed
 
     def iter_regions_and_accounts(self, account_id, regions):
         if not account_id:
@@ -965,7 +962,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         filter_marker = ''
         if self.reparse:
             if self.only_logs_after:
-                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         else:
 
             query_last_key_of_day = self.db_connector.execute(self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
@@ -975,8 +972,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                                                         created_date=int(date.replace('/', ''))))
             try:
                 last_key = query_last_key_of_day.fetchone()[0]
-            except TypeError as e:
+            except (TypeError, IndexError) as e:
                 # if DB is empty for a region
+                #### hacer fix para cuando hay parametro only_logs_after
                 last_key = self.get_full_prefix(aws_account_id, aws_region) + date
 
         vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
@@ -1283,7 +1281,7 @@ class AWSCustomBucket(AWSBucket):
                                                                                         custom_path=self.custom_path))
             try:
                 last_key = query_last_key.fetchone()[0]
-            except TypeError as e:
+            except (TypeError, IndexError) as e:
                 # if DB is empty for a service
                 last_key = self.marker_only_logs_after(aws_region, aws_account_id)
         filter_args = {
@@ -1551,8 +1549,8 @@ def get_script_arguments():
                         help='Log prefix for S3 key',
                         default='', type=arg_valid_prefix)
     parser.add_argument('-s', '--only_logs_after', dest='only_logs_after',
-                        help='Only parse logs after this date - format YYYY-MMM-DD', default='1970-JAN-01',
-                        type=arg_valid_date)
+                        help='Only parse logs after this date - format YYYY-MMM-DD',
+                        default=datetime.strftime(datetime.utcnow(), '%Y-%b-%d'), type=arg_valid_date)
     parser.add_argument('-r', '--regions', dest='regions', help='Comma delimited list of AWS regions to parse logs',
                         default='', type=arg_valid_regions)
     parser.add_argument('-e', '--skip_on_error', action='store_true', dest='skip_on_error',
