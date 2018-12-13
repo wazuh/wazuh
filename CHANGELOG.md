@@ -1,7 +1,21 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## [v3.7.1]
+## [v3.7.2]
+
+### Changed
+
+- Logcollector will fully read a log file if it reappears after being deleted. ([#2041](https://github.com/wazuh/wazuh/pull/2041))
+
+### Fixed
+
+- Fix some bugs in Logcollector: ([#2041](https://github.com/wazuh/wazuh/pull/2041))
+  - Logcollector ceases monitoring any log file containing a binary zero-byte.
+  - If a local file defined with wildcards disappears, Logcollector incorrectly shows a negative number of remaining open attempts.
+  - Fixed end-of-file detection for text-based file formats.
+- Fixed a bug in Analysisd that made it crash when decoding a malformed FIM message. ([#2089](https://github.com/wazuh/wazuh/pull/2089))
+
+## [v3.7.1] 2018-12-05
 
 ### Added
 
