@@ -465,9 +465,9 @@ class AWSBucket(WazuhIntegration):
                                                                                         aws_region=aws_region))
             try:
                 last_key = query_last_key.fetchone()[0]
-            except TypeError as e:
+            except (TypeError, IndexError) as e:
                 # if DB is empty for a region
-                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+                last_key = self.marker_only_logs_after(aws_region, aws_account_id)
 
         filter_args = {
             'Bucket': self.bucket,
@@ -585,6 +585,7 @@ class AWSBucket(WazuhIntegration):
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
+
             if 'Contents' not in bucket_files:
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
@@ -880,10 +881,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_flow_logs_ids(self, access_key, secret_key):
         ec2_client = self.get_ec2_client(access_key, secret_key)
-        flow_logs = ec2_client.describe_flow_logs()['FlowLogs']
-        flow_logs_ids = []
-        for log_id in flow_logs:
-            flow_logs_ids.append(log_id['FlowLogId'])
+        flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         return flow_logs_ids
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
@@ -901,7 +899,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def get_days_since_today(self, date):
         date = datetime.strptime(date, "%Y%m%d")
-        # it is necessary to add one day
+        # it is necessary to add one day for processing the current day
         delta = datetime.utcnow() - date + timedelta(days=1)
         return delta.days
 
@@ -1388,30 +1386,53 @@ class AWSInspector(AWSService):
         self.sql_create_table = """
                             CREATE TABLE
                                 inspector (
+                                    aws_region 'text' NOT NULL,
                                     scan_date 'text' NOT NULL,
-                                    PRIMARY KEY (scan_date));"""
+                                    PRIMARY KEY (aws_region, scan_date));"""
 
         self.sql_insert_value = """
-                                INSERT INTO
-                                    inspector (scan_date)
+                                INSERT INTO inspector (
+                                    aws_region,
+                                    scan_date)
                                 VALUES
-                                    ('{}');"""
+                                    ('{aws_region}',
+                                    '{scan_date}');"""
 
         self.sql_find_last_scan = """
                                 SELECT
                                     scan_date
                                 FROM
                                     inspector
+                                WHERE
+                                    aws_region='{aws_region}'
                                 ORDER BY
                                     scan_date DESC
                                 LIMIT 1;"""
+
+        self.sql_db_maintenance = """DELETE
+                        FROM
+                            inspector
+                        WHERE
+                            rowid NOT IN
+                            (SELECT ROWID
+                                FROM
+                                inspector
+                                WHERE
+                                aws_region='{aws_region}'
+                                ORDER BY
+                                scan_date DESC
+                                LIMIT {retain_db_records})"""
+
         # DB and table names
-        self.db_name = 's3_inspector'
+        self.db_name = 'inspector'
         self.db_table_name = 'inspector'
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
             service_name='inspector', region=region)
+
+        # max DB records for region
+        self.retain_db_records = 5
 
     def send_describe_findings(self, arn_list):
         if len(arn_list) == 0:
@@ -1427,11 +1448,11 @@ class AWSInspector(AWSService):
         self.init_db(self.sql_create_table)
         try:
             # if DB is empty write initial date
-            self.db_cursor.execute(self.sql_insert_value.format(initial_date))
-            self.db_cursor.execute(self.sql_find_last_scan)
+            self.db_cursor.execute(self.sql_insert_value.format(aws_region=self.region, scan_date=initial_date))
+            self.db_cursor.execute(self.sql_find_last_scan.format(aws_region=self.region))
             last_scan = self.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
-            self.db_cursor.execute(self.sql_find_last_scan)
+            self.db_cursor.execute(self.sql_find_last_scan.format(aws_region=self.region))
             last_scan = self.db_cursor.fetchone()[0]
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time (UTC)
@@ -1446,8 +1467,12 @@ class AWSInspector(AWSService):
                 filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
-        self.db_cursor.execute(self.sql_insert_value.format(datetime_current))
+        self.db_cursor.execute(self.sql_insert_value.format(aws_region=self.region ,scan_date=datetime_current))
+        # DB maintenance
+        self.db_cursor.execute(self.sql_db_maintenance.format(aws_region=self.region, \
+            retain_db_records=self.retain_db_records))
         # close connection with DB
+        self.db_connector.commit()
         self.close_db()
 
 ################################################################################
