@@ -974,7 +974,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 last_key = query_last_key_of_day.fetchone()[0]
             except (TypeError, IndexError) as e:
                 # if DB is empty for a region
-                #### hacer fix para cuando hay parametro only_logs_after
                 last_key = self.get_full_prefix(aws_account_id, aws_region) + date
 
         vpc_prefix = self.get_vpc_prefix(aws_account_id, aws_region, date, flow_log_id)
