@@ -39,10 +39,10 @@ class LocalServerHandler(server.AbstractServerHandler):
         return b'ok', json.dumps(self.server.configuration).encode()
 
     def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.node.get_connected_nodes(filter_nodes)).encode()
+        raise NotImplementedError
 
     def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.node.get_health(filter_nodes)).encode()
+        raise NotImplementedError
 
 
 class LocalServer(server.AbstractServer):
@@ -93,6 +93,12 @@ class LocalServerHandlerMaster(LocalServerHandler):
         else:
             return super().process_request(command, data)
 
+    def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
+        return b'ok', json.dumps(self.server.node.get_connected_nodes(filter_nodes)).encode()
+
+    def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
+        return b'ok', json.dumps(self.server.node.get_health(filter_nodes)).encode()
+
 
 class LocalServerMaster(LocalServer):
 
@@ -111,6 +117,20 @@ class LocalServerHandlerWorker(LocalServerHandler):
             return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
+
+    def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
+        return self.send_request_to_master(b'get_nodes', filter_nodes)
+
+    def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
+        return self.send_request_to_master(b'get_health', filter_nodes)
+
+    def send_request_to_master(self, command: bytes, filter_nodes: bytes):
+        request = asyncio.create_task(self.server.node.client.send_request(command, filter_nodes))
+        request.add_done_callback(self.get_api_response)
+        return b'ok', b'Sent request to master node'
+
+    def get_api_response(self, future):
+        asyncio.create_task(self.send_request(command=b'dapi_res', data=future.result()))
 
 
 class LocalServerWorker(LocalServer):

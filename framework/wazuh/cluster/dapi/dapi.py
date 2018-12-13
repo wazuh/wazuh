@@ -59,8 +59,7 @@ class DistributedAPI:
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
                 del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
-                loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, self.execute_local_request)
+                return await self.execute_local_request()
                 # return self.execute_local_request()
 
             # Second case: forward the request
@@ -92,18 +91,26 @@ class DistributedAPI:
         output = {'message' if error else 'data': data, 'error': error}
         return json.dumps(obj=output, default=encode_json, indent=4 if self.pretty else None)
 
-    def execute_local_request(self) -> str:
+    async def execute_local_request(self) -> str:
         """
         Executes an API request locally.
 
         :return: a JSON response.
         """
-        try:
-            before = time.time()
+        def run_local():
             if 'arguments' in self.input_json and self.input_json['arguments']:
                 data = rq.functions[self.input_json['function']]['function'](**self.input_json['arguments'])
             else:
                 data = rq.functions[self.input_json['function']]['function']()
+            return data
+        try:
+            before = time.time()
+
+            if rq.functions[self.input_json['function']]['is_async']:
+                data = await run_local()
+            else:
+                loop = asyncio.get_running_loop()
+                data = await loop.run_in_executor(None, run_local)
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))

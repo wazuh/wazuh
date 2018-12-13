@@ -111,6 +111,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 return b'ok', b'Response forwarded to worker'
             else:
                 return b'err', b'Could not forward request, connection is not available'
+        elif command == b'get_config':
+            return self.get_config()
+        elif command == b'get_nodes':
+            return self.get_nodes(data)
+        elif command == b'get_health':
+            return self.get_health(data)
         else:
             return super().process_request(command, data)
 
@@ -158,6 +164,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if cmd == b'ok' and not os.path.exists(worker_dir):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
+
+    def get_nodes(self, filter_nodes):
+        return b'ok', json.dumps(self.server.get_connected_nodes(filter_nodes)).encode()
+
+    def get_health(self, filter_nodes):
+        return b'ok', json.dumps(self.server.get_health(filter_nodes)).encode()
+
+    def get_config(self):
+        return b'ok', json.dumps(self.server.configuration).encode()
 
     def get_permission(self, sync_type: bytes) -> Tuple[bytes, bytes]:
         if sync_type == b'sync_i_w_m_p':

@@ -60,7 +60,7 @@ class LocalClient(client.AbstractClientManager):
         if result.startswith('Error'):
             request_result = json.dumps({'error': 1000, 'message': result})
         else:
-            if self.command == b'dapi' or self.command == b'dapi_forward':
+            if self.command == b'dapi' or self.command == b'dapi_forward' or result == 'Sent request to master node':
                 try:
                     await asyncio.wait_for(protocol.response_available.wait(),
                                            timeout=self.cluster_items['intervals']['communication']['timeout_api_request'])
