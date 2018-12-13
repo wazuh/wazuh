@@ -108,7 +108,7 @@ class WazuhIntegration:
                                 type='table';"""
 
         self.sql_db_optimize = "PRAGMA optimize;"
-        
+
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -222,7 +222,7 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 max_queue_buffer, prefix, delete_file):
+                 prefix, delete_file):
         """
         AWS Bucket constructor.
 
@@ -235,7 +235,6 @@ class AWSBucket(WazuhIntegration):
         :param only_logs_after: Date after which obtain logs.
         :param skip_on_error: Wether to continue processing logs or stop when an error takes place
         :param account_alias: Alias of the AWS account where the bucket is.
-        :param max_queue_buffer: Maximum event length
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
@@ -335,7 +334,6 @@ class AWSBucket(WazuhIntegration):
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
-        self.max_queue_buffer = max_queue_buffer
         self.prefix = prefix
         self.delete_file = delete_file
 
@@ -494,7 +492,7 @@ class AWSBucket(WazuhIntegration):
                     my_event[name] = value[0]
                 elif isinstance(value, dict):
                     single_element_list_to_dictionary(my_event[name])
-        
+
         # turn some list fields into dictionaries
         single_element_list_to_dictionary(event)
 
@@ -502,7 +500,7 @@ class AWSBucket(WazuhIntegration):
         # Only add this field if the sourceIPAddress is an IP and not a DNS.
         if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
-        
+
         return event
 
     def decompress_file(self, log_key):
@@ -601,7 +599,7 @@ class AWSBucket(WazuhIntegration):
                     else:
                         debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                         continue
-                
+
                 debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                 # Get the log file from S3 and decompress it
                 log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
@@ -619,7 +617,7 @@ class AWSBucket(WazuhIntegration):
                 new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True)
                 new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
                 bucket_files = self.client.list_objects_v2(**new_s3_args)
-                
+
                 if 'Contents' not in bucket_files:
                     debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                     return
@@ -633,7 +631,7 @@ class AWSBucket(WazuhIntegration):
                                 file=bucket_file['Key']), 1)
                         else:
                             debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                            continue      
+                            continue
                     debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
@@ -1047,7 +1045,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 file=bucket_file['Key']), 1)
                         else:
                             debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
-                            continue 
+                            continue
                     debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
                     # Get the log file from S3 and decompress it
                     log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
@@ -1572,10 +1570,6 @@ def main(argv):
     # Parse arguments
     options = get_script_arguments()
 
-    # Get socket buffer size
-    with open('/proc/sys/net/core/rmem_max', 'r') as kernel_param:
-        max_queue_buffer = int(kernel_param.read().strip())
-
     if int(options.debug) > 0:
         global debug_level
         debug_level = int(options.debug)
@@ -1599,7 +1593,7 @@ def main(argv):
                            secret_key=options.secret_key, profile=options.aws_profile,
                            iam_role_arn=options.iam_role_arn, bucket=options.logBucket,
                            only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
-                           account_alias=options.aws_account_alias, max_queue_buffer=max_queue_buffer,
+                           account_alias=options.aws_account_alias,
                            prefix=options.trail_prefix, delete_file=options.deleteFile)
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:

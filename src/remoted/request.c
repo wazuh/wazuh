@@ -41,6 +41,7 @@ int max_attempts;
 int request_pool;
 int request_timeout;
 int response_timeout;
+int guess_agent_group;
 
 // Request listener thread entry point
 void * req_main(__attribute__((unused)) void * arg) {
@@ -61,6 +62,7 @@ void * req_main(__attribute__((unused)) void * arg) {
     rto_sec = getDefine_Int("remoted", "request_rto_sec", 0, 60);
     rto_msec = getDefine_Int("remoted", "request_rto_msec", 0, 999);
     max_attempts = getDefine_Int("remoted", "max_attempts", 1, 16);
+    guess_agent_group = getDefine_Int("remoted", "guess_agent_group", 0, 1);
 
     // Create hash table
 

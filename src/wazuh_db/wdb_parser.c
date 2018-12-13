@@ -35,7 +35,7 @@ int wdb_parse(char * input, char * output) {
         return -1;
     }
 
-    if (next = strchr(input, ' '), !next) {
+    if (next = wstr_chr(input, ' '), !next) {
         mdebug1("Invalid DB query syntax.");
         mdebug2("DB query: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", input);
@@ -48,7 +48,7 @@ int wdb_parse(char * input, char * output) {
     if (strcmp(actor, "agent") == 0) {
         id = next;
 
-        if (next = strchr(id, ' '), !next) {
+        if (next = wstr_chr(id, ' '), !next) {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", id);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", id);
@@ -74,7 +74,7 @@ int wdb_parse(char * input, char * output) {
 
         mdebug2("Executing query: %s", query);
 
-        if (next = strchr(query, ' '), next) {
+        if (next = wstr_chr(query, ' '), next) {
             *next++ = '\0';
         }
 
@@ -280,7 +280,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     int result;
     long ts;
 
-    if (next = strchr(input, ' '), !next) {
+    if (next = wstr_chr(input, ' '), !next) {
         mdebug1("Invalid Syscheck query syntax.");
         mdebug2("Syscheck query: %s", input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", input);
@@ -320,7 +320,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "scan_info_update") == 0) {
         curr = next;
 
-        if (next = strchr(curr, ' '), !next) {
+        if (next = wstr_chr(curr, ' '), !next) {
             mdebug1("Invalid scan_info fim query syntax.");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
@@ -366,7 +366,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "save") == 0) {
         curr = next;
 
-        if (next = strchr(curr, ' '), !next) {
+        if (next = wstr_chr(curr, ' '), !next) {
             mdebug1("Invalid Syscheck query syntax.");
             mdebug2("Syscheck query: %s", curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
@@ -388,7 +388,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         checksum = next;
 
-        if (next = strchr(checksum, ' '), !next) {
+        if (next = wstr_chr(checksum, ' '), !next) {
             mdebug1("Invalid Syscheck query syntax.");
             mdebug2("Syscheck query: %s", checksum);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", checksum);

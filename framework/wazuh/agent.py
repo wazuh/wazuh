@@ -1548,7 +1548,7 @@ class Agent:
         # Create group in /var/multigroups
         try:
             Agent().append_multigroups_metadata(group_id)
-            folder = hashlib.sha256(group_id).hexdigest()[:8]
+            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
             multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
             mkdir_with_mode(multi_group_path)
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)

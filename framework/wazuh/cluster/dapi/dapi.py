@@ -17,6 +17,7 @@ from operator import itemgetter
 from multiprocessing.dummy import Pool as ThreadPool
 import logging
 import time
+import copy
 try:
     from Queue import Queue
 except ImportError:
@@ -38,6 +39,9 @@ def distribute_function(input_json, pretty=False, debug=False):
         request_type = rq.functions[input_json['function']]['type']
         is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
         logger.debug("[Cluster] [D API        ] Distributed API is {}.".format("enabled" if is_dapi_enabled else "disabled"))
+
+        if 'wait_for_complete' not in input_json['arguments']:
+            input_json['arguments']['wait_for_complete'] = False
 
         # First case: execute the request local.
         # If the distributed api is not enabled
@@ -162,13 +166,13 @@ def forward_request(input_json, master_name, pretty, debug):
         """
         if node_name == 'unknown' or node_name == '':
             # if the agent is never connected or pending (i.e. its node name is unknown or empty), do the request locally
-            response = json.loads(distribute_function(input_json))
+            response = json.loads(distribute_function(copy.deepcopy(input_json)))
         else:
             # if not, check if the node the request is being forwarded to is the master or a worker.
             command = 'dapi_forward {}'.format(node_name) if node_name != master_name else 'dapi'
             if command == 'dapi':
                 # if it's the master, execute the request directly
-                response = json.loads(distribute_function(input_json, debug=debug))
+                response = json.loads(distribute_function(copy.deepcopy(input_json), debug=debug))
             else:
                 # if it's a worker, forward it
                 response = i_s.execute('{} {}'.format(command, json.dumps(input_json)),

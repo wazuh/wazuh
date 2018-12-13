@@ -647,7 +647,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
         if (config.flags.verify_host && config.agent_ca) {
             if (check_x509_cert(ssl, srcip) != VERIFY_TRUE) {
-                merror("Unable to verify server certificate.");
+                merror("Unable to verify client certificate.");
                 SSL_free(ssl);
                 close(client.socket);
                 continue;

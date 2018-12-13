@@ -78,7 +78,7 @@ int rootcheck_init(int test_config)
     rootcheck.notify = QUEUE;
     rootcheck.scanall = 0;
     rootcheck.readall = 0;
-    rootcheck.disabled = 1;
+    rootcheck.disabled = RK_CONF_UNPARSED;
     rootcheck.skip_nfs = 0;
     rootcheck.alert_msg = NULL;
     rootcheck.time = ROOTCHECK_WAIT;

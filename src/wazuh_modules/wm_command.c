@@ -145,7 +145,7 @@ void * wm_command_main(wm_command_t * command) {
         int i;
 
         for (i = 0; command->queue_fd = StartMQ(DEFAULTQPATH, WRITE), command->queue_fd < 0 && i < WM_MAX_ATTEMPTS; i++) {
-            sleep(WM_MAX_WAIT);
+            wm_delay(1000 * WM_MAX_WAIT);
         }
 
         if (i == WM_MAX_ATTEMPTS) {
@@ -160,9 +160,15 @@ void * wm_command_main(wm_command_t * command) {
     if (!command->run_on_start) {
         time_start = time(NULL);
 
+        // On first run, take into account the interval of time specified
+        if (command->interval && command->state.next_time == 0) {
+            command->state.next_time = time_start + command->interval;
+        }
+
         if (command->state.next_time > time_start) {
             mtinfo(WM_COMMAND_LOGTAG, "%s: Waiting for turn to evaluate.", command->tag);
-            sleep(command->state.next_time - time_start);
+            time_sleep = command->state.next_time - time_start;
+            wm_delay(1000 * time_sleep);
         }
     }
 
@@ -184,12 +190,14 @@ void * wm_command_main(wm_command_t * command) {
                     mtdebug2(WM_COMMAND_LOGTAG, "OUTPUT: %s", output);
                 }
             }
-
+            break;
+        case 1:
+            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
             break;
 
         default:
-            mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at ossec.conf. Exiting...", command->tag);
-            pthread_exit(NULL);
+            mterror(WM_COMMAND_LOGTAG, "Command '%s' failed.", command->tag);
+            break;
         }
 
         if (!command->ignore_output) {
@@ -225,7 +233,7 @@ void * wm_command_main(wm_command_t * command) {
         }
 
         // If time_sleep=0, yield CPU
-        sleep(time_sleep);
+        wm_delay(1000 * time_sleep);
     }
 
     return NULL;
