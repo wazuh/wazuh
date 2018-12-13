@@ -37,6 +37,7 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
     char *tmp_str;
     char *key, *val;
     char str[OS_MAXSTR + 1];
+    char *value_begin;
 
     str[OS_MAXSTR] = '\0';
     char tmp_filename[OS_MAXSTR];
@@ -65,13 +66,75 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, int fo
             if (tmp_str) {
                 *tmp_str = '\0';
             }
-            if ((val = strchr(str, ':'))) {
+
+            key = NULL;
+            /* Check if key is surrounded by double quotes */
+            char *key_quotes = NULL;
+            if ((key_quotes = strchr(str, '"'))) {
+
+                /* Check if the ':' is after last key quote to make sure this is a key*/
+                char *is_key = NULL;
+                if((is_key = strchr(str, ':'))){
+
+                    if(is_key > key_quotes) {
+                        *key_quotes = '\0';
+                        key_quotes++;
+                        key = key_quotes;
+
+                        if ((key_quotes = strchr(key_quotes, '"'))) {
+                            *key_quotes = '\0';
+                            key_quotes++;
+                        } else {
+                            /* Format error */
+                            continue;
+                        }
+                    } else {
+                        key_quotes = NULL;
+                    }
+                } else {
+                    key_quotes = NULL;
+                }
+            }
+
+            if(key_quotes) {
+                value_begin = key_quotes;
+            } else {
+                value_begin = str;
+            }
+
+            if ((val = strchr(value_begin, ':'))) {
                 *val = '\0';
                 val++;
+                value_begin = val;
             } else {
                 continue;
             }
-            key = str;
+
+            /* Check if value is surrounded by double quotes */
+            char *value_quotes = NULL;
+
+            if ((value_quotes = strchr(value_begin, '"'))) {
+                *value_quotes = '\0';
+                value_quotes++;
+                value_begin = value_quotes;
+
+                if ((value_quotes = strchr(value_quotes, '"'))) {
+                    *value_quotes = '\0';
+                    value_quotes++;
+                } else {
+                    /* Format error */
+                    continue;
+                }
+            }
+
+            if(value_quotes) {
+                val = value_begin;
+            }
+
+            if(!key_quotes) {
+                key = str;
+            }
+
             cdb_make_add(&cdbm, key, strlen(key), val, strlen(val));
             if (force) {
                 print_out("  * adding - key: %s value: %s", key, val);
