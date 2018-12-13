@@ -220,7 +220,6 @@ class AWSBucket(WazuhIntegration):
     This is an abstract class
     """
 
-    
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
                  max_queue_buffer, prefix, delete_file):
@@ -395,7 +394,6 @@ class AWSBucket(WazuhIntegration):
         except Exception as e:
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
-
         # DB does exist yet
         if self.db_table_name not in tables:
             self.create_table()
@@ -1106,10 +1104,81 @@ class AWSConfigBucket(AWSLogsBucket):
 
 class AWSCustomBucket(AWSBucket):
 
-    def __init__(self, **kwargs):
-        self.db_table_name = 'custom'
+    def __init__(self, db_table_name=None, **kwargs):
+        # only special services have a different DB table
+        if db_table_name:
+            self.db_table_name = db_table_name
+        else:
+            self.db_table_name = 'custom'
         AWSBucket.__init__(self, **kwargs)
-        self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased.
+        self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased
+        self.custom_path = self.bucket + '/' + self.prefix
+        # SQL queries for VPC
+        self.sql_already_processed = """
+                          SELECT
+                            count(*)
+                          FROM
+                            {table_name}
+                          WHERE
+                            custom_path='{custom_path}' AND
+                            log_key='{log_name}'"""
+
+        self.sql_mark_complete = """
+                            INSERT INTO {table_name} (
+                                custom_path,
+                                log_key,
+                                processed_date,
+                                created_date) VALUES (
+                                '{custom_path}',
+                                '{log_key}',
+                                DATETIME('now'),
+                                '{created_date}')"""
+
+        self.sql_create_table = """
+                            CREATE TABLE
+                                {table_name} (
+                                custom_path 'text' NOT NULL,
+                                log_key 'text' NOT NULL,
+                                processed_date 'text' NOT NULL,
+                                created_date 'integer' NOT NULL,
+                                PRIMARY KEY (custom_path, log_key));"""
+
+        self.sql_find_last_log_processed = """
+                                        SELECT
+                                            created_date
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            custom_path = '{custom_path}'
+                                        ORDER BY
+                                            created_date DESC
+                                        LIMIT 1;"""
+
+        self.sql_find_last_key_processed = """
+                                        SELECT
+                                            log_key
+                                        FROM
+                                            {table_name}
+                                        WHERE
+                                            custom_path = '{custom_path}'
+                                        ORDER BY
+                                            log_key ASC
+                                        LIMIT 1;"""
+
+        self.sql_db_maintenance = """DELETE
+                            FROM
+                                {table_name}
+                            WHERE
+                                custom_path='{custom_path}' AND
+                                rowid NOT IN
+                                (SELECT ROWID
+                                    FROM
+                                    {table_name}
+                                    WHERE
+                                    custom_path='{custom_path}'
+                                    ORDER BY
+                                    ROWID DESC
+                                    LIMIT {retain_db_records})"""
 
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
@@ -1157,14 +1226,95 @@ class AWSCustomBucket(AWSBucket):
     def iter_regions_and_accounts(self, account_id, regions):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
-        self.iter_files_in_bucket('', self.bucket)
+        # no iterations for accounts_id or regions on custom buckets
+        account_id = ''
+        regions = ''
+        self.iter_files_in_bucket(account_id, regions)
         self.db_maintenance('', self.bucket)
+
+    def already_processed(self, downloaded_file, aws_account_id, aws_region):
+        cursor = self.db_connector.execute(self.sql_already_processed.format(
+            table_name=self.db_table_name,
+            custom_path=self.custom_path,
+            log_name=downloaded_file
+        ))
+        return cursor.fetchone()[0] > 0
+
+    def mark_complete(self, aws_account_id, aws_region, log_file):
+        if self.reparse:
+            if self.already_processed(log_file['Key'], aws_account_id, aws_region):
+                debug(
+                    '+++ File already marked complete, but reparse flag set: {log_key}'.format(log_key=log_file['Key']),
+                    2)
+        else:
+            try:
+                self.db_connector.execute(self.sql_mark_complete.format(
+                    table_name=self.db_table_name,
+                    custom_path=self.custom_path,
+                    log_key=log_file['Key'],
+                    created_date=self.get_creation_date(log_file)
+                ))
+            except Exception as e:
+                debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
+                raise e
+
+    def db_maintenance(self, aws_account_id, aws_region):
+        debug("+++ DB Maintenance", 1)
+        try:
+            self.db_connector.execute(self.sql_db_maintenance.format(
+                table_name=self.db_table_name,
+                custom_path=self.custom_path,
+                retain_db_records=self.retain_db_records
+            ))
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - Path: {custom_path}: {error_msg}".format(
+                    custom_path=self.custom_path,
+                    error_msg=e))
+            sys.exit(10)
+
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False):
+        filter_marker = ''
+        if self.reparse:
+            if self.only_logs_after:
+                filter_marker = self.marker_only_logs_after(self.only_logs_after)
+        else:
+            query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
+                                                                                        custom_path=self.custom_path))
+            try:
+                last_key = query_last_key.fetchone()[0]
+            except TypeError as e:
+                # if DB is empty for a service
+                last_key = self.marker_only_logs_after(aws_region, aws_account_id, self.only_logs_after)
+        filter_args = {
+            'Bucket': self.bucket,
+            'MaxKeys': 1000,
+            'Prefix': self.get_full_prefix(aws_account_id, aws_region)
+        }
+
+        # if nextContinuationToken is not used for processing logs in a bucket
+        if not iterating:
+            if filter_marker:
+                filter_args['StartAfter'] = filter_marker
+                debug('+++ Marker: {0}'.format(filter_marker), 2)
+            else:
+                filter_args['StartAfter'] = last_key
+                debug('+++ Marker: {0}'.format(last_key), 2)
+
+        return filter_args
+
+    def marker_only_logs_after(self, aws_region, aws_account_id, only_logs_after):
+        return '{init}{only_logs_after}'.format(
+            init=self.prefix,
+            only_logs_after=only_logs_after.strftime('%Y/%m/%d')
+        )
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):
 
     def __init__(self, **kwargs):
-        AWSCustomBucket.__init__(self, **kwargs)
+        db_table_name = 'guardduty'
+        AWSCustomBucket.__init__(self, db_table_name, **kwargs)
 
     def iter_events(self, event_list, log_key, aws_account_id):
         if event_list is not None:
