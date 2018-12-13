@@ -364,7 +364,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             break;
 
         default: // Error in fim check sum
-            merror("at fim_db_search: Agent '%s' Couldn't decode fim sum '%s' from file '%s'.",
+            mwarn("at fim_db_search: Agent '%s' Couldn't decode fim sum '%s' from file '%s'.",
                     lf->agent_id, new_check_sum, f_name);
             goto exit_fail;
     }
