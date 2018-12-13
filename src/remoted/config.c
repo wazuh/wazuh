@@ -26,9 +26,6 @@ int request_timeout;
 int response_timeout;
 int INTERVAL;
 rlim_t nofile;
-unsigned int _s_comp_print;
-unsigned int _s_recv_flush;
-int _s_verify_counter;
 int guess_agent_group;
 
 /* Read the config file (the remote access) */

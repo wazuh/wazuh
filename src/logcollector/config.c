@@ -12,8 +12,6 @@
 
 int accept_remote;
 int lc_debug_level;
-int N_INPUT_THREADS;
-int OUTPUT_QUEUE_SIZE;
 #ifndef WIN32
 rlim_t nofile;
 #endif

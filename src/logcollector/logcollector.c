@@ -31,10 +31,7 @@ logreader_glob *globs;
 logsocket *logsk;
 int vcheck_files;
 int maximum_lines;
-int maximum_files;
 int sample_log_length;
-int current_files = 0;
-int total_files = 0;
 int force_reload;
 int reload_interval;
 int reload_delay;
@@ -83,6 +80,9 @@ void LogCollectorStart()
     IT_control f_control = 0;
     char keepalive[1024];
     logreader *current;
+
+    total_files = 0;
+    current_files = 0;
 
     set_sockets();
     pthread_rwlock_init(&files_update_rwlock, NULL);
