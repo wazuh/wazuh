@@ -275,7 +275,8 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 os_free(output);
                 return -1;
             }
-            merror("%s",error_message->valuestring);
+            mdebug1("Could not get a key from %s %s. Error: '%s'.", type == W_TYPE_ID ? "ID" : "IP",
+                    request, error_message->valuestring && *error_message->valuestring != '\0' ? error_message->valuestring : "unknown");
             cJSON_Delete (agent_infoJSON);
             os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
