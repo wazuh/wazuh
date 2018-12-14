@@ -60,7 +60,6 @@ class DistributedAPI:
 
                 del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
                 return await self.execute_local_request()
-                # return self.execute_local_request()
 
             # Second case: forward the request
             # Only the master node will forward a request, and it will only be forwarded if its type is distributed_
@@ -130,7 +129,8 @@ class DistributedAPI:
 
         :return: JSON response
         """
-        return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode())
+        return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode(),
+                                       wait_for_complete=self.input_json['arguments']['wait_for_complete'])
 
     async def forward_request(self):
         """
@@ -154,9 +154,9 @@ class DistributedAPI:
                 # itself
                 response = await self.distribute_function()
             else:
-                response = await self.node.execute(b'dapi_forward', "{} {}".format(node_name,
-                                                                                   json.dumps(self.input_json)).encode()
-                                                   )
+                response = await self.node.execute(b'dapi_forward',
+                                                   "{} {}".format(node_name, json.dumps(self.input_json)).encode(),
+                                                   self.input_json['arguments']['wait_for_complete'])
             return response
 
         # get the node(s) who has all available information to answer the request.

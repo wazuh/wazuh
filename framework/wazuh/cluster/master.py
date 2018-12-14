@@ -110,12 +110,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             return super().process_request(command, data)
 
-    async def execute(self, command: bytes, data: bytes) -> str:
+    async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> str:
         """
         Sends a distributed API request and wait for a response in command dapi_res
 
         :param command: Command to execute
         :param data: Data to send
+        :param wait_for_complete: Raise a timeout exception or not
         :return:
         """
         request_id = str(random.randint(0, 2**10 - 1))
@@ -129,8 +130,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             if command == b'dapi' or command == b'dapi_forward':
                 try:
-                    await asyncio.wait_for(self.pending_api_requests[request_id]['Event'].wait(),
-                                           timeout=self.cluster_items['intervals']['communication']['timeout_api_request'])
+                    timeout = None if wait_for_complete \
+                                   else self.cluster_items['intervals']['communication']['timeout_api_request']
+                    await asyncio.wait_for(self.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                     request_result = self.pending_api_requests[request_id]['Response']
                 except asyncio.TimeoutError:
                     request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
