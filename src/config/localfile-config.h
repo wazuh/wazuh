@@ -20,6 +20,10 @@
 #include <sys/types.h>
 #include "labels_op.h"
 
+extern int maximum_files;
+extern int total_files;
+extern int current_files;
+
 typedef struct _logsocket {
     char *name;
     char *location;
