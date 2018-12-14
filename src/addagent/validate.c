@@ -112,7 +112,6 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
     }
 
-#ifndef REUSE_ID
     char *ptr_name = strchr(buf_curline, ' ');
 
     if (!ptr_name) {
@@ -128,8 +127,6 @@ int OS_RemoveAgent(const char *u_id) {
     size_t curline_len = strlen(buf_curline);
     memcpy(buffer + fp_read, buf_curline, curline_len);
     fp_read += curline_len;
-
-#endif
 
     if (!feof(fp))
         fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
