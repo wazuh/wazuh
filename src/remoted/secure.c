@@ -550,6 +550,7 @@ int key_request_reconnect() {
             if (socket = key_request_connect(), socket < 0) {
                 sleep(1);
             } else {
+                OS_SetSendTimeout(socket, 5);
                 key_request_available = 1;
                 return socket;
             }

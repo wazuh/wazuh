@@ -13,6 +13,7 @@
 #include <os_net/os_net.h>
 #include "shared.h"
 
+#define RELAUNCH_TIME 10
 #define minfo(format, ...) mtinfo(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
 #define mwarn(format, ...) mtwarn(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
 #define merror(format, ...) mterror(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
@@ -29,6 +30,7 @@ void * w_request_thread(const wm_krequest_t *data);
 static int wm_key_request_dispatch(char * buffer,const wm_krequest_t * data);
 
 static int external_socket_connect();
+static void launch_socket(char *exec_path);
 
 /* Decode rootcheck input queue */
 static w_queue_t * request_queue;
@@ -73,11 +75,6 @@ void * wm_key_request_main(wm_krequest_t * data) {
     if (!request_hash) {
         merror(LIST_ERROR);
         pthread_exit(NULL);
-    }
-
-    /* Check if we have exec_path and socket at the same time */
-    if(data->socket && data->exec_path) {
-        mwarn("Executable tag and socket tag defined. Using socket tag");
     }
 
     /* Init the queue input */
@@ -188,8 +185,14 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     /* Send request to external executable by socket */
     if(data->socket) {
         int sock;
+retry:
         if (sock = external_socket_connect(data->socket), sock < 0) {
-            mdebug1("Could not connect to external socket. Is the process running?");
+            if (!data->exec_path) {
+                mdebug1("Could not connect to external socket. Is the process running?");
+            } else {
+                launch_socket(data->exec_path);
+                goto retry;
+            }
         } else {
             char msg[OS_SIZE_128] = {0};
             int msg_len = snprintf(msg, OS_SIZE_128,"%s:%s", exec_params[type], request);
@@ -201,7 +204,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
                 return -1;
             }
 
-            if (OS_SendSecureTCP(sock, msg_len, msg) < 0) {
+            if (send(sock, msg, msg_len, 0) < 0) {
                 os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 close(sock);
@@ -210,7 +213,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
 
             ssize_t length;
             os_calloc(OS_MAXSTR + 1,sizeof(char),output);
-            if (length = OS_RecvSecureTCP(sock, output, OS_MAXSTR), length < 0) {
+            if (length = recv(sock, output, OS_MAXSTR,0), length < 0) {
                 mdebug1("No data received from external socket");
                 os_free(output);
                 os_free(command);
@@ -398,8 +401,54 @@ void * w_request_thread(const wm_krequest_t *data) {
 
 static int external_socket_connect(char * socket) {
 #ifndef WIN32
-    return OS_ConnectUnixDomain(socket, SOCK_STREAM, OS_MAXSTR);
+    int sock =  OS_ConnectUnixDomain(socket, SOCK_STREAM, OS_MAXSTR);
+    OS_SetSendTimeout(sock, 5);
+    OS_SetRecvTimeout(sock, 5, 0);
+    return sock;
 #else
     return -1;
 #endif
+}
+
+void launch_socket(char *exec_path) {
+    static pthread_mutex_t exec_path_mutex = PTHREAD_MUTEX_INITIALIZER;
+    static time_t timestamp = 0;
+    static wfd_t *wfd = NULL;
+    time_t t_now;
+    int sleep_time = 0;
+
+    w_mutex_lock(&exec_path_mutex);
+    t_now = time(NULL);
+    if (timestamp + RELAUNCH_TIME < t_now) {
+        char **argv;
+        mdebug1("Launching '%s'...", exec_path);
+
+        if (wfd) {
+            if ((kill(wfd->pid, 0) == -1) && (errno == ESRCH)) {
+                // The process is dead
+                wpclose(wfd);
+                wfd = NULL;
+            } else {
+                mdebug1("The process which should have opened the socket is running. Rechecking within %d seconds.", RELAUNCH_TIME);
+            }
+        }
+        if (!wfd) {
+            if (argv = wm_strtok(exec_path), argv) {
+                if(!(wfd = wpopenv(argv[0], argv, W_APPEND_POOL))) {
+                    mwarn("Couldn not execute '%s'. Trying again in %d seconds.", exec_path, RELAUNCH_TIME);
+                }
+            }
+        }
+
+        timestamp = time(NULL);
+    } else {
+        if (wfd) {
+            mdebug1("The executable was launched less than %d seconds ago. Trying to connect to the socket...", RELAUNCH_TIME);
+            sleep(1);
+        } else {
+            sleep_time = timestamp + RELAUNCH_TIME - t_now;
+        }
+    }
+    w_mutex_unlock(&exec_path_mutex);
+    sleep(sleep_time);
 }
