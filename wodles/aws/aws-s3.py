@@ -115,7 +115,7 @@ class WazuhIntegration:
         self.msg_header = "1:Wazuh-AWS:"
         self.client = self.get_client(access_key=access_key, secret_key=secret_key,
             profile=aws_profile, iam_role_arn=iam_role_arn, service_name=service_name,
-            region_name=region, bucket=bucket)
+            bucket=bucket)
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
         self.db_connector = sqlite3.connect(self.db_path)
@@ -123,14 +123,12 @@ class WazuhIntegration:
         if bucket:
             self.bucket = bucket
 
-    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, region_name, bucket):
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket):
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
             conn_args['aws_access_key_id'] = access_key
             conn_args['aws_secret_access_key'] = secret_key
-            if region_name:
-                conn_args['region_name'] = region_name
 
         if profile is not None:
             conn_args['profile_name'] = profile
@@ -1417,13 +1415,59 @@ class AWSService(WazuhIntegration):
     """
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
         service_name, only_logs_after, region):
+        # DB name
+        self.db_name = 'aws_services'
+        # table name
+        self.db_table_name = 'aws_services'
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn,
             service_name=service_name, region=region)
 
         self.only_logs_after = only_logs_after
-        self.region = region
+
+        # SQL queries for services
+        # SQL queries
+        self.sql_create_table = """
+                            CREATE TABLE
+                                {table_name} (
+                                    service_name 'text' NOT NULL,
+                                    scan_date 'text' NOT NULL,
+                                    PRIMARY KEY (service_name, scan_date));"""
+
+        self.sql_insert_value = """
+                                INSERT INTO {table_name} (
+                                    service_name,
+                                    scan_date)
+                                VALUES
+                                    ('{service_name}',
+                                    '{scan_date}');"""
+
+        self.sql_find_last_scan = """
+                                SELECT
+                                    scan_date
+                                FROM
+                                    {table_name}
+                                WHERE
+                                    service_name='{service_name}'
+                                ORDER BY
+                                    scan_date DESC
+                                LIMIT 1;"""
+
+        self.sql_db_maintenance = """DELETE
+                        FROM
+                            {table_name}
+                        WHERE
+                            service_name='{service_name}' AND
+                            rowid NOT IN
+                            (SELECT ROWID
+                                FROM
+                                {table_name}
+                                WHERE
+                                service_name='{service_name}'
+                                ORDER BY
+                                scan_date DESC
+                                LIMIT {retain_db_records})"""
 
     def format_message(self, msg):
         return {'integration': 'aws', 'aws': msg}
@@ -1444,56 +1488,13 @@ class AWSInspector(AWSService):
     :param region: Region of service
     """
     def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-        only_logs_after, region='us-east-1'):
-        # SQL queries
-        self.sql_create_table = """
-                            CREATE TABLE
-                                inspector (
-                                    aws_region 'text' NOT NULL,
-                                    scan_date 'text' NOT NULL,
-                                    PRIMARY KEY (aws_region, scan_date));"""
+        only_logs_after, region):
 
-        self.sql_insert_value = """
-                                INSERT INTO inspector (
-                                    aws_region,
-                                    scan_date)
-                                VALUES
-                                    ('{aws_region}',
-                                    '{scan_date}');"""
-
-        self.sql_find_last_scan = """
-                                SELECT
-                                    scan_date
-                                FROM
-                                    inspector
-                                WHERE
-                                    aws_region='{aws_region}'
-                                ORDER BY
-                                    scan_date DESC
-                                LIMIT 1;"""
-
-        self.sql_db_maintenance = """DELETE
-                        FROM
-                            inspector
-                        WHERE
-                            rowid NOT IN
-                            (SELECT ROWID
-                                FROM
-                                inspector
-                                WHERE
-                                aws_region='{aws_region}'
-                                ORDER BY
-                                scan_date DESC
-                                LIMIT {retain_db_records})"""
-
-        # DB and table names
-        self.db_name = 'inspector'
-        self.db_table_name = 'inspector'
+        self.service_name = 'inspector'
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
-            service_name='inspector', region=region)
-
+            service_name=self.service_name, region=region)
         # max DB records for region
         self.retain_db_records = 5
 
@@ -1507,15 +1508,18 @@ class AWSInspector(AWSService):
                 self.send_msg(self.format_message(elem))
 
     def get_alerts(self):
-        initial_date = self.get_last_log_date()
-        self.init_db(self.sql_create_table)
+        self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         try:
             # if DB is empty write initial date
-            self.db_cursor.execute(self.sql_insert_value.format(aws_region=self.region, scan_date=initial_date))
-            self.db_cursor.execute(self.sql_find_last_scan.format(aws_region=self.region))
+            initial_date = self.get_last_log_date()
+            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                service_name=self.service_name, scan_date=initial_date))
+            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                service_name=self.service_name))
             last_scan = self.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
-            self.db_cursor.execute(self.sql_find_last_scan.format(aws_region=self.region))
+            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                service_name=self.service_name))
             last_scan = self.db_cursor.fetchone()[0]
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time (UTC)
@@ -1530,13 +1534,15 @@ class AWSInspector(AWSService):
                 filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
-        self.db_cursor.execute(self.sql_insert_value.format(aws_region=self.region ,scan_date=datetime_current))
+        self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+            service_name=self.service_name, scan_date=datetime_current))
         # DB maintenance
-        self.db_cursor.execute(self.sql_db_maintenance.format(aws_region=self.region, \
-            retain_db_records=self.retain_db_records))
+        self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
+            service_name=self.service_name, retain_db_records=self.retain_db_records))
         # close connection with DB
         self.db_connector.commit()
         self.close_db()
+
 
 ################################################################################
 # Functions
@@ -1672,11 +1678,11 @@ def main(argv):
             else:
                 raise Exception("Invalid type of service")
             # iterate if there are two regions or more
-            for region in options.regions:
-                service = service_type(access_key=options.access_key, secret_key=options.secret_key,
-                            aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
-                            only_logs_after=options.only_logs_after, region=region)
-                service.get_alerts()
+            service = service_type(access_key=options.access_key, secret_key=options.secret_key,
+                aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
+                only_logs_after=options.only_logs_after, region=options.regions)
+            service.get_alerts()
+
     except Exception as err:
         debug("+++ Error: {}".format(err.message), 2)
         print("ERROR: {}".format(err.message))
