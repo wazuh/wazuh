@@ -448,8 +448,11 @@ class AWSBucket(WazuhIntegration):
     def get_columns_number(self, table_name):
         sql_get_row = "SELECT * FROM {table_name} LIMIT 1;"
         query_get_row = self.db_connector.execute(sql_get_row.format(table_name=table_name))
-        row = query_get_row.fetchone()
-        return len(row)
+        try:
+            num_column = len(query_get_row.fetchone())
+        except TypeError:
+            num_column = 0
+        return num_column
 
     def update_trail_progress_table(self):
         # rename old trail_progress table to legacy_trail_progress
