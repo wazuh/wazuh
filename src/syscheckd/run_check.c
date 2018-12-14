@@ -358,16 +358,34 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
         send_syscheck_msg(alert_msg);
 
+
+#ifndef WIN32
+        if(evt && evt->inode) {
+            if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
+                free(w_inode);
+            }
+        }
+        else {
+            if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
+                char *inode_str;
+                char *checksum_inode;
+
+                os_strdup(s_node->checksum, checksum_inode);
+                inode_str = get_attr_from_checksum(checksum_inode, SK_INODE);
+                
+                if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
+                    free(w_inode);
+                }
+                os_free(checksum_inode);
+            }
+        }
+#endif
         // Delete from hash table
         if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
             free(s_node->checksum);
             free(s_node);
         }
-#ifndef WIN32
-        if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
-            free(w_inode);
-        }
-#endif
+
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);
 

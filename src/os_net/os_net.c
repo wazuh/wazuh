@@ -163,6 +163,11 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
         return (OS_SOCKTERR);
     }
 
+    // Set close-on-exec
+    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
+    }
+
     return (ossock);
 }
 
@@ -196,6 +201,11 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
     if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
+    }
+
+    // Set close-on-exec
+    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
     }
 
     return (ossock);
@@ -656,7 +666,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
+#if defined(__sparc__) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
 #else
     return value;
@@ -665,7 +675,11 @@ uint32_t wnet_order(uint32_t value) {
 
 
 uint32_t wnet_order_big(uint32_t value) {
+#if defined(__sparc__) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
+    return value;
+#else
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
+#endif
 }
 
 /* Set the maximum buffer size for the socket */

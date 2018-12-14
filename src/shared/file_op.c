@@ -13,6 +13,8 @@
 #include "shared.h"
 #include "version_op.h"
 
+#include "../external/zlib/zlib.h"
+
 #ifndef WIN32
 #include <regex.h>
 #else
@@ -1103,10 +1105,7 @@ void goDaemon()
 int checkVista()
 {
     /* Check if the system is Vista (must be called during the startup) */
-    const char *m_uname;
     isVista = 0;
-
-    m_uname = getuname();
 
     OSVERSIONINFOEX osvi;
     BOOL bOsVersionInfoEx;
@@ -1124,10 +1123,7 @@ int checkVista()
 
     if (osvi.dwMajorVersion >= 6) {
         isVista = 1;
-        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
     }
-    else
-        minfo("Windows version is older than 6.0. (%s).", m_uname);
 
     return (isVista);
 }
@@ -1864,7 +1860,7 @@ const char *getuname()
 // Move to the directory where this executable lives in
 
 void w_ch_exec_dir() {
-    TCHAR path[2048];
+    TCHAR path[2048] = { 0 };
     DWORD last_error;
     int ret;
 
@@ -1873,19 +1869,21 @@ void w_ch_exec_dir() {
 
     /* Check for errors */
     if (!ret) {
-        merror_exit(GMF_ERROR);
-    }
+        print_out(GMF_ERROR);
 
-    /* Get last error */
-    last_error = GetLastError();
+        /* Get last error */
+        last_error = GetLastError();
 
-    /* Look for errors */
-    if (last_error != ERROR_SUCCESS) {
-        if (last_error == ERROR_INSUFFICIENT_BUFFER) {
-            merror_exit(GMF_BUFF_ERROR, ret, sizeof(path));
-        } else {
-            merror_exit(GMF_UNKN_ERROR, last_error);
+        /* Look for errors */
+        switch (last_error) {
+        case ERROR_INSUFFICIENT_BUFFER:
+            print_out(GMF_BUFF_ERROR, ret, sizeof(path));
+            break;
+        default:
+            print_out(GMF_UNKN_ERROR, last_error);
         }
+
+        exit(EXIT_FAILURE);
     }
 
     /* Remove file name from path */
@@ -1893,7 +1891,8 @@ void w_ch_exec_dir() {
 
     /* Move to correct directory */
     if (chdir(path)) {
-        merror_exit(CHDIR_ERROR, path, errno, strerror(errno));
+        print_out(CHDIR_ERROR, path, errno, strerror(errno));
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -2522,4 +2521,121 @@ int w_remove_line_from_file(char *file,int line){
     fclose(fp_dst);
 
     return w_copy_file(destination,file,'w',NULL);
+}
+
+
+/* file to gzip */
+int w_compress_gzfile(const char *filesrc, const char *filedst) {
+    FILE *fd;
+    gzFile gz_fd;
+    char *buf;
+    int len;
+    int err;
+
+    /* Set umask */
+    umask(0027);
+
+    /* Read file */
+    fd = fopen(filesrc, "rb");
+    if (!fd) {
+        merror("in w_compress_gzfile(): fopen error %s (%d):'%s'",
+                filesrc,
+                errno,
+                strerror(errno));
+        return -1;
+    }
+
+    /* Open compressed file */
+    gz_fd = gzopen(filedst, "w");
+    if (!gz_fd) {
+        fclose(fd);
+        merror("in w_compress_gzfile(): gzopen error %s (%d):'%s'",
+                filedst,
+                errno,
+                strerror(errno));
+        fclose(fd);
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_8192 + 1, sizeof(char*), buf);
+    for (;;) {
+        len = fread(buf, 1, OS_SIZE_8192, fd);
+        if (len <= 0) {
+            break;
+        }
+
+        if (gzwrite(gz_fd, buf, (unsigned)len) != len) {
+            merror("in w_compress_gzfile(): Compression error: %s",
+                    gzerror(gz_fd, &err));
+            fclose(fd);
+            gzclose(gz_fd);
+            os_free(buf);
+            return -1;
+        }
+    }
+
+    fclose(fd);
+    gzclose(gz_fd);
+    os_free(buf);
+    return 0;
+}
+
+/* gzip to file */
+int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
+    FILE *fd;
+    gzFile gz_fd;
+    char *buf;
+    int len;
+    int err;
+    struct stat statbuf;
+
+#ifdef WIN32
+    /* Win32 does not have lstat */
+    if (stat(gzfilesrc, &statbuf) < 0)
+#else
+    if (lstat(gzfilesrc, &statbuf) < 0)
+#endif
+    {
+        return -1;
+    }
+    /* Set umask */
+    umask(0027);
+
+    /* Read file */
+    fd = fopen(gzfiledst, "wb");
+    if (!fd) {
+        merror("in w_uncompress_gzfile(): fopen error %s (%d):'%s'",
+                gzfiledst,
+                errno,
+                strerror(errno));
+        return -1;
+    }
+
+    /* Open compressed file */
+    gz_fd = gzopen(gzfilesrc, "rb");
+    if (!gz_fd) {
+        merror("in w_uncompress_gzfile(): gzopen error '%s'",
+                gzerror(gz_fd, &err));
+        fclose(fd);
+        return -1;
+    }
+
+    os_calloc(OS_SIZE_8192, sizeof(char*), buf);
+    do {
+        if (len = gzread(gz_fd, buf, OS_SIZE_8192), len == Z_BUF_ERROR) {
+            merror("in w_uncompress_gzfile(): gzfread error: '%s'",
+                    gzerror(gz_fd, &err));
+            fclose(fd);
+            gzclose(gz_fd);
+            return -1;
+        }
+        fwrite(buf, 1, len, fd);
+        buf[0] = '\0';
+    } while (len != Z_OK);
+
+    os_free(buf);
+    fclose(fd);
+    gzclose(gz_fd);
+
+    return 0;
 }

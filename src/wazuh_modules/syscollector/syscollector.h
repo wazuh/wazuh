@@ -20,6 +20,9 @@
 #include <winsock2.h>
 #include <netioapi.h>
 #include <iphlpapi.h>
+#include <psapi.h>
+#include <tlhelp32.h>
+#include <winbase.h>
 #endif
 
 #ifndef WM_SYSCOLLECTOR

@@ -74,6 +74,11 @@
 
 #endif
 
+// Number of attributes in checksum
+#define FIM_NATTR 11
+// Number of options in checksum hash table
+#define FIM_NOPTS 10
+
 /* Fields for rules */
 typedef enum sk_syscheck {
     SK_FILE,
@@ -194,6 +199,9 @@ int fim_find_child_depth(const char *parent, const char *child);
 //Change in Windows paths all slashes for backslashes for compatibility agent<3.4 with manager>=3.4
 void normalize_path(char *path);
 
+//Return an attr from checksum
+char *get_attr_from_checksum(char *checksum, int attr);
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
@@ -210,6 +218,7 @@ unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
 char *escape_perm_sum(char *sum);
+
 
 #endif
 

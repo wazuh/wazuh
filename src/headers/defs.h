@@ -171,8 +171,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ARQUEUE         "/queue/alerts/ar"
 
 /* Decoder file */
-#define XML_DECODER     "/etc/decoder.xml"
-#define XML_LDECODER    "/etc/local_decoder.xml"
+#define XML_LDECODER    "/etc/decoders/local_decoder.xml"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
@@ -207,6 +206,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
+#define DIFF_GZ_FILE "last-entry.gz"
 #define DIFF_TEST_HOST "__test"
 
 /* Syscheck data */
