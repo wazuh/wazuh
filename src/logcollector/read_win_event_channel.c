@@ -690,16 +690,22 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     PEVT_VARIANT properties_values = NULL;
     DWORD count = 0;
     int result = 0;
-    size_t num;
     wchar_t *wprovider_name = NULL;
+    char *msg_sent = NULL;
+    char *provider_name = NULL;
+    char *msg_from_prov = NULL;
+    char *xml_event = NULL;
+    char *filtered_msg = NULL;
+    char *avoid_dup = NULL;
+    char *beg_prov = NULL;
+    char *end_prov = NULL;
+    char *find_prov = NULL;
+    size_t num;
+
     cJSON *event_json = cJSON_CreateObject();
-    char *msg_sent = NULL, *provider_name = NULL;
-    char *msg_from_prov = NULL, *xml_event = NULL, *filtered_msg = NULL, *avoid_dup = NULL;
-    char *beg_prov = NULL, *end_prov = NULL, *find_prov = NULL;
 
     os_malloc(OS_MAXSTR, filtered_msg);
     os_malloc(OS_MAXSTR, provider_name);
-    os_malloc(OS_MAXSTR, wprovider_name);
     os_malloc(OS_MAXSTR, xml_event);
 
     result = EvtRender(NULL,
@@ -717,7 +723,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if ((properties_values = (PEVT_VARIANT) malloc(buffer_length)) == NULL) {
+    if ((properties_values = malloc(buffer_length)) == NULL) {
         mferror(
             "Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
             channel->evt_log,
@@ -740,7 +746,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
     xml_event = convert_windows_string((LPCWSTR) properties_values);
-
+    
     find_prov = strstr(xml_event, "Provider Name=");
   
     if(find_prov){
@@ -763,7 +769,7 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
     if (provider_name) {
         wprovider_name = convert_unix_string(provider_name);
 
-        if ((msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
+        if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
             mferror(
                 "Could not get message for (%s)",
                 channel->evt_log);
@@ -789,18 +795,19 @@ void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 
     cJSON_AddStringToObject(event_json, "Event", xml_event);
     msg_sent = cJSON_PrintUnformatted(event_json);
-    
+
     if (SendMSG(logr_queue, msg_sent, "WinEvtChannel", WIN_EVT_MQ) < 0) {
         merror(QUEUE_SEND);
     }
 
 cleanup:
-    free(msg_from_prov);
-    free(xml_event);
-    free(msg_sent);
-    free(properties_values);
-    free(provider_name);
-    free(wprovider_name);
+    os_free(msg_from_prov);
+    os_free(xml_event);
+    os_free(msg_sent);
+    os_free(filtered_msg);
+    os_free(properties_values);
+    os_free(provider_name);
+    os_free(wprovider_name);
     cJSON_Delete(event_json);
 
     return;

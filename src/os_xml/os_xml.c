@@ -113,12 +113,6 @@ void OS_ClearXML(OS_XML *_lxml)
     free(_lxml->ln);
     _lxml->ln = NULL;
 
-    /*free(_lxml->string);
-    _lxml->string = NULL;
-
-    fclose(_lxml->fp);
-    _lxml->fp = NULL;*/
-
     memset(_lxml->err, '\0', XML_ERR_LENGTH);
     _lxml->line = 0;
     _lxml->stash_i = 0;
@@ -235,9 +229,9 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml)
     unsigned int count = 0;
     unsigned int _currentlycont = 0;
     short int location = -1;
-    int cmp;
+    int cmp = 0;
 
-    int prevv = 0;
+    int prevv = 1;
     char elem[XML_MAXSIZE + 1];
     char cont[XML_MAXSIZE + 1];
     char closedelim[XML_MAXSIZE + 1];
@@ -254,11 +248,9 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml)
 
     while ((c = xml_getc_fun(_lxml->fp, _lxml)) != cmp) {
         if (c == '\\') {
-            prevv = c;
-        } else if (prevv == '\\') {
-            if (c != _R_CONFS) {
-                prevv = 0;
-            }
+            prevv *= -1;
+        } else if (c != _R_CONFS && prevv == -1){
+            prevv = 1;
         }
 
         /* Max size */
@@ -279,7 +271,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml)
         }
 
         /* Real checking */
-        if ((location == -1) && (prevv == 0)) {
+        if ((location == -1) && (prevv == 1)) {
             if (c == _R_CONFS) {
                 if ((c = xml_getc_fun(_lxml->fp, _lxml)) == '/') {
                     xml_error(_lxml, "XMLERR: Element not opened.");
@@ -356,7 +348,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml)
             if (parent > 0) {
                 return (0);
             }
-        } else if ((location == 1) && (c == _R_CONFS) && (prevv == 0)) {
+        } else if ((location == 1) && (c == _R_CONFS) && (prevv == 1)) {
             if ((c = xml_getc_fun(_lxml->fp, _lxml)) == '/') {
                 cont[count] = '\0';
                 count = 0;
@@ -379,8 +371,8 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml)
                 closedelim[count++] = (char) c;
             }
 
-            if ((_R_CONFS == c) && (prevv != 0)) {
-                prevv = 0;
+            if (_R_CONFS == c) {
+                prevv = 1;
             }
         }
     }
