@@ -459,14 +459,15 @@ class AWSBucket(WazuhIntegration):
         # create new trail_progress table
         self.db_connector.execute(self.sql_create_table.format(table_name='trail_progress'))
         # copy old table in new table adding bucket_path column
-        for row in self.db_connector.execute(self.sql_select_migrate_trail_progress):
+        for aws_account_id, aws_region, log_key, processed_date, created_date \
+            in self.db_connector.execute(self.sql_select_migrate_trail_progress):
             # inserts old values on the new table
             self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name,
                                                             bucket_path=self.bucket_path,
-                                                            aws_account_id=row[0],
-                                                            aws_region=row[1],
-                                                            log_key=row[2],
-                                                            created_date=row[4]))
+                                                            aws_account_id=aws_account_id,
+                                                            aws_region=aws_region,
+                                                            log_key=log_key,
+                                                            created_date=created_date))
         self.db_connector.commit()
 
     def db_maintenance(self, aws_account_id, aws_region):
