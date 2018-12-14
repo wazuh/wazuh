@@ -59,6 +59,11 @@ cpu_info *get_cpu_info();
 cpu_info *get_cpu_info_bsd();
 cpu_info *get_cpu_info_linux();
 
+/* Hash table with info of the agents to enrich the alerts */
+OSHash *agents_info;
+void init_agent_metadata();
+void set_agent_metadata(char * agent_metadata, size_t size, wlabel_t *agent_data);
+cJSON *set_agent_metadata_json(wlabel_t *agent_data);
 void w_get_queues_size();
 void w_get_initial_queues_size();
 void w_init_queues();

@@ -291,6 +291,7 @@ void OS_Log(Eventinfo *lf)
 {
     int i;
     char labels[OS_MAXSTR];
+    char agent_metadata[OS_MAXSTR];
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -309,10 +310,12 @@ void OS_Log(Eventinfo *lf)
         labels[0] = '\0';
     }
 
+    set_agent_metadata(agent_metadata, OS_MAXSTR,(char***)OSHash_Get(agents_info,lf->agent_id));
+
     /* Writing to the alert log file */
     fprintf(_aflog,
             "** Alert %ld.%ld:%s - %s\n"
-            "%d %s %02d %s %s%s%s\n%sRule: %d (level %d) -> '%s'"
+            "%d %s %02d %s %s%s%s\n%s%sRule: %d (level %d) -> '%s'"
             "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s\n",
             (long int)lf->time.tv_sec,
             __crt_ftell,
@@ -326,6 +329,7 @@ void OS_Log(Eventinfo *lf)
             lf->location[0] != '(' ? "->" : "",
             lf->location,
             labels,
+            agent_metadata,
             lf->generated_rule->sigid,
             lf->generated_rule->level,
             lf->comment,

@@ -15,6 +15,7 @@
 #include "cJSON.h"
 #include "config.h"
 #include "wazuh_modules/wmodules.h"
+#include "analysisd.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -29,9 +30,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     cJSON* cluster;
     char manager_name[512];
     char* out;
-    int i;
+    int i;    
+    cJSON* agent_metadata;
 
     extern long int __crt_ftell;
+
+    agent_metadata = set_agent_metadata_json((char***)OSHash_Get(agents_info,lf->agent_id));
 
     root = cJSON_CreateObject();
 
@@ -155,6 +159,9 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
     }
     if (lf->agent_id) {
         cJSON_AddStringToObject(agent, "id", lf->agent_id);
+        if(agent_metadata){
+            cJSON_AddItemToObject(agent,"metadata", agent_metadata);
+        }
     }
 
     if(lf->filename) {
