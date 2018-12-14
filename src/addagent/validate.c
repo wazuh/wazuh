@@ -836,8 +836,6 @@ void OS_RemoveAgentGroup(const char *id)
                 *endl = '\0';
             }
 
-            /* Remove multigroup if it's not used on any other agent */
-            w_remove_multigroup(group);
         }
 #ifndef CLIENT
         /* Remove from the 'belongs' table groups which the agent belongs to*/

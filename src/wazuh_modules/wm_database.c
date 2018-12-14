@@ -765,6 +765,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     char name[FILE_SIZE];
     char addr[FILE_SIZE];
     char path[PATH_MAX] = "";
+    char del_path[PATH_MAX] = "";
     struct stat buffer;
     long offset;
     int result = 0;
@@ -816,6 +817,8 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (wdb_get_agent_status(id_agent) < 0) {
+            snprintf(del_path, PATH_MAX + 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
+            unlink(del_path);
             wdb_delete_agent_belongs(id_agent);
             return -1;
         }
@@ -834,6 +837,8 @@ int wm_sync_file(const char *dirname, const char *fname) {
             case 0:
                 if ((id_agent = wdb_find_agent(name, addr)) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "No such agent at database for file %s/%s", dirname, fname);
+                    snprintf(del_path, PATH_MAX+1, "%s/%s", dirname, fname);
+                    unlink(del_path);
                     return -1;
                 }
 
