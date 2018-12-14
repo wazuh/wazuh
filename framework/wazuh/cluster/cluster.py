@@ -1,8 +1,6 @@
-#!/usr/bin/env python
-
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+import itertools
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
@@ -30,29 +28,13 @@ from random import random
 import glob
 import gzip
 from functools import reduce
-
-# import the C accelerated API of ElementTree
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
 import zipfile
 
-try:
-    import zlib
-    compression = zipfile.ZIP_DEFLATED
-except:
-    compression = zipfile.ZIP_STORED
-
+logger = logging.getLogger('wazuh')
 
 #
 # Cluster
 #
-
-logger = logging.getLogger(__name__)
-
-
 def get_localhost_ips():
     return set(check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1])
 
@@ -69,10 +51,6 @@ def check_cluster_config(config):
     elif config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(
             config['node_type']))
-
-    if config['disabled'] != 'yes' and config['disabled'] != 'no':
-        raise WazuhException(3004, 'Invalid value for disabled option {}. Allowed values are yes and no'.
-                             format(config['disabled']))
 
     if len(config['nodes']) > 1:
         logger.warning(
@@ -114,7 +92,7 @@ def get_cluster_items_worker_intervals():
 
 
 def read_config():
-    cluster_default_configuration = {'disabled': 'no', 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
+    cluster_default_configuration = {'disabled': False, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
                                      'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'],
                                      'hidden': 'no'}
 
@@ -123,7 +101,7 @@ def read_config():
     except WazuhException as e:
         if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
-            cluster_default_configuration['disabled'] = 'yes'
+            cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
             raise WazuhException(3006, e.message)
@@ -133,6 +111,14 @@ def read_config():
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
+
+    if config_cluster['disabled'] == 'no':
+        config_cluster['disabled'] = False
+    elif config_cluster['disabled'] == 'yes':
+        config_cluster['disabled'] = True
+    else:
+        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
+            config_cluster['disabled']))
 
     return config_cluster
 
@@ -168,7 +154,7 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     walk_files = {}
 
     try:
-        entries = listdir(dirname)
+        entries = listdir(common.ossec_path + dirname)
     except OSError as e:
         raise WazuhException(3015, str(e))
 
@@ -179,31 +165,30 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         full_path = path.join(dirname, entry)
         if entry in files or files == ["all"]:
 
-            if not path.isdir(full_path):
-                file_mod_time = datetime.utcfromtimestamp(stat(full_path).st_mtime)
+            if not path.isdir(common.ossec_path + full_path):
+                file_mod_time = datetime.utcfromtimestamp(stat(common.ossec_path + full_path).st_mtime)
 
                 if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
                     continue
 
-                new_key = full_path.replace(common.ossec_path, "")
-                walk_files[new_key] = {"mod_time" : str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
+                walk_files[full_path] = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
                 if '.merged' in entry:
-                    walk_files[new_key]['merged'] = True
-                    walk_files[new_key]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
-                    walk_files[new_key]['merge_name'] = '/queue/cluster/' + entry
+                    walk_files[full_path]['merged'] = True
+                    walk_files[full_path]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                    walk_files[full_path]['merge_name'] = dirname + '/' + entry
                 else:
-                    walk_files[new_key]['merged'] = False
+                    walk_files[full_path]['merged'] = False
 
                 if get_md5:
-                    walk_files[new_key]['md5'] = md5(full_path)
+                    walk_files[full_path]['md5'] = md5(common.ossec_path + full_path)
 
-        if recursive and path.isdir(full_path):
+        if recursive and path.isdir(common.ossec_path + full_path):
             walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5, whoami))
 
     return walk_files
 
 
-def get_files_status(node_type, get_md5=True):
+def get_files_status(node_type, node_name, get_md5=True):
 
     cluster_items = get_cluster_items()
 
@@ -214,14 +199,15 @@ def get_files_status(node_type, get_md5=True):
 
         if item['source'] == node_type or item['source'] == 'all':
             if item.get("files") and "agent-info.merged" in item["files"]:
-                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info",
+                agents_to_send, merged_path = merge_agent_info(merge_type="agent-info", node_name=node_name,
                                                                time_limit_seconds=cluster_items\
                                                                         ['sync_options']['get_agentinfo_newer_than'])
                 if agents_to_send == 0:
                     return {}
-                fullpath = common.ossec_path + path.dirname(merged_path)
+
+                fullpath = path.dirname(merged_path)
             else:
-                fullpath = common.ossec_path + file_path
+                fullpath = file_path
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                                             cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
@@ -233,20 +219,21 @@ def get_files_status(node_type, get_md5=True):
 
 def compress_files(name, list_path, cluster_control_json=None):
     zip_file_path = "{0}/queue/cluster/{1}/{1}-{2}-{3}.zip".format(common.ossec_path, name, time(), str(random())[2:])
-    with zipfile.ZipFile(zip_file_path, 'w') as zf:
+    if not os.path.exists(os.path.dirname(zip_file_path)):
+        mkdir_with_mode(os.path.dirname(zip_file_path))
+    with zipfile.ZipFile(zip_file_path, 'x') as zf:
         # write files
         if list_path:
             for f in list_path:
-                logger.debug2("[Cluster] Adding {} to zip file".format(f))  # debug2
                 try:
-                    zf.write(filename = common.ossec_path + f, arcname = f, compress_type=compression)
+                    zf.write(filename=common.ossec_path + f, arcname=f)
                 except zipfile.LargeZipFile as e:
                     raise WazuhException(3001, str(e))
                 except Exception as e:
                     logger.error("[Cluster] {}".format(str(WazuhException(3001, str(e)))))
 
         try:
-            zf.writestr("cluster_control.json", json.dumps(cluster_control_json), compression)
+            zf.writestr("cluster_control.json", json.dumps(cluster_control_json))
         except Exception as e:
             raise WazuhException(3001, str(e))
 
@@ -282,7 +269,7 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
     dst_path = common.ossec_path + file_path
     if path.basename(dst_path) == 'client.keys':
         if whoami =='worker':
-            _check_removed_agents(new_content.split('\n'))
+            _check_removed_agents(new_content.decode().split('\n'))
         else:
             logger.warning("[Cluster] Client.keys file received in a master node.")
             raise WazuhException(3007)
@@ -329,13 +316,13 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         oldumask = umask(umask_int)
 
     try:
-        dest_file = open(f_temp, "w")
+        dest_file = open(f_temp, "wb")
     except IOError as e:
         if e.errno == errno.ENOENT:
             dirpath = path.dirname(f_temp)
             mkdir_with_mode(dirpath)
             chmod(dirpath, S_IRWXU | S_IRWXG)
-            dest_file = open(f_temp, "w")
+            dest_file = open(f_temp, "wb")
         else:
             raise e
 
@@ -360,39 +347,49 @@ def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None
         rename(f_temp, dst_path)
 
 
-def compare_files(good_files, check_files):
+def compare_files(good_files, check_files, node_name):
+    def split_on_condition(seq, condition):
+        """
+        Splits a sequence into two generators based on a conditon
+        :param seq: sequence to split
+        :param condition: function base splitting on
+        :return: two generators
+        """
+        l1, l2 = itertools.tee((condition(item), item) for item in seq)
+        return (i for p, i in l1 if p), (i for p, i in l2 if not p)
+
     cluster_items = get_cluster_items()['files']
 
-    missing_files = set(good_files.keys()) - set(check_files.keys())
+    # missing files will be the ones that are present in good files but not in the check files
+    missing_files = {key: good_files[key] for key in good_files.keys() - check_files.keys()}
 
-    extra_files, extra_valid_files = [], []
-    for my_file in set(check_files.keys()) - set(good_files.keys()):
-        (extra_files, extra_valid_files)[cluster_items[check_files[my_file]['cluster_item_key']]['extra_valid']].append(my_file)
+    # extra files are the ones present in check files but not in good files and aren't extra valid
+    extra_valid, extra = split_on_condition(check_files.keys() - good_files.keys(),
+                                            lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    extra_files = {key: check_files[key] for key in extra}
+    extra_valid_files = {key: check_files[key] for key in extra_valid}
+    # shared files are the ones present in both sets.
+    all_shared = [x for x in check_files.keys() & good_files.keys() if check_files[x]['md5'] != good_files[x]['md5']]
+    shared_e_v, shared = split_on_condition(all_shared,
+                                            lambda x: cluster_items[check_files[x]['cluster_item_key']]['extra_valid'])
+    shared_e_v = list(shared_e_v)
+    if shared_e_v:
+        # merge all shared extra valid files into a single one.
+        # To Do: if more extra valid files types are included, compute their merge type and remove hardcoded
+        # agent-groups
+        shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
+                                           node_name=node_name, time_limit_seconds=0)[1],
+                          {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
 
-    shared_files = {name: {'cluster_item_key': data['cluster_item_key'],
-                          'merged':False} for name, data in good_files.items()
-                          if name in check_files and data['md5'] != check_files[name]['md5']}
-
-    if not missing_files:
-        missing_files = {}
+        shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
     else:
-        missing_files = {missing_file: {'cluster_item_key': good_files[missing_file]['cluster_item_key'],
-                                        'merged': False} for missing_file in missing_files }
+        shared_files = {key: good_files[key] for key in shared}
 
-    if not extra_files:
-        extra_files = {}
-    else:
-        extra_files = {extra_file: {'cluster_item_key': check_files[extra_file]['cluster_item_key'],
-                                    'merged': False} for extra_file in extra_files }
+    files = {'missing': missing_files, 'extra': extra_files, 'shared': shared_files, 'extra_valid': extra_valid_files}
+    count = {'missing': len(missing_files), 'extra': len(extra_files), 'extra_valid': len(extra_valid_files),
+             'shared': len(all_shared)}
 
-    if not extra_valid_files:
-        extra_valid_files = {}
-    else:
-        extra_valid_files = {req_file: {'cluster_item_key': check_files[req_file]['cluster_item_key'],
-                                     'merged': False} for req_file in extra_valid_files }
-
-    return {'missing': missing_files, 'extra': extra_files, 'shared': shared_files,
-            'extra_valid': extra_valid_files}
+    return files, count
 
 
 def clean_up(node_name=""):
@@ -485,7 +482,7 @@ def _check_removed_agents(new_client_keys):
 # Others
 #
 
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
+get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(b" ")[:-1]
 
 
 def run_logtest(synchronized=False):
@@ -504,68 +501,61 @@ def run_logtest(synchronized=False):
 #
 # Agents-info
 #
-
-def merge_agent_info(merge_type, files="all", file_type="", time_limit_seconds=1800):
+def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=1800):
     if time_limit_seconds:
         min_mtime = time() - time_limit_seconds
     merge_path = "{}/queue/{}".format(common.ossec_path, merge_type)
-    output_file = "/queue/cluster/{}{}.merged".format(merge_type, file_type)
-    o_f = None
+    output_file = "/queue/cluster/{}/{}{}.merged".format(node_name, merge_type, file_type)
     files_to_send = 0
-    files = "all" if files == "all" else {path.basename(f) for f in files}
+    files = "all" if files is None else {path.basename(f) for f in files}
 
-    for filename in os.listdir(merge_path):
-        if files != "all" and filename not in files:
-            continue
+    with open(common.ossec_path + output_file, 'w') as o_f:
+        for filename in os.listdir(merge_path):
+            if files != "all" and filename not in files:
+                continue
 
-        full_path = "{0}/{1}".format(merge_path, filename)
-        stat_data = stat(full_path)
+            full_path = "{0}/{1}".format(merge_path, filename)
+            stat_data = stat(full_path)
 
-        if time_limit_seconds and stat_data.st_mtime < min_mtime:
-            continue
+            if time_limit_seconds and stat_data.st_mtime < min_mtime:
+                continue
 
-        files_to_send += 1
-        if not o_f:
-            o_f = open(common.ossec_path + output_file, 'w')
+            files_to_send += 1
+            if o_f is None:
+                o_f = open(common.ossec_path + output_file, 'w')
 
-        header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path,''),
-                datetime.utcfromtimestamp(stat_data.st_mtime))
-        with open(full_path, 'r') as f:
-            data = f.read()
+            header = "{} {} {}".format(stat_data.st_size, filename.replace(common.ossec_path, ''),
+                                       datetime.utcfromtimestamp(stat_data.st_mtime))
+            with open(full_path, 'r') as f:
+                data = f.read()
 
-        o_f.write(header + '\n' + data)
-
-    if o_f:
-        o_f.close()
+            o_f.write(header + '\n' + data)
 
     return files_to_send, output_file
 
 
 def unmerge_agent_info(merge_type, path_file, filename):
-    src_agent_info_path = path.abspath("{0}/{1}".format(path_file, filename))
+    src_agent_info_path = path.abspath("{}/{}".format(path_file, filename))
     dst_agent_info_path = "/queue/{}".format(merge_type)
 
     bytes_read = 0
     total_bytes = os.stat(src_agent_info_path).st_size
-    src_f = open(src_agent_info_path, 'r')
+    with open(src_agent_info_path, 'rb') as src_f:
+        while bytes_read < total_bytes:
+            # read header
+            header = src_f.readline().decode()
+            bytes_read += len(header)
+            try:
+                st_size, name, st_mtime = header[:-1].split(' ', 2)
+                st_size = int(st_size)
+            except ValueError:
+                raise Exception("Malformed agent-info.merged file")
 
-    while bytes_read < total_bytes:
-        # read header
-        header = src_f.readline()
-        bytes_read += len(header)
-        try:
-            st_size, name, st_mtime = header[:-1].split(' ',2)
-            st_size = int(st_size)
-        except ValueError:
-            raise Exception("Malformed agent-info.merged file")
+            # read data
+            data = src_f.read(st_size)
+            bytes_read += st_size
 
-        # read data
-        data = src_f.read(st_size)
-        bytes_read += st_size
-
-        yield dst_agent_info_path + '/' + name, data, st_mtime
-
-    src_f.close()
+            yield dst_agent_info_path + '/' + name, data, st_mtime
 
 
 class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
@@ -618,18 +608,26 @@ class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.
     """
-    def __init__(self, tag: str, name: str = ''):
+    def __init__(self, tag: str, subtag: str, name: str = ''):
         """
         Class constructor
 
-        :param handler: Handler object containing a tag attribute
+        :param tag: First tag to show in the log - Usually describes class
+        :param subtag: Second tag to show in the log - Usually describes function
+        :param name: If name is specified, it names a logger which, together with its children, will have its events
+                     allowed through the filter. If name is the empty string, allows every event.
         """
         super().__init__(name=name)
         self.tag = tag
+        self.subtag = subtag
 
     def filter(self, record):
         record.tag = self.tag
+        record.subtag = self.subtag
         return True
 
     def update_tag(self, new_tag: str):
         self.tag = new_tag
+
+    def update_subtag(self, new_subtag: str):
+        self.subtag = new_subtag

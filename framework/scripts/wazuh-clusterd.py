@@ -5,18 +5,21 @@
 import logging
 import asyncio
 import argparse
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, server, local_server, client
-from wazuh import common
+import os
+import sys
+from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
+from wazuh import common, configuration, pyDaemonModule
 
 
 #
 # Aux functions
 #
 def set_logging(foreground_mode=False, debug_mode=0):
-    logger = logging.getLogger()
+    logger = logging.getLogger('wazuh')
+    logger.propagate = False
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] %(message)s')
+    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
@@ -25,7 +28,7 @@ def set_logging(foreground_mode=False, debug_mode=0):
         ch.setFormatter(formatter)
         logger.addHandler(ch)
 
-    logger.addFilter(cluster.ClusterFilter(tag='Main'))
+    logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='Main'))
 
     # add a new debug level
     logging.DEBUG2 = 5
@@ -58,59 +61,111 @@ def print_version():
 #
 # Master main
 #
-async def master_main(args):
-    my_server = server.AbstractServer(args.performance_test, args.concurrency_test, args.key, args.ssl)
-    my_local_server = local_server.LocalServer(performance_test=args.performance_test,
-                                               concurrency_test=args.concurrency_test, fernet_key=args.key,
-                                               enable_ssl=args.ssl)
+async def master_main(args, cluster_config, cluster_items, logger):
+    my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
+                              configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
+                              cluster_items=cluster_items)
+    my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
+                                                     concurrency_test=args.concurrency_test, node=my_server,
+                                                     configuration=cluster_config, enable_ssl=args.ssl,
+                                                     cluster_items=cluster_items)
     await asyncio.gather(my_server.start(), my_local_server.start())
 
 
 #
 # Worker main
 #
-async def worker_main(args):
-    my_local_server = local_server.LocalServer(performance_test=args.performance_test,
-                                               concurrency_test=args.concurrency_test, fernet_key=args.key,
-                                               enable_ssl=args.ssl)
+async def worker_main(args, cluster_config, cluster_items, logger):
     while True:
-        my_client = client.AbstractClientManager(args.name, args.key, args.ssl, args.performance_test,
-                                                 args.concurrency_test, args.send_file, args.send_string)
+        my_client = worker.Worker(configuration=cluster_config, enable_ssl=args.ssl,
+                                  performance_test=args.performance_test, concurrency_test=args.concurrency_test,
+                                  file=args.send_file, string=args.send_string, logger=logger,
+                                  cluster_items=cluster_items)
+        my_local_server = local_server.LocalServerWorker(performance_test=args.performance_test, logger=logger,
+                                                         concurrency_test=args.concurrency_test, node=my_client,
+                                                         configuration=cluster_config, enable_ssl=args.ssl,
+                                                         cluster_items=cluster_items)
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
             logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
-            await asyncio.sleep(10)
+            await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
 
 
 #
 # Main
 #
-async def main():
-    logger = set_logging(True, 2)
-
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--performance_test', default=0, type=int, dest='performance_test',
-                        help="Perform a performance test against all clients. Number of bytes to test with.")
-    parser.add_argument('-c', '--concurrency_test', default=0, type=int, dest='concurrency_test',
-                        help="Perform a concurrency test against all clients. Number of messages to send in a row to "
-                             "each client.")
-    parser.add_argument('-k', '--key', help="Cryptography key", type=str, dest='key', default='')
-    parser.add_argument('-t', '--type', help="Node type", type=str, dest='type', required=True, choices=('master',
-                                                                                                         'worker'))
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
-    parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
-    parser.add_argument('-f', '--file', help="Send file to server", type=str, dest='send_file')
-    parser.add_argument('-s', '--string', help="Send a large string to the server. Specify string size.",
-                        type=int, dest='send_string')
-
+    ####################################################################################################################
+    # Dev options - Silenced in the help message.
+    ####################################################################################################################
+    # Performance test - value stored in args.performance_test will be used to send a request of that size in bytes to
+    # all clients/to the server.
+    parser.add_argument('--performance_test', type=int, dest='performance_test', help=argparse.SUPPRESS)
+    # Concurrency test - value stored in args.concurrency_test will be used to send that number of requests in a row,
+    # without sleeping.
+    parser.add_argument('--concurrency_test', type=int, dest='concurrency_test', help=argparse.SUPPRESS)
+    # Send string test - value stored in args.send_string variable will be used to send a string with that size in bytes
+    # to the server. Only implemented in worker nodes.
+    parser.add_argument('--string', help=argparse.SUPPRESS, type=int, dest='send_string')
+    # Send file test - value stored in args.send_file variable is the path of a file to send to the server. Only
+    # implemented in worker nodes.
+    parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
+    ####################################################################################################################
+    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl', default=False)
+    parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
+    parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
+                        dest='debug_level')
+    parser.add_argument('-V', help="Print version", action='store_true', dest="version")
+    parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     args = parser.parse_args()
-    main_function = master_main if args.type == 'master' else worker_main
-    await main_function(args)
 
-try:
-    asyncio.run(main())
-except KeyboardInterrupt:
-    logging.info("SIGINT received. Bye!")
+    if args.version:
+        print_version()
+        sys.exit(0)
 
+    # Foreground/Daemon
+    if not args.foreground:
+        pyDaemonModule.pyDaemon()
 
+    # Set logger
+    try:
+        debug_mode = configuration.get_internal_options_value('wazuh_clusterd', 'debug', 2, 0) or args.debug_level
+    except Exception:
+        debug_mode = 0
+
+    # set correct permissions on cluster.log file
+    if os.path.exists('{0}/logs/cluster.log'.format(common.ossec_path)):
+        os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
+        os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
+
+    # clean
+    cluster.clean_up()
+
+    # Drop privileges to ossec
+    if not args.root:
+        os.setgid(common.ossec_gid)
+        os.seteuid(common.ossec_uid)
+
+    main_logger = set_logging(args.foreground, debug_mode)
+
+    cluster_configuration = cluster.read_config()
+    cluster_items = cluster.get_cluster_items()
+    # try:
+    #     cluster.check_cluster_config(cluster_configuration)
+    # except Exception as e:
+    #     main_logger.error(e)
+    #     sys.exit(0)
+
+    if cluster_configuration['disabled']:
+        main_logger.info("Cluster disabled. Exiting.")
+        sys.exit(0)
+
+    pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
+
+    main_function = master_main if cluster_configuration['node_type'] == 'master' else worker_main
+    try:
+        asyncio.run(main_function(args, cluster_configuration, cluster_items, main_logger))
+    except KeyboardInterrupt:
+        main_logger.info("SIGINT received. Bye!")

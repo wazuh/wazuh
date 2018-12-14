@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
 from wazuh import common
 from datetime import datetime

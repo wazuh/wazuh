@@ -1,16 +1,47 @@
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import json
 import logging
-import argparse
-from client import AbstractClient, AbstractClientManager
-import time
+from wazuh.cluster import client, cluster
 import uvloop
+from wazuh import common, exception
 
 
-class LocalClient(AbstractClientManager):
+class LocalClientHandler(client.AbstractClient):
 
-    async def get_config(self):
-        response = await self.client.send_request(b'get_config', b'')
-        self.logger.info("Response: {}".format(response))
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.response_available = asyncio.Event()
+        self.response = b''
+
+    def connection_made(self, transport):
+        """
+        Defines process of connecting to the server
+
+        :param transport: socket to write data on
+        """
+        self.transport = transport
+
+    def process_request(self, command: bytes, data: bytes):
+        if command == b'dapi_res':
+            self.response = data
+            self.response_available.set()
+            return b'ok', b'Response received'
+        else:
+            return super().process_request(command, data)
+
+
+class LocalClient(client.AbstractClientManager):
+
+    def __init__(self, command: bytes, data: bytes, wait_for_complete: bool):
+        super().__init__(configuration=cluster.read_config(), enable_ssl=False, performance_test=0, concurrency_test=0,
+                         file='', string=0, logger=logging.getLogger(), tag="Local Client",
+                         cluster_items=cluster.get_cluster_items())
+        self.request_result = None
+        self.command = command
+        self.data = data
+        self.wait_for_complete = wait_for_complete
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -19,42 +50,32 @@ class LocalClient(AbstractClientManager):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
-        try:
-            transport, protocol = await loop.create_unix_connection(
-                                protocol_factory=lambda: AbstractClient(loop, on_con_lost, self.name, self.key, self.logger),
-                                path='{}/queue/cluster/c-internal.sock'.format('/var/ossec'))
-        except ConnectionRefusedError:
-            self.logger.error("Could not connect to server.")
-            return
-        except OSError as e:
-            self.logger.error("Could not connect to server: {}.".format(e))
-            return
+        transport, protocol = await loop.create_unix_connection(
+                            protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
+                                                                        name=self.name, logger=self.logger,
+                                                                        fernet_key='', cluster_items=self.cluster_items,
+                                                                        manager=self),
+                            path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
 
-        self.client = protocol
-
-        try:
-            await asyncio.gather(on_con_lost, self.get_config())
-        finally:
-            transport.close()
-
-
-async def main():
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.DEBUG)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--name', help="Client's name", type=str, dest='name', required=True)
-    args = parser.parse_args()
-
-    client = LocalClient(args.name, None, False, 0, 0, '', 0, logging.getLogger())
-
-    await client.start()
+        result = (await protocol.send_request(self.command, self.data)).decode()
+        if result.startswith('Error'):
+            raise exception.WazuhException(3000, result)
+        elif result.startswith('WazuhException'):
+            _, code, message = result.split(' ', 2)
+            raise exception.WazuhException(int(code), message)
+        else:
+            if self.command == b'dapi' or self.command == b'dapi_forward' or result == 'Sent request to master node':
+                try:
+                    timeout = None if self.wait_for_complete \
+                                   else self.cluster_items['intervals']['communication']['timeout_api_request']
+                    await asyncio.wait_for(protocol.response_available.wait(), timeout=timeout)
+                    request_result = protocol.response.decode()
+                except asyncio.TimeoutError:
+                    raise exception.WazuhException(3020)
+            else:
+                request_result = result
+        return request_result
 
 
-try:
-    while True:
-        try:
-            asyncio.run(main())
-        except asyncio.CancelledError:
-            logging.info("Connection with server has been lost. Reconnecting in 10 seconds.")
-            time.sleep(10)
-except KeyboardInterrupt:
-    logging.info("SIGINT received. Bye!")
+async def execute(command: bytes, data: bytes, wait_for_complete: bool):
+    return await LocalClient(command, data, wait_for_complete).start()

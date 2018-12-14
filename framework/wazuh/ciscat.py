@@ -1,8 +1,5 @@
-#!/usr/bin/env python
-
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 from wazuh import common
 from wazuh.syscollector import get_item_agent, _get_agent_items
 

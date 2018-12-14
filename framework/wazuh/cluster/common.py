@@ -1,3 +1,5 @@
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import base64
 import hashlib
@@ -7,7 +9,8 @@ import random
 import struct
 import traceback
 import cryptography.fernet
-from typing import Tuple, Dict
+from typing import Tuple, Dict, Callable
+from wazuh import exception
 from wazuh.cluster import cluster
 
 
@@ -36,8 +39,8 @@ class InBuffer:
     Defines a buffer to receive incoming requests
     """
 
-    def __init__(self):
-        self.payload = bytearray()  # array to store the message's data
+    def __init__(self, total=0):
+        self.payload = bytearray(total)  # array to store the message's data
         self.total = 0  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
@@ -70,12 +73,53 @@ class InBuffer:
         return data[len_data:]
 
 
+class ReceiveFileTask:
+    """
+    Implements an asyncio task but including a name or ID for it.
+    """
+
+    def __init__(self, wazuh_common, logger):
+        """
+        Class constructor
+
+        :param coro: asyncio coroutine to run in the task
+        """
+        self.wazuh_common = wazuh_common
+        self.coro = self.set_up_coro()
+        self.name = str(random.randint(0, 2**32))
+        self.received_information = asyncio.Event()
+        self.task = asyncio.create_task(self.coro(self.name, self.received_information))
+        self.task.add_done_callback(self.done_callback)
+        self.filename = ''
+        self.logger = logger
+
+    def __str__(self) -> str:
+        """
+        Magic method str.
+        :return: task name
+        """
+        return self.name
+
+    def set_up_coro(self) -> Callable:
+        raise NotImplementedError
+
+    def done_callback(self, future=None):
+        """
+        Function to call when the task is finished
+        :return:
+        """
+        del self.wazuh_common.sync_tasks[self.name]
+        task_exc = self.task.exception()
+        if task_exc:
+            self.logger.error(task_exc)
+
+
 class Handler(asyncio.Protocol):
     """
     Defines common methods for echo clients and servers
     """
 
-    def __init__(self, fernet_key: str, tag: str = "Handler"):
+    def __init__(self, fernet_key: str, logger: logging.Logger, cluster_items: Dict, tag: str = "Handler"):
         """
         Class constructor
 
@@ -99,24 +143,24 @@ class Handler(asyncio.Protocol):
         # stores last received message
         self.in_msg = InBuffer()
         # stores incoming file information from file commands
-        self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+        self.in_file = {}
         # stores incoming string information from string commands
-        self.in_str = InBuffer()
+        self.in_str = {}
         # maximum message length to send in a single request
         self.request_chunk = 524288
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk*2)
-        # defines timeout for each request in seconds
-        self.request_timeout = 10
         # object use to encrypt and decrypt requests
         self.my_fernet = cryptography.fernet.Fernet(base64.b64encode(fernet_key.encode())) if fernet_key else None
         # logging.Logger object used to write logs
-        self.logger = logging.getLogger(tag)
+        self.logger = logger.getChild(tag)
         # logging tag
         self.tag = tag
-        self.logger_filter = cluster.ClusterFilter(tag=self.tag)
+        self.logger_filter = cluster.ClusterFilter(tag=self.tag, subtag="Main")
         self.logger.addFilter(self.logger_filter)
-
+        self.cluster_items = cluster_items
+        # transports in asyncio are an abstraction of sockets
+        self.transport = None
 
     def push(self, message: bytes):
         """
@@ -181,8 +225,13 @@ class Handler(asyncio.Protocol):
             if self.in_msg.received == self.in_msg.total:
                 # the message was correctly received
                 # decrypt received message
-                decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
-                                                                                       else bytes(self.in_msg.payload)
+                try:
+                    decrypted_payload = self.my_fernet.decrypt(bytes(self.in_msg.payload)) if self.my_fernet is not None \
+                                                                                           else bytes(self.in_msg.payload)
+                except cryptography.fernet.InvalidToken:
+                    self.logger.error("Could not decrypt message. Check key is correct.")
+                    decrypted_payload = b'Could not decrypt message. Check key is correct.'
+                    self.in_msg.cmd = b'err'
                 yield self.in_msg.cmd, self.in_msg.counter, decrypted_payload
                 self.in_msg = InBuffer()
             else:
@@ -198,14 +247,14 @@ class Handler(asyncio.Protocol):
         :return: response from peer.
         """
         if len(data) > self.request_chunk:
-            return b"Error: Max msg length exceeded."
+            return b"Error: Command '" + command + b"' Max msg length exceeded."
 
         response = Response()
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
         self.push(self.msg_build(command, msg_counter, data))
         try:
-            response_data = await asyncio.wait_for(response.read(), timeout=self.request_timeout)
+            response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
         except asyncio.TimeoutError:
             return b'Error sending request: timeout expired.'
         return response_data
@@ -221,19 +270,20 @@ class Handler(asyncio.Protocol):
             if not os.path.exists(filename):
                 return "File {} not found.".format(filename).encode()
 
-            response = await self.send_request(command=b'new_file', data=filename.encode())
+            filename = filename.encode()
+            response = await self.send_request(command=b'new_file', data=filename)
             if response.startswith(b"Error"):
                 return response
 
             file_hash = hashlib.sha256()
             with open(filename, 'rb') as f:
-                for chunk in iter(lambda: f.read(self.request_chunk), b''):
-                    response = await self.send_request(command=b'file_upd', data=chunk)
+                for chunk in iter(lambda: f.read(self.request_chunk - len(filename) - 1), b''):
+                    response = await self.send_request(command=b'file_upd', data=filename + b' ' + chunk)
                     if response.startswith(b"Error"):
                         return response
                     file_hash.update(chunk)
 
-            response = await self.send_request(command=b'file_end', data=file_hash.digest())
+            response = await self.send_request(command=b'file_end', data=filename + b' ' + file_hash.digest())
             if response.startswith(b"Error"):
                 return response
 
@@ -251,12 +301,13 @@ class Handler(asyncio.Protocol):
         """
         try:
             total = len(my_str)
-            response = await self.send_request(command=b'new_str', data=str(total).encode())
-            if response.startswith(b"Error"):
-                return response
+            task_id = await self.send_request(command=b'new_str', data=str(total).encode())
+            if task_id.startswith(b"Error"):
+                return task_id
 
             for c in range(0, total, self.request_chunk):
-                response = await self.send_request(command=b'str_upd', data=my_str[c:c + self.request_chunk])
+                response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
+                                                                            my_str[c:c + self.request_chunk])
                 if response.startswith(b"Error"):
                     return response
 
@@ -287,11 +338,20 @@ class Handler(asyncio.Protocol):
         """
         try:
             command, payload = self.process_request(command, payload)
+        except exception.WazuhException as e:
+            self.logger.error("Error processing request '{}': {}".format(command, e))
+            command, payload = b'err', "WazuhException {} {}".format(e.code, e.message).encode()
         except Exception as e:
             self.logger.error("Error processing request '{}': {}".format(command, e))
             command, payload = b'err', str(e).encode()
 
         self.push(self.msg_build(command, counter, payload))
+
+    def close(self):
+        """
+        Closes connection
+        """
+        self.transport.close()
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         """
@@ -348,9 +408,7 @@ class Handler(asyncio.Protocol):
         :param data: File name
         :return: Message
         """
-        self.in_file['fd'] = open(data, 'wb')
-        self.in_file['filename'] = data
-        self.in_file['checksum'] = hashlib.sha256()
+        self.in_file[data] = {'fd': open(data, 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -360,8 +418,9 @@ class Handler(asyncio.Protocol):
         :param data: file content
         :return: Message
         """
-        self.in_file['fd'].write(data)
-        self.in_file['checksum'].update(data)
+        name, chunk = data.split(b' ', 1)
+        self.in_file[name]['fd'].write(chunk)
+        self.in_file[name]['checksum'].update(chunk)
         return b"ok", b"File updated"
 
     def end_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -371,12 +430,13 @@ class Handler(asyncio.Protocol):
         :param data: file sha256
         :return: Message
         """
-        self.in_file['fd'].close()
-        if self.in_file['checksum'].digest() == data:
-            self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+        name, checksum = data.split(b' ', 1)
+        self.in_file[name]['fd'].close()
+        if self.in_file[name]['checksum'].digest() == checksum:
+            del self.in_file[name]
             return b"ok", b"File received correctly"
         else:
-            self.in_file = {'filename': '', 'fd': None, 'checksum': None}
+            del self.in_file[name]
             return b"err", b"File wasn't correctly received. Checksums aren't equal."
 
     def receive_str(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -386,9 +446,9 @@ class Handler(asyncio.Protocol):
         :param data: Request data: string size
         :return: Message
         """
-        self.in_str.total = int(data)
-        self.in_str.payload = bytearray(self.in_str.total)
-        return b"ok", b"Ready to receive string"
+        name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
+        self.in_str[name] = InBuffer(total=int(data))
+        return b"ok", name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
         """
@@ -397,7 +457,8 @@ class Handler(asyncio.Protocol):
         :param data: String contents
         :return: Message
         """
-        self.in_str.receive_data(data)
+        name, str_data = data.split(b' ', 1)
+        self.in_str[name].receive_data(str_data)
         # self.logger.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
         return b"ok", b"Chunk received"
 
@@ -417,7 +478,40 @@ class Handler(asyncio.Protocol):
         :param data: error message from peer
         :return: Nothing
         """
-        return b"Error processing request: " + data
+        if data.startswith(b'WazuhException'):
+            type_error, code, message = data.split(b' ', 2)
+            _, extra_msg = message.split(b':', 1)  # remove first part of the exception message
+            return type_error + b' ' + code + b' ' + extra_msg
+        else:
+            return b"Error processing request: " + data
+
+    def setup_task_logger(self, task_tag: str):
+        task_logger = self.logger.getChild(task_tag)
+        task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
+        return task_logger
+
+
+class WazuhCommon:
+    """
+    Task implementing common methods for both clients and servers that are Wazuh specific.
+    """
+    def __init__(self):
+        self.sync_tasks = {}
+        self.logger_tag = ''
+
+    def get_logger(self, logger_tag: str = '') -> logging.Logger:
+        raise NotImplementedError
+
+    def setup_receive_file(self, ReceiveTaskClass: Callable):
+        my_task = ReceiveTaskClass(self, self.get_logger(self.logger_tag))
+        self.sync_tasks[my_task.name] = my_task
+        return b'ok', str(my_task).encode()
+
+    def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        task_name, filename = task_and_file_names.split(' ', 1)
+        self.sync_tasks[task_name].filename = filename
+        self.sync_tasks[task_name].received_information.set()
+        return b'ok', b'File correctly received'
 
 
 def asyncio_exception_handler(loop, context: Dict):
@@ -429,5 +523,5 @@ def asyncio_exception_handler(loop, context: Dict):
     :param context: A dictionary containing fields explained in
                     https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.call_exception_handler
     """
-    logging.error("Unhandled exception: " + str(context['exception']))
+    logging.error("Unhandled exception: {} {}".format(str(context['exception']), context['message']))
     logging.debug(traceback.format_exc())

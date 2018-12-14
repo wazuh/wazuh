@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
@@ -160,6 +160,8 @@ class WazuhException(Exception):
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
+        3020: 'Timeout sending request',
+        3021: 'Timeout executing API request',
 
         # > 9000: Authd
     }
@@ -186,3 +188,6 @@ class WazuhException(Exception):
 
     def __str__(self):
         return "Error {0} - {1}".format(self.code, self.message)
+
+    def to_dict(self):
+        return {'error': self.code, 'message': self.message}
