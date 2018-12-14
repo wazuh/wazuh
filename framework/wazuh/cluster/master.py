@@ -81,7 +81,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
-    def __dict__(self):
+    def to_dict(self):
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
                            'sync_agent_info_free': self.sync_agent_info_free, 'last_sync_agent_info': self.sync_agent_info_status,
@@ -100,19 +100,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_res':
-            req_id, req_res = data.split(b' ', 1)
-            req_id = req_id.decode()
-            if req_id in self.pending_api_requests:
-                self.pending_api_requests[req_id]['Response'] = req_res.decode()
-                self.pending_api_requests[req_id]['Event'].set()
-                return b'ok', b'Forwarded response'
-            elif req_id in self.server.local_server.clients:
-                asyncio.create_task(self.server.local_server.clients[req_id].send_request(b'dapi_res', req_res))
-                return b'ok', b'Response forwarded to worker'
-            else:
-                return b'err', b'Could not forward request, connection is not available'
-        elif command == b'get_config':
-            return self.get_config()
+            return self.process_dapi_res(data)
+        elif command == b'dapi_cluster':
+            return self.process_dapi_cluster(data)
         elif command == b'get_nodes':
             return self.get_nodes(data)
         elif command == b'get_health':
@@ -165,14 +155,39 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
 
-    def get_nodes(self, filter_nodes):
-        return b'ok', json.dumps(self.server.get_connected_nodes(filter_nodes)).encode()
+    def process_dapi_res(self, data: bytes) -> Tuple[bytes, bytes]:
+        req_id, req_res = data.split(b' ', 1)
+        req_id = req_id.decode()
+        if req_id in self.pending_api_requests:
+            self.pending_api_requests[req_id]['Response'] = req_res.decode()
+            self.pending_api_requests[req_id]['Event'].set()
+            return b'ok', b'Forwarded response'
+        elif req_id in self.server.local_server.clients:
+            asyncio.create_task(self.server.local_server.clients[req_id].send_request(b'dapi_res', req_res))
+            return b'ok', b'Response forwarded to worker'
+        else:
+            return b'err', b'Could not forward request, connection is not available'
 
-    def get_health(self, filter_nodes):
+    def process_dapi_cluster(self, arguments: bytes) -> Tuple[bytes, bytes]:
+        api_call_info = json.loads(arguments.decode())
+        del api_call_info['arguments']['wait_for_complete']
+        if api_call_info['function'] == '/cluster/healthcheck':
+            cmd, res = self.get_health(json.dumps(api_call_info).encode())
+            res = json.loads(res.decode())
+        else:
+            cmd, res = self.get_nodes(json.dumps(api_call_info).encode())
+            res = json.loads(res.decode())
+            if api_call_info['function'] == '/cluster/nodes/:node_name':
+                res = res['items'][0] if len(res['items']) > 0 else {}
+
+        return cmd, json.dumps({'error': 0, 'data': res}).encode()
+
+    def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
+        arguments = json.loads(arguments.decode())
+        return b'ok', json.dumps(self.server.get_connected_nodes(**arguments['arguments'])).encode()
+
+    def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.get_health(filter_nodes)).encode()
-
-    def get_config(self):
-        return b'ok', json.dumps(self.server.configuration).encode()
 
     def get_permission(self, sync_type: bytes) -> Tuple[bytes, bytes]:
         if sync_type == b'sync_i_w_m_p':
@@ -387,7 +402,7 @@ class Master(server.AbstractServer):
         self.dapi = dapi.APIRequestQueue(server=self)
         self.tasks.append(self.dapi.run)
 
-    def __dict__(self):
+    def to_dict(self):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
                 'version': metadata.__version__, 'address': self.configuration['nodes'][0]}}
 
@@ -411,10 +426,10 @@ class Master(server.AbstractServer):
         :return: Dictionary
         """
         filter_node = json.loads(filter_node)
-        workers_info = {key: val.__dict__() for key, val in self.clients.items() if filter_node is None or key in filter_node}
+        workers_info = {key: val.to_dict() for key, val in self.clients.items() if filter_node is None or key in filter_node}
         n_connected_nodes = len(workers_info) + 1  # all workers + 1 master
         if filter_node is None or self.configuration['node_name'] in filter_node:
-            workers_info.update({self.configuration['node_name']: self.__dict__()})
+            workers_info.update({self.configuration['node_name']: self.to_dict()})
 
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():

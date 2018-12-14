@@ -276,7 +276,7 @@ functions = {
         'is_async': True
     },
     '/cluster/nodes/:node_name': {
-        'function': cluster_control.get_nodes,
+        'function': cluster_control.get_node,
         'type': 'local_master',
         'is_async': True
     },

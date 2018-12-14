@@ -6,7 +6,7 @@ from typing import Tuple, Union
 import json
 import random
 from wazuh.cluster import server, common as c_common, client
-from wazuh import common
+from wazuh import common, exception
 from wazuh.cluster.dapi import dapi
 
 
@@ -93,10 +93,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
         else:
             return super().process_request(command, data)
 
-    def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.node.get_connected_nodes(filter_nodes)).encode()
+    def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
+        return b'ok', json.dumps(self.server.node.get_connected_nodes(**json.loads(arguments.decode()))).encode()
 
-    def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
+    def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.node.get_health(filter_nodes)).encode()
 
 
@@ -112,25 +112,36 @@ class LocalServerMaster(LocalServer):
 class LocalServerHandlerWorker(LocalServerHandler):
 
     def process_request(self, command: bytes, data: bytes):
+        self.logger.debug2("Command received: {}".format(command))
         if command == b'dapi':
-            asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
-            return b'ok', b'Added request to API requests queue'
+            api_call_name = json.loads(data.decode())['function']
+            if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
+                asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
+                return b'ok', b'Added request to API requests queue'
+            else:
+                return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
         else:
             return super().process_request(command, data)
 
-    def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
-        return self.send_request_to_master(b'get_nodes', filter_nodes)
+    def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
+        return self.send_request_to_master(b'get_nodes', arguments)
 
     def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
         return self.send_request_to_master(b'get_health', filter_nodes)
 
-    def send_request_to_master(self, command: bytes, filter_nodes: bytes):
-        request = asyncio.create_task(self.server.node.client.send_request(command, filter_nodes))
+    def send_request_to_master(self, command: bytes, arguments: bytes):
+        request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
         request.add_done_callback(self.get_api_response)
         return b'ok', b'Sent request to master node'
 
     def get_api_response(self, future):
-        asyncio.create_task(self.send_request(command=b'dapi_res', data=future.result()))
+        result = future.result()
+        if result.startswith(b'Error'):
+            result = json.dumps(exception.WazuhException(3000, result.decode()).to_dict()).encode()
+        elif result.startswith(b'WazuhException'):
+            _, code, message = result.decode().split(' ', 2)
+            result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
+        asyncio.create_task(self.send_request(command=b'dapi_res', data=result))
 
 
 class LocalServerWorker(LocalServer):

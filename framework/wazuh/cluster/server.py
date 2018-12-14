@@ -1,12 +1,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import json
+import itertools
+import operator
 import ssl
 import uvloop
 import time
 from wazuh.cluster import common as c_common, cluster
-from wazuh import common
+from wazuh import common, exception, utils
 import logging
 from typing import Tuple, Dict
 import random
@@ -29,7 +30,7 @@ class AbstractServerHandler(c_common.Handler):
         self.ip = None
         self.transport = None
 
-    def __dict__(self):
+    def to_dict(self):
         return {'info': {'address': self.ip, 'name': self.name}}
 
     def connection_made(self, transport):
@@ -130,7 +131,7 @@ class AbstractServer:
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
 
-    def __dict__(self):
+    def to_dict(self):
         return {'info': {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
 
     def setup_task_logger(self, task_tag: str):
@@ -138,14 +139,33 @@ class AbstractServer:
         task_logger.addFilter(cluster.ClusterFilter(tag=self.tag, subtag=task_tag))
         return task_logger
 
-    def get_connected_nodes(self, filter_nodes) -> Dict:
+    def get_connected_nodes(self, filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None,
+                            select=None, filter_type='all') -> Dict:
         """
         Return all connected nodes, including the master node
         :return: A dictionary containing data from each node
         """
-        filter_nodes = json.loads(filter_nodes)
-        nodes = {self.configuration['node_name']: self.__dict__()['info']} if filter_nodes is None or self.configuration['node_name'] in filter_nodes else {}
-        return {**nodes, **{key: val.__dict__()['info'] for key, val in self.clients.items() if filter_nodes is None or key in filter_nodes}}
+        def return_node(node_info):
+            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] in filter_type)
+
+        default_fields = self.to_dict()['info'].keys()
+        if select is None:
+            select = {'fields': default_fields}
+        else:
+            if not set(select['fields']).issubset(default_fields):
+                raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
+                    ', '.join(default_fields), ', '.join(set(select['fields']) - default_fields)))
+
+        res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
+               if return_node(val.to_dict()['info'])]
+
+        if sort is not None:
+            res = utils.sort_array(array=res, sort_by=sort['fields'], order=sort['order'],
+                                   allowed_sort_fields=default_fields)
+        if search is not None:
+            res = utils.search_array(array=res, text=search['value'], negation=search['negation'])
+
+        return {'totalItems': len(res), 'items': [{k: v[k] for k in select['fields']} for v in res][offset:limit]}
 
     async def check_clients_keepalive(self):
         """

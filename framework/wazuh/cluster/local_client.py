@@ -1,11 +1,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import json
 import logging
 from wazuh.cluster import client, cluster
 import uvloop
-from wazuh import common
+from wazuh import common, exception
 
 
 class LocalClientHandler(client.AbstractClient):
@@ -58,7 +57,10 @@ class LocalClient(client.AbstractClientManager):
 
         result = (await protocol.send_request(self.command, self.data)).decode()
         if result.startswith('Error'):
-            request_result = json.dumps({'error': 1000, 'message': result})
+            raise exception.WazuhException(3000, result)
+        elif result.startswith('WazuhException'):
+            _, code, message = result.split(' ', 2)
+            raise exception.WazuhException(int(code), message)
         else:
             if self.command == b'dapi' or self.command == b'dapi_forward' or result == 'Sent request to master node':
                 try:
@@ -66,7 +68,7 @@ class LocalClient(client.AbstractClientManager):
                                            timeout=self.cluster_items['intervals']['communication']['timeout_api_request'])
                     request_result = protocol.response.decode()
                 except asyncio.TimeoutError:
-                    request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
+                    raise exception.WazuhException(3020)
             else:
                 request_result = result
         return request_result
@@ -74,4 +76,3 @@ class LocalClient(client.AbstractClientManager):
 
 async def execute(command: bytes, data: bytes):
     return await LocalClient(command, data).start()
-

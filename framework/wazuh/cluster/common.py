@@ -10,6 +10,7 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict, Callable
+from wazuh import exception
 from wazuh.cluster import cluster
 
 
@@ -337,6 +338,9 @@ class Handler(asyncio.Protocol):
         """
         try:
             command, payload = self.process_request(command, payload)
+        except exception.WazuhException as e:
+            self.logger.error("Error processing request '{}': {}".format(command, e))
+            command, payload = b'err', "WazuhException {} {}".format(e.code, e.message).encode()
         except Exception as e:
             self.logger.error("Error processing request '{}': {}".format(command, e))
             command, payload = b'err', str(e).encode()
@@ -474,7 +478,12 @@ class Handler(asyncio.Protocol):
         :param data: error message from peer
         :return: Nothing
         """
-        return b"Error processing request: " + data
+        if data.startswith(b'WazuhException'):
+            type_error, code, message = data.split(b' ', 2)
+            _, extra_msg = message.split(b':', 1)  # remove first part of the exception message
+            return type_error + b' ' + code + b' ' + extra_msg
+        else:
+            return b"Error processing request: " + data
 
     def setup_task_logger(self, task_tag: str):
         task_logger = self.logger.getChild(task_tag)
