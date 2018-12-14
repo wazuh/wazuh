@@ -31,6 +31,7 @@ class DistributedAPI:
         self.logger = logger
         self.input_json = input_json
         self.node = node if node is not None else local_client
+        self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
         self.node_info = cluster.get_node()
@@ -58,7 +59,6 @@ class DistributedAPI:
                     (request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
-                del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
                 return await self.execute_local_request()
 
             # Second case: forward the request
@@ -97,19 +97,30 @@ class DistributedAPI:
         :return: a JSON response.
         """
         def run_local():
+            self.logger.debug("Starting to execute request locally")
             if 'arguments' in self.input_json and self.input_json['arguments']:
                 data = rq.functions[self.input_json['function']]['function'](**self.input_json['arguments'])
             else:
                 data = rq.functions[self.input_json['function']]['function']()
+            self.logger.debug("Finished executing request locally")
             return data
         try:
             before = time.time()
 
+            timeout = None if self.input_json['arguments']['wait_for_complete'] \
+                           else self.cluster_items['intervals']['communication']['timeout_api_exe']
+            del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
+
             if rq.functions[self.input_json['function']]['is_async']:
-                data = await run_local()
+                task = run_local()
             else:
                 loop = asyncio.get_running_loop()
-                data = await loop.run_in_executor(None, run_local)
+                task = loop.run_in_executor(None, run_local)
+
+            try:
+                data = await asyncio.wait_for(task, timeout=timeout)
+            except asyncio.TimeoutError:
+                raise exception.WazuhException(3021)
 
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))

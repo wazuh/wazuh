@@ -137,7 +137,8 @@
             "string_transfer_send": 0.1,
 
             "timeout_cluster_request": 20,
-            "timeout_api_request": 200
+            "timeout_api_request": 200,
+            "timeout_api_exe": 10
         }
     },
 
