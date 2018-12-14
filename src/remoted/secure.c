@@ -33,18 +33,26 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
+/* Status of keypolling wodle */
+static char key_request_available = 0;
+
 /* Decode hostinfo input queue */
 static w_queue_t * key_request_queue;
 
 /* Hash table to avoid dups */
 static OSHash *key_request_hash;
-static pthread_mutex_t key_request_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Remote key request thread */
 void * w_key_request_thread(__attribute__((unused)) void * args);
 
 /* Push key request */
-static int push_request(const char *request,const char *type);
+static void _push_request(const char *request,const char *type);
+#define push_request(x, y) if (key_request_available) _push_request(x, y);
+
+/* Connect to key polling wodle*/
+#define KEY_RECONNECT_INTERVAL 300 // 5 minutes
+static int key_request_connect();
+static int key_request_reconnect();
 
 /* Handle secure connections */
 void HandleSecure()
@@ -337,7 +345,6 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char srcip[IPSIZE + 1];
     char agname[KEYSIZE + 1];
     char *tmp_msg;
-    char *rsec_output;
     size_t msg_length;
     char ip_found = 0;
 
@@ -423,7 +430,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Decrypt the message */
-    if (ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &rsec_output) != KS_VALID) {
+    if (ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg) != KS_VALID) {
         /* If duplicated, a warning was already generated */
         key_unlock();
         if (ip_found) {
@@ -435,7 +442,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Check if it is a control message */
-    if (IsValidHeader(rsec_output)) {
+    if (IsValidHeader(tmp_msg)) {
         int r = 2;
 
         key_unlock();
@@ -459,7 +466,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             ;
         }
 
-        save_controlmsg((unsigned)agentid, rsec_output, msg_length - 3);
+        save_controlmsg((unsigned)agentid, tmp_msg, msg_length - 3);
         rem_inc_ctrl_msg();
         return;
     }
@@ -474,7 +481,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     /* If we can't send the message, try to connect to the
      * socket again. If it not exit.
      */
-    if (SendMSG(logr.m_queue, rsec_output, srcmsg,
+    if (SendMSG(logr.m_queue, tmp_msg, srcmsg,
                 SECURE_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
@@ -501,7 +508,7 @@ int _close_sock(keystore * keys, int sock) {
     return retval;
 }
 
-static int key_request_connect() {
+int key_request_connect() {
 #ifndef WIN32
     return OS_ConnectUnixDomain(isChroot() ? WM_KEY_REQUEST_SOCK : WM_KEY_REQUEST_SOCK_PATH, SOCK_DGRAM, OS_MAXSTR);
 #else
@@ -513,15 +520,16 @@ static int send_key_request(int socket,const char *msg) {
     return OS_SendUnix(socket,msg,strlen(msg));
 }
 
-static int push_request(const char *request,const char *type) {
+static void _push_request(const char *request,const char *type) {
     char *msg = NULL;
-    os_calloc(OS_MAXSTR,sizeof(char),msg);
+    static pthread_mutex_t key_request_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+    os_calloc(OS_MAXSTR,sizeof(char),msg);
     snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
 
     w_mutex_lock(&key_request_mutex);
     if (!OSHash_Get_ex(key_request_hash, msg)) {
-        if(queue_push_ex(key_request_queue,msg) < 0) {
+        if(queue_push_ex(key_request_queue, msg) < 0) {
             os_free(msg);
         } else {
             OSHash_Add_ex(key_request_hash, msg, &msg);
@@ -530,57 +538,55 @@ static int push_request(const char *request,const char *type) {
         os_free(msg);
     }
     w_mutex_unlock(&key_request_mutex);
-
-    return 0;
 }
 
-void * w_key_request_thread(__attribute__((unused)) void * args) {
-    char * msg;
-    int socket = key_request_connect();
+int key_request_reconnect() {
+    int socket;
+    static int max_attempts = 4;
+    int attempts;
 
-    int times = 4;
-    if (socket < 0) {
-        while(times > 0) {
+    while (1) {
+        for (attempts = 0; attempts < max_attempts; attempts++) {
             if (socket = key_request_connect(), socket < 0) {
                 sleep(1);
             } else {
-                break;
+                key_request_available = 1;
+                return socket;
             }
-            times--;
         }
+        mdebug1("Key-polling wodle is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
+        sleep(KEY_RECONNECT_INTERVAL);
     }
+}
+
+void * w_key_request_thread(__attribute__((unused)) void * args) {
+    char * msg = NULL;
+    int socket = -1;
 
     while(1) {
+        if (socket < 0) {
+            socket = key_request_reconnect();
+        }
 
-        if (msg = queue_pop_ex(key_request_queue), msg) {
+        if (msg || (msg = queue_pop_ex(key_request_queue))) {
             int rc;
             OSHash_Delete_ex(key_request_hash, msg);
-send:
+
             if ((rc = send_key_request(socket, msg)) < 0) {
                 if (rc == OS_SOCKBUSY) {
                     mdebug1("Key request socket busy.");
+                    sleep(1);
                 } else {
-                    mdebug1("Key request socket error (shutdown?).");
-                }
-                mdebug1("Error communicating with key request queue (%d). Is the module running?", rc);
-
-                if (socket >= 0) {
-                    close(socket);
-                }
-
-                /* Try to send again */
-                times = 4;
-                while(times > 0) {
-
-                    if (socket = key_request_connect(), socket < 0) {
-                        sleep(1);
-                    } else {
-                        goto send;
+                    merror("Could not communicate with key request queue (%d). Is the module running?", rc);
+                    if (socket >= 0) {
+                        key_request_available = 0;
+                        close(socket);
+                        socket = -1;
                     }
-                    times--;
                 }
+            } else {
+                os_free(msg);
             }
-            os_free(msg);
         }
     }
 }
