@@ -113,7 +113,7 @@ if __name__ == '__main__':
     # implemented in worker nodes.
     parser.add_argument('--file', help=argparse.SUPPRESS, type=str, dest='send_file')
     ####################################################################################################################
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl')
+    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl', default=False)
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-d', help="Enable debug messages. Use twice to increase verbosity.", action='count',
                         dest='debug_level')
