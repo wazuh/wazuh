@@ -35,7 +35,7 @@ static w_queue_t * request_queue;
 
 static OSHash *request_hash = NULL;
 
-const char *script_params[2] = { "id", "ip" };
+const char *exec_params[2] = { "id", "ip" };
 
 const wm_context WM_KEY_REQUEST_CONTEXT = {
     "key-polling",
@@ -75,9 +75,9 @@ void * wm_key_request_main(wm_krequest_t * data) {
         pthread_exit(NULL);
     }
 
-    /* Check if we have script and socket at the same time */
-    if(data->socket && data->script) {
-        mwarn("Script tag and socket tag defined. Using socket tag");
+    /* Check if we have exec_path and socket at the same time */
+    if(data->socket && data->exec_path) {
+        mwarn("Executable tag and socket tag defined. Using socket tag");
     }
 
     /* Init the queue input */
@@ -178,21 +178,21 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     char *command = NULL;
     os_calloc(OS_MAXSTR + 1,sizeof(char),command);
 
-    if(snprintf(command,OS_MAXSTR,"%s %s %s",data->script,script_params[type],request) > OS_MAXSTR) {
+    if(snprintf(command, OS_MAXSTR, "%s %s %s", data->exec_path, exec_params[type],request) > OS_MAXSTR) {
         mdebug1("Request is too long.");
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
         return -1;
     }
 
-    /* Send request to external script by socket */
+    /* Send request to external executable by socket */
     if(data->socket) {
         int sock;
         if (sock = external_socket_connect(data->socket), sock < 0) {
             mdebug1("Could not connect to external socket. Is the process running?");
         } else {
             char msg[OS_SIZE_128] = {0};
-            int msg_len = snprintf(msg,OS_SIZE_128,"%s:%s",script_params[type],request);
+            int msg_len = snprintf(msg, OS_SIZE_128,"%s:%s", exec_params[type], request);
 
             if( msg_len > OS_SIZE_128) {
                 mdebug1("Request is too long for socket.");
@@ -229,9 +229,9 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             close(sock);
         }
     }
-    /* Execute external script */
+    /* Execute external program */
     else if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
-        mdebug1("At wm_key_request_dispatch(): Error executing script [%s]", data->script);
+        mdebug1("At wm_key_request_dispatch(): Error executing [%s]", data->exec_path);
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
         return -1;
@@ -365,8 +365,8 @@ cJSON *wm_key_request_dump(const wm_krequest_t *data) {
         cJSON_AddNumberToObject(wm_wd,"timeout",data->timeout);
     }
 
-    if(data->script){
-        cJSON_AddStringToObject(wm_wd,"script",data->script);
+    if(data->exec_path){
+        cJSON_AddStringToObject(wm_wd,"exec_path",data->exec_path);
     }
 
     if(data->threads){

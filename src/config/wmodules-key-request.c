@@ -6,7 +6,7 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_TIMEOUT= "timeout";
 static const char *XML_THREADS = "threads";
 static const char *XML_QUEUE_SIZE = "queue_size";
-static const char *XML_SCRIPT = "script";
+static const char *XML_EXEC_PATH = "exec_path";
 static const char *XML_SOCKET = "socket";
 
 static short eval_bool(const char *str)
@@ -45,17 +45,17 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
         }
-        else if(!strcmp(nodes[i]->element, XML_SCRIPT))
+        else if(!strcmp(nodes[i]->element, XML_EXEC_PATH))
         {
-            if(key_request->script) {
-                free(key_request->script);
+            if(key_request->exec_path) {
+                free(key_request->exec_path);
             }
 
             if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Script path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
+                merror("Exec path is too long at module '%s'. Max path length is %d", WM_KEY_REQUEST_CONTEXT.name,PATH_MAX);
                 return OS_INVALID;
             }
-            key_request->script = strdup(nodes[i]->content);
+            key_request->exec_path = strdup(nodes[i]->content);
         }
         else if(!strcmp(nodes[i]->element, XML_SOCKET))
         {
@@ -79,7 +79,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
             }
 
             mdebug2("Timeout read: %d", key_request->timeout);
-        } 
+        }
         else if (!strcmp(nodes[i]->element, XML_THREADS))
         {
             key_request->threads = strtoul(nodes[i]->content, NULL, 0);

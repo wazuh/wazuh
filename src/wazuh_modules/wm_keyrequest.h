@@ -19,7 +19,7 @@ typedef struct wm_krequest_t {
     unsigned int timeout;
     unsigned int threads;
     unsigned int queue_size;
-    char* script;
+    char* exec_path;
     char* socket;
 } wm_krequest_t;
 
