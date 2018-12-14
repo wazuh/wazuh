@@ -34,6 +34,7 @@
 #define AUDIT_SUCCESS 0x20000000000000LL
 
 static OSDecoderInfo *winevt_decoder = NULL;
+static int first_time = 0;
 
 void WinevtInit(){
 
@@ -46,6 +47,53 @@ void WinevtInit(){
     mdebug1("WinevtInit completed.");
 }
 
+char *replace_string(const char *string, const char *old, const char *new){
+    char *ret;
+    int i = 0;
+    int count = 0;
+    int newlen = strlen(new);
+    int oldlen = strlen(old);
+  
+    while (string[i] != '\0') {
+        if (strstr(&string[i], old) == &string[i]){
+            count++;
+            i += oldlen - 1;
+        }
+        i++;
+    }
+  
+    ret = (char *) malloc(i + count * (newlen - oldlen) + 1);
+  
+    i = 0;
+    while (*string) {
+        if (strstr(string, old) == string){
+            strcpy(&ret[i], new);
+            i += newlen;
+            string += oldlen;
+        } else {
+            ret[i++] = *string++;
+        }
+    }
+
+    ret[i] = '\0';
+    return ret;
+}
+
+char *replace_win_format(char *str){
+    char *ret1 = NULL;
+    char *ret2 = NULL;
+    char *ret3 = NULL;
+
+    ret1 = replace_string(str, "\\r", "");
+    ret2 = replace_string(ret1, "\\t", "");
+    ret3 = replace_string(ret2, "\\n", "");
+
+    os_free(ret1);
+    os_free(ret2);
+
+    return ret3;
+}
+
 /* Special decoder for Windows eventchannel */
 int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
@@ -53,14 +101,23 @@ int DecodeWinevt(Eventinfo *lf){
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
-    int level_n, category;
+    int level_n;
     unsigned long long int keywords_n;
     XML_NODE node, child;
     int num;
-    char *level = NULL, *keywords = NULL, *provider_name = NULL,
-        *msg_from_prov = NULL, *returned_event = NULL, *event = NULL;
-    char *find_event = NULL, *end_event = NULL,
-        *find_msg = NULL, *end_msg = NULL;
+    char *level = NULL;
+    char *keywords = NULL;
+    char *provider_name = NULL;
+    char *msg_from_prov = NULL;
+    char *returned_event = NULL;
+    char *event = NULL;
+    char *find_event = NULL;
+    char *end_event = NULL;
+    char *real_end = NULL;
+    char *find_msg = NULL;
+    char *end_msg = NULL;
+    char *next = NULL;
+    char *category = NULL;
     char aux = 0;
     lf->decoder_info = winevt_decoder;
 
@@ -72,24 +129,44 @@ int DecodeWinevt(Eventinfo *lf){
     if(find_event){
         find_event = find_event + 8;
         end_event = strchr(find_event, '"');
+        real_end = end_event;
         if(end_event){
             aux = *(end_event + 1);
-            if(aux == '}' || aux == ','){
-                num = end_event - find_event;
-                memcpy(event, find_event, num);
-                event[num] = '\0';
+            
+            if(aux != '}' && aux != ','){
+                while(1){
+                    next = real_end + 1;
+                    real_end = strchr(next,'"');
+                    aux = *(real_end + 1);
+                    if (aux == '}' || aux == ','){
+                        break;
+                    }
+                }
+
+                end_event = real_end;
             }
+
+            num = end_event - find_event;
+            memcpy(event, find_event, num);
+            event[num] = '\0';
             find_event = '\0';
             end_event = '\0';
+            real_end = '\0';
+            next = '\0';
             aux = 0;
         }
     } else {
         mdebug1("Malformed JSON output received. No 'Event' field found");
     }
-
+    char * filtered_string = NULL;
     if(event){
         if (OS_ReadXMLString(event, &xml) < 0){
-            merror("Could not read XML string: '%s'", event);
+            first_time++;
+            if (first_time > 1){
+                mdebug2("Could not read XML string: '%s'", event);
+            } else {
+                mwarn("Could not read XML string: '%s'", event);
+            }
         } else {
             node = OS_GetElementsbyNode(&xml, NULL);
             int i = 0, l = 0;
@@ -153,19 +230,27 @@ int DecodeWinevt(Eventinfo *lf){
                             if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
                                 for (l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")) {
-                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], child_attr[p]->content);
+                                        filtered_string = replace_win_format(child_attr[p]->content);
+                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
+                                        os_free(filtered_string);
                                         break;
-                                    } else {
+                                    } else if(child_attr[p]->content){
+                                        filtered_string = replace_win_format(child_attr[p]->content);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
-                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], child_attr[p]->content);
+                                        cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
+                                        os_free(filtered_string);
                                     }
                                 }
                             } else if (child_attr[p]->content){
-                                cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, child_attr[p]->content);
+                                filtered_string = replace_win_format(child_attr[p]->content);
+                                cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
+                                os_free(filtered_string);
                             }
                         } else {
                             mdebug1("Unexpected element (%s).", child[j]->element);
-                            cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, child_attr[p]->content);
+                            filtered_string = replace_win_format(child_attr[p]->content);
+                            cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
+                            os_free(filtered_string);
                         }
                         p++;
                     }
@@ -187,34 +272,34 @@ int DecodeWinevt(Eventinfo *lf){
 
                 switch (level_n) {
                     case CRITICAL:
-                        category = 1;
+                        category = "CRITICAL";
                         break;
                     case ERROR:
-                        category = 2;
+                        category = "ERROR";
                         break;
                     case WARNING:
-                        category = 3;
+                        category = "WARNING";
                         break;
                     case INFORMATION:
-                        category = 4;
+                        category = "INFORMATION";
                         break;
                     case VERBOSE:
-                        category = 5;
+                        category = "VERBOSE";
                         break;
                     case AUDIT:
                         if (keywords_n & AUDIT_FAILURE) {
-                            category = 6;
+                            category = "AUDIT_FAILURE";
                             break;
                         } else if (keywords_n & AUDIT_SUCCESS) {
-                            category = 7;
+                            category = "AUDIT_SUCCESS";
                             break;
                         }
                         // fall through
                     default:
-                        category = 8;
+                        category = "UNKNOWN";
                 }
 
-                cJSON_AddNumberToObject(json_system_in, "SeverityValue", category);    
+                cJSON_AddStringToObject(json_system_in, "SeverityValue", category);    
             }
         }
     }
@@ -223,17 +308,30 @@ int DecodeWinevt(Eventinfo *lf){
     if(find_msg){
         find_msg = find_msg + 10;
         end_msg = strchr(find_msg,'\"');
+        real_end = end_msg;
         if(end_msg){
             aux = *(end_msg + 1);
-            if(aux == '}' || aux == ','){
-                num = end_msg - find_msg;
-                memcpy(msg_from_prov, find_msg, num);
-                msg_from_prov[num] = '\0';
-                cJSON_AddStringToObject(json_system_in, "Message", msg_from_prov);
+            if(aux != '}' && aux != ','){
+                while(1){
+                    next = real_end + 1;
+                    real_end = strchr(next,'"');
+                    aux = *(real_end + 1);
+                    if (aux == '}' || aux == ','){
+                        break;
+                    }
+                }
+                end_msg = real_end;
             }
+
+            num = end_msg - find_msg;
+            memcpy(msg_from_prov, find_msg, num);
+            msg_from_prov[num] = '\0';
+            cJSON_AddStringToObject(json_system_in, "Message", msg_from_prov);
             
             find_msg = '\0';
             end_msg = '\0';
+            real_end = '\0';
+            next = '\0';
             aux = 0;
         }
     } else {
@@ -261,6 +359,7 @@ int DecodeWinevt(Eventinfo *lf){
 
     os_free(level);
     os_free(event);
+    os_free(filtered_string);
     os_free(keywords);
     os_free(provider_name);
     os_free(msg_from_prov);
