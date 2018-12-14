@@ -183,13 +183,6 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
         return 'COUNT(DISTINCT a.id)'
 
 
-    def _get_data(self):
-        if self.group_id != "null":
-            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '' ELSE '' END as num_groups"
-            self.select['fields'].update(['multi_group'])
-        WazuhDBQueryAgents._get_data(self)
-
-
     def _get_total_items(self):
         WazuhDBQueryAgents._get_total_items(self)
         self.query += ' GROUP BY a.id '
