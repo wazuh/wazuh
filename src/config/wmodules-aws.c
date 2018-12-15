@@ -425,8 +425,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         os_strdup(LEGACY_AWS_ACCOUNT_ALIAS, cur_bucket->aws_account_alias);
     }
 
-    if (!aws_config->buckets) {
-        mtwarn(WM_AWS_LOGTAG, "No buckets definitions found at module '%s'.", WM_AWS_CONTEXT.name);
+    if (!aws_config->buckets && !aws_config->services) {
+        mtwarn(WM_AWS_LOGTAG, "No buckets or services definitions found at module '%s'.", WM_AWS_CONTEXT.name);
         return OS_INVALID;
     }
 
