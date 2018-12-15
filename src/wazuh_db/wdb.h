@@ -46,7 +46,11 @@
 
 #define WDB_MULTI_GROUP_DELIM '-'
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define WDB_DATABASE_LOGTAG "wazuh_db:wdb_agent"
+#else
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
+#endif
 
 typedef enum wdb_stmt {
     WDB_STMT_FIM_LOAD,

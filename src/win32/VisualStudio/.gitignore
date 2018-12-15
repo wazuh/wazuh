@@ -1,4 +1,3 @@
-include/external
 include/dirent.h
 include/unistd.h
 include/getopt.h
@@ -13,4 +12,6 @@ sqlite3/Win32
 sqlite3/x64
 cJSON/Win32
 cJSON/x64
+libwazuh/Win32
+libwazuh/x64
 packages

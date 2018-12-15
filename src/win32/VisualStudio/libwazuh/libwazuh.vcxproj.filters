@@ -1,0 +1,507 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Archivos de origen">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Archivos de encabezado">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Archivos de recursos">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Archivos de origen\config">
+      <UniqueIdentifier>{2702f2a5-8040-4c93-9196-64c97c6524e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\wazuh_modules">
+      <UniqueIdentifier>{db466381-90fc-40a7-b0e0-5bc2b188787a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\wazuh_modules\syscollector">
+      <UniqueIdentifier>{8e74057a-7fd4-4d62-a629-1c27575ab3bf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\wazuh_db">
+      <UniqueIdentifier>{95f0b9c3-ba49-452e-9e20-c726447a1ff1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto">
+      <UniqueIdentifier>{3e108e89-a70f-441e-a57a-d618304eafd7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\blowfish">
+      <UniqueIdentifier>{963c7bc9-dbb6-46ff-807b-5484cae8543e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\md5">
+      <UniqueIdentifier>{9d19a950-e3f9-458b-91fd-eefdfd7fdd22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\sha1">
+      <UniqueIdentifier>{0c3eabfc-9976-4572-b758-c5cc04146fbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\shared">
+      <UniqueIdentifier>{e2136eec-18fa-4f89-b76b-bd9202a20fa0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\md5_sha1">
+      <UniqueIdentifier>{191eeaf2-04bf-4edd-9ff5-f96eba0100b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\md5_sha1_sha256">
+      <UniqueIdentifier>{39a28b31-3ec4-4723-9cd6-87d0e4a678c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\sha256">
+      <UniqueIdentifier>{72e722c0-9fff-42db-8e72-a9a0892643cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\aes">
+      <UniqueIdentifier>{6602f17b-0461-4b21-a698-ebb527d3a075}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\hmac">
+      <UniqueIdentifier>{7af9ab0d-bbef-4b2b-a403-ef3e063dad07}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_crypto\signature">
+      <UniqueIdentifier>{0e43f545-17eb-4ce3-8bf8-048c5f8eee10}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\shared">
+      <UniqueIdentifier>{3ad44038-dc0d-4c7e-a71c-239481efe604}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_net">
+      <UniqueIdentifier>{66e67a24-328e-43ee-8acd-8aed101b9128}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_regex">
+      <UniqueIdentifier>{b094f2c2-41af-4a84-ac07-99684f4c9cc8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_xml">
+      <UniqueIdentifier>{5338e953-b37e-4b6f-96d3-70adf88d6fba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\os_zlib">
+      <UniqueIdentifier>{9a87bfd5-0647-4174-a237-1233dd142a21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de encabezado\sys">
+      <UniqueIdentifier>{35e1fc45-9297-4351-8162-7e823d832c55}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\..\config\active-response.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\agentlessd-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\alerts-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\authd-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\buffer-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\client-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\cluster-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\csyslogd-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\dbd-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\email-alerts-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\global-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\integrator-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\labels-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\localfile-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\remote-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\reports-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\rootcheck-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\rules-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\socket-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\syscheck-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules_syscollector.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-aws.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-azure.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-ciscat.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-command.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-config.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-docker.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-oscap.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-osquery-monitor.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\config\wmodules-vuln-detector.c">
+      <Filter>Archivos de origen\config</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_aws.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_azure.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_ciscat.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_command.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_database.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_docker.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_download.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_exec.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_oscap.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_osquery_monitor.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wm_vuln_detector.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wmcom.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\wmodules.c">
+      <Filter>Archivos de origen\wazuh_modules</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_bsd.c">
+      <Filter>Archivos de origen\wazuh_modules\syscollector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_common.c">
+      <Filter>Archivos de origen\wazuh_modules\syscollector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_linux.c">
+      <Filter>Archivos de origen\wazuh_modules\syscollector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_win_ext.c">
+      <Filter>Archivos de origen\wazuh_modules\syscollector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_windows.c">
+      <Filter>Archivos de origen\wazuh_modules\syscollector</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_agent.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_ciscat.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_fim.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_metadata.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_parser.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_pm.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_scan_info.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\wazuh_db\wdb_syscollector.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\schema_agents.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\schema_global.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\schema_vuln_detector.c">
+      <Filter>Archivos de origen\wazuh_db</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\blowfish\bf_op.c">
+      <Filter>Archivos de origen\os_crypto\blowfish</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\md5\md5_op.c">
+      <Filter>Archivos de origen\os_crypto\md5</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\sha1\sha1_op.c">
+      <Filter>Archivos de origen\os_crypto\sha1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\shared\keys.c">
+      <Filter>Archivos de origen\os_crypto\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\shared\msgs.c">
+      <Filter>Archivos de origen\os_crypto\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\md5_sha1\md5_sha1_op.c">
+      <Filter>Archivos de origen\os_crypto\md5_sha1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\md5_sha1_sha256\md5_sha1_sha256_op.c">
+      <Filter>Archivos de origen\os_crypto\md5_sha1_sha256</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\sha256\sha256_op.c">
+      <Filter>Archivos de origen\os_crypto\sha256</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\aes\aes_op.c">
+      <Filter>Archivos de origen\os_crypto\aes</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\hmac\hmac.c">
+      <Filter>Archivos de origen\os_crypto\hmac</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_crypto\signature\signature.c">
+      <Filter>Archivos de origen\os_crypto\signature</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\agent_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\cluster_utils.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\custom_output_search_replace.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\debug_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\dirtree_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\exec_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\file_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\file-queue.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\fs_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\hash_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\help.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\json_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\json-queue.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\labels_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\list_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\math_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\mem_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\mq_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\notify_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\privsep_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\pthreads_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\queue_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\randombytes.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\read-agents.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\read-alert.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\regex_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\report_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\request_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\rootcheck_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\rules_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\sig_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\store_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\string_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\syscheck_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\time_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\url.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\validate_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\vector_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\version_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\shared\wait_op.c">
+      <Filter>Archivos de origen\shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_net\os_net.c">
+      <Filter>Archivos de origen\os_net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_match.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_match_compile.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_match_execute.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_match_free_pattern.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_compile.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_execute.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_free_pattern.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_maps.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_match.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_startswith.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_str.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_regex\os_regex_strbreak.c">
+      <Filter>Archivos de origen\os_regex</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_xml\os_xml.c">
+      <Filter>Archivos de origen\os_xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_xml\os_xml_access.c">
+      <Filter>Archivos de origen\os_xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_xml\os_xml_node_access.c">
+      <Filter>Archivos de origen\os_xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_xml\os_xml_variables.c">
+      <Filter>Archivos de origen\os_xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_xml\os_xml_writer.c">
+      <Filter>Archivos de origen\os_xml</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\os_zlib\os_zlib.c">
+      <Filter>Archivos de origen\os_zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\libgen.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\sys\time.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\sys\param.h">
+      <Filter>Archivos de encabezado\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\sys\time.h">
+      <Filter>Archivos de encabezado\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dirent.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\getopt.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\libgen.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\unistd.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+</Project>

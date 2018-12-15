@@ -104,7 +104,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -115,19 +115,27 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;$(SolutionDir)Build\libwazuh\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;Wldap32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;libwazuh.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EnableUAC>true</EnableUAC>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Get dependencies</Message>
+      <Message>
+      </Message>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy pthreads DLL</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -135,7 +143,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -146,19 +154,27 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;$(SolutionDir)Build\libwazuh\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;Wldap32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;libwazuh.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EnableUAC>true</EnableUAC>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Get dependencies</Message>
+      <Message>
+      </Message>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy pthreads DLL</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -168,7 +184,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -181,19 +197,27 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;$(SolutionDir)Build\libwazuh\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;Wldap32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;libwazuh.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EnableUAC>true</EnableUAC>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Get dependencies</Message>
+      <Message>
+      </Message>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy pthreads DLL</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -203,7 +227,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -216,19 +240,27 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;$(SolutionDir)Build\libwazuh\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;Wldap32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;libwazuh.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EnableUAC>true</EnableUAC>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>
+      </Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>Get dependencies</Message>
+      <Message>
+      </Message>
     </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Copy pthreads DLL</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\client-agent\agcom.c" />
@@ -244,37 +276,6 @@
     <ClCompile Include="..\..\..\client-agent\sendmsg.c" />
     <ClCompile Include="..\..\..\client-agent\start_agent.c" />
     <ClCompile Include="..\..\..\client-agent\state.c" />
-    <ClCompile Include="..\..\..\config\active-response.c" />
-    <ClCompile Include="..\..\..\config\agentlessd-config.c" />
-    <ClCompile Include="..\..\..\config\alerts-config.c" />
-    <ClCompile Include="..\..\..\config\authd-config.c" />
-    <ClCompile Include="..\..\..\config\buffer-config.c" />
-    <ClCompile Include="..\..\..\config\client-config.c" />
-    <ClCompile Include="..\..\..\config\cluster-config.c" />
-    <ClCompile Include="..\..\..\config\config.c" />
-    <ClCompile Include="..\..\..\config\csyslogd-config.c" />
-    <ClCompile Include="..\..\..\config\dbd-config.c" />
-    <ClCompile Include="..\..\..\config\email-alerts-config.c" />
-    <ClCompile Include="..\..\..\config\global-config.c" />
-    <ClCompile Include="..\..\..\config\integrator-config.c" />
-    <ClCompile Include="..\..\..\config\labels-config.c" />
-    <ClCompile Include="..\..\..\config\localfile-config.c" />
-    <ClCompile Include="..\..\..\config\remote-config.c" />
-    <ClCompile Include="..\..\..\config\reports-config.c" />
-    <ClCompile Include="..\..\..\config\rootcheck-config.c" />
-    <ClCompile Include="..\..\..\config\rules-config.c" />
-    <ClCompile Include="..\..\..\config\socket-config.c" />
-    <ClCompile Include="..\..\..\config\syscheck-config.c" />
-    <ClCompile Include="..\..\..\config\wmodules-aws.c" />
-    <ClCompile Include="..\..\..\config\wmodules-azure.c" />
-    <ClCompile Include="..\..\..\config\wmodules-ciscat.c" />
-    <ClCompile Include="..\..\..\config\wmodules-command.c" />
-    <ClCompile Include="..\..\..\config\wmodules-config.c" />
-    <ClCompile Include="..\..\..\config\wmodules-docker.c" />
-    <ClCompile Include="..\..\..\config\wmodules-oscap.c" />
-    <ClCompile Include="..\..\..\config\wmodules-osquery-monitor.c" />
-    <ClCompile Include="..\..\..\config\wmodules-vuln-detector.c" />
-    <ClCompile Include="..\..\..\config\wmodules_syscollector.c" />
     <ClCompile Include="..\..\..\logcollector\config.c" />
     <ClCompile Include="..\..\..\logcollector\lccom.c" />
     <ClCompile Include="..\..\..\logcollector\logcollector.c" />
@@ -295,42 +296,11 @@
     <ClCompile Include="..\..\..\logcollector\read_win_event_channel.c" />
     <ClCompile Include="..\..\..\monitord\compress_log.c" />
     <ClCompile Include="..\..\..\monitord\rotate_log.c" />
-    <ClCompile Include="..\..\..\os_crypto\aes\aes_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\blowfish\bf_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\hmac\hmac.c" />
-    <ClCompile Include="..\..\..\os_crypto\md5\md5_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\md5_sha1\md5_sha1_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\md5_sha1_sha256\md5_sha1_sha256_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\sha1\sha1_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\sha256\sha256_op.c" />
-    <ClCompile Include="..\..\..\os_crypto\shared\keys.c" />
-    <ClCompile Include="..\..\..\os_crypto\shared\msgs.c" />
-    <ClCompile Include="..\..\..\os_crypto\signature\signature.c" />
     <ClCompile Include="..\..\..\os_execd\config.c" />
     <ClCompile Include="..\..\..\os_execd\exec.c" />
     <ClCompile Include="..\..\..\os_execd\execd.c" />
     <ClCompile Include="..\..\..\os_execd\wcom.c" />
     <ClCompile Include="..\..\..\os_execd\win_execd.c" />
-    <ClCompile Include="..\..\..\os_net\os_net.c" />
-    <ClCompile Include="..\..\..\os_regex\os_match.c" />
-    <ClCompile Include="..\..\..\os_regex\os_match_compile.c" />
-    <ClCompile Include="..\..\..\os_regex\os_match_execute.c" />
-    <ClCompile Include="..\..\..\os_regex\os_match_free_pattern.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_compile.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_execute.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_free_pattern.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_maps.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_match.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_startswith.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_str.c" />
-    <ClCompile Include="..\..\..\os_regex\os_regex_strbreak.c" />
-    <ClCompile Include="..\..\..\os_xml\os_xml.c" />
-    <ClCompile Include="..\..\..\os_xml\os_xml_access.c" />
-    <ClCompile Include="..\..\..\os_xml\os_xml_node_access.c" />
-    <ClCompile Include="..\..\..\os_xml\os_xml_variables.c" />
-    <ClCompile Include="..\..\..\os_xml\os_xml_writer.c" />
-    <ClCompile Include="..\..\..\os_zlib\os_zlib.c" />
     <ClCompile Include="..\..\..\rootcheck\check_open_ports.c" />
     <ClCompile Include="..\..\..\rootcheck\check_rc_dev.c" />
     <ClCompile Include="..\..\..\rootcheck\check_rc_files.c" />
@@ -351,46 +321,6 @@
     <ClCompile Include="..\..\..\rootcheck\unix-process.c" />
     <ClCompile Include="..\..\..\rootcheck\win-common.c" />
     <ClCompile Include="..\..\..\rootcheck\win-process.c" />
-    <ClCompile Include="..\..\..\shared\agent_op.c" />
-    <ClCompile Include="..\..\..\shared\cluster_utils.c" />
-    <ClCompile Include="..\..\..\shared\custom_output_search_replace.c" />
-    <ClCompile Include="..\..\..\shared\debug_op.c" />
-    <ClCompile Include="..\..\..\shared\dirtree_op.c" />
-    <ClCompile Include="..\..\..\shared\exec_op.c" />
-    <ClCompile Include="..\..\..\shared\file-queue.c" />
-    <ClCompile Include="..\..\..\shared\file_op.c" />
-    <ClCompile Include="..\..\..\shared\fs_op.c" />
-    <ClCompile Include="..\..\..\shared\hash_op.c" />
-    <ClCompile Include="..\..\..\shared\help.c" />
-    <ClCompile Include="..\..\..\shared\json-queue.c" />
-    <ClCompile Include="..\..\..\shared\json_op.c" />
-    <ClCompile Include="..\..\..\shared\labels_op.c" />
-    <ClCompile Include="..\..\..\shared\list_op.c" />
-    <ClCompile Include="..\..\..\shared\math_op.c" />
-    <ClCompile Include="..\..\..\shared\mem_op.c" />
-    <ClCompile Include="..\..\..\shared\mq_op.c" />
-    <ClCompile Include="..\..\..\shared\notify_op.c" />
-    <ClCompile Include="..\..\..\shared\privsep_op.c" />
-    <ClCompile Include="..\..\..\shared\pthreads_op.c" />
-    <ClCompile Include="..\..\..\shared\queue_op.c" />
-    <ClCompile Include="..\..\..\shared\randombytes.c" />
-    <ClCompile Include="..\..\..\shared\read-agents.c" />
-    <ClCompile Include="..\..\..\shared\read-alert.c" />
-    <ClCompile Include="..\..\..\shared\regex_op.c" />
-    <ClCompile Include="..\..\..\shared\report_op.c" />
-    <ClCompile Include="..\..\..\shared\request_op.c" />
-    <ClCompile Include="..\..\..\shared\rootcheck_op.c" />
-    <ClCompile Include="..\..\..\shared\rules_op.c" />
-    <ClCompile Include="..\..\..\shared\sig_op.c" />
-    <ClCompile Include="..\..\..\shared\store_op.c" />
-    <ClCompile Include="..\..\..\shared\string_op.c" />
-    <ClCompile Include="..\..\..\shared\syscheck_op.c" />
-    <ClCompile Include="..\..\..\shared\time_op.c" />
-    <ClCompile Include="..\..\..\shared\url.c" />
-    <ClCompile Include="..\..\..\shared\validate_op.c" />
-    <ClCompile Include="..\..\..\shared\vector_op.c" />
-    <ClCompile Include="..\..\..\shared\version_op.c" />
-    <ClCompile Include="..\..\..\shared\wait_op.c" />
     <ClCompile Include="..\..\..\syscheckd\config.c" />
     <ClCompile Include="..\..\..\syscheckd\create_db.c" />
     <ClCompile Include="..\..\..\syscheckd\run_check.c" />
@@ -401,39 +331,9 @@
     <ClCompile Include="..\..\..\syscheckd\syscom.c" />
     <ClCompile Include="..\..\..\syscheckd\win-registry.c" />
     <ClCompile Include="..\..\..\syscheckd\win_whodata.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_agent.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_ciscat.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_fim.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_metadata.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_parser.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_pm.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_scan_info.c" />
-    <ClCompile Include="..\..\..\wazuh_db\wdb_syscollector.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_bsd.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_common.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_linux.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_windows.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\syscollector\syscollector_win_ext.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wmcom.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wmodules.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_aws.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_azure.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_ciscat.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_command.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_database.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_docker.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_download.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_exec.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_oscap.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_osquery_monitor.c" />
-    <ClCompile Include="..\..\..\wazuh_modules\wm_vuln_detector.c" />
     <ClCompile Include="..\..\win_agent.c" />
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\libgen.c" />
-    <ClCompile Include="..\include\schema_agents.c" />
-    <ClCompile Include="..\include\schema_global.c" />
-    <ClCompile Include="..\include\schema_vuln_detector.c" />
     <ClCompile Include="..\include\sys\time.c" />
   </ItemGroup>
   <ItemGroup>
@@ -441,6 +341,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dirent.h" />
+    <ClInclude Include="..\include\getopt.h" />
     <ClInclude Include="..\include\libgen.h" />
     <ClInclude Include="..\include\sys\param.h" />
     <ClInclude Include="..\include\sys\time.h" />

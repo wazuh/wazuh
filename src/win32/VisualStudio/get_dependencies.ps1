@@ -58,46 +58,6 @@ function createDestDir
     }
 }
 
-# Download file from a GitHub release
-function getFileFromGitHubRelease
-{
-    [cmdletbinding()]
-    param
-    (
-        [Parameter(
-            Mandatory=$true,
-            Position=0,
-            ValueFromPipeline=$true)]
-        [string] $repository,
-        [Parameter(
-            Mandatory=$true,
-            Position=1,
-            ValueFromPipeline=$true)]
-        [string] $fileToGet,
-        [Parameter(
-            Mandatory=$true,
-            Position=2,
-            ValueFromPipeline=$true)]
-        [string] $destDir
-    )
-    
-    Write-Host "Determining latest release for `"$repository`"..."
-    
-    $releases = "https://api.github.com/repos/$repository/releases"
-    
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    $tag = (Invoke-WebRequest -Uri $releases -UseBasicParsing | ConvertFrom-Json)[0].tag_name
-    
-    Write-Host "Downloading file `"$fileToGet`" from latest release `"$tag`"..."
-    
-    $download = "https://raw.githubusercontent.com/$repository/$tag/$fileToGet"
-    
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-WebRequest $download -Out "$destDir\$fileToGet"
-    
-    Write-Host "File `"$fileToGet`" downloaded to `"$destDir\$fileToGet`"."
-}
-
 # Download file to a specific path
 function downloadFile
 {
@@ -123,68 +83,6 @@ function downloadFile
     Invoke-WebRequest $fileUrl -Out "$destPath" -UserAgent [Microsoft.PowerShell.Commands.PSUserAgent]::FireFox
     
     Write-Host "File downloaded to `"$destPath`"."
-}
-
-# Replace target file, creating a backup of the original one
-function replaceTargetFile
-{
-    [cmdletbinding()]
-    param
-    (
-        [Parameter(
-            Mandatory=$true,
-            Position=0,
-            ValueFromPipeline=$true)]
-        [string] $dstPath,
-        [Parameter(
-            Mandatory=$true,
-            Position=1,
-            ValueFromPipeline=$true)]
-        [string] $srcPath
-    )
-    
-    $bkpPath = "$dstPath.bkp"
-    
-    $bkpFile = (Test-Path -Path "$bkpPath" -PathType Leaf)
-    if ($bkpFile -eq $False)
-    {
-        $dstFile = (Test-Path -Path "$dstPath" -PathType Leaf)
-        if ($dstFile -eq $False)
-        {
-            Write-Host "File `"$dstPath`" not available."
-            exit
-        }
-        
-        $srcFile = (Test-Path -Path "$srcPath" -PathType Leaf)
-        if ($srcFile -eq $False)
-        {
-            Write-Host "File `"$srcPath`" not available."
-            exit
-        }
-        
-        Move-Item -Path "$dstPath" -Destination "$bkpPath" -Force
-        
-        $bkpFile = (Test-Path -Path "$bkpPath" -PathType Leaf)
-        if ($bkpFile -eq $False)
-        {
-            Write-Host "Error moving `"$dstPath`" to `"$bkpPath`"."
-            exit
-        }
-        
-        Copy-Item -Path "$srcPath" -Destination "$dstPath" -Force
-        
-        $dstFile = (Test-Path -Path "$dstPath" -PathType Leaf)
-        if ($dstFile -eq $False)
-        {
-            Write-Host "Error copying `"$srcPath`" to `"$dstPath`"."
-            exit
-        }
-        
-        Write-Host "Target file replaced: `"$dstPath`"."
-        Write-Host "Backup file created: `"$bkpPath`"."
-    } else {
-        Write-Host "Backup file `"$bkpPath`" already available. Skipping target replacement."
-    }
 }
 
 # Extract compressed archives
@@ -341,7 +239,7 @@ foreach($schema in $schemas)
     {
         Write-Host "File `"$out_schema_path`" not available. Converting SQL schema..."
         $var_name = ($schema.Name).replace(".","_")
-        $c_code = "const char *$var_name = `"" + (Get-Content $schema.FullName).replace("`n","") + "`";"
+        $c_code = "const char *$var_name = `"" + (Get-Content $schema.FullName -Raw).replace("`n","") + "`";"
         Set-Content -Value "$c_code" -Path "$out_schema_path" -Force
     } else {
         Write-Host "File `"$out_schema_path`" already available."
