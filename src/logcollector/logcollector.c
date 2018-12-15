@@ -74,6 +74,31 @@ static char *rand_keepalive_str(char *dst, int size)
     return dst;
 }
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+BOOLEAN msvc_nanosleep(LONGLONG ns)
+{
+    HANDLE timer;
+    LARGE_INTEGER li;
+    
+    timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    if (!timer) return FALSE;
+    
+    li.QuadPart = -ns;
+    
+    if (!SetWaitableTimer(timer, &li, 0, NULL, NULL, FALSE))
+    {
+        CloseHandle(timer);
+        return FALSE;
+    }
+    
+    WaitForSingleObject(timer, INFINITE);
+    
+    CloseHandle(timer);
+    
+    return TRUE;
+}
+#endif
+
 /* Handle file management */
 void LogCollectorStart()
 {
@@ -258,8 +283,6 @@ void LogCollectorStart()
             // Force reload, if enabled
 
             if (force_reload && f_reload >= reload_interval) {
-                struct timespec delay = { reload_delay / 1000, (reload_delay % 1000) * 1000000 };
-
                 // Close files
 
                 for (i = 0, j = -1;; i++) {
@@ -281,7 +304,14 @@ void LogCollectorStart()
                 w_rwlock_unlock(&files_update_rwlock);
 
                 if (reload_delay) {
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+                    /* Expressed in 100 ns intervals */
+                    LONGLONG msvc_interval = ((reload_delay * 1000000) / 100);
+                    msvc_nanosleep(msvc_interval);
+#else
+                    struct timespec delay = { reload_delay / 1000, (reload_delay % 1000) * 1000000 };
                     nanosleep(&delay, NULL);
+#endif
                 }
 
                 w_rwlock_wrlock(&files_update_rwlock);

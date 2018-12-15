@@ -123,7 +123,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         if (!hThread) {
             int winerror = GetLastError();
             merror("at wm_exec(): CreateThread(%ld): %s", winerror, win_strerror(winerror));
-            return -1
+            return -1;
         }
     }
 

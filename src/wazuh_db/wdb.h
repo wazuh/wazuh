@@ -18,7 +18,7 @@
 #include "rootcheck_op.h"
 
 #if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
-#include <sqlite3.h>
+#include <external/sqlite/sqlite3.h>
 #else
 #include "external/sqlite/sqlite3.h"
 #endif

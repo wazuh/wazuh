@@ -13,7 +13,11 @@
 #include "shared.h"
 #include "version_op.h"
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#include <zlib.h>
+#else
 #include "../external/zlib/zlib.h"
+#endif
 
 #ifndef WIN32
 #include <regex.h>

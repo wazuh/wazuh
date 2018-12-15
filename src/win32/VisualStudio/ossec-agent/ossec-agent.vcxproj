@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props" Condition="Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props')" />
-  <Import Project="..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props" Condition="Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props')" />
+  <Import Project="..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props" Condition="Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -76,28 +75,28 @@
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <Linkage-pthreads>static</Linkage-pthreads>
+    <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <Linkage-pthreads>static</Linkage-pthreads>
+    <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <Linkage-pthreads>static</Linkage-pthreads>
+    <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
-    <Linkage-pthreads>static</Linkage-pthreads>
+    <GenerateManifest>true</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -107,17 +106,21 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
       <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <EnableUAC>true</EnableUAC>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -134,17 +137,21 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
       <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <EnableUAC>true</EnableUAC>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -163,19 +170,23 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
       <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <EnableUAC>true</EnableUAC>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -194,19 +205,23 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
       <ObjectFileName>$(IntDir)%(Directory)</ObjectFileName>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalOptions>%(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
-      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <EnableUAC>true</EnableUAC>
+      <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
       <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
@@ -215,9 +230,6 @@
       <Message>Get dependencies</Message>
     </PreBuildEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\client-agent\agcom.c" />
     <ClCompile Include="..\..\..\client-agent\buffer.c" />
@@ -418,9 +430,10 @@
     <ClCompile Include="..\..\..\wazuh_modules\wm_vuln_detector.c" />
     <ClCompile Include="..\..\win_agent.c" />
     <ClCompile Include="..\..\win_service.c" />
-    <ClCompile Include="..\include\external\cJSON\cJSON.c" />
     <ClCompile Include="..\include\libgen.c" />
-    <ClCompile Include="..\include\schemas.c" />
+    <ClCompile Include="..\include\schema_agents.c" />
+    <ClCompile Include="..\include\schema_global.c" />
+    <ClCompile Include="..\include\schema_vuln_detector.c" />
     <ClCompile Include="..\include\sys\time.c" />
   </ItemGroup>
   <ItemGroup>
@@ -428,40 +441,27 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\dirent.h" />
-    <ClInclude Include="..\include\external\cJSON\cJSON.h" />
     <ClInclude Include="..\include\libgen.h" />
     <ClInclude Include="..\include\sys\param.h" />
     <ClInclude Include="..\include\sys\time.h" />
     <ClInclude Include="..\include\unistd.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets" Condition="Exists('..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets')" />
-    <Import Project="..\packages\pthreads.2.9.1.4\build\native\pthreads.targets" Condition="Exists('..\packages\pthreads.2.9.1.4\build\native\pthreads.targets')" />
-    <Import Project="..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets" Condition="Exists('..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets')" />
-    <Import Project="..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets" Condition="Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" />
     <Import Project="..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets" Condition="Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" />
-    <Import Project="..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets" Condition="Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets')" />
-    <Import Project="..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" />
-    <Import Project="..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets')" />
-    <Import Project="..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets" Condition="Exists('..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets')" />
-    <Import Project="..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets" Condition="Exists('..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets')" />
+    <Import Project="..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets" Condition="Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets')" />
+    <Import Project="..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets" Condition="Exists('..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>Este proyecto hace referencia a los paquetes NuGet que faltan en este equipo. Use la restauración de paquetes NuGet para descargarlos. Para obtener más información, consulte http://go.microsoft.com/fwlink/?LinkID=322105. El archivo que falta es {0}.</ErrorText>
     </PropertyGroup>
-    <Error Condition="!Exists('..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\pthreads.redist.2.9.1.4\build\native\pthreads.redist.targets'))" />
-    <Error Condition="!Exists('..\packages\pthreads.2.9.1.4\build\native\pthreads.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\pthreads.2.9.1.4\build\native\pthreads.targets'))" />
-    <Error Condition="!Exists('..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib-msvc-x86.1.2.11.8900\build\native\zlib-msvc-x86.targets'))" />
-    <Error Condition="!Exists('..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib-msvc-x64.1.2.11.8900\build\native\zlib-msvc-x64.targets'))" />
     <Error Condition="!Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets'))" />
-    <Error Condition="!Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.props'))" />
-    <Error Condition="!Exists('..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.openssl.1.0.20151130.1\build\native\fix8.dependencies.openssl.targets'))" />
-    <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.props'))" />
-    <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.1.0.20151130.1\build\native\fix8.dependencies.getopt.targets'))" />
-    <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.redist.1.0.20140509.1\build\native\fix8.dependencies.getopt.redist.targets'))" />
-    <Error Condition="!Exists('..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\fix8.dependencies.getopt.symbols.1.0.20140509.1\build\native\fix8.dependencies.getopt.symbols.targets'))" />
-    <Error Condition="!Exists('..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\sqlite3.3.8.8.3\build\native\sqlite3.targets'))" />
+    <Error Condition="!Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props'))" />
+    <Error Condition="!Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets'))" />
+    <Error Condition="!Exists('..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets'))" />
   </Target>
 </Project>

@@ -376,8 +376,8 @@ void *Execute_Osquery(wm_osquery_monitor_t *osquery)
 
 char * wm_osquery_already_running(char * text) {
     const char * PATTERNS[] = { "osqueryd (", ") is already running" };
-    char * begin;
-    char * end;
+    char *begin = NULL;
+    char *end = NULL;
 
     // Find "osqueryd (xxxx) is already running"
 
