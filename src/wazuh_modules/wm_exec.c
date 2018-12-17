@@ -48,6 +48,7 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
     PROCESS_INFORMATION pinfo = { 0 };
     ThreadInfo tinfo = { 0 };
     int retval = 0;
+    int winerror = 0;
 
     // Add environment variable if exists
 
@@ -85,14 +86,16 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         // Create stdout pipe and make it inheritable
 
         if (!CreatePipe(&tinfo.pipe, &sinfo.hStdOutput, NULL, 0)) {
-            merror("CreatePipe()");
+            winerror = GetLastError();
+            merror("at wm_exec(): CreatePipe(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
 
         sinfo.hStdError = sinfo.hStdOutput;
 
         if (!SetHandleInformation(sinfo.hStdOutput, HANDLE_FLAG_INHERIT, 1)) {
-            merror("SetHandleInformation()");
+            winerror = GetLastError();
+            merror("at wm_exec(): SetHandleInformation(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
     }
@@ -106,7 +109,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
                       IDLE_PRIORITY_CLASS;
 
     if (!CreateProcess(NULL, command, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
-        merror("CreateProcess(): %ld", GetLastError());
+        winerror = GetLastError();
+        merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
         return -1;
     }
 
@@ -118,7 +122,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         hThread = CreateThread(NULL, 0, Reader, &tinfo, 0, NULL);
 
         if (!hThread) {
-            merror("CreateThread(): %ld", GetLastError());
+            winerror = GetLastError();
+            merror("at wm_exec(): CreateThread(%d): %s", winerror, win_strerror(winerror));
             return -1;
         }
     }
@@ -139,7 +144,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
         break;
 
     default:
-        merror("WaitForSingleObject()");
+        winerror = GetLastError();
+        merror("at wm_exec(): WaitForSingleObject(%d): %s", winerror, win_strerror(winerror));
         TerminateProcess(pinfo.hProcess, 1);
         retval = -1;
     }
@@ -433,12 +439,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                         case -1:
                             switch(errno){
                                 case ESRCH:
-                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
                                     retval = -2;
                                     break;
 
                                 default:
-                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
                                     retval = -3;
                             }
                             break;
@@ -617,7 +623,7 @@ void wm_kill_children() {
                                 exit(EXIT_SUCCESS);
 
                             default:
-                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", (int)sid, errno, strerror(errno));
                                 exit(EXIT_FAILURE);
                             }
 
@@ -628,7 +634,7 @@ void wm_kill_children() {
 
                     // If time is gone, kill process
 
-                    mdebug1("Killing process group %d", sid);
+                    mdebug1("Killing process group %d", (int)sid);
 
                     kill(-sid, SIGKILL);
                     exit(EXIT_SUCCESS);

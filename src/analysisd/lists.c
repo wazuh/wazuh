@@ -46,6 +46,17 @@ int Lists_OP_LoadList(char *listfile)
     }
 
     snprintf(b_filename, OS_MAXSTR - 1, "%s.cdb", a_filename);
+    
+    /* Check if the CDB list file is actually available */
+    FILE *txt_fd = fopen(a_filename, "r");
+    if (!txt_fd)
+    {
+        merror(FOPEN_ERROR, a_filename, errno, strerror(errno));
+        free(tmp_listnode_pt);
+        return -1;
+    }
+
+    fclose(txt_fd);
 
     os_strdup(a_filename, tmp_listnode_pt->txt_filename);
     os_strdup(b_filename, tmp_listnode_pt->cdb_filename);

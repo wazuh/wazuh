@@ -16,6 +16,7 @@
 #include "agentd.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
+w_queue_t * winexec_queue;
 
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
@@ -147,7 +148,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     /* Run on Windows */
                     if (agt->execdq >= 0) {
-                        WinExecdRun(tmp_msg);
+                        //WinExecdRun(tmp_msg);
+                        queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 
                     continue;

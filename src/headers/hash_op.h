@@ -49,6 +49,8 @@ int OSHash_Add_ex(OSHash *hash, const char *key, void *data) __attribute__((nonn
 int OSHash_Add_ins(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Update(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSHash_Update_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Set(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSHash_Set_ex(OSHash *hash, const char *key, void *data) __attribute__((nonnull(1, 2)));
 void *OSHash_Delete(OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Numeric_Delete_ex(OSHash *self, int key);
 void *OSHash_Delete_ex(OSHash *self, const char *key) __attribute__((nonnull));
@@ -68,5 +70,9 @@ int OSHash_setSize_ex(OSHash *self, unsigned int new_size) __attribute__((nonnul
 
 OSHash *OSHash_Duplicate(const OSHash *hash);
 OSHash *OSHash_Duplicate_ex(const OSHash *hash);
+
+OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
+OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
+void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 
 #endif

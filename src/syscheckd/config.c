@@ -24,7 +24,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CSYSCHECK;
 
     syscheck.rootcheck      = 0;
-    syscheck.disabled       = 1;
+    syscheck.disabled       = SK_CONF_UNPARSED;
     syscheck.skip_nfs       = 1;
     syscheck.scan_on_start  = 1;
     syscheck.time           = 43200;
@@ -39,7 +39,6 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
-    syscheck.remove_old_diff= 1;
 #ifdef WIN_WHODATA
     syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
@@ -65,6 +64,14 @@ int Read_Syscheck_Config(const char *cfgfile)
     modules |= CAGENT_CONFIG;
     ReadConfig(modules, AGENTCONFIG, &syscheck, NULL);
 #endif
+
+    switch (syscheck.disabled) {
+    case SK_CONF_UNPARSED:
+        syscheck.disabled = 1;
+        break;
+    case SK_CONF_UNDEFINED:
+        syscheck.disabled = 0;
+    }
 
 #ifndef WIN32
     /* We must have at least one directory to check */
@@ -126,6 +133,7 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->group_id) free(w_evt->group_id);
     if (w_evt->path) free(w_evt->path);
     if (w_evt->process_name) free(w_evt->process_name);
+    if (w_evt->inode) free(w_evt->inode);
     free(w_evt);
 }
 
@@ -167,6 +175,9 @@ cJSON *getSyscheckConfig(void) {
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
             cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
+            if (syscheck.filerestrict && syscheck.filerestrict[i]) {
+                cJSON_AddStringToObject(pair,"restrict",syscheck.filerestrict[i]->raw);
+            }
             if (syscheck.tag && syscheck.tag[i]) {
                 cJSON_AddStringToObject(pair,"tags",syscheck.tag[i]);
             }

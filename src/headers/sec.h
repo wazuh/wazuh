@@ -86,6 +86,8 @@ int OS_CheckKeys(void);
 /* Read the keys */
 void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit) __attribute((nonnull));
 
+void OS_FreeKey(keyentry *key);
+
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys) __attribute((nonnull));
 
@@ -115,6 +117,9 @@ int OS_WriteKeys(const keystore *keys);
 
 /* Duplicate keystore except key hashes and file pointer */
 keystore* OS_DupKeys(const keystore *keys);
+
+/* Duplicate key entry except key hashes and file pointer */
+keyentry * OS_DupKeyEntry(const keyentry * key);
 
 /** Function prototypes -- agent authorization **/
 

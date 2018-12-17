@@ -46,7 +46,7 @@ def get_parser():
 
     class WazuhHelpFormatter(argparse.ArgumentParser):
         def format_help(self):
-            msg = """Wazuh cluster control - Master node
+            msg = """Wazuh cluster control
 
 Syntax: {0} --help | --health [more] [-fn Node1 NodeN] [--debug] | --list-agents [-fs Status] [-fn Node1 NodeN] [--debug] | --list-nodes [-fn Node1 NodeN] [--debug]
 

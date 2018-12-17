@@ -66,3 +66,22 @@ void W_Vector_free(W_Vector *v) {
         free (v);
     }
 }
+
+
+void W_Vector_insert_unique(W_Vector *v, const char *element) {
+    int i;
+    int found = 0;
+
+    if (v) {
+        for (i=0; i < v->used; i++) {
+            if (strcmp(element, v->vector[i]) == 0) {
+                found = 1;
+                break;
+            }
+        }
+
+        if (!found) {
+            W_Vector_insert(v, element);
+        }
+    }
+}

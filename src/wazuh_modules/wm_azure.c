@@ -87,11 +87,16 @@ void* wm_azure_main(wm_azure_t *azure_config) {
             mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
-        } else if (azure_config->state.next_time > time_start) {
+        } else if (azure_config->state.next_time == 0 || azure_config->state.next_time > time_start) {
+
+            // On first run, take into account the interval of time specified
+            time_sleep = azure_config->state.next_time == 0 ?
+                         (time_t)azure_config->interval :
+                         azure_config->state.next_time - time_start;
 
             mtinfo(WM_AZURE_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %ld seconds", (long)(azure_config->state.next_time - time_start));
-            wm_delay(1000 * azure_config->state.next_time - time_start);
+            mtdebug2(WM_AZURE_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
+            wm_delay(1000 * time_sleep);
 
         }
     }
@@ -131,6 +136,7 @@ void* wm_azure_main(wm_azure_t *azure_config) {
 
         mtinfo(WM_AZURE_LOGTAG, "Fetching logs finished.");
 
+        wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
         if (azure_config->scan_day) {
@@ -425,7 +431,7 @@ void wm_azure_setup(wm_azure_t *_azure_config) {
     // Connect to socket
 
     for (i = 0; (queue_fd = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
-        sleep(WM_MAX_WAIT);
+        wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         mterror(WM_AZURE_LOGTAG, "Can't connect to queue.");

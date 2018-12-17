@@ -16,11 +16,18 @@
 #include "shared.h"
 
 #define RELAUNCH_TIME 10
-#define minfo(format, ...) mtinfo(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
-#define mwarn(format, ...) mtwarn(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
-#define merror(format, ...) mterror(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
-#define mdebug1(format, ...) mtdebug1(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
-#define mdebug2(format, ...) mtdebug2(WM_KEY_REQUEST_LOGTAG, format, ##__VA_ARGS__)
+
+#undef minfo
+#undef mwarn
+#undef merror
+#undef mdebug1
+#undef mdebug2
+
+#define minfo(msg, ...) _mtinfo(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 static void * wm_key_request_main(wm_krequest_t * data);   // Module main function. It won't return
 static void wm_key_request_destroy(wm_krequest_t * data);  // Destroy data

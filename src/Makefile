@@ -18,7 +18,6 @@ EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
 MAXAGENTS?=14000
-REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -61,10 +60,6 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 DEFINES+=-D${uname_S}
-
-ifneq (,$(filter ${REUSE_ID},yes y Y 1))
-	DEFINES+=-DREUSE_ID
-endif
 
 OSSEC_CFLAGS = ${CFLAGS}
 OSSEC_LDFLAGS = ${LDFLAGS}
@@ -350,8 +345,7 @@ ifdef DATABASE
 			endif
 		endif # MYSQL_LIBS
 
-		OSSEC_LDFLAGS+=${ML}
-		OSSEC_LIBS+=-lmysqlclient
+		OSSEC_LIBS+=${ML} -lmysqlclient
 
 	else # DATABASE
 
@@ -372,8 +366,7 @@ ifdef DATABASE
 
 			# XXX need some basic autodetech stuff here.
 
-			OSSEC_LDFLAGS+=${PL}
-			OSSEC_LIBS+=-lpq
+			OSSEC_LIBS+=${PL} -lpq
 
 		endif # pgsql
 	endif # mysql
@@ -426,7 +419,6 @@ help: failtarget
 	@echo "   make DEBUGAD                 Enables extra debugging logging in ossec-analysisd"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
-	@echo "   make REUSE_ID=yes            Enables agent ID re-use"
 	@echo "   make ONEWAY=no               Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager"
 	@echo "   make CLEANFULL=no            Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
@@ -467,7 +459,6 @@ settings:
 	@echo "    DEBUGAD             ${DEBUGAD}"
 	@echo "    PREFIX:             ${PREFIX}"
 	@echo "    MAXAGENTS:          ${MAXAGENTS}"
-	@echo "    REUSE_ID:           ${REUSE_ID}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"
@@ -579,7 +570,7 @@ $(error Do not use 'winagent' directly, use 'TARGET=winagent')
 endif
 .PHONY: winagent
 winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
+	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
@@ -1475,13 +1466,16 @@ win32/setup-iis.exe: win32/setup-iis.o
 win32/add-localfile.exe: win32/add-localfile.o
 	${OSSEC_CCBIN} -DARGV0=\"add-localfile\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-win32/resource.o: win32/ui/win32ui.rc
+win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/os_win32ui.exe: win32/resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o
+win32/auth_resource.o: win32/agent-auth.rc
+	${OSSEC_WINDRES} -i $< -o $@
+
+win32/os_win32ui.exe: win32/ui_resource.o win32/win_service_rk.o ${win32_ui_o} addagent/b64.o
 	${OSSEC_CCBIN} -DARGV0=\"ossec-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
 
-win32/agent-auth.exe: win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
+win32/agent-auth.exe: win32/auth_resource.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/main-client.o os_auth/check_cert.o addagent/validate.o
 	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
 ####################
@@ -1554,6 +1548,9 @@ clean-framework:
 	${MAKE} -C ../framework clean
 
 clean-windows:
+	rm -f libwazuh.a
+	rm -f libwazuhext.dll
+	rm -f wazuh_modules/syscollector/*.o
 	rm -f wazuh_modules/syscollector/syscollector_win_ext.dll
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt

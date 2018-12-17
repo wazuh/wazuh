@@ -13,6 +13,7 @@
 
 static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute__((nonnull));
 
+int _OSHash_Add(OSHash *self, const char *key, void *data, int update);
 
 /* Create hash
  * Returns NULL on error
@@ -197,7 +198,21 @@ int OSHash_Update_ex(OSHash *self, const char *key, void *data)
  * Returns 2 on success
  * Key must not be NULL.
  */
-int OSHash_Add(OSHash *self, const char *key, void *data)
+int OSHash_Add(OSHash *self, const char *key, void *data) {
+    return _OSHash_Add(self, key, data, 0);
+}
+
+/** int OSHash_Set(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (updated)
+ * Returns 2 on success (added)
+ * Key must not be NULL.
+ */
+int OSHash_Set(OSHash *self, const char *key, void *data) {
+    return _OSHash_Add(self, key, data, 1);
+}
+
+int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
 {
     unsigned int hash_key;
     unsigned int index;
@@ -213,9 +228,11 @@ int OSHash_Add(OSHash *self, const char *key, void *data)
     /* Check for duplicated entries in the index */
     curr_node = self->table[index];
     while (curr_node) {
-        /* Checking for duplicated key -- not adding */
+        /* Checking for duplicated key */
         if (strcmp(curr_node->key, key) == 0) {
-            /* Not adding */
+            if (update) {
+                 curr_node->data = data;
+            }
             return (1);
         }
         curr_node = curr_node->next;
@@ -277,6 +294,22 @@ int OSHash_Add_ex(OSHash *self, const char *key, void *data)
     int result;
     w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
     result = OSHash_Add(self,key,data);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
+}
+
+/** int OSHash_Set_ex(OSHash *self, char *key, void *data)
+ * Returns 0 on error.
+ * Returns 1 on duplicated key (updated)
+ * Returns 2 on success (added)
+ * Key must not be NULL.
+ */
+int OSHash_Set_ex(OSHash *self, const char *key, void *data)
+{
+    int result;
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Set(self,key,data);
     w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
 
     return result;
@@ -483,4 +516,70 @@ OSHash *OSHash_Duplicate_ex(const OSHash *hash) {
     w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
 
     return result;
+}
+
+
+OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i){
+
+    OSHashNode *curr_node;
+    *i = 0;
+
+    while (*i <= self->rows) {
+        curr_node = self->table[*i];
+        if (curr_node && curr_node->key) {
+            return curr_node;
+        }
+        (*i)++;
+    }
+
+    return NULL;
+}
+
+OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current){
+
+    if(current && current->next){
+        return current->next;
+    }
+
+    (*i)++;
+
+    while (*i <= self->rows) {
+        current = self->table[*i];
+        if (current && current->key) {
+            return current;
+        }
+        (*i)++;
+    }
+
+    return NULL;
+}
+
+void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
+    unsigned int *i;
+    os_calloc(1, sizeof(unsigned int *), i);
+    OSHashNode *curr_node;
+    OSHashNode *next_node;
+
+    curr_node = OSHash_Begin(self, i);
+    if(curr_node){
+        do {
+            next_node = OSHash_Next(self, i, curr_node);
+            if(curr_node->key){
+                free(curr_node->key);
+            }
+            if(curr_node->data){
+                cleaner(curr_node->data);
+            }
+            free(curr_node);
+            curr_node = next_node;
+        } while (curr_node);
+    }
+
+    os_free(i);
+
+    /* Free the hash table */
+    free(self->table);
+    pthread_rwlock_destroy(&self->mutex);
+    free(self);
+    return NULL;
 }

@@ -18,6 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
+pthread_cond_t audit_db_consistency;
 int sys_debug_level;
 
 #ifdef USE_MAGIC
@@ -77,7 +78,9 @@ int fim_initialize() {
     /* Create store data */
     syscheck.fp = OSHash_Create();
     syscheck.local_hash = OSHash_Create();
-
+#ifndef WIN32
+    syscheck.inode_hash = OSHash_Create();
+#endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
 
@@ -210,9 +213,6 @@ int Start_win32_Syscheck()
     sleep(syscheck.tsleep * 5);
     fim_initialize();
 
-    if(syscheck.enable_whodata && ! syscheck.scan_on_start)
-        create_db();
-
     /* Wait if agent started properly */
     os_wait();
 
@@ -252,6 +252,7 @@ int main(int argc, char **argv)
     const char *group = GROUPGLOBAL;
 #ifdef ENABLE_AUDIT
     audit_thread_active = 0;
+    whodata_alerts = 0;
 #endif
 
     /* Set the name */

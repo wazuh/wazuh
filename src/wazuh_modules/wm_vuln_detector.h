@@ -16,6 +16,7 @@
 
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 300 // 5 minutes
+#define WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL 3600 // 1 hour
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
 #define VU_DEF_IGNORE_TIME 21600 // 6 hours
 #define CVE_TEMP_FILE "tmp/cve"
@@ -33,6 +34,7 @@
 #define VU_MAX_VERSION_ATTEMPS 15
 #define VU_MAX_WAZUH_DB_ATTEMPS 5
 #define VU_MAX_TIMESTAMP_ATTEMPS 4
+#define VU_MAX_VER_COMP_IT 50
 #define VU_TIMESTAMP_FAIL 0
 #define VU_TIMESTAMP_UPDATED 1
 #define VU_TIMESTAMP_OUTDATED 2
@@ -61,6 +63,7 @@ typedef enum vu_logic {
     VU_LESS,
     VU_HIGHER,
     VU_EQUAL,
+    VU_ERROR_CMP,
     VU_NOT_FIXED
 } vu_logic;
 
@@ -69,6 +72,7 @@ typedef enum distribution{
     DIS_DEBIAN,
     DIS_REDHAT,
     DIS_CENTOS,
+    DIS_AMAZL,
     DIS_WINDOWS,
     DIS_MACOS,
     // Ubuntu versions
