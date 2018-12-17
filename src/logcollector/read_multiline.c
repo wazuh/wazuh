@@ -17,11 +17,12 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     int __ms_reported = 0;
     int linesgot = 0;
     size_t buffer_size = 0;
-    char *p;
     char str[OS_MAXSTR + 1];
     char buffer[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
+    long offset;
+    long rbytes;
 
     buffer[0] = '\0';
     buffer[OS_MAXSTR] = '\0';
@@ -31,30 +32,38 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)) {
-
+    for (offset = ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+        rbytes = ftell(lf->fp) - offset;
         lines++;
         linesgot++;
 
         /* Get the last occurrence of \n */
-        if ((p = strrchr(str, '\n')) != NULL) {
-            *p = '\0';
+        if (str[rbytes - 1] == '\n') {
+            str[rbytes - 1] = '\0';
+
+            if ((long)strlen(str) != rbytes - 1)
+            {
+                mdebug2("Line in '%s' contains some zero-bytes (valid=%ld / total=%ld). Dropping line.", lf->file, (long)strlen(str), rbytes - 1);
+                continue;
+            }
         }
 
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (strlen(str) >= (OS_MAXSTR - OS_LOG_HEADER - 2)) {
+        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
-        } else {
+        } else if (feof(lf->fp)) {
             /* Message not complete. Return. */
-            mdebug1("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, strlen(str) > (size_t)sample_log_length ? "..." : "");
+            mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
             fsetpos(lf->fp, &fp_pos);
             break;
         }
 
 #ifdef WIN32
+        char * p;
+
         if ((p = strrchr(str, '\r')) != NULL) {
             *p = '\0';
         }
@@ -87,15 +96,17 @@ void *read_multiline(logreader *lf, int *rc, int drop_it) {
         /* Incorrect message size */
         if (__ms) {
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = %zu): '%.*s'...", lf->file, strlen(str), sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
             }
 
-            while (fgets(str, OS_MAXSTR - 2, lf->fp) != NULL) {
+            for (offset += rbytes; fgets(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {
+                rbytes = ftell(lf->fp) - offset;
+
                 /* Get the last occurrence of \n */
-                if ((p = strrchr(str, '\n')) != NULL) {
+                if (str[rbytes - 1] == '\n') {
                     break;
                 }
             }
