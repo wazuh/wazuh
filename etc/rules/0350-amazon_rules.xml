@@ -263,7 +263,7 @@ ID: 80200 - 80499
     <!-- AWS KMS (Key Management Service) -->
     <!-- Documentation: https://docs.aws.amazon.com/kms/latest/developerguide/overview.html -->
     <rule id="80490" level="3">
-        <if_sid>80201</if_sid>
+        <if_sid>80200</if_sid>
         <field name="aws.source">kms</field>
         <description>AWS KMS - Event: $(aws.eventName) [$(aws.eventID)]</description>
         <group>aws_kms,</group>
