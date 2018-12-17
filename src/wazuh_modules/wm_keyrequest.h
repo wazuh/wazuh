@@ -12,7 +12,7 @@
 #ifndef WM_KEY_REQUEST_H
 #define WM_KEY_REQUEST_H
 
-#define WM_KEY_REQUEST_LOGTAG ARGV0 ":keypolling"
+#define WM_KEY_REQUEST_LOGTAG ARGV0 ":" KEY_WM_NAME
 
 typedef struct wm_krequest_t {
     unsigned int enabled:1;

@@ -33,6 +33,9 @@
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 #define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_2048
+#define VU_WM_NAME "vulnerability-detector"
+#define AZ_WM_NAME "azure-logs"
+#define KEY_WM_NAME "keypolling"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)

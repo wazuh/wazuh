@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifndef WIN32
+
 #include "wmodules.h"
 #include <os_net/os_net.h>
 #include "shared.h"
@@ -40,7 +42,7 @@ static OSHash *request_hash = NULL;
 const char *exec_params[2] = { "id", "ip" };
 
 const wm_context WM_KEY_REQUEST_CONTEXT = {
-    "key-polling",
+    KEY_WM_NAME,
     (wm_routine)wm_key_request_main,
     (wm_routine)wm_key_request_destroy,
     (cJSON * (*)(const void *))wm_key_request_dump
@@ -452,3 +454,5 @@ void launch_socket(char *exec_path) {
     w_mutex_unlock(&exec_path_mutex);
     sleep(sleep_time);
 }
+
+#endif

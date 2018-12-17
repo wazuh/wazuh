@@ -14,7 +14,6 @@
 #ifndef WM_VULNDETECTOR
 #define WM_VULNDETECTOR
 
-#define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 300 // 5 minutes
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
@@ -47,7 +46,6 @@
 #define VU_SHARED_SEVERITY 2
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
-
 extern const char *vu_dist_tag[];
 extern const char *vu_dist_ext[];
 
