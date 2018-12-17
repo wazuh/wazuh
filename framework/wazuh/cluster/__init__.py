@@ -3,8 +3,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-__version__ = '3.7.2'
-__revision__ = '3727'
+__version__ = '3.7.3'
+__revision__ = '3728'
 __author__ = "Wazuh Inc"
 __ossec_name__ = "Wazuh"
 __licence__ = "\
