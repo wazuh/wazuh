@@ -864,16 +864,7 @@ class AWSConfigBucket(AWSLogsBucket):
         num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region))
         date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
 
-        return [self.process_config_date(date) for date in reversed(date_list_time)]
-
-    def process_config_date(self, date):
-        date = datetime.strftime(date, "%Y/%m/%d")
-        if date[-2] == '0':
-            aux = list(date)
-            aux.pop(-2)
-            date = ''.join(aux)
-
-        return date
+        return [datetime.strftime(date, "%Y/%m/%-d") for date in reversed(date_list_time)]
 
     def get_date_last_log(self, aws_account_id, aws_region):
         try:
@@ -908,13 +899,11 @@ class AWSConfigBucket(AWSLogsBucket):
                     self.iter_files_in_bucket(aws_account_id, aws_region, date)
                 self.db_maintenance(aws_account_id, aws_region)
 
-    def get_config_created_date(self, date):
+    def add_zero_to_day(self, date):
         # add zero to days with one digit
-        aux = list(date.replace('/', ''))
-        if len(aux) == 7:
-            aux = aux[0:6] + ['0'] + aux[6:]
+        aux = datetime.strptime(date.replace('/', ''), '%Y%m%d')
 
-        return ''.join(aux)
+        return datetime.strftime(aux, '%Y%m%d')
 
     def build_s3_filter_args(self, aws_account_id, aws_region, date, iterating=False):
         filter_marker = ''
@@ -922,7 +911,7 @@ class AWSConfigBucket(AWSLogsBucket):
             if self.only_logs_after:
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id)
         else:
-            created_date = self.get_config_created_date(date)
+            created_date = self.add_zero_to_day(date)
             query_last_key_of_day = self.db_connector.execute(self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
                                                                                         bucket_path=self.bucket_path,
                                                                                         aws_account_id=aws_account_id,
