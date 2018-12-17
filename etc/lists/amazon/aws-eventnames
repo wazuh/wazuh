@@ -1,4 +1,4 @@
-TEMPLATE:# https://www.gorillastack.com/news/important-aws-cloudtrail-security-events-tracking used as reference
+TEMPLATE:# AWS Cloudtrail event names - https://www.gorillastack.com/news/important-aws-cloudtrail-security-events-tracking used as reference
 AttachLoadBalancers:Autoscaling
 DetachLoadBalancers:Autoscaling
 PutScalingPolicy:Autoscaling
