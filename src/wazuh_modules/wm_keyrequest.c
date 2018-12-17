@@ -29,7 +29,7 @@ void * w_request_thread(const wm_krequest_t *data);
 // Dispatch request. Write the output into the same input buffer.
 static int wm_key_request_dispatch(char * buffer,const wm_krequest_t * data);
 
-static int external_socket_connect();
+static int external_socket_connect(char *socket_path, int repsonse_timeout);
 static void launch_socket(char *exec_path);
 
 /* Decode rootcheck input queue */
@@ -186,7 +186,7 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     if(data->socket) {
         int sock;
 retry:
-        if (sock = external_socket_connect(data->socket), sock < 0) {
+        if (sock = external_socket_connect(data->socket, data->timeout), sock < 0) {
             if (!data->exec_path) {
                 mdebug1("Could not connect to external socket. Is the process running?");
             } else {
@@ -399,11 +399,11 @@ void * w_request_thread(const wm_krequest_t *data) {
     }
 }
 
-static int external_socket_connect(char * socket) {
+static int external_socket_connect(char *socket_path, int repsonse_timeout) {
 #ifndef WIN32
-    int sock =  OS_ConnectUnixDomain(socket, SOCK_STREAM, OS_MAXSTR);
+    int sock =  OS_ConnectUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR);
     OS_SetSendTimeout(sock, 5);
-    OS_SetRecvTimeout(sock, 5, 0);
+    OS_SetRecvTimeout(sock, repsonse_timeout, 0);
     return sock;
 #else
     return -1;
