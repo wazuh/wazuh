@@ -1490,8 +1490,8 @@ class AWSInspector(AWSService):
     :param only_logs_after: Date after which obtain logs.
     :param region: Region of service
     """
-    def __init__(self, access_key, secret_key, aws_profile, iam_role_arn,
-        only_logs_after, region):
+    def __init__(self, reparse, access_key, secret_key, aws_profile,
+        iam_role_arn, only_logs_after, region):
 
         self.service_name = 'inspector'
 
@@ -1500,6 +1500,7 @@ class AWSInspector(AWSService):
             service_name=self.service_name, region=region)
         # max DB records for region
         self.retain_db_records = 5
+        self.reparse = reparse
 
     def send_describe_findings(self, arn_list):
         if len(arn_list) == 0:
@@ -1515,11 +1516,15 @@ class AWSInspector(AWSService):
         try:
             # if DB is empty write initial date
             initial_date = self.get_last_log_date()
-            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                service_name=self.service_name, scan_date=initial_date))
-            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                service_name=self.service_name))
-            last_scan = self.db_cursor.fetchone()[0]
+            # reparse logs if this parameter exists
+            if self.reparse:
+                last_scan = initial_date
+            else:
+                self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                    service_name=self.service_name, scan_date=initial_date))
+                self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                    service_name=self.service_name))
+                last_scan = self.db_cursor.fetchone()[0]
         except sqlite3.IntegrityError:
             self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
                 service_name=self.service_name))
@@ -1681,9 +1686,10 @@ def main(argv):
             else:
                 raise Exception("Invalid type of service")
             # iterate if there are two regions or more
-            service = service_type(access_key=options.access_key, secret_key=options.secret_key,
-                aws_profile=options.aws_profile, iam_role_arn=options.iam_role_arn,
-                only_logs_after=options.only_logs_after, region=options.regions)
+            service = service_type(reparse=options.reparse, access_key=options.access_key,
+                secret_key=options.secret_key, aws_profile=options.aws_profile,
+                iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
+                region=options.regions)
             service.get_alerts()
 
     except Exception as err:
