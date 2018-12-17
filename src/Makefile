@@ -18,7 +18,6 @@ EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 endif
 MAXAGENTS?=14000
-REUSE_ID?=no
 # XXX Becareful NO EXTRA Spaces here
 PREFIX?=/var/ossec
 PG_CONFIG?=pg_config
@@ -61,10 +60,6 @@ DEFINES+=-DREMUSER=\"${OSSEC_USER_REM}\"
 DEFINES+=-DGROUPGLOBAL=\"${OSSEC_GROUP}\"
 DEFINES+=-DMAILUSER=\"${OSSEC_USER_MAIL}\"
 DEFINES+=-D${uname_S}
-
-ifneq (,$(filter ${REUSE_ID},yes y Y 1))
-	DEFINES+=-DREUSE_ID
-endif
 
 OSSEC_CFLAGS = ${CFLAGS}
 OSSEC_LDFLAGS = ${LDFLAGS}
@@ -350,8 +345,7 @@ ifdef DATABASE
 			endif
 		endif # MYSQL_LIBS
 
-		OSSEC_LDFLAGS+=${ML}
-		OSSEC_LIBS+=-lmysqlclient
+		OSSEC_LIBS+=${ML} -lmysqlclient
 
 	else # DATABASE
 
@@ -372,8 +366,7 @@ ifdef DATABASE
 
 			# XXX need some basic autodetech stuff here.
 
-			OSSEC_LDFLAGS+=${PL}
-			OSSEC_LIBS+=-lpq
+			OSSEC_LIBS+=${PL} -lpq
 
 		endif # pgsql
 	endif # mysql
@@ -426,7 +419,6 @@ help: failtarget
 	@echo "   make DEBUGAD                 Enables extra debugging logging in ossec-analysisd"
 	@echo "   make PREFIX=/path            Install OSSEC to '/path'. Defaults to /var/ossec"
 	@echo "   make MAXAGENTS=NUMBER        Set the number of maximum agents to NUMBER. Defaults to 2048"
-	@echo "   make REUSE_ID=yes            Enables agent ID re-use"
 	@echo "   make ONEWAY=no               Disables manager's ACK towards agent. It allows connecting agents without backward connection from manager"
 	@echo "   make CLEANFULL=no            Makes the alert mailing subject clear in the format: '<location> - <level> - <description>'"
 	@echo "   make RESOURCES_URL           Set the Wazuh resources URL"
@@ -467,7 +459,6 @@ settings:
 	@echo "    DEBUGAD             ${DEBUGAD}"
 	@echo "    PREFIX:             ${PREFIX}"
 	@echo "    MAXAGENTS:          ${MAXAGENTS}"
-	@echo "    REUSE_ID:           ${REUSE_ID}"
 	@echo "    DATABASE:           ${DATABASE}"
 	@echo "    ONEWAY:             ${ONEWAY}"
 	@echo "    CLEANFULL:          ${CLEANFULL}"

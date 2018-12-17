@@ -117,6 +117,12 @@ void* wm_database_main(wm_database *data) {
 
     mtinfo(WM_DATABASE_LOGTAG, "Module started.");
 
+    // Reset template. Basically, remove queue/db/.template.db
+    char path_template[PATH_MAX + 1];
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB_DIR, WDB_PROF_NAME);
+    unlink(path_template);
+    mdebug1("Template db file removed: %s", path_template);
+
     // Manager name synchronization
     if (data->sync_agents) {
         wm_sync_manager();
@@ -759,6 +765,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
     char name[FILE_SIZE];
     char addr[FILE_SIZE];
     char path[PATH_MAX] = "";
+    char del_path[PATH_MAX] = "";
     struct stat buffer;
     long offset;
     int result = 0;
@@ -810,6 +817,8 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (wdb_get_agent_status(id_agent) < 0) {
+            snprintf(del_path, PATH_MAX + 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
+            unlink(del_path);
             wdb_delete_agent_belongs(id_agent);
             return -1;
         }
@@ -828,6 +837,8 @@ int wm_sync_file(const char *dirname, const char *fname) {
             case 0:
                 if ((id_agent = wdb_find_agent(name, addr)) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "No such agent at database for file %s/%s", dirname, fname);
+                    snprintf(del_path, PATH_MAX+1, "%s/%s", dirname, fname);
+                    unlink(del_path);
                     return -1;
                 }
 

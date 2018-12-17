@@ -71,4 +71,8 @@ int OSHash_setSize_ex(OSHash *self, unsigned int new_size) __attribute__((nonnul
 OSHash *OSHash_Duplicate(const OSHash *hash);
 OSHash *OSHash_Duplicate_ex(const OSHash *hash);
 
+OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
+OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
+void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
+
 #endif
