@@ -131,14 +131,14 @@ int set_oval_version(char *feed, char *version, update_node **upd_list, update_n
             return OS_INVALID;
         }
         upd->dist_ref = DIS_DEBIAN;
-    } else if (!strcmp(feed, vu_dist_tag[DIS_RED_HAT])) {
+    } else if (!strcmp(feed, vu_dist_tag[DIS_REDHAT])) {
         if (version) {
             mwarn("The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.");
         }
         os_index = CVE_REDHAT;
-        upd->dist_tag = vu_dist_tag[DIS_RED_HAT];
-        upd->dist_ext = vu_dist_ext[DIS_RED_HAT];
-        upd->dist_ref = DIS_RED_HAT;
+        upd->dist_tag = vu_dist_tag[DIS_REDHAT];
+        upd->dist_ext = vu_dist_ext[DIS_REDHAT];
+        upd->dist_ref = DIS_REDHAT;
     } else {
         merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
         return OS_INVALID;
@@ -256,7 +256,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             if (version = strchr(feed, '-'), version) {
                 *version = '\0';
                 version++;
-            } else if (strcmp(feed, vu_dist_tag[DIS_RED_HAT])) {
+            } else if (strcmp(feed, vu_dist_tag[DIS_REDHAT])) {
                 merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -295,7 +295,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                         vulnerability_detector->updates[os_index] = NULL;
                         break;
                     } else if (!strcmp(chld_node[j]->content, "no")) {
-                        if (!strcmp(upd->dist, vu_dist_tag[DIS_RED_HAT])) {
+                        if (!strcmp(upd->dist, vu_dist_tag[DIS_REDHAT])) {
                             vulnerability_detector->flags.u_flags.update_redhat = 1;
                         } else if (!strcmp(upd->dist, vu_dist_tag[DIS_UBUNTU])) {
                             vulnerability_detector->flags.u_flags.update_ubuntu = 1;

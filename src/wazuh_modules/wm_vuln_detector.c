@@ -550,7 +550,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_START_AG_AN, agents_it->agent_id);
 
-        if (agents_it->dist != DIS_RED_HAT) {
+        if (agents_it->dist != DIS_REDHAT) {
             query = vu_queries[VU_JOIN_QUERY];
         } else {
             query = vu_queries[VU_JOIN_RH_QUERY];
@@ -984,9 +984,7 @@ set_op:
         }
         sqlite3_bind_text(stmt, 1, state_it->operation, -1, NULL);
         sqlite3_bind_text(stmt, 2, state_it->operation_value, -1, NULL);
-        sqlite3_bind_text(stmt, 3, state_it->arch_operation, -1, NULL);
-        sqlite3_bind_text(stmt, 4, state_it->arch_value, -1, NULL);
-        sqlite3_bind_text(stmt, 5, state_it->id, -1, NULL);
+        sqlite3_bind_text(stmt, 3, state_it->id, -1, NULL);
         if (result = wm_vulnerability_detector_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             return wm_vulnerability_detector_sql_error(db, stmt);
         }
@@ -997,7 +995,6 @@ set_op:
         free(state_aux->id);
         free(state_aux->operation);
         free(state_aux->operation_value);
-        free(state_aux->arch_operation);
         free(state_aux->arch_value);
         free(state_aux);
     }
@@ -1308,7 +1305,6 @@ int wm_vulnerability_detector_xml_parser(OS_XML *xml, XML_NODE node, wm_vulnerab
                     os_calloc(1, sizeof(info_state), infos);
                     os_strdup(node[i]->values[j], infos->id);
                     infos->operation = infos->operation_value = NULL;
-                    infos->arch_operation = infos->arch_value = NULL;
                     infos->prev = parsed_oval->info_states;
                     parsed_oval->info_states = infos;
                     if (wm_vulnerability_detector_xml_parser(xml, chld_node, parsed_oval, update, condition) == OS_INVALID) {
@@ -1653,7 +1649,7 @@ int wm_vulnerability_update_feed(update_node *update) {
     if (update->json_format) {
         // It is the Red Hat feed in JSON format
         if (json_feed =  json_fread(CVE_FIT_TEMP_FILE, 0), !json_feed) {
-            mterror(WM_VULNDETECTOR_LOGTAG, VU_PARSED_FEED_ERROR, vu_dist_ext[DIS_RED_HAT]);
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_PARSED_FEED_ERROR, vu_dist_ext[DIS_REDHAT]);
             goto free_mem;
         }
         if (wm_vulnerability_detector_json_parser(json_feed, &parsed_vulnerabilities, update)) {
@@ -1840,7 +1836,7 @@ int wm_vulnerability_fetch_feed(update_node *update, const char *OS, int *need_u
             }
             snprintf(repo, OS_SIZE_2048, DEBIAN_REPO, low_repo);
             free(low_repo);
-        } else if (update->dist_ref != DIS_RED_HAT) {
+        } else if (update->dist_ref != DIS_REDHAT) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
             return OS_INVALID;
         }
@@ -1848,7 +1844,7 @@ int wm_vulnerability_fetch_feed(update_node *update, const char *OS, int *need_u
         snprintf(repo, OS_SIZE_2048, "%s", update->url);
     }
 
-    if (update->dist_ref == DIS_RED_HAT) {
+    if (update->dist_ref == DIS_REDHAT) {
         int page = 1;
         int attempt = 0;
         char first_line;
@@ -2035,7 +2031,7 @@ int wm_vulnerability_detector_json_parser(cJSON *json_feed, wm_vulnerability_det
     char *m_schema_version = NULL;
     char m_timestamp[27] = { '\0' };
 
-    if (ref == DIS_RED_HAT) {
+    if (ref == DIS_REDHAT) {
         for (json_it  = json_feed->child; json_it; json_it = json_it->next) {
             char *tmp_cve = NULL;
             char *tmp_severity = NULL;
@@ -2550,7 +2546,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
                 dist_error = DIS_DEBIAN;
             }
             agent_dist = DIS_DEBIAN;
-        }  else if (strcasestr(os_name, vu_dist_ext[DIS_RED_HAT])) {
+        }  else if (strcasestr(os_name, vu_dist_ext[DIS_REDHAT])) {
             if (strstr(os_version, "7")) {
                 agent_os = vu_dist_tag[DIS_RHEL7];
             } else if (strstr(os_version, "6")) {
@@ -2558,9 +2554,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             } else if (strstr(os_version, "5")) {
                 agent_os = vu_dist_tag[DIS_RHEL5];
             } else {
-                dist_error = DIS_RED_HAT;
+                dist_error = DIS_REDHAT;
             }
-            agent_dist = DIS_RED_HAT;
+            agent_dist = DIS_REDHAT;
         } else if (strcasestr(os_name, vu_dist_ext[DIS_CENTOS])) {
             if (strstr(os_version, "7")) {
                 agent_os = vu_dist_tag[DIS_RHEL7];
@@ -2571,10 +2567,10 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             } else {
                 dist_error = DIS_CENTOS;
             }
-            agent_dist = DIS_RED_HAT;
+            agent_dist = DIS_REDHAT;
         } else if (strcasestr(os_name, vu_dist_ext[DIS_AMAZL])) {
             agent_os = vu_dist_tag[DIS_RHEL7];
-            agent_dist = DIS_RED_HAT;
+            agent_dist = DIS_REDHAT;
         } else {
             // Operating system not supported in any of its versions
             dist_error = -2;

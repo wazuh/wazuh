@@ -79,7 +79,7 @@ typedef enum vu_logic {
 typedef enum distribution{
     DIS_UBUNTU,
     DIS_DEBIAN,
-    DIS_RED_HAT,
+    DIS_REDHAT,
     DIS_CENTOS,
     DIS_AMAZL,
     DIS_WINDOWS,
@@ -219,7 +219,6 @@ typedef struct info_state {
     char *id;
     char *operation;
     char *operation_value;
-    char *arch_operation;
     char *arch_value;
     struct info_state *prev;
 } info_state;
