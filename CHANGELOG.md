@@ -21,6 +21,7 @@ All notable changes to this project will be documented in this file.
   - Building option `USE_BIG_ENDIAN` is not already needed on Solaris (SPARC) or HP-UX.
 - Expanded the regex pattern maximum size from 2048 to 20480 bytes. ([#2036](https://github.com/wazuh/wazuh/pull/2036))
 - Fix invalid error "Unable to verity server certificate" in _ossec-authd_ (server). ([#2045](https://github.com/wazuh/wazuh/pull/2045))
+- Authd is enabled by default. ([#2129](https://github.com/wazuh/wazuh/pull/2129))
 
 ### Fixed
 
