@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Deprecated the Syscheck option `<remove_old_diff>` by making it mandatory. ([#1915](https://github.com/wazuh/wazuh/pull/1915))
+- Improve vulnerability detection in Red Hat systems. ([#2137](https://github.com/wazuh/wazuh/pull/2137))
 
 ### Fixed
 
