@@ -144,6 +144,10 @@ functions = {
         'function': Agent.set_group,
         'type': 'local_master'
     },
+    'POST/agents/group/:group_id': {
+        'function': Agent.set_group_list,
+        'type': 'local_master'
+    },
     'PUT/agents/groups/:group_id': {
         'function': Agent.create_group,
         'type': 'local_master'
