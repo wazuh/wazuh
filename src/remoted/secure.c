@@ -279,6 +279,7 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char *tmp_msg;
     size_t msg_length;
     char ip_found = 0;
+    int r;
 
     /* Set the source IP */
     strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
@@ -362,20 +363,27 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     }
 
     /* Decrypt the message */
-    if (ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg) != KS_VALID) {
+    if (r = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg), r != KS_VALID) {
         /* If duplicated, a warning was already generated */
         key_unlock();
-        if (ip_found) {
-            push_request(srcip,"ip");
-            if (sock_client >= 0)
-                _close_sock(&keys, sock_client);
+
+        if (r == KS_ENCKEY) {
+            if (ip_found) {
+                push_request(srcip,"ip");
+            } else {
+                push_request(buffer + 1, "id");
+            }
         }
+
+        if (sock_client >= 0)
+            _close_sock(&keys, sock_client);
+
         return;
     }
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        int r = 2;
+        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 

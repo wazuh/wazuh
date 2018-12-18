@@ -73,7 +73,8 @@ typedef struct _keystore {
 typedef enum key_states {
     KS_VALID,
     KS_RIDS,
-    KS_CORRUPT
+    KS_CORRUPT,
+    KS_ENCKEY
 } key_states;
 
 #define KEYSTORE_INITIALIZER { NULL, NULL, NULL, NULL, 0, 0, 0, 0, { 0, 0 }, NULL, 0 }

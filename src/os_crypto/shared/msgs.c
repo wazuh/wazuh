@@ -301,14 +301,14 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
             if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->key,
                         buffer_size, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
-                return KS_CORRUPT;
+                return KS_ENCKEY;
             }
             break;
         case W_METH_AES:
             if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->key,
                 buffer_size-4, OS_DECRYPT)) {
                 mwarn(ENCKEY_ERROR, keys->keyentries[id]->ip->ip);
-                return KS_CORRUPT;
+                return KS_ENCKEY;
             }
             break;
     }
@@ -486,7 +486,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
 
     mwarn(ENCKEY_ERROR, srcip);
-    return KS_CORRUPT;
+    return KS_ENCKEY;
 }
 
 /* Create an encrypted message
