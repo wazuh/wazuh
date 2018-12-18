@@ -27,6 +27,7 @@ class WazuhException(Exception):
         1013: 'Unable to connect with socket',
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
+        1016: 'Error moving file',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -127,6 +128,7 @@ class WazuhException(Exception):
         1739: "Error getting agent's group sync",
         1740: 'Action only available for active agents',
         1741: 'Could not remove multigroup',
+        1742: 'Error running Wazuh syntax validator',
 
         # Manager:
 

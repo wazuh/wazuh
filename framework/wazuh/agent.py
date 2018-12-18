@@ -29,6 +29,8 @@ import fcntl
 from json import loads, dumps
 from functools import reduce
 import struct
+from subprocess import check_output
+from shutil import move
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -1672,6 +1674,36 @@ class Agent:
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhException(1005, str(e))
+
+
+    @staticmethod
+    def upload_group_configuration(group_id, xml_file):
+        # checks if the group exists
+        if not Agent.group_exists_sql(group_id):
+            raise WazuhException(1710)
+
+        # get timestamp
+        timestamp = datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s')
+        tmp_file_path = '/tmp/test_agent_conf_{timestamp}.xml'.format(timestamp=timestamp)
+        # verify file syntax
+        try:
+            # create a temporary file with the content of xml file
+            tmp_file = open(tmp_file_path, 'w+')
+            tmp_file.write(xml_file)
+            tmp_file.close()
+            check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
+        except Exception as e:
+            raise WazuhException(1742)
+
+        group_path = common.shared_path + '/' + group_id
+        new_conf_path = group_path + '/' + 'agent.conf'
+        # move temporary file to group path
+        try:
+            move(tmp_file_path, new_conf_path)
+        except Exception as e:
+            raise WazuhException(1016)
+
+        return {'response': 'OK'}
 
 
     @staticmethod

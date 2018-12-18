@@ -148,6 +148,10 @@ functions = {
         'function': Agent.create_group,
         'type': 'local_master'
     },
+    'POST/agents/groups/:group_id/configuration': {
+        'function': Agent.upload_group_configuration,
+        'type': 'local_master'
+    },
     'DELETE/agents/groups/:group_id': {
         'function': Agent.remove_group,
         'type': 'local_master'
