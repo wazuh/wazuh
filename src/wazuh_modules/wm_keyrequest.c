@@ -75,9 +75,6 @@ void * wm_key_request_main(wm_krequest_t * data) {
         pthread_exit(NULL);
     }
 
-    /* Ignore SIGPIPE, it will be detected on recv */
-    signal(SIGPIPE, SIG_IGN);
-
     /* Init the request hash table */
     request_hash = OSHash_Create();
 
