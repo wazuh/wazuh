@@ -208,12 +208,12 @@ int is_valid_year(char *source, int *date) {
     return 1;
 }
 
-int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
+int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     unsigned int i, j;
-    wm_vulnerability_detector_t * vulnerability_detector;
+    wm_vuldet_t * vulnerability_detector;
     XML_NODE chld_node = NULL;
 
-    os_calloc(1, sizeof(wm_vulnerability_detector_t), vulnerability_detector);
+    os_calloc(1, sizeof(wm_vuldet_t), vulnerability_detector);
     vulnerability_detector->flags.run_on_start = 1;
     vulnerability_detector->flags.enabled = 1;
     vulnerability_detector->flags.u_flags.update = 0;

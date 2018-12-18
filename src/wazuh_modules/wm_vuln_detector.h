@@ -123,15 +123,15 @@ typedef struct update_flags {
     unsigned int update_macos:1;
 } update_flags;
 
-typedef struct wm_vulnerability_detector_flags {
+typedef struct wm_vuldet_flags {
     unsigned int enabled:1;
     unsigned int run_on_start:1;
     update_flags u_flags;
-} wm_vulnerability_detector_flags;
+} wm_vuldet_flags;
 
-typedef struct wm_vulnerability_detector_state {
+typedef struct wm_vuldet_state {
     time_t next_time;
-} wm_vulnerability_detector_state;
+} wm_vuldet_state;
 
 typedef struct agent_software {
     char *agent_id;
@@ -186,7 +186,7 @@ typedef struct update_node {
     unsigned int json_format:1;
 } update_node;
 
-typedef struct wm_vulnerability_detector_t {
+typedef struct wm_vuldet_t {
     update_node *updates[OS_SUPP_SIZE];
     unsigned long detection_interval;
     unsigned long ignore_time;
@@ -194,9 +194,9 @@ typedef struct wm_vulnerability_detector_t {
     agent_software *agents_software;
     OSHash *agents_triag;
     int queue_fd;
-    wm_vulnerability_detector_state state;
-    wm_vulnerability_detector_flags flags;
-} wm_vulnerability_detector_t;
+    wm_vuldet_state state;
+    wm_vuldet_flags flags;
+} wm_vuldet_t;
 
 typedef enum {
     V_OVALDEFINITIONS,
@@ -274,7 +274,7 @@ typedef struct rh_vulnerability {
     struct rh_vulnerability *prev;
 } rh_vulnerability;
 
-typedef struct wm_vulnerability_detector_db {
+typedef struct wm_vuldet_db {
     vulnerability *vulnerabilities;
     rh_vulnerability *rh_vulnerabilities;
     info_test *info_tests;
@@ -283,14 +283,14 @@ typedef struct wm_vulnerability_detector_db {
     info_cve *info_cves;
     oval_metadata metadata;
     const char *OS;
-} wm_vulnerability_detector_db;
+} wm_vuldet_db;
 
 typedef struct last_scan {
     char *last_scan_id;
     time_t last_scan_time;
 } last_scan;
 
-int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
+int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module);
 
 #endif
 #endif
