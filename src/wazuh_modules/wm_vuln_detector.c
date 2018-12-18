@@ -47,7 +47,7 @@ static int wm_vulnerability_detector_step(sqlite3_stmt *stmt);
 static int wm_vulnerability_create_file(const char *path, const char *source);
 static int wm_vulnerability_check_update_period(update_node *upd);
 static int wm_vulnerability_check_update(update_node *upd, const char *dist);
-static int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag);
+static int wm_vulnerability_run_update(update_node *upd, const char *dist_tag, const char *dist_ext);
 static int wm_vulnerability_detector_compare(char *version_it, char *cversion_it);
 static const char *wm_vulnerability_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vulnerability_set_oval);
 static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
@@ -493,20 +493,18 @@ char *wm_vulnerability_build_url(char *pattern, char *value) {
 }
 
 cJSON *wm_vulnerability_decode_advidsories(char *advidsories) {
-    cJSON *json_advidsories = cJSON_CreateArray();
+    cJSON *json_advidsories = cJSON_CreateObject();
     char *found;
     char *str_base = advidsories;
 
     while (str_base && *str_base) {
-        cJSON *patch = cJSON_CreateObject();
         char *patch_url;
         if (found = strchr(str_base, ','), found) {
             *(found++) = '\0';
         }
 
-        cJSON_AddStringToObject(patch, "patch", str_base);
-        cJSON_AddStringToObject(patch, "patch_reference", (patch_url = wm_vulnerability_build_url(VU_BUILD_REF_RHSA, str_base)));
-        cJSON_AddItemToArray(json_advidsories, patch);
+        patch_url = wm_vulnerability_build_url(VU_BUILD_REF_RHSA, str_base);
+        cJSON_AddItemToObject(json_advidsories, str_base, cJSON_CreateString(patch_url));
         str_base = found;
         free(patch_url);
     }
@@ -646,7 +644,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
 
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
                 cJSON_AddStringToObject(alert_cve, "cve", cve);
-                cJSON_AddStringToObject(alert_cve, "title", title);
+                cJSON_AddStringToObject(alert_cve, "title", title && *title ? title : rationale);
                 cJSON_AddStringToObject(alert_cve, "severity", (severity) ? severity : unknown_value);
                 cJSON_AddStringToObject(alert_cve, "published", published);
                 if (updated) cJSON_AddStringToObject(alert_cve, "updated", updated);
@@ -1726,7 +1724,7 @@ free_mem:
 
 const char *wm_vulnerability_decode_package_version(char *raw, const char **OS, char **package_name, char **package_version) {
     static OSRegex *reg = NULL;
-    static char *package_regex = "(-\\d*:)|(-\\d*.)";
+    static char *package_regex = "(-\\d+:)|(-\\d+.)|(-\\d+\\w+)";
     const char *retv = NULL;
     char *found;
 
@@ -1755,7 +1753,6 @@ const char *wm_vulnerability_decode_package_version(char *raw, const char **OS, 
     }
 
 error:
-    mterror(WM_VULNDETECTOR_LOGTAG, VU_VER_EXTRACT_ERROR, raw);
     return NULL;
 }
 
@@ -1857,7 +1854,7 @@ int wm_vulnerability_fetch_feed(update_node *update, const char *OS, int *need_u
 
         while (page) {
             if (!attempt) {
-                snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, RED_HAT_REPO_MIN_YEAR, RED_HAT_REPO_REQ_SIZE, page);
+                snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_since, RED_HAT_REPO_REQ_SIZE, page);
             } else if (attempt == RED_HAT_REPO_MAX_ATTEMPTS) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, RED_HAT_REPO_MAX_ATTEMPTS);
                 goto end;
@@ -1959,10 +1956,10 @@ end:
     }
 }
 
-int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *tag) {
+int wm_vulnerability_run_update(update_node *upd, const char *dist_tag, const char *dist_ext) {
     if (wm_vulnerability_check_update_period(upd)) {
-        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, tag);
-        if (wm_vulnerability_check_update(upd, dist)) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, dist_ext);
+        if (wm_vulnerability_check_update(upd, dist_tag)) {
             if (!upd->attempted) {
                 upd->last_update = time(NULL) - upd->interval + WM_VULNDETECTOR_RETRY_UPDATE;
                 upd->attempted = 1;
@@ -1974,7 +1971,7 @@ int wm_vulnerability_run_update(update_node *upd, const char *dist, const char *
             }
             return OS_INVALID;
         } else {
-            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, tag);
+            mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, dist_ext);
             upd->last_update = time(NULL);
         }
     }
@@ -1997,10 +1994,11 @@ int wm_vulnerability_detector_updatedb(update_node **updates) {
         wm_vulnerability_run_update(updates[CVE_JESSIE],   vu_dist_tag[DIS_JESSIE],   vu_dist_ext[DIS_JESSIE])   ||
         wm_vulnerability_run_update(updates[CVE_WHEEZY],   vu_dist_tag[DIS_WHEEZY],   vu_dist_ext[DIS_WHEEZY])   ||
         // RedHat
-        wm_vulnerability_run_update(updates[CVE_REDHAT],    vu_dist_tag[CVE_REDHAT],    vu_dist_ext[CVE_REDHAT])) {
+        wm_vulnerability_run_update(updates[CVE_REDHAT],    vu_dist_tag[DIS_REDHAT],    vu_dist_ext[DIS_REDHAT])) {
         return OS_INVALID;
     }
 
+    mtinfo(WM_VULNDETECTOR_LOGTAG, VU_ENDING_UPDATE);
     return 0;
 }
 
@@ -2088,7 +2086,7 @@ int wm_vulnerability_detector_json_parser(cJSON *json_feed, wm_vulnerability_det
                 // Fill in vulnerability information
                 wm_vulnerability_add_vulnerability_info(parsed_vulnerabilities);
                 if (w_strdup(tmp_cve, parsed_vulnerabilities->info_cves->cveid)) continue;
-                w_strdup(tmp_severity, parsed_vulnerabilities->info_cves->severity); // ~~~~~~~~~~~~~~~~~
+                w_strdup(tmp_severity, parsed_vulnerabilities->info_cves->severity);
                 w_strdup(tmp_public_date, parsed_vulnerabilities->info_cves->published);
                 parsed_vulnerabilities->info_cves->reference = wm_vulnerability_build_url(VU_BUILD_REF_CVE_RH, tmp_cve);
                 w_strdup(tmp_bugzilla_description, parsed_vulnerabilities->info_cves->description);
@@ -2107,7 +2105,7 @@ int wm_vulnerability_detector_json_parser(cJSON *json_feed, wm_vulnerability_det
                         &parsed_vulnerabilities->rh_vulnerabilities->OS,
                         &parsed_vulnerabilities->rh_vulnerabilities->package_name,
                         &parsed_vulnerabilities->rh_vulnerabilities->package_version)) {
-                        // ~~~~~~~~~~~~~
+                        mterror(WM_VULNDETECTOR_LOGTAG, VU_VER_EXTRACT_ERROR, parsed_vulnerabilities->rh_vulnerabilities->package_name);
                         continue;
                     } else if (!parsed_vulnerabilities->rh_vulnerabilities->OS) {
                         // The operating system of the package could not be specified. It will be added for all

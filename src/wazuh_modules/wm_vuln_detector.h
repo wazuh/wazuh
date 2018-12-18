@@ -24,7 +24,8 @@
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
 #define DEBIAN_REPO "https://www.debian.org/security/oval/oval-definitions-%s.xml"
-#define RED_HAT_REPO_MIN_YEAR 2018
+#define RED_HAT_REPO_DEFAULT_MIN_YEAR 2014
+#define RED_HAT_REPO_MIN_YEAR 2010
 #define RED_HAT_REPO_MAX_ATTEMPTS 3
 #define RED_HAT_REPO_REQ_SIZE 1000
 #define RED_HAT_REPO "https://access.redhat.com/labs/securitydataapi/cve.json?after=%d-01-01&per_page=%d&page=%d"
@@ -175,6 +176,7 @@ typedef struct update_node {
     const char *dist_ext;
     time_t last_update;
     unsigned long interval;
+    int update_since; // only for Red Hat feed
     char *url;
     in_port_t port;
     char *path;

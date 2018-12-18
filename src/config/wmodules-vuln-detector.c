@@ -14,6 +14,7 @@
 #include "wazuh_modules/wmodules.h"
 
 static int get_interval(char *source, unsigned long *interval);
+static int is_valid_year(char *source, int *date);
 static int set_oval_version(char *feed, char *version, update_node **upd_list, update_node *upd);
 
 //Options
@@ -28,6 +29,7 @@ static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
+static const char *XML_UPDATE_SINCE = "update_since";
 // Deprecated
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
@@ -191,6 +193,21 @@ int get_interval(char *source, unsigned long *interval) {
     return 0;
 }
 
+int is_valid_year(char *source, int *date) {
+    time_t n_date;
+    struct tm *t_date;
+
+    *date = strtol(source, NULL, 10);
+    n_date = time (NULL);
+    t_date = gmtime(&n_date);
+
+    if ((!*date) || *date < RED_HAT_REPO_MIN_YEAR || *date > (t_date->tm_year + 1900)) {
+        return 0;
+    }
+
+    return 1;
+}
+
 int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     unsigned int i, j;
     wm_vulnerability_detector_t * vulnerability_detector;
@@ -267,7 +284,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
             upd->attempted = 0;
             upd->json_format = 0;
-
+            upd->update_since = RED_HAT_REPO_DEFAULT_MIN_YEAR;
 
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
                 return OS_INVALID;
@@ -314,6 +331,12 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                 } else if (!strcmp(chld_node[j]->element, XML_UPDATE_INTERVAL)) {
                     if (get_interval(chld_node[j]->content, &upd->interval)) {
                         merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
+                        OS_ClearNode(chld_node);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_SINCE)) {
+                    if (!is_valid_year(chld_node[j]->content, &upd->update_since)) {
+                        merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_SINCE, WM_VULNDETECTOR_CONTEXT.name);
                         OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }

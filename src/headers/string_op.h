@@ -28,7 +28,7 @@ char *convert_windows_string(LPCWSTR string);
 #define str_lowercase(str_lc) { char *x = str_lc; while (*x != '\0') { *x = tolower(*x); x++; } }
 
 // Convert double to string
-#define w_double_str(x) ({char *do_str = calloc(20, 1); do_str = realloc(do_str, snprintf(do_str, 19, "%f", x)); do_str;})
+#define w_double_str(x) ({char *do_str = calloc(20, 1); snprintf(do_str, 19, "%f", x); do_str;})
 
 /* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str) __attribute__((nonnull));
