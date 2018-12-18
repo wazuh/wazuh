@@ -21,7 +21,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
     wm_krequest_t *key_request;
 
     os_calloc(1, sizeof(wm_krequest_t), key_request);
-    key_request->enabled = 0;
+    key_request->enabled = 1;
     key_request->threads = 1;
     key_request->queue_size = 1024;
     module->context = &WM_KEY_REQUEST_CONTEXT;
