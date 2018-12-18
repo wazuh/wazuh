@@ -32,9 +32,6 @@ static char key_request_available = 0;
 /* Decode hostinfo input queue */
 static w_queue_t * key_request_queue;
 
-/* Hash table to avoid dups */
-static OSHash *key_request_hash;
-
 /* Remote key request thread */
 void * w_key_request_thread(__attribute__((unused)) void * args);
 
@@ -78,7 +75,6 @@ void HandleSecure()
     w_create_thread(rem_state_main, NULL);
 
     key_request_queue = queue_init(1024);
-    key_request_hash = OSHash_Create();
 
     // Create key request thread
     w_create_thread(w_key_request_thread, NULL);
@@ -462,22 +458,13 @@ static int send_key_request(int socket,const char *msg) {
 
 static void _push_request(const char *request,const char *type) {
     char *msg = NULL;
-    static pthread_mutex_t key_request_mutex = PTHREAD_MUTEX_INITIALIZER;
 
     os_calloc(OS_MAXSTR,sizeof(char),msg);
     snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
 
-    w_mutex_lock(&key_request_mutex);
-    if (!OSHash_Get_ex(key_request_hash, msg)) {
-        if(queue_push_ex(key_request_queue, msg) < 0) {
-            os_free(msg);
-        } else {
-            OSHash_Add_ex(key_request_hash, msg, &msg);
-        }
-    } else {
+    if(queue_push_ex(key_request_queue, msg) < 0) {
         os_free(msg);
     }
-    w_mutex_unlock(&key_request_mutex);
 }
 
 int key_request_reconnect() {
@@ -511,7 +498,6 @@ void * w_key_request_thread(__attribute__((unused)) void * args) {
 
         if (msg || (msg = queue_pop_ex(key_request_queue))) {
             int rc;
-            OSHash_Delete_ex(key_request_hash, msg);
 
             if ((rc = send_key_request(socket, msg)) < 0) {
                 if (rc == OS_SOCKBUSY) {
