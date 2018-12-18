@@ -10,18 +10,14 @@
 #ifdef __linux__
 #include "shared.h"
 #include "external/procps/readproc.h"
-#ifdef ENABLE_AUDIT
-#include <linux/audit.h>
-#include <libaudit.h>
-#endif
+
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "syscheck.h"
 #include <os_net/os_net.h>
 #include "syscheck_op.h"
+#include "audit_op.h"
 
-#define ADD_RULE 1
-#define DELETE_RULE 2
 #define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
@@ -60,33 +56,6 @@ static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
 
 
-// Converts Audit relative paths into absolute paths
-char *clean_audit_path(char *cwd, char *path) {
-
-    char *file_ptr = path;
-    char *cwd_ptr = strdup(cwd);
-
-    int j, ptr = 0;
-
-    while (file_ptr[ptr] != '\0' && strlen(file_ptr) >= 3) {
-        if (file_ptr[ptr] == '.' && file_ptr[ptr + 1] == '.' && file_ptr[ptr + 2] == '/') {
-            file_ptr += 3;
-            ptr = 0;
-            for(j = strlen(cwd_ptr); cwd_ptr[j] != '/' && j >= 0; j--);
-            cwd_ptr[j] = '\0';
-        } else
-            ptr++;
-    }
-
-    char *full_path = malloc(strlen(cwd) + strlen(path) + 2);
-    snprintf(full_path, strlen(cwd) + strlen(path) + 2, "%s/%s", cwd_ptr, file_ptr);
-
-    free(cwd_ptr);
-
-    return full_path;
-}
-
-
 // Check if Auditd is installed and running
 int check_auditd_enabled(void) {
 
@@ -110,38 +79,6 @@ int check_auditd_enabled(void) {
 
     closeproc(proc);
     return auditd_pid;
-}
-
-
-// Restart Auditd service
-int audit_restart(void) {
-
-    wfd_t * wfd;
-    int status;
-    char buffer[4096];
-    char * command[] = { "service", "auditd", "restart", NULL };
-
-    if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
-        merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
-        return -1;
-    }
-
-    // Print stderr
-    while (fgets(buffer, sizeof(buffer), wfd->file)) {
-        mdebug1("auditd: %s", buffer);
-    }
-
-    switch (status = wpclose(wfd), WEXITSTATUS(status)) {
-    case 0:
-        return 0;
-    case 127:
-        // exec error
-        merror("Could not launch command to restart Auditd.");
-        return -1;
-    default:
-        merror("Could not restart Auditd service.");
-        return -1;
-    }
 }
 
 
@@ -229,6 +166,7 @@ int set_auditd_config(void) {
     }
 }
 
+
 // Init Audit events socket
 int init_auditd_socket(void) {
     int sfd;
@@ -239,151 +177,6 @@ int init_auditd_socket(void) {
     }
 
     return sfd;
-}
-
-
-// Add / delete rules
-int audit_manage_rules(int action, const char *path, const char *key) {
-
-    int retval, output;
-    int type;
-    struct stat buf;
-    int audit_handler;
-
-    audit_handler = audit_open();
-    if (audit_handler < 0) {
-        return (-1);
-    }
-
-    struct audit_rule_data *myrule = NULL;
-    myrule = malloc(sizeof(struct audit_rule_data));
-    memset(myrule, 0, sizeof(struct audit_rule_data));
-
-    // Check path
-    if (stat(path, &buf) == 0) {
-        if (S_ISDIR(buf.st_mode)){
-            type = AUDIT_DIR;
-        }
-        else {
-            type = AUDIT_WATCH;
-        }
-    } else {
-        mdebug2("audit_manage_rules(): Cannot stat %s", path);
-        retval = -1;
-        goto end;
-    }
-
-    // Set watcher
-    output = audit_add_watch_dir(type, &myrule, path);
-    if (output) {
-        mdebug2("audit_add_watch_dir = (%d) %s", output, audit_errno_to_name(abs(output)));
-        retval = -1;
-        goto end;
-    }
-
-    // Set permisions
-    int permisions = 0;
-    permisions |= AUDIT_PERM_WRITE;
-    permisions |= AUDIT_PERM_ATTR;
-    output = audit_update_watch_perms(myrule, permisions);
-    if (output) {
-        mdebug2("audit_update_watch_perms = (%d) %s", output, audit_errno_to_name(abs(output)));
-        retval = -1;
-        goto end;
-    }
-
-    // Set key
-    int flags = AUDIT_FILTER_EXIT & AUDIT_FILTER_MASK;
-
-    if (strlen(key) > (AUDIT_MAX_KEY_LEN - 5)) {
-        retval = -1;
-        goto end;
-    }
-
-    char *cmd = malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1);
-
-    if (snprintf(cmd, AUDIT_MAX_KEY_LEN, "key=%s", key) < 0) {
-        free(cmd);
-        retval = -1;
-        goto end;
-    } else {
-        output = audit_rule_fieldpair_data(&myrule, cmd, flags);
-        if (output) {
-            mdebug2("audit_rule_fieldpair_data = (%d) %s", output, audit_errno_to_name(abs(output)));
-            free(cmd);
-            retval = -1;
-            goto end;
-        }
-        free(cmd);
-    }
-
-    // Add/Delete rule
-    if (action == ADD_RULE) {
-        retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS);
-    } else if (action == DELETE_RULE){
-        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_ALWAYS);
-    } else {
-        retval = -1;
-        goto end;
-    }
-
-    if (retval <= 0) {
-        mdebug2("audit_manage_rules(): Error adding/deleting rule (%d) = %s", retval, audit_errno_to_name(abs(retval)));
-    }
-
-end:
-    audit_rule_free_data(myrule);
-    audit_close(audit_handler);
-    return retval;
-}
-
-
-// Add rule into Auditd rules list
-int audit_add_rule(const char *path, const char *key) {
-    return audit_manage_rules(ADD_RULE, path, key);
-}
-
-
-// Delete rule
-int audit_delete_rule(const char *path, const char *key) {
-    return audit_manage_rules(DELETE_RULE, path, key);
-}
-
-
-// Check if exists rule '-a task,never'
-int audit_check_lock_output(void) {
-    int retval;
-    int audit_handler;
-
-    int flags = AUDIT_FILTER_TASK;
-
-    audit_handler = audit_open();
-    if (audit_handler < 0) {
-        return (-1);
-    }
-
-    struct audit_rule_data *myrule = NULL;
-    myrule = malloc(sizeof(struct audit_rule_data));
-    memset(myrule, 0, sizeof(struct audit_rule_data));
-
-    retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
-
-    if (retval == -17) {
-        audit_rule_free_data(myrule);
-        audit_close(audit_handler);
-        return 1;
-    } else {
-        // Delete if it was inserted
-        retval = audit_delete_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
-        audit_rule_free_data(myrule);
-        audit_close(audit_handler);
-        if (retval < 0) {
-            mdebug2("audit_delete_rule_data = (%i) %s", retval, audit_errno_to_name(abs(retval)));
-            merror("Error removing test rule. Audit output is blocked.");
-            return 1;
-        }
-        return 0;
-    }
 }
 
 
@@ -541,6 +334,10 @@ int audit_init(void) {
     static int audit_socket;
     audit_socket = init_auditd_socket();
 
+    int fd = audit_open();
+    audit_get_rule_list(fd);
+    audit_close(fd);
+
     // Check if there's a blockig rule
     if (audit_check_lock_output()) {
         mwarn("Audit rule '-a never,task' is blocking the audit output. Whodata cannot start.");
@@ -625,7 +422,7 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
                 gen_path = strdup(full_path);
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
-                gen_path = clean_audit_path(cwd, path1);
+                gen_path = audit_clean_path(cwd, path1);
             } else if (strncmp(path0, path1, strlen(path0)) == 0) {
                 gen_path = malloc(strlen(cwd) + strlen(path1) + 2);
                 snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
@@ -644,7 +441,7 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
                 gen_path = strdup(full_path);
                 free(full_path);
             } else if (path0[0] == '.' && path0[1] == '.' && path0[2] == '/') {
-                gen_path = clean_audit_path(cwd, path0);
+                gen_path = audit_clean_path(cwd, path0);
             } else {
                 gen_path = malloc(strlen(cwd) + strlen(path0) + 2);
                 snprintf(gen_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, path0);
