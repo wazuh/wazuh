@@ -1646,7 +1646,7 @@ int wm_vuldet_update_feed(update_node *update) {
 
     if (update->json_format) {
         // It is the Red Hat feed in JSON format
-        if (json_feed =  json_fread(CVE_FIT_TEMP_FILE, 0), !json_feed) {
+        if (json_feed =  json_fread(update->path ? update->path : CVE_FIT_TEMP_FILE, 0), !json_feed) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_PARSED_FEED_ERROR, vu_dist_ext[DIS_REDHAT]);
             goto free_mem;
         }
@@ -1708,11 +1708,11 @@ free_mem:
         OS_ClearNode(chld_node);
         OS_ClearXML(&xml);
     }
-    if (remove(CVE_TEMP_FILE) < 0) {
-        mterror(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
+    if (rem_tmp && remove(CVE_TEMP_FILE) < 0) {
+        mdebug1(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
     }
-    if (remove(CVE_FIT_TEMP_FILE) < 0) {
-        mterror(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_FIT_TEMP_FILE, strerror(errno));
+    if (rem_tmpfit && remove(CVE_FIT_TEMP_FILE) < 0) {
+        mdebug1(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_FIT_TEMP_FILE, strerror(errno));
     }
 
     if (success) {
@@ -1801,7 +1801,7 @@ end:
 }
 
 int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) {
-    char repo[OS_SIZE_2048 + 1];
+    char repo[OS_SIZE_2048 + 1] = { '\0' };
     static const char *timestamp_tag = "timestamp>";
     char timestamp[OS_SIZE_256 + 1];
     char buffer[OS_MAXSTR + 1];
@@ -1812,6 +1812,10 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
     unsigned char success = 0;
     char *found;
     *need_update = 1;
+
+    if (update->dist_ref == DIS_REDHAT) {
+        update->json_format = 1;
+    }
 
     if (update->path) {
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_LOCAL_FETCH, update->path);
@@ -1846,62 +1850,67 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
         int attempt = 0;
         char first_line;
 
-        if (fp_output = fopen(CVE_FIT_TEMP_FILE, "w"), !fp_output) {
-            goto end;
-        }
-
-        fwrite("[", 1, 1, fp_output);
-
-        while (page) {
-            if (!attempt) {
-                snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_since, RED_HAT_REPO_REQ_SIZE, page);
-            } else if (attempt == RED_HAT_REPO_MAX_ATTEMPTS) {
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, RED_HAT_REPO_MAX_ATTEMPTS);
+        if (*repo != '\0') {
+            if (wurl_request(repo, CVE_FIT_TEMP_FILE)) {
                 goto end;
             }
-            if (wurl_request(repo, CVE_TEMP_FILE)) {
-                attempt++;
-                mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, attempt * 5);
-                sleep(attempt * 5);
-                continue;
-            }
-
-            if (fp = fopen(CVE_TEMP_FILE, "r"), !fp) {
+        } else {
+            if (fp_output = fopen(CVE_FIT_TEMP_FILE, "w"), !fp_output) {
                 goto end;
             }
 
-            first_line = 1;
-            while (fgets(buffer, OS_MAXSTR, fp)) {
-                if (found = strstr(buffer, "}]"), found) {
-                    *(++found) = '\0';
+            fwrite("[", 1, 1, fp_output);
+
+            while (page) {
+                if (!attempt) {
+                    snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_since, RED_HAT_REPO_REQ_SIZE, page);
+                } else if (attempt == RED_HAT_REPO_MAX_ATTEMPTS) {
+                    mterror(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, RED_HAT_REPO_MAX_ATTEMPTS);
+                    goto end;
+                }
+                if (wurl_request(repo, CVE_TEMP_FILE)) {
+                    attempt++;
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, attempt * 5);
+                    sleep(attempt * 5);
+                    continue;
                 }
 
-                if (first_line) {
-                    if (!strcmp(buffer, "[]")) {
-                        page = -1;
-                        break;
+                if (fp = fopen(CVE_TEMP_FILE, "r"), !fp) {
+                    goto end;
+                }
+
+                first_line = 1;
+                while (fgets(buffer, OS_MAXSTR, fp)) {
+                    if (found = strstr(buffer, "}]"), found) {
+                        *(++found) = '\0';
                     }
-                    first_line = 0;
-                    if (page > 1) {
-                        *buffer = ',';
-                        found = buffer;
+
+                    if (first_line) {
+                        if (!strcmp(buffer, "[]")) {
+                            page = -1;
+                            break;
+                        }
+                        first_line = 0;
+                        if (page > 1) {
+                            *buffer = ',';
+                            found = buffer;
+                        } else {
+                            found = buffer + sizeof(char);
+                        }
                     } else {
-                        found = buffer + sizeof(char);
+                        found = buffer;
                     }
-                } else {
-                    found = buffer;
+                    fwrite(found, 1, strlen(found), fp_output);
                 }
-                fwrite(found, 1, strlen(found), fp_output);
-            }
 
-            w_fclose(fp);
-            attempt = 0;
-            page++;
+                w_fclose(fp);
+                attempt = 0;
+                page++;
+            }
+            fwrite("]", 1, 1, fp_output);
         }
 
-        fwrite("]", 1, 1, fp_output);
         success = 1;
-        update->json_format = 1;
         goto end;
     }
 
