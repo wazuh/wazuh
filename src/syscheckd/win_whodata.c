@@ -14,6 +14,10 @@
 
 #ifdef WIN_WHODATA
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define snwprintf _snwprintf
+#endif
+
 #include <winsock2.h>
 #include <windows.h>
 #include <aclapi.h>
@@ -61,7 +65,7 @@ int set_policies();
 void set_subscription_query(wchar_t *query);
 extern int wm_exec(char *command, char **output, int *exitcode, int secs, const char * add_path);
 int restore_audit_policies();
-void audit_restore();
+void audit_restore(void);
 int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
@@ -334,7 +338,7 @@ int run_whodata_scan() {
     return 0;
 }
 
-void audit_restore() {
+void audit_restore(void) {
     restore_sacls();
     if (restore_policies) {
         restore_audit_policies();
@@ -415,7 +419,7 @@ end:
 int restore_audit_policies() {
     char command[OS_SIZE_1024];
     int result_code;
-    char *output;
+    char *output = NULL;
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_BACKUP_FILE);
 
     if (IsFile(WPOL_BACKUP_FILE)) {

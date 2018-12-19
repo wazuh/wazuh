@@ -36,7 +36,9 @@
 
 #include <stdint.h>
 #include <winevt.h>
+#ifndef _MSC_VER
 #include <sec_api/stdlib_s.h>
+#endif
 #include <winerror.h>
 #include <sddl.h>
 
