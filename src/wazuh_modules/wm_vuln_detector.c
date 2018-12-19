@@ -1884,7 +1884,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
 
             while (page) {
                 if (!attempt) {
-                    snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_since, RED_HAT_REPO_REQ_SIZE, page);
+                    snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_from_year, RED_HAT_REPO_REQ_SIZE, page);
                 } else if (attempt == RED_HAT_REPO_MAX_ATTEMPTS) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, RED_HAT_REPO_MAX_ATTEMPTS);
                     goto end;

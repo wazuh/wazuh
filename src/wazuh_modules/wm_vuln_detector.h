@@ -176,7 +176,7 @@ typedef struct update_node {
     const char *dist_ext;
     time_t last_update;
     unsigned long interval;
-    int update_since; // only for Red Hat feed
+    int update_from_year; // only for Red Hat feed
     char *url;
     in_port_t port;
     char *path;
