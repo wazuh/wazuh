@@ -65,7 +65,6 @@ typedef struct _os_channel {
 
 static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
 static EVT_HANDLE read_bookmark(os_channel *channel);
-static int update_bookmark(EVT_HANDLE evt, os_channel *channel);
 
 void free_event(os_event *event)
 {
@@ -361,115 +360,6 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     return (bookmark);
 }
 
-/* Update the log position of a bookmark */
-int update_bookmark(EVT_HANDLE evt, os_channel *channel)
-{
-    DWORD size = 0;
-    DWORD count = 0;
-    wchar_t *buffer = NULL;
-    int result = 0;
-    int status = 0;
-    EVT_HANDLE bookmark = NULL;
-    FILE *fp = NULL;
-
-    if ((bookmark = EvtCreateBookmark(NULL)) == NULL) {
-        mferror(
-            "Could not EvtCreateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    if (!EvtUpdateBookmark(bookmark, evt)) {
-        mferror(
-            "Could not EvtUpdateBookmark() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Make initial call to determine buffer size */
-    result = EvtRender(NULL,
-                       bookmark,
-                       EvtRenderBookmark,
-                       0,
-                       NULL,
-                       &size,
-                       &count);
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        mferror(
-            "Could not EvtRender() to get buffer size to update bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename,
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    if ((buffer = calloc(size, sizeof(char))) == NULL) {
-        mferror(
-            "Could not calloc() memory to save bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    if (!EvtRender(NULL,
-                   bookmark,
-                   EvtRenderBookmark,
-                   size,
-                   buffer,
-                   &size,
-                   &count)) {
-        mferror(
-            "Could not EvtRender() bookmark (%s) for (%s) which returned (%lu)",
-            channel->bookmark_filename, channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
-        mwarn(
-            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    if ((fwrite(buffer, 1, size, fp)) < size) {
-        mferror(
-            "Could not fwrite() to bookmark (%s) for (%s) which returned [(%d)-(%s)]",
-            channel->bookmark_filename,
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    fclose(fp);
-
-    /* Success */
-    status = 1;
-
-cleanup:
-    free(buffer);
-
-    if (bookmark != NULL) {
-        EvtClose(bookmark);
-    }
-
-    if (fp) {
-        fclose(fp);
-    }
-
-    return (status);
-}
-
 /* Format Timestamp from EventLog */
 char *WinEvtTimeToString(ULONGLONG ulongTime)
 {
@@ -535,156 +425,6 @@ cleanup:
 }
 
 void send_channel_event(EVT_HANDLE evt, os_channel *channel)
-{
-    DWORD buffer_length = 0;
-    PEVT_VARIANT properties_values = NULL;
-    DWORD count = 0;
-    EVT_HANDLE context = NULL;
-    os_event event = {0};
-    char final_msg[OS_MAXSTR];
-    int result = 0;
-
-    if ((context = EvtCreateRenderContext(count, NULL, EvtRenderContextSystem)) == NULL) {
-        mferror(
-            "Could not EvtCreateRenderContext() for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    /* Make initial call to determine buffer size necessary */
-    result = EvtRender(context,
-                       evt,
-                       EvtRenderEventValues,
-                       0,
-                       NULL,
-                       &buffer_length,
-                       &count);
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
-        mferror(
-            "Could not EvtRender() to determine buffer size for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    if ((properties_values = malloc(buffer_length)) == NULL) {
-        mferror(
-            "Could not malloc() memory to process event (%s) which returned [(%d)-(%s)]",
-            channel->evt_log,
-            errno,
-            strerror(errno));
-        goto cleanup;
-    }
-
-    if (!EvtRender(context,
-                   evt,
-                   EvtRenderEventValues,
-                   buffer_length,
-                   properties_values,
-                   &buffer_length,
-                   &count)) {
-        mferror(
-            "Could not EvtRender() for (%s) which returned (%lu)",
-            channel->evt_log,
-            GetLastError());
-        goto cleanup;
-    }
-
-    event.name = get_property_value(&properties_values[EvtSystemChannel]);
-    event.id = properties_values[EvtSystemEventID].UInt16Val;
-    event.source = get_property_value(&properties_values[EvtSystemProviderName]);
-    event.uid = properties_values[EvtSystemUserID].Type == EvtVarTypeNull ? NULL : properties_values[EvtSystemUserID].SidVal;
-    event.computer = get_property_value(&properties_values[EvtSystemComputer]);
-    event.time_created = properties_values[EvtSystemTimeCreated].FileTimeVal;
-    event.keywords = properties_values[EvtSystemKeywords].Type == EvtVarTypeNull ? 0 : properties_values[EvtSystemKeywords].UInt64Val;
-    event.level = properties_values[EvtSystemLevel].Type == EvtVarTypeNull ? -1 : properties_values[EvtSystemLevel].ByteVal;
-
-    switch (event.level) {
-        case WINEVENT_CRITICAL:
-            event.category = "CRITICAL";
-            break;
-        case WINEVENT_ERROR:
-            event.category = "ERROR";
-            break;
-        case WINEVENT_WARNING:
-            event.category = "WARNING";
-            break;
-        case WINEVENT_INFORMATION:
-            event.category = "INFORMATION";
-            break;
-        case WINEVENT_VERBOSE:
-            event.category = "DEBUG";
-            break;
-        case WINEVENT_AUDIT:
-            if (event.keywords & WINEVENT_AUDIT_FAILURE) {
-                event.category = "AUDIT_FAILURE";
-                break;
-            } else if (event.keywords & WINEVENT_AUDIT_SUCCESS) {
-                event.category = "AUDIT_SUCCESS";
-                break;
-            }
-            // fall through
-        default:
-            event.category = "Unknown";
-            break;
-    }
-
-    if ((event.timestamp = WinEvtTimeToString(event.time_created)) == NULL) {
-        mferror(
-            "Could not convert timestamp for (%s)",
-            channel->evt_log);
-        goto cleanup;
-    }
-
-    /* Determine user and domain */
-    get_username_and_domain(&event);
-
-    /* Get event log message */
-    if ((event.message = get_message(evt, properties_values[EvtSystemProviderName].StringVal, EvtFormatMessageEvent)) == NULL) {
-        mferror(
-            "Could not get message for (%s)",
-            channel->evt_log);
-    } else {
-        /* Format message */
-        win_format_event_string(event.message);
-    }
-
-    snprintf(
-        final_msg,
-        sizeof(final_msg),
-        "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
-        event.timestamp,
-        event.name,
-        event.category,
-        event.id,
-        event.source && strlen(event.source) ? event.source : "no source",
-        event.user && strlen(event.user) ? event.user : "(no user)",
-        event.domain && strlen(event.domain) ? event.domain : "no domain",
-        event.computer && strlen(event.computer) ? event.computer : "no computer",
-        event.message && strlen(event.message) ? event.message : "(no message)"
-    );
-
-    if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
-        merror(QUEUE_SEND);
-    }
-
-    if (channel->bookmark_enabled) {
-        update_bookmark(evt, channel);
-    }
-
-cleanup:
-    free(properties_values);
-    free_event(&event);
-
-    if (context != NULL) {
-        EvtClose(context);
-    }
-
-    return;
-}
-
-void send_channel_event_json(EVT_HANDLE evt, os_channel *channel)
 {
     DWORD buffer_length = 0;
     PEVT_VARIANT properties_values = NULL;
@@ -822,32 +562,16 @@ DWORD WINAPI event_channel_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_chann
     return (0);
 }
 
-DWORD WINAPI event_channel_json_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, os_channel *channel, EVT_HANDLE evt)
-{
-    if (action == EvtSubscribeActionDeliver) {
-        send_channel_event_json(evt, channel);
-    }
-
-    return (0);
-}
-
-void win_start_event_channel(char *evt_log, char future, char json, char *query)
+void win_start_event_channel(char *evt_log, char future, char *query)
 {
     wchar_t *wchannel = NULL;
     wchar_t *wquery = NULL;
     char *filtered_query = NULL;
     os_channel *channel = NULL;
-    EVT_SUBSCRIBE_CALLBACK callback;
     DWORD flags = EvtSubscribeToFutureEvents;
     EVT_HANDLE bookmark = NULL;
     EVT_HANDLE result = NULL;
     int status = 0;
-
-    if (json) {
-        callback = (EVT_SUBSCRIBE_CALLBACK)event_channel_json_callback;
-    } else {
-        callback = (EVT_SUBSCRIBE_CALLBACK)event_channel_callback;
-    }
 
     if ((channel = calloc(1, sizeof(os_channel))) == NULL) {
         mferror(
@@ -926,7 +650,7 @@ void win_start_event_channel(char *evt_log, char future, char json, char *query)
                           wquery,
                           bookmark,
                           channel,
-                          callback,
+                          (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
                           flags);
 
     if (result == NULL && flags == EvtSubscribeStartAfterBookmark) {
@@ -936,7 +660,7 @@ void win_start_event_channel(char *evt_log, char future, char json, char *query)
                               wquery,
                               NULL,
                               channel,
-                              callback,
+                              (EVT_SUBSCRIBE_CALLBACK)event_channel_callback,
                               EvtSubscribeToFutureEvents);
     }
 

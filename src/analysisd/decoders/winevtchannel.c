@@ -234,14 +234,14 @@ int DecodeWinevt(Eventinfo *lf){
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                         break;
-                                    } else if(child_attr[p]->content){
+                                    } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0){
                                         filtered_string = replace_win_format(child_attr[p]->content);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                     }
                                 }
-                            } else if (child_attr[p]->content){
+                            } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0){
                                 filtered_string = replace_win_format(child_attr[p]->content);
                                 cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
                                 os_free(filtered_string);
@@ -356,6 +356,11 @@ int DecodeWinevt(Eventinfo *lf){
     } else {
         lf->full_log = '\0';
     }
+    
+    lf->log = lf->full_log;
+    lf->decoder_info = winevt_decoder;
+
+    JSON_Decoder_Exec(lf, NULL);
 
     os_free(level);
     os_free(event);

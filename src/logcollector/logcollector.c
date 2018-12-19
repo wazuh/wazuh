@@ -149,26 +149,13 @@ void LogCollectorStart()
 
 #ifdef EVENTCHANNEL_SUPPORT
             minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, 0, current->query);
+            win_start_event_channel(current->file, current->future, current->query);
 #else
             mwarn("eventchannel not available on this version of Windows");
 #endif
 
 #endif
-            current->file = NULL;
-            current->command = NULL;
-            current->fp = NULL;
-        } else if (!strcmp(current->logformat, "eventchannel-json")) {
-#ifdef WIN32
-
-#ifdef EVENTCHANNEL_SUPPORT
-            minfo(READING_EVTLOG, current->file);
-            win_start_event_channel(current->file, current->future, 1, current->query);
-#else
-            mwarn("eventchannel not available on this version of Windows");
-#endif
-
-#endif
+        
         } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
