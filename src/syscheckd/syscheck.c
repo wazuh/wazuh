@@ -379,7 +379,7 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
+        mwarn(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
 
         sleep(5);
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
