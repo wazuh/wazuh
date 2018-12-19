@@ -103,20 +103,20 @@ function Extract-CompressedFile
         [string] $dstPath
     )
 
-    if (-not (Get-Package -Name 'SharpCompress' -ErrorAction SilentlyContinue))
+    if (-not (Get-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -ErrorAction SilentlyContinue))
     {
-        if (Find-Package -Name 'SharpCompress' -ErrorAction SilentlyContinue)
+        if (Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -ErrorAction SilentlyContinue)
         {
-            Find-Package -Name 'SharpCompress' | Install-Package -RequiredVersion '0.22.0' -Force -Scope CurrentUser 2>&1>$null
+            Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' | Install-Package -Force -Scope CurrentUser 2>&1>$null
         } else {
             if (-not (Get-PackageSource -Name 'nuGet.org v2' -ErrorAction SilentlyContinue))
             {
                 Register-PackageSource -Name 'nuGet.org v2' -ProviderName NuGet -Location "https://www.nuget.org/api/v2/" -Force 2>&1>$null
             }
             
-            if (Find-Package -Name 'SharpCompress' -Source 'nuGet.org v2' -ErrorAction SilentlyContinue)
+            if (Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -Source 'nuGet.org v2' -ErrorAction SilentlyContinue)
             {
-                Find-Package -Name 'SharpCompress' -Source 'nuGet.org v2' | Install-Package -RequiredVersion '0.22.0' -Force -Scope CurrentUser 2>&1>$null
+                Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -Source 'nuGet.org v2' | Install-Package -Force -Scope CurrentUser 2>&1>$null
             }
         }
     }
@@ -164,20 +164,22 @@ $dir_prefix = ".."
 # Convert relative path to absolute path
 $dir_prefix = (Resolve-FullPath "$dir_prefix")
 
+$include_path = "$dir_prefix\include"
+
 # dirent.h variables
 $dirent_url = "https://raw.githubusercontent.com/tronkko/dirent/master/include/dirent.h"
-$dirent_path = "$dir_prefix\include\dirent.h"
+$dirent_path = "$include_path\dirent.h"
 
 # unistd.h variables
 $unistd_url = "https://gist.githubusercontent.com/mbikovitsky/39224cf521bfea7eabe9/raw/69e4852c06452a368a174ca1f0f33ce87bb52985/unistd.h"
-$unistd_path = "$dir_prefix\include\unistd.h"
+$unistd_path = "$include_path\unistd.h"
 
 # getopt.h variables
 $getopt_url = "https://raw.githubusercontent.com/pps83/libgetopt/master/getopt.h"
-$getopt_path = "$dir_prefix\include\getopt.h"
+$getopt_path = "$include_path\getopt.h"
 
 # Create directories if necessary
-createDestDir "$dirent_path"
+createDestDir "$include_path"
 
 # Check if the necessary files are already available
 
@@ -235,15 +237,16 @@ foreach($schema in $schemas)
 {
     $out_schema_path = "$schemas_outdir\" + $schema.BaseName + ".c"
     $out_schema = (Test-Path -Path "$out_schema_path" -PathType Leaf)
-    if ($out_schema -eq $False)
+    if ($out_schema -eq $True)
     {
-        Write-Host "File `"$out_schema_path`" not available. Converting SQL schema..."
-        $var_name = ($schema.Name).replace(".","_")
-        $c_code = "const char *$var_name = `"" + (Get-Content $schema.FullName -Raw).replace("`n","") + "`";"
-        Set-Content -Value "$c_code" -Path "$out_schema_path" -Force
-    } else {
-        Write-Host "File `"$out_schema_path`" already available."
+        Write-Host "File `"$out_schema_path`" already available. Removing..."
+        Remove-Item -Path "$out_schema_path" -Force
     }
+    
+    Write-Host "Converting SQL schema..."
+    $var_name = ($schema.Name).replace(".","_")
+    $c_code = "const char *$var_name = `"" + (Get-Content $schema.FullName -Raw).replace("`n","").replace("`r","") + "`";"
+    Set-Content -Value "$c_code" -Path "$out_schema_path" -Force
 }
 
 # VERSION file path

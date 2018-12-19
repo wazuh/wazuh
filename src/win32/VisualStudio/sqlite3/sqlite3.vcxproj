@@ -113,7 +113,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File "$(SolutionDir)get_dependencies.ps1"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Get dependencies</Message>
@@ -137,7 +137,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File "$(SolutionDir)get_dependencies.ps1"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Get dependencies</Message>
@@ -165,7 +165,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File "$(SolutionDir)get_dependencies.ps1"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Get dependencies</Message>
@@ -193,7 +193,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
-      <Command>powershell -ExecutionPolicy ByPass -File ..\get_dependencies.ps1</Command>
+      <Command>powershell -ExecutionPolicy ByPass -File "$(SolutionDir)get_dependencies.ps1"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
       <Message>Get dependencies</Message>

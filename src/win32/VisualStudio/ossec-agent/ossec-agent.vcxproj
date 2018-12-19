@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props" Condition="Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -71,11 +70,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <GenerateManifest>true</GenerateManifest>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <ExtensionsToDeleteOnClean>*.cdf;*.cache;*.obj;*.obj.enc;*.ilk;*.ipdb;*.iobj;*.resources;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;*.tlog;*.manifest;*.res;*.pch;*.exp;*.idb;*.rep;*.xdc;*.pdb;*_manifest.rc;*.bsc;*.sbr;*.xml;*.metagen;*.bi</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -83,13 +85,19 @@
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <GenerateManifest>true</GenerateManifest>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <ExtensionsToDeleteOnClean>*.cdf;*.cache;*.obj;*.obj.enc;*.ilk;*.ipdb;*.iobj;*.resources;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;*.tlog;*.manifest;*.res;*.pch;*.exp;*.idb;*.rep;*.xdc;*.pdb;*_manifest.rc;*.bsc;*.sbr;*.xml;*.metagen;*.bi</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LinkIncremental>false</LinkIncremental>
+    <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)Build\$(ProjectName)\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <GenerateManifest>true</GenerateManifest>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <ExtensionsToDeleteOnClean>*.cdf;*.cache;*.obj;*.obj.enc;*.ilk;*.ipdb;*.iobj;*.resources;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;*.tlog;*.manifest;*.res;*.pch;*.exp;*.idb;*.rep;*.xdc;*.pdb;*_manifest.rc;*.bsc;*.sbr;*.xml;*.metagen;*.bi</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -97,6 +105,9 @@
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <GenerateManifest>true</GenerateManifest>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <ExtensionsToDeleteOnClean>*.cdf;*.cache;*.obj;*.obj.enc;*.ilk;*.ipdb;*.iobj;*.resources;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.pgc;*.pgd;*.meta;*.tlog;*.manifest;*.res;*.pch;*.exp;*.idb;*.rep;*.xdc;*.pdb;*_manifest.rc;*.bsc;*.sbr;*.xml;*.metagen;*.bi</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -117,24 +128,24 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;$(SolutionDir)Build\libwazuh\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;Wldap32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;libwazuh.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EnableUAC>true</EnableUAC>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)pthreadVC2.dll"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>
-      </Message>
+      <Message>Copy pthreads DLL</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy pthreads DLL</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -156,24 +167,24 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(SolutionDir)..\..\external\pthreads\Pre-built.2\lib\$(PlatformTarget);$(SolutionDir)Build\sqlite3\$(Platform)\$(Configuration)\;$(SolutionDir)Build\cJSON\$(Platform)\$(Configuration)\;$(SolutionDir)Build\libwazuh\$(Platform)\$(Configuration)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Ws2_32.lib;Iphlpapi.lib;gdi32.lib;advapi32.lib;comctl32.lib;shlwapi.lib;wevtapi.lib;wsock32.lib;Wldap32.lib;pthreadVC2.lib;cJSON.lib;sqlite3.lib;libwazuh.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <EnableUAC>true</EnableUAC>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)pthreadVC2.dll"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>
-      </Message>
+      <Message>Copy pthreads DLL</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy pthreads DLL</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -205,18 +216,18 @@
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)pthreadVC2.dll"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>
-      </Message>
+      <Message>Copy pthreads DLL</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy pthreads DLL</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -248,18 +259,18 @@
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>copy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)pthreadVC2.dll"</Command>
     </PreBuildEvent>
     <PreBuildEvent>
-      <Message>
-      </Message>
+      <Message>Copy pthreads DLL</Message>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>xcopy /Y "$(SolutionDir)..\..\external\pthreads\Pre-built.2\dll\$(PlatformTarget)\pthreadVC2.dll" "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
     <PostBuildEvent>
-      <Message>Copy pthreads DLL</Message>
+      <Message>
+      </Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -353,7 +364,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets" Condition="Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" />
-    <Import Project="..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets" Condition="Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets')" />
+    <Import Project="..\packages\zlib128-vc140-static-32_64.1.2.8\build\native\zlib128-vc140-static-32_64.targets" Condition="Exists('..\packages\zlib128-vc140-static-32_64.1.2.8\build\native\zlib128-vc140-static-32_64.targets')" />
     <Import Project="..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets" Condition="Exists('..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
@@ -361,8 +372,7 @@
       <ErrorText>Este proyecto hace referencia a los paquetes NuGet que faltan en este equipo. Use la restauración de paquetes NuGet para descargarlos. Para obtener más información, consulte http://go.microsoft.com/fwlink/?LinkID=322105. El archivo que falta es {0}.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\curl-vc140-static-32_64.7.53.0\build\native\curl-vc140-static-32_64.targets'))" />
-    <Error Condition="!Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.props'))" />
-    <Error Condition="!Exists('..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\epsitec-zlib.1.2.11\build\native\epsitec-zlib.targets'))" />
+    <Error Condition="!Exists('..\packages\zlib128-vc140-static-32_64.1.2.8\build\native\zlib128-vc140-static-32_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib128-vc140-static-32_64.1.2.8\build\native\zlib128-vc140-static-32_64.targets'))" />
     <Error Condition="!Exists('..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\openssl-vc141-static-x86_64.1.1.0\build\native\openssl-vc141-static-x86_64.targets'))" />
   </Target>
 </Project>
