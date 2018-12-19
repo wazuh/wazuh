@@ -14,12 +14,16 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <time.h>
+#include <winsock2.h>
 #include <windows.h>
 
 #include "os_regex/os_regex.h"
 
 
 #define OSSECCONF   "ossec.conf"
+#ifdef OS_MAXSTR
+#undef OS_MAXSTR
+#endif
 #define OS_MAXSTR   1024
 
 int total;

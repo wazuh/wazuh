@@ -19,6 +19,9 @@
 
 #ifdef WIN32
     #define fchmod(x,y) 0
+    #ifdef mkdir
+    #undef mkdir
+    #endif
     #define mkdir(x,y) 0
     #define link(x,y) 0
     #define difftime(x,y) 0

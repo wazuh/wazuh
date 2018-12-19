@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <time.h>
+#include <winsock2.h>
 #include <windows.h>
 #include "os_regex/os_regex.h"
 #include "headers/file_op.h"
@@ -22,6 +23,9 @@
 #define OSSECDEF    "default-ossec.conf"
 #define OSSECLAST   "ossec.conf.bak"
 #define CLIENTKEYS  "client.keys"
+#ifdef OS_MAXSTR
+#undef OS_MAXSTR
+#endif
 #define OS_MAXSTR   1024
 
 
