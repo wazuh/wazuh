@@ -16,7 +16,11 @@
 #include "external/cJSON/cJSON.h"
 #include <stdlib.h>
 
-#if defined(__MINGW32__) || defined(__hppa__)
+#if (defined(__MINGW32__) || defined(__hppa__) || (defined(_MSC_VER) && !defined(__INTEL_COMPILER)))
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define putenv _putenv
+#endif
+
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
     int len = strlen(name) + strlen(val) + 2;

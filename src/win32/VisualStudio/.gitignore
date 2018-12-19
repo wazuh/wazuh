@@ -18,4 +18,6 @@ ossec-agent-eventchannel/Win32
 ossec-agent-eventchannel/x64
 ossec-rootcheck/Win32
 ossec-rootcheck/x64
+manage_agents/Win32
+manage_agents/x64
 packages
