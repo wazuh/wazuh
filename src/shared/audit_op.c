@@ -8,6 +8,8 @@
  * Foundation.
  */
 
+#ifdef ENABLE_AUDIT
+
 #include "shared.h"
 #include "audit_op.h"
 
@@ -392,3 +394,5 @@ int search_audit_rule(const char *path, const char *perms, const char *key) {
 
     return found;
 }
+
+#endif
