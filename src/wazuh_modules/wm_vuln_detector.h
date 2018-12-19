@@ -251,7 +251,7 @@ typedef struct info_cve {
     char *cvss3;
     char *cvss_vector;
     char *bugzilla_reference;
-    char *advidsories;
+    char *advisories;
     char *cwe;
     int flags;
     struct info_cve *prev;

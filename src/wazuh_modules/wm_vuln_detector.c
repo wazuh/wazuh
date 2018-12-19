@@ -33,7 +33,7 @@ static int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed
 static int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *uparsed_vulnerabilities, update_node *update);
 static void wm_vuldet_add_rvulnerability(wm_vuldet_db *ctrl_block);
 static void wm_vuldet_add_vulnerability_info(wm_vuldet_db *ctrl_block);
-static char *wm_vuldet_extract_advidsories(cJSON *advidsories);
+static char *wm_vuldet_extract_advisories(cJSON *advisories);
 static const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **package_name, char **package_version);
 static int wm_vuldet_check_db();
 static int wm_vuldet_insert(wm_vuldet_db *parsed_oval);
@@ -492,10 +492,10 @@ char *wm_vuldet_build_url(char *pattern, char *value) {
     return retval;
 }
 
-cJSON *wm_vuldet_decode_advidsories(char *advidsories) {
-    cJSON *json_advidsories = cJSON_CreateObject();
+cJSON *wm_vuldet_decode_advisories(char *advisories) {
+    cJSON *json_advisories = cJSON_CreateObject();
     char *found;
-    char *str_base = advidsories;
+    char *str_base = advisories;
 
     while (str_base && *str_base) {
         char *patch_url;
@@ -504,12 +504,12 @@ cJSON *wm_vuldet_decode_advidsories(char *advidsories) {
         }
 
         patch_url = wm_vuldet_build_url(VU_BUILD_REF_RHSA, str_base);
-        cJSON_AddItemToObject(json_advidsories, str_base, cJSON_CreateString(patch_url));
+        cJSON_AddItemToObject(json_advisories, str_base, cJSON_CreateString(patch_url));
         str_base = found;
         free(patch_url);
     }
 
-    return json_advidsories;
+    return json_advisories;
 }
 
 int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, int max) {
@@ -572,7 +572,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             char *cvss_vector;
             char *bugzilla_reference;
             char *cwe;
-            char *advidsories;
+            char *advisories;
             char state[50];
             int v_type;
 
@@ -595,7 +595,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             cvss_vector = (char *)sqlite3_column_text(stmt, 16);
             bugzilla_reference = (char *)sqlite3_column_text(stmt, 17);
             cwe = (char *)sqlite3_column_text(stmt, 18);
-            advidsories = (char *)sqlite3_column_text(stmt, 19);
+            advisories = (char *)sqlite3_column_text(stmt, 19);
 
             *condition = '\0';
             if (pending) {
@@ -663,8 +663,8 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                         cJSON_AddStringToObject(j_package, "condition", operation);
                     }
                 }
-                if (advidsories && *advidsories) {
-                    cJSON_AddItemToObject(alert_cve, "advidsories", wm_vuldet_decode_advidsories(advidsories));
+                if (advisories && *advisories) {
+                    cJSON_AddItemToObject(alert_cve, "advisories", wm_vuldet_decode_advisories(advisories));
                 }
                 if (cwe) cJSON_AddStringToObject(alert_cve, "cwe_reference", cwe);
                 if (bugzilla_reference) cJSON_AddStringToObject(alert_cve, "bugzilla_reference", bugzilla_reference);
@@ -1019,7 +1019,7 @@ set_op:
         sqlite3_bind_text(stmt, 11, info_it->cvss3, -1, NULL);
         sqlite3_bind_text(stmt, 12, info_it->bugzilla_reference, -1, NULL);
         sqlite3_bind_text(stmt, 13, info_it->cwe, -1, NULL);
-        sqlite3_bind_text(stmt, 14, info_it->advidsories, -1, NULL);
+        sqlite3_bind_text(stmt, 14, info_it->advisories, -1, NULL);
 
         if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
             return wm_vuldet_sql_error(db, stmt);
@@ -1037,7 +1037,7 @@ set_op:
         free(info_aux->cvss);
         free(info_aux->cvss_vector);
         free(info_aux->bugzilla_reference);
-        free(info_aux->advidsories);
+        free(info_aux->advisories);
         free(info_aux->cwe);
         free(info_aux);
     }
@@ -1204,27 +1204,27 @@ free_mem:
     return tmp_file;
 }
 
-char *wm_vuldet_extract_advidsories(cJSON *advidsories) {
-    char *advidsories_str = NULL;
+char *wm_vuldet_extract_advisories(cJSON *advisories) {
+    char *advisories_str = NULL;
     char *str_it;
     size_t size;
 
-    if (advidsories) {
-        for (; advidsories; advidsories = advidsories->next) {
-            if (!advidsories_str) {
-                if (w_strdup(advidsories->valuestring, advidsories_str)) {
+    if (advisories) {
+        for (; advisories; advisories = advisories->next) {
+            if (!advisories_str) {
+                if (w_strdup(advisories->valuestring, advisories_str)) {
                     return NULL;
                 }
-                size = strlen(advidsories_str);
+                size = strlen(advisories_str);
             } else {
-                os_realloc(advidsories_str, size + strlen(advidsories->valuestring) + 2, advidsories_str);
-                str_it = size + advidsories_str;
-                size = snprintf(str_it, strlen(advidsories->valuestring) + 2, ",%s", advidsories->valuestring) + size;
+                os_realloc(advisories_str, size + strlen(advisories->valuestring) + 2, advisories_str);
+                str_it = size + advisories_str;
+                size = snprintf(str_it, strlen(advisories->valuestring) + 2, ",%s", advisories->valuestring) + size;
             }
         }
     }
 
-    return advidsories_str;
+    return advisories_str;
 }
 
 int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, update_node *update, vu_logic condition) {
@@ -2021,7 +2021,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
     static char *JSON_CVE = "CVE";
     static char *JSON_SEVERITY = "severity";
     static char *JSON_PUBLIC_DATE = "public_date";
-    static char *JSON_ADVIDSORIES = "advisories";
+    static char *JSON_ADVISORIES = "advisories";
     static char *JSON_BUGZILLA = "bugzilla";
     static char *JSON_BUGZILLA_DESCRIPTION = "bugzilla_description";
     static char *JSON_CVSS_SCORE = "cvss_score";
@@ -2043,7 +2043,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
             char *tmp_cve = NULL;
             char *tmp_severity = NULL;
             char *tmp_public_date = NULL;
-            cJSON *tmp_advidsories = NULL;
+            cJSON *tmp_advisories = NULL;
             char *tmp_bugzilla = NULL;
             char *tmp_bugzilla_description = NULL;
             double tmp_cvss_score = -1;
@@ -2065,8 +2065,8 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                     tmp_severity = cve_content->valuestring;
                 } else if (!strcmp(cve_content->string, JSON_PUBLIC_DATE)) {
                     tmp_public_date = cve_content->valuestring;
-                } else if (!strcmp(cve_content->string, JSON_ADVIDSORIES)) {
-                    tmp_advidsories = cve_content->child;
+                } else if (!strcmp(cve_content->string, JSON_ADVISORIES)) {
+                    tmp_advisories = cve_content->child;
                 } else if (!strcmp(cve_content->string, JSON_BUGZILLA)) {
                     tmp_bugzilla = cve_content->valuestring;
                 } else if (!strcmp(cve_content->string, JSON_BUGZILLA_DESCRIPTION)) {
@@ -2103,7 +2103,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                 parsed_vulnerabilities->info_cves->cvss3 = (tmp_cvss3_score != -1) ? w_double_str(tmp_cvss3_score) : NULL;
                 w_strdup(tmp_cvss_scoring_vector, parsed_vulnerabilities->info_cves->cvss_vector);
                 parsed_vulnerabilities->info_cves->bugzilla_reference = wm_vuldet_build_url(VU_BUILD_REF_BUGZ, tmp_bugzilla);
-                parsed_vulnerabilities->info_cves->advidsories = wm_vuldet_extract_advidsories(tmp_advidsories);
+                parsed_vulnerabilities->info_cves->advisories = wm_vuldet_extract_advisories(tmp_advisories);
                 w_strdup(tmp_cwe, parsed_vulnerabilities->info_cves->cwe);
 
                 // Set the vulnerability - package relationship
