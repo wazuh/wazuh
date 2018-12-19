@@ -12,7 +12,6 @@
 
 #define EVENTLOG     "eventlog"
 #define EVENTCHANNEL "eventchannel"
-#define EVENTCHANNEL_JSON "eventchannel-json"
 #define DATE_MODIFIED   1
 
 #include <pthread.h>
