@@ -115,7 +115,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;PSAPI_VERSION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -154,7 +154,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;PSAPI_VERSION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -195,7 +195,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;PSAPI_VERSION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
@@ -238,7 +238,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;WIN32;ARGV0="ossec-agent";OSSECHIDS;CLIENT;_POSIX_C_SOURCE;HAVE_STRUCT_TIMESPEC;ENABLE_SYSC;ENABLE_CISCAT;ENABLE_SHARED;PSAPI_VERSION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)include;$(SolutionDir)..\..\..\src;$(SolutionDir)..\..\headers;$(SolutionDir)..\..\external\pthreads\Pre-built.2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4018;4090;4244;4267;4311;4477;4996</DisableSpecificWarnings>
