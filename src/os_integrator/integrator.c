@@ -117,29 +117,41 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if (dbg_lvl <= 0) strncat(exec_full_cmd, " > /dev/null 2>&1", 17);
 				
                 mdebug2("Running: %s", exec_full_cmd);
-                if(system(exec_full_cmd) != 0)
-                {
-                    integrator_config[s]->enabled = 0;
 
-                    char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+                integrator_config[s]->enabled = 0;
 
-                    if(cmd) {
-                        wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
-                    
-                        if(wfd){
-                            char buffer[4096];
-                            while (fgets(buffer, sizeof(buffer), wfd->file)) {
-                                mdebug1("integratord: %s", buffer);
-                            }
-                            merror("Unable to run integration for %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
-                            wpclose(wfd);
+                char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+
+                if(cmd) {
+                    wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
+                
+                    if(wfd){
+                        char buffer[4096];
+                        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+                            mdebug1("integratord: %s", buffer);
                         }
                         
-                        free_strarray(cmd);
+                        int wp_closefd = wpclose(wfd);
+                        int wstatus = WEXITSTATUS(wp_closefd);
+
+                        if (wstatus == 127) {
+                            // 127 means error in exec
+                            merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
+                            integrator_config[s]->enabled = 0;
+                        } else if(wstatus != 0){
+                            merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
+                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
+                            integrator_config[s]->enabled = 0;
+                        } else {
+                            mdebug1("Command run succesfully");
+                            minfo("Enabling integration for: '%s'.",
+                            integrator_config[s]->name);
+                        }
+                    } else {
+                        merror("Could not launch command %s (%d)", strerror(errno), errno);
+                        integrator_config[s]->enabled = 0;
                     }
-                } else {
-                    minfo("Enabling integration for: '%s'.",
-                    integrator_config[s]->name);
+                    free_strarray(cmd);
                 }
             }
         s++;
@@ -414,32 +426,39 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 if (dbg_lvl <= 0) strncat(exec_full_cmd, " > /dev/null 2>&1", 17);
 				
                 mdebug2("Running: %s", exec_full_cmd);
-                if(system(exec_full_cmd) != 0)
-                {
-                    integrator_config[s]->enabled = 0;
 
-                    char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+                char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
 
-                    if(cmd) {
-                        wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
-                    
-                        if(wfd){
-                            char buffer[4096];
-                            while (fgets(buffer, sizeof(buffer), wfd->file)) {
-                                mdebug1("integratord: %s", buffer);
-                            }
-                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
-                            wpclose(wfd);
+                if(cmd) {
+                    wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
+                
+                    if(wfd){
+                        char buffer[4096];
+                        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+                            mdebug1("integratord: %s", buffer);
                         }
                         
-                        free_strarray(cmd);
-                    }
+                        int wp_closefd = wpclose(wfd);
+                        int wstatus = WEXITSTATUS(wp_closefd);
 
-                    merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
-                    s++;
-                    continue;
+                        if (wstatus == 127) {
+                            // 127 means error in exec
+                            merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
+                            integrator_config[s]->enabled = 0;
+                        } else if(wstatus != 0){
+                            merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
+                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
+                            integrator_config[s]->enabled = 0;
+                        } else {
+                            mdebug1("Command run succesfully");
+                        }
+                    } else {
+                        merror("Could not launch command %s (%d)", strerror(errno), errno);
+                        integrator_config[s]->enabled = 0;
+                    }
+                    
+                    free_strarray(cmd);
                 }
-                mdebug1("Command run succesfully");
             }
             s++;
         }
