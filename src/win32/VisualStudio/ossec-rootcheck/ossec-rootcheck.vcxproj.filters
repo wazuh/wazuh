@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Archivos de origen">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Archivos de encabezado">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Archivos de recursos">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Archivos de encabezado\sys">
+      <UniqueIdentifier>{c75d689a-cae8-4606-bc0c-4c75c20bc966}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Archivos de origen\rootcheck">
+      <UniqueIdentifier>{6c4faf9e-5dfd-41c7-ade0-3ca3505ad2df}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\sys\param.h">
+      <Filter>Archivos de encabezado\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\sys\time.h">
+      <Filter>Archivos de encabezado\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\dirent.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\getopt.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\libgen.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\unistd.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\..\icofile.rc">
+      <Filter>Archivos de recursos</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\include\libgen.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\sys\time.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\win_service.c">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_open_ports.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_dev.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_files.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_if.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_pids.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_policy.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_ports.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_readproc.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_sys.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\check_rc_trojans.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\common.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\common_rcl.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\config.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\os_string.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\rootcheck-config.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\rootcheck.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\run_rk_check.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\unix-process.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\win-common.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\rootcheck\win-process.c">
+      <Filter>Archivos de origen\rootcheck</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

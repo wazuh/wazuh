@@ -32,6 +32,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ossec-agent-eventchannel", 
 		{5E6F4BF5-DCAF-4D98-9308-B34E2ED4842D} = {5E6F4BF5-DCAF-4D98-9308-B34E2ED4842D}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ossec-rootcheck", "ossec-rootcheck\ossec-rootcheck.vcxproj", "{CDA37E77-EC00-4A95-946E-600CB537151E}"
+	ProjectSection(ProjectDependencies) = postProject
+		{DBEDBF23-92C1-453D-93A8-8A4F3A01AB84} = {DBEDBF23-92C1-453D-93A8-8A4F3A01AB84}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -88,6 +93,14 @@ Global
 		{DBEDBF23-92C1-453D-93A8-8A4F3A01AB84}.Release|x64.Build.0 = Release|x64
 		{DBEDBF23-92C1-453D-93A8-8A4F3A01AB84}.Release|x86.ActiveCfg = Release|Win32
 		{DBEDBF23-92C1-453D-93A8-8A4F3A01AB84}.Release|x86.Build.0 = Release|Win32
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Debug|x64.ActiveCfg = Debug|x64
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Debug|x64.Build.0 = Debug|x64
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Debug|x86.ActiveCfg = Debug|Win32
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Debug|x86.Build.0 = Debug|Win32
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Release|x64.ActiveCfg = Release|x64
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Release|x64.Build.0 = Release|x64
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Release|x86.ActiveCfg = Release|Win32
+		{CDA37E77-EC00-4A95-946E-600CB537151E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

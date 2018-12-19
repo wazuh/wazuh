@@ -16,4 +16,6 @@ libwazuh/Win32
 libwazuh/x64
 ossec-agent-eventchannel/Win32
 ossec-agent-eventchannel/x64
+ossec-rootcheck/Win32
+ossec-rootcheck/x64
 packages
