@@ -50,7 +50,7 @@ static int wm_vuldet_check_update(update_node *upd, const char *dist);
 static int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext);
 static int wm_vuldet_compare(char *version_it, char *cversion_it);
 static const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vuldet_set_oval);
-static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
+static int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **updates);
 static int check_timestamp(const char *OS, char *timst, char *ret_timst);
 static cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector);
 static char *wm_vuldet_build_url(char *pattern, char *value);
@@ -2446,7 +2446,7 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
         if ((vulnerability_detector->last_detection + (time_t) vulnerability_detector->detection_interval) < time(NULL)) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
 
-            if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software, updates)) {
+            if (wm_vuldet_set_agents_info(&vulnerability_detector->agents_software, updates)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
                 if (wm_vuldet_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
@@ -2505,7 +2505,7 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
 
 }
 
-int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates) {
+int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **updates) {
     agent_software *agents = NULL;
     agent_software *f_agent = NULL;
     char global_db[OS_FLSIZE + 1];
@@ -2520,6 +2520,8 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
     char *arch;
     const char *agent_os;
     distribution agent_dist;
+    int error;
+    int i;
 
     snprintf(global_db, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_GLOB_NAME);
 
@@ -2529,7 +2531,18 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
     }
 
     // Extracts the operating system of the agents
-    if (sqlite3_prepare_v2(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL) != SQLITE_OK) {
+    for (i = 0; i < VU_MAX_GLOBAL_DB_ATTEMPS; i++) {
+        if (error = sqlite3_prepare_v2(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL), error == SQLITE_OK) {
+            break;
+        } else if (error != SQLITE_LOCKED && error != SQLITE_BUSY) {
+            return wm_vuldet_sql_error(db, stmt);
+        }
+        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_FAIL, i);
+        sleep(i);
+    }
+
+    if (i == VU_MAX_GLOBAL_DB_ATTEMPS) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_ERROR);
         return wm_vuldet_sql_error(db, stmt);
     }
 

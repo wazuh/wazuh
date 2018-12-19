@@ -54,5 +54,6 @@
 #define VU_API_REQ_RETRY      "(5490): There was no valid response to '%s'. Retrying in %d seconds..."
 #define VU_UNEXP_JSON_KEY     "(5492): Unexpected JSON key: '%s'."
 #define VU_ENDING_UPDATE      "(5494): The update of the feeds ended successfully."
+#define VU_GLOBALDB_FAIL      "(5495): Unable to connect to global DB. Waiting %d seconds."
 
 #endif
