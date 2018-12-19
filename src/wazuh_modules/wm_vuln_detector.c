@@ -183,7 +183,7 @@ int wm_vuldet_create_file(const char *path, const char *source) {
             return wm_vuldet_sql_error(db, stmt);
         }
 
-        result = sqlite3_step(stmt);
+        result = wm_vuldet_step(stmt);
 
         switch (result) {
         case SQLITE_MISUSE:
@@ -561,7 +561,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
         sqlite3_bind_text(stmt, 1, agents_it->agent_OS, -1, NULL);
         sqlite3_bind_int(stmt, 2,  strtol(agents_it->agent_id, NULL, 10));
 
-        while (sql_result = sqlite3_step(stmt), sql_result == SQLITE_ROW) {
+        while (sql_result = wm_vuldet_step(stmt), sql_result == SQLITE_ROW) {
             char *package;
             char *version;
             char *operation, *second_operation;
@@ -1708,11 +1708,11 @@ free_mem:
         OS_ClearNode(chld_node);
         OS_ClearXML(&xml);
     }
-    if (rem_tmp && remove(CVE_TEMP_FILE) < 0) {
-        mdebug1(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
+    if (remove(CVE_TEMP_FILE) < 0) {
+        mtdebug2(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
     }
-    if (rem_tmpfit && remove(CVE_FIT_TEMP_FILE) < 0) {
-        mdebug1(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_FIT_TEMP_FILE, strerror(errno));
+    if (remove(CVE_FIT_TEMP_FILE) < 0) {
+        mtdebug2(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_FIT_TEMP_FILE, strerror(errno));
     }
 
     if (success) {
@@ -1770,7 +1770,7 @@ int check_timestamp(const char *OS, char *timst, char *ret_timst) {
             goto end;
         }
         sqlite3_bind_text(stmt, 1, OS, -1, NULL);
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
+        if (wm_vuldet_step(stmt) == SQLITE_ROW) {
             snprintf(stored_timestamp, KEY_SIZE, "%s", sqlite3_column_text(stmt, 0));
             for (i = 0; stored_timestamp[i] != '\0'; i++) {
                  if (stored_timestamp[i] == '-' ||
@@ -2512,7 +2512,7 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
 
     sqlite3_bind_int(stmt, 1, DISCON_TIME);
 
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
+    while (wm_vuldet_step(stmt) == SQLITE_ROW) {
         dist_error = -1;
         os_name = (char *) sqlite3_column_text(stmt, 0);
         os_version = (char *) sqlite3_column_text(stmt,1);
