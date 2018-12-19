@@ -6,7 +6,7 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5
+                        md5, load_wazuh_xml
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -31,6 +31,7 @@ from functools import reduce
 import struct
 from subprocess import check_output
 from shutil import move
+from xml.dom.minidom import parseString
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -1677,33 +1678,67 @@ class Agent:
 
 
     @staticmethod
-    def upload_group_configuration(group_id, xml_file):
-        # checks if the group exists
+    def upload_group_configuration(group_id, xml_file, destination_file='agent.conf'):
+        # check if the group exists
         if not Agent.group_exists_sql(group_id):
             raise WazuhException(1710)
 
         # get timestamp
         timestamp = datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s')
         tmp_file_path = '/tmp/test_agent_conf_{timestamp}.xml'.format(timestamp=timestamp)
-        # verify file syntax
+        tmp_file_path_2 = '/tmp/test2_agent_conf_{timestamp}.xml'.format(timestamp=timestamp)
+
+        # create temporary file
         try:
-            # create a temporary file with the content of xml file
             tmp_file = open(tmp_file_path, 'w+')
-            tmp_file.write(xml_file)
+            # beauty xml file
+            xml = parseString(xml_file)
+            pretty_xml = xml.toprettyxml(indent='  ')  # two spaces for identation
+            tmp_file.write(pretty_xml)
             tmp_file.close()
-            check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
         except Exception as e:
+            raise WazuhException(1005)
+
+        # function to replace a line in a text file
+        def replace_line(file_name, line_num, text):
+            lines = open(file_name, 'r').readlines()
+            lines[line_num] = text
+            out = open(file_name, 'w')
+            out.writelines(lines)
+            out.close()
+
+        # function to delete empty lines
+        def delete_empty_lines(file_name):
+            with open(tmp_file_path) as infile, open(tmp_file_path_2, 'w+') as outfile:
+                for line in infile:
+                    if not line.strip(): continue  # skip the empty line
+                    outfile.write(line)
+
+        # it is necessary to delete the first line and delete empty lines
+        try:
+            delete_empty_lines(tmp_file_path)
+            replace_line(tmp_file_path_2, 0, '')
+        except:
+            raise WazuhException(1005)
+
+        # check xml file
+
+        try:
+            #load_wazuh_xml(tmp_file_path)
+            check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path_2])
+            pass
+        except:
             raise WazuhException(1742)
 
-        group_path = common.shared_path + '/' + group_id
-        new_conf_path = group_path + '/' + 'agent.conf'
-        # move temporary file to group path
+        # move temporary file to group folder
         try:
-            move(tmp_file_path, new_conf_path)
-        except Exception as e:
-            raise WazuhException(1016)
+            new_conf_path = common.shared_path + '/' + group_id + '/' + destination_file ####
+            # delete tmp_file_path
+            move(tmp_file_path_2, new_conf_path)
+        except:
+            raise WazuhException(1017)
 
-        return {'response': 'OK'}
+        return {'message': 'agent configuration was updated successfully'}
 
 
     @staticmethod
