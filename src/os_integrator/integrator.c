@@ -112,10 +112,36 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
         if(integrator_config[s]->enabled == 1)
         {
-            minfo("Enabling integration for: '%s'.",
-                   integrator_config[s]->name);
-        }
+            int dbg_lvl = isDebug();
+            snprintf(exec_full_cmd, 4095, "%s '%s' '%s' '%s' '%s'", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+            if (dbg_lvl <= 0) strncat(exec_full_cmd, " > /dev/null 2>&1", 17);
+				
+                mdebug2("Running: %s", exec_full_cmd);
+                if(system(exec_full_cmd) != 0)
+                {
+                    integrator_config[s]->enabled = 0;
 
+                    char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+
+                    if(cmd) {
+                        wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
+                    
+                        if(wfd){
+                            char buffer[4096];
+                            while (fgets(buffer, sizeof(buffer), wfd->file)) {
+                                mdebug1("integratord: %s", buffer);
+                            }
+                            merror("Unable to run integration for %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
+                            wpclose(wfd);
+                        }
+                        
+                        free_strarray(cmd);
+                    }
+                } else {
+                    minfo("Enabling integration for: '%s'.",
+                    integrator_config[s]->name);
+                }
+            }
         s++;
     }
 
@@ -391,6 +417,24 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 if(system(exec_full_cmd) != 0)
                 {
                     integrator_config[s]->enabled = 0;
+
+                    char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
+
+                    if(cmd) {
+                        wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
+                    
+                        if(wfd){
+                            char buffer[4096];
+                            while (fgets(buffer, sizeof(buffer), wfd->file)) {
+                                mdebug1("integratord: %s", buffer);
+                            }
+                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, integrator_config[s]->path,buffer);
+                            wpclose(wfd);
+                        }
+                        
+                        free_strarray(cmd);
+                    }
+
                     merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, integrator_config[s]->path);
                     s++;
                     continue;
