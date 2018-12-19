@@ -1,0 +1,25 @@
+filebeat.inputs:
+- type: log
+  paths:
+    - /var/ossec/logs/alerts/alerts.json
+  json.keys_under_root: true
+  json.overwrite_keys: true
+  json.add_error_key: true
+
+setup.template.enabled: false
+
+output.elasticsearch:
+  hosts: ["YOUR_ELASTIC_SERVER_IP:9200"]
+  # ssl
+  # protocol: https
+  # ssl.certificate_authorities: ["/etc/filebeat/logstash.crt"]
+  index: "wazuh-alerts-3.x-%{+YYYY.MM.dd}"
+  pipeline: wazuh_alert_pipeline
+
+logging.level: warning
+logging.to_files: true
+logging.files:
+  path: /var/log/filebeat
+  name: filebeat
+  rotateeverybytes: 10485760
+  keepfiles: 30
