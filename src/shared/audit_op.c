@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "audit_op.h"
 
+static w_audit_rules_list *_audit_rules_list;
 
 int audit_send(int fd, int type, const void *data, unsigned int size) {
     int rc;
@@ -24,6 +25,10 @@ int audit_send(int fd, int type, const void *data, unsigned int size) {
 
 
 int audit_get_rule_list(int fd) {
+
+    // Clean rules list
+    audit_rules_list_free(_audit_rules_list);
+    _audit_rules_list = audit_rules_list_init(25);
 
     int rc = audit_send(fd, AUDIT_LIST_RULES, NULL, 0);
     if (rc < 0 && rc != -EINVAL) {
@@ -68,7 +73,15 @@ int audit_print_reply(struct audit_reply *rep) {
             }
         }
         if (path && key) {
-            minfo("(Audit) -w %s -p %s -k %s",path, perms, key);
+            mdebug2("Audit rule loaded: -w %s -p %s -k %s",path, perms, key);
+            if (_audit_rules_list) {
+                w_audit_rule *rule;
+                os_calloc(1, sizeof(w_audit_rule *), rule);
+                rule->path = strdup(path);
+                rule->perm = strdup(perms);
+                rule->key = strdup(key);
+                audit_rules_list_append(_audit_rules_list, rule);
+            }
             free(key);
             free(path);
         }
@@ -313,4 +326,69 @@ int audit_check_lock_output(void) {
         }
         return 0;
     }
+}
+
+
+w_audit_rules_list *audit_rules_list_init(int initialSize) {
+    w_audit_rules_list *wlist = malloc(sizeof(w_audit_rules_list));
+    wlist->list = (w_audit_rule **)malloc(initialSize * sizeof(w_audit_rule *));
+    wlist->used = 0;
+    wlist->size = initialSize;
+    return wlist;
+}
+
+
+void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element) {
+    if (wlist) {
+        if (wlist->used == wlist->size) {
+            wlist->size *= 2;
+            wlist->list = (w_audit_rule **)realloc(wlist->list, wlist->size * sizeof(w_audit_rule *));
+            if (!wlist->list) {
+                merror_exit(MEM_ERROR, errno, strerror(errno));
+            }
+        }
+        wlist->list[wlist->used++] = element;
+    }
+}
+
+
+void audit_rules_list_free(w_audit_rules_list *wlist) {
+    int i;
+
+    if (wlist) {
+        for (i=0; i < wlist->used; i++) {
+            free(wlist->list[i]->path);
+            free(wlist->list[i]->perm);
+            free(wlist->list[i]->key);
+            free(wlist->list[i]);
+        }
+        free (wlist->list);
+        free (wlist);
+    }
+}
+
+
+void audit_free_list(void) {
+    audit_rules_list_free(_audit_rules_list);
+}
+
+
+int search_audit_rule(const char *path, const char *perms, const char *key) {
+    int found = 0;
+    int i = 0;
+
+    if (!(path && perms && key && _audit_rules_list)) {
+        return -1;
+    }
+
+    while (!found && i <= _audit_rules_list->used) {
+        if (_audit_rules_list->list[i] && strcmp(_audit_rules_list->list[i]->path, path) == 0
+            && strcmp(_audit_rules_list->list[i]->perm, perms) == 0
+            && strcmp(_audit_rules_list->list[i]->key, key) == 0) {
+                found = 1;
+        }
+        i++;
+    }
+
+    return found;
 }

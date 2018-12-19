@@ -31,6 +31,7 @@
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
+W_Vector *audit_loaded_rules;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 int auid_err_reported;
@@ -183,24 +184,38 @@ int init_auditd_socket(void) {
 int add_audit_rules_syscheck(void) {
     unsigned int i = 0;
     unsigned int rules_added = 0;
+
+    int fd = audit_open();
+    int res = audit_get_rule_list(fd);
+    audit_close(fd);
+
+    if (!res) {
+        merror("Could not read audit loaded rules.");
+    }
+
     while (syscheck.dir[i] != NULL) {
         if (syscheck.opts[i] & CHECK_WHODATA) {
             int retval;
             if (W_Vector_length(audit_added_rules) < syscheck.max_audit_entries) {
-                if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
-                    mdebug1("Added Audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
-                    w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
-                    w_mutex_unlock(&audit_rules_mutex);
-                    rules_added++;
-                } else if (abs(retval) == 17) {
+                int found = search_audit_rule(syscheck.dir[i], "wa", AUDIT_KEY);
+                if (found == 0) {
+                    if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
+                        mdebug1("Added audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                        w_mutex_lock(&audit_rules_mutex);
+                        W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
+                        w_mutex_unlock(&audit_rules_mutex);
+                        rules_added++;
+                    } else {
+                        merror("Error adding audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
+                    }
+                } else if (found == 1) {
                     mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
                     W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {
-                    merror("Error adding Audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
+                    merror("Error checking Audit rules list.");
                 }
             } else {
                 merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
@@ -208,6 +223,9 @@ int add_audit_rules_syscheck(void) {
         }
         i++;
     }
+
+    audit_free_list();
+
     return rules_added;
 }
 
@@ -333,10 +351,6 @@ int audit_init(void) {
     // Initialize Audit socket
     static int audit_socket;
     audit_socket = init_auditd_socket();
-
-    int fd = audit_open();
-    audit_get_rule_list(fd);
-    audit_close(fd);
 
     // Check if there's a blockig rule
     if (audit_check_lock_output()) {
@@ -1041,5 +1055,6 @@ int filterpath_audit_events(char *path) {
     }
     return 0;
 }
+
 #endif
 #endif

@@ -17,13 +17,44 @@
 
 #define ADD_RULE 1
 #define DELETE_RULE 2
+#define DEF_LIST_SIZE 50
 
+typedef struct {
+    char *path;
+    char *perm;
+    char *key;
+} w_audit_rule;
+
+typedef struct {
+    w_audit_rule **list;
+    int used;
+    int size;
+} w_audit_rules_list;
+
+
+// Init loaded rules list. Use before audit_get_rule_list()
+w_audit_rules_list *audit_rules_list_init(int initialSize);
+
+// Checks if the audit rule is loaded.
+int search_audit_rule(const char *path, const char *perms, const char *key);
+
+// Adds rule to loaded rules list.
+void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element);
+
+// Sends commands to audit kernel.
 int audit_send(int fd, int type, const void *data, unsigned int size);
 
+// Get audit loaded rules list. audit_free_list() must be called to free memory used.
 int audit_get_rule_list(int fd);
 
+// Clean audit loaded rules list.
+void audit_free_list(void);
+void audit_rules_list_free(w_audit_rules_list *wlist);
+
+// Read reply from Audit kernel.
 void get_reply(int fd);
 
+// Process audit reply of loaded rules.
 int audit_print_reply(struct audit_reply *rep);
 
 // Converts Audit relative paths into absolute paths
