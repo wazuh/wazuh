@@ -54,6 +54,7 @@ static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_so
 static int check_timestamp(const char *OS, char *timst, char *ret_timst);
 static cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector);
 static char *wm_vuldet_build_url(char *pattern, char *value);
+static void wm_vuldet_adapt_title(char *title, char *cve);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -1227,6 +1228,26 @@ char *wm_vuldet_extract_advisories(cJSON *advisories) {
     return advisories_str;
 }
 
+void wm_vuldet_adapt_title(char *title, char *cve) {
+    // Remove unnecessary line jumps and  spaces
+    size_t size;
+    int offset;
+
+    for (size = strlen(title) - 1; size > 0 && title[size] == ' '; size -= 1) {
+        title[size] = '\0';
+    }
+
+    if (title[size] == '\n') {
+        title[size--] = '\0';
+    }
+
+    offset = title[0] == '\n' ? 1 : 0;
+    if(size > 1 && !strncmp(title + offset, cve, strlen(cve))) {
+        offset += strlen(cve) + 1;
+    }
+    strncpy(title, title + offset, strlen(title + offset));
+}
+
 int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, update_node *update, vu_logic condition) {
     int i, j;
     int retval = 0;
@@ -2090,6 +2111,8 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UNEXP_JSON_KEY, cve_content->string);
                 }
             }
+
+            wm_vuldet_adapt_title(tmp_bugzilla_description, tmp_cve);
 
             if (tmp_affected_packages) {
                 // Fill in vulnerability information
