@@ -89,7 +89,7 @@ int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
 
 int TempFile(File *file, const char *source, int copy);
 int OS_MoveFile(const char *src, const char *dst);
-int w_copy_file(const char *src, const char *dst,char mode,char * message);
+int w_copy_file(const char *src, const char *dst,char mode,char * message,int silent);
 
 /* Checks for Windows Vista */
 #ifdef WIN32

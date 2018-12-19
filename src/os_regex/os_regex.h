@@ -123,7 +123,7 @@ int OSMatch_Compile(const char *pattern, OSMatch *reg, int flags);
  * Returns 1 on success or 0 on error.
  * The error code is set on reg->error.
  */
-int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)  __attribute__((nonnull(3)));
+int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg);
 
 /* Release all the memory created by the compilation/execution phases */
 void OSMatch_FreePattern(OSMatch *reg) __attribute__((nonnull));

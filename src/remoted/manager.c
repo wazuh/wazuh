@@ -472,10 +472,10 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                 /* If the file is agent.conf, append */
                 if(strcmp(files[i],"agent.conf") == 0){
                     snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
-                    w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message);
+                    w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
                 }
                 else {
-                    w_copy_file(source_path,destination_path,'c',NULL);
+                    w_copy_file(source_path,destination_path,'c',NULL,1);
                 }
 
             }
