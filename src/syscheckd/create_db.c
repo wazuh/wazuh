@@ -248,7 +248,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
 #endif
         os_free(wd_sum);
-        return (read_dir(file_name, dir_position, NULL, max_depth-1));
+        return (read_dir(file_name, dir_position, NULL, max_depth-1, 0));
 
     }
 
@@ -283,11 +283,20 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifndef WIN32
             if (S_ISLNK(statbuf.st_mode)) {
                 if (stat(file_name, &statbuf_lnk) == 0) {
-                    if (S_ISREG(statbuf_lnk.st_mode)) {
-                        if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
-                            strncpy(mf_sum, "n/a", 4);
-                            strncpy(sf_sum, "n/a", 4);
-                            strncpy(sf256_sum, "n/a", 4);
+                    if (!(opts & CHECK_FOLLOW)) {
+                        mdebug2("Follow symbolic links disabled. Exiting");
+                        free(alert_msg);
+                        free(wd_sum);
+                        return 0;
+                    } else {
+                        if (S_ISREG(statbuf_lnk.st_mode)) {
+                            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
+                                strncpy(mf_sum, "n/a", 4);
+                                strncpy(sf_sum, "n/a", 4);
+                                strncpy(sf256_sum, "n/a", 4);
+                            }
+                        } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
+                            return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
                     }
                 }
@@ -301,7 +310,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 strncpy(sf256_sum, "n/a", 4);
             }
         }
-
+        
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
 
@@ -372,7 +381,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(user);
 #else
             if (opts & CHECK_SIZE) {
-                sprintf(str_size,"%ld",(long)statbuf.st_size);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
+                } else {
+                    sprintf(str_size,"%ld",(long)statbuf.st_size);
+                }
             } else {
                 *str_size = '\0';
             }
@@ -408,13 +421,21 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
+                } else {
+                    sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+                }
             } else {
                 *str_mtime = '\0';
             }
 
             if (opts & CHECK_INODE) {
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
+                } else {
+                    sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+                }
             } else {
                 *str_inode = '\0';
             }
@@ -456,9 +477,16 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 #ifndef WIN32
             hash_file_name = strdup(file_name);
-            if (OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name) != 2) {
+            int ret = OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name);
+            switch (ret) {
+            case 0:
                 free(hash_file_name);
-                mdebug2("Unable to add inode to db: %s (%s) ", file_name, str_inode);
+                mdebug2("Not enough memory to add inode to db: %s (%s) ", file_name, str_inode);
+                break;
+            case 1:
+                free(hash_file_name);
+                mdebug2("Inode already added to db: %s (%s) ", file_name, str_inode);
+                break;
             }
 #endif
             /* Send the new checksum to the analysis server */
@@ -509,7 +537,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(user);
 #else
             if (opts & CHECK_SIZE) {
-                sprintf(str_size,"%ld",(long)statbuf.st_size);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
+                } else {
+                    sprintf(str_size,"%ld",(long)statbuf.st_size);
+                }
             } else {
                 *str_size = '\0';
             }
@@ -545,13 +577,21 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
+                } else {
+                    sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+                }
             } else {
                 *str_mtime = '\0';
             }
 
             if (opts & CHECK_INODE) {
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
+                } else {
+                    sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+                }
             } else {
                 *str_inode = '\0';
             }
@@ -654,11 +694,37 @@ end:
     return 0;
 }
 
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)
+int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, unsigned int is_link)
 {
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
+    }
+
+    if (is_link) {
+        char *link_path;
+        char *dir_name_full;
+        os_calloc(PATH_MAX + 2, sizeof(char), link_path);
+        os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
+
+        readlink(dir_name, link_path, PATH_MAX);
+        strcat(link_path, "/");
+
+        unsigned i = 0;
+        while (syscheck.dir[i] != NULL) {
+          strncpy(dir_name_full, syscheck.dir[i], PATH_MAX);
+          strcat(dir_name_full, "/");
+          if (strstr(link_path, dir_name_full) != NULL) {
+              mdebug2("Trying to read symbolic link '%s' to directory '%s' recursively. Exiting.", dir_name, link_path);
+              free(link_path);
+              free(dir_name_full);
+              return 0;
+          }
+          i++;
+        }
+
+        free(link_path);
+        free(dir_name_full);
     }
 
     int opts;
@@ -833,7 +899,7 @@ int run_dbcheck()
             }
         }
 #endif
-        read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i]);
+        read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0);
         i++;
     }
 
@@ -915,7 +981,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i]) == 0) {
+        if (read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 #ifdef WIN32
