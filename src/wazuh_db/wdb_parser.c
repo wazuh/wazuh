@@ -72,7 +72,7 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
 
-        mdebug2("Executing query: %s", query);
+        mdebug2("Agent %s query: %s", sagent_id, query);
 
         if (next = wstr_chr(query, ' '), next) {
             *next++ = '\0';
@@ -80,8 +80,8 @@ int wdb_parse(char * input, char * output) {
 
         if (strcmp(query, "syscheck") == 0) {
             if (!next) {
-                mdebug1("Invalid Syscheck query syntax.");
-                mdebug2("Syscheck query error near: %s", query);
+                mdebug1("DB(%s) Invalid Syscheck query syntax.", sagent_id);
+                mdebug2("DB(%s) Syscheck query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -89,8 +89,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "netinfo") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -102,8 +102,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "netproto") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -115,8 +115,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "netaddr") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -128,8 +128,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "osinfo") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -141,8 +141,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "hardware") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -154,8 +154,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "port") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -167,8 +167,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "package") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -180,8 +180,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "process") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -193,8 +193,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "ciscat") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -206,8 +206,8 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "sql") == 0) {
             if (!next) {
-                mdebug1("Invalid DB query syntax.");
-                mdebug2("DB query error near: %s", query);
+                mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+                mdebug2("DB(%s) query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -219,15 +219,15 @@ int wdb_parse(char * input, char * output) {
                     free(out);
                     cJSON_Delete(data);
                 } else {
-                    mdebug1("Cannot execute SQL query.");
-                    mdebug2("SQL query: %s", sql);
+                    mdebug1("DB(%s) Cannot execute SQL query.", sagent_id);
+                    mdebug2("DB(%s) SQL query: %s", sagent_id, sql);
                     snprintf(output, OS_MAXSTR + 1, "err Cannot execute SQL query");
                     result = -1;
                 }
             }
         } else if (strcmp(query, "begin") == 0) {
             if (wdb_begin2(wdb) < 0) {
-                mdebug1("Cannot begin transaction.");
+                mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
                 result = -1;
             } else {
@@ -235,7 +235,7 @@ int wdb_parse(char * input, char * output) {
             }
         } else if (strcmp(query, "commit") == 0) {
             if (wdb_commit2(wdb) < 0) {
-                mdebug1("Cannot end transaction.");
+                mdebug1("DB(%s) Cannot end transaction.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot end transaction");
                 result = -1;
             } else {
@@ -246,7 +246,7 @@ int wdb_parse(char * input, char * output) {
             w_mutex_lock(&pool_mutex);
 
             if (wdb_close(wdb) < 0) {
-                mdebug1("Cannot close database.");
+                mdebug1("DB(%s) Cannot close database.", sagent_id);
                 snprintf(output, OS_MAXSTR + 1, "err Cannot close database");
                 result = -1;
             } else {
@@ -257,15 +257,15 @@ int wdb_parse(char * input, char * output) {
             w_mutex_unlock(&pool_mutex);
             return result;
         } else {
-            mdebug1("Invalid DB query syntax.");
-            mdebug2("DB query error near: %s", query);
+            mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
+            mdebug2("DB(%s) query error near: %s", sagent_id, query);
             snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
             result = -1;
         }
         wdb_leave(wdb);
         return result;
     } else {
-        mdebug1("Invalid DB query actor: %s", actor);
+        mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
         return -1;
     }
@@ -281,8 +281,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     long ts;
 
     if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("Invalid Syscheck query syntax.");
-        mdebug2("Syscheck query: %s", input);
+        mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
+        mdebug2("DB(%s) Syscheck query: %s", wdb->agent_id, input);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", input);
         return -1;
     }
@@ -292,7 +292,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
     if (strcmp(curr, "scan_info_get") == 0) {
         if (result = wdb_scan_info_get(wdb, "fim", next, &ts), result < 0) {
-            mdebug1("Cannot get fim scan info.");
+            mdebug1("DB(%s) Cannot get fim scan info.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot get fim scan info.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %ld", ts);
@@ -301,7 +301,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "updatedate") == 0) {
         if (result = wdb_fim_update_date_entry(wdb, next), result < 0) {
-            mdebug1("Cannot update fim date field.");
+            mdebug1("DB(%s) Cannot update fim date field.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot update fim date field.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -310,7 +310,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "cleandb") == 0) {
         if (result = wdb_fim_clean_old_entries(wdb), result < 0) {
-            mdebug1("Cannot clean fim database.");
+            mdebug1("DB(%s) Cannot clean fim database.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot clean fim database.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -321,7 +321,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("Invalid scan_info fim query syntax.");
+            mdebug1("DB(%s) Invalid scan_info fim query syntax.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -329,7 +329,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         ts = atol(next);
         if (result = wdb_scan_info_update(wdb, "fim", curr, ts), result < 0) {
-            mdebug1("Cannot save fim control message.");
+            mdebug1("DB(%s) Cannot save fim control message.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -338,7 +338,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "control") == 0) {
         if (result = wdb_scan_info_fim_checks_control(wdb, next), result < 0) {
-            mdebug1("Cannot save fim check_control message.");
+            mdebug1("DB(%s) Cannot save fim check_control message.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save fim control message");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -347,7 +347,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
-            mdebug1("Cannot load Syscheck.");
+            mdebug1("DB(%s) Cannot load Syscheck.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
@@ -356,7 +356,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "delete") == 0) {
         if (result = wdb_fim_delete(wdb, next), result < 0) {
-            mdebug1("Cannot delete Syscheck entry.");
+            mdebug1("DB(%s) Cannot delete Syscheck entry.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -367,8 +367,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", curr);
+            mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
+            mdebug2("DB(%s) Syscheck query: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -380,8 +380,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         } else if (strcmp(curr, "registry") == 0) {
             ftype = WDB_FILE_TYPE_REGISTRY;
         } else {
-            mdebug1("Invalid Syscheck query syntax.");
-            mdebug2("Syscheck query: %s", curr);
+            mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
+            mdebug2("DB(%s) Syscheck query: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -389,7 +389,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         checksum = next;
 
         if (next = wstr_chr(checksum, ' '), !next) {
-            mdebug1("Invalid Syscheck query syntax.");
+            mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
             mdebug2("Syscheck query: %s", checksum);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", checksum);
             return -1;
@@ -398,7 +398,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         if (result = wdb_syscheck_save(wdb, ftype, checksum, next), result < 0) {
-            mdebug1("Cannot save Syscheck.");
+            mdebug1("DB(%s) Cannot save Syscheck.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -406,7 +406,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else {
-        mdebug1("Invalid Syscheck query syntax.");
+        mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
         return -1;
@@ -669,7 +669,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             rx_dropped = strtol(next,NULL,10);
 
         if (result = wdb_netinfo_save(wdb, scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped), result < 0) {
-            mdebug1("at wdb_parse_netinfo(): Cannot save Network information.");
+            mdebug1("Cannot save Network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Network information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -687,7 +687,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_netinfo_delete(wdb, scan_id), result < 0) {
-            mdebug1("at wdb_parse_netinfo(): Cannot delete old network information.");
+            mdebug1("Cannot delete old network information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old network information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -785,7 +785,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
             dhcp = next;
 
         if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp), result < 0) {
-            mdebug1("at wdb_parse_netproto(): Cannot save netproto information.");
+            mdebug1("Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -883,7 +883,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
             broadcast = next;
 
         if (result = wdb_netaddr_save(wdb, scan_id, proto, address, netmask, broadcast), result < 0) {
-            mdebug1("at wdb_parse_netaddr(): Cannot save netaddr information.");
+            mdebug1("Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1118,7 +1118,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
             version = next;
 
         if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version), result < 0) {
-            mdebug1("at wdb_parse_osinfo(): Cannot save OS information.");
+            mdebug1("Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1264,7 +1264,7 @@ int wdb_parse_hardware(wdb_t * wdb, char * input, char * output) {
         ram_usage = strtol(next,NULL,10);
 
         if (result = wdb_hardware_save(wdb, scan_id, scan_time, serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage), result < 0) {
-            mdebug1("at wdb_parse_hardware(): Cannot save HW information.");
+            mdebug1("wdb_parse_hardware(): Cannot save HW information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save HW information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1488,7 +1488,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             process = next;
 
         if (result = wdb_port_save(wdb, scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, pid, process), result < 0) {
-            mdebug1("at wdb_parse_ports(): Cannot save Port information.");
+            mdebug1("Cannot save Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Port information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1505,7 +1505,7 @@ int wdb_parse_ports(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_port_delete(wdb, scan_id), result < 0) {
-            mdebug1("at wdb_parse_ports(): Cannot delete old Port information.");
+            mdebug1("Cannot delete old Port information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Port information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1757,7 +1757,7 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             location = next;
 
         if (result = wdb_package_save(wdb, scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location), result < 0) {
-            mdebug1("at wdb_parse_packages(): Cannot save Package information.");
+            mdebug1("Cannot save Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -1775,12 +1775,12 @@ int wdb_parse_packages(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_package_update(wdb, scan_id), result < 0) {
-            mdebug1("at wdb_parse_packages(): Cannot update scanned packages.");
+            mdebug1("Cannot update scanned packages.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save scanned packages before delete old Package information.");
         }
 
         if (result = wdb_package_delete(wdb, scan_id), result < 0) {
-            mdebug1("at wdb_parse_packages(): Cannot delete old Package information.");
+            mdebug1("Cannot delete old Package information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Package information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2254,7 +2254,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
             processor = strtol(next,NULL,10);
 
         if (result = wdb_process_save(wdb, scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor), result < 0) {
-            mdebug1("at wdb_parse_processes(): Cannot save Process information.");
+            mdebug1("Cannot save Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Process information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -2271,7 +2271,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
             scan_id = next;
 
         if (result = wdb_process_delete(wdb, scan_id), result < 0) {
-            mdebug1("at wdb_parse_processes(): Cannot delete old Process information.");
+            mdebug1("Cannot delete old Process information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete old Process information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
