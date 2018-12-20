@@ -484,26 +484,15 @@ int main_analysisd(int argc, char **argv)
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
+            /* If we haven't specified a decoders directory, load default */
             if (!Config.decoders) {
                 /* Legacy loading */
-                /* Read decoders */
-                if (!ReadDecodeXML(XML_DECODER)) {
-                    merror_exit(CONFIG_ERROR,  XML_DECODER);
-                }
+                /* Read default decoders */
+                Read_Rules(NULL, &Config, NULL);
+            }
 
-                /* Read local ones */
-                c = ReadDecodeXML(XML_LDECODER);
-                if (!c) {
-                    if ((c != -2)) {
-                        merror_exit(CONFIG_ERROR,  XML_LDECODER);
-                    }
-                } else {
-                    if (!test_config) {
-                        minfo("Reading local decoder file.");
-                    }
-                }
-            } else {
-                /* New loaded based on file speified in ossec.conf */
+            /* New loaded based on file loaded (in ossec.conf or default) */
+            {
                 char **decodersfiles;
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
@@ -549,6 +538,11 @@ int main_analysisd(int argc, char **argv)
             /* Load Rules */
             /* Create the rules list */
             Rules_OP_CreateRules();
+
+            /* If we haven't specified a rules directory, load default */
+            if (!Config.includes) {
+                Read_Rules(NULL, &Config, NULL);
+            }
 
             /* Read the rules */
             {
@@ -1973,11 +1967,22 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            if (msg[0] == CISCAT_MQ) {
+                if (!DecodeCiscat(lf)) {
+                    w_free_event_info(lf);
+                    free(msg);
+                    continue;
+                }
+            } else {
+                DecodeEvent(lf, &decoder_match);
+            }
+
             free(msg);
+
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            DecodeEvent(lf, &decoder_match);
+
 
             if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
                 Free_Eventinfo(lf);

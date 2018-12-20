@@ -1095,9 +1095,7 @@ void wm_vuldet_add_vulnerability_info(wm_vuldet_db *ctrl_block) {
 
 char * wm_vuldet_xml_preparser(char *path, distribution dist) {
     FILE *input, *output = NULL;
-    char *buffer = NULL;
-    size_t size;
-    size_t max_size = OS_MAXSTR;
+    char buffer[OS_MAXSTR + 1];
     parser_state state = V_OVALDEFINITIONS;
     char *found;
     char *tmp_file;
@@ -1121,34 +1119,34 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
         goto free_mem;
     }
 
-    while (size = getline(&buffer, &max_size, input), (int) size > 0) {
+    while (fgets(buffer, OS_MAXSTR, input)) {
         if (dist == DIS_UBUNTU) { //5.11.1
             switch (state) {
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_OVALDEFINITIONS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if ((found = strstr(buffer, "is not affected")) &&
                               (found = strstr(buffer, "negate")) &&
                         strstr(found, "true")) {
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "a decision has been made to ignore it")) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_OVALDEFINITIONS;
-                        //goto free_buffer;
+                        //continue;
                     }
                 break;
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
-                      //goto free_buffer;
+                      //continue;
                   }
             }
         } else if (dist == DIS_DEBIAN) { //5.3
@@ -1157,18 +1155,18 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, exclude_tags[0]) ||
                         strstr(buffer, exclude_tags[1])) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_STATES;
                     }
@@ -1176,7 +1174,7 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1188,14 +1186,10 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
             tmp_file = NULL;
             goto free_mem;
         }
-        fwrite(buffer, 1, size, output);
-free_buffer:
-        free(buffer);
-        buffer = NULL;
+        fwrite(buffer, 1, strlen(buffer), output);
     }
 
 free_mem:
-    free(buffer);
     if (input) {
         fclose(input);
     }
@@ -1832,6 +1826,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
     FILE *fp_output = NULL;
     unsigned char success = 0;
     char *found;
+    int attempts;
     *need_update = 1;
 
     if (update->dist_ref == DIS_REDHAT) {
@@ -1935,15 +1930,21 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
         goto end;
     }
 
-    if (wurl_request(repo, CVE_TEMP_FILE)) {
-        goto end;
+    for (attempts = 0;; attempts++) {
+        if (!wurl_request(repo, CVE_TEMP_FILE)) {
+            break;
+        } else if (attempts == WM_VULNDETECTOR_DOWN_ATTEMPTS) {
+            goto end;
+        }
+        mdebug1(VU_DOWNLOAD_FAIL, attempts);
+        sleep(attempts);
     }
 
     if (fp = fopen(CVE_TEMP_FILE, "r"), !fp) {
         goto end;
     }
 
-     while (fgets(buffer, OS_SIZE_256, fp)) {
+    while (fgets(buffer, OS_MAXSTR, fp)) {
         if (found = strstr(buffer, timestamp_tag), found) {
             char *close_tag;
             found+=strlen(timestamp_tag);
