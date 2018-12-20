@@ -129,7 +129,6 @@ class WazuhException(Exception):
         1740: 'Action only available for active agents',
         1741: 'Could not remove multigroup',
         1742: 'Error running Wazuh syntax validator',
-        1743: 'File for updating agent.conf is wrong',
 
         # Manager:
 
