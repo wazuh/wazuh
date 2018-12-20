@@ -702,6 +702,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 
 #ifdef __linux__
+    // readlink() only works for Linux
     if (is_link) {
         char *link_path;
         char *dir_name_full;
