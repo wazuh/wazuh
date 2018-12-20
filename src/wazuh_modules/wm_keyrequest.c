@@ -240,10 +240,18 @@ retry:
     }
     /* Execute external program */
     else if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
-        mdebug1("At wm_key_request_dispatch(): Error executing [%s]", data->exec_path);
+
+        if (result_code == EXECVE_ERROR) {
+            mwarn("Cannot run key pulling integration (%s): path is invalid or file has no permissions.", data->exec_path);
+        } else {
+            mwarn("Error executing [%s]", data->exec_path);
+        }
+
         os_free(command);
         OSHash_Delete_ex(request_hash,buffer);
         return -1;
+    } else if (result_code != 0) {
+        mwarn("Key pulling integration (%s) returned code %d.", data->exec_path, result_code);
     }
 
     agent_infoJSON = cJSON_Parse(output);
@@ -422,6 +430,7 @@ void launch_socket(char *exec_path) {
     static wfd_t *wfd = NULL;
     time_t t_now;
     int sleep_time = 0;
+    int result_code;
 
     w_mutex_lock(&exec_path_mutex);
     t_now = time(NULL);
@@ -432,8 +441,19 @@ void launch_socket(char *exec_path) {
         if (wfd) {
             if ((kill(wfd->pid, 0) == -1) && (errno == ESRCH)) {
                 // The process is dead
-                wpclose(wfd);
+                result_code = WEXITSTATUS(wpclose(wfd));
                 wfd = NULL;
+
+                switch (result_code)
+                {
+                case 0:
+                    break;
+                case EXECVE_ERROR:
+                    mwarn("Cannot run key pulling integration (%s): path is invalid or file has no permissions.", exec_path);
+                    break;
+                default:
+                    mwarn("Key pulling integration (%s) returned code %d.", exec_path, result_code);
+                }
             } else {
                 mdebug1("The process which should have opened the socket is running. Rechecking within %d seconds.", RELAUNCH_TIME);
             }

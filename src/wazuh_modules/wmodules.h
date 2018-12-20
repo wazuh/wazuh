@@ -43,6 +43,8 @@
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
 
+#define EXECVE_ERROR 0x7F
+
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
 // Module context: this should be defined for every module
