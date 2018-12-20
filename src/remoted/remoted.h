@@ -79,7 +79,7 @@ void *wait_for_msgs(void *none);
 void *update_shared_files(void *none);
 
 /* Save control messages */
-void save_controlmsg(unsigned int agentid, char *msg, size_t msg_length);
+void save_controlmsg(const keyentry * key, char *msg, size_t msg_length);
 
 // Request listener thread entry point
 void * req_main(void * arg);
@@ -147,8 +147,7 @@ extern int request_timeout;
 extern int response_timeout;
 extern int INTERVAL;
 extern rlim_t nofile;
-extern unsigned int _s_comp_print;
-extern unsigned int _s_recv_flush;
-extern int _s_verify_counter;
+extern int guess_agent_group;
+extern int group_data_flush;
 
 #endif /* __LOGREMOTE_H */

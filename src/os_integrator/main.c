@@ -91,7 +91,7 @@ int main(int argc, char **argv)
 
     if (debug_level == 0) {
         /* Get debug level */
-        debug_level = getDefine_Int("monitord", "debug", 0, 2);
+        debug_level = getDefine_Int("integrator", "debug", 0, 2);
         while (debug_level != 0) {
             nowDebug();
             debug_level--;
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
         goDaemonLight();
     }
 
-    /* Creating some randoness  */
+    /* Creating some randomness  */
     #ifdef __OpenBSD__
     srandomdev();
     #else

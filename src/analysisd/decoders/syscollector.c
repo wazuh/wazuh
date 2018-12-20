@@ -1388,7 +1388,7 @@ int sc_send_db(char *msg, int *sock) {
                 goto end;
             }
 
-            if (!OS_SendSecureTCP(*sock, size + 1, msg)) {
+            if (OS_SendSecureTCP(*sock, size + 1, msg)) {
                 merror("at sc_send_db(): at OS_SendSecureTCP() (retry): %s (%d)", strerror(errno), errno);
                 goto end;
             }

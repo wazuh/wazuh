@@ -12,11 +12,17 @@
 #include "wmodules.h"
 #include <os_net/os_net.h>
 
-#define minfo(format, ...) mtinfo(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define mwarn(format, ...) mtwarn(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define merror(format, ...) mterror(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define mdebug1(format, ...) mtdebug1(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
-#define mdebug2(format, ...) mtdebug2(WM_DOWNLOAD_LOGTAG, format, ##__VA_ARGS__)
+#undef minfo
+#undef mwarn
+#undef merror
+#undef mdebug1
+#undef mdebug2
+
+#define minfo(msg, ...) _mtinfo(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_DOWNLOAD_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 static void * wm_download_main(wm_download_t * data);   // Module main function. It won't return
 static void wm_download_destroy(wm_download_t * data);  // Destroy data

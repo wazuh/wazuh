@@ -7,6 +7,7 @@ from sys import exit, path, argv
 from os.path import dirname, basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
+import logging
 
 # Set framework path
 path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
@@ -165,7 +166,7 @@ def usage():
     \t-c -g group_id                        # List configuration files in group
     \t
     \t-a -i agent_id -g group_id [-q] [-f]  # Add group to agent
-    \t-r -i agent_id [-q] [-g]              # Remove all groups from agent
+    \t-r -i agent_id [-q] [-g group_id]     # Remove all groups from agent [or single group]
     \t-s -i agent_id                        # Show group of agent
     \t-S -i agent_id                        # Show sync status of agent
     \t
@@ -250,9 +251,6 @@ def main():
         else:
             invalid_option()
 
-    # Initialize framework
-    myWazuh = Wazuh(get_init=True)
-
     # Actions
     if arguments['n_args'] > 5 or arguments['n_actions'] > 1:
         invalid_option("Bad argument combination.")
@@ -296,6 +294,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # Initialize framework
+    myWazuh = Wazuh(get_init=True)
+
+    logger = logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
     try:
         cluster_config = read_config()

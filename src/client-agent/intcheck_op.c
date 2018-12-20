@@ -22,7 +22,7 @@ int intcheck_file(const char *file_name, const char *dir)
     os_sha256 sf256_sum;
     char newsum[1172 + 1];
 #ifdef WIN32
-    const char *user;
+    char *user;
     char *sid;
 #endif
 
@@ -80,6 +80,7 @@ int intcheck_file(const char *file_name, const char *dir)
             dir,
             file_name);
 
+    os_free(user);
     if (sid) {
         LocalFree(sid);
     }

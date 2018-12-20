@@ -62,6 +62,7 @@ const char *vu_dist_tag[] = {
     "DEBIAN",
     "REDHAT",
     "CENTOS",
+    "AMAZLINUX",
     "WINDOWS",
     "MACOS",
     "PRECISE",
@@ -93,6 +94,7 @@ const char *vu_dist_ext[] = {
     "Debian",
     "Red Hat",
     "CentOS",
+    "Amazon Linux",
     "Microsoft Windows",
     "Apple Mac OS",
     "Ubuntu Precise",
@@ -273,9 +275,13 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
         }
 
         // Check version
-        v_result = wm_vulnerability_detector_compare(version_it, cversion_it);
+        if (v_result = wm_vulnerability_detector_compare(version_it, cversion_it), v_result == VU_ERROR_CMP) {
+            return VU_ERROR_CMP;
+        }
         // Check release
-        r_result = wm_vulnerability_detector_compare(release_it, crelease_it);
+        if (r_result = wm_vulnerability_detector_compare(release_it, crelease_it), r_result == VU_ERROR_CMP) {
+            return VU_ERROR_CMP;
+        }
 
         if (!strcmp(operation, "less than")) {
             if (epoch > c_epoch) {
@@ -351,7 +357,7 @@ int wm_checks_package_vulnerability(char *version, const char *operation, char *
 
 int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
     char *found;
-    int i, j;
+    int i, j, it;
     int version_found, cversion_found;
     int version_value, cversion_value;
 
@@ -384,22 +390,21 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
 
     // Check version
     if (strcmp(version_it, cversion_it)) {
-        for (i = 0, j = 0, version_found = 0, cversion_found = 0;;) {
+        for (it = 0, i = 0, j = 0, version_found = 0, cversion_found = 0; it < VU_MAX_VER_COMP_IT; it++) {
             if (!version_found) {
                 if (version_it[i] == '\0') {
                     version_found = 3;
                 } else if (!isdigit(version_it[i])) {
                     if (i) {
+                        // There is a number to compare
                         version_found = 1;
                     } else {
                         if (isalpha(version_it[i]) && !isalpha(version_it[i + 1])) {
+                            // There is an individual letter to compare
                             version_found = 2;
                         } else {
-                            if (*version_it == '.') {
-                                version_it++;
-                            } else {
-                                for (; *version_it != '\0' && !isdigit(*version_it); version_it++);
-                            }
+                            // Skip characters that are not comparable
+                            for (; *version_it != '\0' && !isdigit(*version_it); version_it++);
                             i = 0;
                         }
                     }
@@ -413,16 +418,15 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                     cversion_found = 3;
                 } else if (!isdigit(cversion_it[j])) {
                     if (j) {
+                        // There is a number to compare
                         cversion_found = 1;
                     } else {
                         if (isalpha(cversion_it[j]) && !isalpha(cversion_it[j + 1])) {
+                            // There is an individual letter to compare
                             cversion_found = 2;
                         } else {
-                            if (*cversion_it == '.') {
-                                cversion_it++;
-                            } else {
-                                for (; *cversion_it != '\0' && !isdigit(*cversion_it); cversion_it++);
-                            }
+                            // Skip characters that are not comparable
+                            for (; *cversion_it != '\0' && !isdigit(*cversion_it); cversion_it++);
                             j = 0;
                         }
                     }
@@ -457,11 +461,14 @@ int wm_vulnerability_detector_compare(char *version_it, char *cversion_it) {
                 }
                 version_found = 0;
                 cversion_found = 0;
-                version_it = &version_it[i];
-                cversion_it = &cversion_it[j];
+                version_it = &version_it[i ? i : 1];
+                cversion_it = &cversion_it[j ? j : 1];
                 i = 0;
                 j = 0;
             }
+        }
+        if (it == VU_MAX_VER_COMP_IT) {
+            return VU_ERROR_CMP;
         }
     }
 
@@ -472,7 +479,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
     sqlite3_stmt *stmt = NULL;
     char alert_msg[OS_MAXSTR];
     char header[OS_SIZE_256];
-    char condition[OS_SIZE_1024];
+    char condition[OS_SIZE_1024 + 1];
     const char *query;
     agent_software *agents_it;
     cJSON *alert = NULL;
@@ -564,6 +571,7 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 updated = published;
             }
 
+            *condition = '\0';
             if (pending) {
                 snprintf(state, 30, "Pending confirmation");
             } else {
@@ -576,6 +584,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                 } else if (v_type == VU_NOT_VULNERABLE) {
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NOT_VULN, package, agents_it->agent_id, cve, version, operation, operation_value);
                     continue;
+                } else if (v_type == VU_ERROR_CMP) {
+                    mdebug1("The '%s' and '%s' versions of '%s' package could not be compared. Possible false positive.", version, operation_value, package);
+                    snprintf(condition, OS_SIZE_1024, "Could not compare package versions (%s %s).", operation, operation_value);
                 } else {
                     snprintf(state, 15, "Fixed");
                     if (!second_operation || *second_operation == '0') {
@@ -623,7 +634,9 @@ int wm_vulnerability_detector_report_agent_vulnerabilities(agent_software *agent
                     cJSON_AddStringToObject(jPackage, "patch", patch);
                 }
                 if (!pending) {
-                    if (operation_value) {
+                    if (*condition != '\0') {
+                        cJSON_AddStringToObject(jPackage, "condition", condition);
+                    } else if (operation_value) {
                         snprintf(condition, OS_SIZE_1024, "%s %s", operation, operation_value);
                         cJSON_AddStringToObject(jPackage, "condition", condition);
                     } else {
@@ -1082,9 +1095,7 @@ int wm_vulnerability_detector_check_db() {
 
 char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
     FILE *input, *output = NULL;
-    char *buffer = NULL;
-    size_t size;
-    size_t max_size = OS_MAXSTR;
+    char buffer[OS_MAXSTR];
     parser_state state = V_OVALDEFINITIONS;
     char *found;
     char *tmp_file;
@@ -1108,34 +1119,34 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
         goto free_mem;
     }
 
-    while (size = getline(&buffer, &max_size, input), (int) size > 0) {
+    while (fgets(buffer, OS_MAXSTR, input)) {
         if (dist == DIS_UBUNTU) { //5.11.1
             switch (state) {
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_OVALDEFINITIONS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if ((found = strstr(buffer, "is not affected")) &&
                               (found = strstr(buffer, "negate")) &&
                         strstr(found, "true")) {
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "a decision has been made to ignore it")) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_OVALDEFINITIONS;
-                        //goto free_buffer;
+                        //continue;
                     }
                 break;
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
-                      //goto free_buffer;
+                      //continue;
                   }
             }
         } else if (dist == DIS_DEBIAN) { //5.3
@@ -1144,18 +1155,18 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, exclude_tags[0]) ||
                         strstr(buffer, exclude_tags[1])) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_STATES;
                     }
@@ -1163,7 +1174,7 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1176,17 +1187,17 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, "is signed with")) {
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "</definitions>")) {
                         state = V_STATES;
                     }
@@ -1195,12 +1206,12 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (strstr(buffer, "</description>")) {
                         state = V_DEFINITIONS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_TESTS:
                     if (strstr(buffer, "is signed with")) {
                         state = V_SIGNED_TEST;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "</tests>")) {
                         state = V_STATES;
                     }
@@ -1209,12 +1220,12 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
                     if (strstr(buffer, "</red-def:rpminfo_test>")) {
                         state = V_TESTS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1226,14 +1237,10 @@ char * wm_vulnerability_detector_preparser(char *path, distribution dist) {
             tmp_file = NULL;
             goto free_mem;
         }
-        fwrite(buffer, 1, size, output);
-free_buffer:
-        free(buffer);
-        buffer = NULL;
+        fwrite(buffer, 1, strlen(buffer), output);
     }
 
 free_mem:
-    free(buffer);
     if (input) {
         fclose(input);
     }
@@ -1910,11 +1917,9 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
     char repo[OS_SIZE_2048 + 1];
     static const char *timestamp_tag = "timestamp>";
     char timestamp[OS_SIZE_256 + 1];
-    size_t max_size = OS_SIZE_256;
-    char *buffer = NULL;
+    char buffer[OS_SIZE_256];
     int i;
     char *low_repo;
-    int size;
     FILE *fp = NULL;
     unsigned char success = 0;
     char *found;
@@ -1966,7 +1971,7 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
         goto end;
     }
 
-    while (size = getline(&buffer, &max_size, fp), (int) size > 0) {
+    while (fgets(buffer, OS_SIZE_256, fp)) {
         if (found = strstr(buffer, timestamp_tag), found) {
             char *close_tag;
             found+=strlen(timestamp_tag);
@@ -1991,13 +1996,10 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
             }
             break;
         }
-        free(buffer);
-        buffer = NULL;
     }
 
     success = 1;
 end:
-    free(buffer);
     if (fp) {
         fclose(fp);
     }
@@ -2481,6 +2483,9 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
             } else {
                 dist_error = DIS_CENTOS;
             }
+            agent_dist = DIS_REDHAT;
+        } else if (strcasestr(os_name, vu_dist_ext[DIS_AMAZL])) {
+            agent_os = vu_dist_tag[DIS_RHEL7];
             agent_dist = DIS_REDHAT;
         } else {
             // Operating system not supported in any of its versions
