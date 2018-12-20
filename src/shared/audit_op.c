@@ -13,7 +13,9 @@
 #include "shared.h"
 #include "audit_op.h"
 
+
 static w_audit_rules_list *_audit_rules_list;
+
 
 int audit_send(int fd, int type, const void *data, unsigned int size) {
     int rc;
@@ -332,7 +334,7 @@ int audit_check_lock_output(void) {
 
 
 w_audit_rules_list *audit_rules_list_init(int initialSize) {
-    w_audit_rules_list *wlist = malloc(sizeof(w_audit_rules_list));
+    w_audit_rules_list *wlist = calloc(1, sizeof(w_audit_rules_list));
     wlist->list = (w_audit_rule **)malloc(initialSize * sizeof(w_audit_rule *));
     wlist->used = 0;
     wlist->size = initialSize;
@@ -364,14 +366,16 @@ void audit_rules_list_free(w_audit_rules_list *wlist) {
             free(wlist->list[i]->key);
             free(wlist->list[i]);
         }
-        free (wlist->list);
-        free (wlist);
+        free(wlist->list);
+        os_free(wlist);
     }
 }
 
 
 void audit_free_list(void) {
-    audit_rules_list_free(_audit_rules_list);
+    if (_audit_rules_list) {
+        audit_rules_list_free(_audit_rules_list);
+    }
 }
 
 
@@ -383,7 +387,7 @@ int search_audit_rule(const char *path, const char *perms, const char *key) {
         return -1;
     }
 
-    while (!found && i <= _audit_rules_list->used) {
+    while (!found && i < _audit_rules_list->used) {
         if (_audit_rules_list->list[i] && strcmp(_audit_rules_list->list[i]->path, path) == 0
             && strcmp(_audit_rules_list->list[i]->perm, perms) == 0
             && strcmp(_audit_rules_list->list[i]->key, key) == 0) {

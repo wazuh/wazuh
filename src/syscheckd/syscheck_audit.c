@@ -27,6 +27,7 @@
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
+#define RELOAD_RULES_INTERVAL 30 // Seconds to re-add Audit rules
 
 // Global variables
 W_Vector *audit_added_rules;
@@ -822,6 +823,18 @@ void audit_reload_rules(void) {
 }
 
 
+void *audit_reload_thread(void) {
+
+    while (audit_thread_active) {
+        sleep(RELOAD_RULES_INTERVAL);
+        // Reload rules
+        audit_reload_rules();
+    }
+
+    return NULL;
+}
+
+
 void * audit_main(int * audit_sock) {
     size_t byteRead;
     char * cache;
@@ -849,6 +862,9 @@ void * audit_main(int * audit_sock) {
     }
 
     w_mutex_unlock(&audit_mutex);
+
+    // Start rules reloading thread
+    w_create_thread(audit_reload_thread, NULL);
 
     minfo("Starting FIM Whodata engine...");
 
