@@ -20,4 +20,6 @@ ossec-rootcheck/Win32
 ossec-rootcheck/x64
 manage_agents/Win32
 manage_agents/x64
+setup-windows/Win32
+setup-windows/x64
 packages
