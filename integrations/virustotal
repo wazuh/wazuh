@@ -202,7 +202,7 @@ if __name__ == "__main__":
 
         if bad_arguments:
             debug("# Exiting: Bad arguments.")
-            sys.exit(0)
+            sys.exit(1)
 
         # Main function
         main(sys.argv)
