@@ -346,7 +346,7 @@ int DecodeWinevt(Eventinfo *lf){
         cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
     }
 
-    cJSON_AddItemToObject(final_event, "WinEvtChannel", json_event);
+    cJSON_AddItemToObject(final_event, "EventChannel", json_event);
 
     returned_event = cJSON_PrintUnformatted(final_event);
     
