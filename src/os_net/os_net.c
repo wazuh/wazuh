@@ -732,7 +732,7 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
     const unsigned MAX_PAYLOAD_SIZE = 1000000;
     int retval;
     char * buffer = NULL;
-    uint32_t counter = os_random() % 4294967295;
+    uint32_t counter = (uint32_t)os_random();
     size_t cmd_length = 0;
     size_t buffer_size = 0;
 

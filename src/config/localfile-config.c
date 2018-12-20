@@ -470,12 +470,9 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
             if (i != size -1) {
                 memcpy(&(*logf)[i], &(*logf)[size - 1], sizeof(logreader));
             }
+
             (*logf)[size - 1].file = NULL;
-            (*logf)[size - 1].ffile = NULL;
-            (*logf)[size - 1].command = NULL;
-            (*logf)[size - 1].logformat = NULL;
             (*logf)[size - 1].fp = NULL;
-            (*logf)[size - 1].target = NULL;
 
             if (!size)
                 size = 1;

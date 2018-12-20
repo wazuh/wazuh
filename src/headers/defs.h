@@ -171,8 +171,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ARQUEUE         "/queue/alerts/ar"
 
 /* Decoder file */
-#define XML_DECODER     "/etc/decoder.xml"
-#define XML_LDECODER    "/etc/local_decoder.xml"
+#define XML_LDECODER    "/etc/decoders/local_decoder.xml"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
@@ -307,7 +306,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Multi-groups directory */
 #define MULTIGROUPS_DIR   "/var/multigroups"
-#define METADATA_FILE MULTIGROUPS_DIR "/.metadata"
 #define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
 #define MAX_GROUPS_PER_MULTIGROUP 256

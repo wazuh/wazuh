@@ -28,6 +28,7 @@ static const char *SQL_INSERT_AGENT_GROUP = "INSERT INTO `group` (name) VALUES(?
 static const char *SQL_SELECT_AGENT_GROUP = "SELECT `group` FROM agent WHERE id = ?;";
 static const char *SQL_INSERT_AGENT_BELONG = "INSERT INTO belongs (id_group, id_agent) VALUES(?, ?)";
 static const char *SQL_DELETE_AGENT_BELONG = "DELETE FROM belongs WHERE id_agent = ?";
+static const char *SQL_DELETE_GROUP_BELONG = "DELETE FROM belongs WHERE id_group = (SELECT id FROM 'group' WHERE name = ? );";
 static const char *SQL_SELECT_FIM_OFFSET = "SELECT fim_offset FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_REG_OFFSET = "SELECT reg_offset FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_FIM_OFFSET = "UPDATE agent SET fim_offset = ? WHERE id = ?;";
@@ -833,8 +834,37 @@ int wdb_update_groups(const char *dirname) {
     return result;
 }
 
+/* Delete group from belongs table. It opens and closes the DB. Returns 0 on success or -1 on error. */
+int wdb_remove_group_from_belongs_db(const char *name) {
+
+    int result;
+    sqlite3_stmt *stmt;
+
+    if (wdb_open_global() < 0)
+        return -1;
+
+    // Delete from belongs
+    if (wdb_prepare(wdb_global, SQL_DELETE_GROUP_BELONG, -1, &stmt, NULL)) {
+        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+        return -1;
+    }
+
+    sqlite3_bind_text(stmt, 1, name, -1, NULL);
+
+    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
+    sqlite3_finalize(stmt);
+
+    return result;
+}
+
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name) {
+
+    if(wdb_remove_group_from_belongs_db(name) == -1){
+        merror("At wdb_remove_group_from_belongs_db(): couldn't delete '%s' from 'belongs' table.", name);
+        return -1;
+    }
+
     int result;
     sqlite3_stmt *stmt;
 
