@@ -50,6 +50,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
+            str[rbytes - 1] = '\0';
         } else {
             /* We may not have gotten a line feed
              * because we reached EOF.
