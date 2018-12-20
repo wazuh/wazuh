@@ -193,14 +193,14 @@ ID: 80200 - 80499
     <rule id="80401" level="3">
         <if_sid>80400</if_sid>
         <field name="aws.action">ACCEPT</field>
-        <description>AWS VPC Flow: [$(aws.action)] - $Interface: $(aws.interface_id) - Protocol: $(aws.protocol)</description>
+        <description>AWS VPC Flow: [$(aws.action)] - Interface: $(aws.interface_id) - Protocol: $(aws.protocol)</description>
         <group>aws_vpcflow,</group>
     </rule>
 
     <rule id="80402" level="4">
         <if_sid>80400</if_sid>
         <field name="aws.action">REJECT</field>
-        <description>AWS VPC Flow: [$(aws.action)] - $Interface: $(aws.interface_id) - Protocol: $(aws.protocol)</description>
+        <description>AWS VPC Flow: [$(aws.action)] - Interface: $(aws.interface_id) - Protocol: $(aws.protocol)</description>
         <group>aws_vpcflow,</group>
     </rule>
 
