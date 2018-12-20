@@ -867,17 +867,20 @@ class AWSConfigBucket(AWSLogsBucket):
         return [datetime.strftime(date, "%Y/%m/%-d") for date in reversed(date_list_time)]
 
     def get_date_last_log(self, aws_account_id, aws_region):
-        try:
-            query_date_last_log = self.db_connector.execute(self.sql_find_last_log_processed.format(
+        if self.reparse:
+            last_date_processed = self.only_logs_after.strftime('%Y%m%d')
+        else:
+            try:
+                query_date_last_log = self.db_connector.execute(self.sql_find_last_log_processed.format(
                                                                                         table_name=self.db_table_name,
                                                                                         bucket_path=self.bucket_path,
                                                                                         aws_account_id=aws_account_id,
                                                                                         aws_region=aws_region))
-            # query returns an integer
-            last_date_processed = str(query_date_last_log.fetchone()[0])
-        # if DB is empty
-        except (TypeError, IndexError) as e:
-            last_date_processed = self.only_logs_after.strftime('%Y%m%d')
+                # query returns an integer
+                last_date_processed = str(query_date_last_log.fetchone()[0])
+            # if DB is empty
+            except (TypeError, IndexError) as e:
+                last_date_processed = self.only_logs_after.strftime('%Y%m%d')
         return last_date_processed
 
     def iter_regions_and_accounts(self, account_id, regions):
