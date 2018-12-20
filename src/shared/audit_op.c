@@ -334,7 +334,7 @@ int audit_check_lock_output(void) {
 
 
 w_audit_rules_list *audit_rules_list_init(int initialSize) {
-    w_audit_rules_list *wlist = calloc(1, sizeof(w_audit_rules_list));
+    w_audit_rules_list *wlist = malloc(sizeof(w_audit_rules_list));
     wlist->list = (w_audit_rule **)malloc(initialSize * sizeof(w_audit_rule *));
     wlist->used = 0;
     wlist->size = initialSize;
@@ -366,7 +366,7 @@ void audit_rules_list_free(w_audit_rules_list *wlist) {
             free(wlist->list[i]->key);
             free(wlist->list[i]);
         }
-        free(wlist->list);
+        os_free(wlist->list);
         os_free(wlist);
     }
 }
