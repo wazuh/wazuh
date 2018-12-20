@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 - New dedicated thread for AR command running on Windows agent. ([#1725](https://github.com/wazuh/wazuh/pull/1725))
   -  This will prevent the agent from delaying due to an AR execution.
 - Get process inventory for Windows natively. ([#1760](https://github.com/wazuh/wazuh/pull/1760))
+- Add retries to download the OVAL files in vulnerability-detector. ([#1832](https://github.com/wazuh/wazuh/pull/1832))
 - Add options to detect changes attributes and file permissions for Windows. ([#1918](https://github.com/wazuh/wazuh/pull/1918))
 - Add a manifest to run `agent-auth.exe` with elevated privileges. ([#1998](https://github.com/wazuh/wazuh/pull/1998))
 - Compress `last-entry` files to check differences by FIM. ([#2034](https://github.com/wazuh/wazuh/pull/2034))
