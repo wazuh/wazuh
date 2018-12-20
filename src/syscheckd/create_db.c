@@ -701,6 +701,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         return 0;
     }
 
+#ifndef WIN32
     if (is_link) {
         char *link_path;
         char *dir_name_full;
@@ -726,6 +727,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         free(link_path);
         free(dir_name_full);
     }
+#endif
 
     int opts;
     size_t dir_size;
