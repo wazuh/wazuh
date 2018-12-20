@@ -1923,6 +1923,7 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
     FILE *fp = NULL;
     unsigned char success = 0;
     char *found;
+    int attempts;
     *need_update = 1;
 
     if (update->path) {
@@ -1955,8 +1956,15 @@ int wm_vulnerability_fetch_oval(update_node *update, const char *OS, int *need_u
         snprintf(repo, OS_SIZE_2048, "%s", update->url);
     }
 
-    if (wurl_request(repo, CVE_TEMP_FILE)) {
-        goto end;
+
+    for (attempts = 0;; attempts++) {
+        if (!wurl_request(repo, CVE_TEMP_FILE)) {
+            break;
+        } else if (attempts == WM_VULNDETECTOR_DOWN_ATTEMPTS) {
+            goto end;
+        }
+        mdebug1(VU_DOWNLOAD_FAIL, attempts);
+        sleep(attempts);
     }
 
     if (fp = fopen(CVE_TEMP_FILE, "r"), !fp) {

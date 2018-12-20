@@ -51,5 +51,6 @@
 #define VU_AGENT_START        "(5486): Starting vulnerability assessment for agent %s."
 #define VU_AGENT_FINISH       "(5487): Finished vulnerability assessment for agent %s."
 #define VU_AG_NEVER_CON       "(5488): Agent '%s' never connected."
+#define VU_DOWNLOAD_FAIL      "(5489): The download can not be completed. Retrying in %d seconds."
 
 #endif
