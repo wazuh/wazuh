@@ -35,7 +35,7 @@ All notable changes to this project will be documented in this file.
 - Create an empty `client.keys` file on a fresh installation of a Windows agent. ([2040](https://github.com/wazuh/wazuh/pull/2040))
 - Remove file `queue/db/.template.db` on upgrade / restart. ([2073](https://github.com/wazuh/wazuh/pull/2073))
 - Allow CDB list keys and values to have double quotes surrounding. ([#2046](https://github.com/wazuh/wazuh/pull/2046))
-- Fixed error ocurred while monitoring symbolic links in Linux. ([#](https://github.com/wazuh/wazuh/pull/))
+- Fixed error ocurred while monitoring symbolic links in Linux. ([#2152](https://github.com/wazuh/wazuh/pull/2152))
 
 
 ## [v3.7.1]
