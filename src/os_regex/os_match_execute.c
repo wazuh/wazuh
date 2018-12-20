@@ -100,6 +100,11 @@ int OSMatch_Execute(const char *str, size_t str_len, OSMatch *reg)
 {
     short int i = 0;
 
+    /* The reg can't be NULL */
+    if(!reg){
+        return (0);
+    }
+
     /* The string can't be NULL */
     if (str == NULL) {
         reg->error = OS_REGEX_STR_NULL;

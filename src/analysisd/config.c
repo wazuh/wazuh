@@ -51,7 +51,7 @@ int GlobalConf(const char *cfgfile)
     Config.zeromq_output_uri = NULL;
     Config.zeromq_output_server_cert = NULL;
     Config.zeromq_output_client_cert = NULL;
-    Config.jsonout_output = 0;
+    Config.jsonout_output = 1;
     Config.alerts_log = 1;
     Config.memorysize = 8192;
     Config.mailnotify = -1;

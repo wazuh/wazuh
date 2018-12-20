@@ -112,7 +112,6 @@ int OS_RemoveAgent(const char *u_id) {
         return 0;
     }
 
-#ifndef REUSE_ID
     char *ptr_name = strchr(buf_curline, ' ');
 
     if (!ptr_name) {
@@ -128,8 +127,6 @@ int OS_RemoveAgent(const char *u_id) {
     size_t curline_len = strlen(buf_curline);
     memcpy(buffer + fp_read, buf_curline, curline_len);
     fp_read += curline_len;
-
-#endif
 
     if (!feof(fp))
         fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
@@ -839,8 +836,6 @@ void OS_RemoveAgentGroup(const char *id)
                 *endl = '\0';
             }
 
-            /* Remove multigroup if it's not used on any other agent */
-            w_remove_multigroup(group);
         }
 #ifndef CLIENT
         /* Remove from the 'belongs' table groups which the agent belongs to*/
@@ -849,44 +844,6 @@ void OS_RemoveAgentGroup(const char *id)
 
         if(fp){
             fclose(fp);
-        }
-    }
-}
-
-void w_remove_multigroup(const char *group){
-    char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char path[PATH_MAX + 1] = {0};
-    char metadata_file[PATH_MAX + 1] = {0};
-    int line = 0;
-
-    if(multigroup){
-        sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
-
-        if(wstr_find_in_folder(path,group,1) < 0){
-            sprintf(metadata_file,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR, ".metadata");
-
-            line = wstr_find_line_in_file(metadata_file,group,1);
-
-            if(line >= 0){
-                /* Remove line from file */
-                w_remove_line_from_file(metadata_file,line);
-            }
-
-            /* Remove the DIR */
-            os_sha256 multi_group_hash;
-            OS_SHA256_String(group,multi_group_hash);
-            char _hash[9] = {0};
-
-            /* We only want the 8 first bytes of the hash */
-            multi_group_hash[8] = '\0';
-
-            strncpy(_hash,multi_group_hash,8);
-
-            sprintf(path,"%s/%s",isChroot() ? MULTIGROUPS_DIR : DEFAULTDIR MULTIGROUPS_DIR,_hash);
-
-            if (rmdir_ex(path) != 0) {
-                mdebug1("At w_remove_multigroup(): Directory '%s' couldn't be deleted. ('%s')",path, strerror(errno));
-            }
         }
     }
 }

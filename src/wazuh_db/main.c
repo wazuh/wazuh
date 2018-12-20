@@ -104,6 +104,13 @@ int main(int argc, char ** argv) {
         nowDaemon();
     }
 
+    // Reset template. Basically, remove queue/db/.template.db
+    // The prefix is needed here, because we are not yet chrooted
+    char path_template[OS_FLSIZE + 1];
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB2_DIR, WDB_PROF_NAME);
+    unlink(path_template);
+    mdebug1("Template file removed: %s", path_template);
+
     // Set max open files limit
     struct rlimit rlimit = { nofile, nofile };
 
@@ -196,6 +203,12 @@ int main(int argc, char ** argv) {
     free(worker_pool);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
+
+    // Reset template here too, remove queue/db/.template.db again
+    // Without the prefix, because chrooted at that point
+    snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+    unlink(path_template);
+    mdebug1("Template file removed again: %s", path_template);
 
     return EXIT_SUCCESS;
 }

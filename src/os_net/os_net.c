@@ -22,8 +22,6 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 
 /* Unix socket -- not for windows */
 #ifndef WIN32
-static struct sockaddr_un n_us;
-static socklen_t us_l = sizeof(n_us);
 
 /* UNIX SOCKET */
 #ifndef SUN_LEN
@@ -129,6 +127,7 @@ int OS_Bindportudp(u_int16_t _port, const char *_ip, int ipv6)
 /* Bind to a Unix domain, using DGRAM sockets */
 int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
 {
+    struct sockaddr_un n_us;
     int ossock = 0;
 
     /* Make sure the path isn't there */
@@ -164,6 +163,11 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
         return (OS_SOCKTERR);
     }
 
+    // Set close-on-exec
+    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
+    }
+
     return (ossock);
 }
 
@@ -172,6 +176,8 @@ int OS_BindUnixDomain(const char *path, int type, int max_msg_size)
  */
 int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
 {
+    struct sockaddr_un n_us;
+
     int ossock = 0;
 
     memset(&n_us, 0, sizeof(n_us));
@@ -195,6 +201,11 @@ int OS_ConnectUnixDomain(const char *path, int type, int max_msg_size)
     if (OS_SetSocketSize(ossock, SEND_SOCK, max_msg_size) < 0) {
         OS_CloseSocket(ossock);
         return (OS_SOCKTERR);
+    }
+
+    // Set close-on-exec
+    if (fcntl(ossock, F_SETFD, FD_CLOEXEC) == -1) {
+        mwarn("Cannot set close-on-exec flag to socket: %s (%d)", strerror(errno), errno);
     }
 
     return (ossock);
@@ -430,6 +441,8 @@ int OS_RecvConnUDP(int socket, char *buffer, int buffer_size)
 /* Receive a message from a Unix socket */
 int OS_RecvUnix(int socket, int sizet, char *ret)
 {
+    struct sockaddr_un n_us;
+    socklen_t us_l = sizeof(n_us);
     ssize_t recvd;
     ret[sizet] = '\0';
 
@@ -653,7 +666,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value) {
-#if (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
+#if defined(__sparc__) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
 #else
     return value;
@@ -662,7 +675,11 @@ uint32_t wnet_order(uint32_t value) {
 
 
 uint32_t wnet_order_big(uint32_t value) {
+#if defined(__sparc__) || defined(__BIG_ENDIAN__) || (defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) || defined(OS_BIG_ENDIAN)
+    return value;
+#else
     return (value >> 24) | (value << 24) | ((value & 0xFF0000) >> 8) | ((value & 0xFF00) << 8);
+#endif
 }
 
 /* Set the maximum buffer size for the socket */
@@ -715,7 +732,7 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
     const unsigned MAX_PAYLOAD_SIZE = 1000000;
     int retval;
     char * buffer = NULL;
-    uint32_t counter = os_random() % 4294967295;
+    uint32_t counter = (uint32_t)os_random();
     size_t cmd_length = 0;
     size_t buffer_size = 0;
 

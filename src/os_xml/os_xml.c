@@ -113,17 +113,7 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
     FILE *fp;
 
     /* Initialize xml structure */
-    _lxml->cur = 0;
-    _lxml->fol = 0;
-    _lxml->el = NULL;
-    _lxml->ct = NULL;
-    _lxml->tp = NULL;
-    _lxml->rl = NULL;
-    _lxml->ck = NULL;
-    _lxml->ln = NULL;
-
-    _lxml->err_line = 0;
-    memset(_lxml->err, '\0', XML_ERR_LENGTH);
+    memset(_lxml, 0, sizeof(OS_XML));
 
     fp = fopen(file, "r");
     if (!fp) {

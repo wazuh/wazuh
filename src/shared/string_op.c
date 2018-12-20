@@ -9,6 +9,7 @@
 
 #include "shared.h"
 #include "string.h"
+#include "../os_regex/os_regex.h"
 
 #ifdef WIN32
 #ifdef EVENTCHANNEL_SUPPORT
@@ -388,7 +389,7 @@ int wstr_find_in_folder(char *path,const char *str,int strip_new_line){
         }
 
         if( fgets (buffer, OS_SIZE_65536, fp)!=NULL ) {
-            
+
             if(strip_new_line){
 
                 char *endl = strchr(buffer, '\n');
@@ -454,4 +455,55 @@ int wstr_find_line_in_file(char *file,const char *str,int strip_new_line){
     fclose(fp);
 
     return -1;
+}
+
+char * wstr_delete_repeated_groups(const char * string){
+    char **aux;
+    char *result = NULL;
+    int i, k;
+
+    aux = OS_StrBreak(MULTIGROUP_SEPARATOR, string, MAX_GROUPS_PER_MULTIGROUP);
+
+    for (i=0; aux[i] != NULL; i++) {
+        for (k=0; k < i; k++){
+            if (!strcmp(aux[k], aux[i])) {
+                break;
+            }
+        }
+
+        // If no duplicate found, append
+        if (k == i) {
+            wm_strcat(&result, aux[i], MULTIGROUP_SEPARATOR);
+        }
+    }
+
+    free_strarray(aux);
+    return result;
+}
+
+
+// Concatenate strings with optional separator
+
+int wm_strcat(char **str1, const char *str2, char sep) {
+    size_t len1;
+    size_t len2;
+
+    if (str2) {
+        len2 = strlen(str2);
+
+        if (*str1) {
+            len1 = strlen(*str1);
+            os_realloc(*str1, len1 + len2 + (sep ? 2 : 1), *str1);
+
+            if (sep)
+                memcpy(*str1 + (len1++), &sep, 1);
+        } else {
+            len1 = 0;
+            os_malloc(len2 + 1, *str1);
+        }
+
+        memcpy(*str1 + len1, str2, len2 + 1);
+        return 0;
+    } else
+        return -1;
 }
