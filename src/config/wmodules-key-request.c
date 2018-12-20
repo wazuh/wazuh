@@ -8,6 +8,7 @@ static const char *XML_THREADS = "threads";
 static const char *XML_QUEUE_SIZE = "queue_size";
 static const char *XML_EXEC_PATH = "exec_path";
 static const char *XML_SOCKET = "socket";
+static const char *XML_FORCE_INSERT = "force_insert";
 
 static short eval_bool(const char *str)
 {
@@ -22,6 +23,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
 
     os_calloc(1, sizeof(wm_krequest_t), key_request);
     key_request->enabled = 1;
+    key_request->force_insert = 1;
     key_request->threads = 1;
     key_request->queue_size = 1024;
     module->context = &WM_KEY_REQUEST_CONTEXT;
@@ -98,7 +100,16 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
         }
-        else {
+        else if (!strcmp(nodes[i]->element, XML_FORCE_INSERT))
+        {
+            if (key_request->force_insert = eval_bool(nodes[i]->content), key_request->force_insert == OS_INVALID)
+            {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_FORCE_INSERT, WM_KEY_REQUEST_CONTEXT.name);
+                return OS_INVALID;
+            }
+        }
+        else
+        {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_KEY_REQUEST_CONTEXT.name);
         }
 

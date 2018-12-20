@@ -347,7 +347,7 @@ retry:
         if (sock = auth_connect(), sock < 0) {
             mdebug1("Could not connect to authd socket. Is authd running?");
         } else {
-            auth_add_agent(sock,id,agent_name->valuestring,agent_address->valuestring,agent_key->valuestring,1,1,agent_id->valuestring,0);
+            auth_add_agent(sock, id, agent_name->valuestring, agent_address->valuestring, agent_key->valuestring, data->force_insert, 1, agent_id->valuestring, 0);
             close(sock);
         }
         cJSON_Delete(agent_infoJSON);
