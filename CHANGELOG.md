@@ -43,6 +43,7 @@ All notable changes to this project will be documented in this file.
 - Fixed the warning messages when compiling the agent on AIX. ([2099](https://github.com/wazuh/wazuh/pull/2099))
 - Fix missing library when building Wazuh with MySQL support. ([#2108](https://github.com/wazuh/wazuh/pull/2108/))
 - Improved consistency of multigroups. ([#1985](https://github.com/wazuh/wazuh/pull/1985))
+- Agent's ossec-control stop should wait a bit after killing a process. ([#2149](https://github.com/wazuh/wazuh/pull/2149))
 
 
 ## [v3.7.2]
