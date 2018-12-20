@@ -26,4 +26,6 @@ setup-syscheck/Win32
 setup-syscheck/x64
 setup-iis/Win32
 setup-iis/x64
+add-localfile/Win32
+add-localfile/x64
 packages
