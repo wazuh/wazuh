@@ -22,4 +22,8 @@ manage_agents/Win32
 manage_agents/x64
 setup-windows/Win32
 setup-windows/x64
+setup-syscheck/Win32
+setup-syscheck/x64
+setup-iis/Win32
+setup-iis/x64
 packages
