@@ -180,6 +180,8 @@ extern const char *__local_name;
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 
+#define w_ftell(x)({ long z = ftell(x); if(z < 0) merror_exit("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
+
 #ifdef CLIENT
 #define isAgent 1
 #else
