@@ -528,8 +528,8 @@ static void c_files()
     int retval;
     FILE *fp;
     char groups_info[OS_SIZE_65536 + 1] = {0};
-    char *key;
-    char *data;
+    char *key = NULL;
+    char *data = NULL;
     os_sha256 multi_group_hash;
     char _hash[9] = {0};
 
@@ -678,10 +678,12 @@ static void c_files()
             // If it's not a multigroup, skip it
             if(!strstr(groups_info, ",")){
                 fclose(fp);
+                fp = NULL;
                 continue;
             }
 
             fclose(fp);
+            fp = NULL;
 
             char *endl = strchr(groups_info, '\n');
             if (endl) {
@@ -698,7 +700,7 @@ static void c_files()
 
     OSHashNode *my_node;
     unsigned int *i;
-    os_calloc(1, sizeof(unsigned int *), i);
+    os_calloc(1, sizeof(unsigned int), i);
 
     for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
         os_strdup(my_node->key, key);
@@ -706,7 +708,10 @@ static void c_files()
             os_strdup(my_node->data, data);
         }
         else {
-            free(key);
+            os_free(i);
+            os_free(key);
+            closedir(dp);
+            w_mutex_unlock(&files_mutex);
             return;
         }
 
@@ -744,12 +749,17 @@ static void c_files()
         groups[p_size + 1] = NULL;
         c_multi_group(key,&groups[p_size]->f_sum,data);
         free_strarray(subdir);
-        free(key);
-        free(data);
+        os_free(key);
+        os_free(data);
         p_size++;
     }
 
     os_free(i);
+    os_free(key);
+    os_free(data);
+    if(fp) {
+        fclose(fp);
+    }
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
     closedir(dp);
@@ -1210,11 +1220,16 @@ int purge_group(char *group){
                 free_strarray(groups);
             }
             fclose(fp);
+            fp = NULL;
         }
     }
     if(!reported_non_existing_group) {
         mdebug2("Group '%s' was deleted. Removing this group from all affected agents...", group);
         reported_non_existing_group = 1;
+    }
+    closedir(dp);
+    if(fp) {
+        fclose(fp);
     }
     os_free(new_groups);
     return 0;
