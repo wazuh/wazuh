@@ -701,7 +701,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         return 0;
     }
 
-#ifdef __linux__
+#ifndef WIN32
     // readlink() function only works for Linux
     if (is_link) {
         char *link_path;
