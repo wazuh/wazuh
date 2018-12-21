@@ -30,4 +30,6 @@ add-localfile/Win32
 add-localfile/x64
 os_win32ui/Win32
 os_win32ui/x64
+agent-auth/Win32
+agent-auth/x64
 packages

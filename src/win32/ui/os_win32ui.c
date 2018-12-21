@@ -18,7 +18,7 @@
 #endif
 
 /* Dialog -- About OSSEC */
-BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
+INT_PTR CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
        WPARAM wParam,
        __attribute__((unused))LPARAM lParam)
 {
@@ -45,7 +45,7 @@ BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
 }
 
 /* Main Dialog */
-BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
+INT_PTR CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
         __attribute__((unused))LPARAM lParam)
 {
     int ret_code = 0;
