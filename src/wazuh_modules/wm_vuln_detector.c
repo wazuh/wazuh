@@ -51,7 +51,7 @@ cJSON *wm_vulnerability_detector_dump(const wm_vulnerability_detector_t * vulner
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
-    "vulnerability-detector",
+    VU_WM_NAME,
     (wm_routine)wm_vulnerability_detector_main,
     (wm_routine)wm_vulnerability_detector_destroy,
     (cJSON * (*)(const void *))wm_vulnerability_detector_dump
