@@ -10,7 +10,6 @@
 #include <process.h>
 
 #include "os_win32ui.h"
-#include <process.h>
 #include "../os_win.h"
 
 /* Dialog -- About OSSEC */

@@ -369,19 +369,23 @@ ret:
 /* Set OSSEC Server IP */
 int set_ossec_server(char *ip, HWND hwnd)
 {
+    int ret = 0;
     const char **xml_pt = NULL;
     const char *(xml_serveraddr[]) = {"ossec_config", "client", "server", "address", NULL};
     char *conf_file = basename_ex(CONFIG);
 	
-	char tmp_path[strlen(TMP_DIR) + 1 + strlen(conf_file) + 6 + 1];
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, conf_file);
+    char *tmp_path = NULL;
+    unsigned long int tmp_path_size = (strlen(TMP_DIR) + 1 + strlen(conf_file) + 6 + 1);
+    
+    os_calloc(1, tmp_path_size, tmp_path);
+    snprintf(tmp_path, tmp_path_size, "%s/%sXXXXXX", TMP_DIR, conf_file);
 	
 	/* Verify IP Address */
     if (OS_IsValidIP(ip, NULL) != 1) {
         char *s_ip = OS_GetHost(ip, 0);
         if (!s_ip) {
             MessageBox(hwnd, "Invalid Server IP Address.\r\nIt must be the valid IPv4 address of the OSSEC server or the resolvable hostname.", "Error -- Failure Setting IP", MB_OK);
-            return (0);
+            goto out;
         }
         free(s_ip);
         config_inst.server_type = SERVER_HOST_USED;
@@ -394,7 +398,7 @@ int set_ossec_server(char *ip, HWND hwnd)
 	/* Create temporary file */
     if (mkstemp_ex(tmp_path) == -1) {
         MessageBox(hwnd, "Could not create temporary file.", "Error -- Failure Setting IP", MB_OK);
-        return (0);
+        goto out;
     }
 	
 	/* Read the XML. Print error and line number. */
@@ -403,7 +407,7 @@ int set_ossec_server(char *ip, HWND hwnd)
         
         if (unlink(tmp_path)) MessageBox(hwnd, "Could not delete temporary file.", "Error -- Failure Deleting Temporary File", MB_OK);
         
-        return (0);
+        goto out;
     }
 	
     /* Rename config files */
@@ -412,7 +416,7 @@ int set_ossec_server(char *ip, HWND hwnd)
         
         if (unlink(tmp_path)) MessageBox(hwnd, "Could not delete temporary file.", "Error -- Failure Deleting Temporary File", MB_OK);
         
-        return (0);
+        goto out;
     }
 	
 	if (rename_ex(tmp_path, CONFIG)) {
@@ -420,25 +424,33 @@ int set_ossec_server(char *ip, HWND hwnd)
         
         if (unlink(tmp_path)) MessageBox(hwnd, "Could not delete temporary file.", "Error -- Failure Deleting Temporary File", MB_OK);
         
-        return (0);
+        goto out;
     }
-	
-	return (1);
+    
+    ret = 1;
+    
+out:
+    if (tmp_path != NULL) free(tmp_path);
+    return (ret);
 }
 
 /* Set OSSEC Authentication Key */
 int set_ossec_key(char *key, HWND hwnd)
 {
+    int ret = 0;
     char auth_file_tmp[] = AUTH_FILE;
     char *keys_file = basename_ex(auth_file_tmp);
-	
-    char tmp_path[strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1];
-    snprintf(tmp_path, sizeof(tmp_path), "%s/%sXXXXXX", TMP_DIR, keys_file);
+    
+    char *tmp_path = NULL;
+    unsigned long int tmp_path_size = (strlen(TMP_DIR) + 1 + strlen(keys_file) + 6 + 1);
+    
+    os_calloc(1, tmp_path_size, tmp_path);
+    snprintf(tmp_path, tmp_path_size, "%s/%sXXXXXX", TMP_DIR, keys_file);
 	
 	/* Create temporary file */
     if (mkstemp_ex(tmp_path) == -1) {
         MessageBox(hwnd, "Could not create temporary file.", "Error -- Failure Setting IP", MB_OK);
-        return (0);
+        goto out;
     }
 	
 	FILE *fp = fopen(tmp_path, "w");
@@ -450,7 +462,7 @@ int set_ossec_key(char *key, HWND hwnd)
         
         if (unlink(tmp_path)) MessageBox(hwnd, "Could not delete temporary file.", "Error -- Failure Deleting Temporary File", MB_OK);
         
-        return (0);
+        goto out;
     }
 	
 	if (rename_ex(tmp_path, AUTH_FILE)) {
@@ -458,8 +470,12 @@ int set_ossec_key(char *key, HWND hwnd)
         
         if (unlink(tmp_path)) MessageBox(hwnd, "Could not delete temporary file.", "Error -- Failure Deleting Temporary File", MB_OK);
         
-        return (0);
+        goto out;
     }
-	
-    return (1);
+    
+    ret = 1;
+    
+out:
+    if (tmp_path != NULL) free(tmp_path);
+    return (ret);
 }
