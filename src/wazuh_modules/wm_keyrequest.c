@@ -415,6 +415,8 @@ cJSON *wm_key_request_dump(const wm_krequest_t *data) {
         cJSON_AddNumberToObject(wm_wd,"queue_size",data->queue_size);
     }
 
+    cJSON_AddStringToObject(wm_wd, "force_insert", data->force_insert ? "yes" : "no");
+
     cJSON_AddItemToObject(root,"key-polling",wm_wd);
     return root;
 }
