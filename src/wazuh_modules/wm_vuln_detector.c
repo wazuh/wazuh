@@ -665,7 +665,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                     }
                 }
                 if (advisories && *advisories) {
-                    cJSON_AddItemToObject(alert_cve, "advisories", wm_vuldet_decode_advisories(advisories));
+                    cJSON_AddStringToObject(alert_cve, "advisories", advisories);
                 }
                 if (cwe) cJSON_AddStringToObject(alert_cve, "cwe_reference", cwe);
                 if (bugzilla_reference) cJSON_AddStringToObject(alert_cve, "bugzilla_reference", bugzilla_reference);
