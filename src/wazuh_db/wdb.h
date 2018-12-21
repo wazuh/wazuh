@@ -70,10 +70,6 @@ typedef enum wdb_stmt {
     WDB_STMT_ADDR_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
-    WDB_STMT_METADATA_VERSION,
-    WDB_STMT_METADATA_INSERT,
-    WDB_STMT_METADATA_UPDATE,
-    WDB_STMT_METADATA_FIND,
     WDB_STMT_SCAN_INFO_FIND,
     WDB_STMT_SCAN_INFO_INSERT,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -116,6 +112,7 @@ extern sqlite3 *wdb_global;
 
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
+extern char *schema_upgrade_v1_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;
@@ -182,7 +179,7 @@ int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group);
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
 
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name);
@@ -220,7 +217,7 @@ int wdb_create_agent_db(int id, const char *name);
 int wdb_create_agent_db2(const char * agent_id);
 
 /* Initialize table metadata Returns 0 on success or -1 on error. */
-int wdb_metadata_initialize (wdb_t *wdb, char *path);
+int wdb_metadata_initialize (wdb_t *wdb);
 
 /* Insert or update metadata entries. Returns 0 on success or -1 on error. */
 int wdb_fim_fill_metadata(wdb_t * wdb, char *data);
@@ -277,6 +274,9 @@ int* wdb_get_all_agents();
 
 /* Fill belongs table on start */
 int wdb_agent_belongs_first_time();
+
+/* Get the agent first registration date */
+char *get_agent_date_added(int agent_id);
 
 /* Find agent by name and address. Returns ID if success or -1 on failure. */
 int wdb_find_agent(const char *name, const char *ip);
@@ -399,6 +399,9 @@ void wdb_close_old();
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 
+// Execute SQL script into an database
+int wdb_sql_exec(wdb_t *wdb, const char *sql_exec);
+
 int wdb_close(wdb_t * wdb);
 
 void wdb_leave(wdb_t * wdb);
@@ -431,11 +434,20 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
-int wdb_scan_info_init (wdb_t *wdb, char *path);
+int wdb_scan_info_init (wdb_t *wdb);
 int wdb_scan_info_find(wdb_t * wdb, const char * module);
 int wdb_scan_info_insert (wdb_t * wdb, const char *module);
 int wdb_scan_info_update(wdb_t * wdb, const char *module, const char *field, long value);
 int wdb_scan_info_get(wdb_t * wdb, const char *module, char *field, long *output);
 int wdb_scan_info_fim_checks_control (wdb_t * wdb, const char *last_check);
+
+// Upgrade agent database to last version
+wdb_t * wdb_upgrade(wdb_t *wdb);
+
+// Create backup and generate an emtpy DB
+wdb_t * wdb_backup(wdb_t *wdb, int version);
+
+/* Create backup for agent. Returns 0 on success or -1 on error. */
+int wdb_create_backup(const char * agent_id, int version);
 
 #endif

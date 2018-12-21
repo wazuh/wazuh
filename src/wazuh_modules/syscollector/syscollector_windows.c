@@ -11,58 +11,159 @@
 
 #ifdef WIN32
 
+#include <winternl.h>
+#include <ntstatus.h>
 #include "syscollector.h"
+#include "file_op.h"
 
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
+typedef int (*CallFunc2)(char **serial);
+
+typedef struct _SYSTEM_PROCESS_IMAGE_NAME_INFORMATION
+{
+    HANDLE ProcessId;
+    UNICODE_STRING ImageName;
+} SYSTEM_PROCESS_IMAGE_NAME_INFORMATION, *PSYSTEM_PROCESS_IMAGE_NAME_INFORMATION;
+
+typedef NTSTATUS(WINAPI *tNTQSI)(ULONG SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
 
 hw_info *get_system_windows();
+int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
 /* From process ID get its name */
-
 char* get_process_name(DWORD pid){
-
-    char *string = NULL;
-    FILE *output;
-    char *command;
-    char *end;
     char read_buff[OS_MAXSTR];
-    int status;
-
-    memset(read_buff, 0, OS_MAXSTR);
-    os_calloc(COMMAND_LENGTH, sizeof(char), command);
-    snprintf(command, COMMAND_LENGTH - 1, "wmic process where processID=%lu get Name", pid);
-    output = popen(command, "r");
-    if (!output) {
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+    char *string = NULL, *ptr = NULL;
+    
+    /* Check if we are dealing with a system process */
+    if (pid == 0 || pid == 4)
+    {
+        string = strdup(pid == 0 ? "System Idle Process" : "System");
+        return string;
+    }
+    
+    /* Get process handle */
+    HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProcess == NULL && checkVista())
+    {
+        /* Try to open the process using PROCESS_QUERY_LIMITED_INFORMATION */
+        hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    }
+    
+    if (hProcess != NULL)
+    {
+        /* Get full Windows kernel path for the process */
+        if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+        {
+            /* Get only the process name from the string */
+            ptr = strrchr(read_buff, '\\');
+            if (ptr)
+            {
+                int len = (strlen(read_buff) - (ptr - read_buff + 1));
+                memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
+                read_buff[len] = '\0';
+            }
+            
+            /* Duplicate string */
+            string = strdup(read_buff);
+        } else {
+            mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve name for process with PID %lu (%ld).", pid, GetLastError());
+        }
+        
+        /* Close process handle */
+        CloseHandle(hProcess);
     } else {
-        if (fgets(read_buff, OS_MAXSTR, output)) {
-            if (strncmp(read_buff,"Name", 4) == 0) {
-                if (!fgets(read_buff, OS_MAXSTR, output)){
-                    mtwarn(WM_SYS_LOGTAG, "Unable to get process name.");
-                    string = strdup("unknown");
-                }
-                else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
+        if (checkVista())
+        {
+            /* Dinamically load the ntdll.dll library and the 'NtQuerySystemInformation' call to retrieve the process image name */
+            /* Only works under Windows Vista and greater */
+            /* References: */
+            /* http://www.rohitab.com/discuss/topic/40626-list-processes-using-ntquerysysteminformation/ */
+            /* http://wj32.org/wp/2010/03/30/get-the-image-file-name-of-any-process-from-any-user-on-vista-and-above/ */
+            tNTQSI fpQSI = NULL;
+            HANDLE hHeap = GetProcessHeap();
+            HMODULE ntdll = LoadLibrary("ntdll.dll");
+            if (ntdll == NULL)
+            {
+                DWORD error = GetLastError();
+                LPSTR messageBuffer = NULL;
+                LPSTR end;
+                
+                FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+                
+                if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
+                
+                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to load ntdll.dll: %s (%lu).", messageBuffer, error);
+                LocalFree(messageBuffer);
+            } else {
+                fpQSI = (tNTQSI)GetProcAddress(ntdll, "NtQuerySystemInformation");
+                if (fpQSI == NULL) mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to access 'NtQuerySystemInformation' on ntdll.dll.");
+            }
+            
+            if (ntdll != NULL && fpQSI != NULL)
+            {
+                NTSTATUS Status;
+                PVOID pBuffer;
+                SYSTEM_PROCESS_IMAGE_NAME_INFORMATION procInfo;
+                
+                pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, 0x100);
+                if (pBuffer == NULL)
+                {
+                    mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for 'NtQuerySystemInformation'.");
+                } else {
+                    procInfo.ProcessId = &pid;
+                    procInfo.ImageName.Length = 0;
+                    procInfo.ImageName.MaximumLength = (USHORT)0x100;
+                    procInfo.ImageName.Buffer = pBuffer;
+                    
+                    Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
+                    
+                    if (Status == STATUS_INFO_LENGTH_MISMATCH)
+                    {
+                        /* Our buffer was too small. The required buffer length is stored in MaximumLength */
+                        HeapFree(hHeap, 0, pBuffer);
+                        pBuffer = HeapAlloc(hHeap, HEAP_ZERO_MEMORY, procInfo.ImageName.MaximumLength);
+                        if (pBuffer == NULL)
+                        {
+                            mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for 'NtQuerySystemInformation'.");
+                        } else {
+                            procInfo.ImageName.Buffer = pBuffer;
+                            Status = fpQSI(88, &procInfo, sizeof(procInfo), NULL);
+                        }
                     }
-                    string = strdup(read_buff);
-                }else
-                    string = strdup("unknown");
+                    
+                    if (NT_SUCCESS(Status))
+                    {
+                        int size_needed = WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, NULL, 0, NULL, NULL);
+                        if (!size_needed)
+                        {
+                            mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%ld).", GetLastError());
+                        } else {
+                            string = (char*)malloc(size_needed + 1);
+                            if (string == NULL)
+                            {
+                                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
+                            } else {
+                                if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
+                                {
+                                    mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%ld).", GetLastError());
+                                    free(string);
+                                    string = NULL;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
+                }
             }
         } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get process name (bad header).");
-            string = strdup("unknown");
-        }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting process ID.", status);
+            mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve handle for process with PID %lu (%ld).", pid, GetLastError());
         }
     }
-
+    
+    if (string == NULL) string = strdup("unknown");
     return string;
 }
 
@@ -162,7 +263,23 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    char local_addr[NI_MAXHOST];
+	HANDLE hdle;
+	int privilege_enabled = 0;
+	
+	/* Enable debug privilege */
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
+	{
+		if (!set_token_privilege(hdle, SE_DEBUG_NAME, TRUE))
+		{
+			privilege_enabled = 1;
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+		}
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token. Error '%ld'.", GetLastError());
+	}
+	
+	char local_addr[NI_MAXHOST];
     char rem_addr[NI_MAXHOST];
     struct in_addr ipaddress;
 
@@ -283,7 +400,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     /* Call inet_ntop function through syscollector DLL */
     CallFunc1 _wm_inet_ntop;
-    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
     if (sys_library == NULL){
         DWORD error = GetLastError();
         LPSTR messageBuffer = NULL;
@@ -528,6 +645,14 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         win_free(pUdp6Table);
         pUdp6Table = NULL;
     }
+	
+	/* Disable debug privilege */
+	if (privilege_enabled)
+	{
+		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "Unable to unset debug privilege on current process. Error '%ld'.", GetLastError());
+	}
+	
+	if (hdle) CloseHandle(hdle);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
@@ -960,14 +1085,6 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
 }
 
 void sys_hw_windows(const char* LOCATION){
-
-    char *string;
-    char *command;
-    char *end;
-    FILE *output;
-    char read_buff[SERIAL_LENGTH];
-    int status;
-
     // Set timestamp
 
     char *timestamp;
@@ -1004,42 +1121,52 @@ void sys_hw_windows(const char* LOCATION){
     cJSON_AddStringToObject(object, "timestamp", timestamp);
     cJSON_AddItemToObject(object, "inventory", hw_inventory);
 
-    /* Get Serial number */
+    /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
-    memset(read_buff, 0, SERIAL_LENGTH);
-    command = "wmic baseboard get SerialNumber";
-    output = popen(command, "r");
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-    }else{
-        if (fgets(read_buff, SERIAL_LENGTH, output)) {
-            if (strncmp(read_buff ,"SerialNumber", 12) == 0) {
-                if (!fgets(read_buff, SERIAL_LENGTH, output)){
-                    mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
-                    serial = strdup("unknown");
-                }
-                else if (end = strpbrk(read_buff,"\r\n"), end) {
-                    *end = '\0';
-                    int i = strlen(read_buff) - 1;
-                    while(read_buff[i] == 32){
-                        read_buff[i] = '\0';
-                        i--;
-                    }
-                    serial = strdup(read_buff);
-                }else
-                    serial = strdup("unknown");
-            }
-        } else {
-            mtdebug1(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number (bad header).");
+    CallFunc2 _get_baseboard_serial;
+    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    if (sys_library == NULL)
+    {
+        DWORD error = GetLastError();
+        LPSTR messageBuffer = NULL;
+        LPSTR end;
+        
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+        
+        if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
+        
+        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
+        LocalFree(messageBuffer);
+        
+        serial = strdup("unknown");
+    } else {
+        _get_baseboard_serial = (CallFunc2)GetProcAddress(sys_library, "get_baseboard_serial");
+        if (!_get_baseboard_serial) {
+            mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
             serial = strdup("unknown");
-        }
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting board serial.", status);
+        } else {
+            int ret = _get_baseboard_serial(&serial);
+            switch(ret)
+            {
+                case 1:
+                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get raw SMBIOS firmware table size.");
+                    break;
+                case 2:
+                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to allocate memory for the SMBIOS firmware table.");
+                    break;
+                case 3:
+                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get the SMBIOS firmware table.");
+                    break;
+                case 4:
+                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Serial Number not available in SMBIOS firmware table.");
+                    break;
+                default:
+                    break;
+            }
         }
     }
-
-    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+    
+	cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
 
     /* Get CPU and memory information */
@@ -1063,7 +1190,7 @@ void sys_hw_windows(const char* LOCATION){
     }
 
     /* Send interface data in JSON format */
-    string = cJSON_PrintUnformatted(object);
+    char *string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_hw_windows() sending '%s'", string);
     SendMSG(0, string, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
@@ -1133,7 +1260,7 @@ void sys_network_windows(const char* LOCATION){
     CallFunc _get_network_win;
 
     /* Load DLL with network inventory functions */
-    HINSTANCE sys_library = LoadLibrary("syscollector_win_ext.dll");
+    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
 
     if (sys_library != NULL){
         _get_network_win = (CallFunc)GetProcAddress(sys_library, "get_network");
@@ -1354,11 +1481,69 @@ hw_info *get_system_windows(){
     return info;
 }
 
+int ntpath_to_win32path(char *ntpath, char **outbuf)
+{
+	int success = 0;
+	DWORD res = 0, len = 0;
+	char *SingleDrive = NULL;
+	char LogicalDrives[OS_MAXSTR] = {0}, read_buff[OS_MAXSTR] = {0}, msdos_drive[3] = { '\0', ':', '\0' };
+	
+	if (ntpath == NULL) return success;
+	
+	/* Get the total amount of available logical drives */
+	/* The input size must not include the NULL terminator */
+	res = GetLogicalDriveStrings(OS_MAXSTR - 1, LogicalDrives);
+	if (res <= 0 || res > OS_MAXSTR)
+	{
+		mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to parse logical drive strings. Error '%ld'.", GetLastError());
+		return success;
+	}
+	
+	/* Perform a loop of the retrieved drive list */
+	SingleDrive = LogicalDrives;
+	while(*SingleDrive)
+	{
+		/* Get the MS-DOS drive letter */
+		*msdos_drive = *SingleDrive;
+		
+		/* Retrieve the Windows kernel path for this drive */
+		res = QueryDosDevice(msdos_drive, read_buff, OS_MAXSTR);
+		if (res)
+		{
+			/* Check if this is the drive we're looking for */
+			if (!strncmp(ntpath, read_buff, strlen(read_buff)))
+			{
+				/* Calculate new string length (making sure there's space left for the NULL terminator) */
+				len = (strlen(ntpath) - strlen(read_buff) + 3);
+				
+				/* Allocate memory */
+				*outbuf = (char*)malloc(len);
+				if (*outbuf)
+				{
+					/* Copy the new filepath */
+					snprintf(*outbuf, len, "%s%s", msdos_drive, ntpath + strlen(read_buff));
+					success = 1;
+				} else {
+					mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to allocate %lu bytes to hold the full Win32 converted filepath.", len);
+				}
+				
+				break;
+			}
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to retrieve Windows kernel path for drive '%s\\'. Error '%ld'.", msdos_drive, GetLastError());
+		}
+		
+		/* Get the next drive */
+		SingleDrive += (strlen(SingleDrive) + 1);
+	}
+	
+	if (!success) mtwarn(WM_SYS_LOGTAG, "At ntpath_to_win32path(): Unable to find a matching Windows kernel drive path for '%s'.", ntpath);
+	
+	return success;
+}
+
 void sys_proc_windows(const char* LOCATION) {
-    char *command;
-    FILE *output;
     char read_buff[OS_MAXSTR];
-    int status;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -1394,72 +1579,246 @@ void sys_proc_windows(const char* LOCATION) {
     cJSON *proc_array = cJSON_CreateArray();
 
     mtdebug1(WM_SYS_LOGTAG, "Starting running processes inventory.");
-
-    memset(read_buff, 0, OS_MAXSTR);
-    command = "wmic process get ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize /format:csv";
-    output = popen(command, "r");
-
-    if (!output){
-        mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'", command);
-    }else{
-
-        while(fgets(read_buff, OS_MAXSTR, output) && strncmp(read_buff, "Node,ExecutablePath,KernelModeTime,Name,PageFileUsage,ParentProcessId,Priority,ProcessId,SessionId,ThreadCount,UserModeTime,VirtualSize", 132) != 0);
-
-        while(fgets(read_buff, OS_MAXSTR, output)){
-
-            cJSON *object = cJSON_CreateObject();
-            cJSON *process = cJSON_CreateObject();
-            cJSON_AddStringToObject(object, "type", "process");
-            cJSON_AddNumberToObject(object, "ID", ID);
-            cJSON_AddStringToObject(object, "timestamp", timestamp);
-            cJSON_AddItemToObject(object, "process", process);
-
-            char ** parts = NULL;
-            parts = OS_StrBreak(',', read_buff, 12);
-
-            cJSON_AddStringToObject(process,"cmd",parts[1]); // CommandLine
-            cJSON_AddNumberToObject(process,"stime",atol(parts[2])); // KernelModeTime
-            cJSON_AddStringToObject(process,"name",parts[3]); // Name
-            cJSON_AddNumberToObject(process,"size",atoi(parts[4])); // PageFileUsage
-            cJSON_AddNumberToObject(process,"ppid",atoi(parts[5])); // ParentProcessId
-            cJSON_AddNumberToObject(process,"priority",atoi(parts[6])); // Priority
-            cJSON_AddNumberToObject(process,"pid",atoi(parts[7])); // ProcessId
-            cJSON_AddNumberToObject(process,"session",atoi(parts[8])); // SessionId
-            cJSON_AddNumberToObject(process,"nlwp",atoi(parts[9])); // ThreadCount
-            cJSON_AddNumberToObject(process,"stime",atol(parts[10])); // UserModeTime
-            cJSON_AddNumberToObject(process,"vm_size",atol(parts[11])); // VirtualSize
-
-            cJSON_AddItemToArray(proc_array, object);
-            free(parts);
-        }
-
-        cJSON_ArrayForEach(item, proc_array) {
-            char *string;
-            string = cJSON_PrintUnformatted(item);
-            mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
-            wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-            free(string);
-        }
-
-        cJSON_Delete(proc_array);
-
-        if (status = pclose(output), status) {
-            mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting process inventory.", status);
-        }
-    }
-
-    cJSON *object = cJSON_CreateObject();
+	
+	PROCESSENTRY32 pe = { 0 };
+	pe.dwSize = sizeof(PROCESSENTRY32);
+	
+	HANDLE hSnapshot, hProcess;
+	FILETIME lpCreationTime, lpExitTime, lpKernelTime, lpUserTime;
+	PROCESS_MEMORY_COUNTERS ppsmemCounters;
+	
+	LONG priority;
+	char *exec_path, *name;
+	ULARGE_INTEGER kernel_mode_time, user_mode_time;
+	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
+	
+	HANDLE hdle;
+	int privilege_enabled = 0;
+	
+	/* Enable debug privilege */
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hdle))
+	{
+		if (!set_token_privilege(hdle, SE_DEBUG_NAME, TRUE))
+		{
+			privilege_enabled = 1;
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to set debug privilege on current process (%ld).", GetLastError());
+		}
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve current process token (%ld).", GetLastError());
+	}
+	
+	/* Create a snapshot of all current processes */
+	hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+	if (hSnapshot != INVALID_HANDLE_VALUE)
+	{
+		if (Process32First(hSnapshot, &pe))
+		{
+			do {
+				/* Get process ID */
+				pid = pe.th32ProcessID;
+				
+				/* Get thread count */
+				thread_count = pe.cntThreads;
+				
+				/* Get parent process ID */
+				parent_pid = pe.th32ParentProcessID;
+				
+				/* Get process base priority */
+				priority = pe.pcPriClassBase;
+				
+				/* Initialize variables */
+				name = exec_path = NULL;
+				kernel_mode_time.QuadPart = user_mode_time.QuadPart = 0;
+				session_id = page_file_usage = virtual_size = 0;
+				
+				/* Check if we are dealing with a system process */
+				if (pid == 0 || pid == 4)
+				{
+					name = strdup(pid == 0 ? "System Idle Process" : "System");
+					exec_path = strdup("none");
+				} else {
+					/* Get process name */
+					name = strdup(pe.szExeFile);
+					
+					/* Get process handle */
+					hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+					if (hProcess != NULL)
+					{
+						/* Get full Windows kernel path for the process */
+						if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+						{
+							/* Convert Windows kernel path to a valid Win32 filepath */
+							/* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
+                            /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
+							if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
+							{
+								/* If there were any errors, the read_buff array will remain intact */
+								/* In that case, let's just use the Windows kernel path. It's better than nothing */
+								exec_path = strdup(read_buff);
+							}
+						} else {
+							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve executable path from process with PID %lu (%ld).", pid, GetLastError());
+							exec_path = strdup("unknown");
+						}
+						
+						/* Get kernel mode and user mode times */
+						if (GetProcessTimes(hProcess, &lpCreationTime, &lpExitTime, &lpKernelTime, &lpUserTime))
+						{
+							/* Copy the kernel mode filetime high and low parts and convert it to seconds */
+							kernel_mode_time.LowPart = lpKernelTime.dwLowDateTime;
+							kernel_mode_time.HighPart = lpKernelTime.dwHighDateTime;
+							kernel_mode_time.QuadPart /= 10000000ULL;
+							
+							/* Copy the user mode filetime high and low parts and convert it to seconds */
+							user_mode_time.LowPart = lpUserTime.dwLowDateTime;
+							user_mode_time.HighPart = lpUserTime.dwHighDateTime;
+							user_mode_time.QuadPart /= 10000000ULL;
+						} else {
+							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve kernel mode and user mode times from process with PID %lu (%ld).", pid, GetLastError());
+						}
+						
+						/* Get page file usage and virtual size */
+						/* Reference: https://stackoverflow.com/a/1986486 */
+						if (GetProcessMemoryInfo(hProcess, &ppsmemCounters, sizeof(ppsmemCounters)))
+						{
+							page_file_usage = ppsmemCounters.PagefileUsage;
+							virtual_size = (ppsmemCounters.WorkingSetSize + ppsmemCounters.PagefileUsage);
+						} else {
+							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve page file usage from process with PID %lu (%ld).", pid, GetLastError());
+						}
+						
+						/* Get session ID */
+						if (!ProcessIdToSessionId(pid, &session_id)) mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve session ID from process with PID %lu (%ld).", pid, GetLastError());
+						
+						/* Close process handle */
+						CloseHandle(hProcess);
+					} else {
+						/* Silence access denied errors under Windows Vista or greater */
+                        DWORD lastError = GetLastError();
+                        if (!checkVista() || lastError != ERROR_ACCESS_DENIED)
+                        {
+                            mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process handle for PID %lu (%ld).", pid, lastError);
+                            exec_path = strdup("unknown");
+                        }
+					}
+				}
+				
+				/* Add process information to the JSON document */
+				cJSON *object = cJSON_CreateObject();
+				cJSON *process = cJSON_CreateObject();
+				cJSON_AddStringToObject(object, "type", "process");
+				cJSON_AddNumberToObject(object, "ID", ID);
+				cJSON_AddStringToObject(object, "timestamp", timestamp);
+				cJSON_AddItemToObject(object, "process", process);
+				
+				cJSON_AddStringToObject(process, "cmd", exec_path); // CommandLine
+				cJSON_AddNumberToObject(process, "stime", kernel_mode_time.QuadPart); // KernelModeTime
+				cJSON_AddStringToObject(process, "name", name); // Name
+				cJSON_AddNumberToObject(process, "size", page_file_usage); // PageFileUsage
+				cJSON_AddNumberToObject(process, "ppid", parent_pid); // ParentProcessId
+				cJSON_AddNumberToObject(process, "priority", priority); // Priority
+				cJSON_AddNumberToObject(process, "pid", pid); // ProcessId
+				cJSON_AddNumberToObject(process, "session", session_id); // SessionId
+				cJSON_AddNumberToObject(process, "nlwp", thread_count); // ThreadCount
+				cJSON_AddNumberToObject(process, "utime", user_mode_time.QuadPart); // UserModeTime
+				cJSON_AddNumberToObject(process, "vm_size", virtual_size); // VirtualSize
+				
+				cJSON_AddItemToArray(proc_array, object);
+				
+				free(name);
+				free(exec_path);
+			} while(Process32Next(hSnapshot, &pe));
+			
+			cJSON_ArrayForEach(item, proc_array) {
+				char *string = cJSON_PrintUnformatted(item);
+				mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
+				wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+				free(string);
+			}
+			
+			cJSON_Delete(proc_array);
+		} else {
+			mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve process information from the snapshot.");
+		}
+		
+		/* Close snapshot handle */
+		CloseHandle(hSnapshot);
+	} else {
+		mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to create process snapshot.");
+	}
+	
+	/* Disable debug privilege */
+	if (privilege_enabled)
+	{
+		if (set_token_privilege(hdle, SE_DEBUG_NAME, FALSE)) mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to unset debug privilege on current process (%ld).", GetLastError());
+	}
+	
+	if (hdle) CloseHandle(hdle);
+	
+	cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "process_end");
     cJSON_AddNumberToObject(object, "ID", ID);
     cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-    char *string;
-    string = cJSON_PrintUnformatted(object);
+    char *string = cJSON_PrintUnformatted(object);
     mtdebug2(WM_SYS_LOGTAG, "sys_proc_windows() sending '%s'", string);
     wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
+	
     cJSON_Delete(object);
     free(string);
     free(timestamp);
+}
+
+int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable) {
+	TOKEN_PRIVILEGES tp;
+	LUID pr_uid;
+    TOKEN_PRIVILEGES tpPrevious;
+    DWORD cbPrevious = sizeof(TOKEN_PRIVILEGES);
+    DWORD errorInfo;
+
+	// Get the privilege UID
+	if (!LookupPrivilegeValue(NULL, privilege, &pr_uid)) {
+		merror("Could not find the '%s' privilege. Error: %lu", privilege, GetLastError());
+		return 1;
+	}
+    
+    // Get current privilege setting
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = pr_uid;
+    tp.Privileges[0].Attributes = 0;
+    
+    AdjustTokenPrivileges(hdle, FALSE, &tp, sizeof(TOKEN_PRIVILEGES), &tpPrevious, &cbPrevious);
+    errorInfo = GetLastError();
+    if (errorInfo != ERROR_SUCCESS) {
+		merror("AdjustTokenPrivileges() failed (first call). Error: '%lu'", errorInfo);
+		return 1;
+    }
+    
+    // Set privilege based on previous setting
+    tpPrevious.PrivilegeCount = 1;
+    tpPrevious.Privileges[0].Luid = pr_uid;
+    
+    if (enable) {
+        tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
+	} else {
+        tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED & tpPrevious.Privileges[0].Attributes);
+	}
+    
+    AdjustTokenPrivileges(hdle, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
+    errorInfo = GetLastError();
+    if (errorInfo != ERROR_SUCCESS) {
+		merror("AdjustTokenPrivileges() failed (second call). Error: '%lu'", errorInfo);
+		return 1;
+    }
+
+    if (enable) {
+        mdebug2("The '%s' privilege has been added.", privilege);
+    } else {
+        mdebug2("The '%s' privilege has been removed.", privilege);
+    }
+
+	return 0;
 }
 
 #endif

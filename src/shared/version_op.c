@@ -586,6 +586,19 @@ os_info *get_unix_version()
                     pclose(cmd_output);
                   goto free_os_info;
                 }
+            } else if (strcmp(strtok(buff, "\n"),"HP-UX") == 0){ // HP-UX
+                info->os_name = strdup("HP-UX");
+                info->os_platform = strdup("hp-ux");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (uname -r).");
+                    } else if (w_regexec("B\\.([0-9][0-9]*\\.[0-9]*)", buff, 2, match)){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        info->os_version = malloc(match_size +1);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
             } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
                        strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
                        strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD

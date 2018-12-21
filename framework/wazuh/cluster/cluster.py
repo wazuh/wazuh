@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_localhost_ips():
-    return set(check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1])
+    return set(str(check_output(['hostname', '--all-ip-addresses'])).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -87,7 +87,7 @@ def check_cluster_config(config):
     if config['node_type'] == 'master' and config['nodes'][0] not in get_localhost_ips():
         raise WazuhException(3004, "Master IP not valid. Valid ones are: {}".format(', '.join(get_localhost_ips())))
 
-    if not isinstance(config['port'], int) and not config['port'].isdigit():
+    if not isinstance(config['port'], int):
         raise WazuhException(3004, "Cluster port must be an integer.")
 
 
@@ -133,6 +133,12 @@ def read_config():
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
+
+    config_cluster['port'] = int(config_cluster['port'])
+
+    if config_cluster['node_type'] == 'client':
+        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
+        config_cluster['node_type'] = 'worker'
 
     return config_cluster
 
@@ -484,10 +490,6 @@ def _check_removed_agents(new_client_keys):
 #
 # Others
 #
-
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1]
-
-
 def run_logtest(synchronized=False):
     log_msg_start = "Synchronized r" if synchronized else "R"
     try:

@@ -9,8 +9,11 @@
  * Foundation.
  */
 
+#define AD_CONF_UNPARSED 3
+#define AD_CONF_UNDEFINED 2
+
 typedef struct authd_flags_t {
-    unsigned short disabled:1;
+    unsigned short disabled:3;
     unsigned short use_source_ip:1;
     unsigned short force_insert:1;
     unsigned short clear_removed:1;

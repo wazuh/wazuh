@@ -18,6 +18,7 @@ static void cleanup();
 static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
+static void * run_up(void * args);
 
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
@@ -36,6 +37,7 @@ int main(int argc, char ** argv) {
     pthread_t thread_dealer;
     pthread_t * worker_pool;
     pthread_t thread_gc;
+    pthread_t thread_up;
 
     OS_SetName(ARGV0);
 
@@ -103,6 +105,13 @@ int main(int argc, char ** argv) {
         goDaemon();
         nowDaemon();
     }
+
+    // Reset template. Basically, remove queue/db/.template.db
+    // The prefix is needed here, because we are not yet chrooted
+    char path_template[OS_FLSIZE + 1];
+    snprintf(path_template, sizeof(path_template), "%s/%s/%s", DEFAULTDIR, WDB2_DIR, WDB_PROF_NAME);
+    unlink(path_template);
+    mdebug1("Template file removed: %s", path_template);
 
     // Set max open files limit
     struct rlimit rlimit = { nofile, nofile };
@@ -184,6 +193,11 @@ int main(int argc, char ** argv) {
         return EXIT_FAILURE;
     }
 
+    if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
+        merror("Couldn't create thread: %s", strerror(status));
+        return EXIT_FAILURE;
+    }
+
     // Join threads
 
     pthread_join(thread_dealer, NULL);
@@ -196,6 +210,12 @@ int main(int argc, char ** argv) {
     free(worker_pool);
     pthread_join(thread_gc, NULL);
     wdb_close_all();
+
+    // Reset template here too, remove queue/db/.template.db again
+    // Without the prefix, because chrooted at that point
+    snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+    unlink(path_template);
+    mdebug1("Template file removed again: %s", path_template);
 
     return EXIT_SUCCESS;
 }
@@ -355,6 +375,50 @@ void * run_gc(__attribute__((unused)) void * args) {
         sleep(1);
     }
 
+    return NULL;
+}
+
+void * run_up(__attribute__((unused)) void * args) {
+    DIR *fd;
+    struct dirent *db;
+    wdb_t * wdb;
+    char * db_folder;
+    char * name;
+    char * entry;
+
+    os_calloc(PATH_MAX, sizeof(char), db_folder);
+    snprintf(db_folder, PATH_MAX, "%s", WDB2_DIR);
+
+    fd = opendir(db_folder);
+
+    while ((db = readdir(fd)) != NULL) {
+        if ((strcmp(db->d_name, ".") == 0) ||
+            (strcmp(db->d_name, "..") == 0) ||
+            (strcmp(db->d_name, ".template.db") == 0) ||
+            (strcmp(db->d_name, "000.db") == 0)) {
+            continue;
+        }
+
+        os_strdup(db->d_name, entry);
+
+        if (name = strchr(entry, '-'), name) {
+            free(entry);
+            continue;
+        }
+
+        if (name = strchr(entry, '.'), !name) {
+            free(entry);
+            continue;
+        }
+        
+        *(name++) = '\0';
+        wdb = wdb_open_agent2(atoi(entry));
+        mdebug2("Upgraded DB for agent '%s' in run_up", wdb->agent_id);
+        wdb_leave(wdb);
+        free(entry);
+    }
+
+    closedir(fd);
     return NULL;
 }
 

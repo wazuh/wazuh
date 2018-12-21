@@ -34,7 +34,7 @@ is_rhel_le_5() {
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON} ${AUTH_DAEMON}"
+DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 
 if ! is_rhel_le_5
 then
@@ -133,8 +133,8 @@ enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 
@@ -146,16 +146,14 @@ enable()
         echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
-    elif [ "X$2" = "Xauth" ]; then
-        echo "AUTH_DAEMON=ossec-authd" >> ${PLIST};
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator, authentication"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator|auth]"
+        echo "Enable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
 }
@@ -165,8 +163,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
     daemon=''
@@ -182,17 +180,14 @@ disable()
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
         daemon='ossec-integratord'
-    elif [ "X$2" = "Xauth" ]; then
-        echo "AUTH_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-authd'
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator, authentication"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator|auth]"
+        echo "Disable options: database, client-syslog, agentless, debug, integrator"
+        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
         exit 1;
     fi
     if [ "$daemon" != '' ]; then
