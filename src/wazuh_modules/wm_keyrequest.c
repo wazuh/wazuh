@@ -87,7 +87,8 @@ void * wm_key_request_main(wm_krequest_t * data) {
     request_queue = queue_init(data->queue_size);
 
     if ((sock = StartMQ(WM_KEY_REQUEST_SOCK_PATH, READ)) < 0) {
-        merror_exit(QUEUE_ERROR, WM_KEY_REQUEST_SOCK_PATH, strerror(errno));
+        merror(QUEUE_ERROR, WM_KEY_REQUEST_SOCK_PATH, strerror(errno));
+        pthread_exit(NULL);
     }
 
     for(i = 0; i < data->threads;i++){
@@ -416,8 +417,14 @@ void * w_request_thread(const wm_krequest_t *data) {
 static int external_socket_connect(char *socket_path, int repsonse_timeout) {
 #ifndef WIN32
     int sock =  OS_ConnectUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return sock;
+    }
+
     OS_SetSendTimeout(sock, 5);
     OS_SetRecvTimeout(sock, repsonse_timeout, 0);
+
     return sock;
 #else
     return -1;
