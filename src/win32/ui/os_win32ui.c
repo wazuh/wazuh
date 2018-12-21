@@ -10,9 +10,12 @@
 #include <process.h>
 
 #include "os_win32ui.h"
-#include <process.h>
 #include "../os_win.h"
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define __attribute__(x)
+#define __attribute(x)
+#endif
 
 /* Dialog -- About OSSEC */
 BOOL CALLBACK AboutDlgProc(HWND hwnd, UINT Message,
