@@ -71,4 +71,16 @@ int set_agent_multigroup(char * group);
 
 void w_remove_multigroup(const char *group);
 
+// Connect to Agentd. Returns socket or -1 on error.
+int auth_connect();
+
+// Close socket if valid.
+int auth_close(int sock);
+
+// Add agent. Returns 0 on success or -1 on error.
+int auth_add_agent(int sock, char *id, const char *name, const char *ip, const char *key, int force, int json_format,const char *agent_id,int exit_on_error);
+
+// Get the agent id
+char * get_agent_id_from_name(const char *agent_name);
+
 #endif /* __AGENT_OP_H */

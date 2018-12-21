@@ -358,6 +358,7 @@
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
+#define OS_AG_REMOVED   "ossec: Agent removed: '%s'."
 
 #define OS_NORMAL_BUFFER  "wazuh: Agent buffer: 'normal'."
 #define OS_WARN_BUFFER  "wazuh: Agent buffer: '%d%%'."

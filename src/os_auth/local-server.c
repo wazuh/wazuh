@@ -282,9 +282,16 @@ cJSON* local_add(const char *id, const char *name, const char *ip, const char *k
 
     // Check for duplicated ID
 
-    if (id && OS_IsAllowedID(&keys, id) >= 0) {
-        ierror = EDUPID;
-        goto fail;
+    if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
+        if (force) {
+            id_exist = keys.keyentries[index]->id;
+            minfo("Duplicated ID '%s' (%s). Saving backup.", id, id_exist);
+            add_backup(keys.keyentries[index]);
+            OS_DeleteKey(&keys, id_exist, 0);
+        } else {
+            ierror = EDUPID;
+            goto fail;
+        }
     }
 
     /* Check for duplicated IP */

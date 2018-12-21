@@ -1266,7 +1266,7 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 }
 
 /* List available agents */
-char **get_agents(int flag)
+char **get_agents(int flag,int mon_time)
 {
     size_t f_size = 0;
     char **f_files = NULL;
@@ -1301,14 +1301,16 @@ char **get_agents(int flag)
                 continue;
             }
 
-            if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
-                status = 1;
-                if (flag == GA_NOTACTIVE) {
-                    continue;
-                }
-            } else {
-                if (flag == GA_ACTIVE) {
-                    continue;
+            if( !(flag == GA_NOTACTIVE && (file_status.st_mtime < (time(0) - (mon_time * 60)) && mon_time > 0))) {
+                if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
+                    status = 1;
+                    if (flag == GA_NOTACTIVE) {
+                        continue;
+                    }
+                } else {
+                    if (flag == GA_ACTIVE) {
+                        continue;
+                    }
                 }
             }
         }

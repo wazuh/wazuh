@@ -231,5 +231,6 @@ extern const char *__local_name;
 #include "custom_output_search.h"
 #include "url.h"
 #include "cluster_utils.h"
+#include "auth_client.h"
 
 #endif /* __SHARED_H */
