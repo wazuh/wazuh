@@ -105,19 +105,19 @@ int DecodeWinevt(Eventinfo *lf){
     unsigned long long int keywords_n;
     XML_NODE node, child;
     int num;
-    char *level = NULL;
-    char *keywords = NULL;
-    char *provider_name = NULL;
-    char *msg_from_prov = NULL;
-    char *returned_event = NULL;
-    char *event = NULL;
-    char *find_event = NULL;
-    char *end_event = NULL;
-    char *real_end = NULL;
-    char *find_msg = NULL;
-    char *end_msg = NULL;
-    char *next = NULL;
-    char *category = NULL;
+    char *level;
+    char *keywords;
+    char *provider_name;
+    char *msg_from_prov;
+    char *returned_event;
+    char *event;
+    char *find_event;
+    char *end_event;
+    char *real_end;
+    char *find_msg;
+    char *end_msg;
+    char *next;
+    char *category;
     char aux = 0;
     lf->decoder_info = winevt_decoder;
 
@@ -129,21 +129,27 @@ int DecodeWinevt(Eventinfo *lf){
     if(find_event){
         find_event = find_event + 8;
         end_event = strchr(find_event, '"');
-        real_end = end_event;
+
         if(end_event){
+            real_end = end_event;
             aux = *(end_event + 1);
             
             if(aux != '}' && aux != ','){
                 while(1){
                     next = real_end + 1;
                     real_end = strchr(next,'"');
-                    aux = *(real_end + 1);
-                    if (aux == '}' || aux == ','){
+
+                    if(real_end) {
+                        aux = *(real_end + 1);
+                        if (aux == '}' || aux == ','){
+                            end_event = real_end;
+                            break;
+                        }
+                    } else {
+                        mdebug1("Malformed 'Event' field");
                         break;
                     }
                 }
-
-                end_event = real_end;
             }
 
             num = end_event - find_event;
@@ -308,19 +314,27 @@ int DecodeWinevt(Eventinfo *lf){
     if(find_msg){
         find_msg = find_msg + 10;
         end_msg = strchr(find_msg,'\"');
-        real_end = end_msg;
+
         if(end_msg){
+            real_end = end_msg;
             aux = *(end_msg + 1);
+
             if(aux != '}' && aux != ','){
                 while(1){
                     next = real_end + 1;
                     real_end = strchr(next,'"');
-                    aux = *(real_end + 1);
-                    if (aux == '}' || aux == ','){
+
+                    if(real_end){
+                        aux = *(real_end + 1);
+                        if (aux == '}' || aux == ','){
+                            end_msg = real_end;
+                            break;
+                        }
+                    } else {
+                        mdebug1("Malformed 'Message' field");
                         break;
                     }
                 }
-                end_msg = real_end;
             }
 
             num = end_msg - find_msg;
