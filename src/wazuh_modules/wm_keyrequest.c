@@ -15,7 +15,7 @@
 #include <os_net/os_net.h>
 #include "shared.h"
 
-#define RELAUNCH_TIME 10
+#define RELAUNCH_TIME 300
 
 #undef minfo
 #undef mwarn
@@ -39,7 +39,7 @@ void * w_request_thread(const wm_krequest_t *data);
 static int wm_key_request_dispatch(char * buffer,const wm_krequest_t * data);
 
 static int external_socket_connect(char *socket_path, int repsonse_timeout);
-static void launch_socket(char *exec_path);
+void * w_socket_launcher(void * args);
 
 /* Decode rootcheck input queue */
 static w_queue_t * request_queue;
@@ -91,6 +91,20 @@ void * wm_key_request_main(wm_krequest_t * data) {
         pthread_exit(NULL);
     }
 
+    // Run integration daemon, if socket is defined and not available
+
+    if (data->socket && data->exec_path) {
+        int sock_int = external_socket_connect(data->socket, data->timeout);
+
+        if (sock_int < 0) {
+            minfo("Integration connection is down. Running integration.");
+            w_create_thread(w_socket_launcher, data->exec_path);
+        } else {
+            close(sock_int);
+            minfo("Integration connection is up.");
+        }
+    }
+
     for(i = 0; i < data->threads;i++){
         w_create_thread(w_request_thread,data);
     }
@@ -100,7 +114,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
         if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer),recv) {
 
             if(OSHash_Get_ex(request_hash,buffer)){
-                mdebug1("Request '%s' already being processed. Discarting...",buffer);
+                mdebug2("Request '%s' already being processed. Discarding...",buffer);
                 continue;
             }
 
@@ -109,7 +123,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
             os_strdup(buffer, copy);
 
             if(queue_full(request_queue)){
-                mdebug1("Request queue is full. Discarting...");
+                mdebug1("Request queue is full. Discarding...");
                 os_free(copy);
                 OSHash_Delete_ex(request_hash,buffer);
                 continue;
@@ -118,7 +132,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
             int result = queue_push_ex(request_queue,copy);
 
             if(result < 0){
-                mdebug1("Request queue is full. Discarting...");
+                mdebug1("Request queue is full. Discarding...");
                 os_free(copy);
                 OSHash_Delete_ex(request_hash,buffer);
                 continue;
@@ -131,7 +145,7 @@ void * wm_key_request_main(wm_krequest_t * data) {
 int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
     char * request;
     char * tmp_buffer;
-    char *output;
+    char *output = NULL;
     int result_code = 0;
     int header_length = 3;
     cJSON *agent_infoJSON;
@@ -179,80 +193,96 @@ int wm_key_request_dispatch(char * buffer, const wm_krequest_t * data) {
             return -1;
     }
 
-    char *command = NULL;
-    os_calloc(OS_MAXSTR + 1,sizeof(char),command);
-
-    if(snprintf(command, OS_MAXSTR, "%s %s %s", data->exec_path, exec_params[type],request) > OS_MAXSTR) {
-        mdebug1("Request is too long.");
-        os_free(command);
-        OSHash_Delete_ex(request_hash,buffer);
-        return -1;
-    }
-
     /* Send request to external executable by socket */
     if(data->socket) {
         int sock;
-retry:
-        if (sock = external_socket_connect(data->socket, data->timeout), sock < 0) {
-            if (!data->exec_path) {
-                mdebug1("Could not connect to external socket. Is the process running?");
+        int i;
+        char msg[OS_SIZE_128] = {0};
+        int msg_len;
+        ssize_t length;
+
+        // Connect to the socket
+        // Three attempts
+
+        for (i = 1; i <= 3; ++i) {
+            if (sock = external_socket_connect(data->socket, data->timeout), sock >= 0) {
+                break;
             } else {
-                launch_socket(data->exec_path);
-                goto retry;
+                mdebug1("Could not connect to external socket: %s (%d)", strerror(errno), errno);
+                sleep(i);
             }
-        } else {
-            char msg[OS_SIZE_128] = {0};
-            int msg_len = snprintf(msg, OS_SIZE_128,"%s:%s", exec_params[type], request);
+        }
 
-            if( msg_len > OS_SIZE_128) {
-                mdebug1("Request is too long for socket.");
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                return -1;
-            }
+        if (sock < 0) {
+            mwarn("Could not connect to external integration: %s (%d). Discarding request.", strerror(errno), errno);
+            OSHash_Delete_ex(request_hash,buffer);
+            return -1;
+        }
 
-            if (send(sock, msg, msg_len, 0) < 0) {
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                close(sock);
-                return -1;
-            }
+        msg_len = snprintf(msg, OS_SIZE_128,"%s:%s", exec_params[type], request);
 
-            ssize_t length;
-            os_calloc(OS_MAXSTR + 1,sizeof(char),output);
-            if (length = recv(sock, output, OS_MAXSTR,0), length < 0) {
-                mdebug1("No data received from external socket");
-                os_free(output);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                close(sock);
-                return -1;
-            } else if (length == 0) {
-                os_free(output);
-                os_free(command);
-                OSHash_Delete_ex(request_hash,buffer);
-                close(sock);
-                return -1;
-            } else {
-                output[length] = '\0';
-            }
+        if (msg_len > OS_SIZE_128) {
+            mdebug1("Request is too long for socket.");
+            OSHash_Delete_ex(request_hash,buffer);
             close(sock);
+            return -1;
         }
-    }
-    /* Execute external program */
-    else if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
 
-        if (result_code == EXECVE_ERROR) {
-            mwarn("Cannot run key pulling integration (%s): path is invalid or file has no permissions.", data->exec_path);
+        if (send(sock, msg, msg_len, 0) < 0) {
+            OSHash_Delete_ex(request_hash,buffer);
+            close(sock);
+            return -1;
+        }
+
+        os_calloc(OS_MAXSTR + 1,sizeof(char),output);
+
+        if (length = recv(sock, output, OS_MAXSTR,0), length < 0) {
+            mdebug1("No data received from external socket");
+            os_free(output);
+            OSHash_Delete_ex(request_hash,buffer);
+            close(sock);
+            return -1;
+        } else if (length == 0) {
+            os_free(output);
+            OSHash_Delete_ex(request_hash,buffer);
+            close(sock);
+            return -1;
         } else {
-            mwarn("Error executing [%s]", data->exec_path);
+            output[length] = '\0';
         }
 
-        os_free(command);
-        OSHash_Delete_ex(request_hash,buffer);
-        return -1;
-    } else if (result_code != 0) {
-        mwarn("Key pulling integration (%s) returned code %d.", data->exec_path, result_code);
+        close(sock);
+    } else {
+        /* Execute external program */
+
+        char *command = NULL;
+        os_calloc(OS_MAXSTR + 1, sizeof(char), command);
+
+        if (snprintf(command, OS_MAXSTR, "%s %s %s", data->exec_path, exec_params[type], request) >= OS_MAXSTR) {
+            mdebug1("Request is too long.");
+            os_free(command);
+            OSHash_Delete_ex(request_hash, buffer);
+            return -1;
+        }
+
+        if (wm_exec(command, &output, &result_code, data->timeout, NULL) < 0) {
+            if (result_code == EXECVE_ERROR) {
+                mwarn("Cannot run key pulling integration (%s): path is invalid or file has insufficient permissions.", data->exec_path);
+            } else {
+                mwarn("Error executing [%s]", data->exec_path);
+            }
+
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            return -1;
+        } else if (result_code != 0) {
+            mwarn("Key pulling integration (%s) returned code %d.", data->exec_path, result_code);
+            os_free(command);
+            OSHash_Delete_ex(request_hash,buffer);
+            return -1;
+        } else {
+            os_free(command);
+        }
     }
 
     agent_infoJSON = cJSON_Parse(output);
@@ -275,7 +305,6 @@ retry:
         if (json_field = cJSON_GetObjectItem(agent_infoJSON,"error"), !json_field) {
             mdebug1("Malformed JSON output received. No 'error' field found");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -288,7 +317,6 @@ retry:
             if (!error_message) {
                 mdebug1("Malformed JSON output received. No 'message' field found");
                 cJSON_Delete (agent_infoJSON);
-                os_free(command);
                 OSHash_Delete_ex(request_hash,buffer);
                 os_free(output);
                 return -1;
@@ -296,7 +324,6 @@ retry:
             mdebug1("Could not get a key from %s %s. Error: '%s'.", type == W_TYPE_ID ? "ID" : "IP",
                     request, error_message->valuestring && *error_message->valuestring != '\0' ? error_message->valuestring : "unknown");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -306,7 +333,6 @@ retry:
         if (!data_json) {
             mdebug1("Agent data not found.");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -316,7 +342,6 @@ retry:
         if (!agent_id) {
             mdebug1("Agent ID not found.");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -326,7 +351,6 @@ retry:
         if (!agent_name) {
             mdebug1("Agent name not found.");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -336,7 +360,6 @@ retry:
         if (!agent_address) {
             mdebug1("Agent address not found.");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -346,7 +369,6 @@ retry:
         if (!agent_key) {
             mdebug1("Agent key not found.");
             cJSON_Delete (agent_infoJSON);
-            os_free(command);
             OSHash_Delete_ex(request_hash,buffer);
             os_free(output);
             return -1;
@@ -361,11 +383,9 @@ retry:
         }
         cJSON_Delete(agent_infoJSON);
     }
+
     os_free(output);
-
     OSHash_Delete_ex(request_hash,buffer);
-    os_free(command);
-
     return 0;
 }
 
@@ -431,59 +451,69 @@ static int external_socket_connect(char *socket_path, int repsonse_timeout) {
 #endif
 }
 
-void launch_socket(char *exec_path) {
-    static pthread_mutex_t exec_path_mutex = PTHREAD_MUTEX_INITIALIZER;
-    static time_t timestamp = 0;
-    static wfd_t *wfd = NULL;
-    time_t t_now;
-    int sleep_time = 0;
-    int result_code;
+void * w_socket_launcher(void * args) {
+    char * exec_path = (char *)args;
+    char ** argv;
+    char buffer[1024];
+    time_t time_started;
+    wfd_t * wfd;
+    int wstatus;
+    char * end;
 
-    w_mutex_lock(&exec_path_mutex);
-    t_now = time(NULL);
-    if (timestamp + RELAUNCH_TIME < t_now) {
-        char **argv;
-        mdebug1("Launching '%s'...", exec_path);
+    mdebug1("Running integration daemon: %s", exec_path);
 
-        if (wfd) {
-            if ((kill(wfd->pid, 0) == -1) && (errno == ESRCH)) {
-                // The process is dead
-                result_code = WEXITSTATUS(wpclose(wfd));
-                wfd = NULL;
+    if (argv = wm_strtok(exec_path), !argv) {
+        merror("Could not split integration command: %s", exec_path);
+        pthread_exit(NULL);
+    }
 
-                switch (result_code)
-                {
-                case 0:
-                    break;
-                case EXECVE_ERROR:
-                    mwarn("Cannot run key pulling integration (%s): path is invalid or file has no permissions.", exec_path);
-                    break;
-                default:
-                    mwarn("Key pulling integration (%s) returned code %d.", exec_path, result_code);
-                }
-            } else {
-                mdebug1("The process which should have opened the socket is running. Rechecking within %d seconds.", RELAUNCH_TIME);
-            }
-        }
-        if (!wfd) {
-            if (argv = wm_strtok(exec_path), argv) {
-                if(!(wfd = wpopenv(argv[0], argv, W_APPEND_POOL))) {
-                    mwarn("Couldn not execute '%s'. Trying again in %d seconds.", exec_path, RELAUNCH_TIME);
-                }
-            }
+    // We check that the process is up, otherwise we run it again.
+
+    while (1) {
+
+        // Run integration
+
+        if (wfd = wpopenv(argv[0], argv, W_BIND_STDERR | W_APPEND_POOL), !wfd) {
+            mwarn("Couldn not execute '%s'. Trying again in %d seconds.", exec_path, RELAUNCH_TIME);
+            sleep(RELAUNCH_TIME);
+            continue;
         }
 
-        timestamp = time(NULL);
-    } else {
-        if (wfd) {
-            mdebug1("The executable was launched less than %d seconds ago. Trying to connect to the socket...", RELAUNCH_TIME);
-            sleep(1);
+        time_started = time(NULL);
+
+        // Pick stderr
+
+        while (fgets(buffer, sizeof(buffer), wfd->file)) {
+
+            // Remove newline
+
+            if (end = strchr(buffer, '\n'), end) {
+                *end = '\0';
+            }
+
+            // Dump into the log
+            mdebug1("Integration STDERR: %s", buffer);
+        }
+
+        // At this point, the process exited
+
+        wstatus = WEXITSTATUS(wpclose(wfd));
+
+        if (wstatus == EXECVE_ERROR) {
+            // 0x7F means error in exec
+            merror("Cannot run key pulling integration (%s): path is invalid or file has insufficient permissions. Retrying in %d seconds.", exec_path, RELAUNCH_TIME);
+            sleep(RELAUNCH_TIME);
+        } else if (time(NULL) - time_started < 10) {
+            mwarn("Key pulling integration (%s) returned code %d. Retrying in %d seconds.", exec_path, wstatus, RELAUNCH_TIME);
+            sleep(RELAUNCH_TIME);
         } else {
-            sleep_time = timestamp + RELAUNCH_TIME - t_now;
+            mwarn("Key pulling integration (%s) returned code %d. Restarting.", exec_path, wstatus);
         }
     }
-    w_mutex_unlock(&exec_path_mutex);
-    sleep(sleep_time);
+
+
+    free_strarray(argv);
+    return NULL;
 }
 
 #endif
