@@ -261,7 +261,6 @@ void wm_kill_children() {
 // Unix version ----------------------------------------------------------------
 
 #include <unistd.h>
-#define EXECVE_ERROR 0xFF
 
 #ifndef _GNU_SOURCE
 extern char ** environ;
@@ -283,6 +282,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     struct timespec timeout = { 0, 0 };
     int retval = -1;
     int status;
+
+    if (exitcode) {
+        *exitcode = 0;
+    }
 
     // Create pipe for child's stdout
 
@@ -421,9 +424,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             default:
                 if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                    merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
                     retval = -1;
-                } else if (exitcode)
+                }
+
+                if (exitcode)
                     *exitcode = WEXITSTATUS(status);
             }
 
@@ -439,12 +444,12 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
                         case -1:
                             switch(errno){
                                 case ESRCH:
-                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    merror("At wm_exec(): No such process. Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
                                     retval = -2;
                                     break;
 
                                 default:
-                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", pid, errno, strerror(errno));
+                                    merror("At wm_exec(): Couldn't wait PID %d: (%d) %s.", (int)pid, errno, strerror(errno));
                                     retval = -3;
                             }
                             break;
@@ -483,9 +488,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
                     default:
                         if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                            merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                            mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
                             retval = -1;
-                        } else if (exitcode)
+                        }
+
+                        if (exitcode)
                             *exitcode = WEXITSTATUS(status);
                 }
             }
@@ -623,7 +630,7 @@ void wm_kill_children() {
                                 exit(EXIT_SUCCESS);
 
                             default:
-                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", (int)sid, errno, strerror(errno));
                                 exit(EXIT_FAILURE);
                             }
 
@@ -634,7 +641,7 @@ void wm_kill_children() {
 
                     // If time is gone, kill process
 
-                    mdebug1("Killing process group %d", sid);
+                    mdebug1("Killing process group %d", (int)sid);
 
                     kill(-sid, SIGKILL);
                     exit(EXIT_SUCCESS);

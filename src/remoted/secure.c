@@ -26,6 +26,24 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
 
+/* Status of keypolling wodle */
+static char key_request_available = 0;
+
+/* Decode hostinfo input queue */
+static w_queue_t * key_request_queue;
+
+/* Remote key request thread */
+void * w_key_request_thread(__attribute__((unused)) void * args);
+
+/* Push key request */
+static void _push_request(const char *request,const char *type);
+#define push_request(x, y) if (key_request_available) _push_request(x, y);
+
+/* Connect to key polling wodle*/
+#define KEY_RECONNECT_INTERVAL 300 // 5 minutes
+static int key_request_connect();
+static int key_request_reconnect();
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -55,6 +73,11 @@ void HandleSecure()
 
     // Create State writer thread
     w_create_thread(rem_state_main, NULL);
+
+    key_request_queue = queue_init(1024);
+
+    // Create key request thread
+    w_create_thread(w_key_request_thread, NULL);
 
     /* Create wait_for_msgs threads */
 
@@ -255,6 +278,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
     char agname[KEYSIZE + 1];
     char *tmp_msg;
     size_t msg_length;
+    char ip_found = 0;
+    int r;
 
     /* Set the source IP */
     strncpy(srcip, inet_ntoa(peer_info->sin_addr), IPSIZE);
@@ -309,6 +334,8 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
 
             mwarn(ENC_IP_ERROR, buffer + 1, srcip, agname);
 
+            // Send key request by id
+            push_request(buffer + 1,"id");
             if (sock_client >= 0)
                 _close_sock(&keys, sock_client);
 
@@ -322,28 +349,41 @@ static void HandleSecureMessage(char *buffer, int recv_b, struct sockaddr_in *pe
             key_unlock();
             mwarn(DENYIP_WARN, srcip);
 
+            // Send key request by ip
+            push_request(srcip,"ip");
             if (sock_client >= 0)
                 _close_sock(&keys, sock_client);
 
             return;
+        } else {
+            ip_found = 1;
         }
+
         tmp_msg = buffer;
     }
 
     /* Decrypt the message */
-
-    tmp_msg = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip);
-
-    if (tmp_msg == NULL) {
-
+    if (r = ReadSecMSG(&keys, tmp_msg, cleartext_msg, agentid, recv_b - 1, &msg_length, srcip, &tmp_msg), r != KS_VALID) {
         /* If duplicated, a warning was already generated */
         key_unlock();
+
+        if (r == KS_ENCKEY) {
+            if (ip_found) {
+                push_request(srcip,"ip");
+            } else {
+                push_request(buffer + 1, "id");
+            }
+        }
+
+        if (sock_client >= 0)
+            _close_sock(&keys, sock_client);
+
         return;
     }
 
     /* Check if it is a control message */
     if (IsValidHeader(tmp_msg)) {
-        int r = 2;
+        r = 2;
 
         /* We need to save the peerinfo if it is a control msg */
 
@@ -410,4 +450,78 @@ int _close_sock(keystore * keys, int sock) {
     mdebug1("TCP peer disconnected [%d]", sock);
 
     return retval;
+}
+
+int key_request_connect() {
+#ifndef WIN32
+    return OS_ConnectUnixDomain(isChroot() ? WM_KEY_REQUEST_SOCK : WM_KEY_REQUEST_SOCK_PATH, SOCK_DGRAM, OS_MAXSTR);
+#else
+    return -1;
+#endif
+}
+
+static int send_key_request(int socket,const char *msg) {
+    return OS_SendUnix(socket,msg,strlen(msg));
+}
+
+static void _push_request(const char *request,const char *type) {
+    char *msg = NULL;
+
+    os_calloc(OS_MAXSTR,sizeof(char),msg);
+    snprintf(msg,OS_MAXSTR,"%s:%s",type,request);
+
+    if(queue_push_ex(key_request_queue, msg) < 0) {
+        os_free(msg);
+    }
+}
+
+int key_request_reconnect() {
+    int socket;
+    static int max_attempts = 4;
+    int attempts;
+
+    while (1) {
+        for (attempts = 0; attempts < max_attempts; attempts++) {
+            if (socket = key_request_connect(), socket < 0) {
+                sleep(1);
+            } else {
+                OS_SetSendTimeout(socket, 5);
+                key_request_available = 1;
+                return socket;
+            }
+        }
+        mdebug1("Key-polling wodle is not available. Retrying connection in %d seconds.", KEY_RECONNECT_INTERVAL);
+        sleep(KEY_RECONNECT_INTERVAL);
+    }
+}
+
+void * w_key_request_thread(__attribute__((unused)) void * args) {
+    char * msg = NULL;
+    int socket = -1;
+
+    while(1) {
+        if (socket < 0) {
+            socket = key_request_reconnect();
+        }
+
+        if (msg || (msg = queue_pop_ex(key_request_queue))) {
+            int rc;
+
+            if ((rc = send_key_request(socket, msg)) < 0) {
+                if (rc == OS_SOCKBUSY) {
+                    mdebug1("Key request socket busy.");
+                    sleep(1);
+                } else {
+                    merror("Could not communicate with key request queue (%d). Is the module running?", rc);
+                    if (socket >= 0) {
+                        key_request_available = 0;
+                        close(socket);
+                        socket = -1;
+                    }
+                }
+            } else {
+                os_free(msg);
+            }
+        }
+    }
 }

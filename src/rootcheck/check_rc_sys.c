@@ -319,9 +319,9 @@ static int read_sys_dir(const char *dir_name, int do_read)
                      "(%d,%d).",
                      dir_name, entry_count, (int)statbuf.st_nlink);
 
-            /* Solaris /boot is terrible :) */
+            /* Solaris /boot is terrible :), as is /dev! */
 #ifdef SOLARIS
-            if (strncmp(dir_name, "/boot", strlen("/boot")) != 0) {
+            if ((strncmp(dir_name, "/boot", strlen("/boot")) != 0) && (strncmp(dir_name, "/dev", strlen("/dev")) != 0)) {
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
                 _sys_errors++;
             }

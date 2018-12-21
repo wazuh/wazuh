@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     mtime INTEGER,
     inode INTEGER,
     sha256 TEXT,
-    attributes INTEGER
+    attributes INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (
@@ -36,8 +36,6 @@ CREATE TABLE IF NOT EXISTS pm_event (
 
 CREATE INDEX IF NOT EXISTS pm_event_log ON pm_event (log);
 CREATE INDEX IF NOT EXISTS pm_event_date ON pm_event (date_last);
-
-PRAGMA journal_mode=WAL;
 
 CREATE TABLE IF NOT EXISTS sys_netiface (
     scan_id INTEGER,
@@ -74,11 +72,12 @@ CREATE INDEX IF NOT EXISTS netproto_id ON sys_netproto (scan_id);
 
 CREATE TABLE IF NOT EXISTS sys_netaddr (
     scan_id INTEGER REFERENCES sys_netproto (scan_id),
+    iface TEXT REFERENCES sys_netproto (iface),
     proto TEXT REFERENCES sys_netproto (type),
     address TEXT,
     netmask TEXT,
     broadcast TEXT,
-    PRIMARY KEY (scan_id, proto, address)
+    PRIMARY KEY (scan_id, iface, proto, address)
 );
 
 CREATE INDEX IF NOT EXISTS netaddr_id ON sys_netaddr (scan_id);
@@ -221,3 +220,5 @@ CREATE TABLE IF NOT EXISTS scan_info (
     fim_second_check INTEGER,
     fim_third_check INTEGER
 );
+
+PRAGMA journal_mode=WAL;

@@ -151,7 +151,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_inode;
     char *attrs;
     int retval = 0;
-    char *username_esc;
+    char * uname;
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
@@ -192,17 +192,15 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         // New fields: user name, group name, modification time and inode
 
-        if ((sum->uname = strchr(sum->sha1, ':'))) {
-            *(sum->uname++) = '\0';
+        if ((uname = strchr(sum->sha1, ':'))) {
+            *(uname++) = '\0';
 
-            if (!(sum->gname = strchr(sum->uname, ':')))
+            if (!(sum->gname = strchr(uname, ':')))
                 return -1;
 
             *(sum->gname++) = '\0';
 
-            if (username_esc = os_strip_char(sum->uname, '\\'), username_esc) {
-                sum->uname = username_esc;
-            }
+            sum->uname = os_strip_char(uname, '\\');
 
             if (!(c_mtime = strchr(sum->gname, ':')))
                 return -1;
