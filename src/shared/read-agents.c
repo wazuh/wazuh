@@ -1455,7 +1455,7 @@ time_t scantime_fim (const char *agent_id, const char *scan) {
         ts = -1;
     }
 
-    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, ts);
+    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, (long int)ts);
 
     os_free(wazuhdb_query);
     os_free(response);

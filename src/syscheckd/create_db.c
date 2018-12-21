@@ -84,7 +84,7 @@ static int read_dir_diff(char *dir_name) {
         *s_name = '\0';
         strncpy(s_name, entry->d_name, PATH_MAX - dir_size - 2);
 
-        if (strcmp(DIFF_LAST_FILE, s_name) == 0) {
+        if (strcmp(DIFF_GZ_FILE, s_name) == 0) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
             if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add != 2) {
@@ -453,7 +453,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             hash_file_name = strdup(file_name);
             if (OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name) != 2) {
                 free(hash_file_name);
-                mwarn("Unable to add inode to db: %s (%s) ", file_name, str_inode);
+                mdebug2("Unable to add inode to db: %s (%s) ", file_name, str_inode);
             }
 #endif
             /* Send the new checksum to the analysis server */

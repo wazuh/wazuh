@@ -383,7 +383,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     opts |= CHECK_GROUP;
                     opts |= CHECK_MTIME;
                     opts |= CHECK_INODE;
+#ifdef WIN32
                     opts |= CHECK_ATTRS;
+#endif
                 } else if (strcmp(*values, "no") == 0) {
                     opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM
                             | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_ATTRS);
@@ -529,6 +531,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
             }
             /* Check attributes */
             else if (strcmp(*attrs, xml_check_attrs) == 0) {
+#ifdef WIN32
                 if (strcmp(*values, "yes") == 0) {
                     opts |= CHECK_ATTRS;
                 } else if (strcmp(*values, "no") == 0) {
@@ -538,6 +541,9 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                     ret = 0;
                     goto out_free;
                 }
+#else
+                mdebug1("Option '%s' is only available on Windows systems.", xml_check_attrs);
+#endif
             }
             /* Check real time */
             else if (strcmp(*attrs, xml_real_time) == 0) {

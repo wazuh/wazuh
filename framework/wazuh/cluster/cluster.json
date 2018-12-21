@@ -28,7 +28,7 @@
             "umask": "0o127",
             "source": "master",
             "write_mode": "atomic",
-            "files": [".metadata", "merged.mg"],
+            "files": ["merged.mg"],
             "recursive": true,
             "restart": false,
             "remove_subdirs_if_empty": true,

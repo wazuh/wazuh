@@ -20,6 +20,10 @@
 #include <sys/types.h>
 #include "labels_op.h"
 
+extern int maximum_files;
+extern int total_files;
+extern int current_files;
+
 typedef struct _logsocket {
     char *name;
     char *location;
@@ -75,6 +79,7 @@ typedef struct _logreader {
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
     FILE *fp;
+    fpos_t position; // Pointer offset when closed
 } logreader;
 
 typedef struct _logreader_glob {
