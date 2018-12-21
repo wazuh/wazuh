@@ -13,8 +13,17 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <windows.h>
-#include <winresrc.h>
 #include <commctrl.h>
+
+/* Avoid winres macro redefinitions under Visual C++ */
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#ifdef RT_MANIFEST
+#undef RT_MANIFEST
+#endif
+#define RT_MANIFEST 24
+#else
+#include <winresrc.h>
+#endif
 
 /* Default values */
 #define CONFIG          "ossec.conf"
