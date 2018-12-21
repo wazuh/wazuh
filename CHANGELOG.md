@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 - Fix invalid error "Unable to verity server certificate" in _ossec-authd_ (server). ([#2045](https://github.com/wazuh/wazuh/pull/2045))
 - Authd is enabled by default. ([#2129](https://github.com/wazuh/wazuh/pull/2129))
 - Now Wazuh manager can be started with an empty configuration in ossec.conf. ([#2086](https://github.com/wazuh/wazuh/pull/2086))
+- Improve vulnerability detection in Red Hat systems. ([#2137](https://github.com/wazuh/wazuh/pull/2137))
 
 ### Fixed
 

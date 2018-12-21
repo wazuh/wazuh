@@ -14,6 +14,7 @@
 #include "wazuh_modules/wmodules.h"
 
 static int get_interval(char *source, unsigned long *interval);
+static int is_valid_year(char *source, int *date);
 static int set_oval_version(char *feed, char *version, update_node **upd_list, update_node *upd);
 
 //Options
@@ -28,6 +29,7 @@ static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
+static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 // Deprecated
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
@@ -132,32 +134,19 @@ int set_oval_version(char *feed, char *version, update_node **upd_list, update_n
         }
         upd->dist_ref = DIS_DEBIAN;
     } else if (!strcmp(feed, vu_dist_tag[DIS_REDHAT])) {
-        if (!strcmp(version, "5")) {
-            os_index = CVE_RHEL5;
-            upd->dist_tag = vu_dist_tag[DIS_RHEL5];
-            upd->dist_ext = vu_dist_ext[DIS_RHEL5];
-        } else if (!strcmp(version, "6")) {
-            os_index = CVE_RHEL6;
-            upd->dist_tag = vu_dist_tag[DIS_RHEL6];
-            upd->dist_ext = vu_dist_ext[DIS_RHEL6];
-        } else if (!strcmp(version, "7")) {
-            os_index = CVE_RHEL7;
-            upd->dist_tag = vu_dist_tag[DIS_RHEL7];
-            upd->dist_ext = vu_dist_ext[DIS_RHEL7];
-        } else {
-            merror("Invalid Redhat version '%s'.", version);
-            return OS_INVALID;
+        if (version) {
+            mwarn("The specific definition of the Red Hat feeds is deprecated. Use only redhat instead.");
         }
-         upd->dist_ref = DIS_REDHAT;
+        os_index = CVE_REDHAT;
+        upd->dist_tag = vu_dist_tag[DIS_REDHAT];
+        upd->dist_ext = vu_dist_ext[DIS_REDHAT];
+        upd->dist_ref = DIS_REDHAT;
     } else {
         merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
         return OS_INVALID;
     }
 
     os_strdup(feed, upd->dist);
-    if (!upd->version) {
-        os_strdup(version, upd->version);
-    }
 
     if (upd_list[os_index]) {
         mwarn("Duplicate OVAL configuration for '%s %s'.", upd->dist, upd->version);
@@ -204,12 +193,27 @@ int get_interval(char *source, unsigned long *interval) {
     return 0;
 }
 
-int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
+int is_valid_year(char *source, int *date) {
+    time_t n_date;
+    struct tm *t_date;
+
+    *date = strtol(source, NULL, 10);
+    n_date = time (NULL);
+    t_date = gmtime(&n_date);
+
+    if ((!*date) || *date < RED_HAT_REPO_MIN_YEAR || *date > (t_date->tm_year + 1900)) {
+        return 0;
+    }
+
+    return 1;
+}
+
+int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     unsigned int i, j;
-    wm_vulnerability_detector_t * vulnerability_detector;
+    wm_vuldet_t * vulnerability_detector;
     XML_NODE chld_node = NULL;
 
-    os_calloc(1, sizeof(wm_vulnerability_detector_t), vulnerability_detector);
+    os_calloc(1, sizeof(wm_vuldet_t), vulnerability_detector);
     vulnerability_detector->flags.run_on_start = 1;
     vulnerability_detector->flags.enabled = 1;
     vulnerability_detector->flags.u_flags.update = 0;
@@ -269,7 +273,7 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             if (version = strchr(feed, '-'), version) {
                 *version = '\0';
                 version++;
-            } else {
+            } else if (strcmp(feed, vu_dist_tag[DIS_REDHAT])) {
                 merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -279,7 +283,8 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
             upd->allowed_ver_list = NULL;
             upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
             upd->attempted = 0;
-
+            upd->json_format = 0;
+            upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
 
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
                 return OS_INVALID;
@@ -326,6 +331,12 @@ int wm_vulnerability_detector_read(const OS_XML *xml, xml_node **nodes, wmodule 
                 } else if (!strcmp(chld_node[j]->element, XML_UPDATE_INTERVAL)) {
                     if (get_interval(chld_node[j]->content, &upd->interval)) {
                         merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
+                        OS_ClearNode(chld_node);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
+                    if (!is_valid_year(chld_node[j]->content, &upd->update_from_year)) {
+                        merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                         OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
