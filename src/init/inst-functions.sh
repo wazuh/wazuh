@@ -894,6 +894,10 @@ InstallLocal(){
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
     fi
+    if [ ! -f ${PREFIX}/etc/lists/security-eventchannel ]; then
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/security-eventchannel.cdb ${PREFIX}/etc/lists/security-eventchannel.cdb
+    fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/rootcheck
