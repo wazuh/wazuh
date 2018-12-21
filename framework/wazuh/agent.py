@@ -1682,19 +1682,18 @@ class Agent:
     def upload_group_configuration(group_id, xml_file, destination_file='agent.conf'):
 
         # check if the group exists
-        if not Agent.group_exists_sql(group_id):
+        if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
         # get timestamp
         timestamp = datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s')
 
         # path of temporary files for parsing xml input
-        tmp_file_path_1 = common.ossec_path + '/tmp/test_agent_conf_{timestamp}.xml'.format(timestamp=timestamp)
-        tmp_file_path_2 = common.ossec_path + '/tmp/test2_agent_conf_{timestamp}.xml'.format(timestamp=timestamp)
+        tmp_file_path = common.ossec_path + '/tmp/api_tmp_file_{timestamp}.xml'.format(timestamp=timestamp)
 
         # create temporary file for parsing xml input
         try:
-            tmp_file = open(tmp_file_path_1, 'w+')
+            tmp_file = open(tmp_file_path, 'w')
             # beauty xml file
             xml = parseString(xml_file)
             pretty_xml = xml.toprettyxml(indent='  ')  # two spaces for identation
@@ -1711,33 +1710,38 @@ class Agent:
             out.writelines(lines)
             out.close()
 
-        # function to delete empty lines
-        def delete_empty_lines(input_file, output_file):
-            with open(input_file) as infile, open(output_file, 'w+') as outfile:
-                for line in infile:
-                    if not line.strip(): continue  # skip the empty line
-                    outfile.write(line)
+        def delete_empty_lines(file_name):
+            lines = open(file_name, 'r').readlines()
+            out = open(file_name, 'w')
+            for line in lines:
+                if not line.strip(): continue  # skip the empty line
+                out.write(line)
+            out.close()
 
         # it is necessary to delete the first line and empty lines
         try:
-            delete_empty_lines(tmp_file_path_1, tmp_file_path_2)
-            replace_line(tmp_file_path_2, 0, '')
-        except:
+            delete_empty_lines(tmp_file_path)
+            replace_line(tmp_file_path, 0, '')
+        except Exception as e:
             raise WazuhException(1005)
 
-        # check xml file
+        # check xml format
         try:
-            load_wazuh_xml(tmp_file_path_2)
-            check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path_2])
-        except:
+            load_wazuh_xml(tmp_file_path)
+        except Exception as e:
             raise WazuhException(1742)
+
+        # check Wazuh xml format
+        try:
+            check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
+        except Exception as e:
+            raise WazuhException(1743)
 
         # move temporary file to group folder
         try:
             new_conf_path = common.shared_path + '/' + group_id + '/' + destination_file
-            remove(tmp_file_path_1)
-            move(tmp_file_path_2, new_conf_path)
-        except:
+            move(tmp_file_path, new_conf_path)
+        except Exception as e:
             raise WazuhException(1017)
 
         return {'msg': 'agent configuration was updated successfully'}

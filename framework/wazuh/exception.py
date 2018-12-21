@@ -128,7 +128,8 @@ class WazuhException(Exception):
         1739: "Error getting agent's group sync",
         1740: 'Action only available for active agents',
         1741: 'Could not remove multigroup',
-        1742: 'Error running Wazuh syntax validator',
+        1742: 'Error running XML syntax validator',
+        1743: 'Error running Wazuh syntax validator',
 
         # Manager:
 
