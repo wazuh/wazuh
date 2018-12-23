@@ -1683,6 +1683,47 @@ class Agent:
 
         return final_dict
 
+    @staticmethod
+    def unset_group_list(group_id, agent_id_list):
+        """
+        Unset a group to a list of agents.
+
+        :param agent_id: List of Agent IDs.
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+        failed_ids = list()
+        affected_agents = list()
+
+        # raise an exception if agent_list_id is empty
+        if len(agent_id_list) < 1:
+            raise WazuhException(1732)
+
+        # raise an exception if group not exists
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710)
+
+        for agent_id in agent_id_list:
+            try:
+                Agent.unset_group(agent_id=agent_id, group_id=group_id)
+                affected_agents.append(agent_id)
+            except Exception as e:
+                failed_ids.append(agent_id)
+
+            if not failed_ids:
+                message = 'All selected agents were removed to group ' + group_id
+            else:
+                message = 'Some agents were not removed to group ' + group_id
+
+            final_dict = {}
+
+            if failed_ids:
+                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            else:
+                final_dict = {'msg': message, 'affected_agents': affected_agents}
+
+        return final_dict
+
 
     @staticmethod
     def get_agents_group_file(agent_id):
