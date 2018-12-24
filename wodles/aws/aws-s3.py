@@ -1653,9 +1653,6 @@ class AWSService(WazuhIntegration):
                                 scan_date DESC
                                 LIMIT {retain_db_records})"""
 
-    def format_message(self, msg):
-        return {'integration': 'aws', 'aws': msg}
-
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
             m=self.only_logs_after[4:6], d=self.only_logs_after[6:8])
@@ -1733,18 +1730,20 @@ class AWSInspector(AWSService):
         self.close_db()
 
     def format_message(self, msg):
-        return {'integration': 'aws', 'aws': self.reformat_msg(msg)}
-
-    def reformat_msg(self, event):
-        # format createdAt field
-        if 'createdAt' in event:
-            event['createdAt'] = datetime.strftime(event['createdAt'],
+        # rename service field to source
+        if 'service' in msg:
+            msg['source'] = msg['service'].lower()
+            del msg['service']
+        # cast createdAt
+        if 'createdAt' in msg:
+            msg['createdAt'] = datetime.strftime(msg['createdAt'],
                 '%Y-%m-%dT%H:%M:%SZ')
-        # format updatedAt field
-        if 'updatedAt' in event:
-            event['updatedAt'] = datetime.strftime(event['updatedAt'],
+        # cast updatedAt
+        if 'updatedAt' in msg:
+            msg['updatedAt'] = datetime.strftime(msg['updatedAt'],
             '%Y-%m-%dT%H:%M:%SZ')
-        return event
+
+        return {'integration': 'aws', 'aws': msg}
 
 
 ################################################################################
