@@ -526,7 +526,7 @@ static void c_files()
     char path[PATH_MAX + 1];
     int oldmask;
     int retval;
-    FILE *fp;
+    FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char *key = NULL;
     char *data = NULL;
@@ -696,6 +696,11 @@ static void c_files()
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
+
+        if(fp){
+            fclose(fp);
+            fp = NULL;
+        }
     }
 
     OSHashNode *my_node;
@@ -703,6 +708,8 @@ static void c_files()
     os_calloc(1, sizeof(unsigned int), i);
 
     for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
+        os_free(key);
+        os_free(data);
         os_strdup(my_node->key, key);
         if(my_node->data){
             os_strdup(my_node->data, data);
@@ -710,6 +717,7 @@ static void c_files()
         else {
             os_free(i);
             os_free(key);
+            os_free(data);
             closedir(dp);
             w_mutex_unlock(&files_mutex);
             return;
@@ -749,17 +757,12 @@ static void c_files()
         groups[p_size + 1] = NULL;
         c_multi_group(key,&groups[p_size]->f_sum,data);
         free_strarray(subdir);
-        os_free(key);
-        os_free(data);
         p_size++;
     }
 
     os_free(i);
     os_free(key);
     os_free(data);
-    if(fp) {
-        fclose(fp);
-    }
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
     closedir(dp);
@@ -1171,7 +1174,7 @@ int purge_group(char *group){
     DIR *dp;
     char path[PATH_MAX + 1];
     struct dirent *entry;
-    FILE *fp;
+    FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char **groups;
     char *new_groups = NULL;
@@ -1201,12 +1204,20 @@ int purge_group(char *group){
 
         if(!fp) {
             mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+            closedir(dp);
             return -1;
         }
         else if (fgets(groups_info, OS_SIZE_65536, fp) !=NULL ) {
             if(strstr(groups_info, group)){
                 fclose(fp);
                 fp = fopen(path,"w");
+
+                if(!fp){
+                    mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+                    closedir(dp);
+                    return -1;
+                }
+
                 groups = OS_StrBreak(MULTIGROUP_SEPARATOR, groups_info, MAX_GROUPS_PER_MULTIGROUP);
                 for (i=0; groups[i] != NULL; i++) {
                     if(!strcmp(groups[i], group)){
@@ -1219,18 +1230,16 @@ int purge_group(char *group){
                 }
                 free_strarray(groups);
             }
-            fclose(fp);
-            fp = NULL;
         }
+
+        fclose(fp);
+        fp = NULL;
     }
     if(!reported_non_existing_group) {
         mdebug2("Group '%s' was deleted. Removing this group from all affected agents...", group);
         reported_non_existing_group = 1;
     }
     closedir(dp);
-    if(fp) {
-        fclose(fp);
-    }
     os_free(new_groups);
     return 0;
 }

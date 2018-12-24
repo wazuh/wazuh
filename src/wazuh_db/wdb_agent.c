@@ -943,6 +943,12 @@ char *get_agent_date_added(int agent_id){
             wm_strcat(&date,data[3],' ');
             wm_strcat(&date,data[4],' ');
 
+            if(date == NULL) {
+                fclose(fp);
+                free_strarray(data);
+                return NULL;
+            }
+
             char *endl = strchr(date, '\n');
 
             if (endl) {
