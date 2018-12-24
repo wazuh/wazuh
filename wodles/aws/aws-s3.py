@@ -1732,6 +1732,20 @@ class AWSInspector(AWSService):
         self.db_connector.commit()
         self.close_db()
 
+    def format_message(self, msg):
+        return {'integration': 'aws', 'aws': self.reformat_msg(msg)}
+
+    def reformat_msg(self, event):
+        # format createdAt field
+        if 'createdAt' in event:
+            event['createdAt'] = datetime.strftime(event['createdAt'],
+                '%Y-%m-%dT%H:%M:%SZ')
+        # format updatedAt field
+        if 'updatedAt' in event:
+            event['updatedAt'] = datetime.strftime(event['updatedAt'],
+            '%Y-%m-%dT%H:%M:%SZ')
+        return event
+
 
 ################################################################################
 # Functions
