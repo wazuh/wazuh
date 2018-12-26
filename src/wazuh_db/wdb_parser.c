@@ -809,6 +809,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
     char * address;
     char * netmask;
     char * broadcast;
+    char * iface;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -844,6 +845,20 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", curr);
             return -1;
         }
+
+        iface = curr;
+		*next++ = '\0';
+		curr = next;
+
+		if (!strcmp(iface, "NULL"))
+			iface = NULL;
+
+		if (next = strchr(curr, '|'), !next) {
+			mdebug1("Invalid netaddr query syntax.");
+			mdebug2("netaddr query: %s", iface);
+			snprintf(output, OS_MAXSTR + 1, "err Invalid netaddr query syntax, near '%.32s'", iface);
+			return -1;
+		}
 
         proto = strtol(curr,NULL,10);
 
@@ -882,7 +897,7 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
         else
             broadcast = next;
 
-        if (result = wdb_netaddr_save(wdb, scan_id, proto, address, netmask, broadcast), result < 0) {
+        if (result = wdb_netaddr_save(wdb, scan_id, iface, proto, address, netmask, broadcast), result < 0) {
             mdebug1("Cannot save netaddr information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
