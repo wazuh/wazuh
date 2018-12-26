@@ -31,7 +31,7 @@ int audit_send(int fd, int type, const void *data, unsigned int size) {
 int audit_get_rule_list(int fd) {
 
     // Clean rules list
-    audit_rules_list_free(_audit_rules_list);
+    audit_free_list();
     _audit_rules_list = audit_rules_list_init(25);
 
     int rc = audit_send(fd, AUDIT_LIST_RULES, NULL, 0);
@@ -80,7 +80,7 @@ int audit_print_reply(struct audit_reply *rep) {
             mdebug2("Audit rule loaded: -w %s -p %s -k %s",path, perms, key);
             if (_audit_rules_list) {
                 w_audit_rule *rule;
-                os_calloc(1, sizeof(w_audit_rule *), rule);
+                os_calloc(1, sizeof(w_audit_rule), rule);
                 rule->path = strdup(path);
                 rule->perm = strdup(perms);
                 rule->key = strdup(key);

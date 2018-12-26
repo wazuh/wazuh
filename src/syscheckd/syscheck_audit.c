@@ -225,8 +225,6 @@ int add_audit_rules_syscheck(void) {
         i++;
     }
 
-    audit_free_list();
-
     return rules_added;
 }
 
