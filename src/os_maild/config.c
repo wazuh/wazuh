@@ -101,7 +101,7 @@ cJSON *getMailConfig(void) {
     if (mail.idsname) cJSON_AddStringToObject(email,"email_idsname",mail.idsname);
     if (mail.smtpserver) cJSON_AddStringToObject(email,"smtp_server",mail.smtpserver);
     if (mail.heloserver) cJSON_AddStringToObject(email,"helo_server",mail.heloserver);
-    if (mail.source > 0) { cJSON_AddStringToObject(email,"email_log_source","alerts.json"); } else { cJSON_AddStringToObject(email,"email_log_source","alerts.log"); }
+    if (mail.source < 0 || mail.source == MAIL_SOURCE_JSON) { cJSON_AddStringToObject(email,"email_log_source","alerts.json"); } else { cJSON_AddStringToObject(email,"email_log_source","alerts.log"); }
     cJSON_AddNumberToObject(email,"email_maxperhour",mail.maxperhour);
 
     cJSON_AddItemToObject(root,"global",email);
