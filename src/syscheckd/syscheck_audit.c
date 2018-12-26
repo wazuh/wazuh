@@ -823,10 +823,11 @@ void audit_reload_rules(void) {
 
 void *audit_reload_thread(void) {
 
+    sleep(RELOAD_RULES_INTERVAL);
     while (audit_thread_active) {
-        sleep(RELOAD_RULES_INTERVAL);
         // Reload rules
         audit_reload_rules();
+        sleep(RELOAD_RULES_INTERVAL);
     }
 
     return NULL;
@@ -1012,6 +1013,8 @@ void * audit_main(int * audit_sock) {
 
     // Clean Audit added rules.
     clean_rules();
+    // Clean Audit loaded rules.
+    audit_free_list();
 
     return NULL;
 }
