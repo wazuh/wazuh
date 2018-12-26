@@ -391,6 +391,12 @@ void * run_up(__attribute__((unused)) void * args) {
 
     fd = opendir(db_folder);
 
+    if (!fd) {
+        os_free(db_folder);
+        mdebug1("Opening directory: '%s': %s", db_folder, strerror(errno));
+        return NULL;
+    }
+
     while ((db = readdir(fd)) != NULL) {
         if ((strcmp(db->d_name, ".") == 0) ||
             (strcmp(db->d_name, "..") == 0) ||
