@@ -176,6 +176,9 @@ void wm_setup()
         sigaction(SIGINT, &action, NULL);
     }
 
+    action.sa_handler = SIG_IGN;
+    sigaction(SIGPIPE, &action, NULL);
+
     // Create PID file
 
     if (CreatePID(ARGV0, getpid()) < 0)

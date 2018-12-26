@@ -32,7 +32,7 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
 <!-- SYSCALL - key -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>
-    <regex offset="after_regex">key=\p(\S+)\p </regex>
+    <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
     <order>audit.key</order>
 </decoder>
 
@@ -76,7 +76,7 @@ type=CONFIG_CHANGE msg=audit(1480085540.632:5846): auid=0 ses=1 op="remove rule"
 
 <decoder name="auditd-config_change">
     <parent>auditd</parent>
-    <regex offset="after_regex">key=\p(\S+)\p</regex>
+    <regex offset="after_regex">key=\((\S+)\)|key="(\S+)"|key=(\S+) </regex>
     <order>audit.key</order>
 </decoder>
 
