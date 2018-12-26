@@ -18,6 +18,7 @@ static void __memclear(char *id, char *name, char *ip, char *key, size_t size) _
 void OS_FreeKey(keyentry *key);
 
 static int pass_empty_keyfile = 0;
+static OSHash *last_freed_keys = NULL;
 
 /* Clear keys entries */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
@@ -344,6 +345,19 @@ ret:
 }
 
 void OS_FreeKey(keyentry *key) {
+    if(!last_freed_keys){
+        last_freed_keys = OSHash_Create();
+        if (!last_freed_keys) {
+            merror_exit(LIST_ERROR);
+        }  
+    }
+    char key_c[64];
+    sprintf(key_c,"%llu",(long long unsigned)key);
+
+    if(OSHash_Get(last_freed_keys,key_c)){
+        return;
+    }
+
     if (key->ip) {
         free(key->ip->ip);
         free(key->ip);
@@ -367,6 +381,7 @@ void OS_FreeKey(keyentry *key) {
     }
 
     pthread_mutex_destroy(&key->mutex);
+    OSHash_Add(last_freed_keys,key_c,(void *)1);
     free(key);
 }
 
