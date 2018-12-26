@@ -38,7 +38,7 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
     Mail->gran_format = NULL;
     Mail->grouping = 1;
     Mail->strict_checking = 0;
-    Mail->source = 0;
+    Mail->source = -1;
 #ifdef LIBGEOIP_ENABLED
     Mail->geoip = 0;
 #endif
@@ -59,6 +59,10 @@ int MailConf(int test_config, const char *cfgfile, MailConfig *Mail)
             minfo(MAIL_DIS);
         }
         exit(0);
+    }
+
+    if(Mail->source == -1){
+        Mail->source = MAIL_SOURCE_JSON;
     }
 
     if(!global.alerts_log && !global.jsonout_output) {
@@ -97,6 +101,7 @@ cJSON *getMailConfig(void) {
     if (mail.idsname) cJSON_AddStringToObject(email,"email_idsname",mail.idsname);
     if (mail.smtpserver) cJSON_AddStringToObject(email,"smtp_server",mail.smtpserver);
     if (mail.heloserver) cJSON_AddStringToObject(email,"helo_server",mail.heloserver);
+    if (mail.source > 0) { cJSON_AddStringToObject(email,"email_log_source","alerts.json"); } else { cJSON_AddStringToObject(email,"email_log_source","alerts.log"); }
     cJSON_AddNumberToObject(email,"email_maxperhour",mail.maxperhour);
 
     cJSON_AddItemToObject(root,"global",email);

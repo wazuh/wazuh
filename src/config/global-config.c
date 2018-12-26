@@ -558,8 +558,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     Mail->source = MAIL_SOURCE_JSON;
                 }
                 else{
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
+                    Mail->source = MAIL_SOURCE_JSON;
                 }
             }
         }
