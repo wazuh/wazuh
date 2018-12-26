@@ -590,7 +590,7 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
     static char *str_a = "allowed";
     static char *str_d = "denied";
     static char *str_n = "name";
-    cJSON *perm_type;
+    cJSON *perm_type = NULL;
     cJSON *json_it;
     char a_type;
     long mask;
