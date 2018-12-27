@@ -101,7 +101,7 @@ ListRule *OS_AddListRule(ListRule *first_rule_list,
     new_rulelist_pt->next = NULL;
     new_rulelist_pt->matcher = matcher;
     new_rulelist_pt->lookup_type = lookup_type;
-    new_rulelist_pt->filename = listname;
+    new_rulelist_pt->filename = strdup(listname);
     new_rulelist_pt->dfield = field == RULE_DYNAMIC ? strdup(dfield) : NULL;
     new_rulelist_pt->mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     if ((new_rulelist_pt->db = OS_FindList(listname)) == NULL) {
