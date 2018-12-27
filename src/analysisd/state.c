@@ -359,6 +359,10 @@ void w_reset_stats(){
     s_events_hostinfo_decoded = 0;
     w_mutex_unlock(&s_hostinfo_mutex);
 
+    w_mutex_lock(&s_winevt_mutex)
+    s_events_winevt_decoded = 0;
+    w_mutex_unlock(&s_winevt_mutex);
+
     w_mutex_lock(&s_event_mutex);
     s_events_decoded = 0;
     w_mutex_unlock(&s_event_mutex);
