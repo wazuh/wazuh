@@ -390,8 +390,8 @@ int DecodeWinevt(Eventinfo *lf){
     returned_event = cJSON_PrintUnformatted(final_event);
     
     if (returned_event){
-        lf->full_log[strlen(returned_event)] = '\0';
-        memcpy(lf->full_log, returned_event, strlen(returned_event) + 1);
+        lf->full_log[strlen(returned_event) - 1] = '\0';
+        memcpy(lf->full_log, returned_event, strlen(returned_event));
     } else {
         lf->full_log = '\0';
     }
