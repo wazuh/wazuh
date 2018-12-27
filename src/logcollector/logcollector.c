@@ -508,7 +508,12 @@ void LogCollectorStart()
                         continue;
                     }
 
-                    minfo(LOGC_FILE_ERROR, current->file);
+                    if(!strcmp(current->logformat, "eventchannel")){
+                        mdebug1(LOGC_FILE_ERROR, current->file);
+                    } else {
+                        minfo(LOGC_FILE_ERROR, current->file);
+                    }
+
                     if (current->fp) {
                         fclose(current->fp);
 #ifdef WIN32

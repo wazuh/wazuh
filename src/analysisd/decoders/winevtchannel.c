@@ -101,13 +101,15 @@ int DecodeWinevt(Eventinfo *lf){
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
+    cJSON *json_extra_in = cJSON_CreateObject();
     int level_n;
     unsigned long long int keywords_n;
     XML_NODE node, child;
     int num;
+    char *extra = NULL;
+    char *filtered_string = NULL;
     char *level;
     char *keywords;
-    char *provider_name;
     char *msg_from_prov;
     char *returned_event;
     char *event;
@@ -164,7 +166,7 @@ int DecodeWinevt(Eventinfo *lf){
     } else {
         mdebug1("Malformed JSON output received. No 'Event' field found");
     }
-    char * filtered_string = NULL;
+
     if(event){
         if (OS_ReadXMLString(event, &xml) < 0){
             first_time++;
@@ -192,7 +194,6 @@ int DecodeWinevt(Eventinfo *lf){
                             if (!strcmp(child_attr[p]->element, "Provider")) {
                                 while(child_attr[p]->attributes[l]){
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")){
-                                        os_strdup(child_attr[p]->values[l], provider_name);
                                         cJSON_AddStringToObject(json_system_in, "ProviderName", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
                                         cJSON_AddStringToObject(json_system_in, "ProviderGuid", child_attr[p]->values[l]);
@@ -253,10 +254,20 @@ int DecodeWinevt(Eventinfo *lf){
                                 os_free(filtered_string);
                             }
                         } else {
-                            mdebug1("Unexpected element (%s).", child[j]->element);
-                            filtered_string = replace_win_format(child_attr[p]->content);
-                            cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
-                            os_free(filtered_string);
+                            mdebug1("Unexpected element (%s).", child[p]->element);
+                            
+                            XML_NODE another_child = NULL;
+                            another_child = OS_GetElementsbyNode(&xml, child_attr[p]);
+                            int h=0;
+
+                            while(another_child[h]){
+                                filtered_string = replace_win_format(another_child[h]->content);
+                                cJSON_AddStringToObject(json_extra_in, another_child[h]->element, filtered_string);
+                                os_free(filtered_string);
+                                h++;
+                            }
+                            os_strdup(child_attr[p]->element, extra);
+                            OS_ClearNode(another_child);
                         }
                         p++;
                     }
@@ -359,6 +370,11 @@ int DecodeWinevt(Eventinfo *lf){
     if (json_eventdata_in){
         cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
     }
+    if (extra){
+        cJSON_AddItemToObject(json_event, extra, json_extra_in);
+    } else {
+        cJSON_Delete(json_extra_in);
+    }
 
     cJSON_AddItemToObject(final_event, "EventChannel", json_event);
 
@@ -378,9 +394,9 @@ int DecodeWinevt(Eventinfo *lf){
 
     os_free(level);
     os_free(event);
+    os_free(extra);
     os_free(filtered_string);
     os_free(keywords);
-    os_free(provider_name);
     os_free(msg_from_prov);
     os_free(returned_event);
     OS_ClearXML(&xml);
