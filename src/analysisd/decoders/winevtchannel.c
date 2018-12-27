@@ -108,18 +108,18 @@ int DecodeWinevt(Eventinfo *lf){
     int num;
     char *extra = NULL;
     char *filtered_string = NULL;
-    char *level;
-    char *keywords;
-    char *msg_from_prov;
-    char *returned_event;
-    char *event;
-    char *find_event;
-    char *end_event;
-    char *real_end;
-    char *find_msg;
-    char *end_msg;
-    char *next;
-    char *category;
+    char *level = NULL;
+    char *keywords = NULL;
+    char *msg_from_prov = NULL;
+    char *returned_event = NULL;
+    char *event = NULL;
+    char *find_event = NULL;
+    char *end_event = NULL;
+    char *real_end = NULL;
+    char *find_msg = NULL;
+    char *end_msg = NULL;
+    char *next = NULL;
+    char *category = NULL;
     char aux = 0;
     lf->decoder_info = winevt_decoder;
 
@@ -223,9 +223,15 @@ int DecodeWinevt(Eventinfo *lf){
                                     cJSON_AddStringToObject(json_system_in, "Security UserID", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
+                                if (level){
+                                    os_free(level);
+                                }
                                 os_strdup(child_attr[p]->content, level);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Keywords")) {
+                                if (keywords){
+                                    os_free(keywords);
+                                }
                                 os_strdup(child_attr[p]->content, keywords);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Correlation")) {
@@ -265,6 +271,9 @@ int DecodeWinevt(Eventinfo *lf){
                                 cJSON_AddStringToObject(json_extra_in, another_child[h]->element, filtered_string);
                                 os_free(filtered_string);
                                 h++;
+                            }
+                            if(extra){
+                                os_free(extra);
                             }
                             os_strdup(child_attr[p]->element, extra);
                             OS_ClearNode(another_child);
