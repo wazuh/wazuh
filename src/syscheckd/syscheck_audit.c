@@ -830,8 +830,9 @@ void audit_parse(char *buffer) {
             match_size = match[1].rm_eo - match[1].rm_so;
             os_malloc(match_size + 1, syscall);
             snprintf (syscall, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            if(!strcmp(syscall, "257")){
+            if(!strcmp(syscall, "257") || !strcmp(syscall, "2")) {
                 // x86_64: 257 openat
+                // x86_64: 2 open
                 mdebug2("Whodata health-check: Detected file creation event (%s).", syscall);
                 audit_health_check_creation = 1;
             } else if(!strcmp(syscall, "87")){
