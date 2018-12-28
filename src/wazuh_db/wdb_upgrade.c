@@ -14,7 +14,7 @@
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
-    char db_version[OS_SIZE_128];
+    char db_version[OS_SIZE_256 + 2];
     int version = 0;
     int result = 0;
     wdb_t *new_wdb = wdb;
