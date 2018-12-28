@@ -497,7 +497,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
             if (end_prov){
                 num = end_prov - beg_prov - 1;
 
-                if(num > OS_MAXSTR){
+                if(num > OS_MAXSTR - 1){
                     mwarn("The event message has exceeded the maximum size.");
                     goto cleanup;
                 }
