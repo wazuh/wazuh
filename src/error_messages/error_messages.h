@@ -159,7 +159,7 @@
 #define EXEC_INV_NAME   "(1311): Invalid command name '%s' provided."
 #define EXEC_CMDERROR   "(1312): Error executing '%s': %s"
 #define EXEC_INV_CONF   "(1313): Invalid active response config: '%s'."
-#define EXEC_DISABLED   "(1350): Active response disabled. Exiting."
+#define EXEC_DISABLED   "(1350): Active response disabled."
 #define EXEC_SHUTDOWN   "(1314): Shutdown received. Deleting responses."
 
 #define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
