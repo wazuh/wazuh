@@ -162,7 +162,6 @@ int main(int argc, char **argv)
     /* Active response disabled */
     if (c == 1) {
         minfo(EXEC_DISABLED);
-        exit(0);
     }
 
     /* Create the PID file */

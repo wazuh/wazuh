@@ -126,7 +126,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if(check_path_type(file_name) == 2){
                 depth = depth - 1;
             }
-            read_dir(file_name, pos, evt, depth);
+            read_dir(file_name, pos, evt, depth, 0);
         }
 
     }

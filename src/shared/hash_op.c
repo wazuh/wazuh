@@ -587,7 +587,7 @@ OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current
 
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*)){
     unsigned int *i;
-    os_calloc(1, sizeof(unsigned int *), i);
+    os_calloc(1, sizeof(unsigned int), i);
     OSHashNode *curr_node;
     OSHashNode *next_node;
 
