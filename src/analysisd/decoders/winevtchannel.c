@@ -47,46 +47,14 @@ void WinevtInit(){
     mdebug1("WinevtInit completed.");
 }
 
-char *replace_string(const char *string, const char *old, const char *new){
-    char *ret;
-    int i = 0;
-    int count = 0;
-    int newlen = strlen(new);
-    int oldlen = strlen(old);
-  
-    while (string[i] != '\0') {
-        if (strstr(&string[i], old) == &string[i]){
-            count++;
-            i += oldlen - 1;
-        }
-        i++;
-    }
-  
-    ret = (char *) malloc(i + count * (newlen - oldlen) + 1);
-  
-    i = 0;
-    while (*string) {
-        if (strstr(string, old) == string){
-            strcpy(&ret[i], new);
-            i += newlen;
-            string += oldlen;
-        } else {
-            ret[i++] = *string++;
-        }
-    }
-
-    ret[i] = '\0';
-    return ret;
-}
-
 char *replace_win_format(char *str){
     char *ret1 = NULL;
     char *ret2 = NULL;
     char *ret3 = NULL;
 
-    ret1 = replace_string(str, "\\r", "");
-    ret2 = replace_string(ret1, "\\t", "");
-    ret3 = replace_string(ret2, "\\n", "");
+    ret1 = wstr_replace(str, "\\r", "");
+    ret2 = wstr_replace(ret1, "\\t", "");
+    ret3 = wstr_replace(ret2, "\\n", "");
 
     os_free(ret1);
     os_free(ret2);
@@ -155,6 +123,17 @@ int DecodeWinevt(Eventinfo *lf){
             }
 
             num = end_event - find_event;
+
+            if(num > OS_MAXSTR){
+                mwarn("The event message has exceeded the maximum size.");
+                cJSON_Delete(json_system_in);
+                cJSON_Delete(json_event);
+                cJSON_Delete(json_eventdata_in);
+                cJSON_Delete(json_extra_in);
+
+                goto cleanup;
+            }
+
             memcpy(event, find_event, num);
             event[num] = '\0';
             find_event = '\0';
@@ -358,6 +337,15 @@ int DecodeWinevt(Eventinfo *lf){
             }
 
             num = end_msg - find_msg;
+            if(num > OS_MAXSTR){
+                cJSON_Delete(json_system_in);
+                cJSON_Delete(json_event);
+                cJSON_Delete(json_eventdata_in);
+                cJSON_Delete(json_extra_in);
+                mwarn("The event message has exceeded the maximum size.");
+
+                goto cleanup;
+            }
             memcpy(msg_from_prov, find_msg, num);
             msg_from_prov[num] = '\0';
             cJSON_AddStringToObject(json_system_in, "Message", msg_from_prov);
@@ -390,7 +378,7 @@ int DecodeWinevt(Eventinfo *lf){
     returned_event = cJSON_PrintUnformatted(final_event);
     
     if (returned_event){
-        lf->full_log[strlen(returned_event) - 1] = '\0';
+        lf->full_log[strlen(returned_event)] = '\0';
         memcpy(lf->full_log, returned_event, strlen(returned_event));
     } else {
         lf->full_log = '\0';
@@ -401,6 +389,7 @@ int DecodeWinevt(Eventinfo *lf){
 
     JSON_Decoder_Exec(lf, NULL);
 
+cleanup:
     os_free(level);
     os_free(event);
     os_free(extra);
