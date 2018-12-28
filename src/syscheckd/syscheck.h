@@ -112,6 +112,7 @@ extern volatile int whodata_alerts;
 extern volatile int audit_db_consistency_flag;
 extern pthread_mutex_t audit_mutex;
 extern pthread_cond_t audit_thread_started;
+extern pthread_cond_t audit_hc_started;
 extern pthread_cond_t audit_db_consistency;
 #elif WIN32
 int whodata_audit_start();

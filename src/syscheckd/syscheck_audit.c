@@ -38,6 +38,7 @@ W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
 W_Vector *audit_loaded_rules;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t audit_hc_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 int auid_err_reported;
 int hc_thread_active;
@@ -876,7 +877,10 @@ void *audit_reload_thread(void) {
 
 void *audit_healthcheck_thread(int *audit_sock) {
 
+    w_mutex_lock(&audit_hc_mutex);
     hc_thread_active = 1;
+    w_cond_signal(&audit_hc_started);
+    w_mutex_unlock(&audit_hc_mutex);
 
     mdebug2("Whodata health-check: Reading thread active.");
 
@@ -888,7 +892,7 @@ void *audit_healthcheck_thread(int *audit_sock) {
 }
 
 
-void *audit_main(int *audit_sock) {
+void * audit_main(int *audit_sock) {
     count_reload_retries = 0;
 
     w_mutex_lock(&audit_mutex);
@@ -1138,8 +1142,6 @@ int audit_health_check(int audit_socket) {
     audit_health_check_deletion = 0;
     unsigned int timer = 10;
 
-
-
     if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
         mdebug1("Couldn't add audit health check rule.");
         goto exit_err;
@@ -1147,10 +1149,15 @@ int audit_health_check(int audit_socket) {
 
     mdebug1("Whodata health-check: Starting...");
 
+    w_cond_init(&audit_hc_started, NULL);
+
     // Start reading thread
     w_create_thread(audit_healthcheck_thread, &audit_socket);
 
-    sleep(5);
+    w_mutex_lock(&audit_hc_mutex);
+    while (!hc_thread_active)
+        w_cond_wait(&audit_hc_started, &audit_hc_mutex);
+    w_mutex_unlock(&audit_hc_mutex);
 
     // Create a file
     fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
