@@ -205,8 +205,10 @@ cJSON *getSyscheckConfig(void) {
         for (i=0;syscheck.audit_key[i];i++) {
             cJSON_AddItemToArray(audkey, cJSON_CreateString(syscheck.audit_key[i]));
         }
-        cJSON_AddItemToObject(whodata,"audit_key",audkey);
-        cJSON_AddItemToObject(syscfg,"whodata",whodata);
+        if (cJSON_GetArraySize(audkey) > 0) {
+            cJSON_AddItemToObject(whodata,"audit_key",audkey);
+            cJSON_AddItemToObject(syscfg,"whodata",whodata);
+        }
     }
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
