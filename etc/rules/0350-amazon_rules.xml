@@ -310,7 +310,7 @@ ID: 80200 - 80499
 
     <rule id="80495" level="0">
         <if_sid>80200</if_sid>
-        <field name="aws.service">Inspector</field>
+        <field name="aws.source">inspector</field>
         <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
         <group>aws_inspector,</group>
     </rule>
