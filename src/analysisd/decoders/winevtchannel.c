@@ -65,6 +65,7 @@ char *replace_win_format(char *str){
 /* Special decoder for Windows eventchannel */
 int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
+    int xml_init = 0;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
@@ -124,7 +125,7 @@ int DecodeWinevt(Eventinfo *lf){
 
             num = end_event - find_event;
 
-            if(num > OS_MAXSTR){
+            if(num > OS_MAXSTR - 1){
                 mwarn("The event message has exceeded the maximum size.");
                 cJSON_Delete(json_system_in);
                 cJSON_Delete(json_event);
@@ -241,13 +242,13 @@ int DecodeWinevt(Eventinfo *lf){
                         } else {
                             mdebug1("Unexpected element (%s).", child[p]->element);
                             
-                            XML_NODE another_child = NULL;
-                            another_child = OS_GetElementsbyNode(&xml, child_attr[p]);
+                            XML_NODE extra_data_child = NULL;
+                            extra_data_child = OS_GetElementsbyNode(&xml, child_attr[p]);
                             int h=0;
 
-                            while(another_child[h]){
-                                filtered_string = replace_win_format(another_child[h]->content);
-                                cJSON_AddStringToObject(json_extra_in, another_child[h]->element, filtered_string);
+                            while(extra_data_child && extra_data_child[h]){
+                                filtered_string = replace_win_format(extra_data_child[h]->content);
+                                cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
                                 os_free(filtered_string);
                                 h++;
                             }
@@ -255,7 +256,7 @@ int DecodeWinevt(Eventinfo *lf){
                                 os_free(extra);
                             }
                             os_strdup(child_attr[p]->element, extra);
-                            OS_ClearNode(another_child);
+                            OS_ClearNode(extra_data_child);
                         }
                         p++;
                     }
@@ -307,6 +308,7 @@ int DecodeWinevt(Eventinfo *lf){
                 cJSON_AddStringToObject(json_system_in, "SeverityValue", category);    
             }
         }
+        xml_init = 1;
     }
 
     find_msg = strstr(lf->log, "Message");
@@ -337,7 +339,7 @@ int DecodeWinevt(Eventinfo *lf){
             }
 
             num = end_msg - find_msg;
-            if(num > OS_MAXSTR){
+            if(num > OS_MAXSTR - 1){
                 cJSON_Delete(json_system_in);
                 cJSON_Delete(json_event);
                 cJSON_Delete(json_eventdata_in);
@@ -397,7 +399,10 @@ cleanup:
     os_free(keywords);
     os_free(msg_from_prov);
     os_free(returned_event);
-    OS_ClearXML(&xml);
+    if (xml_init){
+        OS_ClearXML(&xml);
+        xml_init = 0;
+    }
     cJSON_Delete(final_event);
 
     return (0);
