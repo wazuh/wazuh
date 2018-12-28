@@ -29,13 +29,23 @@
 #define MAX_CONN_RETRIES 5 // Max retries to reconnect to Audit socket
 #define RELOAD_RULES_INTERVAL 30 // Seconds to re-add Audit rules
 
+#define AUDIT_HEALTHCHECK_DIR DEFAULTDIR "/tmp"
+#define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
+#define AUDIT_HEALTHCHECK_FILE AUDIT_HEALTHCHECK_DIR "/audit_hc"
+
 // Global variables
 W_Vector *audit_added_rules;
 W_Vector *audit_added_dirs;
 W_Vector *audit_loaded_rules;
 pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t audit_hc_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 int auid_err_reported;
+int hc_thread_active;
+
+int audit_health_check_creation;
+int audit_health_check_deletion;
+
 static unsigned int count_reload_retries;
 
 #ifdef ENABLE_AUDIT
@@ -56,6 +66,7 @@ static regex_t regexCompiled_path4;
 static regex_t regexCompiled_items;
 static regex_t regexCompiled_inode;
 static regex_t regexCompiled_dir;
+static regex_t regexCompiled_syscall;
 
 
 // Check if Auditd is installed and running
@@ -262,7 +273,6 @@ int init_regex(void) {
         merror("Cannot compile ppid regular expression.");
         return -1;
     }
-    // static const char *pattern_inode = " inode=([0-9]*) ";
     static const char *pattern_inode = " item=[0-9] name=.* inode=([0-9]*)";
     if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
         merror("Cannot compile inode regular expression.");
@@ -313,12 +323,20 @@ int init_regex(void) {
         merror("Cannot compile dir regular expression.");
         return -1;
     }
+    static const char *pattern_syscall = " syscall=([0-9]*)";
+    if (regcomp(&regexCompiled_syscall, pattern_syscall, REG_EXTENDED)) {
+        merror("Cannot compile syscall regular expression.");
+        return -1;
+    }
     return 0;
 }
 
 
 // Init Audit events reader thread
 int audit_init(void) {
+
+    audit_health_check_creation = 0;
+    audit_health_check_deletion = 0;
 
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
@@ -350,43 +368,38 @@ int audit_init(void) {
     // Initialize Audit socket
     static int audit_socket;
     audit_socket = init_auditd_socket();
-
-    // Check if there's a blockig rule
-    if (audit_check_lock_output()) {
-        mwarn("Audit rule '-a never,task' is blocking the audit output. Whodata cannot start.");
-        // Send alert
-        char msg_alert[512 + 1];
-        snprintf(msg_alert, 512, "ossec: Audit: Rule is blocking the audit output: Whodata cannot start");
-        SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
-        return (-1);
-    }
-
-
-    if (audit_socket >= 0) {
-
-        mdebug1("Starting Auditd events reader thread...");
-
-        int regex_comp = init_regex();
-        if (regex_comp < 0) {
-            return -1;
-        }
-
-        atexit(clean_rules);
-        auid_err_reported = 0;
-
-        // Start audit thread
-        w_cond_init(&audit_thread_started, NULL);
-        w_cond_init(&audit_db_consistency, NULL);
-        w_create_thread(audit_main, &audit_socket);
-        w_mutex_lock(&audit_mutex);
-        while (!audit_thread_active)
-            w_cond_wait(&audit_thread_started, &audit_mutex);
-        w_mutex_unlock(&audit_mutex);
-        return 1;
-
-    } else {
+    if (audit_socket < 0) {
         return -1;
     }
+
+    int regex_comp = init_regex();
+    if (regex_comp < 0) {
+        return -1;
+    }
+
+    // Perform Audit healthcheck
+    if(audit_health_check(audit_socket)) {
+        merror("Audit health check couldn't be completed correctly.");
+        return -1;
+    }
+
+    // Start reading thread
+    mdebug1("Starting Auditd events reader thread...");
+
+    atexit(clean_rules);
+    auid_err_reported = 0;
+
+    // Start audit thread
+    minfo("Starting FIM Whodata engine...");
+    w_cond_init(&audit_thread_started, NULL);
+    w_cond_init(&audit_db_consistency, NULL);
+    w_create_thread(audit_main, &audit_socket);
+    w_mutex_lock(&audit_mutex);
+    while (!audit_thread_active)
+        w_cond_wait(&audit_thread_started, &audit_mutex);
+    w_mutex_unlock(&audit_mutex);
+    return 1;
+
 }
 
 void audit_set_db_consistency(void) {
@@ -395,6 +408,7 @@ void audit_set_db_consistency(void) {
     w_cond_signal(&audit_db_consistency);
     w_mutex_unlock(&audit_mutex);
 }
+
 
 // Extract id: node=... type=CWD msg=audit(1529332881.955:3867): cwd="..."
 char * audit_get_id(const char * event) {
@@ -485,6 +499,7 @@ void audit_parse(char *buffer) {
     char *path4 = NULL;
     char *cwd = NULL;
     char *file_path = NULL;
+    char *syscall = NULL;
     char *inode = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
@@ -810,6 +825,33 @@ void audit_parse(char *buffer) {
             free(path1);
             free_whodata_event(w_evt);
         }
+        break;
+    case 3:
+        if(regexec(&regexCompiled_syscall, buffer, 2, match, 0) == 0) {
+            match_size = match[1].rm_eo - match[1].rm_so;
+            os_malloc(match_size + 1, syscall);
+            snprintf (syscall, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+            if(!strcmp(syscall, "2") || !strcmp(syscall, "257")
+                || !strcmp(syscall, "5") || !strcmp(syscall, "295")) {
+                // x86_64: 2 open
+                // x86_64: 257 openat
+                // i686: 5 open
+                // i686: 295 openat
+                mdebug2("Whodata health-check: Detected file creation event (%s).", syscall);
+                audit_health_check_creation = 1;
+            } else if(!strcmp(syscall, "87") || !strcmp(syscall, "263")
+                || !strcmp(syscall, "10") || !strcmp(syscall, "301")) {
+                // x86_64: 87 unlink
+                // x86_64: 263 unlinkat
+                // i686: 10 unlink
+                // i686: 301 unlinkat
+                mdebug2("Whodata health-check: Detected file deletion event (%s).", syscall);
+                audit_health_check_deletion = 1;
+            } else {
+                mdebug2("Whodata health-check: Unrecognized event (%s)", syscall);
+            }
+            free(syscall);
+        }
     }
 }
 
@@ -834,7 +876,82 @@ void *audit_reload_thread(void) {
 }
 
 
-void * audit_main(int * audit_sock) {
+void *audit_healthcheck_thread(int *audit_sock) {
+
+    w_mutex_lock(&audit_hc_mutex);
+    hc_thread_active = 1;
+    w_cond_signal(&audit_hc_started);
+    w_mutex_unlock(&audit_hc_mutex);
+
+    mdebug2("Whodata health-check: Reading thread active.");
+
+    audit_read_events(audit_sock, HEALTHCHECK_MODE);
+
+    mdebug2("Whodata health-check: Reading thread finished.");
+
+    return NULL;
+}
+
+
+void * audit_main(int *audit_sock) {
+    count_reload_retries = 0;
+
+    w_mutex_lock(&audit_mutex);
+    audit_thread_active = 1;
+    w_cond_signal(&audit_thread_started);
+
+    while (!audit_db_consistency_flag) {
+        w_cond_wait(&audit_db_consistency, &audit_mutex);
+    }
+
+    w_mutex_unlock(&audit_mutex);
+
+    // Start rules reloading thread
+    w_create_thread(audit_reload_thread, NULL);
+
+    minfo("FIM Whodata engine started.");
+
+    // Read events
+    audit_read_events(audit_sock, READING_MODE);
+
+    // Auditd is not runnig or socket closed.
+    mdebug1("Audit thread finished.");
+    close(*audit_sock);
+
+    regfree(&regexCompiled_uid);
+    regfree(&regexCompiled_auid);
+    regfree(&regexCompiled_euid);
+    regfree(&regexCompiled_gid);
+    regfree(&regexCompiled_pid);
+    regfree(&regexCompiled_ppid);
+    regfree(&regexCompiled_cwd);
+    regfree(&regexCompiled_path0);
+    regfree(&regexCompiled_path1);
+    regfree(&regexCompiled_path2);
+    regfree(&regexCompiled_path3);
+    regfree(&regexCompiled_path4);
+    regfree(&regexCompiled_pname);
+    regfree(&regexCompiled_items);
+    regfree(&regexCompiled_inode);
+    // Change Audit monitored folders to Inotify.
+    int i;
+    w_mutex_lock(&audit_rules_mutex);
+    if (audit_added_dirs) {
+        for (i = 0; i < W_Vector_length(audit_added_dirs); i++) {
+            realtime_adddir(W_Vector_get(audit_added_dirs, i), 0);
+        }
+        W_Vector_free(audit_added_dirs);
+    }
+    w_mutex_unlock(&audit_rules_mutex);
+
+    // Clean Audit added rules.
+    clean_rules();
+
+    return NULL;
+}
+
+
+void audit_read_events(int *audit_sock, int mode) {
     size_t byteRead;
     char * cache;
     char * cache_id = NULL;
@@ -852,22 +969,8 @@ void * audit_main(int * audit_sock) {
     buffer = malloc(BUF_SIZE * sizeof(char));
     os_malloc(BUF_SIZE, cache);
 
-    w_mutex_lock(&audit_mutex);
-    audit_thread_active = 1;
-    w_cond_signal(&audit_thread_started);
-
-    while (!audit_db_consistency_flag) {
-        w_cond_wait(&audit_db_consistency, &audit_mutex);
-    }
-
-    w_mutex_unlock(&audit_mutex);
-
-    // Start rules reloading thread
-    w_create_thread(audit_reload_thread, NULL);
-
-    minfo("Starting FIM Whodata engine...");
-
-    while (audit_thread_active) {
+    while ((mode == READING_MODE && audit_thread_active)
+       || (mode == HEALTHCHECK_MODE && hc_thread_active)) {
         FD_ZERO(&fdset);
         FD_SET(*audit_sock, &fdset);
 
@@ -890,7 +993,8 @@ void * audit_main(int * audit_sock) {
             continue;
 
         default:
-            if (!audit_thread_active) {
+            if ((mode == READING_MODE && !audit_thread_active) ||
+                (mode == HEALTHCHECK_MODE && !hc_thread_active)) {
                 continue;
             }
 
@@ -980,43 +1084,7 @@ void * audit_main(int * audit_sock) {
 
     }
 
-    // Auditd is not runnig or socket closed.
-    mdebug1("Audit thread finished.");
     free(buffer);
-    close(*audit_sock);
-
-    regfree(&regexCompiled_uid);
-    regfree(&regexCompiled_auid);
-    regfree(&regexCompiled_euid);
-    regfree(&regexCompiled_gid);
-    regfree(&regexCompiled_pid);
-    regfree(&regexCompiled_ppid);
-    regfree(&regexCompiled_cwd);
-    regfree(&regexCompiled_path0);
-    regfree(&regexCompiled_path1);
-    regfree(&regexCompiled_path2);
-    regfree(&regexCompiled_path3);
-    regfree(&regexCompiled_path4);
-    regfree(&regexCompiled_pname);
-    regfree(&regexCompiled_items);
-    regfree(&regexCompiled_inode);
-    // Change Audit monitored folders to Inotify.
-    int i;
-    w_mutex_lock(&audit_rules_mutex);
-    if (audit_added_dirs) {
-        for (i = 0; i < W_Vector_length(audit_added_dirs); i++) {
-            realtime_adddir(W_Vector_get(audit_added_dirs, i), 0);
-        }
-        W_Vector_free(audit_added_dirs);
-    }
-    w_mutex_unlock(&audit_rules_mutex);
-
-    // Clean Audit added rules.
-    clean_rules();
-    // Clean Audit loaded rules.
-    audit_free_list();
-
-    return NULL;
 }
 
 
@@ -1039,13 +1107,19 @@ void clean_rules(void) {
 
 int filterkey_audit_events(char *buffer) {
     int i = 0;
-    char logkey1[OS_SIZE_256];
-    char logkey2[OS_SIZE_256];
+    char logkey1[OS_SIZE_256] = {0};
+    char logkey2[OS_SIZE_256] = {0};
 
     snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
     if (strstr(buffer, logkey1)) {
         mdebug2("Match audit_key: '%s'", logkey1);
         return 1;
+    }
+
+    snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_HEALTHCHECK_KEY);
+    if (strstr(buffer, logkey1)) {
+        mdebug2("Match audit_key: '%s'", logkey1);
+        return 3;
     }
 
     while (syscheck.audit_key[i]) {
@@ -1058,6 +1132,86 @@ int filterkey_audit_events(char *buffer) {
         i++;
     }
     return 0;
+}
+
+
+// Audit healthcheck before starting the main thread
+int audit_health_check(int audit_socket) {
+    int retval;
+    FILE *fp;
+    audit_health_check_creation = 0;
+    audit_health_check_deletion = 0;
+    unsigned int timer = 10;
+
+    if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
+        mdebug1("Couldn't add audit health check rule.");
+        goto exit_err;
+    }
+
+    mdebug1("Whodata health-check: Starting...");
+
+    w_cond_init(&audit_hc_started, NULL);
+
+    // Start reading thread
+    w_create_thread(audit_healthcheck_thread, &audit_socket);
+
+    w_mutex_lock(&audit_hc_mutex);
+    while (!hc_thread_active)
+        w_cond_wait(&audit_hc_started, &audit_hc_mutex);
+    w_mutex_unlock(&audit_hc_mutex);
+
+    // Create a file
+    fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
+
+    if(!fp) {
+        mdebug1("Couldn't create audit health check file.");
+        goto exit_err;
+    }
+
+    mdebug2("Whodata health-check: Waiting creation event...");
+
+    while (!audit_health_check_creation && timer > 0) {
+        sleep(1);
+        timer--;
+    }
+    if (!audit_health_check_creation) {
+        goto exit_err;
+    }
+
+    mdebug2("Whodata health-check: Creation event received.");
+    mdebug2("Whodata health-check: Waiting deletion event...");
+
+    // Delete that file
+    unlink(AUDIT_HEALTHCHECK_FILE);
+    fclose(fp);
+
+    timer = 10;
+    while (!audit_health_check_deletion && timer > 0) {
+        sleep(1);
+        timer--;
+    }
+    if (!audit_health_check_deletion) {
+        goto exit_err;
+    }
+
+    mdebug2("Whodata health-check: Deletion event received.");
+
+    if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
+        mdebug1("Couldn't delete audit health check rule.");
+    }
+    hc_thread_active = 0;
+
+    mdebug2("Whodata health-check: Success.");
+
+    return 0;
+
+exit_err:
+    if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
+        mdebug1("Couldn't delete audit health check rule.");
+    }
+    hc_thread_active = 0;
+    return -1;
+
 }
 
 

@@ -18,6 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
+pthread_cond_t audit_hc_started;
 pthread_cond_t audit_db_consistency;
 int sys_debug_level;
 
