@@ -17,10 +17,24 @@
 static OSHash *label_cache;
 static pthread_mutex_t label_mutex;
 
+/* Free label cache */
+void free_label_cache(wlabel_data_t *data) {
+    if (data->labels) labels_free(data->labels);
+    free(data);
+}
+
 /* Initialize label cache */
-void labels_init() {
+int labels_init() {
     label_cache = OSHash_Create();
+    if (!label_cache) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (0);
+    }
+    
+    OSHash_SetFreeDataPointer(label_cache, (void (*)(void *))free_label_cache);
+    
     label_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+    return (1);
 }
 
 /* Find the label array for an agent. Returns NULL if no such agent file found. */

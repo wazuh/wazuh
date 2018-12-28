@@ -778,6 +778,9 @@ int whodata_audit_start() {
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
+    
+    OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_win_whodata_evt);
+    
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
 

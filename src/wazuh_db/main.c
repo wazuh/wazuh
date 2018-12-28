@@ -98,6 +98,7 @@ int main(int argc, char ** argv) {
 
     //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
+    if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
     mdebug1(STARTED_MSG);
 

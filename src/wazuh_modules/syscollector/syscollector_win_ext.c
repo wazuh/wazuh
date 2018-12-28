@@ -126,20 +126,15 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
     }
 
     /* MAC Address */
-    char MAC[30] = "";
-    char *mac_addr = &MAC[0];
+    char MAC[30] = {'\0'};
 
     if (pCurrAddresses->PhysicalAddressLength != 0) {
         for (i = 0; i < pCurrAddresses->PhysicalAddressLength; i++) {
-            if (i == (pCurrAddresses->PhysicalAddressLength - 1))
-                mac_addr += sprintf(mac_addr, "%.2X", pCurrAddresses->PhysicalAddress[i]);
-            else
-                mac_addr += sprintf(mac_addr, "%.2X:", pCurrAddresses->PhysicalAddress[i]);
+            snprintf(MAC + strlen(MAC), 3, "%.2X", pCurrAddresses->PhysicalAddress[i]);
+            if (i < (pCurrAddresses->PhysicalAddressLength - 1)) MAC[strlen(MAC)] = ':';
         }
         cJSON_AddStringToObject(iface_info, "MAC", MAC);
     }
-
-    free(mac_addr);
 
     /* MTU */
     int mtu = (int) pCurrAddresses->Mtu;
@@ -180,6 +175,7 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
     }
 
     /* Extract IPv4 and IPv6 addresses */
+	char *broadcast = NULL, *netmask6 = NULL;
     pUnicast = pCurrAddresses->FirstUnicastAddress;
 
     if (pUnicast){
@@ -200,23 +196,24 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
                 }
 
                 /* Broadcast address */
-                char* broadcast;
                 broadcast = get_broadcast_addr(ipv4addr, host);
-                if (broadcast)
+                if (broadcast) {
                     cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadcast));
-                free(broadcast);
-
+                    free(broadcast);
+                    broadcast = NULL;
+                }
             } else if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6){
                 addr6 = (struct sockaddr_in6 *) pUnicast->Address.lpSockaddr;
                 inet_ntop(AF_INET6, &(addr6->sin6_addr), host, NI_MAXHOST);
                 cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
 
                 /* IPv6 Netmask */
-                char* netmask6;
                 netmask6 = length_to_ipv6_mask(pUnicast->OnLinkPrefixLength);
-                cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
-                free(netmask6);
-
+                if (netmask6) {
+                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                    free(netmask6);
+                    netmask6 = NULL;
+                }
             }
 
             pUnicast = pUnicast->Next;
@@ -302,7 +299,7 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
 /* Adapt IPv6 subnet prefix length to hexadecimal notation */
 char* length_to_ipv6_mask(int mask_length){
 
-    char string[64] = "";
+    char string[64] = {'\0'};
     char* netmask = calloc(65,sizeof(char));
     int length = mask_length;
     int i = 0, j = 0, k=0;
@@ -365,11 +362,11 @@ char* get_broadcast_addr(char* ip, char* netmask){
         broadcast.s_addr = host.s_addr | ~mask.s_addr;
     }
 
-    if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) != NULL){
-        return broadcast_addr;
+    if (inet_ntop(AF_INET, &broadcast, broadcast_addr, NI_MAXHOST) == NULL){
+        sprintf(broadcast_addr, "unknown");
     }
 
-    return "unknown";
+    return broadcast_addr;
 }
 
 typedef struct RawSMBIOSData

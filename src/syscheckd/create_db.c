@@ -268,15 +268,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #endif
     {
         mdebug2("REG File '%s'", file_name);
-        os_md5 mf_sum;
-        os_sha1 sf_sum;
-        os_sha256 sf256_sum;
-
-        /* Clean sums */
-        strncpy(mf_sum, "", 1);
-        strncpy(sf_sum, "", 1);
-        strncpy(sf256_sum, "", 1);
-
+        os_md5 mf_sum = {'\0'};
+        os_sha1 sf_sum = {'\0'};
+        os_sha256 sf256_sum = {'\0'};
+		
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
             /* If it is a link, check if dest is valid */
@@ -305,9 +300,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #endif
             {
-                strncpy(mf_sum, "n/a", 4);
-                strncpy(sf_sum, "n/a", 4);
-                strncpy(sf256_sum, "n/a", 4);
+                snprintf(mf_sum, 4, "n/a");
+                snprintf(sf_sum, 4, "n/a");
+                snprintf(sf256_sum, 4, "n/a");
             }
         }
         

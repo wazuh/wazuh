@@ -2436,6 +2436,8 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
         pthread_exit(NULL);
     }
+    
+    OSHash_SetFreeDataPointer(vulnerability_detector->agents_triag, (void (*)(void *))free_agents_triag);
 
     while (1) {
         // Update CVE databases
