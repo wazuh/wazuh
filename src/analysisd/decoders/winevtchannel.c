@@ -66,6 +66,7 @@ char *replace_win_format(char *str){
 int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
     int xml_init = 0;
+    int ret_val = 0;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
@@ -131,7 +132,7 @@ int DecodeWinevt(Eventinfo *lf){
                 cJSON_Delete(json_event);
                 cJSON_Delete(json_eventdata_in);
                 cJSON_Delete(json_extra_in);
-
+                ret_val = 1;
                 goto cleanup;
             }
 
@@ -345,7 +346,7 @@ int DecodeWinevt(Eventinfo *lf){
                 cJSON_Delete(json_eventdata_in);
                 cJSON_Delete(json_extra_in);
                 mwarn("The event message has exceeded the maximum size.");
-
+                ret_val = 1;
                 goto cleanup;
             }
             memcpy(msg_from_prov, find_msg, num);
@@ -401,9 +402,8 @@ cleanup:
     os_free(returned_event);
     if (xml_init){
         OS_ClearXML(&xml);
-        xml_init = 0;
     }
     cJSON_Delete(final_event);
 
-    return (0);
+    return (ret_val);
 }
