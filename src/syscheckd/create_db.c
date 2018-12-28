@@ -271,7 +271,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
-		
+
         /* Generate checksums */
         if ((opts & CHECK_MD5SUM) || (opts & CHECK_SHA1SUM) || (opts & CHECK_SHA256SUM)) {
             /* If it is a link, check if dest is valid */
@@ -305,7 +305,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 snprintf(sf256_sum, 4, "n/a");
             }
         }
-        
+
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
 
@@ -704,7 +704,9 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         os_calloc(PATH_MAX + 2, sizeof(char), link_path);
         os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
 
-        readlink(dir_name, link_path, PATH_MAX);
+        if (readlink(dir_name, link_path, PATH_MAX) < 0) {
+            merror("Error reading path link: %s", strerror(errno));
+        }
         strcat(link_path, "/");
 
         unsigned i = 0;
