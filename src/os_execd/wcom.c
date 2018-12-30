@@ -340,7 +340,7 @@ size_t wcom_unmerge(const char *file_path, char ** output){
         return strlen(*output);
     }
 
-    if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : DEFAULTDIR INCOMING_DIR, OS_BINARY) == 0){
+    if (UnmergeFiles(final_path, isChroot() ? INCOMING_DIR : BUILDDIR(DEFAULTDIR,INCOMING_DIR), OS_BINARY) == 0){
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         *output = strdup("err Cannot unmerge file");
         return strlen(*output);
@@ -436,7 +436,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     // Clean up upgrade folder
 
 #ifndef WIN32
-    if (cldir_ex(isChroot() ? UPGRADE_DIR : DEFAULTDIR UPGRADE_DIR)) {
+    if (cldir_ex(isChroot() ? UPGRADE_DIR : BUILDDIR(DEFAULTDIR,UPGRADE_DIR))) {
 #else
     if (cldir_ex(UPGRADE_DIR)) {
 #endif
@@ -447,7 +447,7 @@ size_t wcom_upgrade(const char * package, const char * installer, char ** output
     // Unmerge
 
 #ifndef WIN32
-    if (UnmergeFiles(merged, isChroot() ? UPGRADE_DIR : DEFAULTDIR UPGRADE_DIR, OS_BINARY) == 0) {
+    if (UnmergeFiles(merged, isChroot() ? UPGRADE_DIR : BUILDDIR(DEFAULTDIR,UPGRADE_DIR), OS_BINARY) == 0) {
 #else
     if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY) == 0) {
 #endif
@@ -494,7 +494,7 @@ size_t wcom_upgrade_result(char ** output){
     char buffer[20];
 
 #ifndef WIN32
-    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : DEFAULTDIR UPGRADE_DIR "/upgrade_result";
+    const char * PATH = isChroot() ? UPGRADE_DIR "/upgrade_result" : BUILDDIR(DEFAULTDIR,UPGRADE_DIR "/upgrade_result");
 #else
     const char * PATH = UPGRADE_DIR "\\upgrade_result";
 #endif
@@ -524,7 +524,7 @@ size_t wcom_restart(char ** output) {
 
     if (lock <= 0) {
 #ifndef WIN32
-        char *exec_cmd[3] = { DEFAULTDIR "/bin/ossec-control", "restart", NULL};
+        char *exec_cmd[3] = { BUILDDIR(DEFAULTDIR,"/bin/ossec-control"), "restart", NULL };
         if (isChroot()) {
             strcpy(exec_cmd[0], "/bin/ossec-control");
         }
@@ -603,7 +603,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         if (isChroot()) {
             strcpy(sockname, CLUSTER_SOCK);
         } else {
-            strcpy(sockname, DEFAULTDIR CLUSTER_SOCK);
+            strcpy(sockname, BUILDDIR(DEFAULTDIR,CLUSTER_SOCK));
         }
 
         if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
@@ -645,7 +645,7 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
     mdebug1("Local requests thread ready");
 
-    if (sock = OS_BindUnixDomain(DEFAULTDIR COM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
+    if (sock = OS_BindUnixDomain(BUILDDIR(DEFAULTDIR,COM_LOCAL_SOCK), SOCK_STREAM, OS_MAXSTR), sock < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", COM_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }

@@ -753,7 +753,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                 const char delim[2] = ",";
                 char *multigroup = strchr(centralized_group,MULTIGROUP_SEPARATOR);
                 char groups_path[PATH_MAX + 1] = {0};
-                strcpy(groups_path,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s");
+                strcpy(groups_path,isChroot() ? "/etc/shared/%s" : BUILDDIR(DEFAULTDIR,"/etc/shared/%s"));
 
                 /* Validate the group name */
                 int valid = 0;
@@ -912,7 +912,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
                         }
 
-                        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : DEFAULTDIR SHAREDCFG_DIR"/%s", group);
+                        snprintf(dir, PATH_MAX + 1,isChroot() ? SHAREDCFG_DIR"/%s" : BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR"/%s"), group);
 
                         dp = opendir(dir);
 
@@ -1087,7 +1087,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if(*centralized_group) {
                 char path[PATH_MAX];
 
-                if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : DEFAULTDIR GROUPS_DIR "/%s", keys.keyentries[index]->id) >= PATH_MAX) {
+                if (snprintf(path, PATH_MAX, isChroot() ? GROUPS_DIR "/%s" : BUILDDIR(DEFAULTDIR,GROUPS_DIR "/%s"), keys.keyentries[index]->id) >= PATH_MAX) {
                     w_mutex_unlock(&mutex_keys);
                     merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
                     OS_RemoveAgent(keys.keyentries[index]->id);

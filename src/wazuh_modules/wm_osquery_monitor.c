@@ -475,7 +475,7 @@ int wm_osquery_decorators(wm_osquery_monitor_t * osquery)
 #ifdef WIN32
     os_strdup(TMP_CONFIG_PATH, osquery->config_path);
 #else
-    os_strdup(DEFAULTDIR "/" TMP_CONFIG_PATH, osquery->config_path);
+    os_strdup(BUILDDIR(DEFAULTDIR,"/" TMP_CONFIG_PATH), osquery->config_path);
 #endif
 
     // Write new configuration
@@ -549,7 +549,7 @@ int wm_osquery_packs(wm_osquery_monitor_t *osquery)
 #ifdef WIN32
     os_strdup(TMP_CONFIG_PATH, osquery->config_path);
 #else
-    os_strdup(DEFAULTDIR "/" TMP_CONFIG_PATH, osquery->config_path);
+    os_strdup(BUILDDIR(DEFAULTDIR,"/" TMP_CONFIG_PATH), osquery->config_path);
 #endif
 
     // Write new configuration

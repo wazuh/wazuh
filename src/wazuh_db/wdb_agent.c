@@ -911,7 +911,7 @@ char *get_agent_date_added(int agent_id){
     char * sep;
     FILE *fp;
 
-    snprintf(path,PATH_MAX,"%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
+    snprintf(path,PATH_MAX,"%s", isChroot() ? TIMESTAMP_FILE : BUILDDIR(DEFAULTDIR,TIMESTAMP_FILE));
     
     fp = fopen(path, "r");
 

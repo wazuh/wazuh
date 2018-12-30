@@ -124,7 +124,7 @@ Install()
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
@@ -613,8 +613,7 @@ setEnv()
         INSTALLDIR=${USER_DIR}
     fi
 
-
-    CEXTRA="$CEXTRA -DDEFAULTDIR=\\\"${INSTALLDIR}\\\""
+    export WAZUH_HOME=\"${INSTALLDIR}\"
 
     echo ""
     echo "    - ${installat} ${INSTALLDIR} ."

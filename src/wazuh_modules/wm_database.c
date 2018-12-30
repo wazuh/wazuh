@@ -177,17 +177,17 @@ void* wm_database_main(wm_database *data) {
 #ifndef LOCAL
             if (data->sync_agents) {
                 wm_check_agents();
-                wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
-                wm_scan_directory(DEFAULTDIR GROUPS_DIR);
-                wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+                wm_scan_directory(BUILDDIR(DEFAULTDIR,AGENTINFO_DIR));
+                wm_scan_directory(BUILDDIR(DEFAULTDIR,GROUPS_DIR));
+                wm_sync_multi_groups(BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR));
             }
 #endif
             if (data->sync_syscheck) {
-                wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
+                wm_scan_directory(BUILDDIR(DEFAULTDIR,SYSCHECK_DIR));
             }
 
             if (data->sync_rootcheck) {
-                wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
+                wm_scan_directory(BUILDDIR(DEFAULTDIR,ROOTCHECK_DIR));
             }
 
             gettime(&spec1);
@@ -302,7 +302,7 @@ void wm_sync_manager() {
     // Set starting offset if full_sync disabled
 
     if (!module->full_sync) {
-        path = DEFAULTDIR SYSCHECK_DIR "/syscheck";
+        path = BUILDDIR(DEFAULTDIR,SYSCHECK_DIR "/syscheck");
 
         // Don't print error if stat fails because syscheck and rootcheck must not exist
 
@@ -385,7 +385,7 @@ void wm_sync_agents() {
 
             // Find files
 
-            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
+            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck", BUILDDIR(DEFAULTDIR,SYSCHECK_DIR), entry->name, entry->ip->ip);
 
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
@@ -393,7 +393,7 @@ void wm_sync_agents() {
             } else if (wdb_set_agent_offset(id, WDB_SYSCHECK, buffer.st_size) < 1)
                 mterror(WM_DATABASE_LOGTAG, "Couldn't write offset data on database for agent %d (%s).", id, entry->name);
 
-            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", DEFAULTDIR SYSCHECK_DIR, entry->name, entry->ip->ip);
+            snprintf(path, PATH_MAX, "%s/(%s) %s->syscheck-registry", BUILDDIR(DEFAULTDIR,SYSCHECK_DIR), entry->name, entry->ip->ip);
 
             if (stat(path, &buffer) < 0) {
                 if (errno != ENOENT)
@@ -723,7 +723,7 @@ int wm_sync_shared_group(const char *fname) {
     DIR *dp;
     clock_t clock0 = clock();
 
-    snprintf(path,PATH_MAX, "%s/%s",DEFAULTDIR SHAREDCFG_DIR,fname);
+    snprintf(path,PATH_MAX, "%s/%s",BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR),fname);
 
     dp = opendir(path);
 
@@ -781,25 +781,25 @@ int wm_sync_file(const char *dirname, const char *fname) {
         return -1;
     }
 
-    if (!strcmp(dirname, DEFAULTDIR AGENTINFO_DIR))
+    if (!strcmp(dirname, BUILDDIR(DEFAULTDIR,AGENTINFO_DIR)))
         type = WDB_AGENTINFO;
-    else if (!strcmp(dirname, DEFAULTDIR SYSCHECK_DIR)) {
+    else if (!strcmp(dirname, BUILDDIR(DEFAULTDIR,SYSCHECK_DIR))) {
         type = WDB_SYSCHECK;
 
         if (!strcmp(fname, "syscheck")) {
             id_agent = 0;
             strcpy(name, "localhost");
         }
-    } else if (!strcmp(dirname, DEFAULTDIR ROOTCHECK_DIR)) {
+    } else if (!strcmp(dirname, BUILDDIR(DEFAULTDIR,ROOTCHECK_DIR))) {
         type = WDB_ROOTCHECK;
 
         if (!strcmp(fname, "rootcheck")) {
             id_agent = 0;
             strcpy(name, "localhost");
         }
-    } else if (!strcmp(dirname, DEFAULTDIR GROUPS_DIR)) {
+    } else if (!strcmp(dirname, BUILDDIR(DEFAULTDIR,GROUPS_DIR))) {
         type = WDB_GROUPS;
-    } else if (!strcmp(dirname, DEFAULTDIR SHAREDCFG_DIR)) {
+    } else if (!strcmp(dirname, BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR))) {
         type = WDB_SHARED_GROUPS;
     } else {
         mterror(WM_DATABASE_LOGTAG, "Directory name '%s' not recognized.", dirname);
@@ -817,7 +817,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (wdb_get_agent_status(id_agent) < 0) {
-            snprintf(del_path, PATH_MAX + 1, DEFAULTDIR GROUPS_DIR "/%03d", id_agent);
+            snprintf(del_path, PATH_MAX + 1, BUILDDIR(DEFAULTDIR,GROUPS_DIR "/%03d"), id_agent);
             unlink(del_path);
             wdb_delete_agent_belongs(id_agent);
             return -1;
@@ -1333,7 +1333,7 @@ void wm_inotify_setup(wm_database * data) {
 
 #ifndef LOCAL
 
-    char keysfile_path[] = KEYSFILE_PATH;
+    char * keysfile_path = KEYSFILE_PATH;
     char * keysfile_dir = dirname(keysfile_path);
 
     if (data->sync_agents) {
@@ -1342,50 +1342,50 @@ void wm_inotify_setup(wm_database * data) {
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agents='%d'", wd_agents);
 
-        if ((wd_agentinfo = inotify_add_watch(inotify_fd, DEFAULTDIR AGENTINFO_DIR, IN_CLOSE_WRITE | IN_ATTRIB | IN_MOVED_TO)) < 0)
+        if ((wd_agentinfo = inotify_add_watch(inotify_fd, BUILDDIR(DEFAULTDIR,AGENTINFO_DIR), IN_CLOSE_WRITE | IN_ATTRIB | IN_MOVED_TO)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent info directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_agentinfo='%d'", wd_agentinfo);
 
-        if ((wd_groups = inotify_add_watch(inotify_fd, DEFAULTDIR GROUPS_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
+        if ((wd_groups = inotify_add_watch(inotify_fd, BUILDDIR(DEFAULTDIR,GROUPS_DIR), IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the agent groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_groups='%d'", wd_groups);
 
-        if ((wd_shared_groups = inotify_add_watch(inotify_fd, DEFAULTDIR SHAREDCFG_DIR, IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
+        if ((wd_shared_groups = inotify_add_watch(inotify_fd, BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR), IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_CREATE | IN_DELETE)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch the shared groups directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_shared_groups='%d'", wd_shared_groups);
 
         wm_sync_agents();
-        wm_sync_multi_groups(DEFAULTDIR SHAREDCFG_DIR);
+        wm_sync_multi_groups(BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR));
         wdb_agent_belongs_first_time();
-        wm_scan_directory(DEFAULTDIR AGENTINFO_DIR);
+        wm_scan_directory(BUILDDIR(DEFAULTDIR,AGENTINFO_DIR));
     }
 
 #endif
 
     if (data->sync_syscheck) {
-        if ((wd_syscheck = inotify_add_watch(inotify_fd, DEFAULTDIR SYSCHECK_DIR, IN_MODIFY)) < 0)
+        if ((wd_syscheck = inotify_add_watch(inotify_fd, BUILDDIR(DEFAULTDIR,SYSCHECK_DIR), IN_MODIFY)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch Syscheck directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_syscheck='%d'", wd_syscheck);
-        wm_scan_directory(DEFAULTDIR SYSCHECK_DIR);
+        wm_scan_directory(BUILDDIR(DEFAULTDIR,SYSCHECK_DIR));
     }
 
     if (data->sync_rootcheck) {
-        if ((wd_rootcheck = inotify_add_watch(inotify_fd, DEFAULTDIR ROOTCHECK_DIR, IN_MODIFY)) < 0)
+        if ((wd_rootcheck = inotify_add_watch(inotify_fd, BUILDDIR(DEFAULTDIR,ROOTCHECK_DIR), IN_MODIFY)) < 0)
             mterror(WM_DATABASE_LOGTAG, "Couldn't watch Rootcheck directory: %s.", strerror(errno));
 
         mtdebug2(WM_DATABASE_LOGTAG, "wd_rootcheck='%d'", wd_rootcheck);
-        wm_scan_directory(DEFAULTDIR ROOTCHECK_DIR);
+        wm_scan_directory(BUILDDIR(DEFAULTDIR,ROOTCHECK_DIR));
     }
 }
 
 // Real time inotify reader thread
 static void * wm_inotify_start(__attribute__((unused)) void * args) {
     char buffer[IN_BUFFER_SIZE];
-    char keysfile_dir[] = KEYSFILE_PATH;
+    char * keysfile_dir = KEYSFILE_PATH;
     char * keysfile = keysfile_dir;
     struct inotify_event *event = (struct inotify_event *)buffer;
     char * dirname = NULL;
@@ -1437,17 +1437,17 @@ static void * wm_inotify_start(__attribute__((unused)) void * args) {
                             continue;
                         }
                     } else if (event->wd == wd_agentinfo) {
-                        dirname = DEFAULTDIR AGENTINFO_DIR;
+                        dirname = BUILDDIR(DEFAULTDIR,AGENTINFO_DIR);
                     } else if (event->wd == wd_groups) {
-                        dirname = DEFAULTDIR GROUPS_DIR;
+                        dirname = BUILDDIR(DEFAULTDIR,GROUPS_DIR);
                     } else if (event->wd == wd_shared_groups) {
-                        dirname = DEFAULTDIR SHAREDCFG_DIR;
+                        dirname = BUILDDIR(DEFAULTDIR,SHAREDCFG_DIR);
                     } else
 #endif
                     if (event->wd == wd_syscheck) {
-                        dirname = DEFAULTDIR SYSCHECK_DIR;
+                        dirname = BUILDDIR(DEFAULTDIR,SYSCHECK_DIR);
                     } else if (event->wd == wd_rootcheck) {
-                        dirname = DEFAULTDIR ROOTCHECK_DIR;
+                        dirname = BUILDDIR(DEFAULTDIR,ROOTCHECK_DIR);
                     } else if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
                         mterror(WM_DATABASE_LOGTAG, "Inotify event queue overflowed.");
                         continue;

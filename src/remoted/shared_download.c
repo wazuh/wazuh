@@ -536,7 +536,7 @@ void w_create_group(char *group){
 
     char group_path[PATH_MAX] = {0};
 
-    if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : DEFAULTDIR"/etc/shared/%s",group) >= PATH_MAX){
+    if(snprintf(group_path,PATH_MAX,isChroot() ? "/etc/shared/%s" : BUILDDIR(DEFAULTDIR,"/etc/shared/%s"),group) >= PATH_MAX){
         mwarn(W_PARSER_GROUP_TOO_LARGE,PATH_MAX);
     }
     else{

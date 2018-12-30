@@ -16,8 +16,8 @@
 #define WM_OSCAP_DEF_INTERVAL   86400   // Default cycle interval (1 day)
 
 #define WM_OSCAP_LOGTAG ARGV0 ":oscap"
-#define WM_OSCAP_DEFAULT_DIR WM_DEFAULT_DIR "/oscap"
-#define WM_OSCAP_SCRIPT_PATH WM_OSCAP_DEFAULT_DIR "/oscap.py"
+#define WM_OSCAP_DEFAULT_DIR BUILDDIR(WM_DEFAULT_DIR,"/oscap")
+#define WM_OSCAP_SCRIPT_PATH BUILDDIR(WM_OSCAP_DEFAULT_DIR,"/oscap.py")
 
 typedef enum wm_oscap_eval_t { WM_OSCAP_XCCDF = 1, WM_OSCAP_OVAL } wm_oscap_eval_t;
 

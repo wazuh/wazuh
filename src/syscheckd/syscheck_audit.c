@@ -22,11 +22,11 @@
 
 #define ADD_RULE 1
 #define DELETE_RULE 2
-#define AUDIT_CONF_FILE DEFAULTDIR "/etc/af_wazuh.conf"
+#define AUDIT_CONF_FILE BUILDDIR(DEFAULTDIR,"/etc/af_wazuh.conf")
 #define PLUGINS_DIR_AUDIT_2 "/etc/audisp/plugins.d"
 #define PLUGINS_DIR_AUDIT_3 "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK "af_wazuh.conf"
-#define AUDIT_SOCKET DEFAULTDIR "/queue/ossec/audit"
+#define AUDIT_SOCKET BUILDDIR(DEFAULTDIR,"/queue/ossec/audit")
 #define BUF_SIZE 6144
 #define AUDIT_KEY "wazuh_fim"
 #define AUDIT_LOAD_RETRIES 5 // Max retries to reload Audit rules

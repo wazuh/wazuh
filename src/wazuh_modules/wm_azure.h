@@ -14,8 +14,8 @@
 #define WM_AZURE
 
 #define WM_AZURE_LOGTAG ARGV0 ":" AZ_WM_NAME
-#define AZURE_PATH WM_DEFAULT_DIR "/azure"
-#define WM_AZURE_SCRIPT_PATH AZURE_PATH "/azure-logs"
+#define AZURE_PATH BUILDDIR(WM_DEFAULT_DIR,"/azure")
+#define WM_AZURE_SCRIPT_PATH BUILDDIR(AZURE_PATH,"/azure-logs")
 
 #define LOG_ANALYTICS   0
 #define GRAPHS          1

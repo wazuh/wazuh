@@ -20,7 +20,7 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     int arq = 0;
     int key_id = 0;
     int ar_location = 0;
-    const char * path = isChroot() ? ARQUEUE : DEFAULTDIR ARQUEUE;
+    const char * path = isChroot() ? ARQUEUE : BUILDDIR(DEFAULTDIR,ARQUEUE);
 
     char msg_to_send[OS_SIZE_1024 + 1];
 
