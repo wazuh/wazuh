@@ -518,14 +518,24 @@ int OS_CloseSocket(int socket)
 
 int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
+#ifdef WIN32
+    DWORD ms = seconds * 1000 + useconds / 1000;
+    return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&ms, sizeof(ms));
+#else
     struct timeval tv = { seconds, useconds };
     return setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
+#endif
 }
 
 int OS_SetSendTimeout(int socket, int seconds)
 {
+#ifdef WIN32
+    DWORD ms = seconds * 1000;
+    return setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, (const void *)&ms, sizeof(ms));
+#else
     struct timeval tv = { seconds, 0 };
     return setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, (const void *)&tv, sizeof(tv));
+#endif
 }
 
 /* Send secure TCP message
