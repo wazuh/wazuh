@@ -97,7 +97,11 @@ int connect_server(int initial_id)
 
         if (agt->sock < 0) {
             agt->sock = -1;
+#ifdef WIN32
+            merror(CONNS_ERROR, tmp_str, win_strerror(WSAGetLastError()));
+#else
             merror(CONNS_ERROR, tmp_str, strerror(errno));
+#endif
             rc++;
 
             if (agt->server[rc].rip == NULL) {

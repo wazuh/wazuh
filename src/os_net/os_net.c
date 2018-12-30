@@ -274,7 +274,9 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
         server.sin_addr.s_addr = inet_addr(_ip);
 
         if (connect(ossock, (struct sockaddr *)&server, sizeof(server)) < 0) {
+            int error = WSAGetLastError();
             OS_CloseSocket(ossock);
+            WSASetLastError(error);
             return (OS_SOCKTERR);
         }
     }
