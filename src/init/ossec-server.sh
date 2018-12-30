@@ -221,6 +221,25 @@ status()
         else
             first=false
         fi
+        ## If wazuh-clusterd is disabled, don't give us this "RETVAL=1".
+        if [ X"$i" = "Xwazuh-clusterd" ]; then
+            start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+            end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
+            if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
+                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
+                if [ $? = 0 ]; then
+                    continue
+                fi
+            fi
+        fi
+        ## If ossec-maild is disabled, don't screw up RETVAL for that either! 
+        if [ X"$i" = "Xossec-maild" ]; then
+            grep "<email_notification>no<" ${DIR}/etc/ossec.conf >/dev/null 2>&1
+            if [ $? = 0 ]; then
+                continue
+            fi
+        fi
+
         pstatus ${i};
         if [ $? = 0 ]; then
             if [ $USE_JSON = true ]; then
