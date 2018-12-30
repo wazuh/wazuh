@@ -1641,7 +1641,7 @@ clean-windows:
 	rm -f win32/netsh.cmd
 	rm -f win32/netsh-win-2016.cmd
 	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
-	rm -f win32/icon.o win32/resource.o
+	rm -f win32/icon.o win32/resource.o win32/ui_resource.o win32/auth_resource.o
 	rm -f ${WINDOWS_BINS}
 	rm -f win32/wazuh-agent-*.exe
 	rm -f win32/libwinpthread-1.dll
