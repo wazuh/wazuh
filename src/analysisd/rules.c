@@ -1908,16 +1908,19 @@ static void printRuleinfo(const RuleInfo *rule, int node)
 /* Add rule to hash */
 int AddHash_Rule(RuleNode *node)
 {
+    char id_key[15] = {'\0'};
+    
     while (node) {
-        char id_key[15];
-
         snprintf(id_key, 14, "%d", node->ruleinfo->sigid);
 
         /* Add key to hash */
-        OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo);
-        if (node->child) {
-            AddHash_Rule(node->child);
+        /* Ignore if the key is already stored */
+        if (!OSHash_Add(Config.g_rules_hash, id_key, node->ruleinfo)) {
+            merror("At AddHash_Rule(): OSHash_Add() failed");
+            break;
         }
+        
+        if (node->child) AddHash_Rule(node->child);
 
         node = node->next;
     }

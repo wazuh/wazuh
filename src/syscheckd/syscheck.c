@@ -73,6 +73,12 @@ static void read_internal(int debug_level)
     return;
 }
 
+void free_syscheck_node_data(syscheck_node *data) {
+    if (!data) return;
+    if (data->checksum) free(data->checksum);
+    free(data);
+}
+
 // Initialize syscheck variables
 int fim_initialize() {
     /* Create store data */
@@ -83,7 +89,11 @@ int fim_initialize() {
 #endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
-
+    
+    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) merror_exit("At fim_initialize(): OSHash_Create() failed");
+    
+    OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
+    
     return 0;
 }
 

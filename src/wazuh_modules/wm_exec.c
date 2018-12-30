@@ -261,7 +261,6 @@ void wm_kill_children() {
 // Unix version ----------------------------------------------------------------
 
 #include <unistd.h>
-#define EXECVE_ERROR 0xFF
 
 #ifndef _GNU_SOURCE
 extern char ** environ;
@@ -283,6 +282,10 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     struct timespec timeout = { 0, 0 };
     int retval = -1;
     int status;
+
+    if (exitcode) {
+        *exitcode = 0;
+    }
 
     // Create pipe for child's stdout
 
@@ -421,9 +424,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             default:
                 if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                    merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                    mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
                     retval = -1;
-                } else if (exitcode)
+                }
+
+                if (exitcode)
                     *exitcode = WEXITSTATUS(status);
             }
 
@@ -483,9 +488,11 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
                     default:
                         if (WEXITSTATUS(status) == EXECVE_ERROR) {
-                            merror("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
+                            mdebug1("Invalid command: '%s': (%d) %s", command, errno, strerror(errno));
                             retval = -1;
-                        } else if (exitcode)
+                        }
+
+                        if (exitcode)
                             *exitcode = WEXITSTATUS(status);
                 }
             }

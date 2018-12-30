@@ -46,6 +46,14 @@
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
+  <rule id="505" level="3">
+    <if_sid>500</if_sid>
+    <options>alert_by_email</options>
+    <match>Agent removed</match>
+    <description>Ossec agent removed.</description>
+    <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,</group>
+  </rule>
+
   <rule id="509" level="0">
     <category>ossec</category>
     <decoded_as>rootcheck</decoded_as>

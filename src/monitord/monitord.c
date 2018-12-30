@@ -137,6 +137,7 @@ cJSON *getMonitorInternalOptions(void) {
     cJSON_AddNumberToObject(monconf,"rotate_log",mond.rotate_log);
     cJSON_AddNumberToObject(monconf,"size_rotate",mond.size_rotate);
     cJSON_AddNumberToObject(monconf,"daily_rotations",mond.daily_rotations);
+    cJSON_AddNumberToObject(monconf,"delete_old_agents",mond.delete_old_agents);
 
     cJSON_AddItemToObject(root,"monitord",monconf);
 

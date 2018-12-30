@@ -482,6 +482,9 @@ help: failtarget
 	@echo "   make USE_AUDIT=1             Build with audit service support"
 	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
+	@echo "   make DISABLE_SHARED=true	   Not to build the Wazuh shared library (for unsupported systems)"
+	@echo "   make DISABLE_SYSC=true       Not to build the Syscollector module (for unsupported systems)"
+	@echo "   make DISABLE_CISCAT=true     Not to build the CIS-CAT module (for unsupported systems)"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
