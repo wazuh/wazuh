@@ -145,6 +145,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 #ifndef BUILDDIR
+#if (defined(WAZUH_HOME_ENV) && defined(FALLBACKDIR))
 #define BUILDDIR(x,y)   ({ \
     char wazuh_fulldir[MAXPATHLEN+1] = {'\0'}; \
     char *wazuh_str1 = (x); \
@@ -152,6 +153,9 @@ https://www.gnu.org/licenses/gpl.html\n"
     if (wazuh_str1 && *wazuh_str1 && wazuh_str2 && *wazuh_str2) snprintf(wazuh_fulldir, MAXPATHLEN, "%s%s", wazuh_str1, wazuh_str2); \
     wazuh_fulldir; \
 })
+#else
+#define BUILDDIR(x,y)   x y
+#endif
 #endif
 
 /* Default queue */
