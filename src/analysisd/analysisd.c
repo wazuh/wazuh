@@ -707,7 +707,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     OS_InitLog();
 
     /* Initialize the integrity database */
-    fim_init();
+    if (!fim_init()) merror_exit("fim: Initialization failed");
 
     /* Initialize Rootcheck */
     RootcheckInit();
@@ -803,7 +803,8 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initialize label cache */
-    labels_init();
+    if (!labels_init()) merror_exit("Error allocating labels");
+    
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 

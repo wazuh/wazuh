@@ -19,7 +19,7 @@ typedef struct wlabel_data_t {
 } wlabel_data_t;
 
 /* Initialize label cache */
-void labels_init();
+int labels_init();
 
 /* Find the label array for an agent. Returns NULL if no such agent file found. */
 wlabel_t* labels_find(const Eventinfo *lf);

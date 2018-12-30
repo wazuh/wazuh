@@ -98,6 +98,7 @@ int main(int argc, char ** argv) {
 
     //sock_queue = queue_init(config.sock_queue_size);
     open_dbs = OSHash_Create();
+    if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
 
     mdebug1(STARTED_MSG);
 
@@ -392,8 +393,8 @@ void * run_up(__attribute__((unused)) void * args) {
     fd = opendir(db_folder);
 
     if (!fd) {
-        os_free(db_folder);
         mdebug1("Opening directory: '%s': %s", db_folder, strerror(errno));
+        os_free(db_folder);
         return NULL;
     }
 
@@ -416,7 +417,7 @@ void * run_up(__attribute__((unused)) void * args) {
             free(entry);
             continue;
         }
-        
+
         *(name++) = '\0';
         wdb = wdb_open_agent2(atoi(entry));
         mdebug2("Upgraded DB for agent '%s' in run_up", wdb->agent_id);

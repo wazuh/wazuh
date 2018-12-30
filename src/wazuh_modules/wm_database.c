@@ -817,7 +817,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (wdb_get_agent_status(id_agent) < 0) {
-            snprintf(del_path, PATH_MAX + 1, BUILDDIR(DEFAULTDIR,GROUPS_DIR "/%03d"), id_agent);
+            snprintf(del_path, PATH_MAX - 1, BUILDDIR(DEFAULTDIR,GROUPS_DIR "/%03d"), id_agent);
             unlink(del_path);
             wdb_delete_agent_belongs(id_agent);
             return -1;
