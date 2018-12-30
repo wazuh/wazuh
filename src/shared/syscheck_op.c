@@ -106,7 +106,7 @@ void normalize_path(char * path) {
 
 int remove_empty_folders(const char *path) {
     const char LOCALDIR[] = { PATH_SEP, 'l', 'o', 'c', 'a', 'l', '\0' };
-    char DIFF_PATH[MAXPATHLEN] = {'\0'};
+    char DIFF_PATH[MAXPATHLEN+1] = {'\0'};
     snprintf(DIFF_PATH, MAXPATHLEN, "%s%s", DIFF_DIR_PATH, LOCALDIR);
     const char *c;
     char parent[PATH_MAX] = "\0";
