@@ -30,9 +30,9 @@ int labels_init() {
         merror(MEM_ERROR, errno, strerror(errno));
         return (0);
     }
-    
+
     OSHash_SetFreeDataPointer(label_cache, (void (*)(void *))free_label_cache);
-    
+
     label_mutex = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
     return (1);
 }
@@ -111,7 +111,7 @@ wlabel_t* labels_find(const Eventinfo *lf) {
 
         if (mtime == -1) {
             if (!data->error_flag) {
-                merror("Getting stats for agent %s (%s). Getting old data.", hostname, ip);
+                minfo("Cannot get agent-info file for agent %s (%s). Using old labels.", hostname, ip);
                 data->error_flag = 1;
             }
         } else if (mtime > data->mtime + Config.label_cache_maxage) {
@@ -129,8 +129,6 @@ wlabel_t* labels_find(const Eventinfo *lf) {
                 return NULL;
             }
 
-            labels_free(data->labels);
-            free(data);
             data = new_data;
             data->error_flag = 0;
         }
