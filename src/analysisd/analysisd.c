@@ -374,7 +374,6 @@ int main_analysisd(int argc, char **argv)
         mwarn("All alert formats are disabled. Mail reporting, Syslog client and Integrator won't work properly.");
     }
 
-    init_agent_metadata();
 
 #ifdef LIBGEOIP_ENABLED
     Config.geoip_jsonout = getDefine_Int("analysisd", "geoip_jsonout", 0, 1);
@@ -617,6 +616,8 @@ int main_analysisd(int argc, char **argv)
     Config.logfw = (u_int8_t) getDefine_Int("analysisd",
                                  "log_fw",
                                  0, 1);
+
+    init_agent_metadata();
 
     /* Success on the configuration test */
     if (test_config) {

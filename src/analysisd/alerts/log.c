@@ -15,6 +15,7 @@
 #include "rules.h"
 #include "eventinfo.h"
 #include "config.h"
+#include "agent-metadata.h"
 
 /* Drop/allow patterns */
 static OSMatch FWDROPpm;
@@ -310,7 +311,7 @@ void OS_Log(Eventinfo *lf)
         labels[0] = '\0';
     }
 
-    set_agent_metadata(agent_metadata, OS_MAXSTR,(char***)OSHash_Get(agents_info,lf->agent_id));
+    set_agent_metadata(agent_metadata, OS_MAXSTR,(wlabel_t *)OSHash_Get(agents_info,lf->agent_id));
 
     /* Writing to the alert log file */
     fprintf(_aflog,

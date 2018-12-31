@@ -90,6 +90,9 @@ typedef enum wdb_stmt {
     WDB_STMT_SCAN_INFO_GET1C,
     WDB_STMT_SCAN_INFO_GET2C,
     WDB_STMT_SCAN_INFO_GET3C,
+    WDB_STMT_NETADDR_GET,
+    WDB_STMT_OSINFO_GET,
+    WDB_STMT_NETINFO_GET,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -320,6 +323,9 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Network info from DB.
 int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 
+// Get MACs info from DB.
+int wdb_netinfo_get(wdb_t * wdb, char * output);
+
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
 int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp);
 
@@ -332,11 +338,17 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char 
 // Save IPv4/IPv6 address info into DB.
 int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast);
 
+// Get IPv4/Ipv6 address from DB.
+int wdb_netaddr_get(wdb_t * wdb, char * output);
+
 // Insert OS info tuple. Return 0 on success or -1 on error.
 int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
 
 // Save OS info into DB.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version);
+
+// Get OS info from DB.
+int wdb_osinfo_get(wdb_t * wdb, char * output);
 
 // Insert HW info tuple. Return 0 on success or -1 on error.
 int wdb_hardware_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * serial, const char * cpu_name, int cpu_cores, const char * cpu_mhz, uint64_t ram_total, uint64_t ram_free, int ram_usage);

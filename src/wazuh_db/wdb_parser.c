@@ -695,6 +695,17 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
 
         return result;
 
+    } else if (strcmp(curr, "get") == 0) {
+
+        curr = next;
+
+        if (result = wdb_netinfo_get(wdb, output), result < 0) {
+            mdebug1("at wdb_parse_netinfo(): Cannot get netinfo information");
+        }
+
+        return result;
+
+
     } else {
         mdebug1("Invalid netinfo query syntax.");
         mdebug2("DB query error near: %s", curr);
@@ -887,6 +898,15 @@ int wdb_parse_netaddr(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netaddr information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+
+    } else if (strcmp(curr, "get") == 0){
+        curr = next;
+
+        if (result = wdb_netaddr_get(wdb, output), result < 0) {
+            mdebug1("at wdb_parse_netaddr(): Cannot get netaddr information");
         }
 
         return result;
@@ -1125,6 +1145,15 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "get") == 0) {
+        curr = next;
+
+        if (result = wdb_osinfo_get(wdb, output), result < 0) {
+            mdebug1("at wdb_parse_osinfo(): Cannot get osinfo information");
+        }
+
+        return result;
+
     } else {
         mdebug1("Invalid OS info query syntax.");
         mdebug2("DB query error near: %s", curr);
@@ -2457,5 +2486,77 @@ int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output) {
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid CISCAT query syntax, near '%.32s'", curr);
         return -1;
+    }
+}
+int wdb_netaddr_get(wdb_t * wdb, char * output){
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_NETADDR_GET) < 0) {
+        mdebug1("at wdb_netaddr_get(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_NETADDR_GET];
+    
+    switch (sqlite3_step(stmt)) {
+        int z = 0;
+        case SQLITE_ROW:
+            z += snprintf(output + z, OS_SIZE_256 + 1 -z, "%s|%s", (char *)sqlite3_column_text(stmt,0), (char *)sqlite3_column_text(stmt,1));
+            while(SQLITE_ROW == sqlite3_step(stmt))
+                z += snprintf(output + z, OS_SIZE_256 + 1 -z, "|%s|%s", (char *)sqlite3_column_text(stmt,0), (char *)sqlite3_column_text(stmt,1));
+            return 0;
+            break;
+        default:
+            snprintf(output, OS_MAXSTR + 1, "err Cannot get netaddr information.");
+            mdebug1("at wdb_metadata_get_entry(): at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+    }
+
+}
+
+int wdb_osinfo_get(wdb_t * wdb, char * output){
+    sqlite3_stmt *stmt = NULL;
+
+    if(wdb_stmt_cache(wdb, WDB_STMT_OSINFO_GET) < 0) {
+        mdebug1("at wdb_osinfo_get(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_OSINFO_GET];
+
+    switch( sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            snprintf(output, OS_SIZE_256 + 1, "%s|%s|%s|%s", (char *)sqlite3_column_text(stmt,0), (char *)sqlite3_column_text(stmt,1), (char *)sqlite3_column_text(stmt,2), (char *)sqlite3_column_text(stmt,3));
+            return 0;
+            break;
+        default:
+            snprintf(output, OS_MAXSTR +1, "err Cannot get osinfo information.");
+            mdebug1("at wdb_metadata_get_entry(): at sqlite3_step: %s", sqlite3_errmsg(wdb->db));
+            return -1;
+    }
+}
+
+int wdb_netinfo_get(wdb_t * wdb, char * output){
+    sqlite3_stmt *stmt = NULL;
+
+    if(wdb_stmt_cache(wdb, WDB_STMT_NETINFO_GET) < 0) {
+        mdebug1("at wdb_netinfo_get(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_NETINFO_GET];
+
+    switch( sqlite3_step(stmt)) {
+        int z = 0;
+        case SQLITE_ROW:
+            z += snprintf(output + z, OS_SIZE_256 + 1 -z, "%s", (char *)sqlite3_column_text(stmt,0));
+            while(SQLITE_ROW == sqlite3_step(stmt))
+                z += snprintf(output + z, OS_SIZE_256 + 1 -z, "|%s", (char *)sqlite3_column_text(stmt,0));
+            return 0;
+            break;
+        default:
+            snprintf(output, OS_MAXSTR +1, "err Cannot get netinfo information.");
+            mdebug1("at wdb_metadata_get_entry(): at sqlite3_step: %s", sqlite3_errmsg(wdb->db));
+            return -1;
     }
 }

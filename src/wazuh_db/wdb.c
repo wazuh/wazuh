@@ -69,7 +69,10 @@ static const char *SQL_STMT[] = {
     "SELECT end_scan FROM scan_info WHERE module = ?;",
     "SELECT fim_first_check FROM scan_info WHERE module = ?;",
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
-    "SELECT fim_third_check FROM scan_info WHERE module = ?;"
+    "SELECT fim_third_check FROM scan_info WHERE module = ?;",
+    "SELECT proto, address FROM sys_netaddr;",
+    "SELECT os_name, os_version, hostname, scan_time FROM sys_osinfo;",
+    "SELECT mac FROM sys_netiface"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -164,9 +167,11 @@ wdb_t * wdb_open_agent2(int agent_id) {
     // Find BD in pool
 
     w_mutex_lock(&pool_mutex);
-
-    if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
-        goto success;
+    
+    if(open_dbs){
+        if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
+            goto success;
+        }
     }
 
     // Try to open DB

@@ -15,7 +15,7 @@
 #include "cJSON.h"
 #include "config.h"
 #include "wazuh_modules/wmodules.h"
-#include "analysisd.h"
+#include "agent-metadata.h"
 
 /* Convert Eventinfo to json */
 char* Eventinfo_to_jsonstr(const Eventinfo* lf)
@@ -35,7 +35,7 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     extern long int __crt_ftell;
 
-    agent_metadata = set_agent_metadata_json((char***)OSHash_Get(agents_info,lf->agent_id));
+    agent_metadata = set_agent_metadata_json((wlabel_t *)OSHash_Get(agents_info,lf->agent_id));
 
     root = cJSON_CreateObject();
 
