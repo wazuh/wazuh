@@ -315,6 +315,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Close key file */
     fclose(fp);
+    fp = NULL;
 
     /* Clear one last time before leaving */
     __memclear(id, name, ip, key, KEYSIZE + 1);

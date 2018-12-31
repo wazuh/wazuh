@@ -574,7 +574,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             char *bugzilla_reference;
             char *cwe;
             char *advisories;
-            char state[50];
+            char state[50] = {0};
             int v_type;
 
             cve = (char *)sqlite3_column_text(stmt, 0);
@@ -1745,7 +1745,9 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
 
     if (!reg) {
         os_calloc(1, sizeof(OSRegex), reg);
-        OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING);
+        if(OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING) == 0) {
+            goto error;
+        }
     }
 
     if (retv = OSRegex_Execute(raw, reg), retv) {
@@ -2111,6 +2113,10 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                 } else {
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UNEXP_JSON_KEY, cve_content->string);
                 }
+            }
+
+            if(!tmp_bugzilla_description || !tmp_cve) {
+                return 1;
             }
 
             wm_vuldet_adapt_title(tmp_bugzilla_description, tmp_cve);

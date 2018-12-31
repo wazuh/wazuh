@@ -689,7 +689,7 @@ end:
     return 0;
 }
 
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, unsigned int is_link)
+int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
 {
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);

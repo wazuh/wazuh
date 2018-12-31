@@ -107,6 +107,7 @@ int delete_old_agent(const char *agent){
         if (sock = auth_connect(), sock < 0) {
             mdebug1("Monitord could not connecto to Authd socket. Is Authd running?");
             val = -1;
+            free(agent_id);
             return val;
         }
         val = auth_remove_agent(sock, agent_id, json_output);   
