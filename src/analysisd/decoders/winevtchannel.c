@@ -241,7 +241,7 @@ int DecodeWinevt(Eventinfo *lf){
                                 os_free(filtered_string);
                             }
                         } else {
-                            mdebug1("Unexpected element (%s).", child[p]->element);
+                            mdebug1("Unexpected element (%s). Decoding it.", child[j]->element);
                             
                             XML_NODE extra_data_child = NULL;
                             extra_data_child = OS_GetElementsbyNode(&xml, child_attr[p]);
