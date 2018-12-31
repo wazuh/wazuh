@@ -248,6 +248,7 @@ int _setlevels(RuleNode *node, int nnode);
 #define SYSCHECK_DEL        "syscheck_deleted"
 #define SYSCOLLECTOR_MOD    "syscollector"
 #define CISCAT_MOD          "ciscat"
+#define WINEVT_MOD          "windows_eventchannel"
 
 /* Global variables */
 extern int _max_freq;

@@ -51,7 +51,6 @@ static pthread_mutexattr_t win_el_mutex_attr;
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
 
-
 static char *rand_keepalive_str(char *dst, int size)
 {
     static const char text[] = "abcdefghijklmnopqrstuvwxyz"
@@ -158,18 +157,14 @@ void LogCollectorStart()
             minfo(READING_EVTLOG, current->file);
             win_start_event_channel(current->file, current->future, current->query);
 #else
-            mwarn("eventchannel not available on this version of OSSEC");
+            mwarn("eventchannel not available on this version of Windows");
 #endif
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
-            current->file = NULL;
-            current->command = NULL;
-            current->fp = NULL;
-        }
-
-        else if (strcmp(current->logformat, "command") == 0) {
+        
+        } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
             current->size = 0;
@@ -534,7 +529,12 @@ void LogCollectorStart()
                         continue;
                     }
 
-                    minfo(LOGC_FILE_ERROR, current->file);
+                    if(!strcmp(current->logformat, "eventchannel")){
+                        mdebug1(LOGC_FILE_ERROR, current->file);
+                    } else {
+                        minfo(LOGC_FILE_ERROR, current->file);
+                    }
+
                     if (current->fp) {
                         fclose(current->fp);
 #ifdef WIN32
