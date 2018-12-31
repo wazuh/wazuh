@@ -487,7 +487,7 @@ int key_request_reconnect() {
             } else {
                 if(OS_SetSendTimeout(socket, 5) < 0){
                     close(socket);
-                    return -1;
+                    continue;
                 }
                 key_request_available = 1;
                 return socket;
