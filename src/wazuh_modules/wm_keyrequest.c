@@ -499,7 +499,8 @@ void * w_socket_launcher(void * args) {
 
         // At this point, the process exited
 
-        wstatus = WEXITSTATUS(wpclose(wfd));
+        wstatus = wpclose(wfd);
+        wstatus = WEXITSTATUS(wstatus);
 
         if (wstatus == EXECVE_ERROR) {
             // 0x7F means error in exec
