@@ -387,7 +387,7 @@ void * run_up(__attribute__((unused)) void * args) {
     char * name;
     char * entry;
 
-    os_calloc(PATH_MAX, sizeof(char), db_folder);
+    os_calloc(PATH_MAX + 1, sizeof(char), db_folder);
     snprintf(db_folder, PATH_MAX, "%s", WDB2_DIR);
 
     fd = opendir(db_folder);
@@ -425,6 +425,7 @@ void * run_up(__attribute__((unused)) void * args) {
         free(entry);
     }
 
+    os_free(db_folder);
     closedir(fd);
     return NULL;
 }

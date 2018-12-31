@@ -1142,6 +1142,7 @@ void w_set_file_mutexes(){
                 break;
             }
         }
+        w_mutex_destroy(&current->mutex); /* Could initialized on check_pattern_expand() */
         w_mutex_init(&current->mutex, &attr);
     }
     

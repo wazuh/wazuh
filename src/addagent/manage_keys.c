@@ -392,9 +392,15 @@ int k_bulkload(const char *cmdbulk)
             continue;
         }
 
-        if (sock < 0 && IPExist(ip)) {
+        char *ip_exist = NULL;
+        if (sock < 0 && (ip_exist = IPExist(ip))) {
+            os_free(ip_exist);
             printf(IP_ERROR, ip);
             continue;
+        }
+
+        if(ip_exist) {
+            os_free(ip_exist);
         }
 
         if (sock < 0) {

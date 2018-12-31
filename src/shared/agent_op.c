@@ -685,7 +685,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip,const ch
                 return result;
             }
 
-            if (data_id = cJSON_GetObjectItem(data, "id"), !data) {
+            if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
                 if(exit_on_error){
                     merror_exit("No id received.");
                 }
@@ -721,6 +721,7 @@ char * get_agent_id_from_name(const char *agent_name) {
     if(!fp) { 
         mdebug1("Couldnt open file '%s'",path);
         os_free(path);
+        os_free(buffer);
         return NULL;
     }
 
@@ -758,6 +759,8 @@ char * get_agent_id_from_name(const char *agent_name) {
             os_free(buffer);
             return id;
         }
+
+        free_strarray(parts);
     }
 
     fclose(fp);
