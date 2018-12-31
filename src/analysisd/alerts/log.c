@@ -311,7 +311,11 @@ void OS_Log(Eventinfo *lf)
         labels[0] = '\0';
     }
 
-    set_agent_metadata(agent_metadata, OS_MAXSTR,(wlabel_t *)OSHash_Get(agents_info,lf->agent_id));
+    if(agents_info){
+        set_agent_metadata(agent_metadata, OS_MAXSTR,(wlabel_t *)OSHash_Get(agents_info,lf->agent_id));
+    } else if(!db_consulted){
+        init_agent_metadata();
+    }
 
     /* Writing to the alert log file */
     fprintf(_aflog,

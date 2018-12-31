@@ -3,6 +3,7 @@
 #include "os_net/os_net.h"
 
 int agents_num;
+int db_consulted;
 
 typedef struct agent_conf{
     char id[7];

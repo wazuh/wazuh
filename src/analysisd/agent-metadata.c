@@ -1,11 +1,14 @@
 #include "agent-metadata.h"
 
 void init_agent_metadata(){
-    /* Here it read the config*/
+    /* Read the config*/
     
     wlabel_t **agent_metadata;
     agents_info = OSHash_Create();
 
+    /* Query the Wazuh DB for the agents read in the config*/
+
+    db_consulted = 1;
 }
 
 

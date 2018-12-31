@@ -35,8 +35,12 @@ char* Eventinfo_to_jsonstr(const Eventinfo* lf)
 
     extern long int __crt_ftell;
 
-    agent_metadata = set_agent_metadata_json((wlabel_t *)OSHash_Get(agents_info,lf->agent_id));
-
+    if(agents_info){
+        agent_metadata = set_agent_metadata_json((wlabel_t *)OSHash_Get(agents_info,lf->agent_id));
+    } else if(!db_consulted){
+        init_agent_metadata();
+    }
+    
     root = cJSON_CreateObject();
 
     // Parse timestamp

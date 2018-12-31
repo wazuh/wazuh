@@ -617,7 +617,6 @@ int main_analysisd(int argc, char **argv)
                                  "log_fw",
                                  0, 1);
 
-    init_agent_metadata();
 
     /* Success on the configuration test */
     if (test_config) {
