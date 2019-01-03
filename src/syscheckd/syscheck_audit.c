@@ -1084,6 +1084,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
     }
 
+    free(cache);
     free(buffer);
 }
 
@@ -1168,6 +1169,7 @@ int audit_health_check(int audit_socket) {
         goto exit_err;
     }
 
+    fclose(fp);
     mdebug2("Whodata health-check: Waiting creation event...");
 
     while (!audit_health_check_creation && timer > 0) {
@@ -1183,7 +1185,6 @@ int audit_health_check(int audit_socket) {
 
     // Delete that file
     unlink(AUDIT_HEALTHCHECK_FILE);
-    fclose(fp);
 
     timer = 10;
     while (!audit_health_check_deletion && timer > 0) {

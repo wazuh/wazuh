@@ -54,9 +54,11 @@ int audit_print_reply(struct audit_reply *rep) {
         for (i = 0; i < rep->ruledata->field_count; i++) {
             int field = rep->ruledata->fields[i] & ~AUDIT_OPERATORS;
             if (field == AUDIT_DIR || field == AUDIT_WATCH) {
+                free(path);
                 path = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]);
                 offset += rep->ruledata->values[i];
             } else if (field == AUDIT_FILTERKEY) {
+                free(key);
                 if (rep->ruledata->values[i]) {
                     key = strndup(rep->ruledata->buf + offset, rep->ruledata->values[i]);
                     offset += rep->ruledata->values[i];
@@ -86,9 +88,10 @@ int audit_print_reply(struct audit_reply *rep) {
                 rule->key = strdup(key);
                 audit_rules_list_append(_audit_rules_list, rule);
             }
-            free(key);
-            free(path);
         }
+
+        free(key);
+        free(path);
         return 1;
     }
     return 0;
