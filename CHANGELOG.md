@@ -38,6 +38,7 @@ All notable changes to this project will be documented in this file.
 - Fixed error description in the osquery configuration parser (by @pillarsdotnet). ([#1499](https://github.com/wazuh/wazuh/pull/1499))
 - The FTS comment option `<ftscomment>` was not being read (by @pillarsdotnet). ([#1536](https://github.com/wazuh/wazuh/pull/1536))
 - Replaced "getline" function with "fgets" in vulnerability-detector to avoid compilation errors with older versions of libC. ([#1822](https://github.com/wazuh/wazuh/pull/1822))
+- Fix bug in Wazuh DB when trying to store multiple network interfaces with the same IP from Syscollector. ([#1928](https://github.com/wazuh/wazuh/pull/1928))
 - Improved consistency of multigroups. ([#1985](https://github.com/wazuh/wazuh/pull/1985))
 - Fixed the reading of the OS name and version in HP-UX systems. ([#1990](https://github.com/wazuh/wazuh/pull/1990))
 - Prevent the agent from producing an error on platforms that don't support network timeout. ([#2001](https://github.com/wazuh/wazuh/pull/2001))
@@ -55,8 +56,13 @@ All notable changes to this project will be documented in this file.
 - Fixed regular expression for audit.key in audit decoder. ([#2134](https://github.com/wazuh/wazuh/pull/2134))
 - Agent's ossec-control stop should wait a bit after killing a process. ([#2149](https://github.com/wazuh/wazuh/pull/2149))
 - Fixed error ocurred while monitoring symbolic links in Linux. ([#2152](https://github.com/wazuh/wazuh/pull/2152))
-- Fix bug in Wazuh DB when trying to store multiple network interfaces with the same IP from Syscollector. ([#1928](https://github.com/wazuh/wazuh/pull/1928))
+- Fixed some bugs in Logcollector: ([#2154](https://github.com/wazuh/wazuh/pull/2154))
+  - If Logcollector picks up a log exceeding 65279 bytes, that log may lose the null-termination.
+  - Logcollector crashes if multiple wildcard stanzas resolve the same file.
+  - An error getting the internal file position may lead to an undefined condition.
 - Execd daemon now runs even if active response is disabled ([#2177](https://github.com/wazuh/wazuh/pull/2177))
+- Fix network timeout setup in agent running on Windows. ([#2185](https://github.com/wazuh/wazuh/pull/2185))
+
 
 ## [v3.7.2] 2018-12-17
 
