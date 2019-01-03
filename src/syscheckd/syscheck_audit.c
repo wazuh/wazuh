@@ -41,10 +41,10 @@ pthread_mutex_t audit_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_hc_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t audit_rules_mutex = PTHREAD_MUTEX_INITIALIZER;
 int auid_err_reported;
-int hc_thread_active;
+volatile int hc_thread_active;
 
-int audit_health_check_creation;
-int audit_health_check_deletion;
+volatile int audit_health_check_creation;
+volatile int audit_health_check_deletion;
 
 static unsigned int count_reload_retries;
 
