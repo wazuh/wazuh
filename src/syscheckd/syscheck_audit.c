@@ -444,17 +444,19 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
             if (path1[0] == '/') {
                 gen_path = strdup(path1);
             } else if (path1[0] == '.' && path1[1] == '/') {
-                char *full_path = malloc(strlen(cwd) + strlen(path1) + 2);
+                char *full_path;
+                os_malloc(strlen(cwd) + strlen(path1) + 2, full_path);
                 snprintf(full_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, (path1+2));
                 gen_path = strdup(full_path);
                 free(full_path);
             } else if (path1[0] == '.' && path1[1] == '.' && path1[2] == '/') {
                 gen_path = audit_clean_path(cwd, path1);
             } else if (strncmp(path0, path1, strlen(path0)) == 0) {
-                gen_path = malloc(strlen(cwd) + strlen(path1) + 2);
+                os_malloc(strlen(cwd) + strlen(path1) + 2, gen_path);
                 snprintf(gen_path, strlen(cwd) + strlen(path1) + 2, "%s/%s", cwd, path1);
             } else {
-                char *full_path = malloc(strlen(path0) + strlen(path1) + 2);
+                char *full_path;
+                os_malloc(strlen(path0) + strlen(path1) + 2, full_path);
                 snprintf(full_path, strlen(path0) + strlen(path1) + 2, "%s/%s", path0, path1);
                 gen_path = strdup(full_path);
                 free(full_path);
@@ -463,14 +465,15 @@ char *gen_audit_path(char *cwd, char *path0, char *path1) {
             if (path0[0] == '/') {
                 gen_path = strdup(path0);
             } else if (path0[0] == '.' && path0[1] == '/') {
-                char *full_path = malloc(strlen(cwd) + strlen(path0) + 2);
+                char *full_path;
+                os_malloc(strlen(cwd) + strlen(path0) + 2, full_path);
                 snprintf(full_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, (path0+2));
                 gen_path = strdup(full_path);
                 free(full_path);
             } else if (path0[0] == '.' && path0[1] == '.' && path0[2] == '/') {
                 gen_path = audit_clean_path(cwd, path0);
             } else {
-                gen_path = malloc(strlen(cwd) + strlen(path0) + 2);
+                os_malloc(strlen(cwd) + strlen(path0) + 2, gen_path);
                 snprintf(gen_path, strlen(cwd) + strlen(path0) + 2, "%s/%s", cwd, path0);
             }
         }
@@ -966,7 +969,7 @@ void audit_read_events(int *audit_sock, int mode) {
     int conn_retries;
 
     char *buffer;
-    buffer = malloc(BUF_SIZE * sizeof(char));
+    os_malloc(BUF_SIZE * sizeof(char), buffer);
     os_malloc(BUF_SIZE, cache);
 
     while ((mode == READING_MODE && audit_thread_active)

@@ -150,7 +150,8 @@ char *audit_clean_path(char *cwd, char *path) {
             ptr++;
     }
 
-    char *full_path = malloc(strlen(cwd) + strlen(path) + 2);
+    char *full_path;
+    os_malloc(strlen(cwd) + strlen(path) + 2, full_path);
     snprintf(full_path, strlen(cwd) + strlen(path) + 2, "%s/%s", cwd_ptr, file_ptr);
 
     free(cwd_ptr);
@@ -205,7 +206,7 @@ int audit_manage_rules(int action, const char *path, const char *key) {
     }
 
     struct audit_rule_data *myrule = NULL;
-    myrule = malloc(sizeof(struct audit_rule_data));
+    os_malloc(sizeof(struct audit_rule_data), myrule);
     memset(myrule, 0, sizeof(struct audit_rule_data));
 
     // Check path
@@ -249,7 +250,8 @@ int audit_manage_rules(int action, const char *path, const char *key) {
         goto end;
     }
 
-    char *cmd = malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1);
+    char *cmd;
+    os_malloc(sizeof(char) * AUDIT_MAX_KEY_LEN + 1, cmd);
 
     if (snprintf(cmd, AUDIT_MAX_KEY_LEN, "key=%s", key) < 0) {
         free(cmd);
@@ -312,7 +314,7 @@ int audit_check_lock_output(void) {
     }
 
     struct audit_rule_data *myrule = NULL;
-    myrule = malloc(sizeof(struct audit_rule_data));
+    os_malloc(sizeof(struct audit_rule_data), myrule);
     memset(myrule, 0, sizeof(struct audit_rule_data));
 
     retval = audit_add_rule_data(audit_handler, myrule, flags, AUDIT_NEVER);
@@ -337,7 +339,8 @@ int audit_check_lock_output(void) {
 
 
 w_audit_rules_list *audit_rules_list_init(int initialSize) {
-    w_audit_rules_list *wlist = malloc(sizeof(w_audit_rules_list));
+    w_audit_rules_list *wlist;
+    os_malloc(sizeof(w_audit_rules_list), wlist);
     wlist->list = (w_audit_rule **)malloc(initialSize * sizeof(w_audit_rule *));
     wlist->used = 0;
     wlist->size = initialSize;
