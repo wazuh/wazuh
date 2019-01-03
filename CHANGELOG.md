@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 - Remove deprecated flag `REUSE_ID` from the Makefile options. ([#2107](https://github.com/wazuh/wazuh/pull/2107))
 - Authd is enabled by default. ([#2129](https://github.com/wazuh/wazuh/pull/2129))
 - Now Wazuh manager can be started with an empty configuration in ossec.conf. ([#2086](https://github.com/wazuh/wazuh/pull/2086))
+- Syscheck first queue error message changed into a warning. ([#2146](https://github.com/wazuh/wazuh/pull/2146))
 - Improve vulnerability detection in Red Hat systems. ([#2137](https://github.com/wazuh/wazuh/pull/2137))
 
 ### Fixed
