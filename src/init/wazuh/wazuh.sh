@@ -56,8 +56,8 @@ WazuhUpgrade()
     if [ $MAJOR = 3 ] && [ $MINOR -lt 7 ]
     then
         rm -f $DIRECTORY/queue/db/*.db*
-        rm -f $DIRECTORY/queue/db/.template.db
     fi
+    rm -f $DIRECTORY/queue/db/.template.db
 
     # Remove existing SQLite databases for vulnerability-detector
 

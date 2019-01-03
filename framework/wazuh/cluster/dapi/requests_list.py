@@ -144,6 +144,10 @@ functions = {
         'function': Agent.set_group,
         'type': 'local_master'
     },
+    'POST/agents/group/:group_id': {
+        'function': Agent.set_group_list,
+        'type': 'local_master'
+    },
     'PUT/agents/groups/:group_id': {
         'function': Agent.create_group,
         'type': 'local_master'
@@ -154,6 +158,10 @@ functions = {
     },
     'DELETE/agents/:agent_id/group': {
         'function': Agent.unset_group,
+        'type': 'local_master'
+    },
+    'DELETE/agents/group/:group_id': {
+        'function': Agent.unset_group_list,
         'type': 'local_master'
     },
     'DELETE/agents/:agent_id/group/:group_id': {

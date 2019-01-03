@@ -316,7 +316,10 @@ int wdb_create_agent_db(int id, const char *name) {
     }
 
     fclose(source);
-    fclose(dest);
+    if (fclose(dest) == -1) {
+        merror("Couldn't write/close file %s completely ", path);
+        return -1;
+    }
 
     if (result < 0)
         return -1;
@@ -939,6 +942,12 @@ char *get_agent_date_added(int agent_id){
             /* Date is 3 and 4 */
             wm_strcat(&date,data[3],' ');
             wm_strcat(&date,data[4],' ');
+
+            if(date == NULL) {
+                fclose(fp);
+                free_strarray(data);
+                return NULL;
+            }
 
             char *endl = strchr(date, '\n');
 

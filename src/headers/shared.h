@@ -180,6 +180,13 @@ extern const char *__local_name;
 
 #define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
 
+
+#define w_fclose(x) if (x) { fclose(x); x=NULL; }
+
+#define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
+
+#define w_ftell(x)({ long z = ftell(x); if(z < 0) merror_exit("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
+
 #ifdef CLIENT
 #define isAgent 1
 #else
@@ -227,5 +234,6 @@ extern const char *__local_name;
 #include "custom_output_search.h"
 #include "url.h"
 #include "cluster_utils.h"
+#include "auth_client.h"
 
 #endif /* __SHARED_H */

@@ -17,7 +17,7 @@ try:
     from requests.auth import HTTPBasicAuth
 except Exception as e:
     print("No module 'requests' found. Install: pip install requests")
-    sys.exit()
+    sys.exit(1)
 
 # ossec.conf configuration:
 #  <integration>
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 
         if bad_arguments:
             debug("# Exiting: Bad arguments.")
-            sys.exit(0)
+            sys.exit(1)
 
         # Main function
         main(sys.argv)

@@ -70,10 +70,11 @@ int getDecoderfromlist(const char *name);
 char *GetGeoInfobyIP(char *ip_addr);
 int SetDecodeXML(void);
 void HostinfoInit(void);
-void fim_init(void);
+int fim_init(void);
 void RootcheckInit(void);
 void SyscollectorInit(void);
 void CiscatInit(void);
+void WinevtInit(void);
 int sc_send_db(char * msg,int *sock);
 
 int ReadDecodeXML(const char *file);

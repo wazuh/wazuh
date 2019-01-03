@@ -50,7 +50,7 @@ int create_db(void);
 int run_dbcheck(void);
 
 /* Scan directory */
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth);
+int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link);
 
 /* Check the registry for changes */
 void os_winreg_check(void);

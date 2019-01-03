@@ -526,10 +526,10 @@ static void c_files()
     char path[PATH_MAX + 1];
     int oldmask;
     int retval;
-    FILE *fp;
+    FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
-    char *key;
-    char *data;
+    char *key = NULL;
+    char *data = NULL;
     os_sha256 multi_group_hash;
     char _hash[9] = {0};
 
@@ -678,10 +678,12 @@ static void c_files()
             // If it's not a multigroup, skip it
             if(!strstr(groups_info, ",")){
                 fclose(fp);
+                fp = NULL;
                 continue;
             }
 
             fclose(fp);
+            fp = NULL;
 
             char *endl = strchr(groups_info, '\n');
             if (endl) {
@@ -694,19 +696,30 @@ static void c_files()
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
+
+        if(fp){
+            fclose(fp);
+            fp = NULL;
+        }
     }
 
     OSHashNode *my_node;
     unsigned int *i;
-    os_calloc(1, sizeof(unsigned int *), i);
+    os_calloc(1, sizeof(unsigned int), i);
 
     for (my_node = OSHash_Begin(m_hash, i); my_node; my_node = OSHash_Next(m_hash, i, my_node)) {
+        os_free(key);
+        os_free(data);
         os_strdup(my_node->key, key);
         if(my_node->data){
             os_strdup(my_node->data, data);
         }
         else {
-            free(key);
+            os_free(i);
+            os_free(key);
+            os_free(data);
+            closedir(dp);
+            w_mutex_unlock(&files_mutex);
             return;
         }
 
@@ -744,12 +757,12 @@ static void c_files()
         groups[p_size + 1] = NULL;
         c_multi_group(key,&groups[p_size]->f_sum,data);
         free_strarray(subdir);
-        free(key);
-        free(data);
         p_size++;
     }
 
     os_free(i);
+    os_free(key);
+    os_free(data);
     /* Unlock mutex */
     w_mutex_unlock(&files_mutex);
     closedir(dp);
@@ -1152,6 +1165,13 @@ void *update_shared_files(__attribute__((unused)) void *none) {
     return NULL;
 }
 
+void free_pending_data(pending_data_t *data) {
+    if (!data) return;
+    if (data->message) free(data->message);
+    if (data->keep_alive) free(data->keep_alive);
+    free(data);
+}
+
 /*
  *  Read queue/agent-groups and delete this group for all the agents.
  *  Returns 0 on success or -1 on error
@@ -1161,7 +1181,7 @@ int purge_group(char *group){
     DIR *dp;
     char path[PATH_MAX + 1];
     struct dirent *entry;
-    FILE *fp;
+    FILE *fp = NULL;
     char groups_info[OS_SIZE_65536 + 1] = {0};
     char **groups;
     char *new_groups = NULL;
@@ -1191,12 +1211,20 @@ int purge_group(char *group){
 
         if(!fp) {
             mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+            closedir(dp);
             return -1;
         }
         else if (fgets(groups_info, OS_SIZE_65536, fp) !=NULL ) {
             if(strstr(groups_info, group)){
                 fclose(fp);
                 fp = fopen(path,"w");
+
+                if(!fp){
+                    mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+                    closedir(dp);
+                    return -1;
+                }
+
                 groups = OS_StrBreak(MULTIGROUP_SEPARATOR, groups_info, MAX_GROUPS_PER_MULTIGROUP);
                 for (i=0; groups[i] != NULL; i++) {
                     if(!strcmp(groups[i], group)){
@@ -1209,13 +1237,16 @@ int purge_group(char *group){
                 }
                 free_strarray(groups);
             }
-            fclose(fp);
         }
+
+        fclose(fp);
+        fp = NULL;
     }
     if(!reported_non_existing_group) {
         mdebug2("Group '%s' was deleted. Removing this group from all affected agents...", group);
         reported_non_existing_group = 1;
     }
+    closedir(dp);
     os_free(new_groups);
     return 0;
 }
@@ -1231,4 +1262,8 @@ void manager_init()
     w_yaml_create_groups();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
+    
+    if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");
+    
+    OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }

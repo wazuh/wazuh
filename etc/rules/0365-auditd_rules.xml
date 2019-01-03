@@ -264,7 +264,7 @@
 
     <!--
     type=SELINUX_ERR msg=audit(1311948547.151:138): op=security_compute_av reason=bounds scontext=system_u:system_r:anon_webapp_t:s0-s0:c0,c100,c200 tcontext=system_u:object_r:security_t:s0 tclass=dir perms=ioctl,read,lock
-    type=USER_SELINUX_ERR msg=audit(1311948547.151:138):
+    type=USER_SELINUX_ERR msg=audit(1311948547.151:138): Text
     -->
     <rule id="80732" level="10">
         <if_sid>80700</if_sid>

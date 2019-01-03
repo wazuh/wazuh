@@ -114,9 +114,8 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
     char *ret_str;
     HKEY key;
     DWORD ret;
-    char keyname[512];
-
-    keyname[511] = '\0';
+    char keyname[512] = {'\0'};
+    char *skey = NULL, *sval = NULL;
 
     snprintf(keyname, 510,
              "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
@@ -143,17 +142,20 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
         return (NULL);
     } else {
         /* Adding to memory */
-        char *skey;
-        char *sval;
-
         skey = strdup(keyname + 42);
         sval = strdup(event);
-
-        if (skey && sval) {
-            OSHash_Add(dll_hash, skey, sval);
+        
+        if (skey != NULL && sval != NULL) {
+            if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
+            free(skey);
         } else {
             merror(MEM_ERROR, errno, strerror(errno));
+            if (skey != NULL) free(skey);
+            if (sval != NULL) free(sval);
         }
+        
+        skey = NULL;
+        sval = NULL;
     }
 
     RegCloseKey(key);
@@ -516,29 +518,23 @@ void readel(os_el *el, int printit)
 /* Read Windows Vista security description */
 void win_read_vista_sec()
 {
-    char *p;
-    char buf[OS_MAXSTR + 1];
+    char *p = NULL, *key = NULL, *desc = NULL;
+    char buf[OS_MAXSTR + 1] = {'\0'};
     FILE *fp;
 
     /* Vista security */
     fp = fopen("vista_sec.txt", "r");
-    if (!fp) {
-        merror("Unable to read vista security descriptions.");
-        exit(1);
-    }
+    if (!fp) merror_exit("Unable to read vista security descriptions.");
 
     /* Creating the hash */
     vista_sec_id_hash = OSHash_Create();
     if (!vista_sec_id_hash) {
-        merror("Unable to read vista security descriptions.");
-        exit(1);
+        fclose(fp);
+        merror_exit("Unable to read vista security descriptions.");
     }
 
     /* Read the whole file and add it to memory */
     while (fgets(buf, OS_MAXSTR, fp) != NULL) {
-        char *key;
-        char *desc;
-
         /* Get the last occurrence of \n */
         if ((p = strrchr(buf, '\n')) != NULL) {
             *p = '\0';
@@ -553,23 +549,32 @@ void win_read_vista_sec()
 
         *p = '\0';
         p++;
-
+        
         /* Remove whitespace */
         while (*p == ' ') {
             p++;
         }
 
         /* Allocate memory */
-        desc = strdup(p);
         key = strdup(buf);
+        desc = strdup(p);
+        
         if (!key || !desc) {
-            merror("Invalid entry on the Vista security "
-                   "description.");
-            continue;
+            merror("Invalid entry on the Vista security description.");
+            if (key) free(key);
+            if (desc) free(desc);
+        } else {
+            /* Insert on hash */
+            if (OSHash_Add(vista_sec_id_hash, key, desc) != 2) free(desc);
+            
+            /* OSHash_Add() duplicates the key, but not the data */
+            free(key);
         }
-
-        /* Insert on hash */
-        OSHash_Add(vista_sec_id_hash, key, desc);
+        
+        /* Reset pointer addresses before using strdup() again */
+        /* The hash will keep the needed memory references */
+        key = NULL;
+        desc = NULL;
     }
 
     fclose(fp);

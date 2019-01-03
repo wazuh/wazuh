@@ -91,6 +91,7 @@ char *get_master_node(void) {
     if (OS_ReadXML(cfgfile, &xml) < 0) {
         mdebug1(XML_ERROR, cfgfile, xml.err, xml.err_line);
     } else {
+        os_free(master_node);
         master_node = OS_GetOneContentforElement(&xml, xmlf);
     }
 

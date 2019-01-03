@@ -40,6 +40,12 @@ static OSHash * allowed_sockets;
 
 // Initialize request module
 void req_init() {
+    int success = 0;
+    char *socket_log = NULL;
+    char *socket_sys = NULL;
+    char *socket_wodle = NULL;
+    char *socket_agent = NULL;
+    
     // Get values from internal options
 
     request_pool = getDefine_Int("remoted", "request_pool", 1, 4096);
@@ -52,20 +58,46 @@ void req_init() {
     if (req_table = OSHash_Create(), !req_table) {
         merror_exit("At req_main(): OSHash_Create()");
     }
+    OSHash_SetFreeDataPointer(req_table, (void (*)(void *))req_free);
 
     os_calloc(request_pool, sizeof(req_node_t *), req_pool);
 
     // Create hash table allowed sockets
 
     if (allowed_sockets = OSHash_Create(), !allowed_sockets) {
-        merror_exit("At req_main(): OSHash_Create()");
+        merror("At req_main(): OSHash_Create()");
+        goto ret;
     }
-
-    OSHash_Add(allowed_sockets,SOCKET_LOGCOLLECTOR,strdup(SOCKET_LOGCOLLECTOR));
-    OSHash_Add(allowed_sockets,SOCKET_SYSCHECK,strdup(SOCKET_SYSCHECK));
-    OSHash_Add(allowed_sockets,SOCKET_WMODULES,strdup(SOCKET_WMODULES));
-    OSHash_Add(allowed_sockets,SOCKET_AGENT,strdup(SOCKET_AGENT));
-
+    
+    socket_log = strdup(SOCKET_LOGCOLLECTOR);
+    socket_sys = strdup(SOCKET_SYSCHECK);
+    socket_wodle = strdup(SOCKET_WMODULES);
+    socket_agent = strdup(SOCKET_AGENT);
+    
+    if (!socket_log || !socket_sys || !socket_wodle || !socket_agent) {
+        merror("At req_main(): failed to allocate socket strings");
+        goto ret;
+    }
+    
+    if (OSHash_Add(allowed_sockets, SOCKET_LOGCOLLECTOR, socket_log) != 2 || OSHash_Add(allowed_sockets, SOCKET_SYSCHECK, socket_sys) != 2 || \
+    OSHash_Add(allowed_sockets, SOCKET_WMODULES, socket_wodle) != 2 || OSHash_Add(allowed_sockets, SOCKET_AGENT, socket_agent) != 2) {
+        merror("At req_main(): failed to add socket strings to hash list");
+        goto ret;
+    }
+    
+    success = 1;
+    
+ret:
+    if (!success) {
+        if (req_pool) free(req_pool);
+        if (allowed_sockets) OSHash_Free(allowed_sockets);
+        if (req_table) OSHash_Free(req_table);
+        if (socket_log) free(socket_log);
+        if (socket_sys) free(socket_sys);
+        if (socket_wodle) free(socket_wodle);
+        if (socket_agent) free(socket_agent);
+        exit(1);
+    }
 }
 
 // Push a request message into dispatching queue. Return 0 on success or -1 on error.

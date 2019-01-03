@@ -32,6 +32,7 @@
 #define CHECK_SHA256SUM     0002000
 #define CHECK_WHODATA       0004000
 #define CHECK_ATTRS         0010000
+#define CHECK_FOLLOW        0020000
 
 #define ARCH_32BIT          0
 #define ARCH_64BIT          1
