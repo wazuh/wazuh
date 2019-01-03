@@ -72,6 +72,7 @@ int WinExecd_Start()
     /* Active response disabled */
     if (c == 1) {
         minfo(EXEC_DISABLED);
+        return (0);
     }
 
     CheckExecConfig();

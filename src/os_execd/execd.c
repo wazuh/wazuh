@@ -173,13 +173,21 @@ int main(int argc, char **argv)
     CheckExecConfig();
 #endif
 
+    // Start com request thread
+    w_create_thread(wcom_main, NULL);
+
+    /* Start up message */
+    minfo(STARTUP_MSG, (int)getpid());
+
+    /* If AR is disabled, close this thread */
+    if (c == 1) {
+        pthread_exit(NULL);
+    }
+
     /* Start exec queue */
     if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
     }
-
-    /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon Now */
     ExecdStart(m_queue);
@@ -253,9 +261,6 @@ static void ExecdStart(int q)
     } else {
         repeated_hash = NULL;
     }
-
-    // Start com request thread
-    w_create_thread(wcom_main, NULL);
 
     /* Main loop */
     while (1) {
