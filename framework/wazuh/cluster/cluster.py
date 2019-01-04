@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_localhost_ips():
-    return set(str(check_output(['hostname', '--all-ip-addresses'])).split(" ")[:-1])
+    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1]) 
 
 
 def check_cluster_config(config):
