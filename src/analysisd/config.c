@@ -56,7 +56,7 @@ int GlobalConf(const char *cfgfile)
     Config.memorysize = 8192;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
-    Config.syscheck_alert_new = 0;
+    Config.syscheck_alert_new = 1;
     Config.syscheck_auto_ignore = 1;
     Config.ar = 0;
 
