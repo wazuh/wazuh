@@ -390,7 +390,7 @@ def _rootkit_trojans2json(filepath):
     # file_name !string_to_search!Description
     regex_comment = re.compile("^\s*#")
     regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
-    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)")
+    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!")
 
     try:
         with open(filepath) as f:
@@ -403,9 +403,8 @@ def _rootkit_trojans2json(filepath):
                 if match_check:
                     new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(), 'description': match_check.group(3).strip()}
                     data.append(new_check)
-                    continue
-                if match_binary_check:
-                    new_check = {'binary': match_binary_check.group(1).strip(), 'check': match_binary_check.group(2).strip()}
+                elif match_binary_check:
+                    new_check = {'filename': match_binary_check.group(1).strip(), 'name': match_binary_check.group(2).strip()}
                     data.append(new_check)
 
 
