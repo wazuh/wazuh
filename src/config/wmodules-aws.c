@@ -295,8 +295,8 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             // type is an attribute of the service tag
-            if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
-                if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
+            if (nodes[i]->attributes && !strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
+                if (nodes[i]->values && !strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_service->type);
                 } else {
                     mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
