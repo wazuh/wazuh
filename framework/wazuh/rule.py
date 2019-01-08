@@ -418,6 +418,14 @@ class Rule:
                                     rule.description += value
                                 elif tag == "field":
                                     rule.add_detail(xml_rule_tags.attrib['name'], value)
+                                # show rule variables
+                                elif tag == "match" and value[0] == "$":
+                                    for variable in root.findall('var'):
+                                        if variable.get('name') == value[1:]:
+                                            values = variable.text.replace('|', ',')
+                                            variables = {'variables': {value[1:]: values}}
+                                            rule.add_detail(tag, variables)
+                                            break
                                 else:
                                     rule.add_detail(tag, value)
 
