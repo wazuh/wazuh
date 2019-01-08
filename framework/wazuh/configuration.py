@@ -403,8 +403,9 @@ def _rootkit_trojans2json(filepath):
                 if match_check:
                     new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(), 'description': match_check.group(3).strip()}
                     data.append(new_check)
-                if match_binary_check and not match_check:
-                    new_check = {'binary': match_binary_check.group(1).strip(), 'entries': match_binary_check.group(2).strip()}
+                    continue
+                if match_binary_check:
+                    new_check = {'binary': match_binary_check.group(1).strip(), 'check': match_binary_check.group(2).strip()}
                     data.append(new_check)
 
 
