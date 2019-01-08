@@ -17,7 +17,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
     int result = 0;
-    wdb_t *new_wdb = wdb;
+    wdb_t *new_wdb = NULL;
 
     if(result = wdb_metadata_get_entry(wdb, "db_version", db_version), result) {
         version = atoi(db_version);
