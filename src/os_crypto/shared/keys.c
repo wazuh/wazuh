@@ -340,7 +340,6 @@ ret:
     if (!success) {
         if (fp) fclose(fp);
         OS_FreeKeys(keys);
-        free(keys);
         exit(1);
     }
 }
