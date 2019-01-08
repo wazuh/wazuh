@@ -423,8 +423,7 @@ class Rule:
                                     for variable in root.findall('var'):
                                         if variable.get('name') == value[1:]:
                                             values = variable.text.replace('|', ',')
-                                            variables = {'variables': {value[1:]: values}}
-                                            rule.add_detail(tag, variables)
+                                            rule.add_detail(tag, values)
                                             break
                                 else:
                                     rule.add_detail(tag, value)
