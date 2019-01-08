@@ -282,6 +282,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         } else if (!strcmp(nodes[i]->element, XML_SERVICE)) {
 
             mtdebug2(WM_AWS_LOGTAG, "Found a service tag");
+
+            if (!nodes[i]->attributes) {
+                mterror(WM_AWS_LOGTAG, "Undefined type for service.");
+                return OS_INVALID;
+            }
             // Create service node
             if (cur_service) {
                 os_calloc(1, sizeof(wm_aws_service), cur_service->next);
@@ -295,17 +300,18 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             // type is an attribute of the service tag
-            if (nodes[i]->attributes && !strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
-                if (nodes[i]->values && !strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
+            if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
+                if (!nodes[i]->values) {
+                    mterror(WM_AWS_LOGTAG, "Empty service type. Valid one is '%s'", INSPECTOR_SERVICE_TYPE);
+                    return OS_INVALID;
+                } else if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_service->type);
                 } else {
                     mterror(WM_AWS_LOGTAG, "Invalid service type '%s'. Valid one is '%s'", *nodes[i]->values, INSPECTOR_SERVICE_TYPE);
-                    OS_ClearNode(children);
                     return OS_INVALID;
                 }
             } else {
                 mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
-                OS_ClearNode(children);
                 return OS_INVALID;
             }
 
