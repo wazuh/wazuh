@@ -146,6 +146,12 @@ def read_config():
         # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
         config_cluster['node_name'] = gethostname()
 
+    if config_cluster['node_name'].upper() == '$NODE_NAME':
+        if 'NODE_NAME' in environ:
+            config_cluster['node_name'] = environ['NODE_NAME']
+        else:
+            raise WazuhException(3006, 'Unable to get the $NODE_NAME environment variable')
+
     if config_cluster['node_type'].upper() == '$NODE_TYPE':
         if 'NODE_TYPE' in environ:
             config_cluster['node_type'] = environ['NODE_TYPE']
