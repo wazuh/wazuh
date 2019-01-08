@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added option to allow maild select the log file to read from. ([#977](https://github.com/wazuh/wazuh/pull/977))
 - New dedicated thread for AR command running on Windows agent. ([#1725](https://github.com/wazuh/wazuh/pull/1725))
   -  This will prevent the agent from delaying due to an AR execution.
 - Get process inventory for Windows natively. ([#1760](https://github.com/wazuh/wazuh/pull/1760))
