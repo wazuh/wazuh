@@ -199,6 +199,17 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"ignore",igns);
     }
+    cJSON *whodata = cJSON_CreateObject();
+    if (syscheck.audit_key) {
+        cJSON *audkey = cJSON_CreateArray();
+        for (i=0;syscheck.audit_key[i];i++) {
+            cJSON_AddItemToArray(audkey, cJSON_CreateString(syscheck.audit_key[i]));
+        }
+        if (cJSON_GetArraySize(audkey) > 0) {
+            cJSON_AddItemToObject(whodata,"audit_key",audkey);
+            cJSON_AddItemToObject(syscfg,"whodata",whodata);
+        }
+    }
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
     if (syscheck.registry) {
