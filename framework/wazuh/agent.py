@@ -1723,26 +1723,26 @@ class Agent:
             delete_empty_lines(tmp_file_path)
             replace_line(tmp_file_path, 0, '')
         except Exception as e:
-            raise WazuhException(1005)
+            raise WazuhException(1005, str(e))
 
         # check xml format
         try:
             load_wazuh_xml(tmp_file_path)
         except Exception as e:
-            raise WazuhException(1742)
+            raise WazuhException(1742, str(e))
 
         # check Wazuh xml format
         try:
             check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
         except Exception as e:
-            raise WazuhException(1743)
+            raise WazuhException(1743, str(e))
 
         # move temporary file to group folder
         try:
             new_conf_path = common.shared_path + '/' + group_id + '/' + destination_file
             move(tmp_file_path, new_conf_path)
         except Exception as e:
-            raise WazuhException(1017)
+            raise WazuhException(1017, str(e))
 
         return {'msg': 'agent configuration was updated successfully'}
 
