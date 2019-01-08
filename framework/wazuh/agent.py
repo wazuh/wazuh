@@ -1744,7 +1744,7 @@ class Agent:
         except Exception as e:
             raise WazuhException(1017, str(e))
 
-        return {'msg': 'agent configuration was updated successfully'}
+        return 'Agent configuration was updated successfully'
 
 
     @staticmethod
