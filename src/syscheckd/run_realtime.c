@@ -197,6 +197,8 @@ int realtime_start()
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
     syscheck.realtime->dirtb = OSHash_Create();
+    if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
+    
     syscheck.realtime->fd = -1;
 
 #ifdef INOTIFY_ENABLED
@@ -263,7 +265,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                         merror_exit("Out of memory. Exiting.");
                     }
 
-                    OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir);
+                    if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) merror_exit("Out of memory. Exiting.");
                     mdebug1("Directory added for real time monitoring: '%s'.", ndir);
                 }
             }
@@ -398,11 +400,24 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     return;
 }
 
+void free_win32rtfim_data(win32rtfim *data) {
+    if (!data) return;
+    if (data->h != NULL && data->h != INVALID_HANDLE_VALUE) CloseHandle(data->h);
+    if (data->overlap.Pointer) free(data->overlap.Pointer);
+    if (data->dir) free(data->dir);
+    free(data);
+}
+
 int realtime_start()
 {
     minfo("Initializing real time file monitoring engine.");
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
-    syscheck.realtime->dirtb = (void *)OSHash_Create();
+    
+    syscheck.realtime->dirtb = OSHash_Create();
+    if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
+    
+    OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
+    
     syscheck.realtime->fd = -1;
     syscheck.realtime->evt = CreateEvent(NULL, TRUE, FALSE, NULL);
 
@@ -441,7 +456,7 @@ int realtime_adddir(const char *dir, int whodata)
         int type;
 
         if (!syscheck.wdata.fd && whodata_audit_start()) {
-            return 0;
+            merror_exit("At realtime_adddir(): OSHash_Create() failed");
         }
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
@@ -515,7 +530,7 @@ int realtime_adddir(const char *dir, int whodata)
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
         os_strdup(dir, rtlocald->overlap.Pointer);
-        OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald);
+        if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) merror_exit("Out of memory. Exiting.");
 
         /* Add directory to be monitored */
         realtime_win32read(rtlocald);

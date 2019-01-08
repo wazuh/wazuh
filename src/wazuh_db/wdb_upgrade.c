@@ -14,10 +14,10 @@
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
-    char db_version[OS_SIZE_128];
+    char db_version[OS_SIZE_256 + 2];
     int version = 0;
     int result = 0;
-    wdb_t *new_wdb = wdb;
+    wdb_t *new_wdb = NULL;
 
     if(result = wdb_metadata_get_entry(wdb, "db_version", db_version), result) {
         version = atoi(db_version);
@@ -26,14 +26,13 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     //All cases must contain /* Fallthrough */ except the last one that needs to break;
     switch(version) {
     case 0:
-        mdebug2("Updating database for agent %s", wdb->agent_id);
+        mdebug2("Updating database for agent %s to version 1", wdb->agent_id);
         if(result = wdb_sql_exec(wdb, schema_upgrade_v1_sql), result == -1) {
             new_wdb = wdb_backup(wdb, version);
         }
         /* Fallthrough */
     case 1:
         //Updated to last version
-        mdebug2("Database updated for agent %s", wdb->agent_id);
         break;
     default:
         merror("Incorrect database version %d", version);
@@ -54,7 +53,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
 
     if (wdb_close(wdb) != -1) {
         if (wdb_create_backup(sagent_id, version) != -1) {
-            mwarn("Creating DB backup and create clear DB for agent: '%s'", wdb->agent_id);
+            mwarn("Creating DB backup and create clear DB for agent: '%s'", sagent_id);
             unlink(path);
 
             //Recreate DB
@@ -79,8 +78,6 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
             if (wdb_scan_info_init(new_wdb) < 0) {
                 mwarn("Couldn't initialize scan_info table in '%s'", path);
             }
-            
-            wdb_pool_append(new_wdb);
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);

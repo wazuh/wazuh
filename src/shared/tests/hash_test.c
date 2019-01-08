@@ -7,11 +7,12 @@
 int main(int argc, char **argv)
 {
     int i = 0;
-    char *tmp;
-    char buf[1024];
+    char *tmp = NULL, *buf_dup = NULL;
+    char buf[1024] = {'\0'};
     OSHash *mhash;
 
     mhash = OSHash_Create();
+    if (!mhash) return (1);
 
     while (1) {
         fgets(buf, 1024, stdin);
@@ -22,15 +23,28 @@ int main(int argc, char **argv)
 
         if (strncmp(buf, "get ", 4) == 0) {
             printf("Getting key: '%s'\n", buf + 4);
-            printf("Found: '%s'\n", (char *)OSHash_Get(mhash, buf + 4));
+            buf_dup = (char *)OSHash_Get(mhash, buf + 4);
+            if (buf_dup) {
+                printf("Found: '%s'\n", buf_dup);
+            } else {
+                printf("Key '%s' not stored\n", buf + 4);
+            }
         } else {
-            printf("Adding key: '%s'\n", buf);
-            i = OSHash_Add(mhash, strdup(buf), strdup(buf));
-
-            printf("rc = %d\n", i);
+            buf_dup = strdup(buf);
+            if (buf_dup) {
+                printf("Adding key: '%s'\n", buf);
+                i = OSHash_Add(mhash, buf_dup, buf_dup);
+                printf("rc = %d\n", i);
+                if (!i) free(buf_dup);
+                buf_dup = NULL;
+            } else {
+                printf("Error adding key\n");
+                break;
+            }
         }
     }
+    
+    OSHash_Free(mhash);
 
     return (0);
 }
-

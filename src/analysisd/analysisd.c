@@ -60,6 +60,8 @@ int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
+int DecodeWinevt(Eventinfo *lf);
+
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
 
@@ -140,6 +142,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id);
 /* Do log rotation thread */
 void * w_log_rotate_thread(__attribute__((unused)) void * args);
 
+/* Decode winevt threads */
+void * w_decode_winevt_thread(__attribute__((unused)) void * args);
+
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -188,6 +193,9 @@ static w_queue_t * decode_queue_event_input;
 /* Decode pending event output */
 static w_queue_t * decode_queue_event_output;
 
+/* Decode windows event input queue */
+static w_queue_t * decode_queue_winevt_input;
+
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -204,6 +212,7 @@ static int reported_hostinfo = 0;
 static int reported_rootcheck = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
+static int reported_winevt = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -707,7 +716,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     OS_InitLog();
 
     /* Initialize the integrity database */
-    fim_init();
+    if (!fim_init()) merror_exit("fim: Initialization failed");
 
     /* Initialize Rootcheck */
     RootcheckInit();
@@ -720,6 +729,9 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize host info */
     HostinfoInit();
+
+    /* Initialize windows event */
+    WinevtInit();
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -803,7 +815,8 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initialize label cache */
-    labels_init();
+    if (!labels_init()) merror_exit("Error allocating labels");
+    
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
@@ -821,6 +834,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
+    int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
         num_decode_event_threads = cpu_information->cpu_cores;
@@ -840,6 +854,10 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     if(num_decode_hostinfo_threads == 0){
         num_decode_hostinfo_threads = cpu_information->cpu_cores;
+    }
+
+    if(num_decode_winevt_threads == 0){
+        num_decode_winevt_threads = cpu_information->cpu_cores;
     }
 
     /* Initiate the FTS list */
@@ -896,6 +914,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Create the process event threads */
     for(i = 0; i < num_rule_matching_threads;i++){
         w_create_thread(w_process_event_thread,(void *) (intptr_t)i);
+    }
+
+    /* Create decode winevt threads */
+    for(i = 0; i < num_decode_winevt_threads;i++){
+        w_create_thread(w_decode_winevt_thread,NULL);
     }
 
     /* Create State thread */
@@ -1633,6 +1656,34 @@ void * ad_input_main(void * args) {
                 /* Increment number of events received */
                 hourly_events++;
             }
+            else if(msg[0] == WIN_EVT_MQ){
+
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_winevt_input)){
+                    if(!reported_winevt){
+                        reported_winevt = 1;
+                        mwarn("Windows eventchannel decoder queue is full.");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_winevt_input,copy);
+
+                if(result < 0){
+                    if(!reported_winevt){
+                        reported_winevt = 1;
+                        mwarn("Windows eventchannel decoder queue is full.");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+                /* Increment number of events received */
+                hourly_events++;
+            }
             else{
 
                 os_strdup(buffer, copy);
@@ -1989,6 +2040,45 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             }
 
             w_inc_decoded_events();
+        }
+    }
+}
+
+void * w_decode_winevt_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char * msg = NULL;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_winevt_input), msg) {
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+            if (DecodeWinevt(lf)) {
+                /* We don't process windows events further */
+                w_free_event_info(lf);
+            }
+            else{
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
+            }
+
+            w_inc_winevt_decoded_events();
         }
     }
 }
@@ -2443,6 +2533,7 @@ void w_get_queues_size(){
     s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
     s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
     s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
+    s_winevt_queue = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
     s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
     s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
 
@@ -2457,6 +2548,7 @@ void w_get_initial_queues_size(){
     s_syscollector_queue_size = decode_queue_syscollector_input->size;
     s_rootcheck_queue_size = decode_queue_rootcheck_input->size;
     s_hostinfo_queue_size = decode_queue_hostinfo_input->size;
+    s_winevt_queue_size = decode_queue_winevt_input->size;
     s_event_queue_size = decode_queue_event_input->size;
     s_process_event_queue_size = decode_queue_event_output->size;
 
@@ -2630,6 +2722,9 @@ void w_init_queues(){
 
     /* Init the decode hostinfo queue input */
     decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+
+    /* Init the decode winevt queue input */
+    decode_queue_winevt_input = queue_init(getDefine_Int("analysisd", "decode_winevt_queue_size", 0, 2000000));
 
     /* Init the decode event queue input */
     decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));

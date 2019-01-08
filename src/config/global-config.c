@@ -54,8 +54,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
-            Config->syscheck_ignore_frequency = 10;
-            Config->syscheck_ignore_time = 3600;
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_auto_ignore = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
