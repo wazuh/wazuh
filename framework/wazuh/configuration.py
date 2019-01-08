@@ -390,6 +390,7 @@ def _rootkit_trojans2json(filepath):
     # file_name !string_to_search!Description
     regex_comment = re.compile("^\s*#")
     regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
+    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)")
 
     try:
         with open(filepath) as f:
@@ -397,10 +398,15 @@ def _rootkit_trojans2json(filepath):
                 if re.search(regex_comment, line):
                     continue
 
-                match_check= re.search(regex_check, line)
+                match_check = re.search(regex_check, line)
+                match_binary_check = re.search(regex_binary_check, line)
                 if match_check:
                     new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(), 'description': match_check.group(3).strip()}
                     data.append(new_check)
+                if match_binary_check and not match_check:
+                    new_check = {'binary': match_binary_check.group(1).strip(), 'entries': match_binary_check.group(2).strip()}
+                    data.append(new_check)
+
 
     except Exception as e:
         raise WazuhException(1101, str(e))
