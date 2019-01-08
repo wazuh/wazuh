@@ -28,6 +28,7 @@
 #define AUTH_MQ          'c'
 #define SYSCOLLECTOR_MQ  'd'
 #define CISCAT_MQ        'e'
+#define WIN_EVT_MQ       'f'
 
 #define MAX_OPENQ_ATTEMPS 15
 

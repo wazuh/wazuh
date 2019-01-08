@@ -16,8 +16,8 @@
 #define ARGV0 "wazuh-modulesd"
 #endif // ARGV0
 
-#include <pthread.h>
 #include "shared.h"
+#include <pthread.h>
 #include "config/config.h"
 
 #define WM_DEFAULT_DIR  BUILDDIR(DEFAULTDIR,"/wodles")        // Default modules directory.

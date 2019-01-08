@@ -213,7 +213,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         switch (errno) {
         case ENOENT:
-            mwarn("Cannot access '%s': it was removed during scan.", file_name);
+            mdebug2("Cannot access '%s': it was removed during scan.", file_name);
             /* Fallthrough */
 
         case ENOTDIR:
@@ -689,7 +689,7 @@ end:
     return 0;
 }
 
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, unsigned int is_link)
+int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
 {
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
@@ -796,7 +796,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #endif
             switch (errno) {
             case ENOENT:
-                mwarn("Cannot open '%s': it was removed during scan.", dir_name);
+                mdebug2("Cannot open '%s': it was removed during scan.", dir_name);
                 break;
             default:
                 mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
@@ -809,7 +809,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #else
         switch (errno) {
         case ENOENT:
-            mwarn("Cannot open '%s': it was removed during scan.", dir_name);
+            mdebug2("Cannot open '%s': it was removed during scan.", dir_name);
             break;
         default:
             mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));

@@ -18,6 +18,7 @@
 // Global variables
 syscheck_config syscheck;
 pthread_cond_t audit_thread_started;
+pthread_cond_t audit_hc_started;
 pthread_cond_t audit_db_consistency;
 int sys_debug_level;
 
@@ -389,12 +390,12 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
+        minfo("Cannot connect to queue '%s' (%d)'%s'. Waiting 5 seconds to reconnect.", DEFAULTQPATH, errno, strerror(errno));
 
         sleep(5);
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             /* more 10 seconds of wait */
-            merror(QUEUE_ERROR, DEFAULTQPATH, strerror(errno));
+            minfo("Cannot connect to queue '%s' (%d)'%s'. Waiting 10 seconds to reconnect.", DEFAULTQPATH, errno, strerror(errno));
             sleep(10);
             if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);

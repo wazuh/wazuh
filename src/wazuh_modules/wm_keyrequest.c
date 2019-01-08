@@ -444,8 +444,15 @@ static int external_socket_connect(char *socket_path, int repsonse_timeout) {
         return sock;
     }
 
-    OS_SetSendTimeout(sock, 5);
-    OS_SetRecvTimeout(sock, repsonse_timeout, 0);
+    if(OS_SetSendTimeout(sock, 5) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    if(OS_SetRecvTimeout(sock, repsonse_timeout, 0) < 0) {
+        close(sock);
+        return -1;
+    }
 
     return sock;
 #else
@@ -499,7 +506,8 @@ void * w_socket_launcher(void * args) {
 
         // At this point, the process exited
 
-        wstatus = WEXITSTATUS(wpclose(wfd));
+        wstatus = wpclose(wfd);
+        wstatus = WEXITSTATUS(wstatus);
 
         if (wstatus == EXECVE_ERROR) {
             // 0x7F means error in exec
