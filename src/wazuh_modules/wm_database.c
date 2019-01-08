@@ -68,6 +68,8 @@ static void* wm_database_main(wm_database *data);
 static void* wm_database_destroy(wm_database *data);
 // Read config
 cJSON *wm_database_dump(const wm_database *data);
+// Get cluster node name from configuration or environment variables
+static char * wm_node_name();
 // Update manager information
 static void wm_sync_manager();
 // Get agent's architecture
@@ -207,6 +209,52 @@ void* wm_database_main(wm_database *data) {
     return NULL;
 }
 
+// Get cluster node name from configuration or environment variables
+char * wm_node_name() {
+    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
+    char * node_name;
+
+    OS_XML xml;
+
+    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
+        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
+    }
+
+    node_name = OS_GetOneContentforElement(&xml, xml_node);
+    OS_ClearXML(&xml);
+
+    if (!node_name) {
+        return NULL;
+    }
+
+    // Get environment variables
+
+    if (strcmp(node_name, "$NODE_NAME") == 0) {
+        free(node_name);
+        node_name = getenv("NODE_NAME");
+
+        if (node_name) {
+            return strdup(node_name);
+        } else {
+            mwarn("Cannot find environment variable 'NODE_NAME'");
+            return NULL;
+        }
+    } else if (strcmp(node_name, "$HOSTNAME") == 0) {
+        char hostname[512];
+
+        free(node_name);
+
+        if (gethostname(hostname, sizeof(hostname)) != 0) {
+            strncpy(hostname, "localhost", sizeof(hostname));
+        }
+
+        hostname[sizeof(hostname) - 1] = '\0';
+        return strdup(hostname);
+    } else {
+        return node_name;
+    }
+}
+
 // Update manager information
 void wm_sync_manager() {
     char hostname[1024];
@@ -230,19 +278,7 @@ void wm_sync_manager() {
         mterror(WM_DATABASE_LOGTAG, "Couldn't get manager's hostname: %s.", strerror(errno));
 
     /* Get node name of the manager in cluster */
-    char* node_name;
-
-    const char *(xml_node[]) = {"ossec_config", "cluster", "node_name", NULL};
-
-    OS_XML xml;
-
-    if (OS_ReadXML(DEFAULTCPATH, &xml) < 0){
-        merror_exit(XML_ERROR, DEFAULTCPATH, xml.err, xml.err_line);
-    }
-
-    node_name = OS_GetOneContentforElement(&xml, xml_node);
-
-    OS_ClearXML(&xml);
+    char* node_name = wm_node_name();
 
     if ((os_uname = strdup(getuname()))) {
         os_arch = wm_get_os_arch(os_uname);
