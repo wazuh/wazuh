@@ -625,8 +625,13 @@ def get_internal_options_value(high_name, low_name, max, min):
     return option
 
 
-def upload_group_configuration(group_id, xml_file, destination_file='agent.conf'):
-
+def upload_group_configuration(group_id, xml_file):
+    """
+    Updates group configuration
+    :param group_id: Group to update
+    :param xml_file: File contents of the new configuration in string.
+    :return: Confirmation message.
+    """
     # check if the group exists
     if not Agent.group_exists(group_id):
         raise WazuhException(1710)
@@ -660,9 +665,24 @@ def upload_group_configuration(group_id, xml_file, destination_file='agent.conf'
 
     # move temporary file to group folder
     try:
-        new_conf_path = "{}/{}/{}".format(common.shared_path, group_id, destination_file)
+        new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
         move(tmp_file_path, new_conf_path)
     except Exception as e:
         raise WazuhException(1017, str(e))
 
     return 'Agent configuration was updated successfully'
+
+
+def upload_group_file(group_id, xml_file, file_name):
+    """
+    Updates a group file
+
+    :param group_id: Group to update
+    :param xml_file: File contents in string
+    :param file_name: File name to update
+    :return: Confirmation message in string
+    """
+    if file_name == 'agent.conf':
+        return upload_group_configuration(group_id, xml_file)
+    else:
+        raise WazuhException(1111)

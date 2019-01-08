@@ -152,6 +152,10 @@ functions = {
         'function': configuration.upload_group_configuration,
         'type': 'local_master'
     },
+    'POST/agents/groups/:group_id/files/:file_name': {
+        'function': configuration.upload_group_file,
+        'type': 'local_master'
+    },
     'DELETE/agents/groups/:group_id': {
         'function': Agent.remove_group,
         'type': 'local_master'

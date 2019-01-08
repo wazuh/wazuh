@@ -41,6 +41,7 @@ class WazuhException(Exception):
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
+        1111: "Remote group file updates are only available in 'agent.conf' file",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
