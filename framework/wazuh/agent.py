@@ -1693,30 +1693,30 @@ class Agent:
 
         # create temporary file for parsing xml input
         try:
-            tmp_file = open(tmp_file_path, 'w')
-            # beauty xml file
-            xml = parseString(xml_file)
-            pretty_xml = xml.toprettyxml(indent='  ')  # two spaces for identation
-            tmp_file.write(pretty_xml)
-            tmp_file.close()
+            with open(tmp_file_path, 'w') as tmp_file:
+                # beauty xml file
+                xml = parseString(xml_file)
+                pretty_xml = xml.toprettyxml(indent='  ')  # two spaces for identation
+                tmp_file.write(pretty_xml)
         except Exception as e:
-            raise WazuhException(1005)
+            raise WazuhException(1005, str(e))
 
         # function to replace a line in a text file
         def replace_line(file_name, line_num, text):
-            lines = open(file_name, 'r').readlines()
+            with open(file_name) as f:
+                lines = f.readlines()
             lines[line_num] = text
-            out = open(file_name, 'w')
-            out.writelines(lines)
-            out.close()
+            with open(file_name, 'w') as out:
+                out.writelines(lines)
 
         def delete_empty_lines(file_name):
-            lines = open(file_name, 'r').readlines()
-            out = open(file_name, 'w')
-            for line in lines:
-                if not line.strip(): continue  # skip the empty line
-                out.write(line)
-            out.close()
+            with open(file_name) as f:
+                lines = f.readlines()
+
+            with open(file_name, 'w') as out:
+                for line in lines:
+                    if not line.strip(): continue  # skip the empty line
+                    out.write(line)
 
         # it is necessary to delete the first line and empty lines
         try:
