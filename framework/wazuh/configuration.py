@@ -453,7 +453,7 @@ def get_ossec_conf(section=None, field=None):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None, format=None):
     """
     Returns agent.conf as dictionary.
 
@@ -475,12 +475,19 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(agent_conf)
+    try:       
 
+        # Read RAW file
+        if agent_conf_name == 'agent.conf' and format and 'xml' in format:
+            with open(agent_conf, 'r') as xml_data:
+                data = xml_data.read().replace('\n', '')
+                return data
         # Parse XML to JSON
-        data = _agentconf2json(xml_data)
+        else: 
+            # Read XML
+            xml_data = load_wazuh_xml(agent_conf)
+
+            data = _agentconf2json(xml_data)
     except Exception as e:
         raise WazuhException(1101, str(e))
 
@@ -522,7 +529,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
 
 
-def get_file_conf(filename, group_id=None, type_conf=None):
+def get_file_conf(filename, group_id=None, type_conf=None, format=None):
     """
     Returns the configuration file as dictionary.
 
@@ -560,7 +567,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=None, filename=filename)
+            data = get_agent_conf(group_id, limit=None, filename=filename, format=format)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":
