@@ -450,7 +450,8 @@ void wm_aws_run_service(wm_aws_service *exec_service) {
 
     // Execute
     char *service_title = NULL;
-    wm_strcat(&service_title, "Bucket:", ' ');
+    wm_strcat(&service_title, "Service:", ' ');
+    wm_strcat(&service_title, exec_service->type, ' ');
     wm_strcat(&service_title, exec_service->aws_account_id, ' ');
     if(exec_service->aws_account_alias){
         wm_strcat(&service_title, "(", '\0');

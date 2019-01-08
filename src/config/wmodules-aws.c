@@ -294,12 +294,6 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 mtdebug2(WM_AWS_LOGTAG, "Creating first service structure");
             }
 
-            // Expand service Child Nodes
-
-            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
-                continue;
-            }
-
             // type is an attribute of the service tag
             if (!strcmp(*nodes[i]->attributes, XML_SERVICE_TYPE)) {
                 if (!strcmp(*nodes[i]->values, INSPECTOR_SERVICE_TYPE)) {
@@ -313,6 +307,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 mterror(WM_AWS_LOGTAG, "Attribute name '%s' is not valid. The valid one is '%s'.", *nodes[i]->attributes, XML_SERVICE_TYPE);
                 OS_ClearNode(children);
                 return OS_INVALID;
+            }
+
+            // Expand service Child Nodes
+
+            if (!(children = OS_GetElementsbyNode(xml, nodes[i]))) {
+                continue;
             }
 
             mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
