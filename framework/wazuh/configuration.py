@@ -645,9 +645,9 @@ def upload_group_configuration(group_id, xml_file):
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString(xml_file)
-            # remove first line (XML specification: <? xmlversion="1.0" ?>) and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[1:])) + '\n'
+            xml = parseString('<root>' + xml_file + '</root>')
+            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhException(1113, str(e))
