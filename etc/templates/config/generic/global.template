@@ -8,5 +8,6 @@
     <email_from>ossecm@example.wazuh.com</email_from>
     <email_to>recipient@example.wazuh.com</email_to>
     <email_maxperhour>12</email_maxperhour>
+    <email_log_source>alerts.log</email_log_source>
     <queue_size>131072</queue_size>
   </global>

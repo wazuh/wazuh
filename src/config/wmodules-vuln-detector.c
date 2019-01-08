@@ -285,6 +285,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             upd->attempted = 0;
             upd->json_format = 0;
             upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
+            
 
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
                 return OS_INVALID;

@@ -574,7 +574,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             char *bugzilla_reference;
             char *cwe;
             char *advisories;
-            char state[50];
+            char state[50] = {0};
             int v_type;
 
             cve = (char *)sqlite3_column_text(stmt, 0);
@@ -1745,7 +1745,9 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
 
     if (!reg) {
         os_calloc(1, sizeof(OSRegex), reg);
-        OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING);
+        if(OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING) == 0) {
+            goto error;
+        }
     }
 
     if (retv = OSRegex_Execute(raw, reg), retv) {
@@ -2113,6 +2115,10 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                 }
             }
 
+            if(!tmp_bugzilla_description || !tmp_cve) {
+                return 1;
+            }
+
             wm_vuldet_adapt_title(tmp_bugzilla_description, tmp_cve);
 
             if (tmp_affected_packages) {
@@ -2177,8 +2183,8 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
     int sock = 0;
     unsigned int i;
     int size;
-    char buffer[OS_MAXSTR];
-    char json_str[OS_MAXSTR];
+    char buffer[OS_SIZE_6144 + 1];
+    char json_str[OS_SIZE_6144 + 1];
     char scan_id[OS_SIZE_1024];
     int request = VU_SOFTWARE_REQUEST;
     char *found;
@@ -2191,7 +2197,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
 
     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_SOFTWARE_REQ, agent->agent_id);
 
-    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR)) < 0; i++) {
+    for (i = 0; i < VU_MAX_WAZUH_DB_ATTEMPS && (sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK_PATH, SOCK_STREAM, OS_SIZE_6144)) < 0; i++) {
         mterror(WM_VULNDETECTOR_LOGTAG, "Unable to connect to socket '%s'. Waiting %d seconds.", WDB_LOCAL_SOCK_PATH, i);
         sleep(i);
     }
@@ -2202,8 +2208,8 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
     }
 
     // Request the ID of the last scan
-    size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_SCAN_REQUEST], agent->agent_id);
-    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR)) < 1) {
+    size = snprintf(buffer, OS_SIZE_6144, vu_queries[VU_SYSC_SCAN_REQUEST], agent->agent_id);
+    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_SIZE_6144)) < 1) {
         close(sock);
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SYSC_SCAN_REQUEST_ERROR, agent->agent_id);
         return OS_INVALID;
@@ -2218,7 +2224,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
             retval = 2;
             goto end;
         }
-        size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+        size = snprintf(json_str, OS_SIZE_6144, "{\"data\":%s}", buffer);
         json_str[size] = '\0';
     } else {
         retval = OS_INVALID;
@@ -2262,14 +2268,14 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
 
     // Request and store packages
     i = 0;
-    size = snprintf(buffer, OS_MAXSTR, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
+    size = snprintf(buffer, OS_SIZE_6144, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
     if (OS_SendSecureTCP(sock, size + 1, buffer)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
         close(sock);
         return OS_INVALID;
     }
 
-    while (size = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), size) {
+    while (size = OS_RecvSecureTCP(sock, buffer, OS_SIZE_6144), size) {
         if (size > 0) {
             if (size < 10) {
                 break;
@@ -2277,7 +2283,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
             buffer[size] = '\0';
             if (!strncmp(buffer, "ok", 2)) {
                 buffer[0] = buffer[1] = ' ';
-                size = snprintf(json_str, OS_MAXSTR, "{\"data\":%s}", buffer);
+                size = snprintf(json_str, OS_SIZE_6144, "{\"data\":%s}", buffer);
                 json_str[size] = '\0';
             } else {
                 retval = OS_INVALID;
@@ -2313,7 +2319,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
             }
 
             i += VU_MAX_PACK_REQ;
-            size = snprintf(buffer, OS_MAXSTR, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
+            size = snprintf(buffer, OS_SIZE_6144, vu_queries[request], agent->agent_id, scan_id, VU_MAX_PACK_REQ, i);
             if (OS_SendSecureTCP(sock, size + 1, buffer)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
                 retval = OS_INVALID;
@@ -2326,8 +2332,8 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
     }
 
     // Avoid checking the same packages again
-    size = snprintf(buffer, OS_MAXSTR, vu_queries[VU_SYSC_UPDATE_SCAN], agent->agent_id, scan_id);
-    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR)) < 1) {
+    size = snprintf(buffer, OS_SIZE_6144, vu_queries[VU_SYSC_UPDATE_SCAN], agent->agent_id, scan_id);
+    if (OS_SendSecureTCP(sock, size + 1, buffer) || (size = OS_RecvSecureTCP(sock, buffer, OS_SIZE_6144)) < 1) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_SOFTWARE_REQUEST_ERROR, agent->agent_id);
         retval = OS_INVALID;
         goto end;

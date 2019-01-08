@@ -474,6 +474,13 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
             (*logf)[size - 1].file = NULL;
             (*logf)[size - 1].fp = NULL;
 
+            if(!gl) {
+                (*logf)[size - 1].target = NULL;
+                (*logf)[size - 1].ffile = NULL;
+                (*logf)[size - 1].logformat = NULL;
+                (*logf)[size - 1].command = NULL;
+            }
+
             if (!size)
                 size = 1;
             os_realloc(*logf, size*sizeof(logreader), *logf);

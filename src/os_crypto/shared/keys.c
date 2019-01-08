@@ -315,6 +315,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 
     /* Close key file */
     fclose(fp);
+    fp = NULL;
 
     /* Clear one last time before leaving */
     __memclear(id, name, ip, key, KEYSIZE + 1);
@@ -352,7 +353,11 @@ void OS_FreeKey(keyentry *key) {
         }  
     }
     char key_c[64];
+#ifdef WIN32
+    sprintf(key_c,"%lu",(long unsigned)key);
+#else
     sprintf(key_c,"%llu",(long long unsigned)key);
+#endif
 
     if(OSHash_Get(last_freed_keys,key_c)){
         return;

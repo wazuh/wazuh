@@ -30,6 +30,7 @@ extern float s_rootcheck_queue;
 extern float s_hostinfo_queue;
 extern float s_event_queue;
 extern float s_process_event_queue;
+extern float s_winevt_queue;
 
 extern unsigned int s_syscheck_queue_size;
 extern unsigned int s_syscollector_queue_size;
@@ -37,6 +38,7 @@ extern unsigned int s_rootcheck_queue_size;
 extern unsigned int s_hostinfo_queue_size;
 extern unsigned int s_event_queue_size;
 extern unsigned int s_process_event_queue_size;
+extern unsigned int s_winevt_queue_size;
 
 extern float s_writer_alerts_queue;
 extern float s_writer_archives_queue;
@@ -61,6 +63,7 @@ void w_inc_dropped_events();
 void w_inc_alerts_written();
 void w_inc_firewall_written();
 void w_inc_fts_written();
+void w_inc_winevt_decoded_events();
 void w_reset_stats();
 
 #endif /* _STATE_A__H */
