@@ -1685,43 +1685,18 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
-        # get timestamp
-        timestamp = datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s')
-
         # path of temporary files for parsing xml input
-        tmp_file_path = common.ossec_path + '/tmp/api_tmp_file_{timestamp}.xml'.format(timestamp=timestamp)
+        tmp_file_path = '{}/tmp/api_tmp_file_{}.xml'.format(common.ossec_path,
+                                                            datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s'))
 
         # create temporary file for parsing xml input
         try:
             with open(tmp_file_path, 'w') as tmp_file:
                 # beauty xml file
                 xml = parseString(xml_file)
-                pretty_xml = xml.toprettyxml(indent='  ')  # two spaces for identation
+                # remove first line (XML specification: <? xmlversion="1.0" ?>) and empty lines
+                pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[1:])) + '\n'
                 tmp_file.write(pretty_xml)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
-
-        # function to replace a line in a text file
-        def replace_line(file_name, line_num, text):
-            with open(file_name) as f:
-                lines = f.readlines()
-            lines[line_num] = text
-            with open(file_name, 'w') as out:
-                out.writelines(lines)
-
-        def delete_empty_lines(file_name):
-            with open(file_name) as f:
-                lines = f.readlines()
-
-            with open(file_name, 'w') as out:
-                for line in lines:
-                    if not line.strip(): continue  # skip the empty line
-                    out.write(line)
-
-        # it is necessary to delete the first line and empty lines
-        try:
-            delete_empty_lines(tmp_file_path)
-            replace_line(tmp_file_path, 0, '')
         except Exception as e:
             raise WazuhException(1005, str(e))
 
@@ -1739,7 +1714,7 @@ class Agent:
 
         # move temporary file to group folder
         try:
-            new_conf_path = common.shared_path + '/' + group_id + '/' + destination_file
+            new_conf_path = "{}/{}/{}".format(common.shared_path, group_id, destination_file)
             move(tmp_file_path, new_conf_path)
         except Exception as e:
             raise WazuhException(1017, str(e))
