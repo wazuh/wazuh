@@ -68,6 +68,30 @@ WriteSyscheck()
     fi
 }
 
+##########
+# DisableAuthd()
+##########
+DisableAuthd()
+{
+    echo "  <!-- Configuration for ossec-authd -->" >> $NEWCONFIG
+    echo "  <auth>" >> $NEWCONFIG
+    echo "    <disabled>yes</disabled>" >> $NEWCONFIG
+    echo "    <port>1515</port>" >> $NEWCONFIG
+    echo "    <use_source_ip>yes</use_source_ip>" >> $NEWCONFIG
+    echo "    <force_insert>yes</force_insert>" >> $NEWCONFIG
+    echo "    <force_time>0</force_time>" >> $NEWCONFIG
+    echo "    <purge>yes</purge>" >> $NEWCONFIG
+    echo "    <use_password>no</use_password>" >> $NEWCONFIG
+    echo "    <limit_maxagents>yes</limit_maxagents>" >> $NEWCONFIG
+    echo "    <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>" >> $NEWCONFIG
+    echo "    <!-- <ssl_agent_ca></ssl_agent_ca> -->" >> $NEWCONFIG
+    echo "    <ssl_verify_host>no</ssl_verify_host>" >> $NEWCONFIG
+    echo "    <ssl_manager_cert>${INSTALLDIR}/etc/sslmanager.cert</ssl_manager_cert>" >> $NEWCONFIG
+    echo "    <ssl_manager_key>${INSTALLDIR}/etc/sslmanager.key</ssl_manager_key>" >> $NEWCONFIG
+    echo "    <ssl_auto_negotiate>no</ssl_auto_negotiate>" >> $NEWCONFIG
+    echo "  </auth>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+}
 
 ##########
 # WriteRootcheck()
@@ -507,8 +531,12 @@ WriteManager()
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
+    if [ "X${AUTHD}" = "Xyes" ]; then
+        sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${AUTH_TEMPLATE}" >> $NEWCONFIG
+        echo "" >> $NEWCONFIG
+    else
+        DisableAuthd
+    fi
 
     # Writting cluster configuration
     cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
@@ -865,7 +893,9 @@ InstallLocal(){
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
+    fi
+    if [ ! -f ${PREFIX}/etc/lists/security-eventchannel ]; then
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -946,7 +976,17 @@ InstallWazuh(){
         InstallAgent
     elif [ "X$INSTYPE" = "Xserver" ]; then
         InstallServer
+        InstallCDB
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         InstallLocal
+        InstallCDB
     fi
+
+}
+
+
+InstallCDB()
+{
+    echo "Building CDB lists..."
+    ${PREFIX}/bin/ossec-makelists > /dev/null 2>&1
 }

@@ -159,7 +159,7 @@
 #define EXEC_INV_NAME   "(1311): Invalid command name '%s' provided."
 #define EXEC_CMDERROR   "(1312): Error executing '%s': %s"
 #define EXEC_INV_CONF   "(1313): Invalid active response config: '%s'."
-#define EXEC_DISABLED   "(1350): Active response disabled. Exiting."
+#define EXEC_DISABLED   "(1350): Active response disabled."
 #define EXEC_SHUTDOWN   "(1314): Shutdown received. Deleting responses."
 
 #define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
@@ -187,11 +187,11 @@
 #define REM_ERROR       "(1956): Error removing '%s' file."
 #define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
 #define DUP_FILE        "(1958): Log file '%s' is duplicated."
-#define FORGET_FILE     "(1959): File '%s' does not exist."
+#define FORGET_FILE     "(1959): File '%s' no longer exists."
 #define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
 #define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
-
+#define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
@@ -359,6 +359,7 @@
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
+#define OS_AG_REMOVED   "ossec: Agent removed: '%s'."
 
 #define OS_NORMAL_BUFFER  "wazuh: Agent buffer: 'normal'."
 #define OS_WARN_BUFFER  "wazuh: Agent buffer: '%d%%'."

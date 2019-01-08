@@ -44,16 +44,12 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sys_processes WHERE scan_id != ?;",
     "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netaddr (scan_id, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netaddr (scan_id, iface, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
     "DELETE FROM sys_netaddr WHERE scan_id != ?;",
     "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM ciscat_results WHERE scan_id != ?;",
-    "INSERT INTO metadata (key, value) VALUES ('version_major', ?), ('version_minor', ?);",
-    "INSERT INTO metadata (key, value) VALUES (?, ?);",
-    "UPDATE metadata SET value = ? WHERE key = ?;",
-    "SELECT value FROM metadata WHERE key = ?;",
     "SELECT first_start, first_end, start_scan, end_scan, first_check, second_check, third_check FROM scan_info WHERE module = ?;",
     "INSERT INTO scan_info (module, first_start, first_end, start_scan, end_scan, fim_first_check, fim_second_check, fim_third_check) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
     "UPDATE scan_info SET first_start = ?, start_scan = ? WHERE module = ?;",
@@ -158,6 +154,7 @@ wdb_t * wdb_open_agent2(int agent_id) {
     char path[PATH_MAX + 1];
     sqlite3 * db;
     wdb_t * wdb = NULL;
+    wdb_t * new_wdb = NULL;
 
     snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
 
@@ -192,18 +189,25 @@ wdb_t * wdb_open_agent2(int agent_id) {
 
         wdb = wdb_init(db, sagent_id);
 
-        if (wdb_metadata_initialize(wdb, path) < 0) {
+        if (wdb_metadata_initialize(wdb) < 0) {
             mwarn("Couldn't initialize metadata table in '%s'", path);
         }
-        if (wdb_scan_info_init(wdb, path) < 0) {
+        if (wdb_scan_info_init(wdb) < 0) {
             mwarn("Couldn't initialize scan_info table in '%s'", path);
         }
+
+        wdb_pool_append(wdb);
     }
     else {
         wdb = wdb_init(db, sagent_id);
-    }
+        wdb_pool_append(wdb);
 
-    wdb_pool_append(wdb);
+        if (new_wdb = wdb_upgrade(wdb), new_wdb != NULL) {
+            // If I had to generate backup and change DB
+            wdb = new_wdb;
+            wdb_pool_append(wdb);
+        }
+    }
 
 success:
     w_mutex_lock(&wdb->mutex);
@@ -256,7 +260,10 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     fclose(source);
-    fclose(dest);
+    if (fclose(dest) == -1) {
+        merror("Couldn't create file %s completely ", path);
+        return -1;
+    }
 
     if (result < 0) {
         unlink(path);
@@ -338,12 +345,12 @@ int wdb_begin(sqlite3 *db) {
     int result = 0;
 
     if (sqlite3_prepare_v2(db, SQL_BEGIN, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_begin(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         return -1;
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_begin(): wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -366,12 +373,12 @@ int wdb_commit(sqlite3 *db) {
     int result = 0;
 
     if (sqlite3_prepare_v2(db, SQL_COMMIT, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_commit(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         return -1;
     }
 
     if (result = wdb_step(stmt) != SQLITE_DONE, result) {
-        mdebug1("at wdb_commit(): wdb_step(): %s", sqlite3_errmsg(db));
+        mdebug1("wdb_step(): %s", sqlite3_errmsg(db));
         result = -1;
     }
 
@@ -454,7 +461,7 @@ int wdb_create_file(const char *path, const char *source) {
 
     switch (getuid()) {
     case -1:
-        merror("at getuid(): %s (%d)", strerror(errno), errno);
+        merror("getuid(): %s (%d)", strerror(errno), errno);
         return -1;
 
     case 0:
@@ -553,7 +560,7 @@ void wdb_pool_append(wdb_t * wdb) {
     db_pool_size++;
 
     if (r = OSHash_Add(open_dbs, wdb->agent_id, wdb), r != 2) {
-        merror_exit("at wdb_pool_append(): OSHash_Add(%s) returned %d.", wdb->agent_id, r);
+        merror_exit("OSHash_Add(%s) returned %d.", wdb->agent_id, r);
     }
 }
 
@@ -648,7 +655,7 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     cJSON * row;
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK) {
-        mdebug1("at wdb_exec(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_prepare_v2(): %s", sqlite3_errmsg(db));
         mdebug2("SQL: %s", sql);
         return NULL;
     }
@@ -682,7 +689,7 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
     }
 
     if (r != SQLITE_DONE) {
-        mdebug1("at wdb_exec(): sqlite3_step(): %s", sqlite3_errmsg(db));
+        mdebug1("sqlite3_step(): %s", sqlite3_errmsg(db));
         cJSON_Delete(result);
         result = NULL;
     }
@@ -713,11 +720,11 @@ int wdb_close(wdb_t * wdb) {
             wdb_destroy(wdb);
             return 0;
         } else {
-            mdebug1("at wdb_close(): %s", sqlite3_errmsg(wdb->db));
+            merror("DB(%s) wdb_close(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else {
-        mdebug1("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
+        merror("Couldn't close database for agent %s: refcount = %u", wdb->agent_id, wdb->refcount);
         return -1;
     }
 }
@@ -742,26 +749,42 @@ wdb_t * wdb_pool_find_prev(wdb_t * wdb) {
 
 int wdb_stmt_cache(wdb_t * wdb, int index) {
     if (index >= WDB_STMT_SIZE) {
-        merror("SQL statement index (%d) out of bounds", index);
+        merror("DB(%s) SQL statement index (%d) out of bounds", wdb->agent_id, index);
         return -1;
     }
     if (!wdb->stmt[index]) {
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     } else if (sqlite3_reset(wdb->stmt[index]) != SQLITE_OK) {
-        mdebug1("at wdb_stmt_cache(): at sqlite3_reset(): %s", sqlite3_errmsg(wdb->db));
+        mdebug1("DB(%s) sqlite3_reset() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
 
         // Retry to prepare
 
         sqlite3_finalize(wdb->stmt[index]);
 
         if (sqlite3_prepare_v2(wdb->db, SQL_STMT[index], -1, wdb->stmt + index, NULL) != SQLITE_OK) {
-            merror("at wdb_stmt_cache(): sqlite3_prepare_v2(): %s", sqlite3_errmsg(wdb->db));
+            merror("DB(%s) sqlite3_prepare_v2() stmt(%d): %s", wdb->agent_id, index, sqlite3_errmsg(wdb->db));
             return -1;
         }
     }
 
     return 0;
+}
+
+// Execute SQL script into an database
+int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
+    char *sql_error;
+    int result = 0;
+
+    sqlite3_exec(wdb->db, sql_exec, NULL, NULL, &sql_error);
+
+    if(sql_error) {
+        mwarn("DB(%s) wdb_sql_exec returned error: '%s'", wdb->agent_id, sql_error);
+        sqlite3_free(sql_error);
+        result = -1;
+    }
+
+    return result;
 }

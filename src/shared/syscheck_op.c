@@ -151,7 +151,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
     char *c_inode;
     char *attrs;
     int retval = 0;
-    char *username_esc;
+    char * uname;
 
     if (c_sum[0] == '-' && c_sum[1] == '1') {
         retval = 1;
@@ -192,17 +192,15 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 
         // New fields: user name, group name, modification time and inode
 
-        if ((sum->uname = strchr(sum->sha1, ':'))) {
-            *(sum->uname++) = '\0';
+        if ((uname = strchr(sum->sha1, ':'))) {
+            *(uname++) = '\0';
 
-            if (!(sum->gname = strchr(sum->uname, ':')))
+            if (!(sum->gname = strchr(uname, ':')))
                 return -1;
 
             *(sum->gname++) = '\0';
 
-            if (username_esc = os_strip_char(sum->uname, '\\'), username_esc) {
-                sum->uname = username_esc;
-            }
+            sum->uname = os_strip_char(uname, '\\');
 
             if (!(c_mtime = strchr(sum->gname, ':')))
                 return -1;
@@ -592,7 +590,7 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
     static char *str_a = "allowed";
     static char *str_d = "denied";
     static char *str_n = "name";
-    cJSON *perm_type;
+    cJSON *perm_type = NULL;
     cJSON *json_it;
     char a_type;
     long mask;
@@ -811,6 +809,34 @@ cJSON *attrs_to_json(unsigned int attributes) {
         cJSON_AddItemToArray(ab_array, cJSON_CreateString("VIRTUAL"));
     }
     return ab_array;
+}
+
+char *get_attr_from_checksum(char *checksum, int attr) {
+    char *str_attr = NULL;
+    char *str_end = NULL;
+    int i;
+
+    if (attr < 1 || attr > FIM_NATTR) {
+        return NULL;
+    }
+
+    str_attr = checksum;
+
+    for(i = 2; i <= attr && str_attr; i++){
+        str_attr = strchr(str_attr, ':');
+        if(str_attr) {
+            str_attr++;
+        }
+    }
+
+    if (str_attr) {
+        if(str_end = strchr(str_attr, ':'), str_end) {
+            *(str_end++) = '\0';
+        }
+        return str_attr;
+    }
+
+    return NULL;
 }
 
 #else

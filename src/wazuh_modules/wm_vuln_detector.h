@@ -14,18 +14,18 @@
 #ifndef WM_VULNDETECTOR
 #define WM_VULNDETECTOR
 
-#define VU_WM_NAME "vulnerability-detector"
 #define WM_VULNDETECTOR_LOGTAG ARGV0 ":" VU_WM_NAME
 #define WM_VULNDETECTOR_DEFAULT_INTERVAL 300 // 5 minutes
 #define WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL 3600 // 1 hour
 #define WM_VULNDETECTOR_RETRY_UPDATE  300 // 5 minutes
+#define WM_VULNDETECTOR_DOWN_ATTEMPTS  5
 #define VU_DEF_IGNORE_TIME 21600 // 6 hours
 #define CVE_TEMP_FILE "tmp/cve"
 #define CVE_FIT_TEMP_FILE CVE_TEMP_FILE "-fitted"
 #define CANONICAL_REPO "https://people.canonical.com/~ubuntu-security/oval/com.ubuntu.%s.cve.oval.xml"
 #define DEBIAN_REPO "https://www.debian.org/security/oval/oval-definitions-%s.xml"
-#define RED_HAT_REPO_DEFAULT_MIN_YEAR 2014
-#define RED_HAT_REPO_MIN_YEAR 2010
+#define RED_HAT_REPO_DEFAULT_MIN_YEAR 2010
+#define RED_HAT_REPO_MIN_YEAR 1999
 #define RED_HAT_REPO_MAX_ATTEMPTS 3
 #define RED_HAT_REPO_REQ_SIZE 1000
 #define RED_HAT_REPO "https://access.redhat.com/labs/securitydataapi/cve.json?after=%d-01-01&per_page=%d&page=%d"
@@ -58,7 +58,6 @@
 #define VU_BUILD_REF_RHSA "https://access.redhat.com/errata/%s"
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
-
 extern const char *vu_dist_tag[];
 extern const char *vu_dist_ext[];
 
@@ -177,7 +176,7 @@ typedef struct update_node {
     const char *dist_ext;
     time_t last_update;
     unsigned long interval;
-    int update_since; // only for Red Hat feed
+    int update_from_year; // only for Red Hat feed
     char *url;
     in_port_t port;
     char *path;

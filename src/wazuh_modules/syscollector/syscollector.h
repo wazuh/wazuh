@@ -20,6 +20,9 @@
 #include <winsock2.h>
 #include <netioapi.h>
 #include <iphlpapi.h>
+#include <psapi.h>
+#include <tlhelp32.h>
+#include <winbase.h>
 #endif
 
 #ifndef WM_SYSCOLLECTOR
@@ -148,8 +151,8 @@ void sys_ports_windows(const char* LOCATION, int check_all);
 
 // Installed packages inventory for Linux
 void sys_packages_linux(int queue_fd, const char* WM_SYS_LOCATION);
-int sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION);
-int sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION);
+char * sys_deb_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
+char * sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id);
 
 #ifdef WIN32
 // Installed programs inventory for Windows

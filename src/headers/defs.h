@@ -121,6 +121,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 // Authd local socket
 #define AUTH_LOCAL_SOCK "/queue/ossec/auth"
+#define AUTH_LOCAL_SOCK_PATH DEFAULTDIR AUTH_LOCAL_SOCK
 
 // Remote requests socket
 #define REMOTE_REQ_SOCK "/queue/ossec/request"
@@ -147,6 +148,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_DOWNLOAD_SOCK "/queue/ossec/download"
 #define WM_DOWNLOAD_SOCK_PATH DEFAULTDIR WM_DOWNLOAD_SOCK
 
+#define WM_KEY_REQUEST_SOCK "/queue/ossec/krequest"
+#define WM_KEY_REQUEST_SOCK_PATH DEFAULTDIR WM_KEY_REQUEST_SOCK
+
 /* Active Response files */
 #define DEFAULTAR_FILE  "ar.conf"
 
@@ -171,11 +175,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ARQUEUE         "/queue/alerts/ar"
 
 /* Decoder file */
-#define XML_DECODER     "/etc/decoder.xml"
-#define XML_LDECODER    "/etc/local_decoder.xml"
+#define XML_LDECODER    "/etc/decoders/local_decoder.xml"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
+#define AGENTINFO_DIR_PATH DEFAULTDIR "/queue/agent-info"
 
 /* Agent groups location */
 #define GROUPS_DIR    "/queue/agent-groups"
@@ -207,6 +211,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #define DIFF_NEW_FILE  "new-entry"
 #define DIFF_LAST_FILE "last-entry"
+#define DIFF_GZ_FILE "last-entry.gz"
 #define DIFF_TEST_HOST "__test"
 
 /* Syscheck data */
@@ -306,7 +311,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 /* Multi-groups directory */
 #define MULTIGROUPS_DIR   "/var/multigroups"
-#define METADATA_FILE MULTIGROUPS_DIR "/.metadata"
 #define MAX_GROUP_NAME 255
 #define MULTIGROUP_SEPARATOR ','
 #define MAX_GROUPS_PER_MULTIGROUP 256

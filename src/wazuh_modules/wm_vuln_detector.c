@@ -574,7 +574,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             char *bugzilla_reference;
             char *cwe;
             char *advisories;
-            char state[50];
+            char state[50] = {0};
             int v_type;
 
             cve = (char *)sqlite3_column_text(stmt, 0);
@@ -665,7 +665,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                     }
                 }
                 if (advisories && *advisories) {
-                    cJSON_AddItemToObject(alert_cve, "advisories", wm_vuldet_decode_advisories(advisories));
+                    cJSON_AddStringToObject(alert_cve, "advisories", advisories);
                 }
                 if (cwe) cJSON_AddStringToObject(alert_cve, "cwe_reference", cwe);
                 if (bugzilla_reference) cJSON_AddStringToObject(alert_cve, "bugzilla_reference", bugzilla_reference);
@@ -1095,9 +1095,7 @@ void wm_vuldet_add_vulnerability_info(wm_vuldet_db *ctrl_block) {
 
 char * wm_vuldet_xml_preparser(char *path, distribution dist) {
     FILE *input, *output = NULL;
-    char *buffer = NULL;
-    size_t size;
-    size_t max_size = OS_MAXSTR;
+    char buffer[OS_MAXSTR + 1];
     parser_state state = V_OVALDEFINITIONS;
     char *found;
     char *tmp_file;
@@ -1121,34 +1119,34 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
         goto free_mem;
     }
 
-    while (size = getline(&buffer, &max_size, input), (int) size > 0) {
+    while (fgets(buffer, OS_MAXSTR, input)) {
         if (dist == DIS_UBUNTU) { //5.11.1
             switch (state) {
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_OVALDEFINITIONS;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if ((found = strstr(buffer, "is not affected")) &&
                               (found = strstr(buffer, "negate")) &&
                         strstr(found, "true")) {
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "a decision has been made to ignore it")) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_OVALDEFINITIONS;
-                        //goto free_buffer;
+                        //continue;
                     }
                 break;
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
-                      //goto free_buffer;
+                      //continue;
                   }
             }
         } else if (dist == DIS_DEBIAN) { //5.3
@@ -1157,18 +1155,18 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     if (found = strstr(buffer, "?>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
                         state = V_STATES;
                     }
-                    goto free_buffer;
+                    continue;
                 break;
                 case V_DEFINITIONS:
                     if (strstr(buffer, exclude_tags[0]) ||
                         strstr(buffer, exclude_tags[1])) {
-                        goto free_buffer;
+                        continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_STATES;
                     }
@@ -1176,7 +1174,7 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                 default:
                     if (strstr(buffer, "<objects>")) {
                         state = V_OBJECTS;
-                        goto free_buffer;
+                        continue;
                     } else if (strstr(buffer, "<definitions>")) {
                       state = V_DEFINITIONS;
                     } else if (strstr(buffer, "<tests>")) {
@@ -1188,14 +1186,10 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
             tmp_file = NULL;
             goto free_mem;
         }
-        fwrite(buffer, 1, size, output);
-free_buffer:
-        free(buffer);
-        buffer = NULL;
+        fwrite(buffer, 1, strlen(buffer), output);
     }
 
 free_mem:
-    free(buffer);
     if (input) {
         fclose(input);
     }
@@ -1751,7 +1745,9 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
 
     if (!reg) {
         os_calloc(1, sizeof(OSRegex), reg);
-        OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING);
+        if(OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING) == 0) {
+            goto error;
+        }
     }
 
     if (retv = OSRegex_Execute(raw, reg), retv) {
@@ -1832,6 +1828,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
     FILE *fp_output = NULL;
     unsigned char success = 0;
     char *found;
+    int attempts;
     *need_update = 1;
 
     if (update->dist_ref == DIS_REDHAT) {
@@ -1884,7 +1881,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
 
             while (page) {
                 if (!attempt) {
-                    snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_since, RED_HAT_REPO_REQ_SIZE, page);
+                    snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_from_year, RED_HAT_REPO_REQ_SIZE, page);
                 } else if (attempt == RED_HAT_REPO_MAX_ATTEMPTS) {
                     mterror(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, RED_HAT_REPO_MAX_ATTEMPTS);
                     goto end;
@@ -1935,15 +1932,21 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
         goto end;
     }
 
-    if (wurl_request(repo, CVE_TEMP_FILE)) {
-        goto end;
+    for (attempts = 0;; attempts++) {
+        if (!wurl_request(repo, CVE_TEMP_FILE)) {
+            break;
+        } else if (attempts == WM_VULNDETECTOR_DOWN_ATTEMPTS) {
+            goto end;
+        }
+        mdebug1(VU_DOWNLOAD_FAIL, attempts);
+        sleep(attempts);
     }
 
     if (fp = fopen(CVE_TEMP_FILE, "r"), !fp) {
         goto end;
     }
 
-     while (fgets(buffer, OS_SIZE_256, fp)) {
+    while (fgets(buffer, OS_MAXSTR, fp)) {
         if (found = strstr(buffer, timestamp_tag), found) {
             char *close_tag;
             found+=strlen(timestamp_tag);
@@ -2110,6 +2113,10 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                 } else {
                     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_UNEXP_JSON_KEY, cve_content->string);
                 }
+            }
+
+            if(!tmp_bugzilla_description || !tmp_cve) {
+                return 1;
             }
 
             wm_vuldet_adapt_title(tmp_bugzilla_description, tmp_cve);
@@ -2379,6 +2386,12 @@ end:
     return retval;
 }
 
+void free_agents_triag(last_scan *data) {
+    if (!data) return;
+    if (data->last_scan_id) free(data->last_scan_id);
+    free(data);
+}
+
 void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
     time_t time_sleep = 0;
     wm_vuldet_flags *flags = &vulnerability_detector->flags;
@@ -2435,6 +2448,8 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
         pthread_exit(NULL);
     }
+
+    OSHash_SetFreeDataPointer(vulnerability_detector->agents_triag, (void (*)(void *))free_agents_triag);
 
     while (1) {
         // Update CVE databases

@@ -16,6 +16,7 @@
 #include "agentd.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
+w_queue_t * winexec_queue;
 
 /* Receive events from the server */
 void *receiver_thread(__attribute__((unused)) void *none)
@@ -126,8 +127,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-            if (tmp_msg == NULL) {
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID || tmp_msg == NULL) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
@@ -148,7 +148,8 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                     /* Run on Windows */
                     if (agt->execdq >= 0) {
-                        WinExecdRun(tmp_msg);
+                        //WinExecdRun(tmp_msg);
+                        queue_push_ex(winexec_queue, strdup(tmp_msg));
                     }
 
                     continue;

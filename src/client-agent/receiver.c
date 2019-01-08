@@ -91,8 +91,7 @@ int receive_msg()
 
         buffer[recv_b] = '\0';
 
-        tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-        if (tmp_msg == NULL) {
+        if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
             mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
             continue;
         }

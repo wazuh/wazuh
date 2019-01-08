@@ -89,7 +89,7 @@ int mkstemp_ex(char *tmp_path) __attribute__((nonnull));
 
 int TempFile(File *file, const char *source, int copy);
 int OS_MoveFile(const char *src, const char *dst);
-int w_copy_file(const char *src, const char *dst,char mode,char * message);
+int w_copy_file(const char *src, const char *dst,char mode,char * message,int silent);
 
 /* Checks for Windows Vista */
 #ifdef WIN32
@@ -127,5 +127,9 @@ FILE * wfopen(const char * pathname, const char * mode);
 
 /* Delete a line from a file */
 int w_remove_line_from_file(char *file, int line);
+
+// To compress an decompress a file in gzip
+int w_compress_gzfile(const char *filesrc, const char *filedst);
+int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 
 #endif /* __FILE_H */

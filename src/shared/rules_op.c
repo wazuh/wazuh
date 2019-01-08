@@ -344,6 +344,9 @@ int OS_ReadXMLRules(const char *rulefile,
                     config_ruleinfo->dstip = (os_ip **)
                                              realloc(config_ruleinfo->dstip,
                                                      (ip_s + 2) * sizeof(os_ip *));
+                    if(!config_ruleinfo->dstip) {
+                        merror_exit(MEM_ERROR, errno, strerror(errno));
+                    }
 
                     /* Allocate memory for the individual entries */
                     os_calloc(1, sizeof(os_ip),

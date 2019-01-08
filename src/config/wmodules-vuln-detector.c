@@ -29,7 +29,7 @@ static const char *XML_URL = "url";
 static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
-static const char *XML_UPDATE_SINCE = "update_since";
+static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 // Deprecated
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
@@ -284,7 +284,8 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
             upd->attempted = 0;
             upd->json_format = 0;
-            upd->update_since = RED_HAT_REPO_DEFAULT_MIN_YEAR;
+            upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
+            
 
             if (os_index = set_oval_version(feed, version, vulnerability_detector->updates, upd), os_index == OS_INVALID) {
                 return OS_INVALID;
@@ -334,9 +335,9 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
-                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_SINCE)) {
-                    if (!is_valid_year(chld_node[j]->content, &upd->update_since)) {
-                        merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_SINCE, WM_VULNDETECTOR_CONTEXT.name);
+                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
+                    if (!is_valid_year(chld_node[j]->content, &upd->update_from_year)) {
+                        merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                         OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }

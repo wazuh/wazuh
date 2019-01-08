@@ -97,7 +97,11 @@ int connect_server(int initial_id)
 
         if (agt->sock < 0) {
             agt->sock = -1;
+#ifdef WIN32
+            merror(CONNS_ERROR, tmp_str, win_strerror(WSAGetLastError()));
+#else
             merror(CONNS_ERROR, tmp_str, strerror(errno));
+#endif
             rc++;
 
             if (agt->server[rc].rip == NULL) {
@@ -114,7 +118,14 @@ int connect_server(int initial_id)
         } else {
             if (agt->server[rc].protocol == TCP_PROTO) {
                 if (OS_SetRecvTimeout(agt->sock, timeout, 0) < 0){
-                    merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
+                    switch (errno) {
+                    case ENOPROTOOPT:
+                        mdebug1("Cannot set network timeout: operation not supported by this OS.");
+                        break;
+                    default:
+                        merror("Cannot set network timeout: %s (%d)", strerror(errno), errno);
+                        return EXIT_FAILURE;
+                    }
                 }
             }
 
@@ -204,8 +215,7 @@ void start_agent(int is_startup)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-            if (tmp_msg == NULL) {
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }
