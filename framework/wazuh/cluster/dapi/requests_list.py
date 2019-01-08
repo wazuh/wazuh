@@ -160,6 +160,10 @@ functions = {
         'function': Agent.unset_group,
         'type': 'local_master'
     },
+    'DELETE/agents/group/:group_id': {
+        'function': Agent.unset_group_list,
+        'type': 'local_master'
+    },
     'DELETE/agents/:agent_id/group/:group_id': {
         'function': Agent.unset_group,
         'type': 'local_master'

@@ -468,6 +468,11 @@ stopa()
     fi
 }
 
+buildCDB()
+{
+    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
+}
+
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -499,6 +504,7 @@ restart)
     else
         stopa
     fi
+    buildCDB
     start
     unlock
     ;;

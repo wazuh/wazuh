@@ -893,7 +893,9 @@ InstallLocal(){
     fi
     if [ ! -f ${PREFIX}/etc/lists/audit-keys ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys ${PREFIX}/etc/lists/audit-keys
-        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/audit-keys.cdb ${PREFIX}/etc/lists/audit-keys.cdb
+    fi
+    if [ ! -f ${PREFIX}/etc/lists/security-eventchannel ]; then
+        ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/lists/security-eventchannel ${PREFIX}/etc/lists/security-eventchannel
     fi
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/fts
@@ -974,7 +976,17 @@ InstallWazuh(){
         InstallAgent
     elif [ "X$INSTYPE" = "Xserver" ]; then
         InstallServer
+        InstallCDB
     elif [ "X$INSTYPE" = "Xlocal" ]; then
         InstallLocal
+        InstallCDB
     fi
+
+}
+
+
+InstallCDB()
+{
+    echo "Building CDB lists..."
+    ${PREFIX}/bin/ossec-makelists > /dev/null 2>&1
 }

@@ -16,8 +16,8 @@
 #define ARGV0 "wazuh-modulesd"
 #endif // ARGV0
 
-#include <pthread.h>
 #include "shared.h"
+#include <pthread.h>
 #include "config/config.h"
 
 #define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.
@@ -33,12 +33,17 @@
 #define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
 #define WM_POOL_SIZE    8                           // Child process pool size.
 #define WM_HEADER_SIZE  OS_SIZE_2048
+#define VU_WM_NAME "vulnerability-detector"
+#define AZ_WM_NAME "azure-logs"
+#define KEY_WM_NAME "agent-key-polling"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
 
 #define DAY_SEC    86400
 #define WEEK_SEC   604800
+
+#define EXECVE_ERROR 0x7F
 
 typedef void* (*wm_routine)(void*);     // Standard routine pointer
 
@@ -81,6 +86,7 @@ typedef enum crypto_type {
 #include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
+#include "wm_keyrequest.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

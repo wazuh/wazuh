@@ -19,13 +19,14 @@
 #include "os_xml_internal.h"
 
 /* Prototypes */
-static int _oscomment(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
+static int _oscomment(OS_XML *_lxml) __attribute__((nonnull));
 static int _writecontent(const char *str, size_t size, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
-static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
-static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+int _xml_sgetc(OS_XML *_lxml)  __attribute__((nonnull));
+static int _ReadElem(unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
+static int _getattributes(unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
 
 /* Local fgetc */
@@ -41,6 +42,18 @@ static int _xml_fgetc(FILE *fp, OS_XML *_lxml)
     }
 
     return (c);
+}
+
+int _xml_sgetc(OS_XML *_lxml){
+    int c;
+
+    c = (_lxml->stash_i > 0) ? _lxml->stash[--_lxml->stash_i] : *(_lxml->string++);
+
+    if (c == '\n') { /* add newline */
+        _lxml->line++;
+    }
+
+    return c;
 }
 
 static int _xml_ungetc(int c, OS_XML *_lxml)
@@ -105,11 +118,66 @@ void OS_ClearXML(OS_XML *_lxml)
     _lxml->stash_i = 0;
 }
 
+int ParseXML(OS_XML *_lxml){
+    int r;
+    unsigned int i;
+    char *str_base = _lxml->string;
+
+    /* Zero the line */
+    _lxml->line = 1;
+
+    // Reset stash
+    _lxml->stash_i = 0;
+
+    if ((r = _ReadElem(0, _lxml)) < 0) { /* First position */
+        if (r != LEOF) {
+
+            if(_lxml->fp){
+                fclose(_lxml->fp);
+            } else if (str_base){
+                free(str_base);
+            }
+
+            return (-1);
+        }
+    }
+
+    for (i = 0; i < _lxml->cur; i++) {
+        if (_lxml->ck[i] == 0) {
+            xml_error(_lxml, "XMLERR: Element '%s' not closed.", _lxml->el[i]);
+
+            if(_lxml->fp){
+                fclose(_lxml->fp);
+            } else if (str_base){
+                free(str_base);
+            }
+
+            return (-1);
+        }
+    }
+
+    if(_lxml->fp){
+        fclose(_lxml->fp);
+    } else if (str_base){
+        free(str_base);
+    }
+
+    return (0);
+}
+
+int OS_ReadXMLString(const char *string, OS_XML *_lxml){
+    /* Initialize xml structure */
+    memset(_lxml, 0, sizeof(OS_XML));
+
+    _lxml->string = strdup(string);
+    _lxml->fp = NULL;
+
+    return ParseXML(_lxml);
+}
+
 /* Read na XML file and generate the necessary structs */
 int OS_ReadXML(const char *file, OS_XML *_lxml)
 {
-    int r;
-    unsigned int i;
     FILE *fp;
 
     /* Initialize xml structure */
@@ -120,45 +188,25 @@ int OS_ReadXML(const char *file, OS_XML *_lxml)
         xml_error(_lxml, "XMLERR: File '%s' not found.", file);
         return (-2);
     }
+    _lxml->fp = fp;
+    _lxml->string = NULL;
 
-    /* Zero the line */
-    _lxml->line = 1;
-
-    // Reset stash
-    _lxml->stash_i = 0;
-
-    if ((r = _ReadElem(fp, 0, _lxml)) < 0) { /* First position */
-        if (r != LEOF) {
-            fclose(fp);
-            return (-1);
-        }
-    }
-
-    for (i = 0; i < _lxml->cur; i++) {
-        if (_lxml->ck[i] == 0) {
-            xml_error(_lxml, "XMLERR: Element '%s' not closed.", _lxml->el[i]);
-            fclose(fp);
-            return (-1);
-        }
-    }
-
-    fclose(fp);
-    return (0);
+    return ParseXML(_lxml);
 }
 
-static int _oscomment(FILE *fp, OS_XML *_lxml)
+static int _oscomment(OS_XML *_lxml)
 {
     int c;
-    if ((c = _xml_fgetc(fp, _lxml)) == _R_COM) {
-        while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
+    if ((c = xml_getc_fun(_lxml->fp, _lxml)) == _R_COM) {
+        while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
             if (c == _R_COM) {
-                if ((c = _xml_fgetc(fp, _lxml)) == _R_CONFE) {
+                if ((c = xml_getc_fun(_lxml->fp, _lxml)) == _R_CONFE) {
                     return (1);
                 }
                 _xml_ungetc(c, _lxml);
             } else if (c == '-') {  /* W3C way of finishing comments */
-                if ((c = _xml_fgetc(fp, _lxml)) == '-') {
-                    if ((c = _xml_fgetc(fp, _lxml)) == _R_CONFE) {
+                if ((c = xml_getc_fun(_lxml->fp, _lxml)) == '-') {
+                    if ((c = xml_getc_fun(_lxml->fp, _lxml)) == _R_CONFE) {
                         return (1);
                     }
                     _xml_ungetc(c, _lxml);
@@ -175,14 +223,15 @@ static int _oscomment(FILE *fp, OS_XML *_lxml)
     return (0);
 }
 
-static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
+static int _ReadElem(unsigned int parent, OS_XML *_lxml)
 {
-    int c;
+    int c=0;
     unsigned int count = 0;
     unsigned int _currentlycont = 0;
     short int location = -1;
+    int cmp = 0;
 
-    int prevv = 0;
+    int prevv = 1;
     char elem[XML_MAXSIZE + 1];
     char cont[XML_MAXSIZE + 1];
     char closedelim[XML_MAXSIZE + 1];
@@ -191,13 +240,18 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
     memset(cont, '\0', XML_MAXSIZE + 1);
     memset(closedelim, '\0', XML_MAXSIZE + 1);
 
-    while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
+    if (_lxml->fp){
+        cmp = EOF;
+        _lxml->string = '\0';
+    } else if (_lxml->string){
+        cmp = '\0';
+    }
+
+    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != cmp) {
         if (c == '\\') {
-            prevv = c;
-        } else if (prevv == '\\') {
-            if (c != _R_CONFS) {
-                prevv = 0;
-            }
+            prevv *= -1;
+        } else if (c != _R_CONFS && prevv == -1){
+            prevv = 1;
         }
 
         /* Max size */
@@ -209,7 +263,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
         /* Check for comments */
         if (c == _R_CONFS) {
             int r = 0;
-            if ((r = _oscomment(fp, _lxml)) < 0) {
+            if ((r = _oscomment(_lxml)) < 0) {
                 xml_error(_lxml, "XMLERR: Comment not closed.");
                 return (-1);
             } else if (r == 1) {
@@ -218,9 +272,9 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
         }
 
         /* Real checking */
-        if ((location == -1) && (prevv == 0)) {
+        if ((location == -1) && (prevv == 1)) {
             if (c == _R_CONFS) {
-                if ((c = _xml_fgetc(fp, _lxml)) == '/') {
+                if ((c = xml_getc_fun(_lxml->fp, _lxml)) == '/') {
                     xml_error(_lxml, "XMLERR: Element not opened.");
                     return (-1);
                 } else {
@@ -248,7 +302,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             }
             _currentlycont = _lxml->cur - 1;
             if (isspace(c)) {
-                if ((_ga = _getattributes(fp, parent, _lxml)) < 0) {
+                if ((_ga = _getattributes(parent, _lxml)) < 0) {
                     return (-1);
                 }
             }
@@ -295,8 +349,8 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
             if (parent > 0) {
                 return (0);
             }
-        } else if ((location == 1) && (c == _R_CONFS) && (prevv == 0)) {
-            if ((c = _xml_fgetc(fp, _lxml)) == '/') {
+        } else if ((location == 1) && (c == _R_CONFS) && (prevv == 1)) {
+            if ((c = xml_getc_fun(_lxml->fp, _lxml)) == '/') {
                 cont[count] = '\0';
                 count = 0;
                 location = 2;
@@ -304,7 +358,7 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 _xml_ungetc(c, _lxml);
                 _xml_ungetc(_R_CONFS, _lxml);
 
-                if (_ReadElem(fp, parent + 1, _lxml) < 0) {
+                if (_ReadElem(parent + 1, _lxml) < 0) {
                     return (-1);
                 }
                 count = 0;
@@ -318,8 +372,8 @@ static int _ReadElem(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 closedelim[count++] = (char) c;
             }
 
-            if ((_R_CONFS == c) && (prevv != 0)) {
-                prevv = 0;
+            if (_R_CONFS == c) {
+                prevv = 1;
             }
         }
     }
@@ -422,7 +476,7 @@ static int _writecontent(const char *str, size_t size, unsigned int parent, OS_X
 }
 
 /* Read the attributes of an element */
-static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
+static int _getattributes(unsigned int parent, OS_XML *_lxml)
 {
     int location = 0;
     unsigned int count = 0;
@@ -435,7 +489,7 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
     memset(attr, '\0', XML_MAXSIZE + 1);
     memset(value, '\0', XML_MAXSIZE + 1);
 
-    while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
+    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
         if (count >= XML_MAXSIZE) {
             attr[count - 1] = '\0';
             xml_error(_lxml,
@@ -476,11 +530,11 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
                 i--;
             }
 
-            c = _xml_fgetc(fp, _lxml);
+            c = xml_getc_fun(_lxml->fp, _lxml);
             if ((c != '"') && (c != '\'')) {
                 unsigned short int _err = 1;
                 if (isspace(c)) {
-                    while ((c = _xml_fgetc(fp, _lxml)) != EOF) {
+                    while ((c = xml_getc_fun(_lxml->fp, _lxml)) != EOF) {
                         if (isspace(c)) {
                             continue;
                         } else if ((c == '"') || (c == '\'')) {
@@ -518,9 +572,9 @@ static int _getattributes(FILE *fp, unsigned int parent, OS_XML *_lxml)
             if (_writecontent(value, count + 1, _lxml->cur - 1, _lxml) < 0) {
                 return (-1);
             }
-            c = _xml_fgetc(fp, _lxml);
+            c = xml_getc_fun(_lxml->fp, _lxml);
             if (isspace(c)) {
-                return (_getattributes(fp, parent, _lxml));
+                return (_getattributes(parent, _lxml));
             } else if (c == _R_CONFE) {
                 return (0);
             } else if (c == '/') {

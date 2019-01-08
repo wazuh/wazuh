@@ -97,7 +97,11 @@ int connect_server(int initial_id)
 
         if (agt->sock < 0) {
             agt->sock = -1;
+#ifdef WIN32
+            merror(CONNS_ERROR, tmp_str, win_strerror(WSAGetLastError()));
+#else
             merror(CONNS_ERROR, tmp_str, strerror(errno));
+#endif
             rc++;
 
             if (agt->server[rc].rip == NULL) {
@@ -211,8 +215,7 @@ void start_agent(int is_startup)
             }
 
             /* Id of zero -- only one key allowed */
-            tmp_msg = ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip);
-            if (tmp_msg == NULL) {
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[agt->rip_id].rip, &tmp_msg) != KS_VALID) {
                 mwarn(MSG_ERROR, agt->server[agt->rip_id].rip);
                 continue;
             }

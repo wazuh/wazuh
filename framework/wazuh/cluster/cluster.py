@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_localhost_ips():
-    return set(str(check_output(['hostname', '--all-ip-addresses'])).split(" ")[:-1])
+    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -83,9 +83,6 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
-
-    if config['node_type'] == 'master' and config['nodes'][0] not in get_localhost_ips():
-        raise WazuhException(3004, "Master IP not valid. Valid ones are: {}".format(', '.join(get_localhost_ips())))
 
     if not isinstance(config['port'], int):
         raise WazuhException(3004, "Cluster port must be an integer.")

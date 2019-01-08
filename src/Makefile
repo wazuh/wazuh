@@ -430,6 +430,9 @@ help: failtarget
 	@echo "   make USE_AUDIT=1             Build with audit service support"
 	@echo "   make USE_FRAMEWORK_LIB=0     Use external SQLite library for the framework"
 	@echo "   make OFLAGS=-Ox              Overrides optimization level"
+	@echo "   make DISABLE_SHARED=true	   Not to build the Wazuh shared library (for unsupported systems)"
+	@echo "   make DISABLE_SYSC=true       Not to build the Syscollector module (for unsupported systems)"
+	@echo "   make DISABLE_CISCAT=true     Not to build the CIS-CAT module (for unsupported systems)"
 	@echo
 	@echo "Database options: "
 	@echo "   make DATABASE=mysql          Build with MYSQL Support"
@@ -719,7 +722,7 @@ $(EXTERNAL_CURL)Makefile:
 	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
 endif
 
 

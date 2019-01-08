@@ -159,7 +159,7 @@
 #define EXEC_INV_NAME   "(1311): Invalid command name '%s' provided."
 #define EXEC_CMDERROR   "(1312): Error executing '%s': %s"
 #define EXEC_INV_CONF   "(1313): Invalid active response config: '%s'."
-#define EXEC_DISABLED   "(1350): Active response disabled. Exiting."
+#define EXEC_DISABLED   "(1350): Active response disabled."
 #define EXEC_SHUTDOWN   "(1314): Shutdown received. Deleting responses."
 
 #define AR_NOAGENT_ERROR    "(1320): Agent '%s' not found."
@@ -319,6 +319,9 @@
 #define VU_GLOBALDB_OPEN_ERROR      "(5435): Could not open global_db."
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
+#define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
+#define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
+#define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
@@ -355,6 +358,7 @@
 #define OS_AD_STARTED   "ossec: Ossec started."
 #define OS_AG_STARTED   "ossec: Agent started: '%s->%s'."
 #define OS_AG_DISCON    "ossec: Agent disconnected: '%s'."
+#define OS_AG_REMOVED   "ossec: Agent removed: '%s'."
 
 #define OS_NORMAL_BUFFER  "wazuh: Agent buffer: 'normal'."
 #define OS_WARN_BUFFER  "wazuh: Agent buffer: '%d%%'."

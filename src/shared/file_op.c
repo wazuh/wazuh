@@ -2567,11 +2567,10 @@ int w_compress_gzfile(const char *filesrc, const char *filedst) {
                 filedst,
                 errno,
                 strerror(errno));
-        fclose(fd);
         return -1;
     }
 
-    os_calloc(OS_SIZE_8192 + 1, sizeof(char*), buf);
+    os_calloc(OS_SIZE_8192 + 1, sizeof(char), buf);
     for (;;) {
         len = fread(buf, 1, OS_SIZE_8192, fd);
         if (len <= 0) {
@@ -2634,7 +2633,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
         return -1;
     }
 
-    os_calloc(OS_SIZE_8192, sizeof(char*), buf);
+    os_calloc(OS_SIZE_8192, sizeof(char), buf);
     do {
         if (len = gzread(gz_fd, buf, OS_SIZE_8192), len == Z_BUF_ERROR) {
             merror("in w_uncompress_gzfile(): gzfread error: '%s'",

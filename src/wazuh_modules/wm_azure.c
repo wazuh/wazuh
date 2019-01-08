@@ -33,7 +33,7 @@ cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump 
 //  Azure module context definition
 
 const wm_context WM_AZURE_CONTEXT = {
-    "azure-logs",
+    AZ_WM_NAME,
     (wm_routine)wm_azure_main,
     (wm_routine)wm_azure_destroy,
     (cJSON * (*)(const void *))wm_azure_dump

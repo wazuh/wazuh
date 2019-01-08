@@ -25,6 +25,9 @@
     <ignore>/etc/dumpdates</ignore>
     <ignore>/etc/svc/volatile</ignore>
 
+    <!-- File types to ignore -->
+    <ignore type="sregex">.log$|.swp$</ignore>
+
     <!-- Check the file, but never compute the diff -->
     <nodiff>/etc/ssl/private.key</nodiff>
 

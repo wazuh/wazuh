@@ -100,10 +100,6 @@ const char *OSRegex_Execute(const char *str, OSRegex *reg) __attribute__((nonnul
 /* Release all the memory created by the compilation/execution phases */
 void OSRegex_FreePattern(OSRegex *reg) __attribute__((nonnull));
 
-
-/* Release all the memory created to store the sub strings */
-void OSRegex_FreeSubStrings(OSRegex *reg) __attribute__((nonnull));
-
 /* This function is a wrapper around the compile/execute
  * functions. It should only be used when the pattern is
  * only going to be used once.

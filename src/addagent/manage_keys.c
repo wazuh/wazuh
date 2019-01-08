@@ -392,9 +392,15 @@ int k_bulkload(const char *cmdbulk)
             continue;
         }
 
-        if (sock < 0 && IPExist(ip)) {
+        char *ip_exist = NULL;
+        if (sock < 0 && (ip_exist = IPExist(ip))) {
+            os_free(ip_exist);
             printf(IP_ERROR, ip);
             continue;
+        }
+
+        if(ip_exist) {
+            os_free(ip_exist);
         }
 
         if (sock < 0) {
@@ -459,7 +465,7 @@ int k_bulkload(const char *cmdbulk)
             fprintf(fp, "%s %s %s %s%s\n", id, name, c_ip.ip, md1, md2);
             fclose(fp);
         } else {
-            if (auth_add_agent(sock, id, name, ip, -1, 0) < 0) {
+            if (auth_add_agent(sock, id, name, ip, NULL, -1, 0,NULL,1) < 0) {
                 goto cleanup;
             }
         }
