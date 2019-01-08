@@ -4,7 +4,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from datetime import datetime
-from os import listdir, path as os_path
+from os import remove, path as os_path
 import re
 from shutil import move
 from xml.dom.minidom import parseString
@@ -652,35 +652,40 @@ def upload_group_configuration(group_id, xml_file):
     except Exception as e:
         raise WazuhException(1113, str(e))
 
-    # check xml format
     try:
-        load_wazuh_xml(tmp_file_path)
-    except Exception as e:
-        raise WazuhException(1113, str(e))
+        # check xml format
+        try:
+            load_wazuh_xml(tmp_file_path)
+        except Exception as e:
+            raise WazuhException(1113, str(e))
 
-    # check Wazuh xml format
-    try:
-        subprocess.check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path], stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        # extract error message from output.
-        # Example of raw output
-        # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
-        # Example of desired output:
-        # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-        output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: \(\d+\): "
-                                          r"([\w \/ \_ \- \. ' :]+)", string=e.output)
-        raise WazuhException(1114, ' '.join(output_regex))
-    except Exception as e:
-        raise WazuhException(1743, str(e))
+        # check Wazuh xml format
+        try:
+            subprocess.check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path], stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            # extract error message from output.
+            # Example of raw output
+            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
+            # Example of desired output:
+            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
+                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output)
+            raise WazuhException(1114, ' '.join(output_regex))
+        except Exception as e:
+            raise WazuhException(1743, str(e))
 
-    # move temporary file to group folder
-    try:
-        new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
-        move(tmp_file_path, new_conf_path)
-    except Exception as e:
-        raise WazuhException(1017, str(e))
+        # move temporary file to group folder
+        try:
+            new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
+            move(tmp_file_path, new_conf_path)
+        except Exception as e:
+            raise WazuhException(1017, str(e))
 
-    return 'Agent configuration was updated successfully'
+        return 'Agent configuration was updated successfully'
+    except Exception as e:
+        # remove created temporary file
+        remove(tmp_file_path)
+        raise e
 
 
 def upload_group_file(group_id, xml_file, file_name):
