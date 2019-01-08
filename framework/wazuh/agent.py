@@ -6,7 +6,7 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5, load_wazuh_xml
+                        md5
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
@@ -18,20 +18,16 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move, copytree, rmtree
+from shutil import copyfile, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid, errno
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
 from time import time, sleep
 import socket
 import hashlib
-import re
 import fcntl
-from json import loads, dumps
+from json import loads
 from functools import reduce
-import struct
-from subprocess import check_output
 from shutil import move
-from xml.dom.minidom import parseString
 from os import remove
 
 try:
@@ -1676,51 +1672,6 @@ class Agent:
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhException(1005, str(e))
-
-
-    @staticmethod
-    def upload_group_configuration(group_id, xml_file, destination_file='agent.conf'):
-
-        # check if the group exists
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710)
-
-        # path of temporary files for parsing xml input
-        tmp_file_path = '{}/tmp/api_tmp_file_{}.xml'.format(common.ossec_path,
-                                                            datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s'))
-
-        # create temporary file for parsing xml input
-        try:
-            with open(tmp_file_path, 'w') as tmp_file:
-                # beauty xml file
-                xml = parseString(xml_file)
-                # remove first line (XML specification: <? xmlversion="1.0" ?>) and empty lines
-                pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[1:])) + '\n'
-                tmp_file.write(pretty_xml)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
-
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except Exception as e:
-            raise WazuhException(1742, str(e))
-
-        # check Wazuh xml format
-        try:
-            check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
-        except Exception as e:
-            raise WazuhException(1743, str(e))
-
-        # move temporary file to group folder
-        try:
-            new_conf_path = "{}/{}/{}".format(common.shared_path, group_id, destination_file)
-            move(tmp_file_path, new_conf_path)
-        except Exception as e:
-            raise WazuhException(1017, str(e))
-
-        return 'Agent configuration was updated successfully'
-
 
     @staticmethod
     def replace_group(agent_id, group_id, force=False):

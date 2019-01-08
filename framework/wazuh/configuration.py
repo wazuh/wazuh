@@ -3,12 +3,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from datetime import datetime
 from os import listdir, path as os_path
 import re
+from shutil import move
+from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh import common
-from wazuh.utils import cut_array, load_wazuh_xml
+from wazuh.utils import cut_array, load_wazuh_xml, check_output
+
 # Python 2/3 compability
 try:
     from ConfigParser import RawConfigParser, NoOptionError
@@ -619,3 +623,46 @@ def get_internal_options_value(high_name, low_name, max, min):
         raise WazuhException(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
 
     return option
+
+
+def upload_group_configuration(group_id, xml_file, destination_file='agent.conf'):
+
+    # check if the group exists
+    if not Agent.group_exists(group_id):
+        raise WazuhException(1710)
+
+    # path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}.xml'.format(common.ossec_path,
+                                                        datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s'))
+
+    # create temporary file for parsing xml input
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            # beauty xml file
+            xml = parseString(xml_file)
+            # remove first line (XML specification: <? xmlversion="1.0" ?>) and empty lines
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[1:])) + '\n'
+            tmp_file.write(pretty_xml)
+    except Exception as e:
+        raise WazuhException(1005, str(e))
+
+    # check xml format
+    try:
+        load_wazuh_xml(tmp_file_path)
+    except Exception as e:
+        raise WazuhException(1742, str(e))
+
+    # check Wazuh xml format
+    try:
+        check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
+    except Exception as e:
+        raise WazuhException(1743, str(e))
+
+    # move temporary file to group folder
+    try:
+        new_conf_path = "{}/{}/{}".format(common.shared_path, group_id, destination_file)
+        move(tmp_file_path, new_conf_path)
+    except Exception as e:
+        raise WazuhException(1017, str(e))
+
+    return 'Agent configuration was updated successfully'
