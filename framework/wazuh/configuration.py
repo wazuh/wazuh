@@ -407,6 +407,7 @@ def _rootkit_trojans2json(filepath):
 
     return data
 
+
 def _ar_conf2json(file_path):
     """
     Returns the lines of the ar.conf file
@@ -453,7 +454,7 @@ def get_ossec_conf(section=None, field=None):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None, format=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None, return_format=None):
     """
     Returns agent.conf as dictionary.
 
@@ -478,7 +479,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     try:       
 
         # Read RAW file
-        if agent_conf_name == 'agent.conf' and format and 'xml' in format:
+        if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
             with open(agent_conf, 'r') as xml_data:
                 data = xml_data.read().replace('\n', '')
                 return data
@@ -491,8 +492,8 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     except Exception as e:
         raise WazuhException(1101, str(e))
 
-
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
+
 
 def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_limit, filename=None):
     """
@@ -529,7 +530,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
 
 
-def get_file_conf(filename, group_id=None, type_conf=None, format=None):
+def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     """
     Returns the configuration file as dictionary.
 
@@ -567,7 +568,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, format=None):
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=None, filename=filename, format=format)
+            data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":
@@ -589,7 +590,6 @@ def parse_internal_options(high_name, low_name):
         config.readfp(str_config)
 
         return config
-
 
     if not os_path.exists(common.internal_options):
         raise WazuhException(1107)
