@@ -11,7 +11,8 @@ from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh import common
-from wazuh.utils import cut_array, load_wazuh_xml, check_output
+from wazuh.utils import cut_array, load_wazuh_xml
+import subprocess
 
 # Python 2/3 compability
 try:
@@ -659,7 +660,16 @@ def upload_group_configuration(group_id, xml_file):
 
     # check Wazuh xml format
     try:
-        check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path])
+        subprocess.check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path], stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        # extract error message from output.
+        # Example of raw output
+        # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
+        # Example of desired output:
+        # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+        output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: \(\d+\): "
+                                          r"([\w \/ \_ \- \. ' :]+)", string=e.output)
+        raise WazuhException(1743, ' '.join(output_regex))
     except Exception as e:
         raise WazuhException(1743, str(e))
 
