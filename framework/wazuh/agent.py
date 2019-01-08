@@ -18,17 +18,17 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move, copytree, rmtree
+from shutil import copyfile, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid, errno
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
 from time import time, sleep
 import socket
 import hashlib
-import re
 import fcntl
-from json import loads, dumps
+from json import loads
 from functools import reduce
-import struct
+from shutil import move
+from os import remove
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -1749,7 +1749,6 @@ class Agent:
                 chmod(agent_group_path, 0o660)
         except Exception as e:
             raise WazuhException(1005, str(e))
-
 
     @staticmethod
     def replace_group(agent_id, group_id, force=False):
