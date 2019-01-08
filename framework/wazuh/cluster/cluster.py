@@ -52,11 +52,6 @@ except:
 
 logger = logging.getLogger(__name__)
 
-
-def get_localhost_ips():
-    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
-
-
 def check_cluster_config(config):
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
