@@ -194,6 +194,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *hash_file_name;
 #endif
 
+
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
 
@@ -267,7 +268,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        mdebug2("REG File '%s'", file_name);
+        mdebug2("File '%s'", file_name);
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -278,22 +279,27 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifndef WIN32
             if (S_ISLNK(statbuf.st_mode)) {
                 if (stat(file_name, &statbuf_lnk) == 0) {
-                    if (!(opts & CHECK_FOLLOW)) {
-                        mdebug2("Follow symbolic links disabled. Exiting");
-                        free(alert_msg);
-                        free(wd_sum);
-                        return 0;
-                    } else {
-                        if (S_ISREG(statbuf_lnk.st_mode)) {
-                            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
-                                strncpy(mf_sum, "n/a", 4);
-                                strncpy(sf_sum, "n/a", 4);
-                                strncpy(sf256_sum, "n/a", 4);
-                            }
-                        } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
+                    if (S_ISREG(statbuf_lnk.st_mode)) {
+                        if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
+                            strncpy(mf_sum, "n/a", 4);
+                            strncpy(sf_sum, "n/a", 4);
+                            strncpy(sf256_sum, "n/a", 4);
+                        }
+                    } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
+                        if (!(opts & CHECK_FOLLOW)) {
+                            mdebug2("Follow symbolic links disabled. Exiting");
+                            free(alert_msg);
+                            free(wd_sum);
+                            return 0;
+                        } else {
+                            free(alert_msg);
+                            free(wd_sum);
                             return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
                     }
+                } else {
+                    mwarn("Error in stat() function: %s. This may be cause by a broken symbolic link.", strerror(errno));
+                    return -1;
                 }
             } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #else
@@ -376,8 +382,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(user);
 #else
             if (opts & CHECK_SIZE) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
+                if (opts & CHECK_FOLLOW) {
+                    if (S_ISLNK(statbuf.st_mode)) {
+                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
+                    } else {
+                        sprintf(str_size,"%ld",(long)statbuf.st_size);
+                    }
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
@@ -416,8 +426,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
+                if (opts & CHECK_FOLLOW) {
+                    if (S_ISLNK(statbuf.st_mode)) {
+                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
+                    } else {
+                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+                    }
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
@@ -426,8 +440,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_INODE) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
+                if (opts & CHECK_FOLLOW) {
+                    if (S_ISLNK(statbuf.st_mode)) {
+                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
+                    } else {
+                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+                    }
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
@@ -532,8 +550,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(user);
 #else
             if (opts & CHECK_SIZE) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
+                if (opts & CHECK_FOLLOW) {
+                    if (S_ISLNK(statbuf.st_mode)) {
+                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
+                    } else {
+                        sprintf(str_size,"%ld",(long)statbuf.st_size);
+                    }
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
@@ -572,8 +594,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
+                if (opts & CHECK_FOLLOW) {
+                    if (S_ISLNK(statbuf.st_mode)) {
+                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
+                    } else {
+                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+                    }
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
@@ -582,8 +608,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_INODE) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
+                if (opts & CHECK_FOLLOW) {
+                    if (S_ISLNK(statbuf.st_mode)) {
+                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
+                    } else {
+                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+                    }
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
@@ -697,32 +727,32 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 
 #ifndef WIN32
-    // readlink() function only works for Linux
+    // readpath() function doesn't work on Windows
     if (is_link) {
-        char *link_path;
         char *dir_name_full;
-        os_calloc(PATH_MAX + 2, sizeof(char), link_path);
+        char *real_path;
+        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
         os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
 
-        if (readlink(dir_name, link_path, PATH_MAX) < 0) {
-            merror("Error reading path link: %s", strerror(errno));
+        if (realpath(dir_name, real_path) == NULL) {
+            mdebug2("Error in realpath() function");
+            return -1;
         }
-        strcat(link_path, "/");
+        strcat(real_path, "/");
 
         unsigned i = 0;
         while (syscheck.dir[i] != NULL) {
           strncpy(dir_name_full, syscheck.dir[i], PATH_MAX);
           strcat(dir_name_full, "/");
-          if (strstr(link_path, dir_name_full) != NULL) {
-              mdebug2("Trying to read symbolic link '%s' to directory '%s' recursively. Exiting.", dir_name, link_path);
-              free(link_path);
+          if (strstr(real_path, dir_name_full) != NULL) {
+              mdebug2("Trying to read symbolic link '%s' to directory '%s' recursively. Exiting.", dir_name, real_path);
+              free(real_path);
               free(dir_name_full);
               return 0;
           }
           i++;
         }
-
-        free(link_path);
+        free(real_path);
         free(dir_name_full);
     }
 #endif
