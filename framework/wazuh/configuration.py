@@ -650,13 +650,13 @@ def upload_group_configuration(group_id, xml_file):
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[1:])) + '\n'
             tmp_file.write(pretty_xml)
     except Exception as e:
-        raise WazuhException(1005, str(e))
+        raise WazuhException(1113, str(e))
 
     # check xml format
     try:
         load_wazuh_xml(tmp_file_path)
     except Exception as e:
-        raise WazuhException(1742, str(e))
+        raise WazuhException(1113, str(e))
 
     # check Wazuh xml format
     try:
@@ -669,7 +669,7 @@ def upload_group_configuration(group_id, xml_file):
         # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
         output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: \(\d+\): "
                                           r"([\w \/ \_ \- \. ' :]+)", string=e.output)
-        raise WazuhException(1743, ' '.join(output_regex))
+        raise WazuhException(1114, ' '.join(output_regex))
     except Exception as e:
         raise WazuhException(1743, str(e))
 

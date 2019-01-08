@@ -43,6 +43,8 @@ class WazuhException(Exception):
         1110: 'Option value is out of the limits',
         1111: "Remote group file updates are only available in 'agent.conf' file",
         1112: "Empty files aren't supported",
+        1113: "XML syntax error",
+        1114: "Wazuh syntax error",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
