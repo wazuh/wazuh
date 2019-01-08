@@ -19,13 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\addagent\auth_client.c" />
-    <ClCompile Include="..\..\..\addagent\b64.c" />
-    <ClCompile Include="..\..\..\addagent\main.c" />
-    <ClCompile Include="..\..\..\addagent\manage_agents.c" />
-    <ClCompile Include="..\..\..\addagent\manage_keys.c" />
-    <ClCompile Include="..\..\..\addagent\read_from_user.c" />
-    <ClCompile Include="..\..\..\addagent\validate.c" />
+    <ClCompile Include="..\..\..\addagent\*.c" />
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\libgen.c" />
     <ClCompile Include="..\include\sys\time.c" />

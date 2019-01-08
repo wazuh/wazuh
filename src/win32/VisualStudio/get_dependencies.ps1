@@ -107,16 +107,16 @@ function Extract-CompressedFile
     {
         if (Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -ErrorAction SilentlyContinue)
         {
-            Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' | Install-Package -Force -Scope CurrentUser 2>&1>$null
+			Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' | Install-Package -Force -Scope CurrentUser
         } else {
-            if (-not (Get-PackageSource -Name 'nuGet.org v2' -ErrorAction SilentlyContinue))
+			if (-not (Get-PackageSource -Name 'nuGet.org v2' -ErrorAction SilentlyContinue))
             {
-                Register-PackageSource -Name 'nuGet.org v2' -ProviderName NuGet -Location "https://www.nuget.org/api/v2/" -Force 2>&1>$null
+				Register-PackageSource -Name 'nuGet.org v2' -ProviderName NuGet -Location "https://www.nuget.org/api/v2/" -Force
             }
-            
-            if (Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -Source 'nuGet.org v2' -ErrorAction SilentlyContinue)
+			
+			if (Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -Source 'nuGet.org v2' -ErrorAction SilentlyContinue)
             {
-                Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -Source 'nuGet.org v2' | Install-Package -Force -Scope CurrentUser 2>&1>$null
+				Find-Package -Name 'SharpCompress' -RequiredVersion '0.22.0' -Source 'nuGet.org v2' | Install-Package -Force -Scope CurrentUser
             }
         }
     }

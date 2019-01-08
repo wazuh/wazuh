@@ -33,26 +33,7 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\rootcheck\check_open_ports.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_dev.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_files.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_if.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_pids.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_policy.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_ports.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_readproc.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_sys.c" />
-    <ClCompile Include="..\..\..\rootcheck\check_rc_trojans.c" />
-    <ClCompile Include="..\..\..\rootcheck\common.c" />
-    <ClCompile Include="..\..\..\rootcheck\common_rcl.c" />
-    <ClCompile Include="..\..\..\rootcheck\config.c" />
-    <ClCompile Include="..\..\..\rootcheck\os_string.c" />
-    <ClCompile Include="..\..\..\rootcheck\rootcheck-config.c" />
-    <ClCompile Include="..\..\..\rootcheck\rootcheck.c" />
-    <ClCompile Include="..\..\..\rootcheck\run_rk_check.c" />
-    <ClCompile Include="..\..\..\rootcheck\unix-process.c" />
-    <ClCompile Include="..\..\..\rootcheck\win-common.c" />
-    <ClCompile Include="..\..\..\rootcheck\win-process.c" />
+    <ClCompile Include="..\..\..\rootcheck\*.c" />
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\libgen.c" />
     <ClCompile Include="..\include\sys\time.c" />

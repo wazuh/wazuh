@@ -58,10 +58,7 @@
     <ClCompile Include="..\..\win_service.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\ui\common.c">
-      <Filter>Archivos de origen\ui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\ui\os_win32ui.c">
+    <ClCompile Include="..\..\ui\*.c">
       <Filter>Archivos de origen\ui</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\addagent\b64.c">

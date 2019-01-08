@@ -40,8 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\addagent\b64.c" />
-    <ClCompile Include="..\..\ui\common.c" />
-    <ClCompile Include="..\..\ui\os_win32ui.c" />
+    <ClCompile Include="..\..\ui\*.c" />
     <ClCompile Include="..\..\win_service.c" />
     <ClCompile Include="..\include\libgen.c" />
     <ClCompile Include="..\include\sys\time.c" />

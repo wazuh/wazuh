@@ -30,25 +30,7 @@
     <ClCompile Include="..\include\libgen.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\addagent\auth_client.c">
-      <Filter>Archivos de origen\addagent</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addagent\b64.c">
-      <Filter>Archivos de origen\addagent</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addagent\main.c">
-      <Filter>Archivos de origen\addagent</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addagent\manage_agents.c">
-      <Filter>Archivos de origen\addagent</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addagent\manage_keys.c">
-      <Filter>Archivos de origen\addagent</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addagent\read_from_user.c">
-      <Filter>Archivos de origen\addagent</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\addagent\validate.c">
+    <ClCompile Include="..\..\..\addagent\*.c">
       <Filter>Archivos de origen\addagent</Filter>
     </ClCompile>
   </ItemGroup>

@@ -58,64 +58,7 @@
     <ClCompile Include="..\..\win_service.c">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_open_ports.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_dev.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_files.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_if.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_pids.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_policy.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_ports.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_readproc.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_sys.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\check_rc_trojans.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\common.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\common_rcl.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\config.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\os_string.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\rootcheck-config.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\rootcheck.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\run_rk_check.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\unix-process.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\win-common.c">
-      <Filter>Archivos de origen\rootcheck</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\rootcheck\win-process.c">
+    <ClCompile Include="..\..\..\rootcheck\*.c">
       <Filter>Archivos de origen\rootcheck</Filter>
     </ClCompile>
   </ItemGroup>

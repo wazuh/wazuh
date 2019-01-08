@@ -191,28 +191,6 @@ typedef uint8_t u_int8_t;
 #endif
 
 extern const char *__local_name;
-/*** Global prototypes ***/
-/*** These functions will exit on error. No need to check return code ***/
-
-/* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
-#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
-
-#define os_strdup(x,y) ((y = strdup(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
-
-#define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
-
-#define os_free(x) if(x){free(x);x=NULL;}
-
-#define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
-
-#define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
-
-
-#define w_fclose(x) if (x) { fclose(x); x=NULL; }
-
-#define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
-
-#define w_ftell(x)({ long z = ftell(x); if(z < 0) merror_exit("Ftell function failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
 
 #ifdef CLIENT
 #define isAgent 1
@@ -262,5 +240,36 @@ extern const char *__local_name;
 #include "url.h"
 #include "cluster_utils.h"
 #include "auth_client.h"
+
+/*** Global prototypes ***/
+/*** These functions will exit on error. No need to check return code ***/
+
+/* for calloc: x = calloc(4,sizeof(char)) -> os_calloc(4,sizeof(char),x) */
+#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+
+#define os_strdup(x,y) ((y = strdup(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+
+#define os_malloc(x,y) ((y = (__typeof__(y)) malloc(x)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+
+#define os_free(x) if(x){free(x);x=NULL;}
+
+#define os_realloc(x,y,z) ((z = (__typeof__(z))realloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
+
+#define os_clearnl(x,p) if((p = strrchr(x, '\n')))*p = '\0';
+
+#define w_fclose(x) if (x) { fclose(x); x=NULL; }
+
+#define w_strdup(x,y) ({ int retstr = 0; if (x) { os_strdup(x, y);} else retstr = 1; retstr;})
+
+// MSVC complains about this function-like macro
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+static inline long w_ftell(FILE *fp) {
+    long z = ftell(fp);
+    if (z < 0) merror_exit("ftell() failed due to [(%d)-(%s)]", errno, strerror(errno));
+    return z;
+}
+#else
+#define w_ftell(x) ({ long z = ftell(x); if (z < 0) merror_exit("ftell() failed due to [(%d)-(%s)]", errno, strerror(errno)); z; })
+#endif
 
 #endif /* __SHARED_H */
