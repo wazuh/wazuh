@@ -697,10 +697,14 @@ def upload_group_file(group_id, xml_file, file_name):
     :param file_name: File name to update
     :return: Confirmation message in string
     """
-    if len(xml_file) == 0:
-        raise WazuhException(1112)
-
     if file_name == 'agent.conf':
-        return upload_group_configuration(group_id, xml_file)
+        with open(xml_file) as f:
+            xml_file_data = f.read()
+
+        remove(xml_file)
+        if len(xml_file_data) == 0:
+            raise WazuhException(1112)
+
+        return upload_group_configuration(group_id, xml_file_data)
     else:
         raise WazuhException(1111)
