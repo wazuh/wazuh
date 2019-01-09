@@ -26,6 +26,7 @@ All notable changes to this project will be documented in this file.
 
 - Improved IP address validation in the option `<white_list>` (by @pillarsdotnet). ([#1497](https://github.com/wazuh/wazuh/pull/1497))
 - Improved rule option `<info>` validation (by @pillarsdotnet). ([#1541](https://github.com/wazuh/wazuh/pull/1541))
+- Reduce the length of the query results from Vulnerability Detector to Wazuh DB. ([#1798](https://github.com/wazuh/wazuh/pull/1798))
 - Deprecated the Syscheck option `<remove_old_diff>` by making it mandatory. ([#1915](https://github.com/wazuh/wazuh/pull/1915))
 - Improved the build system to automatically detect a big-endian platform. ([#2031](https://github.com/wazuh/wazuh/pull/2031))
   - Building option `USE_BIG_ENDIAN` is not already needed on Solaris (SPARC) or HP-UX.
@@ -37,11 +38,16 @@ All notable changes to this project will be documented in this file.
 - Syscheck first queue error message changed into a warning. ([#2146](https://github.com/wazuh/wazuh/pull/2146))
 - Improve vulnerability detection in Red Hat systems. ([#2137](https://github.com/wazuh/wazuh/pull/2137))
 - Do the DEB and RPM package scan regardless of Linux distribution. ([#2168](https://github.com/wazuh/wazuh/pull/2168))
+- Hide warning log by FIM when cannot open a file that has just been removed. ([#2201](https://github.com/wazuh/wazuh/pull/2201))
+- The default FIM configuration will ignore some temporary files. ([#2202](https://github.com/wazuh/wazuh/pull/2202))
+- Make FIM show alerts for new files by default. ([#2213](https://github.com/wazuh/wazuh/pull/2213))
 
 ### Fixed
 
 - Fixed error description in the osquery configuration parser (by @pillarsdotnet). ([#1499](https://github.com/wazuh/wazuh/pull/1499))
 - The FTS comment option `<ftscomment>` was not being read (by @pillarsdotnet). ([#1536](https://github.com/wazuh/wazuh/pull/1536))
+- Fixes error when multigroup files are not found. ([#1792](https://github.com/wazuh/wazuh/pull/1792))
+- Fix error when assigning multiple groups whose names add up to more than 4096 characters. ([#1792](https://github.com/wazuh/wazuh/pull/1792))
 - Replaced "getline" function with "fgets" in vulnerability-detector to avoid compilation errors with older versions of libC. ([#1822](https://github.com/wazuh/wazuh/pull/1822))
 - Fix bug in Wazuh DB when trying to store multiple network interfaces with the same IP from Syscollector. ([#1928](https://github.com/wazuh/wazuh/pull/1928))
 - Improved consistency of multigroups. ([#1985](https://github.com/wazuh/wazuh/pull/1985))
@@ -66,11 +72,14 @@ All notable changes to this project will be documented in this file.
   - Logcollector crashes if multiple wildcard stanzas resolve the same file.
   - An error getting the internal file position may lead to an undefined condition.
 - Execd daemon now runs even if active response is disabled ([#2177](https://github.com/wazuh/wazuh/pull/2177))
-- Fix network timeout setup in agent running on Windows. ([#2185](https://github.com/wazuh/wazuh/pull/2185))
-- Fixes error when multigroup files are not found. ([#1792](https://github.com/wazuh/wazuh/pull/1792))
-- Fix error when assigning multiple groups whose names add up to more than 4096 characters. ([#1792](https://github.com/wazuh/wazuh/pull/1792))
 - Fix high precision timestamp truncation in rsyslog messages. ([#2128](https://github.com/wazuh/wazuh/pull/2128))
 - Fix missing Whodata section to the remote configuration query. ([#2173](https://github.com/wazuh/wazuh/pull/2173))
+- Fix network timeout setup in agent running on Windows. ([#2185](https://github.com/wazuh/wazuh/pull/2185))
+- Fix default values for the `<auto_ignore>` option. ([#2210](https://github.com/wazuh/wazuh/pull/2210))
+- Fix bug that made Modulesd and Remoted crash on ARM architecture. ([#2214](https://github.com/wazuh/wazuh/pull/2214))
+- The regex parser included the next character after a group:
+  - If the input string just ends after that character. ([#2216](https://github.com/wazuh/wazuh/pull/2216))
+  - The regex parser did not accept a group terminated with an escaped byte or a class. ([#2224](https://github.com/wazuh/wazuh/pull/2224))
 
 
 ## [v3.7.2] 2018-12-17
