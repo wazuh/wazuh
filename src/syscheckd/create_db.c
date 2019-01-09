@@ -299,7 +299,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     }
                 } else {
                     if (opts & CHECK_FOLLOW) {
-                        mwarn("Error in stat() function: %s. This may be cause by a broken symbolic link.", strerror(errno));
+                        mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link.", strerror(errno));
                     }
                     return -1;
                 }
