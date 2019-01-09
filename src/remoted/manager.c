@@ -1122,7 +1122,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
     INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
-    group_data_flush = getDefine_Int("remoted", "group_data_flush", 0, 86400);
+    group_data_flush = getDefine_Int("remoted", "group_data_flush", 0, 2592000);
     should_clean = 0;
 
     if(group_data_flush == 0){
