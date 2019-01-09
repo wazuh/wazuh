@@ -298,7 +298,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                         }
                     }
                 } else {
-                    mwarn("Error in stat() function: %s. This may be cause by a broken symbolic link.", strerror(errno));
+                    if (opts & CHECK_FOLLOW) {
+                        mwarn("Error in stat() function: %s. This may be cause by a broken symbolic link.", strerror(errno));
+                    }
                     return -1;
                 }
             } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
