@@ -138,10 +138,10 @@ int DecodeWinevt(Eventinfo *lf){
 
             memcpy(event, find_event, num);
             event[num] = '\0';
-            find_event = '\0';
-            end_event = '\0';
-            real_end = '\0';
-            next = '\0';
+            find_event = NULL;
+            end_event = NULL;
+            real_end = NULL;
+            next = NULL;
             aux = 0;
         }
     } else {
@@ -353,10 +353,10 @@ int DecodeWinevt(Eventinfo *lf){
             msg_from_prov[num] = '\0';
             cJSON_AddStringToObject(json_system_in, "Message", msg_from_prov);
             
-            find_msg = '\0';
-            end_msg = '\0';
-            real_end = '\0';
-            next = '\0';
+            find_msg = NULL;
+            end_msg = NULL;
+            real_end = NULL;
+            next = NULL;
             aux = 0;
         }
     } else {
@@ -384,7 +384,7 @@ int DecodeWinevt(Eventinfo *lf){
         lf->full_log[strlen(returned_event)] = '\0';
         memcpy(lf->full_log, returned_event, strlen(returned_event));
     } else {
-        lf->full_log = '\0';
+        lf->full_log = NULL;
     }
     
     lf->log = lf->full_log;
