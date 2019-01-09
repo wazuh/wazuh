@@ -1039,6 +1039,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                           FROM
                             {table_name}
                           WHERE
+                            bucket_path='{bucket_path}' AND
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
                             flow_log_id='{flow_log_id}' AND
@@ -1046,12 +1047,14 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
+                                bucket_path,
                                 aws_account_id,
                                 aws_region,
                                 flow_log_id,
                                 log_key,
                                 processed_date,
                                 created_date) VALUES (
+                                '{bucket_path}',
                                 '{aws_account_id}',
                                 '{aws_region}',
                                 '{flow_log_id}',
@@ -1062,6 +1065,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.sql_create_table = """
                             CREATE TABLE
                                 {table_name} (
+                                bucket_path 'text' NOT NULL,
                                 aws_account_id 'text' NOT NULL,
                                 aws_region 'text' NOT NULL,
                                 flow_log_id 'text' NOT NULL,
@@ -1076,6 +1080,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                                 FROM
                                                     {table_name}
                                                 WHERE
+                                                    bucket_path='{bucket_path}' AND
                                                     aws_account_id='{aws_account_id}' AND
                                                     aws_region = '{aws_region}' AND
                                                     flow_log_id = '{flow_log_id}' AND
@@ -1090,6 +1095,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                             FROM
                                                 {table_name}
                                             WHERE
+                                                bucket_path='{bucket_path}' AND
                                                 aws_account_id='{aws_account_id}' AND
                                                 aws_region = '{aws_region}' AND
                                                 flow_log_id = '{flow_log_id}'
@@ -1101,6 +1107,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                             FROM
                                 {table_name}
                             WHERE
+                                bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
                                 flow_log_id='{flow_log_id}' AND
@@ -1109,6 +1116,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                     FROM
                                     {table_name}
                                     WHERE
+                                    bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}' AND
                                     flow_log_id='{flow_log_id}'
@@ -1148,6 +1156,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     def already_processed(self, downloaded_file, aws_account_id, aws_region, flow_log_id):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
             table_name=self.db_table_name,
+            bucket_path=self.bucket_path,
             aws_account_id=aws_account_id,
             aws_region=aws_region,
             flow_log_id=flow_log_id,
@@ -1170,6 +1179,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         try:
             query_date_last_log = self.db_connector.execute(self.sql_get_date_last_log_processed.format(
                                                                                         table_name=self.db_table_name,
+                                                                                        bucket_path=self.bucket_path,
                                                                                         aws_account_id=aws_account_id,
                                                                                         aws_region=aws_region,
                                                                                         flow_log_id=flow_log_id))
@@ -1204,6 +1214,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         try:
             self.db_connector.execute(self.sql_db_maintenance.format(
                 table_name=self.db_table_name,
+                bucket_path=self.bucket_path,
                 aws_account_id=aws_account_id,
                 aws_region=aws_region,
                 flow_log_id=flow_log_id,
@@ -1228,6 +1239,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         else:
 
             query_last_key_of_day = self.db_connector.execute(self.sql_find_last_key_processed_of_day.format(table_name=self.db_table_name,
+                                                                                        bucket_path=self.bucket_path,
                                                                                         aws_account_id=aws_account_id,
                                                                                         aws_region=aws_region,
                                                                                         flow_log_id=flow_log_id,
@@ -1340,6 +1352,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             try:
                 self.db_connector.execute(self.sql_mark_complete.format(
                     table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
                     aws_account_id=aws_account_id,
                     aws_region=aws_region,
                     flow_log_id=flow_log_id,
