@@ -667,7 +667,8 @@ def upload_group_configuration(group_id, xml_file):
 
         # check Wazuh xml format
         try:
-            subprocess.check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path], stderr=subprocess.STDOUT)
+            subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', tmp_file_path],
+                                    stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
             # Example of raw output
