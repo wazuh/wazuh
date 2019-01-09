@@ -20,7 +20,7 @@ about: Test suite for Logcollector.
 ## Logs
 
 - [ ] Solve the reading of a file when changing its inode.
-- [ ] Check that Eventlog logs are read in all supported versions of Windows.
+- [ ] Check that Eventlog/Eventchannel logs are read in all supported versions of Windows.
 - [ ] Truncate file.
 - [ ] Check for new paths that match a wildcards after starting Logcollector.
 - [ ] Check **all the tests** changing the order of the parameters in combination with normal and daily wildcards.

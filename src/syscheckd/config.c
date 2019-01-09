@@ -172,6 +172,10 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
             if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
             if (syscheck.opts[i] & CHECK_WHODATA) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
+#ifdef WIN32
+            if (syscheck.opts[i] & CHECK_ATTRS) cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
+#endif
+            if (syscheck.opts[i] & CHECK_FOLLOW) cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
             cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);

@@ -310,7 +310,7 @@ char *seechanges_addfile(const char *filename)
     char old_location[PATH_MAX + 1];
     char tmp_location[PATH_MAX + 1];
     char diff_location[PATH_MAX + 1];
-    char diff_cmd[PATH_MAX + 1];
+    char diff_cmd[PATH_MAX + OS_SIZE_1024];
     char compressed_file[PATH_MAX + 1];
     os_md5 md5sum_old;
     os_md5 md5sum_new;
@@ -439,7 +439,7 @@ char *seechanges_addfile(const char *filename)
 
         snprintf(
             diff_cmd,
-            2048,
+            sizeof(diff_cmd),
 #ifndef WIN32
             "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
 #else

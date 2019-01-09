@@ -242,7 +242,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml)
 
     if (_lxml->fp){
         cmp = EOF;
-        _lxml->string = '\0';
+        _lxml->string = NULL;
     } else if (_lxml->string){
         cmp = '\0';
     }
