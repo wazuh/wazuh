@@ -19,6 +19,8 @@ All notable changes to this project will be documented in this file.
 - Compress `last-entry` files to check differences by FIM. ([#2034](https://github.com/wazuh/wazuh/pull/2034))
 - Auto-upgrade FIM databases in Wazuh-DB. ([#2147](https://github.com/wazuh/wazuh/pull/2147))
 - Logcollector extension for Windows eventchannel logs in JSON format. ([#2142](https://github.com/wazuh/wazuh/pull/2142))
+- Add error messages to integration scripts. ([#2143](https://github.com/wazuh/wazuh/pull/2143))
+- Add CDB lists building on install. ([#2167](https://github.com/wazuh/wazuh/pull/2167))
 
 ### Changed
 
@@ -34,6 +36,7 @@ All notable changes to this project will be documented in this file.
 - Now Wazuh manager can be started with an empty configuration in ossec.conf. ([#2086](https://github.com/wazuh/wazuh/pull/2086))
 - Syscheck first queue error message changed into a warning. ([#2146](https://github.com/wazuh/wazuh/pull/2146))
 - Improve vulnerability detection in Red Hat systems. ([#2137](https://github.com/wazuh/wazuh/pull/2137))
+- Do the DEB and RPM package scan regardless of Linux distribution. ([#2168](https://github.com/wazuh/wazuh/pull/2168))
 
 ### Fixed
 
@@ -64,6 +67,10 @@ All notable changes to this project will be documented in this file.
   - An error getting the internal file position may lead to an undefined condition.
 - Execd daemon now runs even if active response is disabled ([#2177](https://github.com/wazuh/wazuh/pull/2177))
 - Fix network timeout setup in agent running on Windows. ([#2185](https://github.com/wazuh/wazuh/pull/2185))
+- Fixes error when multigroup files are not found. ([#1792](https://github.com/wazuh/wazuh/pull/1792))
+- Fix error when assigning multiple groups whose names add up to more than 4096 characters. ([#1792](https://github.com/wazuh/wazuh/pull/1792))
+- Fix high precision timestamp truncation in rsyslog messages. ([#2128](https://github.com/wazuh/wazuh/pull/2128))
+- Fix missing Whodata section to the remote configuration query. ([#2173](https://github.com/wazuh/wazuh/pull/2173))
 
 
 ## [v3.7.2] 2018-12-17
@@ -123,9 +130,9 @@ All notable changes to this project will be documented in this file.
 - Add missing field `restrict` when querying the FIM configuration remotely. ([#1931](https://github.com/wazuh/wazuh/pull/1931))
 - Fix values of FIM scan showed in agent_control info. ([#1940](https://github.com/wazuh/wazuh/pull/1940))
 - Fix agent group updating in database module. ([#2004](https://github.com/wazuh/wazuh/pull/2004))
-- Logcollector prevents vmhgfs from synchronizing the inode. ([#2022](https://github.com/wazuh/wazuh/pull/2022/files))
-- File descriptor leak that may impact agents running on UNIX platforms. ([#2021](https://github.com/wazuh/wazuh/pull/2021/files))
-- CIS-CAT events were being processed by a wrong decoder ([#2014](https://github.com/wazuh/wazuh/pull/2014/files))
+- Logcollector prevents vmhgfs from synchronizing the inode. ([#2022](https://github.com/wazuh/wazuh/pull/2022))
+- File descriptor leak that may impact agents running on UNIX platforms. ([#2021](https://github.com/wazuh/wazuh/pull/2021))
+- CIS-CAT events were being processed by a wrong decoder. ([#2014](https://github.com/wazuh/wazuh/pull/2014))
 
 
 ## [v3.7.0] - 2018-11-10
@@ -559,7 +566,7 @@ All notable changes to this project will be documented in this file.
 - Updated Slack integration. ([#443](https://github.com/wazuh/wazuh/pull/443))
 - Increased connection timeout for remote upgrades. ([#480](https://github.com/wazuh/wazuh/pull/480))
 - Vulnerability-detector does not stop agents detection if it fails to find the software for one of them.
-- Improve the version comparator algorithm in vulnerability-detector. ([#508](https://github.com/wazuh/wazuh/pull/508/files))
+- Improve the version comparator algorithm in vulnerability-detector. ([#508](https://github.com/wazuh/wazuh/pull/508))
 
 ### Fixed
 
