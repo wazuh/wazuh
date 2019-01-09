@@ -1200,7 +1200,7 @@ int purge_group(char *group){
             continue;
         }
 
-        new_groups = '\0';
+        new_groups = NULL;
 
         if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
             merror("At purge_group(): path too long.");
