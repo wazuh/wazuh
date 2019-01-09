@@ -353,9 +353,9 @@ void OS_FreeKey(keyentry *key) {
     }
     char key_c[64];
 #ifdef WIN32
-    sprintf(key_c,"%lu",(long unsigned)key);
+    sprintf(key_c,"%p",key);
 #else
-    sprintf(key_c,"%llu",(long long unsigned)key);
+    sprintf(key_c,"%p",key);
 #endif
 
     if(OSHash_Get(last_freed_keys,key_c)){
