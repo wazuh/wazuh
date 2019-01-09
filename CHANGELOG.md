@@ -80,6 +80,7 @@ All notable changes to this project will be documented in this file.
 - The regex parser included the next character after a group:
   - If the input string just ends after that character. ([#2216](https://github.com/wazuh/wazuh/pull/2216))
   - The regex parser did not accept a group terminated with an escaped byte or a class. ([#2224](https://github.com/wazuh/wazuh/pull/2224))
+- Fix sending of the owner attribute when a file is created in Windows. ([#2292](https://github.com/wazuh/wazuh/pull/2292))
 
 
 ## [v3.7.2] 2018-12-17
