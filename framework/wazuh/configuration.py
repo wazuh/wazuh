@@ -695,7 +695,7 @@ def upload_group_configuration(group_id, xml_file):
         raise e
 
 
-def upload_group_file(group_id, xml_file, file_name):
+def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     """
     Updates a group file
 

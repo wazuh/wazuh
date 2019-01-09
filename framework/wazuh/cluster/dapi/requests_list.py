@@ -153,7 +153,7 @@ functions = {
         'type': 'local_master'
     },
     'POST/agents/groups/:group_id/configuration': {
-        'function': configuration.upload_group_configuration,
+        'function': configuration.upload_group_file,
         'type': 'local_master'
     },
     'POST/agents/groups/:group_id/files/:file_name': {
