@@ -864,7 +864,7 @@ class AWSConfigBucket(AWSLogsBucket):
         num_days = self.get_days_since_today(self.get_date_last_log(aws_account_id, aws_region))
         date_list_time = [datetime.utcnow() - timedelta(days=x) for x in range(0, num_days)]
 
-        return [datetime.strftime(date, "%Y/%m/%-d") for date in reversed(date_list_time)]
+        return [datetime.strftime(date, "%Y/%-m/%-d") for date in reversed(date_list_time)]
 
     def get_date_last_log(self, aws_account_id, aws_region):
         if self.reparse:
