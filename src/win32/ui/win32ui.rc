@@ -10,8 +10,12 @@
 #include <windows.h>
 #include "os_win32ui.h"
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
 #define CONCAT2(a,b)    a##b
 #define CONCAT(a,b)     CONCAT2(a,b)
+#else
+#define CONCAT(a,b)     a b
+#endif
 
 #define DISCLAIMER1     "This program is a free software; you can redistribute it"
 #define DISCLAIMER2     " and/or modify it under the terms of the GNU General"
