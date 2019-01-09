@@ -654,6 +654,10 @@ def upload_group_configuration(group_id, xml_file):
             xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            # revert xml.dom replacings
+            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
+                                   .replace("&gt;", ">")
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhException(1113, str(e))
