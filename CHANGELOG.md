@@ -21,6 +21,12 @@ All notable changes to this project will be documented in this file.
 - Logcollector extension for Windows eventchannel logs in JSON format. ([#2142](https://github.com/wazuh/wazuh/pull/2142))
 - Add error messages to integration scripts. ([#2143](https://github.com/wazuh/wazuh/pull/2143))
 - Add CDB lists building on install. ([#2167](https://github.com/wazuh/wazuh/pull/2167))
+- Support for new AWS services in the AWS wodle ([#2242](https://github.com/wazuh/wazuh/pull/2242)):
+    - AWS Config
+    - AWS Trusted Advisor
+    - AWS KMS
+    - AWS Inspector
+    - Add support for IAM roles authentication in EC2 instances.
 
 ### Changed
 
@@ -38,6 +44,7 @@ All notable changes to this project will be documented in this file.
 - Syscheck first queue error message changed into a warning. ([#2146](https://github.com/wazuh/wazuh/pull/2146))
 - Improve vulnerability detection in Red Hat systems. ([#2137](https://github.com/wazuh/wazuh/pull/2137))
 - Do the DEB and RPM package scan regardless of Linux distribution. ([#2168](https://github.com/wazuh/wazuh/pull/2168))
+- AWS VPC configuration in the AWS wodle ([#2242](https://github.com/wazuh/wazuh/pull/2242)).
 - Hide warning log by FIM when cannot open a file that has just been removed. ([#2201](https://github.com/wazuh/wazuh/pull/2201))
 - The default FIM configuration will ignore some temporary files. ([#2202](https://github.com/wazuh/wazuh/pull/2202))
 - Make FIM show alerts for new files by default. ([#2213](https://github.com/wazuh/wazuh/pull/2213))
@@ -74,6 +81,12 @@ All notable changes to this project will be documented in this file.
 - Execd daemon now runs even if active response is disabled ([#2177](https://github.com/wazuh/wazuh/pull/2177))
 - Fix high precision timestamp truncation in rsyslog messages. ([#2128](https://github.com/wazuh/wazuh/pull/2128))
 - Fix missing Whodata section to the remote configuration query. ([#2173](https://github.com/wazuh/wazuh/pull/2173))
+- Bugfixes in AWS wodle ([#2242](https://github.com/wazuh/wazuh/pull/2242)):
+    - Fixed bug in AWS Guard Duty alerts when there were multiple remote IPs.
+    - Fixed bug when using flag `remove_from_bucket`.
+    - Fixed bug when reading buckets generating more than 1000 logs in the same day.
+    - Increase `qty` of `aws.eventNames` and remove usage of `aws.eventSources`.
+- Fix bug in cluster configuration when using Kubernetes ([#2227](https://github.com/wazuh/wazuh/pull/2227)).
 - Fix network timeout setup in agent running on Windows. ([#2185](https://github.com/wazuh/wazuh/pull/2185))
 - Fix default values for the `<auto_ignore>` option. ([#2210](https://github.com/wazuh/wazuh/pull/2210))
 - Fix bug that made Modulesd and Remoted crash on ARM architecture. ([#2214](https://github.com/wazuh/wazuh/pull/2214))
