@@ -691,7 +691,7 @@ int handle_file(int i, int j, int do_fseek, int do_log)
         }
         goto error;
     }
-    fd = _open_osfhandle((long)lf->h, 0);
+    fd = _open_osfhandle((intptr_t)lf->h, 0);
     if (fd == -1) {
         merror(FOPEN_ERROR, lf->file, errno, strerror(errno));
         CloseHandle(lf->h);
@@ -770,7 +770,7 @@ int reload_file(logreader * lf) {
         return (-1);
     }
 
-    fd = _open_osfhandle((long)lf->h, 0);
+    fd = _open_osfhandle((intptr_t)lf->h, 0);
 
     if (fd == -1) {
         CloseHandle(lf->h);
