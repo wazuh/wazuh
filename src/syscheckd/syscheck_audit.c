@@ -687,8 +687,10 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
@@ -712,8 +714,10 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
@@ -751,8 +755,10 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
@@ -777,8 +783,10 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
@@ -811,8 +819,10 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if(w_evt->inode && filterpath_audit_events(w_evt->path)){
-                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp){
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
                                     realtime_checksumfile(w_evt->path, w_evt);
