@@ -676,7 +676,7 @@ def upload_group_configuration(group_id, xml_file):
             # Example of desired output:
             # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output)
+                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             raise WazuhException(1114, ' '.join(output_regex))
         except Exception as e:
             raise WazuhException(1743, str(e))
