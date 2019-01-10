@@ -34,4 +34,8 @@ os_info *get_unix_version();
 
 void free_osinfo(os_info * osinfo);
 
+// Get number of processors
+// Returns 1 on error
+int get_nproc();
+
 #endif
