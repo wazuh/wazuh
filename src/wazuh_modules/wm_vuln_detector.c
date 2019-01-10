@@ -1101,8 +1101,8 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
     char *tmp_file;
     static const char *exclude_tags[] = {
         // Debian
-        "oval:org.debian.oval:tst:1\"",
-        "oval:org.debian.oval:tst:2\""
+        "oval:org.debian.oval:tst:1\0",
+        "oval:org.debian.oval:tst:2\0"
     };
 
     os_strdup(CVE_FIT_TEMP_FILE, tmp_file);
@@ -1499,7 +1499,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
         } else if (!strcmp(node[i]->element, XML_CRITERION)) {
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_TEST_REF)) {
-                    static const char pending_state[] = "tst:10\"";
+                    static const char pending_state[] = "tst:10\0";
 
                     if (parsed_oval->vulnerabilities->state_id) {
                         if (double_condition != 2) {
