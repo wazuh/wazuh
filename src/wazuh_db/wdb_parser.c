@@ -2108,7 +2108,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output) {
         }
 
         if (!strncmp(curr, "NULL", 4))
-            nice = -1;
+            nice = 0;
         else
             nice = strtol(curr,NULL,10);
 
