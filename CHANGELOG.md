@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 - Add CDB lists building on install. ([#2167](https://github.com/wazuh/wazuh/pull/2167))
 - Update Wazuh copyright for internal files. ([#2343](https://github.com/wazuh/wazuh/pull/2343))
 - Added option to allow maild select the log file to read from. ([#977](https://github.com/wazuh/wazuh/pull/977))
+- Add table to control the metadata of the vuln-detector DB. ([#2402](https://github.com/wazuh/wazuh/pull/2402))
 
 ### Changed
 
