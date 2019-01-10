@@ -113,7 +113,7 @@ void LogCollectorStart()
     if (isVista) {
         win_read_vista_sec();
     }
-    
+
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
 #endif
@@ -163,7 +163,7 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
-        
+
         } else if (strcmp(current->logformat, "command") == 0) {
             current->file = NULL;
             current->fp = NULL;
@@ -195,12 +195,12 @@ void LogCollectorStart()
             current->file = NULL;
             current->fp = NULL;
             current->size = 0;
-            
+
 #ifdef WIN32
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
-            
+
             if (current->command) {
                 current->read = read_fullcommand;
 
@@ -231,7 +231,7 @@ void LogCollectorStart()
             if (current->fp) {
                 current->read(current, &r, 1);
             }
-            
+
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
@@ -998,7 +998,7 @@ int check_pattern_expand(int do_seek) {
             globfree(&g);
         }
     }
-    
+
     w_mutexattr_destroy(&attr);
 
     return retval;
@@ -1142,10 +1142,12 @@ void w_set_file_mutexes(){
                 break;
             }
         }
-        w_mutex_destroy(&current->mutex); /* Could initialized on check_pattern_expand() */
-        w_mutex_init(&current->mutex, &attr);
+
+        if (k < 0) {
+            w_mutex_init(&current->mutex, &attr);
+        }
     }
-    
+
     w_mutexattr_destroy(&attr);
 }
 
@@ -1162,7 +1164,7 @@ void w_msg_hash_queues_init(){
     if(!msg_queues_table){
         merror_exit("Failed to create hash table for queue threads");
     }
-    
+
     OSHash_SetFreeDataPointer(msg_queues_table, (void (*)(void *))free_msg_queue);
 }
 
@@ -1174,7 +1176,7 @@ int w_msg_hash_queues_add_entry(const char *key){
     msg->msg_queue = queue_init(OUTPUT_QUEUE_SIZE);
     w_mutex_init(&msg->mutex, NULL);
     w_cond_init(&msg->available, NULL);
-    
+
     if (result = OSHash_Add(msg_queues_table, key, msg), result != 2) {
         queue_free(msg->msg_queue);
         w_mutex_destroy(&msg->mutex);
@@ -1370,7 +1372,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
             w_rwlock_rdlock(&files_update_rwlock);
             if (f_control = update_current(&current, &i, &j), f_control) {
                 w_rwlock_unlock(&files_update_rwlock);
-                
+
                 if (f_control == NEXT_IT) {
                     continue;
                 } else {
@@ -1393,7 +1395,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     w_rwlock_unlock(&files_update_rwlock);
                     continue;
                 }
-                
+
                 /* Windows with IIS logs is very strange.
                 * For some reason it always returns 0 (not EOF)
                 * the fgetc. To solve this problem, we always
@@ -1490,12 +1492,12 @@ void w_create_input_threads(){
     int i;
 
     N_INPUT_THREADS = getDefine_Int("logcollector", "input_threads", N_MIN_INPUT_THREADS, 128);
-    
+
 #ifdef WIN32
     w_mutex_init(&win_el_mutex, &win_el_mutex_attr);
     w_mutexattr_destroy(&win_el_mutex_attr);
 #endif
-    
+
     for(i = 0; i < N_INPUT_THREADS; i++) {
 #ifndef WIN32
         w_create_thread(w_input_thread,NULL);
