@@ -1309,16 +1309,6 @@ hw_info *get_system_linux(){
 
                 free(info->cpu_name);
                 info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
-
-                char *cores;
-                cores = strtok(string, ":");
-                cores = strtok(NULL, "\n");
-                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_cores = atoi(cores);
-
             } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
 
                 char *frec;
@@ -1333,6 +1323,8 @@ hw_info *get_system_linux(){
         free(aux_string);
         fclose(fp);
     }
+
+    info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");

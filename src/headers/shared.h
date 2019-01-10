@@ -225,6 +225,7 @@ extern const char *__local_name;
 #include "exec_op.h"
 #include "json_op.h"
 #include "notify_op.h"
+#include "version_op.h"
 
 #include "os_xml/os_xml.h"
 #include "os_regex/os_regex.h"
