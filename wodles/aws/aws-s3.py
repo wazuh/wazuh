@@ -1207,7 +1207,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
-                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
 
     def db_maintenance(self, aws_account_id, aws_region, flow_log_id):
         debug("+++ DB Maintenance", 1)
