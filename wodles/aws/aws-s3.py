@@ -1030,8 +1030,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         self.db_table_name = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
-        self.flow_logs_ids = self.get_flow_logs_ids(kwargs['access_key'],
-            kwargs['secret_key'])
+        self.access_key = kwargs['access_key']
+        self.secret_key = kwargs['secret_key']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
                           SELECT
@@ -1132,8 +1132,10 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             tsv_file = csv.DictReader(f, fieldnames=fieldnames, delimiter=' ')
             return [dict(x, source='vpc') for x in tsv_file]
 
-    def get_ec2_client(self, access_key, secret_key):
+    def get_ec2_client(self, access_key, secret_key, region):
        conn_args = {}
+       conn_args['region_name'] = region
+
        if access_key is not None and secret_key is not None:
            conn_args['aws_access_key_id'] = access_key
            conn_args['aws_secret_access_key'] = secret_key
@@ -1148,8 +1150,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
        return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key):
-        ec2_client = self.get_ec2_client(access_key, secret_key)
+    def get_flow_logs_ids(self, access_key, secret_key, region):
+        ec2_client = self.get_ec2_client(access_key, secret_key, region)
         flow_logs_ids = list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         return flow_logs_ids
 
@@ -1202,12 +1204,14 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     continue
             for aws_region in regions:
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                # get flow log ids for the current region
+                flow_logs_ids = self.get_flow_logs_ids(self.access_key,
+                    self.secret_key, aws_region)
                 # for each flow log id
-                for flow_log_id in self.flow_logs_ids:
+                for flow_log_id in flow_logs_ids:
                     date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
-                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
 
     def db_maintenance(self, aws_account_id, aws_region, flow_log_id):
         debug("+++ DB Maintenance", 1)
