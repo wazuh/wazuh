@@ -813,6 +813,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
+    const char *xml_audit_hc = "audit_healthcheck_enabled";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1270,6 +1271,16 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             key = strtok(NULL, &delim);
                             keyit++;
                         }
+                    }
+                } else if (strcmp(children[j]->element, xml_audit_hc) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->audit_healthcheck = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->audit_healthcheck = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        return(OS_INVALID);
                     }
                 } else {
                     merror(XML_ELEMNULL);

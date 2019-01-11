@@ -356,15 +356,6 @@ int audit_init(void) {
         return (-1);
     }
 
-    // Add Audit rules
-    audit_added_rules = W_Vector_init(10);
-    audit_added_dirs = W_Vector_init(20);
-    int rules_added = add_audit_rules_syscheck();
-    if (rules_added < 1){
-        mdebug1("No rules added. Audit events reader thread will not start.");
-        return (-1);
-    }
-
     // Initialize Audit socket
     static int audit_socket;
     audit_socket = init_auditd_socket();
@@ -378,13 +369,23 @@ int audit_init(void) {
     }
 
     // Perform Audit healthcheck
-    if(audit_health_check(audit_socket)) {
-        merror("Audit health check couldn't be completed correctly.");
-        return -1;
+    if (syscheck.audit_healthcheck) {
+        if(audit_health_check(audit_socket)) {
+            merror("Audit health check couldn't be completed correctly.");
+            return -1;
+        }
+    } else {
+        mwarn("Audit health check is disabled. Whodata could not work correctly.");
     }
 
-    // Start reading thread
-    mdebug1("Starting Auditd events reader thread...");
+    // Add Audit rules
+    audit_added_rules = W_Vector_init(10);
+    audit_added_dirs = W_Vector_init(20);
+    int rules_added = add_audit_rules_syscheck();
+    if (rules_added < 1){
+        mdebug1("No rules added. Audit events reader thread will not start.");
+        return (-1);
+    }
 
     atexit(clean_rules);
     auid_err_reported = 0;
