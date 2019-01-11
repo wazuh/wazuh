@@ -3,7 +3,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
+import random
+import time
 from os import remove, path as os_path
 import re
 from shutil import move
@@ -644,8 +645,7 @@ def upload_group_configuration(group_id, xml_file):
         raise WazuhException(1710)
 
     # path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}.xml'.format(common.ossec_path,
-                                                        datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s'))
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
     # create temporary file for parsing xml input
     try:
