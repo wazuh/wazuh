@@ -40,6 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
+    syscheck.audit_healthcheck = 1;
 #ifdef WIN_WHODATA
     syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
@@ -212,9 +213,14 @@ cJSON *getSyscheckConfig(void) {
         }
         if (cJSON_GetArraySize(audkey) > 0) {
             cJSON_AddItemToObject(whodata,"audit_key",audkey);
-            cJSON_AddItemToObject(syscfg,"whodata",whodata);
         }
     }
+    if (syscheck.audit_healthcheck) {
+        cJSON_AddStringToObject(whodata,"audit_healthcheck_enabled","yes");
+    } else {
+        cJSON_AddStringToObject(whodata,"audit_healthcheck_enabled","no");
+    }
+    cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
     if (syscheck.registry) {

@@ -211,6 +211,7 @@ typedef struct _config {
     whodata_event_list wlist;
 #else
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
+    int audit_healthcheck;
 #endif
 
     char **audit_key;                // Listen audit keys
