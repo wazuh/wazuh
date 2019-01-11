@@ -1123,49 +1123,93 @@ void sys_hw_windows(const char* LOCATION){
 
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
-    CallFunc2 _get_baseboard_serial;
-    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
-    if (sys_library == NULL)
-    {
-        DWORD error = GetLastError();
-        LPSTR messageBuffer = NULL;
-        LPSTR end;
-        
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
-        
-        if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
-        
-        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
-        LocalFree(messageBuffer);
-        
-        serial = strdup("unknown");
-    } else {
-        _get_baseboard_serial = (CallFunc2)GetProcAddress(sys_library, "get_baseboard_serial");
-        if (!_get_baseboard_serial) {
-            mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
+    
+    if(strncmp(getuname(),"Microsoft Windows XP Professional",33)){
+
+        CallFunc2 _get_baseboard_serial;
+        HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
+        if (sys_library == NULL)
+        {
+            DWORD error = GetLastError();
+            LPSTR messageBuffer = NULL;
+            LPSTR end;
+            
+            FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
+            
+            if (end = strchr(messageBuffer, '\r'), end) *end = '\0';
+            
+            mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
+            LocalFree(messageBuffer);
+            
             serial = strdup("unknown");
         } else {
-            int ret = _get_baseboard_serial(&serial);
-            switch(ret)
-            {
-                case 1:
-                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get raw SMBIOS firmware table size.");
-                    break;
-                case 2:
-                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to allocate memory for the SMBIOS firmware table.");
-                    break;
-                case 3:
-                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get the SMBIOS firmware table.");
-                    break;
-                case 4:
-                    mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Serial Number not available in SMBIOS firmware table.");
-                    break;
-                default:
-                    break;
+            _get_baseboard_serial = (CallFunc2)GetProcAddress(sys_library, "get_baseboard_serial");
+            if (!_get_baseboard_serial) {
+                mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
+                serial = strdup("unknown");
+            } else {
+                int ret = _get_baseboard_serial(&serial);
+                switch(ret)
+                {
+                    case 1:
+                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get raw SMBIOS firmware table size.");
+                        break;
+                    case 2:
+                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to allocate memory for the SMBIOS firmware table.");
+                        break;
+                    case 3:
+                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to get the SMBIOS firmware table.");
+                        break;
+                    case 4:
+                        mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Serial Number not available in SMBIOS firmware table.");
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    
+    } else {
+        
+        char *command;
+        char *end;
+        FILE *output;
+        char read_buff[SERIAL_LENGTH];
+        int status;
+
+        memset(read_buff, 0, SERIAL_LENGTH);
+        command = "wmic baseboard get SerialNumber";
+        output = popen(command, "r");
+        if (!output){
+            mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
+        }else{
+            if (fgets(read_buff, SERIAL_LENGTH, output)) {
+                if (strncmp(read_buff ,"SerialNumber", 12) == 0) {
+                    if (!fgets(read_buff, SERIAL_LENGTH, output)){
+                        mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
+                        serial = strdup("unknown");
+                    }
+                    else if (end = strpbrk(read_buff,"\r\n"), end) {
+                        *end = '\0';
+                        int i = strlen(read_buff) - 1;
+                        while(read_buff[i] == 32){
+                            read_buff[i] = '\0';
+                            i--;
+                        }
+                        serial = strdup(read_buff);
+                    }else
+                        serial = strdup("unknown");
+                }
+            } else {
+                mtdebug1(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number (bad header).");
+                serial = strdup("unknown");
+            }
+
+            if (status = pclose(output), status) {
+                mtwarn(WM_SYS_LOGTAG, "Command 'wmic' returned %d getting board serial.", status);
             }
         }
     }
-    
 	cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
 
