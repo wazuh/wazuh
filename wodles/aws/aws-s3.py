@@ -115,7 +115,8 @@ class WazuhIntegration:
         self.msg_header = "1:Wazuh-AWS:"
         self.client = self.get_client(access_key=access_key, secret_key=secret_key,
             profile=aws_profile, iam_role_arn=iam_role_arn, service_name=service_name,
-            bucket=bucket)
+            bucket=bucket, region=region)
+
         # db_name is an instance variable of subclass
         self.db_path = "{0}/{1}.db".format(self.wazuh_wodle, self.db_name)
         self.db_connector = sqlite3.connect(self.db_path)
@@ -123,7 +124,7 @@ class WazuhIntegration:
         if bucket:
             self.bucket = bucket
 
-    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket):
+    def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None):
         conn_args = {}
 
         if access_key is not None and secret_key is not None:
@@ -132,6 +133,10 @@ class WazuhIntegration:
 
         if profile is not None:
             conn_args['profile_name'] = profile
+
+        # only for Inspector
+        if region is not None:
+            conn_args['region_name'] = region
 
         boto_session = boto3.Session(**conn_args)
 
@@ -1631,7 +1636,7 @@ class AWSService(WazuhIntegration):
                                     service_name 'text' NOT NULL,
                                     aws_region 'text' NOT NULL,
                                     scan_date 'text' NOT NULL,
-                                    PRIMARY KEY (service_name, scan_date));"""
+                                    PRIMARY KEY (service_name, aws_region, scan_date));"""
 
         self.sql_insert_value = """
                                 INSERT INTO {table_name} (
@@ -1691,6 +1696,7 @@ class AWSInspector(AWSService):
         iam_role_arn, only_logs_after, region):
 
         self.service_name = 'inspector'
+        self.inspector_region = region
 
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
@@ -1702,54 +1708,61 @@ class AWSInspector(AWSService):
 
     def send_describe_findings(self, arn_list):
         if len(arn_list) == 0:
-            debug('+++ There are not new events', 1)
+            debug('+++ There are not new events from {region} region'.format(region=self.inspector_region), 1)
         else:
-            debug('+++ Processing new events...', 1)
+            debug('+++ Processing new events from {region} region'.format(region=self.inspector_region), 1)
             response = self.client.describe_findings(findingArns=arn_list)['findings']
             for elem in response:
                 self.send_msg(self.format_message(elem))
 
-    def get_alerts(self, regions):
-        regions = ['us-east-1']
-        for region in regions:
-            self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
-            try:
-                # if DB is empty write initial date
-                initial_date = self.get_last_log_date()
-                # reparse logs if this parameter exists
-                if self.reparse:
-                    last_scan = initial_date
-                else:
-                    self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                        service_name=self.service_name, aws_region=region, scan_date=initial_date))
-                    self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                        service_name=self.service_name, aws_region=region))
-                    last_scan = self.db_cursor.fetchone()[0]
-            except sqlite3.IntegrityError:
-                self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                    service_name=self.service_name, aws_region=region))
-                last_scan = self.db_cursor.fetchone()[0]
-            datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
-            # get current time (UTC)
-            datetime_current = datetime.utcnow()
-            # describe_findings only retrieves 100 results per call
-            response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
-                {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
-            self.send_describe_findings(response['findingArns'])
-            # iterate if there are more elements
-            while 'nextToken' in response:
-                response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
-                    filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
-                self.send_describe_findings(response['findingArns'])
-            # insert last scan in DB
+    def get_alerts(self):
+        # write first date for a region if this is empty in DB
+        def write_first_date_db():
             self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                service_name=self.service_name, aws_region=region, scan_date=datetime_current))
-            # DB maintenance
-            self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
-                service_name=self.service_name, aws_region=region, retain_db_records=self.retain_db_records))
-            # close connection with DB
-            self.db_connector.commit()
-            self.close_db()
+                service_name=self.service_name, aws_region=self.inspector_region, scan_date=initial_date))
+            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                service_name=self.service_name, aws_region=self.inspector_region))
+            return self.db_cursor.fetchone()[0]
+
+        # get last date from DB
+        def get_last_date_db():
+            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                    service_name=self.service_name, aws_region=self.inspector_region))
+            return self.db_cursor.fetchone()[0]
+
+        self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
+        try:
+            # if DB is empty write initial date
+            initial_date = self.get_last_log_date()
+            # reparse logs if this parameter exists
+            if self.reparse:
+                last_scan = initial_date
+            else:
+                last_scan = write_first_date_db()
+        except sqlite3.IntegrityError:
+            last_scan = get_last_date_db()
+
+        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+        # get current time (UTC)
+        datetime_current = datetime.utcnow()
+        # describe_findings only retrieves 100 results per call
+        response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
+            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+        self.send_describe_findings(response['findingArns'])
+        # iterate if there are more elements
+        while 'nextToken' in response:
+            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
+                filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+            self.send_describe_findings(response['findingArns'])
+        # insert last scan in DB
+        self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+            service_name=self.service_name, aws_region=self.inspector_region, scan_date=datetime_current))
+        # DB maintenance
+        self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
+            service_name=self.service_name, aws_region=self.inspector_region, retain_db_records=self.retain_db_records))
+        # close connection with DB
+        self.db_connector.commit()
+        self.close_db()
 
     def format_message(self, msg):
         # rename service field to source
@@ -1901,12 +1914,18 @@ def main(argv):
                 service_type = AWSInspector
             else:
                 raise Exception("Invalid type of service")
-            # iterate if there are two regions or more
-            service = service_type(reparse=options.reparse, access_key=options.access_key,
-                secret_key=options.secret_key, aws_profile=options.aws_profile,
-                iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
-                region=options.regions)
-            service.get_alerts(options.regions)
+
+            if not options.regions:
+                debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
+                options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-south-1',
+                    'ap-northeast-2', 'ap-southeast-2', 'ap-south-1', 'eu-central-1', 'eu-west-1']
+
+            for region in options.regions:
+                service = service_type(reparse=options.reparse, access_key=options.access_key,
+                    secret_key=options.secret_key, aws_profile=options.aws_profile,
+                    iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
+                    region=region)
+                service.get_alerts()
 
     except Exception as err:
         debug("+++ Error: {}".format(err.message), 2)
