@@ -1629,15 +1629,18 @@ class AWSService(WazuhIntegration):
                             CREATE TABLE
                                 {table_name} (
                                     service_name 'text' NOT NULL,
+                                    aws_region 'text' NOT NULL,
                                     scan_date 'text' NOT NULL,
                                     PRIMARY KEY (service_name, scan_date));"""
 
         self.sql_insert_value = """
                                 INSERT INTO {table_name} (
                                     service_name,
+                                    aws_region,
                                     scan_date)
                                 VALUES
                                     ('{service_name}',
+                                    '{aws_region}',
                                     '{scan_date}');"""
 
         self.sql_find_last_scan = """
@@ -1646,7 +1649,8 @@ class AWSService(WazuhIntegration):
                                 FROM
                                     {table_name}
                                 WHERE
-                                    service_name='{service_name}'
+                                    service_name='{service_name}' AND
+                                    aws_region='{aws_region}'
                                 ORDER BY
                                     scan_date DESC
                                 LIMIT 1;"""
@@ -1656,12 +1660,14 @@ class AWSService(WazuhIntegration):
                             {table_name}
                         WHERE
                             service_name='{service_name}' AND
+                            aws_region='{aws_region}' AND
                             rowid NOT IN
                             (SELECT ROWID
                                 FROM
                                 {table_name}
                                 WHERE
-                                service_name='{service_name}'
+                                service_name='{service_name}' AND
+                                aws_region='{aws_region}'
                                 ORDER BY
                                 scan_date DESC
                                 LIMIT {retain_db_records})"""
@@ -1689,6 +1695,7 @@ class AWSInspector(AWSService):
         AWSService.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
             service_name=self.service_name, region=region)
+
         # max DB records for region
         self.retain_db_records = 5
         self.reparse = reparse
@@ -1702,45 +1709,47 @@ class AWSInspector(AWSService):
             for elem in response:
                 self.send_msg(self.format_message(elem))
 
-    def get_alerts(self):
-        self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
-        try:
-            # if DB is empty write initial date
-            initial_date = self.get_last_log_date()
-            # reparse logs if this parameter exists
-            if self.reparse:
-                last_scan = initial_date
-            else:
-                self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                    service_name=self.service_name, scan_date=initial_date))
+    def get_alerts(self, regions):
+        regions = ['us-east-1']
+        for region in regions:
+            self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
+            try:
+                # if DB is empty write initial date
+                initial_date = self.get_last_log_date()
+                # reparse logs if this parameter exists
+                if self.reparse:
+                    last_scan = initial_date
+                else:
+                    self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                        service_name=self.service_name, aws_region=region, scan_date=initial_date))
+                    self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                        service_name=self.service_name, aws_region=region))
+                    last_scan = self.db_cursor.fetchone()[0]
+            except sqlite3.IntegrityError:
                 self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                    service_name=self.service_name))
+                    service_name=self.service_name, aws_region=region))
                 last_scan = self.db_cursor.fetchone()[0]
-        except sqlite3.IntegrityError:
-            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                service_name=self.service_name))
-            last_scan = self.db_cursor.fetchone()[0]
-        datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
-        # get current time (UTC)
-        datetime_current = datetime.utcnow()
-        # describe_findings only retrieves 100 results per call
-        response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
-            {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
-        self.send_describe_findings(response['findingArns'])
-        # iterate if there are more elements
-        while 'nextToken' in response:
-            response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
-                filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+            datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
+            # get current time (UTC)
+            datetime_current = datetime.utcnow()
+            # describe_findings only retrieves 100 results per call
+            response = self.client.list_findings(maxResults=100, filter={'creationTimeRange':
+                {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
             self.send_describe_findings(response['findingArns'])
-        # insert last scan in DB
-        self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-            service_name=self.service_name, scan_date=datetime_current))
-        # DB maintenance
-        self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
-            service_name=self.service_name, retain_db_records=self.retain_db_records))
-        # close connection with DB
-        self.db_connector.commit()
-        self.close_db()
+            # iterate if there are more elements
+            while 'nextToken' in response:
+                response = self.client.list_findings(maxResults=100, nextToken=response['nextToken'],
+                    filter={'creationTimeRange': {'beginDate': datetime_last_scan, 'endDate': datetime_current}})
+                self.send_describe_findings(response['findingArns'])
+            # insert last scan in DB
+            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                service_name=self.service_name, aws_region=region, scan_date=datetime_current))
+            # DB maintenance
+            self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
+                service_name=self.service_name, aws_region=region, retain_db_records=self.retain_db_records))
+            # close connection with DB
+            self.db_connector.commit()
+            self.close_db()
 
     def format_message(self, msg):
         # rename service field to source
@@ -1897,7 +1906,7 @@ def main(argv):
                 secret_key=options.secret_key, aws_profile=options.aws_profile,
                 iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
                 region=options.regions)
-            service.get_alerts()
+            service.get_alerts(options.regions)
 
     except Exception as err:
         debug("+++ Error: {}".format(err.message), 2)
