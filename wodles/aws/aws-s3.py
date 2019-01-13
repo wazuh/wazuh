@@ -1621,6 +1621,10 @@ class AWSService(WazuhIntegration):
         self.db_name = 'aws_services'
         # table name
         self.db_table_name = 'aws_services'
+        # get sts client (necessary for getting account ID)
+        self.sts_client = self.get_sts_client(access_key, secret_key)
+        # get account ID
+        self.account_id = self.sts_client.get_caller_identity().get('Account')
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn,
@@ -1634,6 +1638,7 @@ class AWSService(WazuhIntegration):
                             CREATE TABLE
                                 {table_name} (
                                     service_name 'text' NOT NULL,
+                                    aws_account_id 'text' NOT NULL,
                                     aws_region 'text' NOT NULL,
                                     scan_date 'text' NOT NULL,
                                     PRIMARY KEY (service_name, aws_region, scan_date));"""
@@ -1641,10 +1646,12 @@ class AWSService(WazuhIntegration):
         self.sql_insert_value = """
                                 INSERT INTO {table_name} (
                                     service_name,
+                                    aws_account_id,
                                     aws_region,
                                     scan_date)
                                 VALUES
                                     ('{service_name}',
+                                    '{aws_account_id}',
                                     '{aws_region}',
                                     '{scan_date}');"""
 
@@ -1655,6 +1662,7 @@ class AWSService(WazuhIntegration):
                                     {table_name}
                                 WHERE
                                     service_name='{service_name}' AND
+                                    aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}'
                                 ORDER BY
                                     scan_date DESC
@@ -1665,6 +1673,7 @@ class AWSService(WazuhIntegration):
                             {table_name}
                         WHERE
                             service_name='{service_name}' AND
+                            aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
                             rowid NOT IN
                             (SELECT ROWID
@@ -1672,10 +1681,27 @@ class AWSService(WazuhIntegration):
                                 {table_name}
                                 WHERE
                                 service_name='{service_name}' AND
+                                aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}'
                                 ORDER BY
                                 scan_date DESC
                                 LIMIT {retain_db_records})"""
+
+    def get_sts_client(self, access_key, secret_key):
+        conn_args = {}
+        if access_key is not None and secret_key is not None:
+            conn_args['aws_access_key_id'] = access_key
+            conn_args['aws_secret_access_key'] = secret_key
+
+        boto_session = boto3.Session(**conn_args)
+
+        try:
+            sts_client = boto_session.client(service_name='sts')
+        except Exception as e:
+            print("Error getting STS client: {}".format(e))
+            sys.exit(3)
+
+        return sts_client
 
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
@@ -1719,15 +1745,18 @@ class AWSInspector(AWSService):
         # write first date for a region if this is empty in DB
         def write_first_date_db():
             self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                service_name=self.service_name, aws_region=self.inspector_region, scan_date=initial_date))
+                service_name=self.service_name, aws_account_id=self.account_id,
+                aws_region=self.inspector_region, scan_date=initial_date))
             self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                service_name=self.service_name, aws_region=self.inspector_region))
+                service_name=self.service_name, aws_account_id=self.account_id,
+                aws_region=self.inspector_region))
             return self.db_cursor.fetchone()[0]
 
         # get last date from DB
         def get_last_date_db():
             self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                    service_name=self.service_name, aws_region=self.inspector_region))
+                    service_name=self.service_name, aws_account_id=self.account_id,
+                    aws_region=self.inspector_region))
             return self.db_cursor.fetchone()[0]
 
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
@@ -1740,6 +1769,7 @@ class AWSInspector(AWSService):
             else:
                 last_scan = write_first_date_db()
         except sqlite3.IntegrityError:
+            print("entra, error al meter la fecha inicial (normal)")
             last_scan = get_last_date_db()
 
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
@@ -1756,10 +1786,12 @@ class AWSInspector(AWSService):
             self.send_describe_findings(response['findingArns'])
         # insert last scan in DB
         self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-            service_name=self.service_name, aws_region=self.inspector_region, scan_date=datetime_current))
+            service_name=self.service_name, aws_account_id=self.account_id,
+            aws_region=self.inspector_region, scan_date=datetime_current))
         # DB maintenance
         self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name,
-            service_name=self.service_name, aws_region=self.inspector_region, retain_db_records=self.retain_db_records))
+            service_name=self.service_name, aws_account_id=self.account_id,
+            aws_region=self.inspector_region, retain_db_records=self.retain_db_records))
         # close connection with DB
         self.db_connector.commit()
         self.close_db()
