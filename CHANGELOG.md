@@ -97,6 +97,7 @@ All notable changes to this project will be documented in this file.
 - Fix sending of the owner attribute when a file is created in Windows. ([#2292](https://github.com/wazuh/wazuh/pull/2292))
 - Fix audit reconnection to the Whodata socket ([#2305](https://github.com/wazu2305h/wazuh/pull/2305))
 - Fixed agent connection in TCP mode on Windows XP. ([#2329](https://github.com/wazuh/wazuh/pull/2329))
+- Fix log shown when a command reaches its timeout and `ignore_output` is enabled. ([#2316](https://github.com/wazuh/wazuh/pull/2316))
 
 
 
