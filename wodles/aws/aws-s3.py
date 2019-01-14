@@ -1641,7 +1641,7 @@ class AWSService(WazuhIntegration):
                                     aws_account_id 'text' NOT NULL,
                                     aws_region 'text' NOT NULL,
                                     scan_date 'text' NOT NULL,
-                                    PRIMARY KEY (service_name, aws_region, scan_date));"""
+                                    PRIMARY KEY (service_name, aws_account_id, aws_region, scan_date));"""
 
         self.sql_insert_value = """
                                 INSERT INTO {table_name} (
@@ -1741,36 +1741,25 @@ class AWSInspector(AWSService):
             for elem in response:
                 self.send_msg(self.format_message(elem))
 
+    
     def get_alerts(self):
-        # write first date for a region if this is empty in DB
-        def write_first_date_db():
-            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
-                service_name=self.service_name, aws_account_id=self.account_id,
-                aws_region=self.inspector_region, scan_date=initial_date))
-            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                service_name=self.service_name, aws_account_id=self.account_id,
-                aws_region=self.inspector_region))
-            return self.db_cursor.fetchone()[0]
-
-        # get last date from DB
-        def get_last_date_db():
-            self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
-                    service_name=self.service_name, aws_account_id=self.account_id,
-                    aws_region=self.inspector_region))
-            return self.db_cursor.fetchone()[0]
-
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         try:
-            # if DB is empty write initial date
             initial_date = self.get_last_log_date()
             # reparse logs if this parameter exists
             if self.reparse:
                 last_scan = initial_date
             else:
-                last_scan = write_first_date_db()
-        except sqlite3.IntegrityError:
-            print("entra, error al meter la fecha inicial (normal)")
-            last_scan = get_last_date_db()
+                self.db_cursor.execute(self.sql_find_last_scan.format(table_name=self.db_table_name,
+                    service_name=self.service_name, aws_account_id=self.account_id,
+                    aws_region=self.inspector_region))
+                last_scan = self.db_cursor.fetchone()[0]
+        except TypeError as e:
+            # write initial date if DB is empty
+            self.db_cursor.execute(self.sql_insert_value.format(table_name=self.db_table_name,
+                service_name=self.service_name, aws_account_id=self.account_id,
+                aws_region=self.inspector_region, scan_date=initial_date))
+            last_scan = initial_date
 
         datetime_last_scan = datetime.strptime(last_scan, '%Y-%m-%d %H:%M:%S.%f')
         # get current time (UTC)
@@ -1949,8 +1938,9 @@ def main(argv):
 
             if not options.regions:
                 debug("+++ Warning: No regions were specified, trying to get events from all regions", 1)
-                options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2', 'ap-south-1',
-                    'ap-northeast-2', 'ap-southeast-2', 'ap-south-1', 'eu-central-1', 'eu-west-1']
+                options.regions = ['us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
+                    'ap-northeast-2', 'ap-southeast-2', 'ap-south-1', 'eu-central-1',
+                    'eu-west-1']
 
             for region in options.regions:
                 service = service_type(reparse=options.reparse, access_key=options.access_key,
