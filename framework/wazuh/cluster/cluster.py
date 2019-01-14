@@ -497,10 +497,11 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+/\d+) \w+')
+    regex = re.compile(r'^-(\d+) \S+ \S+ \S+$')
     for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
-        if regex.match(removed_line):
-            agent_id, _, _, _, = removed_line[1:].split(" ")
+        removed_line_match = regex.match(removed_line)
+        if removed_line_match is not None:
+            agent_id = removed_line_match.group(1)
 
             try:
                 Agent(agent_id).remove()
