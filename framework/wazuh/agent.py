@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 from base64 import b64encode
 from shutil import copyfile, rmtree
 from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat
 from time import time, sleep
 import socket
 import hashlib
@@ -1495,7 +1495,6 @@ class Agent:
     def create_multi_group(group_id):
         """
         Creates a multi group.
-
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1506,16 +1505,16 @@ class Agent:
 
         # Create group in /var/multigroups
         try:
-            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
+            Agent().append_multigroups_metadata(group_id)
+            folder = hashlib.sha256(group_id).hexdigest()[:8]
             multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
             mkdir_with_mode(multi_group_path)
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
-        except OSError as e:
-            if errno != errno.EEXIST:
-                raise WazuhException(1005, str(e))
-                
+        except Exception as e:
+            raise WazuhException(1005, str(e))
+
         return msg
 
 
