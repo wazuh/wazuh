@@ -706,6 +706,7 @@ void free_osinfo(os_info * osinfo) {
 
 int get_nproc() {
 #ifdef __linux__
+    #ifdef CPU_COUNT
     cpu_set_t set;
     CPU_ZERO(&set);
 
@@ -715,6 +716,27 @@ int get_nproc() {
     }
 
     return CPU_COUNT(&set);
+    #else
+    FILE *fp;
+    char string[OS_MAXSTR];
+    int cpu_cores = 0;
+
+    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
+        mwarn("Unable to read cpuinfo file");
+    } else {
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+            if (!strncmp(string, "processor", 9)){
+                cpu_cores++;
+            }
+        }
+        fclose(fp);
+    }
+    
+    if(!cpu_cores)
+        cpu_cores = 1;
+
+    return cpu_cores;
+    #endif
 #elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
     unsigned int cpu_cores;
     int mib[] = { CTL_HW, HW_NCPU };
