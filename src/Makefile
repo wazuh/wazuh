@@ -13,6 +13,7 @@ EXTERNAL_OPENSSL=external/openssl/
 EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
+EXTERNAL_LIBFFI=external/libffi/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -606,8 +607,9 @@ DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
+LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(LIBFFI_LIB)
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
@@ -658,6 +660,13 @@ endif
 endif
 endif
 endif
+
+#### libffi ##########
+
+LIBFFI_FLAGS = "CFLAGS=-fPIC"
+
+${LIBFFI_LIB}:
+	cd ${EXTERNAL_LIBFFI} && ./configure $(LIBFFI_FLAGS) && ${MAKE}
 
 #### zlib ##########
 
