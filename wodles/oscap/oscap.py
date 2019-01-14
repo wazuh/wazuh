@@ -5,7 +5,9 @@
 # Oct 25, 2016
 ################################################################################
 
+from __future__ import print_function
 from re import compile
+import re
 from sys import argv, exit, version_info
 from os.path import isfile, isdir
 from os import mkfifo, unlink, devnull
@@ -14,6 +16,8 @@ from getopt import getopt, GetoptError
 from signal import signal, SIGINT
 from random import randrange
 from time import time
+import xml.sax
+import lxml.sax
 
 OSCAP_BIN = "oscap"
 XSLT_BIN = "xsltproc"
@@ -22,7 +26,6 @@ PATTERN_PROFILE = "(\t+)(\S+)\n"
 PATTERN_ID_PROFILE = "\t+Id:\s(\S+)\n"
 OSCAP_LOG_ERROR = "oscap: ERROR:"
 TEMPLATE_XCCDF = "wodles/oscap/template_xccdf.xsl"
-TEMPLATE_OVAL = "wodles/oscap/template_oval.xsl"
 CONTENT_PATH = "wodles/oscap/content"
 FIFO_PATH = "wodles/oscap/oscap.fifo"
 
@@ -92,6 +95,115 @@ def extract_profiles_from_file(oscap_file):
         match_profile = regex_profile.match(profiles_output, match_profile.end())
 
     return ex_profiles
+
+
+def process_oval(in_file, out_file, scan_id, content_filename):
+
+    class Handler(xml.sax.ContentHandler):
+
+        def __init__(self):
+            xml.sax.ContentHandler.__init__(self)
+            self.total = 0
+            self.total_KO = 0
+            self.definitions = {}
+            self.handler = None
+            self.parsing_definitions = False
+            self.parsing_results = False
+            self.prefix = ('oscap: msg: "oval-result", '
+                           'scan-id: "{scan_id}", '
+                           'content: "{content}", ').format(
+                               scan_id=scan_id,
+                               content=content_filename)
+
+        def startElementNS(self, name, qname, attrs):
+            (ns, localname) = name
+            if self.parsing_definitions or self.parsing_results:
+
+                if localname == 'definition':
+                    self.handler = lxml.sax.ElementTreeContentHandler()
+                if self.handler:
+                    self.handler.startElementNS(name, qname, attrs)
+
+            if localname == 'oval_definitions':
+                self.parsing_definitions = True
+            elif localname == 'results':
+                self.parsing_results = True
+
+        def characters(self, contents):
+            if (self.parsing_definitions or self.parsing_results) and self.handler:
+                self.handler.characters(contents)
+
+        def endElementNS(self, name, qname):
+            (ns, localname) = name
+            if localname == 'oval_definitions':
+                self.parsing_definitions = False
+
+            if localname == 'results':
+                self.parsing_results = False
+
+            if self.parsing_results:
+                if self.handler:
+                    self.handler.endElementNS(name, qname)
+                if localname == 'definition':
+                    t = self.handler.etree.getroot()
+                    c, definition = self.definitions[t.get('definition_id')]
+                    result = t.get('result')
+                    self.total += 1
+                    if c in ('compliance', 'inventory'):
+                        if result == 'false':
+                            self.total_KO += 1
+                            result = 'fail'
+                        elif result == 'true':
+                            result = 'pass'
+                    elif c in ('vulnerability', 'patch'):
+                        if result == 'true':
+                            self.total_KO += 1
+                            result = 'fail'
+                        elif result == 'false':
+                            result = 'pass'
+                    s = definition.replace('%%RESULT%%', result)
+                    s = self.prefix + s.replace("\n", " ")
+                    s = re.sub(r'\s+', ' ', s)
+                    print(s, file=out_file)
+                    self.handler = None
+
+            if self.parsing_definitions:
+                if self.handler:
+                    self.handler.endElementNS(name, qname)
+                if localname == 'definition':
+                    t = self.handler.etree.getroot()
+                    ns0 = t.nsmap
+                    metadata = t.find('ns0:metadata', ns0)
+                    references = []
+                    for reference in metadata.findall('ns0:reference', ns0):
+                        references.append("{ref_id} ({ref_url})".format(
+                            ref_id=reference.get('ref_id'),
+                            ref_url=reference.get('ref_url')))
+                    s = ('title: "{title}", '
+                         'id: "{id}", '
+                         'result: "%%RESULT%%", '
+                         'description: "{description}", '
+                         'profile-title: "{c}", '
+                         'reference: "{references}".').format(
+                        title=metadata.find('ns0:title', ns0).text,
+                        description=metadata.find('ns0:description', ns0).text or '',
+                        references=",".join(references),
+                        id=t.get('id'),
+                        c=t.get('class'))
+                    self.definitions[t.get('id')] = (t.get('class'), s)
+                    self.handler = None
+
+    parser = xml.sax.make_parser()
+    parser.setFeature(xml.sax.handler.feature_namespaces, True)
+    parser.setFeature(xml.sax.handler.feature_validation, False)
+    parser.setFeature(xml.sax.handler.feature_external_ges, False)
+    handler = Handler()
+    parser.setContentHandler(handler)
+    parser.parse(in_file)
+    score = (float((handler.total-handler.total_KO))/float(handler.total)) * 100
+    print('oscap: msg: "oval-overview", scan-id: "{0}", content: "{1}", score: "{2:.2f}".'.format(
+        scan_id, content_filename, score), file=out_file)
+
 
 def oscap(profile=None):
 
@@ -187,50 +299,7 @@ def oscap(profile=None):
 
         else:
 
-            ps_xsltproc = Popen([XSLT_BIN, TEMPLATE_OVAL, FIFO_PATH], stdin=None, stdout=PIPE, stderr=STDOUT)
-            ps.wait()
-            output = ps_xsltproc.communicate()[0]
-            ps_xsltproc.wait()
-            returncode = ps_xsltproc.returncode
-
-            if version_info[0] >= 3:
-                output = output.decode('utf-8', 'backslashreplace')
-
-            total = 0
-            total_KO = 0
-            for line in output.split("\n"):
-                if not line:
-                    continue
-
-                total += 1
-
-                # Adding file
-                new_line = line.replace('oscap: msg: "oval-result"', 'oscap: msg: "oval-result", scan-id: "{0}", content: "{1}"'.format(scan_id, content_filename))
-
-                class1 = ['class: "compliance"', 'class: "inventory"']
-                class2 = ['class: "vulnerability"', 'class: "patch"']
-
-                if any(x in line for x in class1):
-                    if 'result: "false"' in line:
-                        total_KO += 1
-                        new_line = new_line.replace('result: "false"', 'result: "fail"')
-                    elif 'result: "true"' in line:
-                        new_line = new_line.replace('result: "true"', 'result: "pass"')
-                elif any(x in line for x in class2):
-                    if 'result: "true"' in line:
-                        total_KO += 1
-                        new_line = new_line.replace('result: "true"', 'result: "fail"')
-                    elif 'result: "false"' in line:
-                        new_line = new_line.replace('result: "false"', 'result: "pass"')
-
-                new_line = new_line.replace('", class: "', '", profile-title: "')
-
-                print(new_line)
-
-            score = (float((total-total_KO))/float(total)) * 100
-
-            # summary
-            print('oscap: msg: "oval-overview", scan-id: "{0}", content: "{1}", score: "{2:.2f}".'.format(scan_id, content_filename, score))
+            process_oval(FIFO_PATH, sys.stdout, scan_id, content_filename)
 
     except CalledProcessError as error:
         print("{0} Formatting data for profile \"{1}\" of file \"{2}\": Return Code: \"{3}\" Error: \"{4}\".".format(OSCAP_LOG_ERROR, profile, arg_file, error.returncode,
