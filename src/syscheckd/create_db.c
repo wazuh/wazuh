@@ -761,7 +761,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
           }
           i++;
         }
-        if(syscheck.filerestrict) {
+        if(syscheck.filerestrict[dir_position]) {
             dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0, syscheck.filerestrict[dir_position]->raw, max_depth, syscheck.tag[dir_position], -1);
         } else {
             dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0, NULL, max_depth, syscheck.tag[dir_position], -1);
