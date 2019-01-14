@@ -6,31 +6,6 @@
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>
-# Full re-work of AWS wodle as per #510
-# - Scalability and functional enhancements for parsing of CloudTrail
-# - Support for existing config params
-# - Upgrade to a granular object key addressing to support multiple CloudTrails in S3 bucket
-# - Support granular parsing by account id, region, prefix
-# - Support only parsing logs after a given date
-# - Support IAM credential profiles, IAM roles
-# - Only look for new logs/objects since last iteration
-# - Skip digest files altogether (only look at logs)
-# - Move from downloading object and working with file on filesystem to byte stream
-# - Inherit debug from modulesd
-# - Add bounds checks for msg against socket buffer size; truncate fields if too big (wazuh/wazuh#733)
-# - Support multiple debug levels
-# - Move connect error so not confused with general error
-# - If fail to parse log, and skip_on_error, attempt to send me msg to wazuh
-# - Support existing configurations by migrating data, inferring other required params
-# - Reparse flag to support re-parsing of log files from s3 bucket
-# - Use CloudTrail timestamp for ES timestamp
-#
-# Future
-# ToDo: Integrity check logs against digest
-# ToDo: Escape special characters in arguments?  Needed?
-#     Valid values for AWS Keys
-#     Alphanumeric characters [0-9a-zA-Z]
-#     Special characters !, -, _, ., *, ', (, and )
 #
 # Error Codes:
 #   1 - Unknown
@@ -69,6 +44,7 @@ from os import path
 import operator
 from datetime import datetime
 from datetime import timedelta
+from multiprocessing import Pool
 
 
 ################################################################################
@@ -220,7 +196,7 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, delete_file):
+                 prefix, delete_file, worker_count):
         """
         AWS Bucket constructor.
 
@@ -365,6 +341,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix = prefix
         self.delete_file = delete_file
         self.bucket_path = self.bucket + '/' + self.prefix
+        self.worker_count = worker_count
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -651,6 +628,36 @@ class AWSBucket(WazuhIntegration):
                 # Send the message
                 self.send_msg(event_msg)
 
+    def file_processing_worker(self, log_to_process):
+        try:
+            # Get the log file from S3 and decompress it
+            log_json = self.get_log_file(log_to_process['aws_account_id'], log_to_process['file_key'])
+            self.iter_events(log_json, log_to_process['file_key'], log_to_process['aws_account_id'])
+            # Remove file from S3 Bucket
+            if self.delete_file:
+                debug("+++ Remove file from S3 Bucket:{0}".format(log_to_process['file_key']), 2)
+                self.client.delete_object(Bucket=self.bucket, Key=log_to_process['file_key'])
+        except Exception as err:
+            if hasattr(err, 'message'):
+                debug("+++ Unexpected error: {}".format(err.message), 2)
+            else:
+                debug("+++ Unexpected error: {}".format(err), 2)
+            print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
+            return {}  # Something failed, so return empty so file not marked as processed
+        return log_to_process
+
+    def process_files(self, aws_account_id, aws_region, worker_queue):
+        debug("++ Spawn {0} workers to process {1} files".format(self.worker_count, len(worker_queue)), 1)
+        pool = Pool(processes=self.worker_count)
+        worker_processed_files = pool.map(self.file_processing_worker, worker_queue)
+        pool.close()
+        pool.join()
+        # Processing completed; mark successfully processed files as complete
+        for processed_file in worker_processed_files:
+            if 'file_key' in file:
+                self.mark_complete(aws_account_id, aws_region, processed_file['file_key'])
+        return
+
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
@@ -659,6 +666,7 @@ class AWSBucket(WazuhIntegration):
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
 
+            worker_queue = []
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
@@ -672,14 +680,16 @@ class AWSBucket(WazuhIntegration):
                         continue
 
                 debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file)
+                file_to_process = {
+                    'aws_account_id': aws_account_id,
+                    'file_key': bucket_file['Key']
+                }
+                worker_queue.append(file_to_process)
+
+            # New files to process; spawn worker pools
+            if len(worker_queue) > 0:
+                self.process_files(aws_account_id, aws_region, worker_queue)
+
             # optimize DB
             self.db_maintenance(aws_account_id, aws_region)
             self.db_connector.commit()
@@ -693,6 +703,7 @@ class AWSBucket(WazuhIntegration):
                     debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                     return
 
+                worker_queue = []
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
@@ -704,14 +715,15 @@ class AWSBucket(WazuhIntegration):
                             debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                             continue
                     debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    file_to_process = {
+                        'aws_account_id': aws_account_id,
+                        'file_key': bucket_file['Key']
+                    }
+                    worker_queue.append(file_to_process)
+                # New files to process; spawn worker pools
+                if len(worker_queue) > 0:
+                    self.process_files(aws_account_id, aws_region, worker_queue)
+
                 # optimize DB
                 self.db_maintenance(aws_account_id, aws_region)
                 self.db_connector.commit()
@@ -954,6 +966,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                 return
 
+            worker_queue = []
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
@@ -967,14 +980,15 @@ class AWSConfigBucket(AWSLogsBucket):
                         continue
 
                 debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file)
+                file_to_process = {
+                    'aws_account_id': aws_account_id,
+                    'file_key': bucket_file['Key']
+                }
+                worker_queue.append(file_to_process)
+            # New files to process; spawn worker pools
+            if len(worker_queue) > 0:
+                self.process_files(aws_account_id, aws_region, worker_queue)
+
             # optimize DB
             self.db_maintenance(aws_account_id, aws_region)
             self.db_connector.commit()
@@ -988,6 +1002,7 @@ class AWSConfigBucket(AWSLogsBucket):
                     debug("+++ No logs to process in bucket: {}/{}".format(aws_account_id, aws_region), 1)
                     return
 
+                worker_queue = []
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
@@ -999,14 +1014,16 @@ class AWSConfigBucket(AWSLogsBucket):
                             debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                             continue
                     debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file)
+                    file_to_process = {
+                        'aws_account_id': aws_account_id,
+                        'file_key': bucket_file['Key']
+                    }
+                    worker_queue.append(file_to_process)
+
+                # New files to process; spawn worker pools
+                if len(worker_queue) > 0:
+                    self.process_files(aws_account_id, aws_region, worker_queue)
+
                 # optimize DB
                 self.db_maintenance(aws_account_id, aws_region)
                 self.db_connector.commit()
@@ -1268,6 +1285,18 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         return filter_args
 
+    def process_files(self, aws_account_id, aws_region, flow_log_id, worker_queue):
+        debug("++ Spawn {0} workers to process {1} files".format(self.worker_count, len(worker_queue)), 1)
+        pool = Pool(processes=self.worker_count)
+        worker_processed_files = pool.map(self.file_processing_worker, worker_queue)
+        pool.close()
+        pool.join()
+        # Processing completed; mark successfully processed files as complete
+        for processed_file in worker_processed_files:
+            if 'file_key' in file:
+                self.mark_complete(aws_account_id, aws_region, processed_file['file_key'], flow_log_id)
+        return
+
     def iter_files_in_bucket(self, aws_account_id, aws_region, date, flow_log_id):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
@@ -1277,6 +1306,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     aws_account_id, aws_region), 1)
                 return
 
+            worker_queue = []
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
@@ -1290,14 +1320,16 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         continue
 
                 debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                # Get the log file from S3 and decompress it
-                log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                # Remove file from S3 Bucket
-                if self.delete_file:
-                    debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                    self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
+                file_to_process = {
+                    'aws_account_id': aws_account_id,
+                    'file_key': bucket_file['Key']
+                }
+                worker_queue.append(file_to_process)
+
+            # New files to process; spawn worker pools
+            if len(worker_queue) > 0:
+                self.process_files(aws_account_id, aws_region, flow_log_id, worker_queue)
+
             # optimize DB
             self.db_maintenance(aws_account_id, aws_region, flow_log_id)
             self.db_connector.commit()
@@ -1312,6 +1344,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         aws_account_id, aws_region), 1)
                     return
 
+                worker_queue = []
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
@@ -1323,14 +1356,16 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                             debug("++ Skipping previously processed file: {file}".format(file=bucket_file['Key']), 1)
                             continue
                     debug("++ Found new log: {0}".format(bucket_file['Key']), 2)
-                    # Get the log file from S3 and decompress it
-                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
-                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
-                    # Remove file from S3 Bucket
-                    if self.delete_file:
-                        debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
-                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
-                    self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
+                    file_to_process = {
+                        'aws_account_id': aws_account_id,
+                        'file_key': bucket_file['Key']
+                    }
+                    worker_queue.append(file_to_process)
+
+                # New files to process; spawn worker pools
+                if len(worker_queue) > 0:
+                    self.process_files(aws_account_id, aws_region, flow_log_id, worker_queue)
+
                 # optimize DB
                 self.db_maintenance(aws_account_id, aws_region, flow_log_id)
                 self.db_connector.commit()
@@ -1849,6 +1884,8 @@ def get_script_arguments():
                         help='If fail to parse a file, error out instead of skipping the file', default=True)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
+    parser.add_argument('-wc', '--worker_count', action='store', dest='worker_count',
+                        help='Number of workers in download/process pool', default=1)
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     return parser.parse_args()
 
@@ -1896,7 +1933,7 @@ def main(argv):
             service = service_type(reparse=options.reparse, access_key=options.access_key,
                 secret_key=options.secret_key, aws_profile=options.aws_profile,
                 iam_role_arn=options.iam_role_arn, only_logs_after=options.only_logs_after,
-                region=options.regions)
+                region=options.regions, worker_count=options.worker_count)
             service.get_alerts()
 
     except Exception as err:
