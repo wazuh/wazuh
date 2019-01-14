@@ -1,6 +1,6 @@
 /*
  * Wazuh Database Daemon
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc. Inc.
  * January 16, 2018.
  *
  * This program is a free software; you can redistribute it

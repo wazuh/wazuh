@@ -1,6 +1,6 @@
 /*
  * Authd settings manager
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 29, 2017.
  *
  * This program is a free software; you can redistribute it
