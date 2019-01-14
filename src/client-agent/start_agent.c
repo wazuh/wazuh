@@ -150,7 +150,6 @@ int connect_server(int initial_id)
 void start_agent(int is_startup)
 {
     ssize_t recv_b = 0;
-    uint32_t length;
     size_t msg_length;
     int attempts = 0, g_attempts = 1;
 
@@ -178,17 +177,7 @@ void start_agent(int is_startup)
         /* Read until our reply comes back */
         while (attempts <= 5) {
             if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
-                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = wnet_order(length);
-
-                if (recv_b > 0) {
-                    recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
-
-                    if (recv_b != (ssize_t)length) {
-                        merror(RECV_ERROR);
-                        recv_b = 0;
-                    }
-                }
+                recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
             } else {
                 recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
             }
@@ -198,10 +187,23 @@ void start_agent(int is_startup)
                  * the server again
                  */
                 attempts++;
+
+                switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                case -1:
+#ifdef WIN32
+                    merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+#else
+                    merror("Connection socket: %s (%d)", strerror(errno), errno);
+#endif
+                }
+
                 sleep(attempts);
 
                 /* Send message again (after three attempts) */
-                if (attempts >= 3) {
+                if (attempts >= 3 || recv_b == OS_SOCKTERR) {
                     if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                         if (!connect_server(agt->rip_id)) {
                             continue;
