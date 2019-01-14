@@ -21,6 +21,8 @@ All notable changes to this project will be documented in this file.
 - Logcollector extension for Windows eventchannel logs in JSON format. ([#2142](https://github.com/wazuh/wazuh/pull/2142))
 - Add error messages to integration scripts. ([#2143](https://github.com/wazuh/wazuh/pull/2143))
 - Add CDB lists building on install. ([#2167](https://github.com/wazuh/wazuh/pull/2167))
+- Added Audit health-check in the Whodata initialization. ([#2180](https://github.com/wazuh/wazuh/pull/2180))
+- Added Audit rules auto-reload in Whodata. ([#2180](https://github.com/wazuh/wazuh/pull/2180))
 - Support for new AWS services in the AWS wodle ([#2242](https://github.com/wazuh/wazuh/pull/2242)):
     - AWS Config
     - AWS Trusted Advisor
