@@ -128,7 +128,7 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
     """
     Get info about an agent's network address
     """
-    valid_select_fields = {'scan_id', 'proto', 'address',
+    valid_select_fields = {'scan_id', 'iface', 'proto', 'address',
                            'netmask', 'broadcast'}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select,

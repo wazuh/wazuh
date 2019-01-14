@@ -507,3 +507,9 @@ int wm_strcat(char **str1, const char *str2, char sep) {
     } else
         return -1;
 }
+
+int wstr_end(char *str, const char *str_end) {
+    size_t str_len = strlen(str);
+    size_t str_end_len = strlen(str_end);
+    return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
+}

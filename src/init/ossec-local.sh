@@ -287,7 +287,9 @@ wait_pid() {
         then
             return 1
         else
-            sleep 0.1
+            # sleep doesn't work in AIX
+            # read doesn't work in FreeBSD
+            sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
             i=`expr $i + 1`
         fi
     done
@@ -325,6 +327,11 @@ stopa()
     echo "$NAME $VERSION Stopped"
 }
 
+buildCDB()
+{
+    ${DIR}/bin/ossec-makelists > /dev/null 2>&1
+}
+
 ### MAIN HERE ###
 
 case "$1" in
@@ -343,6 +350,7 @@ restart)
     testconfig
     lock
     stopa
+    buildCDB
     start
     unlock
     ;;

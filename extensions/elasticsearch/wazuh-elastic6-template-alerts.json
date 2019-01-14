@@ -1,6 +1,6 @@
 {
   "order": 0,
-  "template": "wazuh-alerts-3.x-*",
+  "index_patterns": ["wazuh-alerts-3.x-*"],
   "settings": {
     "index.refresh_interval": "5s"
   },
@@ -648,16 +648,8 @@
                           "doc_values": "true"
                         },
                         "geoLocation": {
-                          "properties": {
-                            "lat": {
-                              "type": "geo_point",
-                              "doc_values": "true"
-                            },
-                            "lon": {
-                              "type": "geo_point",
-                              "doc_values": "true"
-                            }
-                          }
+                            "type": "geo_point",
+                            "doc_values": "true"
                         }
                       }
                     }

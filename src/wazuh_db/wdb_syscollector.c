@@ -174,7 +174,7 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
 }
 
 // Save IPv4/IPv6 address info into DB.
-int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
+int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netaddr_save(): cannot begin transaction");
@@ -183,6 +183,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * 
 
     if (wdb_netaddr_insert(wdb,
         scan_id,
+		iface,
         proto,
         address,
         netmask,
@@ -195,7 +196,7 @@ int wdb_netaddr_save(wdb_t * wdb, const char * scan_id, int proto, const char * 
 }
 
 // Insert IPv4/IPv6 address info tuple. Return 0 on success or -1 on error.
-int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char * address, const char * netmask, const char * broadcast) {
+int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, const char * iface, int proto, const char * address, const char * netmask, const char * broadcast) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -207,15 +208,16 @@ int wdb_netaddr_insert(wdb_t * wdb, const char * scan_id, int proto, const char 
     stmt = wdb->stmt[WDB_STMT_ADDR_INSERT];
 
     sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, iface, -1, NULL);
 
     if (proto == WDB_NETADDR_IPV4)
-        sqlite3_bind_text(stmt, 2, "ipv4", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv4", -1, NULL);
     else
-        sqlite3_bind_text(stmt, 2, "ipv6", -1, NULL);
+        sqlite3_bind_text(stmt, 3, "ipv6", -1, NULL);
 
-    sqlite3_bind_text(stmt, 3, address, -1, NULL);
-    sqlite3_bind_text(stmt, 4, netmask, -1, NULL);
-    sqlite3_bind_text(stmt, 5, broadcast, -1, NULL);
+    sqlite3_bind_text(stmt, 4, address, -1, NULL);
+    sqlite3_bind_text(stmt, 5, netmask, -1, NULL);
+    sqlite3_bind_text(stmt, 6, broadcast, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE){
         return 0;
@@ -795,14 +797,12 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 15, rgroup, -1, NULL);
     sqlite3_bind_text(stmt, 16, sgroup, -1, NULL);
     sqlite3_bind_text(stmt, 17, fgroup, -1, NULL);
-    if (priority >= 0)
+    if (priority >= 0) {
         sqlite3_bind_int(stmt, 18, priority);
-    else
+    } else {
         sqlite3_bind_null(stmt, 18);
-    if (nice >= 0)
-        sqlite3_bind_int(stmt, 19, nice);
-    else
-        sqlite3_bind_null(stmt, 19);
+    }
+    sqlite3_bind_int(stmt, 19, nice);
     if (size >= 0)
         sqlite3_bind_int(stmt, 20, size);
     else

@@ -333,26 +333,51 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
 void sys_packages_linux(int queue_fd, const char* LOCATION) {
 
     DIR *dir;
+    int random_id = os_random();
+    char * end_dpkg = NULL;
+    char * end_rpm = NULL;
+
+    // Define time to sleep between messages sent
+    int usec = 1000000 / wm_max_eps;
+
+    /* Set positive random ID for each event */
+
+    if (random_id < 0)
+        random_id = -random_id;
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
     if ((dir = opendir("/var/lib/dpkg/"))){
         closedir(dir);
-        if (sys_deb_packages(queue_fd, LOCATION) < 0) {
+        if (end_dpkg = sys_deb_packages(queue_fd, LOCATION, random_id), !end_dpkg) {
             mterror(WM_SYS_LOGTAG, "Unable to get debian packages due to: %s", strerror(errno));
         }
-    } else if ((dir = opendir("/var/lib/rpm/"))){
+    }
+    if ((dir = opendir("/var/lib/rpm/"))){
         closedir(dir);
-        if (sys_rpm_packages(queue_fd, LOCATION) < 0) {
+        if (end_rpm = sys_rpm_packages(queue_fd, LOCATION, random_id), !end_rpm) {
             mterror(WM_SYS_LOGTAG, "Unable to get rpm packages due to: %s", strerror(errno));
         }
     }
+
+    if (end_rpm) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_rpm);
+        wm_sendmsg(usec, queue_fd, end_rpm, LOCATION, SYSCOLLECTOR_MQ);
+
+        free(end_rpm);
+        if (end_dpkg) {
+            free(end_dpkg);
+        }
+    } else if (end_dpkg) {
+        mtdebug2(WM_SYS_LOGTAG, "sys_packages_linux() sending '%s'", end_dpkg);
+        wm_sendmsg(usec, queue_fd, end_dpkg, LOCATION, SYSCOLLECTOR_MQ);
+        free(end_dpkg);
+    }
 }
 
-int sys_rpm_packages(int queue_fd, const char* LOCATION){
+char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
-    int random_id = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -389,15 +414,10 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
-    /* Set positive random ID for each event */
-
-    if (random_id < 0)
-        random_id = -random_id;
-
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
         free(timestamp);
-        return -1;
+        return NULL;
     }
 
     // Set Little-endian order by default
@@ -408,13 +428,13 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
     if ((ret = dbp->open(dbp, NULL, RPM_DATABASE, NULL, DB_HASH, DB_RDONLY, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Failed to open database '%s': %s", RPM_DATABASE, db_strerror(ret));
         free(timestamp);
-        return -1;
+        return NULL;
     }
 
     if ((ret = dbp->cursor(dbp, NULL, &cursor, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): Error creating cursor: %s", db_strerror(ret));
         free(timestamp);
-        return -1;
+        return NULL;
     }
 
     memset(&key, 0, sizeof(DBT));
@@ -575,17 +595,14 @@ int sys_rpm_packages(int queue_fd, const char* LOCATION){
 
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_rpm_packages() sending '%s'", end_msg);
-    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
-    free(end_msg);
     free(timestamp);
 
-    return 0;
+    return end_msg;
 
 }
 
-int sys_deb_packages(int queue_fd, const char* LOCATION){
+char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
     const char * format = "deb";
     char file[PATH_LENGTH] = "/var/lib/dpkg/status";
@@ -593,7 +610,6 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
     FILE *fp;
     size_t length;
     int i, installed = 1;
-    int random_id = os_random();
     char *timestamp;
     time_t now;
     struct tm localtm;
@@ -613,11 +629,6 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
     snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
             localtm.tm_year + 1900, localtm.tm_mon + 1,
             localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
-
-    /* Set positive random ID for each event */
-
-    if (random_id < 0)
-        random_id = -random_id;
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -781,7 +792,7 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
 
         mterror(WM_SYS_LOGTAG, "Unable to open the file '%s'", file);
         free(timestamp);
-        return -1;
+        return NULL;
 
     }
 
@@ -792,13 +803,10 @@ int sys_deb_packages(int queue_fd, const char* LOCATION){
 
     char *end_msg;
     end_msg = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", end_msg);
-    wm_sendmsg(usec, queue_fd, end_msg, LOCATION, SYSCOLLECTOR_MQ);
     cJSON_Delete(object);
-    free(end_msg);
     free(timestamp);
 
-    return 0;
+    return end_msg;
 
 }
 
@@ -1301,16 +1309,6 @@ hw_info *get_system_linux(){
 
                 free(info->cpu_name);
                 info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
-
-                char *cores;
-                cores = strtok(string, ":");
-                cores = strtok(NULL, "\n");
-                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_cores = atoi(cores);
-
             } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
 
                 char *frec;
@@ -1325,6 +1323,8 @@ hw_info *get_system_linux(){
         free(aux_string);
         fclose(fp);
     }
+
+    info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");

@@ -90,7 +90,7 @@ int main(int argc, char **argv)
         helpmsg();
     }
 
-    agent_list = get_agents(flag);
+    agent_list = get_agents(flag,0);
     if (agent_list) {
         char **agent_list_pt = agent_list;
 

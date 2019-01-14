@@ -164,10 +164,22 @@ functions = {
         'type': 'local_master',
         'is_async': False
     },
+    'POST/agents/group/:group_id': {
+        'function': Agent.set_group_list,
+        'type': 'local_master'
+    },
     'PUT/agents/groups/:group_id': {
         'function': Agent.create_group,
         'type': 'local_master',
         'is_async': False
+    },
+    'POST/agents/groups/:group_id/configuration': {
+        'function': configuration.upload_group_file,
+        'type': 'local_master'
+    },
+    'POST/agents/groups/:group_id/files/:file_name': {
+        'function': configuration.upload_group_file,
+        'type': 'local_master'
     },
     'DELETE/agents/groups/:group_id': {
         'function': Agent.remove_group,
@@ -178,6 +190,10 @@ functions = {
         'function': Agent.unset_group,
         'type': 'local_master',
         'is_async': False
+    },
+    'DELETE/agents/group/:group_id': {
+        'function': Agent.unset_group_list,
+        'type': 'local_master'
     },
     'DELETE/agents/:agent_id/group/:group_id': {
         'function': Agent.unset_group,

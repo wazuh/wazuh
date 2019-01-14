@@ -18,17 +18,17 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move, copytree, rmtree
+from shutil import copyfile, rmtree
 from platform import platform
-from os import remove, chown, chmod, path, makedirs, rename, urandom, listdir, stat, walk, geteuid
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
 from time import time, sleep
 import socket
 import hashlib
-import re
 import fcntl
-from json import loads, dumps
+from json import loads
 from functools import reduce
-import struct
+from shutil import move
+from os import remove
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -181,13 +181,6 @@ class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
 
     def _default_count_query(self):
         return 'COUNT(DISTINCT a.id)'
-
-
-    def _get_data(self):
-        if self.group_id != "null":
-            self.fields['multi_group'] = "CASE WHEN COUNT(*) > 1 THEN '' ELSE '' END as num_groups"
-            self.select['fields'].update(['multi_group'])
-        WazuhDBQueryAgents._get_data(self)
 
 
     def _get_total_items(self):
@@ -552,8 +545,6 @@ class Agent:
         conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
         conn.commit()
 
-        multi_group_metadata = Agent().get_multigroups_metadata()
-
         # remove multigroup if not being used
         multi_group_list = []
         for filename in listdir("{0}".format(common.groups_path)):
@@ -565,26 +556,6 @@ class Agent:
                 file.close()
             except Exception:
                 continue
-
-        if group_name:
-            try:
-                index = multi_group_list.index(group_name)
-            except Exception:
-                group_list = group_name.split(',')
-
-                # remove the multigroup
-                if len(group_list) > 1:
-                    try:
-                        multi_group_metadata.remove(group_name)
-
-                        if len(multi_group_metadata) == 0:
-                            multi_group_metadata.append(group_name)
-
-                        Agent().write_multigroups_metadata(multi_group_metadata)
-                        folder = hashlib.sha256(group_name).hexdigest()[:8]
-                        rmtree("{}/{}".format(common.multi_groups_path,folder))
-                    except Exception:
-                        raise WazuhException(1726,group_name)
 
         return 'Agent deleted successfully.'
 
@@ -1189,8 +1160,6 @@ class Agent:
 
         Agent().set_multi_group(str(agent_id),agent_group)
 
-        multi_group_metadata = Agent().get_multigroups_metadata()
-
         # Check if the multigroup still exists in other agents
         multi_group_list = []
         for filename in listdir("{0}".format(common.groups_path)):
@@ -1199,26 +1168,6 @@ class Agent:
             group_readed = group_readed.strip()
             multi_group_list.append(group_readed)
             file.close()
-
-        if old_agent_group:
-            try:
-                index = multi_group_list.index(old_agent_group)
-            except Exception:
-                group_list = old_agent_group.split(',')
-
-                # remove the multigroup
-                if len(group_list) > 1:
-                    try:
-                        multi_group_metadata.remove(old_agent_group)
-
-                        if len(multi_group_metadata) == 0:
-                            multi_group_metadata.append(agent_group)
-
-                        Agent().write_multigroups_metadata(multi_group_metadata)
-                        folder = hashlib.sha256(old_agent_group).hexdigest()[:8]
-                        rmtree("{}/{}".format(common.multi_groups_path,folder))
-                    except Exception:
-                        pass
 
         return "Group '{0}' added to agent '{1}'.".format(group_id, agent_id)
 
@@ -1401,9 +1350,19 @@ class Agent:
         Checks if the group exists
 
         :param group_id: Group ID.
-        :return: True if group exists, False otherwise
+        :return: String of groups if group exists, an empty list otherwise
         """
-        return group_id in Agent.get_multigroups_metadata()
+
+        all_multigroups = []
+        for file in listdir(common.groups_path):
+            filepath = path.join(common.groups_path, file)
+            f = open(filepath, 'r')
+            all_multigroups.append(f.read())
+            f.close()
+        if group_id in all_multigroups:
+            return all_multigroups
+        else:
+            return []
 
 
     @staticmethod
@@ -1547,31 +1506,17 @@ class Agent:
 
         # Create group in /var/multigroups
         try:
-            Agent().append_multigroups_metadata(group_id)
-            folder = hashlib.sha256(group_id).hexdigest()[:8]
+            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
             multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
             mkdir_with_mode(multi_group_path)
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
-
+        except OSError as e:
+            if errno != errno.EEXIST:
+                raise WazuhException(1005, str(e))
+                
         return msg
-
-
-    @staticmethod
-    def remove_multi_group_directory(groups_id):
-        multigroups = set(Agent.get_multigroups_metadata())
-        multigroups_to_remove = set(filter(lambda mg: mg == groups_id, multigroups))
-
-        for multi_group in multigroups_to_remove:
-            dirname = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-            dirpath = "{}/{}".format(common.multi_groups_path, dirname)
-            if path.exists(dirpath):
-                rmtree(dirpath)
-
-        Agent.write_multigroups_metadata(multigroups - multigroups_to_remove)
 
 
     @staticmethod
@@ -1602,9 +1547,6 @@ class Agent:
             if new_group:
                 # Add multigroup
                 Agent.set_agent_group_file(agent_id, new_group)
-
-        for multi_group in groups_to_remove:
-            Agent.remove_multi_group_directory(multi_group)
 
 
     @staticmethod
@@ -1679,6 +1621,83 @@ class Agent:
         else:
             return Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id, force=force)
 
+    @staticmethod
+    def set_group_list(group_id, agent_id_list):
+        """
+        Set a group to a list of agents.
+
+        :param agent_id: List of Agent IDs.
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+        failed_ids = list()
+        affected_agents = list()
+
+        # raise an exception if agent_list_id is empty
+        if len(agent_id_list) < 1:
+            raise WazuhException(1732)
+
+        for agent_id in agent_id_list:
+            try:
+                Agent.add_group_to_agent(agent_id=agent_id, group_id=group_id)
+                affected_agents.append(agent_id)
+            except Exception as e:
+                failed_ids.append(agent_id)
+
+            if not failed_ids:
+                message = 'All selected agents assigned to group ' + group_id
+            else:
+                message = 'Some agents were not assigned to group ' + group_id
+
+            final_dict = {}
+            if failed_ids:
+                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            else:
+                final_dict = {'msg': message, 'affected_agents': affected_agents}
+
+        return final_dict
+
+    @staticmethod
+    def unset_group_list(group_id, agent_id_list):
+        """
+        Unset a group to a list of agents.
+
+        :param agent_id: List of Agent IDs.
+        :param group_id: Group ID.
+        :return: Confirmation message.
+        """
+        failed_ids = list()
+        affected_agents = list()
+
+        # raise an exception if agent_list_id is empty
+        if len(agent_id_list) < 1:
+            raise WazuhException(1732)
+
+        # raise an exception if group not exists
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710)
+
+        for agent_id in agent_id_list:
+            try:
+                Agent.unset_group(agent_id=agent_id, group_id=group_id)
+                affected_agents.append(agent_id)
+            except Exception as e:
+                failed_ids.append(agent_id)
+
+            if not failed_ids:
+                message = 'All selected agents were removed to group ' + group_id
+            else:
+                message = 'Some agents were not removed to group ' + group_id
+
+            final_dict = {}
+
+            if failed_ids:
+                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            else:
+                final_dict = {'msg': message, 'affected_agents': affected_agents}
+
+        return final_dict
+
 
     @staticmethod
     def get_agents_group_file(agent_id):
@@ -1705,7 +1724,6 @@ class Agent:
         except Exception as e:
             raise WazuhException(1005, str(e))
 
-
     @staticmethod
     def replace_group(agent_id, group_id, force=False):
         """
@@ -1729,10 +1747,6 @@ class Agent:
             Agent(agent_id).get_basic_information()
 
         group_name = Agent.get_agents_group_file(agent_id)
-
-        # Check if it is a multi group
-        if group_name and group_name.find(",") > -1 and Agent.get_number_of_agents_in_multigroup(group_name) <= 1:
-            Agent.remove_multi_group_directory(group_name)
 
         # Assign group in /queue/agent-groups
         Agent.set_agent_group_file(agent_id, group_id)
@@ -1874,12 +1888,6 @@ class Agent:
         # Check if multi group still exists in other agents
         group_name = Agent.get_agents_group_file(agent_id)
         if group_name:
-            # Check if it is a multi group
-            if group_name.find(",") > -1:
-                # The multi group is not being used in other agents, delete it from multi groups
-                if Agent.get_number_of_agents_in_multigroup(group_name) <= 1:
-                    Agent.remove_multi_group_directory(group_name)
-
             Agent.set_agent_group_file(agent_id, group_id)
 
             return "Group unset for agent '{0}'.".format(agent_id)
@@ -2550,53 +2558,6 @@ class Agent:
             raise WazuhException(1740)
 
         return my_agent.getconfig(component=component, configuration=configuration)
-
-    @staticmethod
-    def get_multigroups_metadata():
-        """
-        Read the '.metadata' file for multigroups.
-
-        :return: readed multigroups list.
-        """
-        metadata_path = common.multi_groups_path + "/.metadata"
-        if path.exists(metadata_path):
-            with open(common.multi_groups_path + "/.metadata") as f:
-                multi_groups_list = [line.strip() for line in f.readlines()]
-            return multi_groups_list
-        else:
-            # if the metadata file doesn't exists, there is no multigroups metadata.
-            return []
-
-    @staticmethod
-    def write_multigroups_metadata(multi_groups_list):
-        """
-        Write multigroups list into '.metadata'.
-
-        :param multi_groups_list: Multigroups list.
-        """
-        with open(common.multi_groups_path + "/.metadata", 'w') as f:
-            for item in multi_groups_list:
-                f.write('{0}\n'.format(item))
-
-        if geteuid() == 0:
-            chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
-            chmod(common.multi_groups_path + "/.metadata", 0o660)
-
-    @staticmethod
-    def append_multigroups_metadata(multi_group):
-        """
-        Append multigroups list into '.metadata'.
-
-        :param multi_groups_list: Multigroup.
-        """
-
-        metadata_path = common.multi_groups_path + "/.metadata"
-        if path.exists(metadata_path):
-            if geteuid() == 0:
-                chown(common.multi_groups_path + "/.metadata", common.ossec_uid, common.ossec_gid)
-                chmod(common.multi_groups_path + "/.metadata", 0o660)
-        with open(metadata_path, 'a+') as f:
-            f.write('{0}\n'.format(multi_group))
 
     @staticmethod
     def get_sync_group(agent_id):

@@ -10,6 +10,12 @@
 #include "shared.h"
 #include "version_op.h"
 
+#ifdef __linux__
+#include <sched.h>
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/sysctl.h>
+#endif
+
 #ifdef WIN32
 
 os_info *get_win_version()
@@ -586,6 +592,19 @@ os_info *get_unix_version()
                     pclose(cmd_output);
                   goto free_os_info;
                 }
+            } else if (strcmp(strtok(buff, "\n"),"HP-UX") == 0){ // HP-UX
+                info->os_name = strdup("HP-UX");
+                info->os_platform = strdup("hp-ux");
+                if (cmd_output_ver = popen("uname -r", "r"), cmd_output_ver) {
+                    if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
+                        mdebug1("Cannot read from command output (uname -r).");
+                    } else if (w_regexec("B\\.([0-9][0-9]*\\.[0-9]*)", buff, 2, match)){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        info->os_version = malloc(match_size +1);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                    }
+                    pclose(cmd_output_ver);
+                }
             } else if (strcmp(strtok(buff, "\n"),"OpenBSD") == 0 ||
                        strcmp(strtok(buff, "\n"),"NetBSD")  == 0 ||
                        strcmp(strtok(buff, "\n"),"FreeBSD") == 0 ){ // BSD
@@ -662,7 +681,7 @@ free_os_info:
     return NULL;
 }
 
-#endif
+#endif /* WIN32 */
 
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
@@ -680,4 +699,35 @@ void free_osinfo(os_info * osinfo) {
         free(osinfo->machine);
         free(osinfo);
     }
+}
+
+// Get number of processors
+// Returns 1 on error
+
+int get_nproc() {
+#ifdef __linux__
+    cpu_set_t set;
+    CPU_ZERO(&set);
+
+    if (sched_getaffinity(getpid(), sizeof(set), &set) < 0) {
+        mwarn("sched_getaffinity(): %s (%d).", strerror(errno), errno);
+        return 1;
+    }
+
+    return CPU_COUNT(&set);
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+    unsigned int cpu_cores;
+    int mib[] = { CTL_HW, HW_NCPU };
+    size_t len = sizeof(cpu_cores);
+
+    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)) {
+        return cpu_cores;
+    } else {
+        mwarn("sysctl failed getting CPU cores: %s (%d)", strerror(errno), errno);
+        return 1;
+    }
+#else
+    mwarn("get_nproc(): Unimplemented.");
+    return 1;
+#endif
 }

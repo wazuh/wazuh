@@ -9,6 +9,9 @@
 
 #include "shared.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "../os_net/os_net.h"
+#include "../addagent/manage_agents.h"
+
 static pthread_mutex_t restart_syscheck = PTHREAD_MUTEX_INITIALIZER;
 
 /* Check if syscheck is to be executed/restarted
@@ -308,7 +311,6 @@ int set_agent_group(const char * id, const char * group) {
 int set_agent_multigroup(char * group){
     int oldmask;
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
-    char * buffer;
 
     if(!multigroup){
         return 0;
@@ -322,55 +324,6 @@ int set_agent_multigroup(char * group){
 
     /* Remove multigroup if it's not used on any other agent */
     w_remove_multigroup(group);
-
-    FILE *fp_metadata;
-    char metadata_path[PATH_MAX + 1] = {0};
-    snprintf(metadata_path,PATH_MAX,"%s",isChroot() ?  METADATA_FILE :  DEFAULTDIR METADATA_FILE);
-
-    oldmask = umask(0002);
-    fp_metadata = fopen(metadata_path,"a+");
-    umask(oldmask);
-
-    if (!fp_metadata) {
-        merror(FOPEN_ERROR, metadata_path, errno, strerror(errno));
-        return -1;
-    }
-
-    if (fseek(fp_metadata, 0, SEEK_SET) < 0) {
-        merror(FSEEK_ERROR, metadata_path, errno, strerror(errno));
-        fclose(fp_metadata);
-        return -1;
-    }
-
-    os_calloc(OS_SIZE_65536 + 1, sizeof(char), buffer);
-
-    int found = 0;
-    while (fgets(buffer, OS_SIZE_65536 + 1, fp_metadata) != NULL) {
-        char *endl = strchr(buffer, '\n');
-
-        if (endl) {
-            *endl = '\0';
-        } else {
-            static int reported = 0;
-            if (!reported) {
-                mdebug1("File '%s' is corrupted: line too long.", metadata_path);
-                reported = 1;
-            }
-        }
-
-        if(strncmp(buffer,group,OS_SIZE_65536) == 0){
-            found = 1;
-            break;
-        }
-    }
-
-    free(buffer);
-
-    if(!found){
-        fprintf(fp_metadata, "%s\n", group);
-    }
-
-    fclose(fp_metadata);
 
     /* Check if the multigroup dir is created */
     os_sha256 multi_group_hash;
@@ -596,22 +549,11 @@ int w_validate_group_name(const char *group){
 void w_remove_multigroup(const char *group){
     char *multigroup = strchr(group,MULTIGROUP_SEPARATOR);
     char path[PATH_MAX + 1] = {0};
-    char metadata_file[PATH_MAX + 1] = {0};
-    int line = 0;
 
     if(multigroup){
         sprintf(path,"%s",isChroot() ?  GROUPS_DIR :  DEFAULTDIR GROUPS_DIR);
 
         if(wstr_find_in_folder(path,group,1) < 0){
-            sprintf(metadata_file,"%s/%s",isChroot() ?  MULTIGROUPS_DIR :  DEFAULTDIR MULTIGROUPS_DIR, ".metadata");
-
-            line = wstr_find_line_in_file(metadata_file,group,1);
-
-            if(line >= 0){
-                /* Remove line from file */
-                w_remove_line_from_file(metadata_file,line);
-            }
-
             /* Remove the DIR */
             os_sha256 multi_group_hash;
             OS_SHA256_String(group,multi_group_hash);
@@ -629,4 +571,200 @@ void w_remove_multigroup(const char *group){
             }
         }
     }
+}
+
+// Connect to Agentd. Returns socket or -1 on error.
+int auth_connect() {
+#ifndef WIN32
+    return OS_ConnectUnixDomain(isChroot() ? AUTH_LOCAL_SOCK : AUTH_LOCAL_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+#else
+    return -1;
+#endif
+}
+
+// Close socket if valid.
+int auth_close(int sock) {
+    return (sock >= 0) ? close(sock) : 0;
+}
+
+// Add agent. Returns 0 on success or -1 on error.
+int auth_add_agent(int sock, char *id, const char *name, const char *ip,const char *key, int force, int json_format,const char *agent_id,int exit_on_error) {
+    char buffer[OS_MAXSTR + 1];
+    char * output;
+    int result;
+    ssize_t length;
+    cJSON * response;
+    cJSON * error;
+    cJSON * message;
+    cJSON * data;
+    cJSON * data_id;
+    cJSON * request = cJSON_CreateObject();
+    cJSON * arguments = cJSON_CreateObject();
+
+    cJSON_AddItemToObject(request, "arguments", arguments);
+    cJSON_AddStringToObject(request, "function", "add");
+    cJSON_AddStringToObject(arguments, "name", name);
+    cJSON_AddStringToObject(arguments, "ip", ip);
+
+    if(key) {
+        cJSON_AddStringToObject(arguments, "key", key);
+    }
+
+    if(agent_id) {
+        cJSON_AddStringToObject(arguments, "id", agent_id);
+    }
+        
+    if (force >= 0) {
+        cJSON_AddNumberToObject(arguments, "force", force);
+    }
+
+    output = cJSON_PrintUnformatted(request);
+
+    if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
+        if(exit_on_error){
+            merror_exit("OS_SendSecureTCP(): %s", strerror(errno));
+        }
+        cJSON_Delete(request);
+        free(output);
+        result = -2;
+        return result;
+    }
+
+    cJSON_Delete(request);
+    free(output);
+
+    if (length = OS_RecvSecureTCP(sock, buffer, OS_MAXSTR), length < 0) {
+        if(exit_on_error){
+            merror_exit("OS_RecvSecureTCP(): %s", strerror(errno));
+        }
+        result = -1;
+        return result;
+    } else if (length == 0) {
+        if(exit_on_error){
+            merror_exit("Empty message from local server.");
+        }
+        result = -1;
+        return result;
+    } else {
+        buffer[length] = '\0';
+
+        // Decode response
+
+        if (response = cJSON_Parse(buffer), !response) {
+            if(exit_on_error){
+                merror_exit("Parsing JSON response.");
+            }
+            result = -1;
+            return result;
+        }
+
+        // Detect error condition
+
+        if (error = cJSON_GetObjectItem(response, "error"), !error) {
+            if(exit_on_error){
+                merror_exit("No such status from response.");
+            }
+            result = -1;
+            return result;
+        } else if (error->valueint > 0) {
+            if (json_format) {
+                printf("%s", buffer);
+            } else {
+                message = cJSON_GetObjectItem(response, "message");
+                merror("ERROR %d: %s", error->valueint, message ? message->valuestring : "(undefined)");
+            }
+
+            result = -1;
+        } else {
+            if (data = cJSON_GetObjectItem(response, "data"), !data) {
+                if(exit_on_error){
+                    merror_exit("No data received.");
+                }
+                cJSON_Delete(response);
+                result = -1;
+                return result;
+            }
+
+            if (data_id = cJSON_GetObjectItem(data, "id"), !data_id) {
+                if(exit_on_error){
+                    merror_exit("No id received.");
+                }
+                cJSON_Delete(response);
+                result = -1;
+                return result;
+            }
+
+            strncpy(id, data_id->valuestring, FILE_SIZE);
+            id[FILE_SIZE] = '\0';
+            result = 0;
+        }
+
+        cJSON_Delete(response);
+    }
+
+    return result;
+}
+
+char * get_agent_id_from_name(const char *agent_name) {
+
+    FILE *fp;
+    char *path = NULL;
+    char *buffer = NULL;
+
+    os_calloc(PATH_MAX,sizeof(char),path);
+    os_calloc(OS_SIZE_65536 + 1,sizeof(char),buffer);
+
+    snprintf(path,PATH_MAX,"%s",isChroot() ? KEYS_FILE : KEYSFILE_PATH);
+
+    fp = fopen(path,"r");
+
+    if(!fp) { 
+        mdebug1("Couldnt open file '%s'",path);
+        os_free(path);
+        os_free(buffer);
+        return NULL;
+    }
+
+    os_free(path);
+
+    while(fgets (buffer, OS_SIZE_65536, fp) != NULL) {
+
+        char **parts;
+
+        parts = OS_StrBreak(' ',buffer,4);
+
+        if(!parts) {
+            continue;
+        }
+
+        // Make sure we have 4 parts
+        int count = 0;
+        int j;
+        for (j = 0; parts[j]; j++) {
+            count++;
+        }
+
+        if(count < 3) {
+            free_strarray(parts);
+            os_free(buffer);
+            fclose(fp);
+            return NULL;
+        }
+
+        // If the agent name is the same, return its ID
+        if(strcmp(parts[1],agent_name) == 0){
+            char *id = strdup(parts[0]);
+            fclose(fp);
+            free_strarray(parts);
+            os_free(buffer);
+            return id;
+        }
+
+        free_strarray(parts);
+    }
+
+    fclose(fp);
+    os_free(buffer);
+
+    return NULL;
 }

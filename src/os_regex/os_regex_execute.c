@@ -288,7 +288,7 @@ static const char *_OS_Regex(const char *pattern, const char *str, const char **
                             prts_int = 0;
                             while (prts_closure[prts_int]) {
                                 if (prts_closure[prts_int] == (next_pt - 1)) {
-                                    if (*(st + 1) == '\0') {
+                                    if (_regex_matched && ok_here == 1) {
                                         prts_str[prts_int] = st + 1;
                                     } else {
                                         prts_str[prts_int] = st;

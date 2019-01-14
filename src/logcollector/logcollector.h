@@ -38,6 +38,12 @@ void LogCollectorStart(void) __attribute__((noreturn));
 /* Handle files */
 int handle_file(int i, int j, int do_fseek, int do_log);
 
+/* Reload file: open after close, and restore position */
+int reload_file(logreader * lf);
+
+/* Close file and save position */
+void close_file(logreader * lf);
+
 /* Read syslog file */
 void *read_syslog(logreader *lf, int *rc, int drop_it);
 
@@ -102,9 +108,9 @@ extern logsocket *logsk;
 extern int vcheck_files;
 extern int maximum_lines;
 extern logsocket default_agent;
-extern int maximum_files;
-extern int current_files;
-extern int total_files;
+extern int force_reload;
+extern int reload_interval;
+extern int reload_delay;
 
 typedef enum {
     CONTINUE_IT,

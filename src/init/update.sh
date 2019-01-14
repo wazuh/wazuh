@@ -49,20 +49,7 @@ getPreinstalled()
 {
     . ${OSSEC_INIT}
 
-    # agent
-    cat $DIRECTORY/etc/ossec.conf | grep "<client>" > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        echo "agent"
-        return 0;
-    fi
-
-    cat $DIRECTORY/etc/ossec.conf | grep "<remote>" > /dev/null 2>&1
-    if [ $? = 0 ]; then
-        echo "server"
-        return 0;
-    fi
-
-    echo "local"
+	echo $TYPE
     return 0;
 }
 

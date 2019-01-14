@@ -219,11 +219,25 @@ int main(int argc, char **argv)
             if (!Config.decoders) {
                 /* Legacy loading */
                 /* Read decoders */
-                if (!ReadDecodeXML("etc/decoder.xml")) {
-                    merror_exit(CONFIG_ERROR,  XML_DECODER);
+                Read_Rules(NULL, &Config, NULL);
+
+                /* New loaded based on file specified in ossec.conf */
+                char **decodersfiles;
+                decodersfiles = Config.decoders;
+                while ( decodersfiles && *decodersfiles) {
+                    if (!test_config) {
+                        minfo("Reading decoder file %s.", *decodersfiles);
+                    }
+                    if (!ReadDecodeXML(*decodersfiles)) {
+                        merror_exit(CONFIG_ERROR, *decodersfiles);
+                    }
+
+                    free(*decodersfiles);
+                    decodersfiles++;
                 }
 
                 /* Read local ones */
+
                 c = ReadDecodeXML("etc/local_decoder.xml");
                 if (!c) {
                     if ((c != -2)) {
@@ -232,6 +246,7 @@ int main(int argc, char **argv)
                 } else {
                     minfo("Reading local decoder file.");
                 }
+
             } else {
                 /* New loaded based on file specified in ossec.conf */
                 char **decodersfiles;

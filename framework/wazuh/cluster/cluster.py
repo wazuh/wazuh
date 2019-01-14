@@ -10,7 +10,7 @@ from wazuh.InputValidator import InputValidator
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink, environ
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
@@ -36,7 +36,7 @@ logger = logging.getLogger('wazuh')
 # Cluster
 #
 def get_localhost_ips():
-    return set(check_output(['hostname', '--all-ip-addresses']).split(" ")[:-1])
+    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -62,10 +62,7 @@ def check_cluster_config(config):
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
-    if config['node_type'] == 'master' and config['nodes'][0] not in get_localhost_ips():
-        raise WazuhException(3004, "Master IP not valid. Valid ones are: {}".format(', '.join(get_localhost_ips())))
-
-    if not isinstance(config['port'], int) and not config['port'].isdigit():
+    if not isinstance(config['port'], int):
         raise WazuhException(3004, "Cluster port must be an integer.")
 
 
@@ -92,9 +89,17 @@ def get_cluster_items_worker_intervals():
 
 
 def read_config():
-    cluster_default_configuration = {'disabled': False, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                                     'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'],
-                                     'hidden': 'no'}
+    cluster_default_configuration = {
+        'disabled': 'no',
+        'node_type': 'master',
+        'name': 'wazuh',
+        'node_name': 'node01',
+        'key': '',
+        'port': 1516,
+        'bind_addr': '0.0.0.0',
+        'nodes': ['NODE_IP'],
+        'hidden': 'no'
+    }
 
     try:
         config_cluster = get_ossec_conf('cluster')
@@ -112,13 +117,27 @@ def read_config():
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
-    if config_cluster['disabled'] == 'no':
-        config_cluster['disabled'] = False
-    elif config_cluster['disabled'] == 'yes':
-        config_cluster['disabled'] = True
-    else:
-        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
-            config_cluster['disabled']))
+    config_cluster['port'] = int(config_cluster['port'])
+
+    # if config_cluster['node_name'].upper() == '$HOSTNAME':
+    #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
+    #     config_cluster['node_name'] = gethostname()
+
+    # if config_cluster['node_name'].upper() == '$NODE_NAME':
+    #     if 'NODE_NAME' in environ:
+    #         config_cluster['node_name'] = environ['NODE_NAME']
+    #     else:
+    #         raise WazuhException(3006, 'Unable to get the $NODE_NAME environment variable')
+
+    # if config_cluster['node_type'].upper() == '$NODE_TYPE':
+    #     if 'NODE_TYPE' in environ:
+    #         config_cluster['node_type'] = environ['NODE_TYPE']
+    #     else:
+    #         raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
+
+    if config_cluster['node_type'] == 'client':
+        logger.info("Deprecated node type 'client'. Using 'worker' instead.")
+        config_cluster['node_type'] = 'worker'
 
     return config_cluster
 
@@ -481,10 +500,6 @@ def _check_removed_agents(new_client_keys):
 #
 # Others
 #
-
-get_localhost_ips = lambda: check_output(['hostname', '--all-ip-addresses']).split(b" ")[:-1]
-
-
 def run_logtest(synchronized=False):
     log_msg_start = "Synchronized r" if synchronized else "R"
     try:

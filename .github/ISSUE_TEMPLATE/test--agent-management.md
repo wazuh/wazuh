@@ -29,15 +29,22 @@ about: Test suite for agent management.
 (2) https://documentation.wazuh.com/3.x/user-manual/capabilities/labels.html
 (3) https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/localfile.html#label
 
-## Groups
+## Groups / Multiple groups
 
+- [ ] For all the checks, test the consistency between the API and `agent_groups` results.
 - [ ] Create a group, add agents and send them a centralized configuration. (4)
-- [ ] Check if an agent is reassigned to its group after registering it with another name or ID. (4)
 - [ ] Remove a group, remove agents from a group, and check that they are assigned to the default group. (5)
-- [ ] Test multi-groups (Issue: https://github.com/wazuh/wazuh/issues/1238)
+- [ ] Assign several groups to an agent. Check that the agent receives the merged configuration. (6)
+- [ ] Remove an agent from a group. It should belongs to the rest of the groups assigned.
+- [ ] Check the synchronization of shared files between groups and agents.
+- [ ] Remove a group existing in several multigroups, check if is correctly removed and agents affected.
+- [ ] Force a replacement of groups for an agent and check that it changed correctly.
+- [ ] Try to assign an agent to an invalid group. Registered and in the registration process with `agent-auth`.
+- [ ] Check if an agent is reassigned to its group(s) after registering it with another name or ID. Enable the internal option `remoted.guess_agent_group` to enable it.
 
 (4) https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html
 (5) https://documentation.wazuh.com/3.x/user-manual/reference/tools/agent_groups.html#examples
+(6) https://documentation.wazuh.com/current/user-manual/agents/grouping-agents.html#multiple-groups
 
 ## Leaky bucket
 

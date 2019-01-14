@@ -89,7 +89,7 @@ static void send_sk_db(int first_start)
     /* Send end scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
-#ifndef WIN32
+#ifdef ENABLE_AUDIT
         audit_set_db_consistency();
 #endif
     } else {
@@ -316,13 +316,15 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
     syscheck_node *s_node;
-    char str_size[50], str_perm[50], str_mtime[50], str_inode[50];
-#ifndef WIN32
-    char *w_inode;
-    char str_owner[50], str_group[50];
-#else
+    char str_size[50], str_mtime[50], str_inode[50];
+#ifdef WIN32
+    unsigned int attributes = 0;
     char *sid = NULL;
+    char *str_perm = NULL;
     char *user;
+#else
+    char *w_inode;
+    char str_owner[50], str_group[50], str_perm[50];
 #endif
 
     /* Clean sums */
@@ -356,16 +358,34 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
         send_syscheck_msg(alert_msg);
 
+
+#ifndef WIN32
+        if(evt && evt->inode) {
+            if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
+                free(w_inode);
+            }
+        }
+        else {
+            if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
+                char *inode_str;
+                char *checksum_inode;
+
+                os_strdup(s_node->checksum, checksum_inode);
+                inode_str = get_attr_from_checksum(checksum_inode, SK_INODE);
+                
+                if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
+                    free(w_inode);
+                }
+                os_free(checksum_inode);
+            }
+        }
+#endif
         // Delete from hash table
         if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
             free(s_node->checksum);
             free(s_node);
         }
-#ifndef WIN32
-        if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
-            free(w_inode);
-        }
-#endif
+
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);
 
@@ -419,8 +439,15 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sha256sum = 1;
     }
 
+    /* Attributes*/
+#ifdef WIN32
+    if (oldsum[9] == '+') {
+        attributes = w_get_file_attrs(file_name);
+    }
+#endif
+
     /* Report changes */
-    if (oldsum[9] == '-') {
+    if (oldsum[SK_DB_REPORT_CHANG] == '-') {
         delete_target_file(file_name);
     }
 
@@ -504,7 +531,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
-    snprintf(newsum, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+    snprintf(newsum, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
         str_perm,
         str_owner,
@@ -515,7 +542,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         group == 0 ? "" : get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid),
         str_mtime,
         str_inode,
-        sha256sum  == 0 ? "" : sf256_sum);
+        sha256sum  == 0 ? "" : sf256_sum,
+        0);
 #else
     user = get_user(file_name, statbuf.st_uid, &sid);
 
@@ -525,10 +553,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sprintf(str_size, "%ld", (long)statbuf.st_size);
     }
 
-    if (perm == 0){
-        *str_perm = '\0';
-    } else {
-        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
+    if (perm == 1) {
+        int error;
+        char perm_unescaped[OS_SIZE_6144 + 1];
+        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+            merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+        } else {
+            str_perm = escape_perm_sum(perm_unescaped);
+        }
     }
 
     if (mtime == 0){
@@ -543,9 +575,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
-    snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s",
+    snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
-        str_perm,
+        (str_perm) ? str_perm : "",
         (owner == 0) && sid ? "" : sid,
         md5sum   == 0 ? "" : mf_sum,
         sha1sum  == 0 ? "" : sf_sum,
@@ -553,12 +585,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         group == 0 ? "" : get_group(statbuf.st_gid),
         str_mtime,
         str_inode,
-        sha256sum  == 0 ? "" : sf256_sum);
+        sha256sum  == 0 ? "" : sf256_sum,
+        attributes);
 
         os_free(user);
         if (sid) {
             LocalFree(sid);
         }
+        free(str_perm);
 #endif
 
     return (0);

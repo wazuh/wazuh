@@ -162,7 +162,6 @@ int main(int argc, char **argv)
     /* Active response disabled */
     if (c == 1) {
         minfo(EXEC_DISABLED);
-        exit(0);
     }
 
     /* Create the PID file */
@@ -174,13 +173,21 @@ int main(int argc, char **argv)
     CheckExecConfig();
 #endif
 
+    // Start com request thread
+    w_create_thread(wcom_main, NULL);
+
+    /* Start up message */
+    minfo(STARTUP_MSG, (int)getpid());
+
+    /* If AR is disabled, close this thread */
+    if (c == 1) {
+        pthread_exit(NULL);
+    }
+
     /* Start exec queue */
     if ((m_queue = StartMQ(EXECQUEUEPATH, READ)) < 0) {
         merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
     }
-
-    /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
 
     /* The real daemon Now */
     ExecdStart(m_queue);
@@ -254,9 +261,6 @@ static void ExecdStart(int q)
     } else {
         repeated_hash = NULL;
     }
-
-    // Start com request thread
-    w_create_thread(wcom_main, NULL);
 
     /* Main loop */
     while (1) {
@@ -453,7 +457,10 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
                             snprintf(ntimes, 16, "%d", ntimes_int);
-                            OSHash_Update(repeated_hash, rkey, ntimes);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
                         }
                         list_entry->time_to_block = new_timeout;
                     }
@@ -495,13 +502,18 @@ static void ExecdStart(int q)
                             new_timeout = repeated_offenders_timeout[ntimes_int] * 60;
                             ntimes_int++;
                             snprintf(ntimes, 16, "%d", ntimes_int);
-                            OSHash_Update(repeated_hash, rkey, ntimes);
+                            if (OSHash_Update(repeated_hash, rkey, ntimes) != 1) {
+                                free(ntimes);
+                                merror("At ExecdStart: OSHash_Update() failed");
+                            }
                         }
                         timeout_value = new_timeout;
                     } else {
                         /* Add to the repeat offenders list */
-                        OSHash_Add(repeated_hash,
-                                   rkey, strdup("0"));
+                        char *tmp_zero;
+                        os_strdup("0", tmp_zero);
+                        if (OSHash_Add(repeated_hash, rkey, tmp_zero) != 2) free(tmp_zero);
+                        tmp_zero = NULL;
                     }
                 }
 

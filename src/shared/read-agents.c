@@ -20,12 +20,10 @@ static int _do_print_syscheck(FILE *fp, int all_files, int csv_output, cJSON *js
 static void _do_get_rootcheckscan(FILE *fp, time_t values[2]) __attribute__((nonnull));
 static int _do_print_rootcheck(FILE *fp, int resolved, const time_t time_last_scan[2],
                                int csv_output, cJSON *json_output, int show_last) __attribute__((nonnull(1)));
-#endif /* !WIN32*/
-
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id) __attribute__((nonnull(2, 3)));
 static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip) __attribute__((nonnull(2)));
 static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_info *agt_info) __attribute__((nonnull(2, 3)));
-
+#endif /* !WIN32*/
 
 /* Free the agent list in memory */
 void free_agents(char **agent_list)
@@ -971,7 +969,6 @@ char *agent_file_perm(mode_t mode)
     return permissions;
 }
 
-#endif /* !WIN32 */
 
 /* Internal function. Extract last time of scan from rootcheck/syscheck. */
 static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_info *agt_info, const char* agent_id)
@@ -1086,6 +1083,7 @@ static int _get_time_rkscan(const char *agent_name, const char *agent_ip, agent_
     return (0);
 }
 
+
 /* Internal function. Extract last time of scan from rootcheck/syscheck. */
 static char *_get_agent_keepalive(const char *agent_name, const char *agent_ip)
 {
@@ -1189,6 +1187,7 @@ static int _get_agent_os(const char *agent_name, const char *agent_ip, agent_inf
     return (0);
 }
 
+
 /* Get information from an agent */
 agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const char *agent_id)
 {
@@ -1223,6 +1222,7 @@ agent_info *get_agent_info(const char *agent_name, const char *agent_ip, const c
 
     return (agt_info);
 }
+#endif
 
 /* Gets the status of an agent, based on the name / IP address */
 agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
@@ -1266,7 +1266,7 @@ agent_status_t get_agent_status(const char *agent_name, const char *agent_ip)
 }
 
 /* List available agents */
-char **get_agents(int flag)
+char **get_agents(int flag,int mon_time)
 {
     size_t f_size = 0;
     char **f_files = NULL;
@@ -1301,14 +1301,16 @@ char **get_agents(int flag)
                 continue;
             }
 
-            if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
-                status = 1;
-                if (flag == GA_NOTACTIVE) {
-                    continue;
-                }
-            } else {
-                if (flag == GA_ACTIVE) {
-                    continue;
+            if( !(flag == GA_NOTACTIVE && (file_status.st_mtime < (time(0) - (mon_time * 60)) && mon_time > 0))) {
+                if (file_status.st_mtime > (time(0) - DISCON_TIME)) {
+                    status = 1;
+                    if (flag == GA_NOTACTIVE) {
+                        continue;
+                    }
+                } else {
+                    if (flag == GA_ACTIVE) {
+                        continue;
+                    }
                 }
             }
         }
@@ -1339,7 +1341,7 @@ char **get_agents(int flag)
     return (f_files);
 }
 
-
+#ifndef WIN32
 int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) {
     char response[OS_SIZE_6144];
     fd_set fdset;
@@ -1387,6 +1389,7 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
 
             if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query)) {
                 merror("%s: in send reattempt (%d) '%s'.", source, errno, strerror(errno));
+                close(wdb_socket);
                 return (-2);
             }
         } else {
@@ -1400,6 +1403,7 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
 
     if (select(wdb_socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
         merror("%s: in select (%d) '%s'.", source, errno, strerror(errno));
+        close(wdb_socket);
         return (-2);
     }
 
@@ -1411,13 +1415,12 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
             retval = 0;
         } else {
             merror("%s: Bad response '%s'.", source, response);
-            return retval;
         }
     } else {
         merror("%s: no response from wazuh-db.", source);
-        return retval;
     }
 
+    close(wdb_socket);
     return retval;
 }
 
@@ -1454,9 +1457,10 @@ time_t scantime_fim (const char *agent_id, const char *scan) {
         ts = -1;
     }
 
-    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, ts);
+    mdebug2("Agent '%s' FIM '%s' timestamp:'%ld'", agent_id, scan, (long int)ts);
 
     os_free(wazuhdb_query);
     os_free(response);
     return (ts);
 }
+#endif

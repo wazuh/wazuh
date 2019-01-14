@@ -16,9 +16,6 @@
 #endif
 
 #include <time.h>
-#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-#include <sys/sysctl.h>
-#endif
 #include "shared.h"
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
@@ -60,6 +57,8 @@ int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
+int DecodeWinevt(Eventinfo *lf);
+
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
 
@@ -140,6 +139,9 @@ void * w_process_event_thread(__attribute__((unused)) void * id);
 /* Do log rotation thread */
 void * w_log_rotate_thread(__attribute__((unused)) void * args);
 
+/* Decode winevt threads */
+void * w_decode_winevt_thread(__attribute__((unused)) void * args);
+
 typedef struct _clean_msg {
     Eventinfo *lf;
     char *msg;
@@ -188,6 +190,9 @@ static w_queue_t * decode_queue_event_input;
 /* Decode pending event output */
 static w_queue_t * decode_queue_event_output;
 
+/* Decode windows event input queue */
+static w_queue_t * decode_queue_winevt_input;
+
 /* Hourly alerts mutex */
 static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -204,6 +209,7 @@ static int reported_hostinfo = 0;
 static int reported_rootcheck = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
+static int reported_winevt = 0;
 
 /* Mutexes */
 pthread_mutex_t decode_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -221,7 +227,7 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   };
 
 /* CPU Info*/
-static cpu_info *cpu_information;
+static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -422,12 +428,12 @@ int main_analysisd(int argc, char **argv)
     /* Check the CPU INFO */
     /* If we have the threads set to 0 on internal_options.conf, then */
     /* we assign them automatically based on the number of cores */
-    cpu_information = get_cpu_info();
+    cpu_cores = get_nproc();
 
     num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
     if(num_rule_matching_threads == 0){
-        num_rule_matching_threads = cpu_information->cpu_cores;
+        num_rule_matching_threads = cpu_cores;
     }
 
     /* Continuing in Daemon mode */
@@ -484,26 +490,15 @@ int main_analysisd(int argc, char **argv)
             /* Initialize the decoders list */
             OS_CreateOSDecoderList();
 
+            /* If we haven't specified a decoders directory, load default */
             if (!Config.decoders) {
                 /* Legacy loading */
-                /* Read decoders */
-                if (!ReadDecodeXML(XML_DECODER)) {
-                    merror_exit(CONFIG_ERROR,  XML_DECODER);
-                }
+                /* Read default decoders */
+                Read_Rules(NULL, &Config, NULL);
+            }
 
-                /* Read local ones */
-                c = ReadDecodeXML(XML_LDECODER);
-                if (!c) {
-                    if ((c != -2)) {
-                        merror_exit(CONFIG_ERROR,  XML_LDECODER);
-                    }
-                } else {
-                    if (!test_config) {
-                        minfo("Reading local decoder file.");
-                    }
-                }
-            } else {
-                /* New loaded based on file speified in ossec.conf */
+            /* New loaded based on file loaded (in ossec.conf or default) */
+            {
                 char **decodersfiles;
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
@@ -549,6 +544,11 @@ int main_analysisd(int argc, char **argv)
             /* Load Rules */
             /* Create the rules list */
             Rules_OP_CreateRules();
+
+            /* If we haven't specified a rules directory, load default */
+            if (!Config.includes) {
+                Read_Rules(NULL, &Config, NULL);
+            }
 
             /* Read the rules */
             {
@@ -713,7 +713,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     OS_InitLog();
 
     /* Initialize the integrity database */
-    fim_init();
+    if (!fim_init()) merror_exit("fim: Initialization failed");
 
     /* Initialize Rootcheck */
     RootcheckInit();
@@ -726,6 +726,9 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize host info */
     HostinfoInit();
+
+    /* Initialize windows event */
+    WinevtInit();
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -809,7 +812,8 @@ void OS_ReadMSG_analysisd(int m_queue)
     }
 
     /* Initialize label cache */
-    labels_init();
+    if (!labels_init()) merror_exit("Error allocating labels");
+
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
@@ -827,25 +831,30 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
+    int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
-        num_decode_event_threads = cpu_information->cpu_cores;
+        num_decode_event_threads = cpu_cores;
     }
 
     if(num_decode_syscheck_threads == 0){
-        num_decode_syscheck_threads = cpu_information->cpu_cores;
+        num_decode_syscheck_threads = cpu_cores;
     }
 
     if(num_decode_syscollector_threads == 0){
-        num_decode_syscollector_threads = cpu_information->cpu_cores;
+        num_decode_syscollector_threads = cpu_cores;
     }
 
     if(num_decode_rootcheck_threads == 0){
-        num_decode_rootcheck_threads = cpu_information->cpu_cores;
+        num_decode_rootcheck_threads = cpu_cores;
     }
 
     if(num_decode_hostinfo_threads == 0){
-        num_decode_hostinfo_threads = cpu_information->cpu_cores;
+        num_decode_hostinfo_threads = cpu_cores;
+    }
+
+    if(num_decode_winevt_threads == 0){
+        num_decode_winevt_threads = cpu_cores;
     }
 
     /* Initiate the FTS list */
@@ -902,6 +911,11 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Create the process event threads */
     for(i = 0; i < num_rule_matching_threads;i++){
         w_create_thread(w_process_event_thread,(void *) (intptr_t)i);
+    }
+
+    /* Create decode winevt threads */
+    for(i = 0; i < num_decode_winevt_threads;i++){
+        w_create_thread(w_decode_winevt_thread,NULL);
     }
 
     /* Create State thread */
@@ -1639,6 +1653,34 @@ void * ad_input_main(void * args) {
                 /* Increment number of events received */
                 hourly_events++;
             }
+            else if(msg[0] == WIN_EVT_MQ){
+
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_winevt_input)){
+                    if(!reported_winevt){
+                        reported_winevt = 1;
+                        mwarn("Windows eventchannel decoder queue is full.");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_winevt_input,copy);
+
+                if(result < 0){
+                    if(!reported_winevt){
+                        reported_winevt = 1;
+                        mwarn("Windows eventchannel decoder queue is full.");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+                /* Increment number of events received */
+                hourly_events++;
+            }
             else{
 
                 os_strdup(buffer, copy);
@@ -1973,17 +2015,67 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
                 continue;
             }
 
+            if (msg[0] == CISCAT_MQ) {
+                if (!DecodeCiscat(lf)) {
+                    w_free_event_info(lf);
+                    free(msg);
+                    continue;
+                }
+            } else {
+                DecodeEvent(lf, &decoder_match);
+            }
+
             free(msg);
+
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            DecodeEvent(lf, &decoder_match);
+
 
             if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
                 Free_Eventinfo(lf);
             }
 
             w_inc_decoded_events();
+        }
+    }
+}
+
+void * w_decode_winevt_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char * msg = NULL;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_winevt_input), msg) {
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+            if (DecodeWinevt(lf)) {
+                /* We don't process windows events further */
+                w_free_event_info(lf);
+            }
+            else{
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
+            }
+
+            w_inc_winevt_decoded_events();
         }
     }
 }
@@ -2438,6 +2530,7 @@ void w_get_queues_size(){
     s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
     s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
     s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
+    s_winevt_queue = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
     s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
     s_process_event_queue = ((decode_queue_event_output->elements / (float)decode_queue_event_output->size));
 
@@ -2452,6 +2545,7 @@ void w_get_initial_queues_size(){
     s_syscollector_queue_size = decode_queue_syscollector_input->size;
     s_rootcheck_queue_size = decode_queue_rootcheck_input->size;
     s_hostinfo_queue_size = decode_queue_hostinfo_input->size;
+    s_winevt_queue_size = decode_queue_winevt_input->size;
     s_event_queue_size = decode_queue_event_input->size;
     s_process_event_queue_size = decode_queue_event_output->size;
 
@@ -2459,143 +2553,6 @@ void w_get_initial_queues_size(){
     s_writer_archives_queue_size = writer_queue->size;
     s_writer_firewall_queue_size = writer_queue_log_firewall->size;
     s_writer_statistical_queue_size = writer_queue_log_statistical->size;
-}
-
-cpu_info *get_cpu_info(){
-
-#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__MACH__)
-    return get_cpu_info_bsd();
-#else
-    return get_cpu_info_linux();
-#endif
-
-}
-
-/* Get CPU information */
-cpu_info *get_cpu_info_linux(){
-
-    FILE *fp;
-    cpu_info *info;
-    char string[OS_MAXSTR];
-
-    char *end;
-
-    os_calloc(1, sizeof(cpu_info), info);
-
-    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_ANALYSISD_LOGTAG, "Unable to read cpuinfo file.");
-        info->cpu_name = strdup("unknown");
-    } else {
-        char *aux_string = NULL;
-        while (fgets(string, OS_MAXSTR, fp) != NULL){
-            if ((aux_string = strstr(string, "model name")) != NULL){
-
-                char *cpuname;
-                cpuname = strtok(string, ":");
-                cpuname = strtok(NULL, "\n");
-                if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
-                    *end = '\0';
-                }
-
-                free(info->cpu_name);
-                info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
-
-                char *cores;
-                cores = strtok(string, ":");
-                cores = strtok(NULL, "\n");
-                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_cores = atoi(cores);
-
-            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
-
-                char *frec;
-                frec = strtok(string, ":");
-                frec = strtok(NULL, "\n");
-                if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_MHz = atof(frec);
-            }
-        }
-        free(aux_string);
-        fclose(fp);
-    }
-
-    return info;
-}
-
-cpu_info *get_cpu_info_bsd(){
-#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-    cpu_info *info;
-    os_calloc(1, sizeof(cpu_info), info);
-
-    int mib[2];
-    size_t len;
-
-    /* CPU Name */
-    char cpu_name[1024];
-    mib[0] = CTL_HW;
-    mib[1] = HW_MODEL;
-    len = sizeof(cpu_name);
-    if (!sysctl(mib, 2, &cpu_name, &len, NULL, 0)){
-        info->cpu_name = strdup(cpu_name);
-    }else{
-        info->cpu_name = strdup("unknown");
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
-    }
-
-    /* Number of cores */
-    unsigned int cpu_cores;
-    mib[0] = CTL_HW;
-    mib[1] = HW_NCPU;
-    len = sizeof(cpu_cores);
-    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)){
-        info->cpu_cores = (int)cpu_cores;
-    }else{
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
-    }
-
-    /* CPU clockrate (MHz) */
-#if defined(__OpenBSD__)
-
-    unsigned long cpu_MHz;
-    mib[0] = CTL_HW;
-    mib[1] = HW_CPUSPEED;
-    len = sizeof(cpu_MHz);
-    if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
-        info->cpu_MHz = (double)cpu_MHz/1000000.0;
-    }else{
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
-    }
-
-#elif defined(__FreeBSD__) || defined(__MACH__)
-
-    char *clockrate;
-    clockrate = calloc(CLOCK_LENGTH, sizeof(char));
-
-#if defined(__FreeBSD__)
-    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.clockrate");
-#elif defined(__MACH__)
-    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.cpufrequency");
-#endif
-
-    unsigned long cpu_MHz;
-    len = sizeof(cpu_MHz);
-    if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
-        info->cpu_MHz = (double)cpu_MHz/1000000.0;
-    }else{
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
-    }
-
-    free(clockrate);
-
-#endif
-    return info;
-#endif
-    return NULL;
 }
 
 void w_init_queues(){
@@ -2625,6 +2582,9 @@ void w_init_queues(){
 
     /* Init the decode hostinfo queue input */
     decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));
+
+    /* Init the decode winevt queue input */
+    decode_queue_winevt_input = queue_init(getDefine_Int("analysisd", "decode_winevt_queue_size", 0, 2000000));
 
     /* Init the decode event queue input */
     decode_queue_event_input = queue_init(getDefine_Int("analysisd", "decode_event_queue_size", 0, 2000000));
