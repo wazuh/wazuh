@@ -1,7 +1,7 @@
 #!/bin/sh
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Installation script for the OSSEC
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
-# Last modification: Nov 25, 2016
 
 # Changelog 19/03/2006 - Rafael M. Capovilla <under@underlinux.com.br>
 # New function AddWhite to allow users to add more Ips in the white_list
