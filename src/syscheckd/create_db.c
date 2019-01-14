@@ -761,8 +761,8 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
           }
           i++;
         }
-        dump_syscheck_entry(&syscheck, real_path, syscheck.opts[i], 0,
-                        syscheck.filerestrict[i], max_depth, syscheck.tag[i], -1);
+        dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0,
+                        syscheck.filerestrict[dir_position]->raw, max_depth, syscheck.tag[dir_position], -1);
         free(real_path);
         free(dir_name_full);
         return 0;
