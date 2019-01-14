@@ -90,7 +90,7 @@ def get_cluster_items_worker_intervals():
 
 def read_config():
     cluster_default_configuration = {
-        'disabled': 'no',
+        'disabled': False,
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
@@ -118,6 +118,13 @@ def read_config():
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
     config_cluster['port'] = int(config_cluster['port'])
+    if config_cluster['disabled'] == 'no':
+        config_cluster['disabled'] = False
+    elif config_cluster['disabled'] == 'yes':
+        config_cluster['disabled'] = True
+    else:
+        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
+            config_cluster['disabled']))
 
     # if config_cluster['node_name'].upper() == '$HOSTNAME':
     #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
@@ -157,7 +164,7 @@ def check_cluster_status():
     """
     Function to check if cluster is enabled
     """
-    return read_config()['disabled'] != 'yes'
+    return read_config()['disabled']
 
 
 def get_status_json():
