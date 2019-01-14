@@ -159,6 +159,22 @@ class WazuhIntegration:
             sys.exit(3)
         return client
 
+    def get_sts_client(self, access_key, secret_key):
+        conn_args = {}
+        if access_key is not None and secret_key is not None:
+            conn_args['aws_access_key_id'] = access_key
+            conn_args['aws_secret_access_key'] = secret_key
+
+        boto_session = boto3.Session(**conn_args)
+
+        try:
+            sts_client = boto_session.client(service_name='sts')
+        except Exception as e:
+            print("Error getting STS client: {}".format(e))
+            sys.exit(3)
+
+        return sts_client
+
     def send_msg(self, msg):
         """
         Sends an AWS event to the Wazuh Queue
@@ -1383,7 +1399,11 @@ class AWSCustomBucket(AWSBucket):
             self.db_table_name = 'custom'
         AWSBucket.__init__(self, **kwargs)
         self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased
-        # SQL queries for VPC
+        # get STS client
+        self.sts_client = self.get_sts_client(kwargs['access_key'], kwargs['secret_key'])
+        # get account ID
+        self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
+        # SQL queries for custom buckets
         self.sql_already_processed = """
                           SELECT
                             count(*)
@@ -1391,15 +1411,18 @@ class AWSCustomBucket(AWSBucket):
                             {table_name}
                           WHERE
                             bucket_path='{bucket_path}' AND
-                            log_key='{log_name}'"""
+                            aws_account_id='{aws_account_id}' AND
+                            log_key='{log_key}'"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
                                 bucket_path,
+                                aws_account_id,
                                 log_key,
                                 processed_date,
                                 created_date) VALUES (
                                 '{bucket_path}',
+                                '{aws_account_id}',
                                 '{log_key}',
                                 DATETIME('now'),
                                 '{created_date}')"""
@@ -1408,10 +1431,11 @@ class AWSCustomBucket(AWSBucket):
                             CREATE TABLE
                                 {table_name} (
                                 bucket_path 'text' NOT NULL,
+                                aws_account_id 'text' NOT NULL,
                                 log_key 'text' NOT NULL,
                                 processed_date 'text' NOT NULL,
                                 created_date 'integer' NOT NULL,
-                                PRIMARY KEY (bucket_path, log_key));"""
+                                PRIMARY KEY (bucket_path, aws_account_id, log_key));"""
 
         self.sql_find_last_log_processed = """
                                         SELECT
@@ -1419,7 +1443,8 @@ class AWSCustomBucket(AWSBucket):
                                         FROM
                                             {table_name}
                                         WHERE
-                                            bucket_path='{bucket_path}'
+                                            bucket_path='{bucket_path}' AND
+                                            aws_account_id='{aws_account_id}'
                                         ORDER BY
                                             created_date DESC
                                         LIMIT 1;"""
@@ -1430,7 +1455,8 @@ class AWSCustomBucket(AWSBucket):
                                         FROM
                                             {table_name}
                                         WHERE
-                                            bucket_path='{bucket_path}'
+                                            bucket_path='{bucket_path}' AND
+                                            aws_account_id='{aws_account_id}'
                                         ORDER BY
                                             log_key ASC
                                         LIMIT 1;"""
@@ -1440,12 +1466,14 @@ class AWSCustomBucket(AWSBucket):
                                 {table_name}
                             WHERE
                                 bucket_path='{bucket_path}' AND
+                                aws_account_id='{aws_account_id}' AND
                                 rowid NOT IN
                                 (SELECT ROWID
                                     FROM
                                     {table_name}
                                     WHERE
-                                    bucket_path='{bucket_path}'
+                                    bucket_path='{bucket_path}' AND
+                                    aws_account_id='{aws_account_id}'
                                     ORDER BY
                                     ROWID DESC
                                     LIMIT {retain_db_records})"""
@@ -1506,7 +1534,8 @@ class AWSCustomBucket(AWSBucket):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
             table_name=self.db_table_name,
             bucket_path=self.bucket_path,
-            log_name=downloaded_file
+            aws_account_id=self.aws_account_id,
+            log_key=downloaded_file
         ))
         return cursor.fetchone()[0] > 0
 
@@ -1521,6 +1550,7 @@ class AWSCustomBucket(AWSBucket):
                 self.db_connector.execute(self.sql_mark_complete.format(
                     table_name=self.db_table_name,
                     bucket_path=self.bucket_path,
+                    aws_account_id=self.aws_account_id,
                     log_key=log_file['Key'],
                     created_date=self.get_creation_date(log_file)
                 ))
@@ -1534,6 +1564,7 @@ class AWSCustomBucket(AWSBucket):
             self.db_connector.execute(self.sql_db_maintenance.format(
                 table_name=self.db_table_name,
                 bucket_path=self.bucket_path,
+                aws_account_id=self.aws_account_id,
                 retain_db_records=self.retain_db_records
             ))
         except Exception as e:
@@ -1551,7 +1582,8 @@ class AWSCustomBucket(AWSBucket):
 
         else:
             query_last_key = self.db_connector.execute(self.sql_find_last_key_processed.format(table_name=self.db_table_name,
-                                                                                        bucket_path=self.bucket_path))
+                                                                                        bucket_path=self.bucket_path,
+                                                                                        aws_account_id=self.aws_account_id))
             try:
                 last_key = query_last_key.fetchone()[0]
             except (TypeError, IndexError) as e:
