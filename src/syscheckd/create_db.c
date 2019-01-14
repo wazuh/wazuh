@@ -299,7 +299,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     }
                 } else {
                     if (opts & CHECK_FOLLOW) {
-                        mwarn("Error in stat() function: %s. This may be cause by a broken symbolic link.", strerror(errno));
+                        mwarn("Error in stat() function: %s. This may be cause by a broken symbolic link %s.", strerror(errno), file_name);
                     }
                     return -1;
                 }
@@ -761,8 +761,12 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
           }
           i++;
         }
-        dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0,
-                        syscheck.filerestrict[dir_position]->raw, max_depth, syscheck.tag[dir_position], -1);
+        if(syscheck.filerestrict) {
+            dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0, syscheck.filerestrict[dir_position]->raw, max_depth, syscheck.tag[dir_position], -1);
+        } else {
+            dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0, NULL, max_depth, syscheck.tag[dir_position], -1);
+        }
+
         free(real_path);
         free(dir_name_full);
         return 0;
