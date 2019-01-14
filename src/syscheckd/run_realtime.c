@@ -126,15 +126,17 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if(check_path_type(file_name) == 2){
                 depth = depth - 1;
             }
+#ifndef WIN32
             struct stat statbuf;
             if (lstat(file_name, &statbuf) < 0) {
-                mwarn("New file wasn't added");
-                mdebug2("Stat() function failed on: %s", file_name);
+                mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
                 return -1;
             }
             if S_ISLNK(statbuf.st_mode) {
                 read_dir(file_name, pos, evt, depth, 1);
-            } else {
+            } else
+#endif
+            {
                 read_dir(file_name, pos, evt, depth, 0);
             }
         }

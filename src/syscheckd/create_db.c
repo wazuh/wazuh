@@ -501,7 +501,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             case 1:
                 free(hash_file_name);
                 mdebug2("Inode already added to db: %s (%s) ", file_name, str_inode);
-                break;
+                syscheck_node *data;
+                if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
+                    os_free(data->checksum);
+                    os_free(data);
+                }
+                os_free(alert_msg);
+                os_free(alertdump);
+                return 0;
             }
 #endif
             /* Send the new checksum to the analysis server */
