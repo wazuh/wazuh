@@ -932,7 +932,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 last_key = self.get_full_prefix(aws_account_id, aws_region) + date
 
         # for getting only logs of the current date
-        config_prefix = self.get_full_prefix(aws_account_id, aws_region) + date
+        config_prefix = self.get_full_prefix(aws_account_id, aws_region) + date + '/'
 
         filter_args = {
             'Bucket': self.bucket,
