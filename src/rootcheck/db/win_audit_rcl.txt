@@ -1,4 +1,5 @@
 # OSSEC Windows Audit - (C) 2007 Daniel B. Cid - dcid@ossec.net
+# Copyright (C) 2015-2019, Wazuh Inc.
 #
 # PCI Tagging by Wazuh <ossec@wazuh.com>.
 #

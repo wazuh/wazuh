@@ -1,4 +1,5 @@
 #!/bin/sh
+
 # Shell script functions for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 

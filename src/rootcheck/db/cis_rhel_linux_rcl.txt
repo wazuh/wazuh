@@ -1,4 +1,5 @@
 # OSSEC Linux Audit - (C) 2014
+# Copyright (C) 2015-2019, Wazuh Inc.
 #
 # PCI Tagging by Wazuh <ossec@wazuh.com>.
 #

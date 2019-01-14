@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # OSSEC         Controls Wazuh on Solaris systems
 # Author:       Kayvan A. Sylvan <kayvan@sylvan.com>
 # Author:       Daniel B. Cid <dcid@ossec.net>
