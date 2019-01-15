@@ -53,7 +53,7 @@ async def print_agents(filter_status, filter_node):
 async def print_nodes(filter_node):
     result = await control.get_nodes(filter_node)
     headers = ["Name", "Type", "Version", "Address"]
-    data = map(lambda x: list(x.values()), result.values())
+    data = map(lambda x: list(x.values()), result['items'])
     __print_table(data, headers, True)
 
 
