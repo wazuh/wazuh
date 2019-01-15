@@ -418,7 +418,7 @@ class Rule:
                                     rule.description += value
                                 elif tag == "field":
                                     rule.add_detail(xml_rule_tags.attrib['name'], value)
-                                elif tag == "list":
+                                elif tag in ("list", "info"):
                                     list_detail = {'name': value}
                                     for attrib, attrib_value in xml_rule_tags.attrib.items():
                                         list_detail[attrib] = attrib_value
