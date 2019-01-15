@@ -1,4 +1,5 @@
-/* Copyright by Daniel B. Cid (2005, 2006)
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright by Daniel B. Cid (2005, 2006)
  * Under the public domain. It is just an example.
  * Some examples of usage for the os_regex library.
  */

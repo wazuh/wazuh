@@ -1,4 +1,5 @@
 # Makefile for integratord
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Daniel B. Cid <dcid@sucuri.net>
 
 PT=../

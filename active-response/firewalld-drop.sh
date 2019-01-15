@@ -2,6 +2,7 @@
 # Adds an IP to the firewalld drop list
 # Requirements: Linux with firewalld
 # Expect: srcip
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel B. Cid (iptables)
 # Author: cgzones
 # Author: ChristianBeer
