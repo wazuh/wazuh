@@ -287,7 +287,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
-                            mdebug2("Follow symbolic links disabled. Exiting");
+                            mdebug2("Follow symbolic links disabled.");
                             free(alert_msg);
                             free(wd_sum);
                             return 0;
@@ -1145,6 +1145,7 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link) {
     char *dir_name_full;
     char *real_path;
+    int opts;
 
     os_calloc(PATH_MAX + 2, sizeof(char), real_path);
     os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
@@ -1157,6 +1158,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
             return -1;
         }
         strcat(real_path, "/");
+        opts = syscheck.opts[dir_position];
 
         unsigned int i = 0;
         while (syscheck.dir[i] != NULL) {
@@ -1173,7 +1175,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         if(syscheck.filerestrict[dir_position]) {
             dump_syscheck_entry(&syscheck,
                                 real_path,
-                                syscheck.opts[dir_position],
+                                opts,
                                 0,
                                 syscheck.filerestrict[dir_position]->raw,
                                 max_depth, syscheck.tag[dir_position],
@@ -1181,11 +1183,19 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         } else {
             dump_syscheck_entry(&syscheck,
                                 real_path,
-                                syscheck.opts[dir_position],
+                                opts,
                                 0,
                                 NULL,
                                 max_depth, syscheck.tag[dir_position],
                                 -1);
+        }
+        /* Check for real time flag */
+        if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
+#ifdef INOTIFY_ENABLED
+            realtime_adddir(real_path, opts & CHECK_WHODATA);
+#else
+            mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
+#endif
         }
 
         free(real_path);
