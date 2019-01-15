@@ -200,12 +200,13 @@ wdb_t * wdb_open_agent2(int agent_id) {
     }
     else {
         wdb = wdb_init(db, sagent_id);
+        wdb_pool_append(wdb);
 
         if (new_wdb = wdb_upgrade(wdb), new_wdb != NULL) {
             // If I had to generate backup and change DB
             wdb = new_wdb;
+            wdb_pool_append(wdb);
         }
-        wdb_pool_append(wdb);
     }
 
 success:

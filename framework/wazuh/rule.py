@@ -418,6 +418,10 @@ class Rule:
                                     rule.description += value
                                 elif tag == "field":
                                     rule.add_detail(xml_rule_tags.attrib['name'], value)
+                                # show rule variables
+                                elif tag in {'regex', 'match', 'user', 'id'} and value != '' and value[0] == "$":
+                                    for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
+                                        rule.add_detail(tag, variable.text)
                                 else:
                                     rule.add_detail(tag, value)
 

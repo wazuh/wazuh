@@ -7,9 +7,8 @@
  * Foundation
  */
 
-#include <pthread.h>
-
 #include "shared.h"
+#include <pthread.h>
 #include "remoted.h"
 #include "os_net/os_net.h"
 

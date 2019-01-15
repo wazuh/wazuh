@@ -607,7 +607,7 @@ class MasterManager(Server):
 
 
     def get_healthcheck(self, filter_nodes=None):
-        workers_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
+        workers_info = {name:{"info":dict(data['info']), "status":data['status'].copy()} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
         n_connected_nodes = len(workers_info) + 1 # workers + master
 
         cluster_config = read_config()

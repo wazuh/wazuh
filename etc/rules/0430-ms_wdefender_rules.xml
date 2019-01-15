@@ -35,7 +35,7 @@
     </rule>
 
     <rule id="20215" level="0">
-        <if_sid>20030</if_sid>
+        <if_sid>20031,20032,20033,20034</if_sid>
         <description>Windows Defender messages grouped.</description>
         <options>no_full_log</options>
     </rule>

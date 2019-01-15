@@ -14,7 +14,6 @@
 <var name="MCAFEE_FREQ">12</var>
 
 <group name="mcafee,">
- 
   <rule id="7500" level="0">
     <if_sid>18101,18102,18103</if_sid>
     <category>windows</category>

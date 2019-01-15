@@ -476,7 +476,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             if(retval != 0){
                 kill(pid,SIGTERM);
-                retval = ETIMEDOUT;
+                retval = WM_ERROR_TIMEOUT;
 
                 // Wait for child process
 

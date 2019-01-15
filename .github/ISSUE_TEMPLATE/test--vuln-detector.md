@@ -16,6 +16,7 @@ about: Test suite for Vulnerability Detector.
 - [ ] Check that an OVAL is not re-downloaded if it is up to date. Debug code: 5457
 - [ ] Check that each OVAL is updated according to its update interval.
 - [ ] Download Ubuntu 12 and CentOS 5 OVALs.
+- [ ] Check the option `update_from_year` for the Red Hat feed.
 
 ## Detection
 

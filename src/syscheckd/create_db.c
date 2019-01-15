@@ -214,7 +214,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         switch (errno) {
         case ENOENT:
-            mwarn("Cannot access '%s': it was removed during scan.", file_name);
+            mdebug2("Cannot access '%s': it was removed during scan.", file_name);
             /* Fallthrough */
 
         case ENOTDIR:
@@ -381,7 +381,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
 
-            os_free(user);
 #else
             if (opts & CHECK_SIZE) {
                 if (opts & CHECK_FOLLOW) {
@@ -821,7 +820,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #endif
             switch (errno) {
             case ENOENT:
-                mwarn("Cannot open '%s': it was removed during scan.", dir_name);
+                mdebug2("Cannot open '%s': it was removed during scan.", dir_name);
                 break;
             default:
                 mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
@@ -834,7 +833,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #else
         switch (errno) {
         case ENOENT:
-            mwarn("Cannot open '%s': it was removed during scan.", dir_name);
+            mdebug2("Cannot open '%s': it was removed during scan.", dir_name);
             break;
         default:
             mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));

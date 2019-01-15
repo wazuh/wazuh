@@ -66,7 +66,7 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             if (!strlen(node[i]->content)) {
                 merror("Node type is empty in configuration");
                 return OS_INVALID;
-            } else if (strcmp(node[i]->content, "worker") && strcmp(node[i]->content, "client") && strcmp(node[i]->content, "master")) {
+            } else if (strcmp(node[i]->content, "worker") && strcmp(node[i]->content, "client") && strcmp(node[i]->content, "master") )  {
                 merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
                 return OS_INVALID;
             }

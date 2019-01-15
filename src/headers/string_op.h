@@ -82,4 +82,7 @@ char * wstr_delete_repeated_groups(const char * string);
  */
 int wm_strcat(char **str1, const char *str2, char sep);
 
+// Check if str ends in str_end
+int wstr_end(char *str, const char *str_end);
+
 #endif

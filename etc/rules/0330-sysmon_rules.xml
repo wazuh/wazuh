@@ -233,6 +233,14 @@
 
 </group>
 
+<!--
+    -  Process anomalies based on Sysmon Event 1
+    -  Author: Josh Brower, Josh@DefensiveDepth.com.
+    -  Licensed under the MIT License: http://opensource.org/licenses/MIT
+    -  Windows Process Attributes documentation here: http://defensivedepth.com/windows-processes
+    -  Updated by Wazuh, Inc. <support@wazuh.com>.
+-->
+
 <group name="sysmon,sysmon_process-anomalies,">
 
     <rule id="184666" level="12">
