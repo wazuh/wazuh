@@ -1,3 +1,4 @@
+# Copyright (C) 2015-2019, Wazuh Inc.
 # TODO: mysql and postgresql?
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
