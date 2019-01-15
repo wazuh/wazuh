@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -287,7 +288,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
-                            mdebug2("Follow symbolic links disabled. Exiting");
+                            mdebug2("Follow symbolic links disabled.");
                             free(alert_msg);
                             free(wd_sum);
                             return 0;
@@ -299,7 +300,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     }
                 } else {
                     if (opts & CHECK_FOLLOW) {
-                        mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link.", strerror(errno));
+                        mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
                     }
                     return -1;
                 }
@@ -500,7 +501,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             case 1:
                 free(hash_file_name);
                 mdebug2("Inode already added to db: %s (%s) ", file_name, str_inode);
-                break;
+                syscheck_node *data;
+                if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
+                    os_free(data->checksum);
+                    os_free(data);
+                }
+                os_free(alert_msg);
+                os_free(alertdump);
+                return 0;
             }
 #endif
             /* Send the new checksum to the analysis server */
@@ -727,34 +735,20 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         return 0;
     }
 
+    // 3.8 - We can't follow symlinks in Windows
 #ifndef WIN32
-    // readpath() function doesn't work on Windows
-    if (is_link) {
-        char *dir_name_full;
-        char *real_path;
-        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-        os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
-
-        if (realpath(dir_name, real_path) == NULL) {
-            mdebug2("Error in realpath() function");
-            return -1;
-        }
-        strcat(real_path, "/");
-
-        unsigned i = 0;
-        while (syscheck.dir[i] != NULL) {
-          strncpy(dir_name_full, syscheck.dir[i], PATH_MAX);
-          strcat(dir_name_full, "/");
-          if (strstr(real_path, dir_name_full) != NULL) {
-              mdebug2("Trying to read symbolic link '%s' to directory '%s' recursively. Exiting.", dir_name, real_path);
-              free(real_path);
-              free(dir_name_full);
-              return 0;
-          }
-          i++;
-        }
-        free(real_path);
-        free(dir_name_full);
+    switch(read_links(dir_name, dir_position, max_depth, is_link)) {
+    case 2:
+        mdebug2("Discarding symbolic link '%s' is already added in the configuration.",
+                dir_name);
+        return 0;
+    case 1:
+        mdebug2("Directory added to FIM configuration by link '%s'", dir_name);
+        return 0;
+    case 0:
+        break;
+    default:
+        return -1;
     }
 #endif
 
@@ -1145,3 +1139,70 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
 
     return (0);
 }
+
+#ifndef WIN32
+// Only Linux follow symlinks
+int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link) {
+    char *dir_name_full;
+    char *real_path;
+    int opts;
+
+    os_calloc(PATH_MAX + 2, sizeof(char), real_path);
+    os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
+
+    if (is_link) {
+        if (realpath(dir_name, real_path) == NULL) {
+            mwarn("Error checking realpath() of link '%s'", dir_name);
+            free(real_path);
+            free(dir_name_full);
+            return -1;
+        }
+        strcat(real_path, "/");
+        opts = syscheck.opts[dir_position];
+
+        unsigned int i = 0;
+        while (syscheck.dir[i] != NULL) {
+            strncpy(dir_name_full, syscheck.dir[i], PATH_MAX);
+            strcat(dir_name_full, "/");
+                if (strstr(real_path, dir_name_full) != NULL) {
+                    free(real_path);
+                    free(dir_name_full);
+                    return 2;
+            }
+            i++;
+        }
+        real_path[strlen(real_path) - 1] = '\0';
+        if(syscheck.filerestrict[dir_position]) {
+            dump_syscheck_entry(&syscheck,
+                                real_path,
+                                opts,
+                                0,
+                                syscheck.filerestrict[dir_position]->raw,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
+        } else {
+            dump_syscheck_entry(&syscheck,
+                                real_path,
+                                opts,
+                                0,
+                                NULL,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
+        }
+        /* Check for real time flag */
+        if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
+#ifdef INOTIFY_ENABLED
+            realtime_adddir(real_path, opts & CHECK_WHODATA);
+#else
+            mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
+#endif
+        }
+
+        free(real_path);
+        free(dir_name_full);
+        return 1;
+    }
+
+    return 0;
+}
+#endif

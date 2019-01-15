@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# Copyright (C) 2015-2019, Wazuh Inc.
+
 set -e
 set -u
 

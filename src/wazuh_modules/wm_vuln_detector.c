@@ -1,6 +1,6 @@
 /*
  * Wazuh Module to analyze system vulnerabilities
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * January 4, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -1101,8 +1101,8 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
     char *tmp_file;
     static const char *exclude_tags[] = {
         // Debian
-        "oval:org.debian.oval:tst:1",
-        "oval:org.debian.oval:tst:2"
+        "oval:org.debian.oval:tst:1\"",
+        "oval:org.debian.oval:tst:2\""
     };
 
     os_strdup(CVE_FIT_TEMP_FILE, tmp_file);
@@ -1164,8 +1164,8 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                     continue;
                 break;
                 case V_DEFINITIONS:
-                    if (wstr_end(buffer, exclude_tags[0]) ||
-                        wstr_end(buffer, exclude_tags[1])) {
+                    if (strstr(buffer, exclude_tags[0]) ||
+                        strstr(buffer, exclude_tags[1])) {
                         continue;
                     } else if (found = strstr(buffer, "</definitions>"), found) {
                         state = V_STATES;

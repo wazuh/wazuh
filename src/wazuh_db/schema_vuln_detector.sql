@@ -1,6 +1,6 @@
 /*
  * SQL Schema for vulnerability detector module
- * Copyright 2018 Wazuh, Inc. <info@wazuh.com>
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * January 28, 2018.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.

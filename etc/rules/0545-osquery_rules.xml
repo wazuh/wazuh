@@ -1,3 +1,10 @@
+<!--
+  -  Osquery ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
 <group name="osquery,">
 
   <rule id="24000" level="3">
@@ -100,14 +107,14 @@
     <field name="osquery.name">startup_items</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): Program $(osquery.columns.name) is launched at system startup</description>
     <group>incident_response,</group>
-  </rule> 
+  </rule>
 
     <rule id="24033" level="4">
     <if_sid>24030</if_sid>
     <field name="osquery.name">crontab</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): Command launched $(osquery.columns.command) at $(osquery.columns.hour):$(osquery.columns.minute) $(osquery.columns.day_of_month) $(osquery.columns.month) </description>
     <group>incident_response,</group>
-  </rule> 
+  </rule>
 
   <rule id="24034" level="4">
     <if_sid>24030</if_sid>
@@ -199,7 +206,7 @@
     <field name="osquery.name">last</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): User $(osquery.columns.username) host $(osquery.columns.host)</description>
     <group>incident_response,</group>
-  </rule> 
+  </rule>
 
   <rule id="24047" level="4">
     <if_sid>24030</if_sid>
@@ -207,7 +214,7 @@
     <description>osquery: $(osquery.pack) $(osquery.subquery): OS X Application $(osquery.columns.name) version $(osquery.columns.bundle_version) is installed</description>
     <group>incident_response,</group>
   </rule>
-  
+
   <rule id="24048" level="4">
     <if_sid>24030</if_sid>
     <field name="osquery.name">open_sockets</field>

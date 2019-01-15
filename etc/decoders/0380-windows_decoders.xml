@@ -1,8 +1,9 @@
 <!--
   -  Windows decoders
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -520,7 +521,7 @@ Event ID 1117:
 <!-- Windows Defender END -->
 
 
-<!-- Terminal Services 
+<!-- Terminal Services
 
   - 2018 Aug 20 10:09:53 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(200): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", met connection authorization policy requirements and was therefore authorized to access the RD Gateway server. The authentication method used was: "NTLM" and connection protocol used: "HTTP".
 
@@ -529,7 +530,7 @@ Event ID 1117:
   - 2018 Aug 20 07:32:33 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(202): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The administrator disconnected the user "someuser\somedomain", on client computer "1.2.3.4", from the following network resource: "resourceName". Before the user was disconnected, the client transferred 149218 bytes and received 196031 bytes using HTTP connection protocol. The client session duration was 85 seconds.
 
   - 2018 Aug 20 10:09:53 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(300): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", met resource authorization policy requirements and was therefore authorized to connect to resource "resourceName".
-  
+
   - 2018 Aug 20 07:55:34 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: ERROR(301): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", did not meet resource authorization policy requirements and was therefore not authorized to resource "resourceName". The following error occurred: "23002".
 
   - 2018 Aug 20 10:09:53 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(302): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", connected to resource "resourceName". Connection protocol used: "HTTP".
@@ -537,7 +538,7 @@ Event ID 1117:
   - 2018 Aug 20 10:10:36 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: INFORMATION(303): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "1.2.3.4", disconnected from the following network resource: "resourceName". Before the user disconnected, the client transferred 1285 bytes and received 3122 bytes. The client session duration was 43 seconds. Connection protocol used: "HTTP".
 
   - 2018 Aug 21 09:49:54 WinEvtLog: Microsoft-Windows-TerminalServices-Gateway/Operational: WARNING(304): Microsoft-Windows-TerminalServices-Gateway: NETWORK SERVICE: NT AUTHORITY: some-host-name: The user "someuser\somedomain", on client computer "195.160.232.242", met connection authorization policy and resource authorization policy requirements, but could not connect to resource "resourceName". Connection protocol used: "HTTP". The following error occurred: "23005".
-  
+
 -->
 
 

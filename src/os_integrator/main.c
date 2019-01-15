@@ -1,4 +1,5 @@
-/* Copyright (C) 2014 Daniel B. Cid
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2014 Daniel B. Cid
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it

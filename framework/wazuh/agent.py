@@ -1,5 +1,6 @@
 
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -618,9 +619,9 @@ class Agent:
         msg = ""
         if name and ip:
             if id and key:
-                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "force": force } }
+                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": force}}
             else:
-                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": id, "key": key, "force": force } }
+                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
 
         authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)

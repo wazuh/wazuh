@@ -1,10 +1,11 @@
 <!--
   -  Identity Guard decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
-<decoder name="identity_guard"> 
+<decoder name="identity_guard">
      <prematch> [IG Audit Writer] </prematch>
 </decoder>
 
