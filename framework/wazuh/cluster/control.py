@@ -25,7 +25,8 @@ async def get_node(filter_node=None):
 
 
 async def get_health(filter_node=None):
-    return json.loads(await local_client.execute(command=b'get_health', data=json.dumps(filter_node).encode()))
+    return json.loads(await local_client.execute(command=b'get_health', data=json.dumps(filter_node).encode(),
+                                                 wait_for_complete=False))
 
 
 async def get_agents(filter_node=None, filter_status=None):
