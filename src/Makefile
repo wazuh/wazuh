@@ -779,8 +779,12 @@ space =
 space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+CPYTHON := cpython
+ifneq (${PREFIX},/var/ossec)
+CPYTHON := src_cpython
+endif
 
-EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib audit-userspace
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
