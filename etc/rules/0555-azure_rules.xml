@@ -1,8 +1,9 @@
 <!--
-  Microsoft Azure ruleset
-  Created by Wazuh, Inc. <support@wazuh.com>.
-  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
-ID: 87800--87899
+  -  Microsoft Azure ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+ID: 87800-87899
 -->
 
 <!--

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#
+
 # Import AWS S3
 #
-# Author: Wazuh, Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>

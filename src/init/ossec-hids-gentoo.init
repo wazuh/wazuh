@@ -1,5 +1,6 @@
 #!/sbin/runscript
 # Gentoo init script
+# Copyright (C) 2015-2019, Wazuh Inc.
 # by gentuxx <gentuxx@gmail.com>
 
 opts="${opts} status configtest"
