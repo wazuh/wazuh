@@ -130,6 +130,8 @@ int fim_check_restrict(const char *file_name, OSMatch *restriction);
 #ifndef WIN32
 // Com request thread dispatcher
 void * syscom_main(void * arg);
+// Checking links to follow
+int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link);
 #endif
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
