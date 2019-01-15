@@ -14,6 +14,7 @@ EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
+EXTERNAL_CPYTHON=external/cpython/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -1361,6 +1362,28 @@ wazuh-framework: ${shared_o} ${wdblib_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
 endif
 
+### wazuh-python ###
+
+WPYTHON_DIR := ${PREFIX}/python
+
+wpython: build_python install_python install_framework
+
+build_python:
+ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
+	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="../openssl" LDFLAGS="-L../../ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I../openssl" --enable-optimizations && ${MAKE}
+endif
+
+python_dependencies := azure-storage-blob boto3 cryptography docker pytz requests uvloop 
+
+install_python:
+	cd ${EXTERNAL_CPYTHON} && ${MAKE} install
+	ln -fs ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
+	${WPYTHON_DIR}/bin/pip3 install ${python_dependencies}
+
+
+install_framework: 
+	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+
 
 ####################
 #### test ##########
@@ -1518,6 +1541,11 @@ ifneq ($(wildcard external/*/*),)
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 	-cd ${EXTERNAL_AUDIT} && make distclean
+	-cd ${EXTERNAL_LIBFFI} && make clean
+
+ifneq (${PREFIX},/var/ossec)
+	-cd ${EXTERNAL_CPYTHON} && make clean
+endif
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
