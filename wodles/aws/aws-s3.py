@@ -1093,7 +1093,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 log_key 'text' NOT NULL,
                                 processed_date 'text' NOT NULL,
                                 created_date 'integer' NOT NULL,
-                                PRIMARY KEY (aws_account_id, aws_region, flow_log_id, log_key));"""
+                                PRIMARY KEY (bucket_path, aws_account_id, aws_region, flow_log_id, log_key));"""
 
         self.sql_find_last_key_processed_of_day = """
                                                 SELECT
