@@ -738,12 +738,17 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     // 3.8 - We can't follow symlinks in Windows
 #ifndef WIN32
     switch(read_links(dir_name, dir_position, max_depth, is_link)) {
-    case -1:
-        mdebug2("Discarding to read the symbolic link '%s' in the directory recursively", dir_name);
-        break;
+    case 2:
+        mdebug2("Discarding symbolic link '%s' is already added in the configuration.",
+                dir_name);
+        return 0;
     case 1:
         mdebug2("Directory added to FIM configuration by link '%s'", dir_name);
+        return 0;
+    case 0:
         break;
+    default:
+        return -1;
     }
 #endif
 
@@ -1146,28 +1151,41 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 
     if (is_link) {
         if (realpath(dir_name, real_path) == NULL) {
-            mdebug2("Error in realpath() function");
+            mwarn("Error checking realpath() of link '%s'", dir_name);
             free(real_path);
             free(dir_name_full);
-            return -2;
+            return -1;
         }
         strcat(real_path, "/");
 
-        unsigned i = 0;
+        unsigned int i = 0;
         while (syscheck.dir[i] != NULL) {
             strncpy(dir_name_full, syscheck.dir[i], PATH_MAX);
             strcat(dir_name_full, "/");
                 if (strstr(real_path, dir_name_full) != NULL) {
-                free(real_path);
-                free(dir_name_full);
-                return -1;
+                    free(real_path);
+                    free(dir_name_full);
+                    return 2;
             }
             i++;
         }
+        real_path[strlen(real_path) - 1] = '\0';
         if(syscheck.filerestrict[dir_position]) {
-            dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0, syscheck.filerestrict[dir_position]->raw, max_depth, syscheck.tag[dir_position], -1);
+            dump_syscheck_entry(&syscheck,
+                                real_path,
+                                syscheck.opts[dir_position],
+                                0,
+                                syscheck.filerestrict[dir_position]->raw,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
         } else {
-            dump_syscheck_entry(&syscheck, real_path, syscheck.opts[dir_position], 0, NULL, max_depth, syscheck.tag[dir_position], -1);
+            dump_syscheck_entry(&syscheck,
+                                real_path,
+                                syscheck.opts[dir_position],
+                                0,
+                                NULL,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
         }
 
         free(real_path);
@@ -1177,5 +1195,4 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 
     return 0;
 }
-
 #endif
