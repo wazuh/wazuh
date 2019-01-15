@@ -1656,19 +1656,18 @@ class AWSService(WazuhIntegration):
         self.db_name = 'aws_services'
         # table name
         self.db_table_name = 'aws_services'
-        # get sts client (necessary for getting account ID)
-        self.sts_client = self.get_sts_client(access_key, secret_key)
-        # get account ID
-        self.account_id = self.sts_client.get_caller_identity().get('Account')
 
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=aws_profile, iam_role_arn=iam_role_arn,
             service_name=service_name, region=region)
 
+        # get sts client (necessary for getting account ID)
+        self.sts_client = self.get_sts_client(access_key, secret_key)
+        # get account ID
+        self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.only_logs_after = only_logs_after
 
         # SQL queries for services
-        # SQL queries
         self.sql_create_table = """
                             CREATE TABLE
                                 {table_name} (
@@ -1721,22 +1720,6 @@ class AWSService(WazuhIntegration):
                                 ORDER BY
                                 scan_date DESC
                                 LIMIT {retain_db_records})"""
-
-    def get_sts_client(self, access_key, secret_key):
-        conn_args = {}
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-
-        boto_session = boto3.Session(**conn_args)
-
-        try:
-            sts_client = boto_session.client(service_name='sts')
-        except Exception as e:
-            print("Error getting STS client: {}".format(e))
-            sys.exit(3)
-
-        return sts_client
 
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
