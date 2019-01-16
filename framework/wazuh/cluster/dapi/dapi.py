@@ -56,7 +56,7 @@ class DistributedAPI:
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or not cluster.check_cluster_status() or request_type == 'local_any' or \
+            if not is_dapi_enabled or cluster.check_cluster_status() or request_type == 'local_any' or \
                     (request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
