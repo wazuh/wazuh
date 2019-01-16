@@ -57,7 +57,7 @@
   <rule id="18107" level="3">
     <if_sid>18104</if_sid>
     <id>^528$|^540$|^673$|^4624$|^4769$</id>
-    <description>Windows Logon Success.</description>
+    <description>Windows Logon Success for user $(dstuser).</description>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
@@ -149,7 +149,7 @@
     <if_sid>18107</if_sid>
     <options>alert_by_email</options>
     <if_fts />
-    <description>Windows: First time this user logged in this system.</description>
+    <description>Windows: First time user $(dstuser) logged in this system.</description>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
@@ -344,7 +344,7 @@
   <rule id="18149" level="3">
     <if_sid>18104</if_sid>
     <id>^538$|^551$|^4634$|^4647$</id>
-    <description>Windows User Logoff.</description>
+    <description>Windows User $(dstuser) Logoff.</description>
     <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
   </rule>
 
@@ -986,5 +986,389 @@
       <group>gdpr_IV_32.2,</group>
   </rule>
 
+  <rule id="25050" level="3">
+    <if_sid>18101</if_sid>
+    <extra_data>SNARE</extra_data>
+    <description>SNARE informational event</description>
+  </rule>
+
+  <rule id="25051" level="3">
+    <if_sid>25050</if_sid>
+    <id>108</id>
+    <match>The service was stopped</match>
+    <description>SNARE: The service was stopped</description>
+  </rule>
+
+  <rule id="25052" level="3">
+    <if_sid>25050</if_sid>
+    <id>105</id>
+    <match>The service was started</match>
+    <description>SNARE: The service was started</description>
+  </rule>
+
+  <rule id="25053" level="3">
+    <if_sid>18101</if_sid>
+    <extra_data>Service Control Manager</extra_data>
+    <description>Service Control Manager event</description>
+  </rule>
+
+  <rule id="25054" level="3">
+    <if_sid>25053</if_sid>
+    <id>^7036$</id>
+    <match>service entered the stopped state</match>
+    <description>The XENIAL Adapter service entered the stopped state</description>
+  </rule>
+
+  <rule id="25055" level="3">
+    <if_sid>25053</if_sid>
+    <id>^7001$</id>
+    <match>The Remote Access Connection Manager service depends on the Telephony service which failed to start</match>
+    <description>The Remote Access Connection Manager service depends on the Telephony service which failed to start because it is disabled or because it has no enabled devices associated with it.</description>
+  </rule>
+
+  <rule id="25056" level="3">
+    <if_sid>25053</if_sid>
+    <id>^7035$</id>
+    <match>service was successfully sent a stop control</match>
+    <description>The XENIAL Adapter-IRIS service was successfully sent a stop control</description>
+  </rule>
+
+  <rule id="25057" level="3">
+    <if_sid>25053</if_sid>
+    <id>^7036$</id>
+    <match>service entered the stopped state</match>
+    <description>The XENIAL Adapter-IRIS service entered the stopped state.</description>
+  </rule>
+
+  <rule id="25058" level="3">
+    <if_sid>18102</if_sid>
+    <id>^16$|^17$|^20$</id>
+    <extra_data>XENIALAdapter</extra_data>
+    <description>XENIALAdapter: Warning event</description>
+  </rule>
+
+  <rule id="25059" level="3">
+    <if_sid>18101</if_sid>
+    <id>^1$</id>
+    <extra_data>VBRuntime</extra_data>
+    <match>The VB Application identified by the event source logged this Application RunVBScript</match>
+    <description>The VB Application identified by the event source logged an Application RunVBScrip</description>
+  </rule>
+
+  <rule id="25060" level="3">
+    <if_sid>18101</if_sid>
+    <id>^26$</id>
+    <extra_data>Application Popup</extra_data>
+    <match>Error : The application failed to initialize properly</match>
+    <description>Application Error: The application failed to initialize properly</description>
+  </rule>
+
+  <rule id="25061" level="3">
+    <if_sid>18101</if_sid>
+    <id>^1$</id>
+    <extra_data>McAfee Service Controller</extra_data>
+    <match>The mfevtp MMS Service entered the running state</match>
+    <description>The mfevtp MMS Service entered the running state</description>
+  </rule>
+
+  <rule id="25062" level="3">
+    <if_sid>18101</if_sid>
+    <extra_data>WSH</extra_data>
+    <match>Purge.vbs</match>
+    <description>Informational Purge event</description>
+  </rule>
+
+  <rule id="25063" level="3">
+    <if_sid>18102</if_sid>
+    <extra_data>WSH</extra_data>
+    <match>Purge.vbs</match>
+    <description>Purge warning event</description>
+  </rule>
+
+  <rule id="25064" level="3">
+    <if_sid>18103</if_sid>
+    <extra_data>WSH</extra_data>
+    <match>Purge.vbs</match>
+    <description>Purge error event</description>
+  </rule>
+
+  <rule id="25065" level="3">
+    <if_sid>18104</if_sid>
+    <extra_data>WSH</extra_data>
+    <match>Purge.vbs</match>
+    <description>Purge succesful event</description>
+  </rule>
+ 
+  <rule id="25066" level="3">
+    <if_sid>25062</if_sid>
+    <id>^4$</id>
+    <extra_data>WSH</extra_data>
+    <match>Launching Post-script</match>
+    <description>Purge: Launching Post-script</description>
+  </rule>
+
+  <rule id="25067" level="3">
+    <if_sid>25062</if_sid>
+    <id>^4$</id>
+    <extra_data>WSH</extra_data>
+    <match>Executing PostPurge script</match>
+    <description>Purge: Executing PostPurge script</description>
+  </rule>
+
+  <rule id="25068" level="3">
+    <if_sid>25065</if_sid>
+    <id>^0$</id>
+    <extra_data>WSH</extra_data>
+    <match>PostPurge script finished executing</match>
+    <description>Purge: Finished executing PostPurge script</description>
+  </rule>
+
+  <rule id="25069" level="3">
+    <if_sid>25065</if_sid>
+    <id>^0$</id>
+    <extra_data>WSH</extra_data>
+    <match>Purge script finished executing</match>
+    <description>Purge: Finished executing Purge script</description>
+  </rule>
+
+  <rule id="25070" level="3">
+    <if_sid>25062</if_sid>
+    <id>^4$</id>
+    <extra_data>WSH</extra_data>
+    <match>Executing Purge script</match>
+    <description>Purge: Executing Purge script</description>
+  </rule>
+
+  <rule id="25071" level="3">
+    <if_sid>25063</if_sid>
+    <id>^2$</id>
+    <extra_data>WSH</extra_data>
+    <match>Unable to determine connect string for POSPend data</match>
+    <description>Purge: GetDBStrings(): Unable to determine connect string for POSPend data.  Using default.</description>
+  </rule>
+
+  <rule id="25072" level="3">
+    <if_sid>25064</if_sid>
+    <id>^1$</id>
+    <extra_data>WSH</extra_data>
+    <match>Error in purging Provider</match>
+    <description>Purge: Error in purging provider</description>
+  </rule>
+
+  <rule id="25073" level="3">
+    <if_sid>18101</if_sid>
+    <id>^4$</id>
+    <extra_data>WSH</extra_data>
+    <match>Executing CCA Transactions Backup script</match>
+    <description>CCATransactionBackup: Started executing CCA transactions backup script</description>
+  </rule>
+
+  <rule id="25074" level="3">
+    <if_sid>18104</if_sid>
+    <id>^0$</id>
+    <extra_data>WSH</extra_data>
+    <match>CCA Transactions Backup script</match>
+    <description>CCATransactionBackup: Finished executing CCA transactions backup script</description>
+  </rule>
+
+  <rule id="25075" level="3">
+    <if_sid>18104</if_sid>
+    <id>^0$</id>
+    <match>Beginning robocopy command</match>
+    <description>CCATransactionBackup: Beginning robocopy command</description>
+  </rule>
+
+  <rule id="25076" level="3">
+    <if_sid>18101</if_sid>
+    <id>^4$</id>
+    <extra_data>WSH</extra_data>
+    <match>Executing EmpClock_Poll script</match>
+    <description>empclock_poll: Poll script started executing</description>
+  </rule>
+
+  <rule id="25077" level="3">
+    <if_sid>18104</if_sid>
+    <id>^0$</id>
+    <extra_data>WSH</extra_data>
+    <match>Poll script finished executing</match>
+    <description>empclock_poll: Poll script finished executing</description>
+  </rule>
+
+  <rule id="25078" level="3">
+    <if_sid>18103</if_sid>
+    <id>^1$</id>
+    <extra_data>WSH</extra_data>
+    <match>Unable to retrieve POSLive connect string</match>
+    <description>empclock_poll: ERROR: Unable to retrieve POSLive connect string from Adoopt.ini.  Using default IRIS connect string.</description>
+  </rule>
+
+  <rule id="25079" level="3">
+    <if_sid>18104</if_sid>
+    <id>^593$</id>
+    <match>A process has exited</match>
+    <description>Process exited succesfully</description>
+  </rule>
+
+  <rule id="25080" level="3">
+    <if_sid>18104</if_sid>
+    <id>^592$</id>
+    <match>A new process has been created</match>
+    <description>Successful process creation</description>
+  </rule>
+
+  <rule id="25081" level="3">
+    <if_sid>18101</if_sid>
+    <id>^8309$|^8957$|^17137$|^18264$</id>
+    <match>MSSQL</match>
+    <description>Informational MSSQL event</description>
+  </rule>
+
+  <rule id="25082" level="3">
+    <if_sid>18101</if_sid>
+    <extra_data>WSH</extra_data>
+    <match>System Maintenance</match>
+    <description>System maintenance informational event</description>
+  </rule>
+
+  <rule id="25083" level="3">
+    <if_sid>25082</if_sid>
+    <id>^4$</id>
+    <match>Executing System Maintenance script</match>
+    <description>systemmaint: Executing System Maintenance script</description>
+  </rule>
+
+  <rule id="25084" level="3">
+    <if_sid>25082</if_sid>
+    <id>^4$</id>
+    <match>Launching Pre-SystemMaint script</match>
+    <description>systemmaint: Launching Pre-System Maintenance script</description>
+  </rule>
+
+  <rule id="25085" level="3">
+    <if_sid>25082</if_sid>
+    <id>^4$</id>
+    <match>Launching SystemMaint_Latch</match>
+    <description>systemmaint: Launching SystemMaint_Latch</description>
+  </rule>
+
+  <rule id="25086" level="3">
+    <if_sid>25082</if_sid>
+    <id>^4$</id>
+    <match>Launching POS Installer</match>
+    <description>systemmaint: Launching POS Installer</description>
+  </rule>
+
+  <rule id="25087" level="3">
+    <if_sid>25082</if_sid>
+    <id>^4$</id>
+    <match>Reboot Status</match>
+    <description>systemmaint: Reboot status: false</description>
+  </rule>
+
+  <rule id="25088" level="3">
+    <if_sid>18104</if_sid>
+    <id>^0$</id>
+    <extra_data>WSH</extra_data>
+    <match>Finished executing System Maintenance script</match>
+    <description>systemmaint: Finished executing System Maintenance script</description>
+  </rule>
+
+  <rule id="25089" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4688$</id>
+    <match>Process creation</match>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Successful process creation</description>
+  </rule>
+
+  <rule id="25090" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4689$</id>
+    <match>Process termination</match>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Successful process termination</description>
+  </rule>
+
+  <rule id="25091" level="3">
+    <if_sid>18103</if_sid>
+    <id>^10109$</id>
+    <match>Application</match>
+    <extra_data>LogRhythm Agent</extra_data>
+    <description>Acceptance rejected error received for identifier $(system_name)</description>
+  </rule>
+
+  <rule id="25092" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4776$</id>
+    <match>Credential Validation</match>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Credential validation success</description>
+  </rule>
+
+  <rule id="25093" level="3">
+    <if_sid>18101</if_sid>
+    <id>^0$</id>
+    <extra_data>FileUpdateWatcher:RunExecutable</extra_data>
+    <description>Command execution started</description>
+  </rule>
+
+  <rule id="25094" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4802$</id>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Screen saver started</description>
+  </rule>
+
+  <rule id="25095" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4648$</id>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Attempted logon with explicit credentials</description>
+  </rule>
+
+  <rule id="25096" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4803$</id>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Dismissed screen saver</description>
+  </rule>
+
+  <rule id="25097" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4800$</id>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Workstation locked</description>
+  </rule>
+
+  <rule id="25098" level="3">
+    <if_sid>18104</if_sid>
+    <id>^4801$</id>
+    <extra_data>Microsoft-Windows-Security-Auditing</extra_data>
+    <description>Workstation unlocked</description>
+  </rule>
+
+  <rule id="25099" level="3">
+    <if_sid>18101</if_sid>
+    <id>^82$</id>
+    <extra_data>McAfee Solidifier</extra_data>
+    <match>was unsolidified which was deleted by program</match>
+    <description>A file was unsolidified</description>
+  </rule>
+
+  <rule id="25100" level="3">
+    <if_sid>18101</if_sid>
+    <id>^76$</id>
+    <extra_data>McAfee Solidifier</extra_data>
+    <match>McAfee Solidifier detected deletion</match>
+    <description>McAfee Solidifier detected deletion of file</description>
+  </rule>
+
+  <rule id="25101" level="3">
+    <if_sid>18101</if_sid>
+    <id>^80$</id>
+    <extra_data>McAfee Solidifier</extra_data>
+    <match>was solidified which was created by program</match>
+    <description>A file was solidified</description>
+  </rule>
 </group>
 

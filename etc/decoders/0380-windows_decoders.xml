@@ -749,3 +749,12 @@ Subject:
   <order>id, extra_data, user, status, system_name</order>
   <fts>name, id, location, user, system_name</fts>
 </decoder>
+
+<decoder name="windows-tacobell">
+  <type>windows</type>
+  <prematch>^\.MSWinEventLog\t\d\t\.+\t\d+\t\w\w\S+ \w\w\w \d\d \d\d</prematch>
+  <regex offset="after_prematch">^:\d\d:\d\d \d\d\d\d\t(\d+)\t(\.+)</regex>
+  <regex>\t(\.+)\t\.+\t(\.+)\t(\.+)\t</regex>
+  <order>id, extra_data, user, status, system_name</order>
+  <fts>name, id, location, user, system_name</fts>
+</decoder>
