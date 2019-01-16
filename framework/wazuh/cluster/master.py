@@ -186,8 +186,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return cmd, json.dumps({'error': 0, 'data': res}).encode()
 
     def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
-        arguments = json.loads(arguments.decode())
-        return b'ok', json.dumps(self.server.get_connected_nodes(**arguments['arguments'])).encode()
+        return b'ok', json.dumps(self.server.get_connected_nodes(**json.loads(arguments.decode()))).encode()
 
     def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.get_health(filter_nodes)).encode()
