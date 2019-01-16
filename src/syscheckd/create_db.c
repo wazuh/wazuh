@@ -1203,6 +1203,8 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         return 1;
     }
 
+    free(real_path);
+    free(dir_name_full);
     return 0;
 }
 #endif
