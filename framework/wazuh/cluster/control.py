@@ -9,8 +9,12 @@ import json
 async def get_nodes(filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filter_type='all'):
     arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                  'select': select, 'filter_type': filter_type}
-    return json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
-                                                 wait_for_complete=False))
+    result = json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
+                                                   wait_for_complete=False))
+    if 'error' in result and result['error'] > 0:
+        raise Exception(result['message'])
+
+    return result
 
 
 async def get_node(filter_node=None):
@@ -47,5 +51,5 @@ async def get_agents(filter_node=None, filter_status=None):
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['data']['items']]
     result['data']['items'] = filled_result
     if result['error'] > 0:
-        raise exception.WazuhException(result['error'], result['message'])
+        raise Exception(result['message'])
     return result
