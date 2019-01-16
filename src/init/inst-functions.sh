@@ -955,6 +955,9 @@ InstallServer(){
     fi
 
     GenerateAuthCert
+
+    ### Install Python
+    ${MAKEBIN} wpython
 }
 
 InstallAgent(){
