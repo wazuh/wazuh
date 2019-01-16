@@ -956,7 +956,7 @@ int run_dbcheck()
                 while(curr_node && curr_node->key);
             }
         }
-
+        last_backup->free_data_function = NULL;
         OSHash_Free(last_backup);
 
         // Check and delete backup local/diff
