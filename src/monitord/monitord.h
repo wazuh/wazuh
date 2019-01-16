@@ -17,6 +17,10 @@
 #include "config/reports-config.h"
 
 #define MAX_DAY_WAIT 600
+#define GET_ID_QUERY "SELECT ID FROM AGENT WHERE NAME = ?;"
+#define GET_ID_QUERY_RETRIES 5
+#define MONITORD_MSG_HEADER "1:" ARGV0 ":"
+#define AG_DISCON_MSG MONITORD_MSG_HEADER OS_AG_DISCON
 
 /* Prototypes */
 void Monitord(void) __attribute__((noreturn));
