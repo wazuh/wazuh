@@ -19,17 +19,16 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, rmtree
+from shutil import copyfile, move
 from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
 from time import time, sleep
 import socket
 import hashlib
 import fcntl
 from json import loads
 from functools import reduce
-from shutil import move
-from os import remove
+import errno
 
 try:
     from urllib2 import urlopen, URLError, HTTPError
@@ -1491,7 +1490,6 @@ class Agent:
 
         return msg
 
-
     @staticmethod
     def create_multi_group(group_id):
         """
@@ -1506,18 +1504,16 @@ class Agent:
 
         # Create group in /var/multigroups
         try:
-            Agent().append_multigroups_metadata(group_id)
-            folder = hashlib.sha256(group_id).hexdigest()[:8]
+            folder = hashlib.sha256(group_id.encode()).hexdigest()[:8]
             multi_group_path = "{0}/{1}".format(common.multi_groups_path, folder)
             mkdir_with_mode(multi_group_path)
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
-        except Exception as e:
-            raise WazuhException(1005, str(e))
-
-        return msg
-
+            return msg
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise WazuhException(1005, str(e))
 
     @staticmethod
     def remove_multi_group(groups_id):
