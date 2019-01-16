@@ -784,6 +784,11 @@ CPYTHON := cpython
 ifneq (${PREFIX},/var/ossec)
 CPYTHON := src_cpython
 endif
+# Download the Python sources if we are building for any other OS.
+ifneq (${uname_S},Linux)
+CPYTHON := src_cpython
+endif
+
 
 EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
@@ -1544,7 +1549,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_LIBFFI} && make clean
 
 ifneq (${PREFIX},/var/ossec)
-	-cd ${EXTERNAL_CPYTHON} && make clean
+	-cd ${EXTERNAL_CPYTHON} && make clean && make dist-clean
 endif
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
