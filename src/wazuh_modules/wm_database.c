@@ -531,6 +531,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     regmatch_t match[2];
     int match_size;
 
+    strncpy(node_name, "unknown", sizeof(node_name) - 1);
+
     if (!(fp = fopen(path, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));
         return -1;
