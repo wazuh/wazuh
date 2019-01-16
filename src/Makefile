@@ -1370,13 +1370,13 @@ wpython: build_python install_python install_framework
 
 build_python:
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="../openssl" LDFLAGS="-L../../ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I../openssl" --enable-optimizations && ${MAKE}
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --enable-optimizations && ${MAKE}
 endif
 
 python_dependencies := azure-storage-blob boto3 cryptography docker pytz requests uvloop 
 
 install_python:
-	cd ${EXTERNAL_CPYTHON} && ${MAKE} install
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
 	ln -fs ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
 	${WPYTHON_DIR}/bin/pip3 install ${python_dependencies}
 
