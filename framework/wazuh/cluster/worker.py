@@ -3,8 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import errno
-import functools
-import operator
 import os
 import shutil
 import time
@@ -210,20 +208,20 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         self.logger.debug2("Error removing file '{}': {}".format(file_to_remove, str(e)))
                         continue
 
-            directories_to_check = (os.path.dirname(f) for f, data in ko_files['extra'].items()
-                                    if cluster_items[data['cluster_item_key']]['remove_subdirs_if_empty'])
-            for directory in directories_to_check:
-                try:
-                    full_path = common.ossec_path + directory
-                    dir_files = set(os.listdir(full_path))
-                    if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
-                        shutil.rmtree(full_path)
-                except Exception as e:
-                    errors['extra'] += 1
-                    self.logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
-                    continue
+        directories_to_check = (os.path.dirname(f) for f, data in ko_files['extra'].items()
+                                if cluster_items[data['cluster_item_key']]['remove_subdirs_if_empty'])
+        for directory in directories_to_check:
+            try:
+                full_path = common.ossec_path + directory
+                dir_files = set(os.listdir(full_path))
+                if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
+                    shutil.rmtree(full_path)
+            except Exception as e:
+                errors['extra'] += 1
+                self.logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
+                continue
 
-            if functools.reduce(operator.add, errors.values()) > 0:
+            if sum(errors.values()) > 0:
                 self.logger.error("Found errors: {} overwriting, {} creating and {} removing".format(errors['shared'],
                                                                                                      errors['missing'],
                                                                                                      errors['extra']))
