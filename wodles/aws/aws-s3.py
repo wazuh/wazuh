@@ -273,13 +273,6 @@ class AWSBucket(WazuhIntegration):
 
         # update trail_progress table queries
 
-        self.sql_rename_migrate_trail_legacy = """
-                                                ALTER TABLE
-                                                    trail_progress
-                                                RENAME TO
-                                                    legacy_trail_progress;
-                                                """
-
         self.sql_select_migrate_trail_progress = """
                                                     SELECT
                                                         aws_account_id,
@@ -288,7 +281,7 @@ class AWSBucket(WazuhIntegration):
                                                         processed_date,
                                                         created_date
                                                     FROM
-                                                        legacy_trail_progress;
+                                                        trail_progress;
                                                 """
 
         # common SQL queries
@@ -445,16 +438,11 @@ class AWSBucket(WazuhIntegration):
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
 
-        # update trail_progress table by adding a new column with bucket path
-        if 'trail_progress' in tables:
-            if 'legacy_trail_progress' in tables:
-                pass
-            else:
-                # if trail_progress is old (5 columns)
-                if self.get_columns_number('trail_progress') == 5:
-                    self.update_trail_progress_table()
-                else:
-                    pass
+        # update old table (trail_progress) by adding a new column with bucket path
+        if 'trail_progress' in tables and self.db_table_name not in tables and \
+            self.db_table_name == 'cloudtrail':
+            self.update_trail_progress_table()
+            tables.add(self.db_table_name)
 
         # DB does exist yet
         if self.db_table_name not in tables:
@@ -474,20 +462,19 @@ class AWSBucket(WazuhIntegration):
         return num_column
 
     def update_trail_progress_table(self):
-        # rename old trail_progress table to legacy_trail_progress
-        self.db_connector.execute(self.sql_rename_migrate_trail_legacy)
-        # create new trail_progress table
-        self.db_connector.execute(self.sql_create_table.format(table_name='trail_progress'))
-        # copy old table in new table adding bucket_path column
+        # create new table for the service
+        self.db_connector.execute(self.sql_create_table.format(table_name=self.db_table_name))
+        # copy values from old table
         for aws_account_id, aws_region, log_key, processed_date, created_date \
             in self.db_connector.execute(self.sql_select_migrate_trail_progress):
-            # inserts old values on the new table
-            self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name,
-                                                            bucket_path=self.bucket_path,
-                                                            aws_account_id=aws_account_id,
-                                                            aws_region=aws_region,
-                                                            log_key=log_key,
-                                                            created_date=created_date))
+            # inserts old values of CloudTrail
+            if 'CloudTrail' in log_key:
+                self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name,
+                                                                bucket_path=self.bucket_path,
+                                                                aws_account_id=aws_account_id,
+                                                                aws_region=aws_region,
+                                                                log_key=log_key,
+                                                                created_date=created_date))
         self.db_connector.commit()
 
     def db_maintenance(self, aws_account_id, aws_region):
@@ -832,7 +819,7 @@ class AWSCloudTrailBucket(AWSLogsBucket):
     """
 
     def __init__(self, **kwargs):
-        self.db_table_name = 'trail_progress'
+        self.db_table_name = 'cloudtrail'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'CloudTrail'
         self.field_to_load = 'Records'
