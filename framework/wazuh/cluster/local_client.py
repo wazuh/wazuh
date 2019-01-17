@@ -24,11 +24,12 @@ class LocalClientHandler(client.AbstractClient):
         self.transport = transport
 
     def process_request(self, command: bytes, data: bytes):
+        self.logger.debug("Command received: {}".format(command))
         if command == b'dapi_res':
-            self.response = data
+            self.response = self.in_str[data].payload
             self.response_available.set()
             return b'ok', b'Response received'
-        elif command == b'dapi_err':
+        elif command == b'dapi_err' or command == b'err':
             self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
             self.response_available.set()
             return b'ok', b'Response received'

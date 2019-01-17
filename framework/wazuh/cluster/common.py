@@ -41,7 +41,7 @@ class InBuffer:
 
     def __init__(self, total=0):
         self.payload = bytearray(total)  # array to store the message's data
-        self.total = 0  # total of bytes to receive
+        self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
         self.counter = 0  # request's counter in the box
@@ -307,13 +307,14 @@ class Handler(asyncio.Protocol):
             if task_id.startswith(b"Error"):
                 return task_id
 
-            for c in range(0, total, self.request_chunk):
+            local_req_chunk = self.request_chunk - len(task_id) - 1
+            for c in range(0, total, local_req_chunk):
                 response = await self.send_request(command=b'str_upd', data=task_id + b' ' +
-                                                                            my_str[c:c + self.request_chunk])
+                                                                            my_str[c:c + local_req_chunk])
                 if response.startswith(b"Error"):
                     return response
 
-            return b"String correctly sent"
+            return task_id
         except Exception as e:
             return str(e).encode()
 
@@ -461,7 +462,7 @@ class Handler(asyncio.Protocol):
         """
         name, str_data = data.split(b' ', 1)
         self.in_str[name].receive_data(str_data)
-        # self.logger.debug("Length: {}/{}".format(self.in_str.received, self.in_str.total))
+        # self.logger.debug("Length: {}/{}".format(self.in_str[name].received, self.in_str[name].total))
         return b"ok", b"Chunk received"
 
     def process_unknown_cmd(self, command: bytes) -> Tuple[bytes, bytes]:

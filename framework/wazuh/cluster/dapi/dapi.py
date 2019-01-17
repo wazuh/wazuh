@@ -310,7 +310,12 @@ class APIRequestQueue:
             name_2 = '' if len(names) == 1 else names[1]
             node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
             result = await DistributedAPI(input_json=json.loads(request), logger=self.logger, node=node).distribute_function()
-            result = await node.send_request(b'dapi_res', "{} {}".format(name_2, result).encode(), b'dapi_err')
+            task_id = await node.send_string("{} {}".format(name_2, result).encode())
+            if task_id.startswith(b'Error'):
+                self.logger.error(task_id)
+                result = await node.send_request(b'dapi_err', task_id, b'dapi_err')
+            else:
+                result = await node.send_request(b'dapi_res', task_id, b'dapi_err')
             if result.startswith(b'Error'):
                 self.logger.error(result)
 
