@@ -12,6 +12,7 @@ about: Test suite for agent registration.
 
 ## Auth system
 
+- [ ] Check the auth daemon is running by default. (Since v3.8.0)
 - [ ] Check registration with `-m`.
 - [ ] Check registration with `-m` and `-A`.
 - [ ] Test force insertion to re-register an agent. (1)

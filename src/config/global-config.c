@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -54,8 +55,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
-            Config->syscheck_ignore_frequency = 10;
-            Config->syscheck_ignore_time = 3600;
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_auto_ignore = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -159,7 +158,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_smtpserver = "smtp_server";
     const char *xml_heloserver = "helo_server";
     const char *xml_mailmaxperhour = "email_maxperhour";
-    const char * xml_queue_size = "queue_size";
+    const char *xml_maillogsource = "email_log_source";
+    const char *xml_queue_size = "queue_size";
 
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
@@ -417,8 +417,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 #ifndef WIN32
 
             const char *ip_address_regex =
-                "^!?\\d{1,3}(\\.\\d{1,3}){3}"
-                "(/\\d{1,2}(\\d(\\.\\d{1,3}){3})?)?$";
+                "^!?[[:digit:]]{1,3}(\\.[[:digit:]]{1,3}){3}"
+                "(/[[:digit:]]{1,2}([[:digit:]](\\.[[:digit:]]{1,3}){3})?)?$";
 
             if (Config && OS_PRegex(node[i]->content, ip_address_regex)) {
                 white_size++;
@@ -541,6 +541,23 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 9999)) {
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_maillogsource) == 0) {
+            if (Mail) {
+                if (OS_StrIsNum(node[i]->content)) {
+                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                    return (OS_INVALID);
+                }
+
+                if(strncmp(node[i]->content,"alerts.log",10) == 0){
+                    Mail->source = MAIL_SOURCE_LOGS;
+                }
+                else if(strncmp(node[i]->content,"alerts.json",11) == 0){
+                    Mail->source = MAIL_SOURCE_JSON;
+                }
+                else{
+                    Mail->source = MAIL_SOURCE_JSON;
                 }
             }
         }

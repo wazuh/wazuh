@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -56,8 +57,10 @@ int GlobalConf(const char *cfgfile)
     Config.memorysize = 8192;
     Config.mailnotify = -1;
     Config.keeplogdate = 0;
-    Config.syscheck_alert_new = 0;
-    Config.syscheck_auto_ignore = 1;
+    Config.syscheck_alert_new = 1;
+    Config.syscheck_auto_ignore = 0;
+    Config.syscheck_ignore_frequency = 10;
+    Config.syscheck_ignore_time = 3600;
     Config.ar = 0;
 
     Config.syscheck_ignore = NULL;

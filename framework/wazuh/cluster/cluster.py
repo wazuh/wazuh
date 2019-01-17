@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -12,7 +13,7 @@ from wazuh.InputValidator import InputValidator
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink, environ
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
@@ -30,6 +31,7 @@ from random import random
 import glob
 import gzip
 from functools import reduce
+from socket import gethostname
 
 # import the C accelerated API of ElementTree
 try:
@@ -54,7 +56,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_localhost_ips():
-    return set(str(check_output(['hostname', '--all-ip-addresses'])).split(" ")[:-1])
+    return set(str(check_output(['hostname', '--all-ip-addresses']).decode()).split(" ")[:-1])
 
 
 def check_cluster_config(config):
@@ -84,9 +86,6 @@ def check_cluster_config(config):
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
-    if config['node_type'] == 'master' and config['nodes'][0] not in get_localhost_ips():
-        raise WazuhException(3004, "Master IP not valid. Valid ones are: {}".format(', '.join(get_localhost_ips())))
-
     if not isinstance(config['port'], int):
         raise WazuhException(3004, "Cluster port must be an integer.")
 
@@ -114,9 +113,17 @@ def get_cluster_items_worker_intervals():
 
 
 def read_config():
-    cluster_default_configuration = {'disabled': 'no', 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                                     'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'],
-                                     'hidden': 'no'}
+    cluster_default_configuration = {
+        'disabled': 'no',
+        'node_type': 'master',
+        'name': 'wazuh',
+        'node_name': 'node01',
+        'key': '',
+        'port': 1516,
+        'bind_addr': '0.0.0.0',
+        'nodes': ['NODE_IP'],
+        'hidden': 'no'
+    }
 
     try:
         config_cluster = get_ossec_conf('cluster')
@@ -135,6 +142,22 @@ def read_config():
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
     config_cluster['port'] = int(config_cluster['port'])
+
+    # if config_cluster['node_name'].upper() == '$HOSTNAME':
+    #     # The HOSTNAME environment variable is not always available in os.environ so use socket.gethostname() instead
+    #     config_cluster['node_name'] = gethostname()
+
+    # if config_cluster['node_name'].upper() == '$NODE_NAME':
+    #     if 'NODE_NAME' in environ:
+    #         config_cluster['node_name'] = environ['NODE_NAME']
+    #     else:
+    #         raise WazuhException(3006, 'Unable to get the $NODE_NAME environment variable')
+
+    # if config_cluster['node_type'].upper() == '$NODE_TYPE':
+    #     if 'NODE_TYPE' in environ:
+    #         config_cluster['node_type'] = environ['NODE_TYPE']
+    #     else:
+    #         raise WazuhException(3006, 'Unable to get the $NODE_TYPE environment variable')
 
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
@@ -475,14 +498,16 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+/\d+) \w+')
-    for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
-        if regex.match(removed_line):
-            agent_id, _, _, _, = removed_line[1:].split(" ")
+    regex = re.compile(r'^(\d+) (\S+) (\S+) (\S+)$')
+    for removed_line in filter(lambda x: x.startswith('-') or x.startswith('+'), unified_diff(client_keys, new_client_keys)):
+        removed_line_match = regex.match(removed_line[1:])
+        if removed_line_match is not None:
+            agent_id, agent_name, agent_ip, agent_key = removed_line_match.group(1, 2, 3, 4)
+            removed = removed_line.startswith('-')
 
             try:
-                Agent(agent_id).remove()
-                logger.info("[Cluster] Agent '{0}': Deleted successfully.".format(agent_id))
+                Agent(agent_id).remove() if removed else Agent.insert_agent(agent_name, agent_id, agent_key, agent_ip)
+                logger.info("[Cluster] Agent '{}' {} successfully.".format(agent_id, 'Deleted' if removed else 'Added'))
             except WazuhException as e:
                 logger.error("[Cluster] Agent '{0}': Error - '{1}'.".format(agent_id, str(e)))
 

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -340,7 +341,6 @@ ret:
     if (!success) {
         if (fp) fclose(fp);
         OS_FreeKeys(keys);
-        free(keys);
         exit(1);
     }
 }
@@ -354,9 +354,9 @@ void OS_FreeKey(keyentry *key) {
     }
     char key_c[64];
 #ifdef WIN32
-    sprintf(key_c,"%lu",(long unsigned)key);
+    sprintf(key_c,"%p",key);
 #else
-    sprintf(key_c,"%llu",(long long unsigned)key);
+    sprintf(key_c,"%p",key);
 #endif
 
     if(OSHash_Get(last_freed_keys,key_c)){

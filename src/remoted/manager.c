@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -1122,7 +1123,7 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none) {
     INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
-    group_data_flush = getDefine_Int("remoted", "group_data_flush", 0, 86400);
+    group_data_flush = getDefine_Int("remoted", "group_data_flush", 0, 2592000);
     should_clean = 0;
 
     if(group_data_flush == 0){
@@ -1200,7 +1201,7 @@ int purge_group(char *group){
             continue;
         }
 
-        new_groups = '\0';
+        new_groups = NULL;
 
         if (snprintf(path, PATH_MAX + 1, GROUPS_DIR "/%s", entry->d_name) > PATH_MAX) {
             merror("At purge_group(): path too long.");

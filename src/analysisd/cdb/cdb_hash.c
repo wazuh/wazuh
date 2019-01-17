@@ -1,4 +1,5 @@
 /* Public domain */
+/* Copyright (C) 2015-2019, Wazuh Inc. */
 /* Adapted from DJB's original cdb-0.75 package */
 
 #include "cdb.h"

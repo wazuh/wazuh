@@ -1,13 +1,14 @@
 <!--
   -  Vpopmail decoders
   -  Author: Ceg Ryan <cegryan ( at ) gmail.com>.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 
-<!-- 
+<!--
   - Examples:
   - vpopmail[32485]: vchkpw-pop3: password fail abc@xxx.com:x.x.x.x
   - vpopmail[32485]: vchkpw-2110 password fail abc@xxx.com:x.x.x.x

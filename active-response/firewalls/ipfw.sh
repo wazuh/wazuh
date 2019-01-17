@@ -4,6 +4,7 @@
 # We use TABLE 00001. If you use this table for anything else,
 # please change it here.
 # Expect: srcip
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Rafael Capovilla - under @ ( at ) underlinux.com.br
 # Author: Daniel B. Cid - dcid @ ( at ) ossec.net
 # Last modified: May 07, 2006

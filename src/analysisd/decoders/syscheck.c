@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -238,7 +239,11 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
         os_free(lf->data);
         goto exit_fail;
     }
-    check_sum = wstr_chr(response, ' ');
+
+    if(check_sum = wstr_chr(response, ' '), !check_sum) {
+        merror("FIM decoder: Bad response: '%s' '%s'.", wazuhdb_query, response);
+        goto exit_fail;
+    }
     *(check_sum++) = '\0';
 
     //extract changes and date_alert fields only available from wazuh_db
@@ -436,7 +441,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
 
         if (sdb->socket < 0) {
             mterror(ARGV0, "FIM decoder: Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
-            return -2;
+            return retval;
         }
     }
 
@@ -457,12 +462,12 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
                 default:
                     mterror(ARGV0, "FIM decoder: Cannot connect to '%s': %s (%d)", WDB_LOCAL_SOCK, strerror(errno), errno);
                 }
-                return (-2);
+                return retval;
             }
 
             if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query)) {
                 mterror(ARGV0, "FIM decoder: in send reattempt (%d) '%s'.", errno, strerror(errno));
-                return (-2);
+                return retval;
             }
         } else {
             mterror(ARGV0, "FIM decoder: in send (%d) '%s'.", errno, strerror(errno));
@@ -475,8 +480,9 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
 
     if (select(sdb->socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
         mterror(ARGV0, "FIM decoder: in select (%d) '%s'.", errno, strerror(errno));
-        return (-2);
+        return retval;
     }
+    retval = -1;
 
     // Receive response from socket
     if (OS_RecvSecureTCP(sdb->socket, response, OS_SIZE_6144 - 1) > 0) {
@@ -486,11 +492,9 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
             retval = 0;
         } else {
             mterror(ARGV0, "FIM decoder: Bad response '%s'.", response);
-            return retval;
         }
     } else {
         mterror(ARGV0, "FIM decoder: no response from wazuh-db.");
-        return retval;
     }
 
     return retval;

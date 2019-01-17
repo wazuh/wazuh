@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 22, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -16,8 +16,8 @@
 #define ARGV0 "wazuh-modulesd"
 #endif // ARGV0
 
-#include <pthread.h>
 #include "shared.h"
+#include <pthread.h>
 #include "config/config.h"
 
 #define WM_DEFAULT_DIR  DEFAULTDIR "/wodles"        // Default modules directory.

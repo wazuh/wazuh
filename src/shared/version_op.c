@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,6 +9,12 @@
 
 #include "shared.h"
 #include "version_op.h"
+
+#ifdef __linux__
+#include <sched.h>
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+#include <sys/sysctl.h>
+#endif
 
 #ifdef WIN32
 
@@ -675,7 +681,7 @@ free_os_info:
     return NULL;
 }
 
-#endif
+#endif /* WIN32 */
 
 void free_osinfo(os_info * osinfo) {
     if (osinfo) {
@@ -693,4 +699,57 @@ void free_osinfo(os_info * osinfo) {
         free(osinfo->machine);
         free(osinfo);
     }
+}
+
+// Get number of processors
+// Returns 1 on error
+
+int get_nproc() {
+#ifdef __linux__
+    #ifdef CPU_COUNT
+    cpu_set_t set;
+    CPU_ZERO(&set);
+
+    if (sched_getaffinity(getpid(), sizeof(set), &set) < 0) {
+        mwarn("sched_getaffinity(): %s (%d).", strerror(errno), errno);
+        return 1;
+    }
+
+    return CPU_COUNT(&set);
+    #else
+    FILE *fp;
+    char string[OS_MAXSTR];
+    int cpu_cores = 0;
+
+    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
+        mwarn("Unable to read cpuinfo file");
+    } else {
+        while (fgets(string, OS_MAXSTR, fp) != NULL){
+            if (!strncmp(string, "processor", 9)){
+                cpu_cores++;
+            }
+        }
+        fclose(fp);
+    }
+    
+    if(!cpu_cores)
+        cpu_cores = 1;
+
+    return cpu_cores;
+    #endif
+#elif defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+    unsigned int cpu_cores;
+    int mib[] = { CTL_HW, HW_NCPU };
+    size_t len = sizeof(cpu_cores);
+
+    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)) {
+        return cpu_cores;
+    } else {
+        mwarn("sysctl failed getting CPU cores: %s (%d)", strerror(errno), errno);
+        return 1;
+    }
+#else
+    mwarn("get_nproc(): Unimplemented.");
+    return 1;
+#endif
 }

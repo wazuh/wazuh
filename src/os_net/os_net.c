@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -571,7 +572,8 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     ssize_t recvval, recvb;
     uint32_t msgsize;
 
-    recvval = recv(sock, (char *) &msgsize, sizeof(msgsize), MSG_WAITALL);
+    /* Get header */
+    recvval = os_recv_waitall(sock, &msgsize, sizeof(msgsize));
 
     switch(recvval) {
         case -1:
@@ -586,10 +588,14 @@ int OS_RecvSecureTCP(int sock, char * ret,uint32_t size) {
     msgsize = wnet_order(msgsize);
 
     if(msgsize > size){
+        /* Error: the payload length is too long */
         return OS_SOCKTERR;
     }
 
-    recvb = recv(sock, ret, msgsize, MSG_WAITALL);
+    /* Get payload */
+    recvb = os_recv_waitall(sock, ret, msgsize);
+
+    /* Terminate string if there is space left */
 
     if (recvb == (int32_t) msgsize && msgsize < size) {
         ret[msgsize] = '\0';
@@ -645,7 +651,7 @@ ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret) {
         recvval = strlen(data);
 
         if ((uint32_t)recvval < msgsize) {
-            recvmsg = recv(sock, *ret + recvval, msgsize - recvval, MSG_WAITALL);
+            recvmsg = os_recv_waitall(sock, *ret + recvval, msgsize - recvval);
 
             switch(recvmsg){
                 case -1:
@@ -796,7 +802,7 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     uint32_t size = 0;
     char buffer[HEADER_SIZE];
 
-    recvval = recv(sock, buffer, HEADER_SIZE, MSG_WAITALL);
+    recvval = os_recv_waitall(sock, buffer, HEADER_SIZE);
 
     switch(recvval){
         case -1:
@@ -821,5 +827,25 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     }
 
     /* Read the payload */
-    return recv(sock, ret, size, MSG_WAITALL);
+    return os_recv_waitall(sock, ret, size);
+}
+
+/* Receive a message from a stream socket, full message (MSG_WAITALL)
+ * Returns size on success.
+ * Returns -1 on socket error.
+ * Returns 0 on socket disconnected or timeout.
+ */
+ssize_t os_recv_waitall(int sock, void * buf, size_t size) {
+    size_t offset;
+    ssize_t recvb;
+
+    for (offset = 0; offset < size; offset += recvb) {
+        recvb = recv(sock, buf + offset, size - offset, 0);
+
+        if (recvb <= 0) {
+            return recvb;
+        }
+    }
+
+    return offset;
 }

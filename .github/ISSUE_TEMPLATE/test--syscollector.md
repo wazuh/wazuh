@@ -35,6 +35,7 @@ Test on:
 
 ## Database
 
+- [ ] Upgrade from a version older than v3.8.0. The databases at *queue/db/* must be updated.
 - [ ] Check that Syscollector info has been stored in the DB of the agent (*queue/db/xxx.db*).
 - [ ] Check that a new scan deletes the previous scan from the DB. [Search by `scan_id`]
 - [ ] Delete the DB of an agent (file *001.db* for example) and send a new scan. Is the scan received? Is the DB restored when the manager is restarted?

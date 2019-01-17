@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * July 5, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -50,7 +50,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
 
     if (wdb_open_global() < 0)
         return -1;
-  
+
     if(keep_date) {
         sql = SQL_INSERT_AGENT_KEEP_DATE;
         date = get_agent_date_added(id);
@@ -86,7 +86,7 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
     } else {
         sqlite3_bind_text(stmt, 5, group, -1, NULL);
     }
-    
+
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
     sqlite3_finalize(stmt);
 
@@ -613,7 +613,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
 
             /* Get the first group */
             multi_group = strtok(group, delim);
-            
+
             while( multi_group != NULL ) {
 
                 /* Update de groups table */
@@ -622,7 +622,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
                 if(id_group <= 0){
                     id_group = wdb_insert_group(multi_group);
                 }
-                
+
                 if (wdb_update_agent_belongs(id_group,id) < 0){
                     return -1;
                 }
@@ -643,7 +643,7 @@ int wdb_update_agent_multi_group(int id, char *group) {
             }
         }
     }
-   
+
     return result;
 }
 
@@ -820,17 +820,15 @@ int wdb_update_groups(const char *dirname) {
             char path[PATH_MAX];
             snprintf(path,PATH_MAX,"%s/%s",dirname,dirent->d_name);
 
-            DIR *is_dir = opendir(path);
-            if (is_dir){
+            if (!IsDir(path)) {
                 if(wdb_find_group(dirent->d_name) <= 0){
                     wdb_insert_group(dirent->d_name);
                 }
             }
-            closedir(is_dir);
         }
     }
     closedir(dir);
-        
+
     return result;
 }
 
@@ -877,7 +875,7 @@ int wdb_remove_group_db(const char *name) {
     }
 
     sqlite3_bind_text(stmt, 1, name, -1, NULL);
-   
+
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
 
@@ -912,7 +910,7 @@ char *get_agent_date_added(int agent_id){
     FILE *fp;
 
     snprintf(path,PATH_MAX,"%s", isChroot() ? TIMESTAMP_FILE : DEFAULTDIR TIMESTAMP_FILE);
-    
+
     fp = fopen(path, "r");
 
     if (!fp) {
@@ -936,7 +934,7 @@ char *get_agent_date_added(int agent_id){
 
             if(data == NULL) {
                 fclose(fp);
-                return NULL;      
+                return NULL;
             }
 
             /* Date is 3 and 4 */

@@ -1,6 +1,7 @@
 <!--
   -  Windows defender rules
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -35,7 +36,7 @@
     </rule>
 
     <rule id="20215" level="0">
-        <if_sid>20030</if_sid>
+        <if_sid>20031,20032,20033,20034</if_sid>
         <description>Windows Defender messages grouped.</description>
         <options>no_full_log</options>
     </rule>

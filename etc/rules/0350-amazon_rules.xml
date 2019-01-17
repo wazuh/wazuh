@@ -1,6 +1,7 @@
 <!--
   -  Amazon rules
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -8,38 +9,35 @@
 ID: 80200 - 80499
 -->
 
-<group name="amazon,">
+<group name="amazon,aws,">
 
-    <!-- Filter 1: Only AWS (CloudTrail, IAM and Inspector) events -->
+
+    <!-- AWS wodle -->
     <rule id="80200" level="0">
         <decoded_as>json</decoded_as>
-        <field name="aws.eventSource">\.+</field>
-        <description>Amazon $(aws.source) alerts.</description>
+        <field name="integration">aws</field>
+        <description>AWS alert.</description>
     </rule>
 
-    <!-- Filter 2: Only eventSource in etc/lists/amazon/aws-sources -->
-    <rule id="80201" level="0">
-        <if_sid>80200</if_sid>
-        <list field="aws.eventSource" lookup="match_key">etc/lists/amazon/aws-sources</list>
-        <description>Amazon: $(aws.eventSource).</description>
-    </rule>
 
-    <!-- Filter 3: Only eventName in etc/lists/amazon/aws-eventnames -->
+    <!-- Cloudtrail -->
+
+    <!-- Filter by eventName: etc/lists/amazon/aws-eventnames -->
     <rule id="80202" level="3">
-        <if_sid>80201</if_sid>
+        <if_sid>80200</if_sid>
+        <field name="aws.source">cloudtrail</field>
         <list field="aws.eventName" lookup="match_key">etc/lists/amazon/aws-eventnames</list>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!-- If there is an error code: increase the level and change description -->
     <rule id="80203" level="4">
         <if_sid>80202</if_sid>
         <field name="aws.errorCode">\.+</field>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
+        <group>aws_cloudtrail,pci_dss_10.6.1,amazon-error,gdpr_IV_35.7.d,</group>
     </rule>
-
 
     <!-- Specific rules -->
 
@@ -47,124 +45,304 @@ ID: 80200 - 80499
     <rule id="80250" level="5">
         <if_sid>80203</if_sid>
         <field name="aws.errorCode">AccessDenied</field>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
-        <group>pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName). Error: $(aws.errorCode).</description>
+        <group>aws_cloudtrail,pci_dss_10.6.1,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
     <!-- Events with no errors -->
     <rule id="80251" level="3">
-        <if_sid>80201</if_sid>
+        <if_sid>80202</if_sid>
         <field name="aws.eventName">DeleteObjects</field>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName).</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).</description>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="80252" level="10" frequency="22" timeframe="600">
         <if_matched_sid>80251</if_matched_sid>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
-        <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - high number of deleted object.</description>
+        <group>aws_cloudtrail,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
     </rule>
 
     <!-- Logins -->
     <rule id="80253" level="3">
         <if_sid>80202</if_sid>
         <field name="aws.eventName">ConsoleLogin</field>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
-        <group>authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login Success.</description>
+        <group>aws_cloudtrail,authentication_success,pci_dss_10.2.5,gdpr_IV_32.2,</group>
     </rule>
 
     <rule id="80254" level="5">
         <if_sid>80253</if_sid>
         <field name="aws.responseElements.ConsoleLogin">Failure</field>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
-        <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - User Login failed.</description>
+        <group>aws_cloudtrail,authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
-    
+
     <rule id="80255" level="10" frequency="6" timeframe="360">
         <if_matched_sid>80254</if_matched_sid>
-        <description>Amazon: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
-        <group>authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+        <description>AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName) - Possible breaking attempt (high number of login attempts).</description>
+        <group>aws_cloudtrail,authentication_failures,pci_dss_11.4,pci_dss_10.2.4,pci_dss_10.2.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     </rule>
 
 
-    <!-- Guard Duty findings -->
+    <!-- Guard Duty -->
     <!-- Documentation: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_finding-types.html -->
     <rule id="80300" level="0">
-        <decoded_as>json</decoded_as>
+        <if_sid>80200</if_sid>
         <field name="aws.source">guardduty</field>
-        <field name="aws.severity">\d+</field>
-        <description>Guard Duty Findings.</description>
+        <description>AWS Guard​Duty alert.</description>
+        <group>aws_guardduty,</group>
     </rule>
 
     <!-- Guard Duty severity levels: https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings.html#guardduty_findings-severity -->
     <rule id="80301" level="3">
         <if_sid>80300</if_sid>
         <field name="aws.severity">0|1|2|3</field>
-        <description>Guard Duty Finding with a low level: $(aws.description)</description>
+        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <group>aws_guardduty,</group>
     </rule>
     <rule id="80302" level="6">
         <if_sid>80300</if_sid>
         <field name="aws.severity">4|5|6</field>
-        <description>Guard Duty Finding with a medium level: $(aws.description)</description>
+        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <group>aws_guardduty,</group>
     </rule>
     <rule id="80303" level="10">
         <if_sid>80300</if_sid>
         <field name="aws.severity">7|8|9</field>
-        <description>Guard Duty Finding with a high level: $(aws.description)</description>
+        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title)</description>
+        <group>aws_guardduty,</group>
     </rule>
+
+    <!-- PORT_PROBE rules -->
+    <rule id="80305" level="3">
+        <if_sid>80301</if_sid>
+        <field name="aws.service.action.actionType">PORT_PROBE</field>
+        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <group>aws_guardduty,</group>
+    </rule>
+
+    <rule id="80306" level="6">
+        <if_sid>80302</if_sid>
+        <field name="aws.service.action.actionType">PORT_PROBE</field>
+        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <group>aws_guardduty,</group>
+    </rule>
+
+    <rule id="80307" level="10">
+        <if_sid>80303</if_sid>
+        <field name="aws.service.action.actionType">PORT_PROBE</field>
+        <description>AWS Guard​Duty: $(aws.service.action.actionType) - $(aws.title) [IP: $(aws.service.action.portProbeAction.portProbeDetails.remoteIpDetails.ipAddressV4)] [Port: $(aws.service.action.portProbeAction.portProbeDetails.localPortDetails.port)]</description>
+        <group>aws_guardduty,</group>
+    </rule>
+
 
     <!-- Macie Alerts -->
     <!-- Documentation: https://docs.aws.amazon.com/macie/latest/userguide/macie-alerts.html#macie-alert-severity -->
     <rule id="80350" level="0">
-        <decoded_as>json</decoded_as>
+        <if_sid>80200</if_sid>
         <field name="aws.source">macie</field>
-        <field name="aws.severity">\.+</field>
-        <description>Macie Alerts.</description>
+        <description>AWS Macie alert.</description>
+        <group>aws_macie,</group>
     </rule>
 
     <rule id="80351" level="3">
         <if_sid>80350</if_sid>
         <field name="aws.severity">INFO</field>
-        <description>Macie informational alert: $(aws.name) - $(aws.summary.description)</description>
+        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <group>aws_macie,</group>
     </rule>
+
     <rule id="80352" level="4">
         <if_sid>80350</if_sid>
         <field name="aws.severity">LOW</field>
-        <description>Macie low alert: $(aws.name) - $(aws.summary.description)</description>
+        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <group>aws_macie,</group>
     </rule>
+
     <rule id="80353" level="6">
         <if_sid>80350</if_sid>
         <field name="aws.severity">MEDIUM</field>
-        <description>Macie medium alert: $(aws.name) - $(aws.summary.description)</description>
+        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <group>aws_macie,</group>
     </rule>
+
     <rule id="80354" level="8">
         <if_sid>80350</if_sid>
         <field name="aws.severity">HIGH</field>
-        <description>Macie high alert: $(aws.name) - $(aws.summary.description)</description>
+        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <group>aws_macie,</group>
     </rule>
-    <rule id="80355" level="10">
+
+    <rule id="80355" level="12">
         <if_sid>80350</if_sid>
         <field name="aws.severity">CRITICAL</field>
-        <description>Macie critical alert: $(aws.name) - $(aws.summary.description)</description>
+        <description>AWS Macie $(aws.severity): $(aws.name) - $(aws.summary.description)</description>
+        <group>aws_macie,</group>
     </rule>
+
 
     <!-- VPC Flow -->
     <!-- Documentation: https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html -->
     <rule id="80400" level="0">
-        <decoded_as>json</decoded_as>
+        <if_sid>80200</if_sid>
         <field name="aws.source">vpc</field>
-        <description>VPC Flow</description>
+        <description>AWS VPC Flow alert.</description>
+        <group>aws_vpcflow,</group>
     </rule>
 
     <rule id="80401" level="3">
         <if_sid>80400</if_sid>
         <field name="aws.action">ACCEPT</field>
-        <description>VPC Flow accepted connection: Interface: $(aws.interface-id) - Protocol: $(aws.protocol)</description>
+        <description>AWS VPC Flow: [$(aws.action)] - Interface: $(aws.interface_id) - Protocol: $(aws.protocol)</description>
+        <group>aws_vpcflow,</group>
     </rule>
+
     <rule id="80402" level="4">
         <if_sid>80400</if_sid>
         <field name="aws.action">REJECT</field>
-        <description>VPC Flow rejected connection: Interface: $(aws.interface-id) - Protocol: $(aws.protocol)</description>
+        <description>AWS VPC Flow: [$(aws.action)] - Interface: $(aws.interface_id) - Protocol: $(aws.protocol)</description>
+        <group>aws_vpcflow,</group>
     </rule>
+
+
+    <!-- AWS Config -->
+    <!-- Documentation: https://docs.aws.amazon.com/config/latest/developerguide/WhatIsConfig.html -->
+    <rule id="80450" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">config</field>
+        <description>AWS Config alert.</description>
+        <group>aws_config,</group>
+    </rule>
+
+    <!-- ConfigHistory vs ConfigSnapshot -->
+    <rule id="80451" level="0">
+        <if_sid>80450</if_sid>
+        <field name="aws.log_info.log_file">\.+ConfigHistory</field>
+        <description>AWS Config - History</description>
+        <group>aws_config,aws_config_history,</group>
+    </rule>
+
+    <rule id="80452" level="0">
+        <if_sid>80450</if_sid>
+        <field name="aws.log_info.log_file">\.+ConfigSnapshot</field>
+        <description>AWS Config - Snapshot</description>
+        <group>aws_config,aws_config_snapshot,</group>
+    </rule>
+
+    <!-- Config history -->
+    <rule id="80453" level="3">
+        <if_sid>80451</if_sid>
+        <description>AWS Config - History [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config,aws_config_history,</group>
+    </rule>
+
+    <!-- Config Snapshot -->
+    <rule id="80475" level="3">
+        <if_sid>80452</if_sid>
+        <description>AWS Config - Snapshot [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)]: $(aws.resourceId) ($(aws.configurationItemStatus))</description>
+        <group>aws_config,aws_config_snapshot,</group>
+    </rule>
+
+    <rule id="80476" level="6">
+        <if_sid>80475</if_sid>
+        <field name="aws.configuration.complianceType">\.+</field>
+        <description>AWS Config - Snapshot Compliance [$(aws.awsAccountId) $(aws.awsRegion)] [$(aws.resourceType)] [$(aws.configuration.configRuleList.configRuleName)]: $(aws.resourceId) ($(aws.configurationItemStatus)) $(aws.configuration.complianceType)</description>
+        <group>aws_config,aws_config_snapshot,aws_config_snapshot_compliance,</group>
+    </rule>
+
+
+    <!-- AWS Trusted Advisor -->
+    <!-- Documentation: https://docs.aws.amazon.com/awssupport/latest/user/trustedadvisor.html -->
+    <rule id="80480" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">trustedadvisor</field>
+        <description>AWS Trusted Advisor alert.</description>
+        <group>aws_trusted_advisor,</group>
+    </rule>
+
+    <rule id="80481" level="5">
+        <if_sid>80480</if_sid>
+        <field name="aws.status">ERROR</field>
+        <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status)</description>
+        <group>aws_trusted_advisor,</group>
+    </rule>
+
+    <rule id="80482" level="4">
+        <if_sid>80480</if_sid>
+        <field name="aws.status">WARN</field>
+        <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status)</description>
+        <group>aws_trusted_advisor,</group>
+    </rule>
+
+    <rule id="80483" level="3">
+        <if_sid>80480</if_sid>
+        <field name="aws.status">OK</field>
+        <description>AWS Trusted Advisor - [$(aws.uuid)] [$(aws.check-name)]: $(aws.status)</description>
+        <group>aws_trusted_advisor,</group>
+    </rule>
+
+
+    <!-- AWS KMS (Key Management Service) -->
+    <!-- Documentation: https://docs.aws.amazon.com/kms/latest/developerguide/overview.html -->
+    <rule id="80490" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">kms</field>
+        <description>AWS KMS alert.</description>
+        <group>aws_kms,</group>
+    </rule>
+
+    <rule id="80491" level="3">
+        <if_sid>80490</if_sid>
+        <description>AWS KMS: [$(aws.eventName)] $(aws.userIdentity.type)</description>
+        <group>aws_kms,</group>
+    </rule>
+
+    <rule id="80492" level="3">
+        <if_sid>80491</if_sid>
+        <field name="aws.userIdentity.userName">\.+</field>
+        <description>AWS KMS: [$(aws.eventName)] $(aws.userIdentity.type) - $(aws.userIdentity.userName) - $(aws.sourceIPAddress)</description>
+        <group>aws_kms,</group>
+    </rule>
+
+
+    <!-- AWS Inspector -->
+    <!-- Documentation: https://docs.aws.amazon.com/inspector/latest/userguide/inspector_introduction.html -->
+
+    <rule id="80495" level="0">
+        <if_sid>80200</if_sid>
+        <field name="aws.source">inspector</field>
+        <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80496" level="10">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">High</field>
+        <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80497" level="7">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">Medium</field>
+        <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80498" level="4">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">Low</field>
+        <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
+    <rule id="80499" level="3">
+        <if_sid>80495</if_sid>
+        <field name="aws.severity">Informational</field>
+        <description>AWS Inspector - Network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)]</description>
+        <group>aws_inspector,</group>
+    </rule>
+
 
 </group>

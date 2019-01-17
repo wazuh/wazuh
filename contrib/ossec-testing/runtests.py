@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright (C) 2015-2019, Wazuh Inc.
+
 import ConfigParser
 import subprocess
 import os

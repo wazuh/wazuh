@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * December 12, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -17,7 +17,7 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
     char db_version[OS_SIZE_256 + 2];
     int version = 0;
     int result = 0;
-    wdb_t *new_wdb = wdb;
+    wdb_t *new_wdb = NULL;
 
     if(result = wdb_metadata_get_entry(wdb, "db_version", db_version), result) {
         version = atoi(db_version);
@@ -105,7 +105,7 @@ int wdb_create_backup(const char * agent_id, int version) {
         return -1;
     }
 
-    snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d", WDB2_DIR, agent_id, version);
+    snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d-%lu", WDB2_DIR, agent_id, version, (unsigned long)time(NULL));
 
     if (!(dest = fopen(path, "w"))) {
         merror("Couldn't open dest '%s': %s (%d)", path, strerror(errno), errno);

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Linux
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Sep, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -544,15 +544,7 @@ hw_info *get_system_bsd(){
     }
 
     /* Number of cores */
-    unsigned int cpu_cores;
-    mib[0] = CTL_HW;
-    mib[1] = HW_NCPU;
-    len = sizeof(cpu_cores);
-    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)){
-        info->cpu_cores = (int)cpu_cores;
-    }else{
-        mtdebug1(WM_SYS_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
-    }
+    info->cpu_cores = get_nproc();
 
     /* CPU clockrate (MHz) */
 #if defined(__OpenBSD__)

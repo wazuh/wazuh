@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -31,6 +32,8 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         nowDaemon();
         goDaemon();
     }
+
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));

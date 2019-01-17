@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -27,6 +28,7 @@ class WazuhException(Exception):
         1013: 'Unable to connect with socket',
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
+        1016: 'Error moving file',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -40,6 +42,10 @@ class WazuhException(Exception):
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
+        1111: "Remote group file updates are only available in 'agent.conf' file",
+        1112: "Empty files aren't supported",
+        1113: "XML syntax error",
+        1114: "Wazuh syntax error",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -127,6 +133,8 @@ class WazuhException(Exception):
         1739: "Error getting agent's group sync",
         1740: 'Action only available for active agents',
         1741: 'Could not remove multigroup',
+        1742: 'Error running XML syntax validator',
+        1743: 'Error running Wazuh syntax validator',
 
         # Manager:
 

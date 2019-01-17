@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -27,7 +28,6 @@ static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
 int receive_msg()
 {
     ssize_t recv_b;
-    uint32_t length;
     size_t msg_length;
     int reads = 0;
     static int undefined_msg_logged = 0;
@@ -46,12 +46,14 @@ int receive_msg()
                 break;
             }
 
-            recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-            length = wnet_order(length);
+            recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
 
             // Manager disconnected or error
 
             switch (recv_b) {
+            case OS_SOCKTERR:
+                merror("Corrupt payload (exceeding size) received.");
+                return -1;
             case -1:
                 if (errno == ENOTCONN) {
                     mdebug1("Manager disconnected (ENOTCONN).");
@@ -63,23 +65,6 @@ int receive_msg()
             case 0:
                 mdebug1("Manager disconnected.");
                 return -1;
-
-            default:
-                // length > OS_MAXSTR
-                if(length == 0){
-                	merror("Empty message from manager");
-                	return 0;
-                }else if(length > OS_MAXSTR){
-                	merror("Too big message size from manager.");
-                	return 0;
-                }
-            }
-
-            recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
-
-            if (recv_b != (ssize_t)length) {
-                merror("Incorrect message size from manager: expecting %u, got %d", length, (int)recv_b);
-                break;
             }
         } else {
             recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
