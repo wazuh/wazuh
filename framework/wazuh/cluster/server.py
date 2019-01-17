@@ -72,7 +72,8 @@ class AbstractServerHandler(c_common.Handler):
         """
         self.name = data.decode()
         if self.name in self.server.clients:
-            self.logger.error("Client {} already present".format(data))
+            self.logger.error("Could not accept incoming connection: ID {} already present".format(data))
+            self.name = ''
             return b'err', b'Client already present'
         elif self.name == self.server.configuration['node_name']:
             self.logger.error("Connected client with same name as the master: {}".format(self.name))
@@ -107,7 +108,10 @@ class AbstractServerHandler(c_common.Handler):
             self.logger.info("The client '{}' closed the connection".format(self.name))
             del self.server.clients[self.name]
         else:
-            self.logger.error("Error during handshake with incoming client: {}".format(exc))
+            if exc is not None:
+                self.logger.error("Error during handshake with incoming client: {}".format(exc))
+            else:
+                self.logger.error("Error during handshake with incoming client.")
 
 
 class AbstractServer:
