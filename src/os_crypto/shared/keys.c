@@ -17,7 +17,6 @@
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
 
 static int pass_empty_keyfile = 0;
-static OSHash *last_freed_keys = NULL;
 
 /* Clear keys entries */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
@@ -328,23 +327,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
 }
 
 void OS_FreeKey(keyentry *key) {
-    if(!last_freed_keys){
-        last_freed_keys = OSHash_Create();
-        if (!last_freed_keys) {
-            merror_exit(LIST_ERROR);
-        }
-    }
-    char key_c[64];
-#ifdef WIN32
-    sprintf(key_c,"%p",key);
-#else
-    sprintf(key_c,"%p",key);
-#endif
-
-    if(OSHash_Get(last_freed_keys,key_c)){
-        return;
-    }
-
     if (key->ip) {
         free(key->ip->ip);
         free(key->ip);
@@ -368,7 +350,6 @@ void OS_FreeKey(keyentry *key) {
     }
 
     pthread_mutex_destroy(&key->mutex);
-    OSHash_Add(last_freed_keys,key_c,(void *)1);
     free(key);
 }
 
