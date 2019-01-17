@@ -46,10 +46,10 @@ async def get_agents(filter_node=None, filter_status=None):
 
     result = json.loads(await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode(),
                                                    wait_for_complete=False))
+    if result['error'] > 0:
+        raise Exception(result['message'])
     # add unknown value to unfilled variables in result. For example, never connected agents will miss the 'version'
     # variable.
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['data']['items']]
     result['data']['items'] = filled_result
-    if result['error'] > 0:
-        raise Exception(result['message'])
     return result

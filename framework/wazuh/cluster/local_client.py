@@ -28,6 +28,10 @@ class LocalClientHandler(client.AbstractClient):
             self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
+        elif command == b'dapi_err':
+            self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
+            self.response_available.set()
+            return b'ok', b'Response received'
         else:
             return super().process_request(command, data)
 

@@ -238,16 +238,18 @@ class Handler(asyncio.Protocol):
                 break
             parsed = self.msg_parse()
 
-    async def send_request(self, command: bytes, data: bytes) -> bytes:
+    async def send_request(self, command: bytes, data: bytes, error_cmd: bytes = b'err') -> bytes:
         """
         Sends a request to peer
 
         :param command: command to send
         :param data: data to send
+        :param error_cmd: Cmd to send in case of error
         :return: response from peer.
         """
         if len(data) > self.request_chunk:
-            return b"Error: Command '" + command + b"' Max msg length exceeded."
+            self.logger.error("Error sending request '{}': Max payload length exceeded".format(command))
+            command, data = error_cmd, b"Error: Command '" + command + b"' Max msg length exceeded."
 
         response = Response()
         msg_counter = self.next_counter()
