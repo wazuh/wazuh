@@ -26,6 +26,10 @@ class LocalClientHandler(client.AbstractClient):
     def process_request(self, command: bytes, data: bytes):
         self.logger.debug("Command received: {}".format(command))
         if command == b'dapi_res':
+            if data.startswith(b'Error'):
+                return b'err', self.process_error_from_peer(data)
+            elif data not in self.in_str:
+                return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
             self.response = self.in_str[data].payload
             self.response_available.set()
             return b'ok', b'Response received'
@@ -35,6 +39,17 @@ class LocalClientHandler(client.AbstractClient):
             return b'ok', b'Response received'
         else:
             return super().process_request(command, data)
+
+    def process_error_from_peer(self, data: bytes):
+        if data.startswith(b'WazuhException'):
+            type_error, code, message = data.split(b' ', 2)
+            self.response = json.dumps({'error': int(code), 'message': message.decode()}).encode()
+            self.response_available.set()
+            return type_error + b' ' + code + b' ' + message.split(b':', 1)[1]
+        else:
+            self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
+            self.response_available.set()
+            return b"Error processing request: " + data
 
 
 class LocalClient(client.AbstractClientManager):

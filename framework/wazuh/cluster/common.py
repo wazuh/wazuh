@@ -316,7 +316,7 @@ class Handler(asyncio.Protocol):
 
             return task_id
         except Exception as e:
-            return str(e).encode()
+            return b'Error sending string: ' + str(e).encode()
 
     def data_received(self, message: bytes) -> None:
         """
