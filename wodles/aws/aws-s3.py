@@ -1021,37 +1021,51 @@ class AWSConfigBucket(AWSLogsBucket):
 
     def reformat_msg(self, event):
         AWSBucket.reformat_msg(self, event)
-        # aws.configuration.securityGroups field can be unicode, list or dict
-        if 'configuration' in event['aws'] and 'securityGroups' in event['aws']['configuration']:
-            if isinstance(event['aws']['configuration']['securityGroups'], unicode):
-                security_groups = event['aws']['configuration']['securityGroups']
-                del event['aws']['configuration']['securityGroups']
-                event['aws']['configuration']['securityGroups'] = {'groupId': security_groups}
-            elif isinstance(event['aws']['configuration']['securityGroups'], list):
-                # transform list to str
-                """
-                security_groups = event['aws']['configuration']['securityGroups'][0]
-                del event['aws']['configuration']['securityGroups']
-                event['aws']['configuration']['securityGroups'] = {'groupId': security_groups}
-                security_groups = event['aws']['configuration']['securityGroups']
-                print("security groups -> " + security_groups)
-                del event['aws']['configuration']['securityGroups']
-                """
-                pass
+        if 'configuration' in event['aws']:
+            configuration = event['aws']['configuration']
 
-        """
-        if 'configuration' in event['aws'] and 'availabilityZones' in event['aws']['configuration']:
-            if not isinstance(event['aws']['configuration']['availabilityZones'], list):
-                availability_zones = event['aws']['configuration']['availabilityZones']
-                del event['aws']['configuration']['availabilityZones']
-                event['aws']['configuration']['availabilityZones'] = {'zoneName': availability_zones}
-        """
+            if 'securityGroups' in configuration:
+                security_groups = configuration['securityGroups']
+                if isinstance(security_groups, unicode):
+                    configuration['securityGroups'] = {'groupId': [security_groups]}
+                elif isinstance(security_groups, list):
+                    group_ids = [sec_group['groupId'] for sec_group in security_groups if 'groupId' in sec_group]
+                    group_names = [sec_group['groupName'] for sec_group in security_groups if 'groupName' in sec_group]
+                    configuration['securityGroups'] = {}
+                    if len(group_ids) > 0:
+                        configuration['securityGroups']['groupId'] = group_ids
+                    if len(group_names) > 0:
+                        configuration['securityGroups']['groupName'] = group_names
+                elif isinstance(configuration['securityGroups'], dict):
+                    configuration['securityGroups'] = {key: [value] for key, value in security_groups.items()}
+                else:
+                    print("WARNING: Could not reformat event {event}").format(event)
 
-        if 'configuration' in event['aws'] and 'state' in event['aws']['configuration']:
-            if isinstance(event['aws']['configuration']['state'], unicode):
-                state = event['aws']['configuration']['state']
-                del event['aws']['configuration']['state']
-                event['aws']['configuration']['state'] = {'name': state}
+            if 'availabilityZones' in configuration:
+                availability_zones = configuration['availabilityZones']
+                if isinstance(availability_zones, unicode):
+                    configuration['availabilityZones'] = {'zoneName': [availability_zones]}
+                elif isinstance(availability_zones, list):
+                    subnet_ids = [zone['subnetId'] for zone in availability_zones if 'subnetId' in zone]
+                    zone_names = [zone['zoneName'] for zone in availability_zones if 'zoneName' in zone]
+                    configuration['availabilityZones'] = {}
+                    if len(subnet_ids) > 0:
+                        configuration['availabilityZones']['subnetId'] = subnet_ids
+                    if len(zone_names) > 0:
+                        configuration['availabilityZones']['zoneName'] = zone_names
+                elif isinstance(configuration['availabilityZones'], dict):
+                    configuration['availabilityZones'] = {key: [value] for key, value in availability_zones.items()}
+                else:
+                    print("WARNING: Could not reformat event {event}").format(event)
+
+            if 'state' in configuration:
+                state = configuration['state']
+                if isinstance(state, unicode):
+                    configuration['state'] = {'name': state}
+                elif isinstance(state, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {event}").format(event)
 
         return event
 
