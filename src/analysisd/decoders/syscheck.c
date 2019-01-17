@@ -573,6 +573,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                     }
 
                     lf->win_perm_before = oldsum->win_perm;
+                    oldsum->win_perm = NULL;
                 }
             }
 
