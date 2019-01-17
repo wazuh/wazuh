@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "monitord.h"
 #include "read-agents.h"
-#include "external/sqlite/sqlite3.h"
+#include "wazuh_db/wdb.h" 
 
 static int mon_send_agent_msg(char *agent, char *msg);
 
@@ -140,10 +140,6 @@ int mon_send_agent_msg(char *agent, char *msg) {
     char *ag_ip = NULL;
     char *found = agent;
     size_t name_size;
-    static sqlite3 *db = NULL;
-    sqlite3_stmt *stmt;
-    int i;
-    int error;
 
     while (found = strchr(found, '-'), found) {
         ag_ip = ++found;
@@ -155,49 +151,14 @@ int mon_send_agent_msg(char *agent, char *msg) {
 
     snprintf(ag_name, name_size, "%s", agent);
 
-    if (!db) {
-        char dir[OS_FLSIZE + 1];
-        snprintf(dir, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_GLOB_NAME);
-
-        if (sqlite3_open_v2(dir, &db, SQLITE_OPEN_READONLY, NULL)) {
-            sqlite3_close_v2(db);
-            db = NULL;
-            return 1;
-        }
-    }
-
-    for (i = 0; i < GET_ID_QUERY_RETRIES; i++) {
-        if (error = sqlite3_prepare_v2(db, GET_ID_QUERY, -1, &stmt, NULL), error == SQLITE_OK) {
-            break;
-        } else if (error != SQLITE_LOCKED && error != SQLITE_BUSY) {
-            mdebug1("SQLite: %s", sqlite3_errmsg(db));
-        }
-        sleep(i);
-    }
-
-    if (i == GET_ID_QUERY_RETRIES) {
-        merror("SQLite: %s", sqlite3_errmsg(db));
-        return 1;
-    }
-
-    sqlite3_bind_text(stmt, 1, ag_name, -1, NULL);
-
-    for (i = 0; (error = sqlite3_step(stmt)) == SQLITE_BUSY; i++) {
-        if (i == GET_ID_QUERY_RETRIES) {
-            return 1;
-        }
-    }
-
-    if (error == SQLITE_ROW) {
-        ag_id = sqlite3_column_int(stmt, 0);
+    if (ag_id = wdb_find_agent(ag_name, ag_ip), ag_id > 0) {
         snprintf(header, OS_SIZE_256, "[%03d] (%s) %s", ag_id, ag_name, ag_ip);
         if (SendMSG(mond.a_queue, msg, header, SECURE_MQ) < 0) {
             merror(QUEUE_SEND);
             return 1;
         }
-        sqlite3_finalize(stmt);
         return 0;
-    } else {
+    } else if (ag_id == -2) {
         return 2;
     }
 
