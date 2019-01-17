@@ -15,6 +15,7 @@
 #include "wm_vuln_detector_db.h"
 #include "external/sqlite/sqlite3.h"
 #include "addagent/manage_agents.h"
+#include "wazuh_db/wdb.h"
 #include <netinet/tcp.h>
 #include <openssl/ssl.h>
 #include <os_net/os_net.h>
@@ -2349,7 +2350,6 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
         sqlite3_exec(db, vu_queries[BEGIN_T], NULL, NULL, NULL);
         for (package_list = package_list->child; package_list; package_list = package_list->next) {
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_AGENTS], -1, &stmt, NULL) != SQLITE_OK) {
-                close(sock);
                 return wm_vuldet_sql_error(db, stmt);
             }
             if ((name = cJSON_GetObjectItem(package_list, "name")) &&
@@ -2362,7 +2362,6 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
                 sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
 
                 if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                    close(sock);
                     return wm_vuldet_sql_error(db, stmt);
                 }
             }
@@ -2535,8 +2534,6 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
     char *arch;
     const char *agent_os;
     distribution agent_dist;
-    int error;
-    int i;
 
     snprintf(global_db, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_GLOB_NAME);
 
@@ -2546,17 +2543,7 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
     }
 
     // Extracts the operating system of the agents
-    for (i = 0; i < VU_MAX_GLOBAL_DB_ATTEMPS; i++) {
-        if (error = sqlite3_prepare_v2(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL), error == SQLITE_OK) {
-            break;
-        } else if (error != SQLITE_LOCKED && error != SQLITE_BUSY) {
-            return wm_vuldet_sql_error(db, stmt);
-        }
-        mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_FAIL, i);
-        sleep(i);
-    }
-
-    if (i == VU_MAX_GLOBAL_DB_ATTEMPS) {
+    if (wdb_prepare(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_ERROR);
         return wm_vuldet_sql_error(db, stmt);
     }
