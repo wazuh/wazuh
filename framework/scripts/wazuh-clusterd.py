@@ -9,7 +9,7 @@ import argparse
 import os
 import sys
 from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
-from wazuh import common, configuration, pyDaemonModule
+from wazuh import common, configuration, pyDaemonModule, Wazuh
 
 
 #
@@ -121,6 +121,8 @@ if __name__ == '__main__':
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     args = parser.parse_args()
+
+    my_wazuh = Wazuh(get_init=True)
 
     if args.version:
         print_version()

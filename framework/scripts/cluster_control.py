@@ -9,6 +9,7 @@ import logging
 import argparse
 import operator
 import sys
+from wazuh import Wazuh
 from wazuh.cluster import control, cluster
 
 
@@ -146,6 +147,7 @@ if __name__ == '__main__':
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     args = parser.parse_args()
 
+    my_wazuh = Wazuh(get_init=True)
     cluster_config = cluster.read_config()
     #cluster.check_cluster_config(config=cluster_config)
 
