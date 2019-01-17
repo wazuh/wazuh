@@ -1039,12 +1039,13 @@ class AWSConfigBucket(AWSLogsBucket):
                 """
                 pass
 
-
+        """
         if 'configuration' in event['aws'] and 'availabilityZones' in event['aws']['configuration']:
             if not isinstance(event['aws']['configuration']['availabilityZones'], list):
                 availability_zones = event['aws']['configuration']['availabilityZones']
                 del event['aws']['configuration']['availabilityZones']
                 event['aws']['configuration']['availabilityZones'] = {'zoneName': availability_zones}
+        """
 
         if 'configuration' in event['aws'] and 'state' in event['aws']['configuration']:
             if isinstance(event['aws']['configuration']['state'], unicode):
