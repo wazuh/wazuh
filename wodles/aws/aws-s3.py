@@ -69,6 +69,9 @@ from os import path
 import operator
 from datetime import datetime
 from datetime import timedelta
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 
 ################################################################################
@@ -1015,6 +1018,41 @@ class AWSConfigBucket(AWSLogsBucket):
                 debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
+
+    def reformat_msg(self, event):
+        AWSBucket.reformat_msg(self, event)
+        # aws.configuration.securityGroups field can be unicode, list or dict
+        if 'configuration' in event['aws'] and 'securityGroups' in event['aws']['configuration']:
+            if isinstance(event['aws']['configuration']['securityGroups'], unicode):
+                security_groups = event['aws']['configuration']['securityGroups']
+                del event['aws']['configuration']['securityGroups']
+                event['aws']['configuration']['securityGroups'] = {'groupId': security_groups}
+            elif isinstance(event['aws']['configuration']['securityGroups'], list):
+                # transform list to str
+                """
+                security_groups = event['aws']['configuration']['securityGroups'][0]
+                del event['aws']['configuration']['securityGroups']
+                event['aws']['configuration']['securityGroups'] = {'groupId': security_groups}
+                security_groups = event['aws']['configuration']['securityGroups']
+                print("security groups -> " + security_groups)
+                del event['aws']['configuration']['securityGroups']
+                """
+                pass
+
+
+        if 'configuration' in event['aws'] and 'availabilityZones' in event['aws']['configuration']:
+            if not isinstance(event['aws']['configuration']['availabilityZones'], list):
+                availability_zones = event['aws']['configuration']['availabilityZones']
+                del event['aws']['configuration']['availabilityZones']
+                event['aws']['configuration']['availabilityZones'] = {'zoneName': availability_zones}
+
+        if 'configuration' in event['aws'] and 'state' in event['aws']['configuration']:
+            if isinstance(event['aws']['configuration']['state'], unicode):
+                state = event['aws']['configuration']['state']
+                del event['aws']['configuration']['state']
+                event['aws']['configuration']['state'] = {'name': state}
+
+        return event
 
 
 class AWSVPCFlowBucket(AWSLogsBucket):
