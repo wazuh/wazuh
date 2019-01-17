@@ -24,22 +24,14 @@ def __print_table(data, headers, show_header=False):
         return list(map(lambda x: max(map(lambda y: len(y)+2, x)), map(list, zip(*l))))
 
     if show_header:
-        table = list(itertools.chain([headers], data))
+        table = list(itertools.chain([tuple(map(lambda x: x.upper(), headers))], data))
     else:
         table = data
 
     sizes = get_max_size_cols(table)
 
-    header_str = "{0}\n".format("-"*(sum(sizes)-2))
-    table_str = header_str
-    for row in table:
-        for col, max_size in zip(row, sizes):
-            table_str += "{0}{1}".format(col, " "*(max_size-len(col)))
-        table_str += "\n"
-        if show_header and row[0] == headers[0]:
-            table_str += header_str
-    table_str += header_str
-
+    table_str = '\n'.join([''.join(["{}{}".format(col, " "*(max_size - len(col))) for col, max_size in zip(row, sizes)])
+                           for row in table])
     print(table_str)
 
 
