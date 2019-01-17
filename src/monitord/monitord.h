@@ -17,7 +17,6 @@
 #include "config/reports-config.h"
 
 #define MAX_DAY_WAIT 600
-#define GET_ID_QUERY "SELECT ID FROM AGENT WHERE NAME = ?;"
 #define MONITORD_MSG_HEADER "1:" ARGV0 ":"
 #define AG_DISCON_MSG MONITORD_MSG_HEADER OS_AG_DISCON
 
