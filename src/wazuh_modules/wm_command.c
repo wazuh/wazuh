@@ -200,7 +200,7 @@ void * wm_command_main(wm_command_t * command) {
             break;
         }
 
-        if (!command->ignore_output) {
+        if (!command->ignore_output && output != NULL) {
             char * line;
 
             for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){
