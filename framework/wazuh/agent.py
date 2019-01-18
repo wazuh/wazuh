@@ -619,9 +619,9 @@ class Agent:
         msg = ""
         if name and ip:
             if id and key:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "id": id, "key": key, "force": force}}
+                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "force": force } }
             else:
-                msg = {"function": "add", "arguments": {"name": name, "ip": ip, "force": force}}
+                msg = { "function": "add", "arguments": { "name": name, "ip": ip, "id": id, "key": key, "force": force } }
 
         authd_socket = OssecSocketJSON(common.AUTHD_SOCKET)
         authd_socket.send(msg)
