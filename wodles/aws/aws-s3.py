@@ -178,6 +178,7 @@ class WazuhIntegration:
             # insert wazuh version value
             self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
             # delete old table (trail_progress), only for buckets services
+            self.db_connector.commit()
             try:
                 self.db_connector.execute(self.sql_delete_trail_progress)
             except Exception:
