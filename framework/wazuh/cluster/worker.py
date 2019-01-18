@@ -74,14 +74,21 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'sync_m_c_e':
             return self.end_receiving_integrity(data.decode())
         elif command == b'dapi_res':
-            client, result = data.split(b' ', 1)
-            asyncio.create_task(self.manager.local_server.clients[client.decode()].send_request(b'dapi_res', result))
+            asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
+        elif command == b'dapi_err':
+            dapi_client, error_msg = data.split(b' ', 1)
+            asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg,
+                                                                                                     command))
+            return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'None*' + data)
             return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
+
+    def get_manager(self):
+        return self.manager
 
     def setup_receive_files_from_master(self):
         return super().setup_receive_file(ReceiveIntegrityTask)

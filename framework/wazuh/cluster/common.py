@@ -318,6 +318,34 @@ class Handler(asyncio.Protocol):
         except Exception as e:
             return b'Error sending string: ' + str(e).encode()
 
+    def get_manager(self):
+        """
+        Returns the manager object
+        :return: a manager object
+        """
+        raise NotImplementedError
+
+    async def forward_dapi_response(self, data: bytes):
+        """
+        Forwards a distributed API response from master node.
+
+        :param data: Bytes containing local client name and string id separated by ' '
+        :return: sucess/error message
+        """
+        client, string_id = data.split(b' ', 1)
+        res = await self.get_manager().local_server.clients[client.decode()].send_string(self.in_str[string_id].payload)
+        if res.startswith(b'Error'):
+            error_msg = "Error forwarding string to local client: {}".format(res)
+            self.logger.error(error_msg)
+            res = await self.get_manager().send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
+        else:
+            res = await self.get_manager().local_server.clients[client.decode()].send_request(b'dapi_res', res,
+                                                                                              b'dapi_err')
+            if res.startswith(b'Error'):
+                error_msg = "Error sending API response to local client: {}".format(res)
+                self.logger.error(error_msg)
+                res = await self.get_manager().send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
+
     def data_received(self, message: bytes) -> None:
         """
         Handles received data from other peer.

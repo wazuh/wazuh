@@ -158,15 +158,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             utils.mkdir_with_mode(worker_dir)
         return cmd, payload
 
+    def get_manager(self):
+        return self.server
+
     def process_dapi_res(self, data: bytes) -> Tuple[bytes, bytes]:
-        req_id, req_res = data.split(b' ', 1)
+        req_id, string_id = data.split(b' ', 1)
         req_id = req_id.decode()
         if req_id in self.pending_api_requests:
-            self.pending_api_requests[req_id]['Response'] = req_res.decode()
+            self.pending_api_requests[req_id]['Response'] = self.in_str[string_id].payload.decode()
             self.pending_api_requests[req_id]['Event'].set()
             return b'ok', b'Forwarded response'
         elif req_id in self.server.local_server.clients:
-            asyncio.create_task(self.server.local_server.clients[req_id].send_request(b'dapi_res', req_res))
+            asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
         else:
             return b'err', b'Could not forward request, connection is not available'
