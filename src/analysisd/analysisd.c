@@ -496,6 +496,7 @@ int main_analysisd(int argc, char **argv)
                 /* Legacy loading */
                 /* Read default decoders */
                 Read_Rules(NULL, &Config, NULL);
+                free_rules_structures();
             }
 
             /* New loaded based on file loaded (in ossec.conf or default) */
@@ -549,6 +550,7 @@ int main_analysisd(int argc, char **argv)
             /* If we haven't specified a rules directory, load default */
             if (!Config.includes) {
                 Read_Rules(NULL, &Config, NULL);
+                free_rules_structures();
             }
 
             /* Read the rules */
