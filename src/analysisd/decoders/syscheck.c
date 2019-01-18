@@ -572,8 +572,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                         localsdb->perm[0] = '\0';
                     }
 
-                    lf->win_perm_before = oldsum->win_perm;
-                    oldsum->win_perm = NULL;
+                    os_strdup(oldsum->win_perm, lf->win_perm_before);
                 }
             }
 
