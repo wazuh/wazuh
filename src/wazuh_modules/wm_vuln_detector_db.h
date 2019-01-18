@@ -20,6 +20,7 @@
 #define CVE_INFO_TABLE          "VULNERABILITIES_INFO"
 #define INFO_STATE_TABLE        "INFO_STATE"
 #define METADATA_TABLE          "METADATA"
+#define METADATADB_TABLE        "DB_METADATA"
 #define MAX_QUERY_SIZE          OS_SIZE_1024
 #define MAX_SQL_ATTEMPTS        10
 #define VU_MAX_PACK_REQ         40
@@ -32,6 +33,7 @@ typedef enum vu_query {
     VU_INSERT_CVE,
     VU_INSERT_CVE_INFO,
     VU_INSERT_METADATA,
+    VU_INSERT_METADATA_DB,
     VU_INSERT_AGENTS,
     VU_UPDATE_DOUBLE_CVE,
     VU_UPDATE_CVE,
@@ -60,6 +62,7 @@ static const char *vu_queries[] = {
     "INSERT INTO " CVE_TABLE " VALUES(?,?,?,?,?,?,?,?);",
     "INSERT INTO " CVE_INFO_TABLE " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     "INSERT INTO " METADATA_TABLE " VALUES(?,?,?,?,?);",
+    "INSERT INTO " METADATADB_TABLE " VALUES(?);",
     "INSERT INTO " AGENTS_TABLE " VALUES(?,?,?,?);",
     "UPDATE " CVE_TABLE " SET OPERATION = ?, SECOND_OPERATION = ? WHERE OPERATION = ? AND SECOND_OPERATION IS NULL;",
     "UPDATE " CVE_TABLE " SET OPERATION = ? WHERE OPERATION = ?;",
