@@ -79,8 +79,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
                              'Extra valid': self.setup_task_logger('Extra valid'),
                              'Agent info': self.setup_task_logger('Agent info')}
-        # pending API requests waiting for a response
-        self.pending_api_requests = {}
 
     def to_dict(self):
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
@@ -121,11 +119,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         :return:
         """
         request_id = str(random.randint(0, 2**10 - 1))
-        self.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
+        self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
         if command == b'dapi_forward':
-            # dapi forward commands have the node name to forward to, but in this case it's not necessary
-            data = data.split(b' ', 1)[1]
-        result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
+            client, request = data.split(b' ', 1)
+            result = (await self.server.clients[client.decode()].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+        else:
+            result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
             request_result = json.dumps({'error': 1000, 'message': result})
         else:
@@ -133,13 +132,12 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 try:
                     timeout = None if wait_for_complete \
                                    else self.cluster_items['intervals']['communication']['timeout_api_request']
-                    await asyncio.wait_for(self.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
-                    request_result = self.pending_api_requests[request_id]['Response']
+                    await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
+                    request_result = self.server.pending_api_requests[request_id]['Response']
                 except asyncio.TimeoutError:
                     request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
             else:
                 request_result = result
-        self.logger.debug("Received response: {}".format(request_result))
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -164,14 +162,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     def process_dapi_res(self, data: bytes) -> Tuple[bytes, bytes]:
         req_id, string_id = data.split(b' ', 1)
         req_id = req_id.decode()
-        if req_id in self.pending_api_requests:
-            self.pending_api_requests[req_id]['Response'] = self.in_str[string_id].payload.decode()
-            self.pending_api_requests[req_id]['Event'].set()
+        if req_id in self.server.pending_api_requests:
+            self.server.pending_api_requests[req_id]['Response'] = self.in_str[string_id].payload.decode()
+            self.server.pending_api_requests[req_id]['Event'].set()
             return b'ok', b'Forwarded response'
         elif req_id in self.server.local_server.clients:
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
         else:
+            self.logger.error("Could not forward request to {}. Connection not available.".format(req_id))
             return b'err', b'Could not forward request, connection is not available'
 
     def process_dapi_cluster(self, arguments: bytes) -> Tuple[bytes, bytes]:
@@ -406,6 +405,8 @@ class Master(server.AbstractServer):
         self.handler_class = MasterHandler
         self.dapi = dapi.APIRequestQueue(server=self)
         self.tasks.append(self.dapi.run)
+        # pending API requests waiting for a response
+        self.pending_api_requests = {}
 
     def to_dict(self):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
