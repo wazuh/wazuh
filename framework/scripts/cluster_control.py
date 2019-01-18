@@ -141,7 +141,7 @@ if __name__ == '__main__':
 
     my_wazuh = Wazuh(get_init=True)
     cluster_config = cluster.read_config()
-    #cluster.check_cluster_config(config=cluster_config)
+    cluster.check_cluster_config(config=cluster_config)
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
