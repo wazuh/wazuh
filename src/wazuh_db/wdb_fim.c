@@ -314,35 +314,36 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
 
 int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file) {
     sk_sum_t sum;
+    int retval = -1;
 
     memset(&sum, 0, sizeof(sk_sum_t));
 
     if (sk_decode_extradata(&sum, checksum) < 0) {
         mdebug1("Checksum: %s", checksum);
-        return -1;
+        goto end;
     }
 
     if (sk_decode_sum(&sum, checksum, NULL) < 0) {
         mdebug1("Checksum: %s", checksum);
-        return -1;
+        goto end;
     }
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
         merror("DB(%s) Can't begin transaction", wdb->agent_id);
-        return -1;
+        goto end;
     }
 
     switch (wdb_fim_find_entry(wdb, file)) {
     case -1:
         mdebug1("DB(%s) Can't find file by name", wdb->agent_id);
-        return -1;
+        goto end;
 
     case 0:
         // File not found, add
 
         if (wdb_fim_insert_entry(wdb, file, ftype, &sum) < 0) {
             mdebug1("DB(%s) Can't insert file entry", wdb->agent_id);
-            return -1;
+            goto end;
         }
 
         break;
@@ -352,11 +353,15 @@ int wdb_syscheck_save(wdb_t * wdb, int ftype, char * checksum, const char * file
 
         if (wdb_fim_update_entry(wdb, file, &sum) < 1) {
             mdebug1("DB(%s) Can't update file entry", wdb->agent_id);
-            return -1;
+            goto end;
         }
     }
 
-    return 0;
+    retval = 0;
+
+end:
+    sk_sum_clean(&sum);
+    return retval;
 }
 
 // Find file entry: returns 1 if found, 0 if not, or -1 on error.
