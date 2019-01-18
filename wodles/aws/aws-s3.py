@@ -69,6 +69,7 @@ from os import path
 import operator
 from datetime import datetime
 from datetime import timedelta
+from time import mktime
 # Python 2/3 compatibility
 if sys.version_info[0] == 3:
     unicode = str
@@ -1039,7 +1040,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 elif isinstance(configuration['securityGroups'], dict):
                     configuration['securityGroups'] = {key: [value] for key, value in security_groups.items()}
                 else:
-                    print("WARNING: Could not reformat event {event}").format(event)
+                    print("WARNING: Could not reformat event {0}".format(event))
 
             if 'availabilityZones' in configuration:
                 availability_zones = configuration['availabilityZones']
@@ -1056,7 +1057,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 elif isinstance(configuration['availabilityZones'], dict):
                     configuration['availabilityZones'] = {key: [value] for key, value in availability_zones.items()}
                 else:
-                    print("WARNING: Could not reformat event {event}").format(event)
+                    print("WARNING: Could not reformat event {0}".format(event))
 
             if 'state' in configuration:
                 state = configuration['state']
@@ -1065,7 +1066,28 @@ class AWSConfigBucket(AWSLogsBucket):
                 elif isinstance(state, dict):
                     pass
                 else:
-                    print("WARNING: Could not reformat event {event}").format(event)
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'createdTime' in configuration:
+                created_time = configuration['createdTime']
+                if isinstance(created_time, float) or isinstance(created_time, int):
+                    configuration['createdTime'] = float(created_time)
+                else:
+                    try:
+                        date_string = str(created_time)
+                        configuration['createdTime'] = mktime(datetime.strptime(date_string,
+                                                                                "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
+                    except Exception:
+                        print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'iamInstanceProfile' in configuration:
+                iam_profile = configuration['iamInstanceProfile']
+                if isinstance(iam_profile, unicode):
+                    configuration['iamInstanceProfile'] = {'name': iam_profile}
+                elif isinstance(iam_profile, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
 
         return event
 
