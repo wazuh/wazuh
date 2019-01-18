@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "monitord.h"
 #include "read-agents.h"
-#include "wazuh_db/wdb.h" 
+#include "wazuh_db/wdb.h"
 
 static int mon_send_agent_msg(char *agent, char *msg);
 
@@ -55,10 +55,11 @@ void monitor_agents()
                     // Agent is no longer in the database
                     snprintf(str, OS_SIZE_1024 - 1, OS_AG_REMOVED, *cr_agents);
                     if (SendMSG(mond.a_queue, str, ARGV0, LOCALFILE_MQ) < 0) {
-                        merror("Could not generate removed agent alert for '%s'", *cr_agents);
+                        mdebug1("Could not generate removed agent alert for '%s'", *cr_agents);
+                        merror(QUEUE_SEND);
                     }
                 } else {
-                    merror("Could not generate disconnected agent alert for '%s'", *cr_agents);
+                    mdebug1("Could not generate disconnected agent alert for '%s'", *cr_agents);
                 }
             }
 
