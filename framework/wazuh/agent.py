@@ -29,11 +29,7 @@ import fcntl
 from json import loads
 from functools import reduce
 import errno
-
-try:
-    from urllib2 import urlopen, URLError, HTTPError
-except ImportError:
-    from urllib.request import urlopen, URLError, HTTPError
+import requests
 
 def create_exception_dic(id, e):
     """
@@ -1942,25 +1938,11 @@ class Agent:
                 versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
-            result = urlopen(versions_url)
-        except HTTPError as e:
+            result = requests.get(versions_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1713, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
-            raise WazuhException(1713, error)
 
-        lines = result.readlines()
-        lines = filter(None, lines)
-        versions = []
-
-        for line in lines:
-            ver_readed = line.decode().split()
-            version = ver_readed[0]
-            sha1sum = ver_readed[1] if len(ver_readed) > 1 else ''
-            versions.append([version, sha1sum])
+        versions = [version.split() for version in result.text.split('\n')]
 
         return versions
 
@@ -2041,17 +2023,12 @@ class Agent:
             print("Downloading WPK file from: {0}".format(wpk_url))
 
         try:
-            result = urlopen(wpk_url)
-            with open(wpk_file_path, "wb") as local_file:
-                local_file.write(result.read())
-        except HTTPError as e:
-            raise WazuhException(1714, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
-            raise WazuhException(1714, error)
+            result = requests.get(wpk_url)
+            with open(wpk_file_path, 'wb') as fd:
+                for chunk in result.iter_content(chunk_size=128):
+                    fd.write(chunk)
+        except requests.exceptions.RequestException as e:
+            raise WazuhException(1713, e.code)
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
