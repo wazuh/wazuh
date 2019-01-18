@@ -69,6 +69,10 @@ from os import path
 import operator
 from datetime import datetime
 from datetime import timedelta
+from time import mktime
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 
 ################################################################################
@@ -1015,6 +1019,77 @@ class AWSConfigBucket(AWSLogsBucket):
                 debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
+
+    def reformat_msg(self, event):
+        AWSBucket.reformat_msg(self, event)
+        if 'configuration' in event['aws']:
+            configuration = event['aws']['configuration']
+
+            if 'securityGroups' in configuration:
+                security_groups = configuration['securityGroups']
+                if isinstance(security_groups, unicode):
+                    configuration['securityGroups'] = {'groupId': [security_groups]}
+                elif isinstance(security_groups, list):
+                    group_ids = [sec_group['groupId'] for sec_group in security_groups if 'groupId' in sec_group]
+                    group_names = [sec_group['groupName'] for sec_group in security_groups if 'groupName' in sec_group]
+                    configuration['securityGroups'] = {}
+                    if len(group_ids) > 0:
+                        configuration['securityGroups']['groupId'] = group_ids
+                    if len(group_names) > 0:
+                        configuration['securityGroups']['groupName'] = group_names
+                elif isinstance(configuration['securityGroups'], dict):
+                    configuration['securityGroups'] = {key: [value] for key, value in security_groups.items()}
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'availabilityZones' in configuration:
+                availability_zones = configuration['availabilityZones']
+                if isinstance(availability_zones, unicode):
+                    configuration['availabilityZones'] = {'zoneName': [availability_zones]}
+                elif isinstance(availability_zones, list):
+                    subnet_ids = [zone['subnetId'] for zone in availability_zones if 'subnetId' in zone]
+                    zone_names = [zone['zoneName'] for zone in availability_zones if 'zoneName' in zone]
+                    configuration['availabilityZones'] = {}
+                    if len(subnet_ids) > 0:
+                        configuration['availabilityZones']['subnetId'] = subnet_ids
+                    if len(zone_names) > 0:
+                        configuration['availabilityZones']['zoneName'] = zone_names
+                elif isinstance(configuration['availabilityZones'], dict):
+                    configuration['availabilityZones'] = {key: [value] for key, value in availability_zones.items()}
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'state' in configuration:
+                state = configuration['state']
+                if isinstance(state, unicode):
+                    configuration['state'] = {'name': state}
+                elif isinstance(state, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'createdTime' in configuration:
+                created_time = configuration['createdTime']
+                if isinstance(created_time, float) or isinstance(created_time, int):
+                    configuration['createdTime'] = float(created_time)
+                else:
+                    try:
+                        date_string = str(created_time)
+                        configuration['createdTime'] = mktime(datetime.strptime(date_string,
+                                                                                "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
+                    except Exception:
+                        print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'iamInstanceProfile' in configuration:
+                iam_profile = configuration['iamInstanceProfile']
+                if isinstance(iam_profile, unicode):
+                    configuration['iamInstanceProfile'] = {'name': iam_profile}
+                elif isinstance(iam_profile, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+        return event
 
 
 class AWSVPCFlowBucket(AWSLogsBucket):
