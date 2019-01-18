@@ -104,6 +104,8 @@ All notable changes to this project will be documented in this file.
 - Fix log shown when a command reaches its timeout and `ignore_output` is enabled. ([#2316](https://github.com/wazuh/wazuh/pull/2316))
 - Analysisd and Syscollector did not detect the number of cores on Raspberry Pi. ([#2304](https://github.com/wazuh/wazuh/pull/2304))
 - Analysisd and Syscollector did not detect the number of cores on CentOS 5. ([#2340](https://github.com/wazuh/wazuh/pull/2340))
+- Fix bug when processing strange characters in Whodata for Windows. ([#2406](https://github.com/wazuh/wazuh/pull/2406))
+
 
 ## [v3.7.2] 2018-12-17
 

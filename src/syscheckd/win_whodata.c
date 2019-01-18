@@ -75,6 +75,7 @@ void send_whodata_del(whodata_evt *w_evt);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 void free_win_whodata_evt(whodata_evt *evt);
+char *get_whodata_path(const short unsigned int *win_path);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -484,13 +485,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 merror(INV_WDATA_PAR, buffer[2].Type, "path");
                 goto clean;
             }
-        }  else {
-            path = convert_windows_string(buffer[2].XmlVal);
+        }  else if (path = get_whodata_path(buffer[2].XmlVal), path) {
             if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
                 // The file has been marked as ignored
                 mdebug2("The file '%s' has been marked as ignored. It will be discarded.", path);
                 goto clean;
             }
+        } else {
+            goto clean;
         }
 
         if (buffer[1].Type != EvtVarTypeString) {
@@ -778,9 +780,9 @@ int whodata_audit_start() {
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
-    
+
     OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_win_whodata_evt);
-    
+
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
 
@@ -1197,4 +1199,23 @@ void notify_SACL_change(char *dir) {
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
+
+char *get_whodata_path(const short unsigned int *win_path) {
+    int count;
+    char *path = NULL;
+
+    if (count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, NULL, 0, NULL, NULL), count > 0) {
+        os_calloc(count + 1, sizeof(char), path);
+        count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, path, count, NULL, NULL);
+        path[count] = '\0';
+    }
+
+    if (!count) {
+        os_free(path);
+        mdebug1("The path could not be processed in Whodata mode. Error: %lu.", GetLastError());
+    }
+
+    return path;
+}
+
 #endif
