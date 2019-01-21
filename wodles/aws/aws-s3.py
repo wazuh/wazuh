@@ -69,6 +69,10 @@ from os import path
 import operator
 from datetime import datetime
 from datetime import timedelta
+from time import mktime
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 
 ################################################################################
@@ -109,6 +113,45 @@ class WazuhIntegration:
 
         self.sql_db_optimize = "PRAGMA optimize;"
 
+        self.sql_create_metadata_table= """
+                                        CREATE table
+                                            metadata (
+                                            key 'text' NOT NULL,
+                                            value 'text' NOT NULL,
+                                            PRIMARY KEY (key, value))
+                                        """
+
+        self.sql_check_metadata_version = """
+                                        SELECT
+                                            value
+                                        FROM
+                                            metadata
+                                        WHERE
+                                            key='version'
+                                        """
+
+        self.sql_find_table_metadata = """
+                                    SELECT
+                                        tbl_name
+                                    FROM
+                                        sqlite_master
+                                    WHERE
+                                        type='table' AND
+                                        name='metadata';
+                                    """
+
+        self.sql_insert_version_metadata = """
+                                        INSERT INTO metadata (
+                                            key,
+                                            value)
+                                        VALUES (
+                                            'version',
+                                            '{wazuh_version}')"""
+
+        self.sql_delete_trail_progress = """
+                                        DROP TABLE trail_progress;
+                                        """
+
         self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
@@ -123,6 +166,27 @@ class WazuhIntegration:
         self.db_cursor = self.db_connector.cursor()
         if bucket:
             self.bucket = bucket
+        self.wazuh_version = '3.8'
+        self.check_metadata_version()
+
+    def check_metadata_version(self):
+        try:
+            query_metadata = self.db_connector.execute(self.sql_find_table_metadata)
+            metadata = query_metadata.fetchone()[0]
+            # if not exist metadata table, an AttributeError will happen
+            query_version = self.db_connector.execute(self.sql_check_metadata_version)
+            metadata_version = query_version.fetchone()[0]
+        except Exception:
+            # create metadate table
+            self.db_connector.execute(self.sql_create_metadata_table)
+            # insert wazuh version value
+            self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
+            # delete old table (trail_progress), only for buckets services
+            self.db_connector.commit()
+            try:
+                self.db_connector.execute(self.sql_delete_trail_progress)
+            except Exception:
+                pass
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None):
         conn_args = {}
@@ -258,39 +322,6 @@ class AWSBucket(WazuhIntegration):
         :param delete_file: Wether to delete an already processed file from a bucket or not
         """
 
-        # migrate legacy table queries
-
-        self.sql_select_migrate_legacy = """
-                                    SELECT
-                                        log_name,
-                                        processed_date
-                                    FROM
-                                        log_progress;"""
-
-        self.sql_rename_migrate_legacy = """
-                                    ALTER TABLE log_progress
-                                        RENAME TO legacy_log_progress;"""
-
-        # update trail_progress table queries
-
-        self.sql_rename_migrate_trail_legacy = """
-                                                ALTER TABLE
-                                                    trail_progress
-                                                RENAME TO
-                                                    legacy_trail_progress;
-                                                """
-
-        self.sql_select_migrate_trail_progress = """
-                                                    SELECT
-                                                        aws_account_id,
-                                                        aws_region,
-                                                        log_key,
-                                                        processed_date,
-                                                        created_date
-                                                    FROM
-                                                        legacy_trail_progress;
-                                                """
-
         # common SQL queries
         self.sql_already_processed = """
                           SELECT
@@ -337,7 +368,7 @@ class AWSBucket(WazuhIntegration):
                                         WHERE
                                             bucket_path='{bucket_path}' AND
                                             aws_account_id='{aws_account_id}' AND
-                                            aws_region = '{aws_region}'
+                                            aws_region ='{aws_region}'
                                         ORDER BY
                                             created_date DESC
                                         LIMIT 1;"""
@@ -420,16 +451,6 @@ class AWSBucket(WazuhIntegration):
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
                 raise e
 
-    def migrate_legacy_table(self):
-        for row in filter(lambda x: x[0] != '', self.db_connector.execute(self.sql_select_migrate_legacy)):
-            try:
-                aws_region, aws_account_id, new_filename = self.get_extra_data_from_filename(row[0])
-                self.mark_complete(aws_account_id, aws_region, {'Key': new_filename})
-            except Exception as e:
-                debug("++ Error parsing log file name ({}): {}".format(row[0], e), 1)
-        # rename log_progress table to legacy_log_progress
-        self.db_connector.execute(self.sql_rename_migrate_legacy)
-
     def create_table(self):
         try:
             debug('+++ Table does not exist; create', 1)
@@ -444,51 +465,9 @@ class AWSBucket(WazuhIntegration):
         except Exception as e:
             print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
-
-        # update trail_progress table by adding a new column with bucket path
-        if 'trail_progress' in tables:
-            if 'legacy_trail_progress' in tables:
-                pass
-            else:
-                # if trail_progress is old (5 columns)
-                if self.get_columns_number('trail_progress') == 5:
-                    self.update_trail_progress_table()
-                else:
-                    pass
-
         # DB does exist yet
         if self.db_table_name not in tables:
             self.create_table()
-
-        # Legacy table exists; migrate progress to new table
-        if self.legacy_db_table_name in tables:
-            self.migrate_legacy_table()
-
-    def get_columns_number(self, table_name):
-        sql_get_row = "SELECT * FROM {table_name} LIMIT 1;"
-        query_get_row = self.db_connector.execute(sql_get_row.format(table_name=table_name))
-        try:
-            num_column = len(query_get_row.fetchone())
-        except TypeError:
-            num_column = 0
-        return num_column
-
-    def update_trail_progress_table(self):
-        # rename old trail_progress table to legacy_trail_progress
-        self.db_connector.execute(self.sql_rename_migrate_trail_legacy)
-        # create new trail_progress table
-        self.db_connector.execute(self.sql_create_table.format(table_name='trail_progress'))
-        # copy old table in new table adding bucket_path column
-        for aws_account_id, aws_region, log_key, processed_date, created_date \
-            in self.db_connector.execute(self.sql_select_migrate_trail_progress):
-            # inserts old values on the new table
-            self.db_connector.execute(self.sql_mark_complete.format(table_name=self.db_table_name,
-                                                            bucket_path=self.bucket_path,
-                                                            aws_account_id=aws_account_id,
-                                                            aws_region=aws_region,
-                                                            log_key=log_key,
-                                                            created_date=created_date))
-        self.db_connector.commit()
 
     def db_maintenance(self, aws_account_id, aws_region):
         debug("+++ DB Maintenance", 1)
@@ -832,7 +811,7 @@ class AWSCloudTrailBucket(AWSLogsBucket):
     """
 
     def __init__(self, **kwargs):
-        self.db_table_name = 'trail_progress'
+        self.db_table_name = 'cloudtrail'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'CloudTrail'
         self.field_to_load = 'Records'
@@ -1040,6 +1019,77 @@ class AWSConfigBucket(AWSLogsBucket):
                 debug("+++ Unexpected error: {}".format(err), 2)
             print("ERROR: Unexpected error querying/working with objects in S3: {}".format(err))
             sys.exit(7)
+
+    def reformat_msg(self, event):
+        AWSBucket.reformat_msg(self, event)
+        if 'configuration' in event['aws']:
+            configuration = event['aws']['configuration']
+
+            if 'securityGroups' in configuration:
+                security_groups = configuration['securityGroups']
+                if isinstance(security_groups, unicode):
+                    configuration['securityGroups'] = {'groupId': [security_groups]}
+                elif isinstance(security_groups, list):
+                    group_ids = [sec_group['groupId'] for sec_group in security_groups if 'groupId' in sec_group]
+                    group_names = [sec_group['groupName'] for sec_group in security_groups if 'groupName' in sec_group]
+                    configuration['securityGroups'] = {}
+                    if len(group_ids) > 0:
+                        configuration['securityGroups']['groupId'] = group_ids
+                    if len(group_names) > 0:
+                        configuration['securityGroups']['groupName'] = group_names
+                elif isinstance(configuration['securityGroups'], dict):
+                    configuration['securityGroups'] = {key: [value] for key, value in security_groups.items()}
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'availabilityZones' in configuration:
+                availability_zones = configuration['availabilityZones']
+                if isinstance(availability_zones, unicode):
+                    configuration['availabilityZones'] = {'zoneName': [availability_zones]}
+                elif isinstance(availability_zones, list):
+                    subnet_ids = [zone['subnetId'] for zone in availability_zones if 'subnetId' in zone]
+                    zone_names = [zone['zoneName'] for zone in availability_zones if 'zoneName' in zone]
+                    configuration['availabilityZones'] = {}
+                    if len(subnet_ids) > 0:
+                        configuration['availabilityZones']['subnetId'] = subnet_ids
+                    if len(zone_names) > 0:
+                        configuration['availabilityZones']['zoneName'] = zone_names
+                elif isinstance(configuration['availabilityZones'], dict):
+                    configuration['availabilityZones'] = {key: [value] for key, value in availability_zones.items()}
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'state' in configuration:
+                state = configuration['state']
+                if isinstance(state, unicode):
+                    configuration['state'] = {'name': state}
+                elif isinstance(state, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'createdTime' in configuration:
+                created_time = configuration['createdTime']
+                if isinstance(created_time, float) or isinstance(created_time, int):
+                    configuration['createdTime'] = float(created_time)
+                else:
+                    try:
+                        date_string = str(created_time)
+                        configuration['createdTime'] = mktime(datetime.strptime(date_string,
+                                                                                "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
+                    except Exception:
+                        print("WARNING: Could not reformat event {0}".format(event))
+
+            if 'iamInstanceProfile' in configuration:
+                iam_profile = configuration['iamInstanceProfile']
+                if isinstance(iam_profile, unicode):
+                    configuration['iamInstanceProfile'] = {'name': iam_profile}
+                elif isinstance(iam_profile, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
+        return event
 
 
 class AWSVPCFlowBucket(AWSLogsBucket):

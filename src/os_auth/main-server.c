@@ -367,6 +367,11 @@ int main(int argc, char **argv)
         }
     }
 
+    if (w_is_worker()) {
+        minfo("Cluster worker node: Disabling Authd daemon.");
+        exit(0);
+    }
+
     /* Start daemon -- NB: need to double fork and setsid */
     mdebug1(STARTED_MSG);
 

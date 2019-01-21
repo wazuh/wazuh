@@ -55,6 +55,7 @@ static int check_timestamp(const char *OS, char *timst, char *ret_timst);
 static cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector);
 static char *wm_vuldet_build_url(char *pattern, char *value);
 static void wm_vuldet_adapt_title(char *title, char *cve);
+static char *vu_get_version();
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -198,6 +199,18 @@ int wm_vuldet_create_file(const char *path, const char *source) {
 
         sqlite3_finalize(stmt);
     }
+
+    // Add the database version
+    if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_METADATA_DB], -1, &stmt, &tail) != SQLITE_OK) {
+        return wm_vuldet_sql_error(db, stmt);
+    }
+
+    sqlite3_bind_text(stmt, 1, vu_get_version(), -1, NULL);
+
+    if (wm_vuldet_step(stmt) != SQLITE_DONE) {
+        return wm_vuldet_sql_error(db, stmt);
+    }
+
 
     sqlite3_close_v2(db);
 
@@ -2743,6 +2756,20 @@ cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector){
 
     return root;
 
+}
+
+char *vu_get_version() {
+    static char version[10] = { '\0' };
+    int major = 0;
+    int minor = 0;
+    int patch = 0;
+
+    if (*version == '\0') {
+        sscanf(__ossec_version, "v%d.%d.%d", &major, &minor, &patch);
+        snprintf(version, 9, "%d%d%d", major, minor, patch);
+    }
+
+    return version;
 }
 
 #endif

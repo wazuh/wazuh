@@ -246,10 +246,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
             mwarn("Links are not supported: '%s'", file_name);
             os_free(wd_sum);
+            os_free(alert_msg);
             return (-1);
         }
 #endif
         os_free(wd_sum);
+        os_free(alert_msg);
         return (read_dir(file_name, dir_position, NULL, max_depth-1, 0));
 
     }
@@ -257,6 +259,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (fim_check_restrict (file_name, restriction) == 1) {
         mdebug1("Ingnoring file '%s' for a restriction...", file_name);
         os_free(wd_sum);
+        os_free(alert_msg);
         return (0);
     }
 
@@ -294,7 +297,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                             return 0;
                         } else {
                             free(alert_msg);
-                            free(wd_sum);
+                            os_free(wd_sum);
                             return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
                     }
@@ -302,6 +305,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     if (opts & CHECK_FOLLOW) {
                         mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
                     }
+                    os_free(wd_sum);
+                    os_free(alert_msg);
                     return -1;
                 }
             } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
@@ -508,6 +513,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 }
                 os_free(alert_msg);
                 os_free(alertdump);
+                os_free(wd_sum);
                 return 0;
             }
 #endif
@@ -956,7 +962,7 @@ int run_dbcheck()
                 while(curr_node && curr_node->key);
             }
         }
-
+        last_backup->free_data_function = NULL;
         OSHash_Free(last_backup);
 
         // Check and delete backup local/diff
@@ -1203,6 +1209,8 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         return 1;
     }
 
+    free(real_path);
+    free(dir_name_full);
     return 0;
 }
 #endif

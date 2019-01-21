@@ -493,16 +493,14 @@ def _check_removed_agents(new_client_keys):
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile(r'^(\d+) (\S+) (\S+) (\S+)$')
-    for removed_line in filter(lambda x: x.startswith('-') or x.startswith('+'), unified_diff(client_keys, new_client_keys)):
-        removed_line_match = regex.match(removed_line[1:])
-        if removed_line_match is not None:
-            agent_id, agent_name, agent_ip, agent_key = removed_line_match.group(1, 2, 3, 4)
-            removed = removed_line.startswith('-')
+    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+/\d+) \w+')
+    for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
+        if regex.match(removed_line):
+            agent_id, _, _, _, = removed_line[1:].split(" ")
 
             try:
-                Agent(agent_id).remove() if removed else Agent.insert_agent(agent_name, agent_id, agent_key, agent_ip)
-                logger.info("[Cluster] Agent '{}' {} successfully.".format(agent_id, 'Deleted' if removed else 'Added'))
+                Agent(agent_id).remove()
+                logger.info("[Cluster] Agent '{0}': Deleted successfully.".format(agent_id))
             except WazuhException as e:
                 logger.error("[Cluster] Agent '{0}': Error - '{1}'.".format(agent_id, str(e)))
 
