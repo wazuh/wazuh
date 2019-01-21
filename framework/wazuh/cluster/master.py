@@ -76,9 +76,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
-        self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
-                             'Extra valid': self.setup_task_logger('Extra valid'),
-                             'Agent info': self.setup_task_logger('Agent info')}
+        self.task_loggers = {}
 
     def to_dict(self):
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
@@ -143,6 +141,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
         name, cluster_name, node_type, version = data.split(b' ')
         cmd, payload = super().hello(name)
+
+        self.task_loggers = {'Integrity': self.setup_task_logger('Integrity'),
+                             'Extra valid': self.setup_task_logger('Extra valid'),
+                             'Agent info': self.setup_task_logger('Agent info')}
 
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
 
