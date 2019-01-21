@@ -186,15 +186,17 @@ class AbstractClient(common.Handler):
     async def client_echo(self):
         keep_alive_logger = self.setup_task_logger("Keep Alive")
         # each subtask must have its own local logger defined
-        n_attemps = 0  # number of failed attempts to send a keep alive to server
+        n_attempts = 0  # number of failed attempts to send a keep alive to server
         while not self.on_con_lost.done():
             if self.connected:
                 result = await self.send_request(b'echo-c', b'keepalive')
                 if result.startswith(b'Error'):
-                    n_attemps += 1
-                    if n_attemps >= self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']:
+                    n_attempts += 1
+                    if n_attempts >= self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']:
                         keep_alive_logger.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
+                else:
+                    n_attempts = 0  # set failed attempts to 0 when the last one was successful
                 keep_alive_logger.info(result)
             await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
 
