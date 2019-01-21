@@ -212,7 +212,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                 raise e
                     except Exception as e:
                         errors['extra'] += 1
-                        self.logger.debug2("Error removing file '{}': {}".format(file_to_remove, str(e)))
+                        self.logger.debug2("Error removing file '{}': {}".format(file_to_remove, e))
                         continue
 
         directories_to_check = (os.path.dirname(f) for f, data in ko_files['extra'].items()
@@ -225,13 +225,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     shutil.rmtree(full_path)
             except Exception as e:
                 errors['extra'] += 1
-                self.logger.debug2("Error removing directory '{}': {}".format(directory, str(e)))
+                self.logger.debug2("Error removing directory '{}': {}".format(directory, e))
                 continue
 
-            if sum(errors.values()) > 0:
-                self.logger.error("Found errors: {} overwriting, {} creating and {} removing".format(errors['shared'],
-                                                                                                     errors['missing'],
-                                                                                                     errors['extra']))
+        if sum(errors.values()) > 0:
+            self.logger.error("Found errors: {} overwriting, {} creating and {} removing".format(errors['shared'],
+                                                                                                 errors['missing'],
+                                                                                                 errors['extra']))
 
     def get_logger(self, logger_tag: str = ''):
         return self.logger
