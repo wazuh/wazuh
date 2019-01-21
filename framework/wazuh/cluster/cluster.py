@@ -489,20 +489,33 @@ def _check_removed_agents(new_client_keys):
     If a line starting with - matches the regex structure of a client.keys line
     that agent is deleted.
     """
+    def parse_client_keys(client_keys_contents):
+        """
+        Parses client.keys file into a dictionary
+        :param client_keys_contents: \n splitted contents of client.keys file
+        :return: generator of dictionaries.
+        """
+        return {a_id: {'name': a_name, 'ip': a_ip, 'key': a_key} for a_id, a_name, a_ip, a_key in
+                map(lambda x: x.split(' '), client_keys_contents[:-1]) if not a_name.startswith('!')}
+
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
-    regex = re.compile('-\d+ \w+ (any|\d+\.\d+\.\d+\.\d+|\d+\.\d+\.\d+\.\d+/\d+) \w+')
-    for removed_line in filter(lambda x: x.startswith('-'), unified_diff(client_keys, new_client_keys)):
-        if regex.match(removed_line):
-            agent_id, _, _, _, = removed_line[1:].split(" ")
+    new_client_keys_dict = parse_client_keys(new_client_keys)
+    client_keys_dict = parse_client_keys(client_keys)
 
-            try:
-                Agent(agent_id).remove()
-                logger.info("[Cluster] Agent '{0}': Deleted successfully.".format(agent_id))
-            except WazuhException as e:
-                logger.error("[Cluster] Agent '{0}': Error - '{1}'.".format(agent_id, str(e)))
+    # get removed agents: the ones missing in the new client keys and present in the old
+    for removed in client_keys_dict.keys() - new_client_keys_dict.keys():
+        try:
+            Agent(removed).remove()
+            logger.info("[Cluster] Agent '{}' removed successfully.".format(removed))
+        except WazuhException as e:
+            logger.error("[Cluster] Agent '{0}': Error - '{1}'.".format(removed, str(e)))
+            # the exception needs to be raised to prevent the new client keys to be written
+            # if the agent wasn't correctly removed
+            if e.code != 1701 or e.code != 9011:
+                raise e
 
 
 #
