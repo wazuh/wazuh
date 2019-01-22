@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -287,7 +289,9 @@ wait_pid() {
         then
             return 1
         else
-            sleep 0.1
+            # sleep doesn't work in AIX
+            # read doesn't work in FreeBSD
+            sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
             i=`expr $i + 1`
         fi
     done

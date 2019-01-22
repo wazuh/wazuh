@@ -1,22 +1,23 @@
 <!--
   -  IDS rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
 <var name="IDS_FREQ">10</var>
 
 <group name="ids,">
-  <rule id="20240" level="8">
+  <rule id="20100" level="8">
     <category>ids</category>
     <if_fts></if_fts>
     <description>First time this IDS alert is generated.</description>
     <group>fts,</group>
   </rule>
 
-  <rule id="20241" level="6">
+  <rule id="20101" level="6">
     <category>ids</category>
     <check_if_ignored>srcip, id</check_if_ignored>
     <description>IDS event.</description>
@@ -25,8 +26,8 @@
   <!-- This rule ignores some Ids that cause too much
     -  false positives. Snort specific.
     -->
-  <rule id="20242" level="0">
-    <if_sid>20240, 20241</if_sid>
+  <rule id="20102" level="0">
+    <if_sid>20100, 20101</if_sid>
     <decoded_as>snort</decoded_as>
     <!-- 1:1852 -> robots.txt access
        - 1:368 - ICMP ping.
@@ -45,8 +46,8 @@
   </rule>
 
   <!-- Ignored Dragon ids -->
-  <rule id="20243" level="0">
-    <if_sid>20240, 20241</if_sid>
+  <rule id="20103" level="0">
+    <if_sid>20100, 20101</if_sid>
     <decoded_as>dragon-nids</decoded_as>
     <!-- EOL -> end of line
        - SOF -> start of file
@@ -58,16 +59,16 @@
     <description>Ignored snort ids.</description>
   </rule>
 
-  <rule id="20244" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
-    <if_matched_sid>20241</if_matched_sid>
+  <rule id="20152" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
+    <if_matched_sid>20101</if_matched_sid>
     <same_id />
     <check_if_ignored>id</check_if_ignored>
     <description>Multiple IDS alerts for same id.</description>
     <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20245" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
-    <if_matched_sid>20241</if_matched_sid>
+  <rule id="20151" level="10" frequency="$IDS_FREQ" timeframe="120" ignore="90">
+    <if_matched_sid>20101</if_matched_sid>
     <same_source_ip />
     <check_if_ignored>srcip, id</check_if_ignored>
     <description>Multiple IDS events from same source ip.</description>
@@ -79,8 +80,8 @@
      - the same thing all the time. We will skip those events
      - since they became just noise.
      -->
-  <rule id="20246" level="11" frequency="5" timeframe="3800">
-    <if_matched_sid>20245</if_matched_sid>
+  <rule id="20161" level="11" frequency="5" timeframe="3800">
+    <if_matched_sid>20151</if_matched_sid>
     <same_source_ip />
     <same_id />
     <ignore>srcip, id</ignore>
@@ -89,8 +90,8 @@
     <group>gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20247" level="11" frequency="5" timeframe="3800">
-    <if_matched_sid>20244</if_matched_sid>
+  <rule id="20162" level="11" frequency="5" timeframe="3800">
+    <if_matched_sid>20152</if_matched_sid>
     <same_id />
     <ignore>id</ignore>
     <description>Multiple IDS alerts for same id </description>

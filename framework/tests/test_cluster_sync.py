@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -552,8 +553,6 @@ def clean(ossec_path="/var/ossec"):
     list_files = []
     list_files.append("{}/aws-eventnames".format(directory2))
     list_files.append("{}/aws-eventnames.cdb".format(directory2))
-    list_files.append("{}/aws-sources".format(directory2))
-    list_files.append("{}/aws-sources.cdb".format(directory2))
     for file in list_files:
         if not os.path.exists(file):
             with open("{}".format(file), 'w') as ck:

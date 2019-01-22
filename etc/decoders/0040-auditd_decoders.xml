@@ -1,6 +1,7 @@
 <!--
   -  Audit decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -25,8 +26,8 @@ type=SYSCALL msg=audit(1479982525.380:50): arch=c000003e syscall=2 success=yes e
 <!-- SYSCALL -->
 <decoder name="auditd-syscall">
     <parent>auditd</parent>
-    <regex offset="after_regex">^arch=\S+ syscall=(\d+) success=(\S+) exit=(\S+) a0=\S+ a1=\S+ a2=\S+ a3=\S+ items=\S+ ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p </regex>
-    <order>audit.syscall,audit.success,audit.exit,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
+    <regex offset="after_regex">^arch=(\S+) syscall=(\d+) success=(\S+) exit=(\S+) a0=(\S+) a1=(\S+) a2=(\S+) a3=(\S+) items=(\S+) ppid=(\S+) pid=(\S+) auid=(\S+) uid=(\S+) gid=(\S+) euid=(\S+) suid=(\S+) fsuid=(\S+) egid=(\S+) sgid=(\S+) fsgid=(\S+) tty=(\S+) ses=(\S+) comm=\p(\S+)\p exe=\p(\S+)\p</regex>
+    <order>audit.arch,audit.syscall,audit.success,audit.exit,audit.a0,audit.a1,audit.a2,audit.a3,audit.items,audit.ppid,audit.pid,audit.auid,audit.uid,audit.gid,audit.euid,audit.suid,audit.fsuid,audit.egid,audit.sgid,audit.fsgid,audit.tty,audit.session,audit.command,audit.exe</order>
 </decoder>
 
 <!-- SYSCALL - key -->

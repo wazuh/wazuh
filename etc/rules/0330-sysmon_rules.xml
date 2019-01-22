@@ -1,6 +1,7 @@
 <!--
   -  Sysmon rules
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -233,6 +234,14 @@
 
 </group>
 
+<!--
+    -  Process anomalies based on Sysmon Event 1
+    -  Author: Josh Brower, Josh@DefensiveDepth.com.
+    -  Licensed under the MIT License: http://opensource.org/licenses/MIT
+    -  Windows Process Attributes documentation here: http://defensivedepth.com/windows-processes
+    -  Updated by Wazuh, Inc. <support@wazuh.com>.
+-->
+
 <group name="sysmon,sysmon_process-anomalies,">
 
     <rule id="184666" level="12">
@@ -402,4 +411,3 @@
         <description>Sysmon - Legitimate Parent Image - explorer.exe</description>
     </rule>
 </group>
-

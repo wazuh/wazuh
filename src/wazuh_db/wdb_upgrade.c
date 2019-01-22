@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * December 12, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -105,7 +105,7 @@ int wdb_create_backup(const char * agent_id, int version) {
         return -1;
     }
 
-    snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d", WDB2_DIR, agent_id, version);
+    snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d-%lu", WDB2_DIR, agent_id, version, (unsigned long)time(NULL));
 
     if (!(dest = fopen(path, "w"))) {
         merror("Couldn't open dest '%s': %s (%d)", path, strerror(errno), errno);

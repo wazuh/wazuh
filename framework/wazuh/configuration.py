@@ -1,14 +1,21 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from os import listdir, path as os_path
+import random
+import time
+from os import remove, path as os_path
 import re
+from shutil import move
+from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
+import subprocess
+
 # Python 2/3 compability
 try:
     from ConfigParser import RawConfigParser, NoOptionError
@@ -390,6 +397,7 @@ def _rootkit_trojans2json(filepath):
     # file_name !string_to_search!Description
     regex_comment = re.compile("^\s*#")
     regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
+    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!")
 
     try:
         with open(filepath) as f:
@@ -397,15 +405,21 @@ def _rootkit_trojans2json(filepath):
                 if re.search(regex_comment, line):
                     continue
 
-                match_check= re.search(regex_check, line)
+                match_check = re.search(regex_check, line)
+                match_binary_check = re.search(regex_binary_check, line)
                 if match_check:
                     new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(), 'description': match_check.group(3).strip()}
                     data.append(new_check)
+                elif match_binary_check:
+                    new_check = {'filename': match_binary_check.group(1).strip(), 'name': match_binary_check.group(2).strip()}
+                    data.append(new_check)
+
 
     except Exception as e:
         raise WazuhException(1101, str(e))
 
     return data
+
 
 def _ar_conf2json(file_path):
     """
@@ -453,7 +467,7 @@ def get_ossec_conf(section=None, field=None):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None, return_format=None):
     """
     Returns agent.conf as dictionary.
 
@@ -475,17 +489,24 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(agent_conf)
+    try:       
 
+        # Read RAW file
+        if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
+            with open(agent_conf, 'r') as xml_data:
+                data = xml_data.read().replace('\n', '')
+                return data
         # Parse XML to JSON
-        data = _agentconf2json(xml_data)
+        else: 
+            # Read XML
+            xml_data = load_wazuh_xml(agent_conf)
+
+            data = _agentconf2json(xml_data)
     except Exception as e:
         raise WazuhException(1101, str(e))
 
-
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
+
 
 def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_limit, filename=None):
     """
@@ -522,7 +543,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
 
 
-def get_file_conf(filename, group_id=None, type_conf=None):
+def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     """
     Returns the configuration file as dictionary.
 
@@ -560,7 +581,7 @@ def get_file_conf(filename, group_id=None, type_conf=None):
             raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=None, filename=filename)
+            data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
         elif filename == "rootkit_files.txt":
             data = _rootkit_files2json(file_path)
         elif filename == "rootkit_trojans.txt":
@@ -582,7 +603,6 @@ def parse_internal_options(high_name, low_name):
         config.readfp(str_config)
 
         return config
-
 
     if not os_path.exists(common.internal_options):
         raise WazuhException(1107)
@@ -612,3 +632,91 @@ def get_internal_options_value(high_name, low_name, max, min):
         raise WazuhException(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
 
     return option
+
+
+def upload_group_configuration(group_id, xml_file):
+    """
+    Updates group configuration
+    :param group_id: Group to update
+    :param xml_file: File contents of the new configuration in string.
+    :return: Confirmation message.
+    """
+    # check if the group exists
+    if not Agent.group_exists(group_id):
+        raise WazuhException(1710)
+
+    # path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+
+    # create temporary file for parsing xml input
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            # beauty xml file
+            xml = parseString('<root>' + xml_file + '</root>')
+            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            # revert xml.dom replacings
+            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
+                                   .replace("&gt;", ">")
+            tmp_file.write(pretty_xml)
+    except Exception as e:
+        raise WazuhException(1113, str(e))
+
+    try:
+        # check xml format
+        try:
+            load_wazuh_xml(tmp_file_path)
+        except Exception as e:
+            raise WazuhException(1113, str(e))
+
+        # check Wazuh xml format
+        try:
+            subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', tmp_file_path],
+                                    stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            # extract error message from output.
+            # Example of raw output
+            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
+            # Example of desired output:
+            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
+                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
+            raise WazuhException(1114, ' '.join(output_regex))
+        except Exception as e:
+            raise WazuhException(1743, str(e))
+
+        # move temporary file to group folder
+        try:
+            new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
+            move(tmp_file_path, new_conf_path)
+        except Exception as e:
+            raise WazuhException(1017, str(e))
+
+        return 'Agent configuration was updated successfully'
+    except Exception as e:
+        # remove created temporary file
+        remove(tmp_file_path)
+        raise e
+
+
+def upload_group_file(group_id, xml_file, file_name='agent.conf'):
+    """
+    Updates a group file
+
+    :param group_id: Group to update
+    :param xml_file: File contents in string
+    :param file_name: File name to update
+    :return: Confirmation message in string
+    """
+    if file_name == 'agent.conf':
+        with open(xml_file) as f:
+            xml_file_data = f.read()
+
+        remove(xml_file)
+        if len(xml_file_data) == 0:
+            raise WazuhException(1112)
+
+        return upload_group_configuration(group_id, xml_file_data)
+    else:
+        raise WazuhException(1111)

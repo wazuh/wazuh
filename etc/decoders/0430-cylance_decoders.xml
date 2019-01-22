@@ -1,6 +1,7 @@
 <!--
   -  Cylance decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -22,7 +23,7 @@ SHA256A1234567890SHA2561234567890SHA256A1234567890SHA25612345678    MD5012345678
     <order>cylance_events.sha256,cylance_events.md5, cylance_events.devicename, cylance_events.filepath, cylance_events.eventstatus, cylance_events.cylancescore, cylance_events.classification, cylance_events.running, cylance_events.everrun, cylance_events.detectedby, cylance_events.serialnumber</order>
 </decoder>
 
-<!-- 
+<!--
     RRETGRETRE.exe	quarantined	55	No Signature		No	No	FALSE										123456789ABCDEFG123456789ABCDEFG123456789ABCDEFG123456789ABCDEFG	123456789ABCDEFG123456789ABCDEFG	Dual Use - Remote Access	F-R5PH3421FJ7	12345ght-12gh-ff24-1iu8-hgyrbv987hf3	18432	C:\dfrg\rreg\grrgr\RRETGRETRE.exe	Internal Hard Drive	BUILTIN\Administrators	6/19/2017 20:06	6/19/2017 20:06	7/10/2017 20:13	FALSE	FALSE	FALSE	7/10/2017 20:14	7/28/2017 21:37	Background Threat Detection
 -->
 
@@ -30,7 +31,7 @@ SHA256A1234567890SHA2561234567890SHA256A1234567890SHA25612345678    MD5012345678
     <prematch>^\.+\t\w+\t\d+\t\.+\t\w*\t\w\w\w*\t\w\w\w*\t\w\w\w\w\w*\t</prematch>
 </decoder>
 
-<!-- 
+<!--
     * Filename can contain any kind of characters
     * File status is just a word
     * Cylance score is a number
@@ -46,7 +47,7 @@ SHA256A1234567890SHA2561234567890SHA256A1234567890SHA25612345678    MD5012345678
     <order>cylance_threats.file_name, cylance_threats.file_status, cylance_threats.cylance_score, cylance_threats.signature_status, cylance_threats.av_industry, cylance_threats.global_quarantined, cylance_threats.safelisted, cylance_threats.signed</order>
 </decoder>
 
-<!-- 
+<!--
     * Cert Timestamp is a date than can be empty and has the following format: m(m)/d(d)/yyyy h(h):m(m). If month, hour, minute or day is less than 10 will only have one cipher
 -->
 <decoder name="cylance_threats_fields">
@@ -55,7 +56,7 @@ SHA256A1234567890SHA2561234567890SHA256A1234567890SHA25612345678    MD5012345678
     <order>cylance_threats.cert_timestamp</order>
 </decoder>
 
-<!-- 
+<!--
     * Cert Issuer is a string that can be empty and has letters, numbers and spaces.
     * Cert Publisher has the same structure
     * Cert Subject has the same structure
@@ -64,7 +65,7 @@ SHA256A1234567890SHA2561234567890SHA256A1234567890SHA25612345678    MD5012345678
     * File version can have many different structures and can be empty
     * Company name is a string that contains letters and spaces
     * Copyright is a string that contains letters, numbers and spaces
-    * SHA256 is a 64 length string that contains only numbers and letters. 
+    * SHA256 is a 64 length string that contains only numbers and letters.
     * MD5 is the same as SHA256 but its length is 32
     * Classification is a string that can contain symbols, spaces, letters and numbers. It can be empty
     * DeviceName is a string

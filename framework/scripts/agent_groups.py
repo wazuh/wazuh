@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -70,7 +71,7 @@ def show_agents_with_group(group_id):
     else:
         print("{0} agent(s) in group '{1}':".format(agents_data['totalItems'], group_id))
         for agent in agents_data['items']:
-            print("  ID: {0}  Name: {1}. {2}".format(agent['id'], agent['name'], '*' if len(agent['group']) > 1 else ''))
+            print("  ID: {0}  Name: {1}.".format(agent['id'], agent['name']))
 
 
 def show_group_files(group_id):

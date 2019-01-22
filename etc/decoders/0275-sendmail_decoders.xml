@@ -1,8 +1,9 @@
 <!--
   -  Sendmail decoders
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -26,7 +27,7 @@
    Sep 29 17:11:02 ramp sendmail[21549]: v8TLB2x7021549: from=<example@email.com>, size=909, class=0, nrcpts=1, msgid=<201709292111.v8TLB1Nj021545@email.com>, proto=ESMTP, daemon=MTA, relay=[127.0.0.1]
 
    Sep 29 17:11:02 ramp sendmail[21549]: v8TLB2x7021549: from=<example@email.com>, size=909, class=0, nrcpts=1, msgid=<201709292111.v8TLB1Nj021545@email.com>, proto=ESMTP, daemon=MTA, relay=localhost.localdomain [12001:0db8:::0d0b]
-   
+
    Sep 29 17:11:02 ramp sendmail[21549]: v8TLB2x7021549: from=<example@email.com>, size=909, class=0, nrcpts=1, msgid=<201709292111.v8TLB1Nj021545@email.com>, proto=ESMTP, daemon=MTA, relay=[2001:0db8:85a3:0000:0000:8a2e:0370:7334]
  -->
 

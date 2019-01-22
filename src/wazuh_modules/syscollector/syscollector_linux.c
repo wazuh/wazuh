@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Linux
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -642,6 +642,10 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             if (!strncmp(read_buff, "Package: ", 9)) {
 
+                if(object){
+                    cJSON_Delete(object);
+                }
+                
                 object = cJSON_CreateObject();
                 package = cJSON_CreateObject();
                 cJSON_AddStringToObject(object, "type", "program");
@@ -776,10 +780,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                     mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     cJSON_Delete(object);
+                    object = NULL;
                     free(string);
 
                 } else {
                     cJSON_Delete(object);
+                    object = NULL;
                     continue;
                 }
 
@@ -794,6 +800,10 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
         free(timestamp);
         return NULL;
 
+    }
+
+    if(object){
+        cJSON_Delete(object);
     }
 
     object = cJSON_CreateObject();
@@ -1309,16 +1319,6 @@ hw_info *get_system_linux(){
 
                 free(info->cpu_name);
                 info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
-
-                char *cores;
-                cores = strtok(string, ":");
-                cores = strtok(NULL, "\n");
-                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_cores = atoi(cores);
-
             } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
 
                 char *frec;
@@ -1333,6 +1333,8 @@ hw_info *get_system_linux(){
         free(aux_string);
         fclose(fp);
     }
+
+    info->cpu_cores = get_nproc();
 
     if (!(fp = fopen("/proc/meminfo", "r"))) {
         mterror(WM_SYS_LOGTAG, "Unable to read meminfo file.");

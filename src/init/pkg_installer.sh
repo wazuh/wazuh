@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copyright (C) 2015-2019, Wazuh Inc.
+
 . /etc/ossec-init.conf
 
 # Generating Backup

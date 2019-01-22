@@ -1,6 +1,6 @@
 /*
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Contributed by Arshad Khan (@arshad01)
- * Maintained by Wazuh Inc.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
