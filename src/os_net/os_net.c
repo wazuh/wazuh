@@ -841,7 +841,7 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size) {
     ssize_t recvb;
 
     for (offset = 0; offset < size; offset += recvb) {
-        recvb = recv(sock, buf + offset, size - offset, 0);
+        recvb = recv(sock, (char*)buf + offset, size - offset, 0);
 
         if (recvb <= 0) {
             return recvb;
