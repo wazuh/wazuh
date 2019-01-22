@@ -218,28 +218,30 @@ int add_agent(int json_output, int no_limit)
             _ip = NULL;
             free(c_ip.ip);
             c_ip.ip = NULL;
-        } else if (!authd_running && (id_exist = IPExist(ip))) {
-            double antiquity = OS_AgentAntiquity_ID(id_exist);
+        } else {
+            id_exist = IPExist(ip);
+            if (!authd_running && id_exist) {
+                double antiquity = OS_AgentAntiquity_ID(id_exist);
 
-            if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
-                OS_BackupAgentInfo_ID(id_exist);
-                OS_RemoveAgent(id_exist);
-            } else {
-                if (json_output) {
-                    cJSON *json_root = cJSON_CreateObject();
-                    cJSON_AddNumberToObject(json_root, "error", 79);
-                    cJSON_AddStringToObject(json_root, "message", "Duplicated IP for agent");
-                    printf("%s", cJSON_PrintUnformatted(json_root));
-                    exit(1);
+                if (env_remove_dup && (antiquity >= force_antiquity || antiquity < 0)) {
+                    OS_BackupAgentInfo_ID(id_exist);
+                    OS_RemoveAgent(id_exist);
                 } else {
-                    printf(IP_DUP_ERROR, ip);
-                    setenv("OSSEC_AGENT_IP", "", 1);
-                    _ip = NULL;
-                    free(c_ip.ip);
-                    c_ip.ip = NULL;
+                    if (json_output) {
+                        cJSON *json_root = cJSON_CreateObject();
+                        cJSON_AddNumberToObject(json_root, "error", 79);
+                        cJSON_AddStringToObject(json_root, "message", "Duplicated IP for agent");
+                        printf("%s", cJSON_PrintUnformatted(json_root));
+                        exit(1);
+                    } else {
+                        printf(IP_DUP_ERROR, ip);
+                        setenv("OSSEC_AGENT_IP", "", 1);
+                        _ip = NULL;
+                        free(c_ip.ip);
+                        c_ip.ip = NULL;
+                    }
                 }
             }
-
             free(id_exist);
         }
     } while (!_ip);
