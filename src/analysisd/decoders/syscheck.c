@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -571,7 +572,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                         localsdb->perm[0] = '\0';
                     }
 
-                    lf->win_perm_before = oldsum->win_perm;
+                    os_strdup(oldsum->win_perm, lf->win_perm_before);
                 }
             }
 

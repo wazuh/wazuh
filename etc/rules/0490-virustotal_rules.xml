@@ -1,6 +1,7 @@
 <!--
   -  VirusTotal integration rules
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -46,5 +47,5 @@
         <description>VirusTotal: Alert - $(virustotal.source.file) - $(virustotal.positives) engines detected this file</description>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
- 
+
 </group>

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for custom command execution
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * October 26, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -200,7 +200,7 @@ void * wm_command_main(wm_command_t * command) {
             break;
         }
 
-        if (!command->ignore_output) {
+        if (!command->ignore_output && output != NULL) {
             char * line;
 
             for (line = strtok(output, "\n"); line; line = strtok(NULL, "\n")){

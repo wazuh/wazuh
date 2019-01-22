@@ -1,7 +1,7 @@
 /* Remoted state management functions
  * May 25, 2018
  *
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it

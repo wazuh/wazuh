@@ -1,8 +1,9 @@
 <!--
   -  Microsoft Windows rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -816,7 +817,7 @@
 
   <!--
   2016 Nov 18 10:37:26 WinEvtLog: Application: INFORMATION(302): ESENT: (no user): no domain: BNC-O9020: Music.UI (25428) {87E550B7-AD4D-40F7-BE5E-263C3D44C124}: The database engine has successfully completed recovery steps.
-  2018 Aug 16 21:01:50 WinEvtLog: Application: INFORMATION(300): ESENT: (no user): no domain: Dan.domain.ca: lsass (500) The database engine is initiating recovery steps.  
+  2018 Aug 16 21:01:50 WinEvtLog: Application: INFORMATION(300): ESENT: (no user): no domain: Dan.domain.ca: lsass (500) The database engine is initiating recovery steps.
   -->
   <rule id="18270" level="0">
     <if_sid>18257</if_sid>
@@ -1592,7 +1593,7 @@
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  
+
   <!-- Some services change their startup type automatically -->
   <rule id="20080" level="3">
     <if_sid>20002</if_sid>
@@ -2261,7 +2262,7 @@
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
-  
+
   <!-- Composite rules -->
   <rule id="20085" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>20048</if_matched_sid>

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -15,10 +16,7 @@
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));
 
-void OS_FreeKey(keyentry *key);
-
 static int pass_empty_keyfile = 0;
-static OSHash *last_freed_keys = NULL;
 
 /* Clear keys entries */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size)
@@ -60,8 +58,8 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     os_md5 filesum1;
     os_md5 filesum2;
 
-    char *tmp_str = NULL;
-    char _finalstr[KEYSIZE] = {'\0'};
+    char *tmp_str;
+    char _finalstr[KEYSIZE];
 
     /* Allocate for the whole structure */
     keys->keyentries = (keyentry **)realloc(keys->keyentries,
@@ -178,8 +176,6 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     char key[KEYSIZE + 1];
     char *end;
     int id_number;
-    
-    int success = 0;
 
     /* Check if the keys file is present and we can read it */
     if ((keys->file_change = File_DateofChange(keys_file)) < 0) {
@@ -200,14 +196,9 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
     keys->keyhash_ip = OSHash_Create();
     keys->keyhash_sock = OSHash_Create();
 
-    if (!keys->keyhash_id || !keys->keyhash_ip || !keys->keyhash_sock) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        goto ret;
+    if (!(keys->keyhash_id && keys->keyhash_ip && keys->keyhash_sock)) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
     }
-    
-    OSHash_SetFreeDataPointer(keys->keyhash_id, (void (*)(void *))OS_FreeKey);
-    OSHash_SetFreeDataPointer(keys->keyhash_ip, (void (*)(void *))OS_FreeKey);
-    OSHash_SetFreeDataPointer(keys->keyhash_sock, (void (*)(void *))OS_FreeKey);
 
     /* Initialize structure */
     os_calloc(1, sizeof(keyentry*), keys->keyentries);
@@ -306,8 +297,7 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         /* Check for maximum agent size */
         if ( !no_limit && keys->keysize >= (MAX_AGENTS - 2) ) {
             merror(AG_MAX_ERROR, MAX_AGENTS - 2);
-            merror(CONFIG_ERROR, keys_file);
-            goto ret;
+            merror_exit(CONFIG_ERROR, keys_file);
         }
 
         continue;
@@ -325,43 +315,18 @@ void OS_ReadKeys(keystore *keys, int rehash_keys, int save_removed, int no_limit
         if (pass_empty_keyfile) {
             mdebug1(NO_CLIENT_KEYS);
         } else {
-            merror(NO_CLIENT_KEYS);
-            goto ret;
+            merror_exit(NO_CLIENT_KEYS);
         }
     }
 
     /* Add additional entry for sender == keysize */
     os_calloc(1, sizeof(keyentry), keys->keyentries[keys->keysize]);
     w_mutex_init(&keys->keyentries[keys->keysize]->mutex, NULL);
-    
-    success = 1;
-    
-ret:
-    if (!success) {
-        if (fp) fclose(fp);
-        OS_FreeKeys(keys);
-        exit(1);
-    }
+
+    return;
 }
 
 void OS_FreeKey(keyentry *key) {
-    if(!last_freed_keys){
-        last_freed_keys = OSHash_Create();
-        if (!last_freed_keys) {
-            merror_exit(LIST_ERROR);
-        }  
-    }
-    char key_c[64];
-#ifdef WIN32
-    sprintf(key_c,"%p",key);
-#else
-    sprintf(key_c,"%p",key);
-#endif
-
-    if(OSHash_Get(last_freed_keys,key_c)){
-        return;
-    }
-
     if (key->ip) {
         free(key->ip->ip);
         free(key->ip);
@@ -385,14 +350,13 @@ void OS_FreeKey(keyentry *key) {
     }
 
     pthread_mutex_destroy(&key->mutex);
-    OSHash_Add(last_freed_keys,key_c,(void *)1);
     free(key);
 }
 
 /* Free the auth keys */
 void OS_FreeKeys(keystore *keys)
 {
-    size_t i;
+    unsigned int i;
 
     /* Free the hashes */
 

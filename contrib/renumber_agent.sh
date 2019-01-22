@@ -2,6 +2,7 @@
 
 # Renumber (change IP address) an OSSEC agent (must be run on both agent 
 # and server)
+# Copyright (C) 2015-2019, Wazuh Inc.
 
 # Sanity checks
 
