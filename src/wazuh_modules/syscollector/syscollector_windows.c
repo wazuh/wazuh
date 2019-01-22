@@ -12,9 +12,21 @@
 #ifdef WIN32
 
 #include <winternl.h>
-#include <ntstatus.h>
 #include "syscollector.h"
 #include "file_op.h"
+
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define NT_SUCCESS(x) ((x) >= 0)
+#define STATUS_INFO_LENGTH_MISMATCH 0xc0000004
+
+typedef struct _UNICODE_STRING {
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR Buffer;
+} UNICODE_STRING;
+#else
+#include <ntstatus.h>
+#endif
 
 typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 typedef char* (*CallFunc1)(UCHAR ucLocalAddr[]);
@@ -221,17 +233,16 @@ char* get_port_state(int state){
 // Get opened ports inventory
 
 void sys_ports_windows(const char* LOCATION, int check_all){
-
     /* Declare and initialize variables */
-    PMIB_TCPTABLE_OWNER_PID pTcpTable;
-    PMIB_TCP6TABLE_OWNER_PID pTcp6Table;
-    PMIB_UDPTABLE_OWNER_PID pUdpTable;
-    PMIB_UDP6TABLE_OWNER_PID pUdp6Table;
+    PMIB_TCPTABLE_OWNER_PID pTcpTable = NULL;
+    PMIB_TCP6TABLE_OWNER_PID pTcp6Table = NULL;
+    PMIB_UDPTABLE_OWNER_PID pUdpTable = NULL;
+    PMIB_UDP6TABLE_OWNER_PID pUdp6Table = NULL;
     DWORD dwSize = 0;
     BOOL bOrder = TRUE;
     DWORD dwRetVal = 0;
     int listening;
-    int i = 0;
+    int i = 0, j = 0;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -278,10 +289,20 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 	} else {
 		mtwarn(WM_SYS_LOGTAG, "Unable to retrieve current process token. Error '%ld'.", GetLastError());
 	}
+    
+    /* Initialize the Winsock DLL */
+    WSADATA wsd;
+    int wsa_enabled = 0;
+    if (WSAStartup(MAKEWORD(2,2), &wsd) != 0) {
+        mterror(WM_SYS_LOGTAG, "Unable to initialize Winsock DLL (%d).", WSAGetLastError());
+        goto end;
+    }
+    wsa_enabled = 1;
 	
 	char local_addr[NI_MAXHOST];
     char rem_addr[NI_MAXHOST];
     struct in_addr ipaddress;
+    struct in6_addr ipaddressv6;
 
     TCP_TABLE_CLASS TableClass = TCP_TABLE_OWNER_PID_ALL;
     UDP_TABLE_CLASS TableClassUdp = UDP_TABLE_OWNER_PID;
@@ -294,7 +315,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     if (pTcpTable == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcpTable'.");
-        return;
+        goto end;
     }
 
     dwSize = sizeof(MIB_TCPTABLE_OWNER_PID);
@@ -361,20 +382,14 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 cJSON_Delete(object);
                 free(string);
 
-            } else
+            } else {
                 cJSON_Delete(object);
-
+            }
         }
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
-        win_free(pTcpTable);
-        return;
-    }
-
-    if (pTcpTable != NULL) {
-        win_free(pTcpTable);
-        pTcpTable = NULL;
+        goto end;
     }
 
     /* TCP6 opened ports inventory */
@@ -383,7 +398,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     if (pTcp6Table == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcp6Table'.");
-        return;
+        goto end;
     }
 
     dwSize = sizeof(MIB_TCP6TABLE_OWNER_PID);
@@ -394,43 +409,19 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         pTcp6Table = (MIB_TCP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcp6Table == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcp6Table'.");
-            return;
+            goto end;
         }
     }
-
-    /* Call inet_ntop function through syscollector DLL */
-    CallFunc1 _wm_inet_ntop;
-    HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
-    if (sys_library == NULL){
-        DWORD error = GetLastError();
-        LPSTR messageBuffer = NULL;
-        LPSTR end;
-
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, error, 0, (LPTSTR) &messageBuffer, 0, NULL);
-
-        if (end = strchr(messageBuffer, '\r'), end) {
-            *end = '\0';
-        }
-
-        mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu)", messageBuffer, error);
-        LocalFree(messageBuffer);
-        return;
-    }else{
-        _wm_inet_ntop = (CallFunc1)GetProcAddress(sys_library, "wm_inet_ntop");
-    }
-    if (!_wm_inet_ntop){
-        mterror(WM_SYS_LOGTAG, "Unable to access 'wm_inet_ntop' on syscollector_win_ext.dll.");
-        return;
-    }
-
+    
     /* Second call with the right size of the returned table */
     if ((dwRetVal = GetExtendedTcpTable(pTcp6Table, &dwSize, bOrder, AF_INET6, TableClass, 0)) == NO_ERROR){
 
         for (i=0; i < (int) pTcp6Table->dwNumEntries; i++){
 
             listening = 0;
-            char *laddress = NULL;
-            char *raddress = NULL;
+            DWORD addresslen = 128;
+            char laddress[128] = {'\0'};
+            char raddress[128] = {'\0'};
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
@@ -440,12 +431,44 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "tcp6");
 
-            laddress = _wm_inet_ntop(pTcp6Table->table[i].ucLocalAddr);
-            cJSON_AddStringToObject(port, "local_ip", laddress);
+            struct sockaddr_in6 *ipv6_local_sock = NULL;
+            ipv6_local_sock->sin6_family = AF_INET6;
+            for(j = 0; j < 16; j++) ipaddressv6.u.Byte[j] = pTcp6Table->table[i].ucLocalAddr[j];
+            ipv6_local_sock->sin6_addr = ipaddressv6;
+            ipv6_local_sock->sin6_port = (u_short)pTcp6Table->table[i].dwLocalPort;
+
+            if (WSAAddressToStringA((LPSOCKADDR)ipv6_local_sock, 16, NULL, laddress, &addresslen) == SOCKET_ERROR) {
+                mterror(WM_SYS_LOGTAG, "WSAAddressToStringA() failed (%d).", WSAGetLastError());
+                cJSON_AddStringToObject(port, "local_ip", "unknown");
+            } else {
+                /* Remove the scope ID from the IPv6 address (if available) */
+                char *pch = strrchr(laddress, '%');
+                if (pch != NULL) pch = '\0';
+                cJSON_AddStringToObject(port, "local_ip", laddress);
+            }
+
+            mtinfo(WM_SYS_LOGTAG, "TCP IPv6 Local Address: %s", laddress);
+
             cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pTcp6Table->table[i].dwLocalPort));
 
-            raddress = _wm_inet_ntop(pTcp6Table->table[i].ucRemoteAddr);
-            cJSON_AddStringToObject(port, "remote_ip", raddress);
+            struct sockaddr_in6 *ipv6_remote_sock = NULL;
+            ipv6_remote_sock->sin6_family = AF_INET6;
+            for(j = 0; j < 16; j++) ipaddressv6.u.Byte[j] = pTcp6Table->table[i].ucRemoteAddr[j];
+            ipv6_remote_sock->sin6_addr = ipaddressv6;
+            ipv6_remote_sock->sin6_port = (u_short)pTcp6Table->table[i].dwRemotePort;
+
+            if (WSAAddressToStringA((LPSOCKADDR)ipv6_remote_sock, 16, NULL, raddress, &addresslen) == SOCKET_ERROR) {
+                mterror(WM_SYS_LOGTAG, "WSAAddressToStringA() failed (%d).", WSAGetLastError());
+                cJSON_AddStringToObject(port, "local_ip", "unknown");
+            } else {
+                /* Remove the scope ID from the IPv6 address (if available) */
+                char *pch = strrchr(raddress, '%');
+                if (pch != NULL) pch = '\0';
+                cJSON_AddStringToObject(port, "remote_ip", raddress);
+            }
+
+            mtinfo(WM_SYS_LOGTAG, "TCP IPv6 Remote Address: %s", raddress);
+
             cJSON_AddNumberToObject(port, "remote_port", ntohs((u_short)pTcp6Table->table[i].dwRemotePort));
 
             /* Get port state */
@@ -472,41 +495,17 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
                 cJSON_Delete(object);
                 free(string);
-
-            } else
+            } else {
                 cJSON_Delete(object);
-
-
-            free(laddress);
-            free(raddress);
+            }
         }
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
-        win_free(pTcp6Table);
-        return;
+        goto end;
     }
 
-    if (pTcp6Table != NULL) {
-        win_free(pTcp6Table);
-        pTcp6Table = NULL;
-    }
-
-    if (!check_all) {
-        cJSON *object = cJSON_CreateObject();
-        cJSON_AddStringToObject(object, "type", "port_end");
-        cJSON_AddNumberToObject(object, "ID", ID);
-        cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-        char *string;
-        string = cJSON_PrintUnformatted(object);
-        mtdebug2(WM_SYS_LOGTAG, "sys_ports_windows() sending '%s'", string);
-        wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(object);
-        free(string);
-        free(timestamp);
-        return;
-    }
+    if (!check_all) goto end;
 
     /* UDP opened ports inventory */
 
@@ -514,7 +513,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     if (pUdpTable == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdpTable'.");
-        return;
+        goto end;
     }
 
     dwSize = sizeof(MIB_UDPTABLE_OWNER_PID);
@@ -525,7 +524,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         pUdpTable = (MIB_UDPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdpTable == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdpTable'.");
-            return;
+            goto end;
         }
     }
 
@@ -568,13 +567,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
-        win_free(pUdpTable);
-        return;
-    }
-
-    if (pUdpTable != NULL) {
-        win_free(pUdpTable);
-        pUdpTable = NULL;
+        goto end;
     }
 
     /* UDP6 opened ports inventory */
@@ -583,7 +576,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 
     if (pUdp6Table == NULL) {
         mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdp6Table'.");
-        return;
+        goto end;
     }
 
     dwSize = sizeof(MIB_UDP6TABLE_OWNER_PID);
@@ -594,7 +587,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         pUdp6Table = (MIB_UDP6TABLE_OWNER_PID *) win_alloc(dwSize);
         if (pUdp6Table == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pUdp6Table'.");
-            return;
+            goto end;
         }
     }
 
@@ -604,7 +597,8 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         for (i=0; i < (int) pUdp6Table->dwNumEntries; i++){
 
             char *string;
-            char *laddress = NULL;
+            DWORD addresslen = 128;
+            char laddress[128] = {'\0'};
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
@@ -614,8 +608,24 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "udp6");
 
-            laddress = _wm_inet_ntop(pUdp6Table->table[i].ucLocalAddr);
-            cJSON_AddStringToObject(port, "local_ip", laddress);
+            struct sockaddr_in6 *ipv6_local_sock = NULL;
+            ipv6_local_sock->sin6_family = AF_INET6;
+            for(j = 0; j < 16; j++) ipaddressv6.u.Byte[j] = pUdp6Table->table[i].ucLocalAddr[j];
+            ipv6_local_sock->sin6_addr = ipaddressv6;
+            ipv6_local_sock->sin6_port = (u_short)pUdp6Table->table[i].dwLocalPort;
+
+            if (WSAAddressToStringA((LPSOCKADDR)ipv6_local_sock, 16, NULL, laddress, &addresslen) == SOCKET_ERROR) {
+                mterror(WM_SYS_LOGTAG, "WSAAddressToStringA() failed (%d).", WSAGetLastError());
+                cJSON_AddStringToObject(port, "local_ip", "unknown");
+            } else {
+                /* Remove the scope ID from the IPv6 address (if available) */
+                char *pch = strrchr(laddress, '%');
+                if (pch != NULL) pch = '\0';
+                cJSON_AddStringToObject(port, "local_ip", laddress);
+            }
+
+            mtinfo(WM_SYS_LOGTAG, "UDP IPv6 Remote Address: %s", laddress);
+
             cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pUdp6Table->table[i].dwLocalPort));
 
             /* Get PID and process name */
@@ -631,21 +641,14 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
 
-            free(laddress);
             free(string);
         }
 
     } else {
         mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
-        win_free(pUdp6Table);
-        return;
-    }
-
-    if (pUdp6Table != NULL) {
-        win_free(pUdp6Table);
-        pUdp6Table = NULL;
     }
 	
+end:
 	/* Disable debug privilege */
 	if (privilege_enabled)
 	{
@@ -653,6 +656,13 @@ void sys_ports_windows(const char* LOCATION, int check_all){
 	}
 	
 	if (hdle) CloseHandle(hdle);
+    
+    if (wsa_enabled) WSACleanup();
+    
+    if (pTcpTable != NULL) win_free(pTcpTable);
+    if (pTcp6Table != NULL) win_free(pTcp6Table);
+    if (pUdpTable != NULL) win_free(pUdpTable);
+    if (pUdp6Table != NULL) win_free(pUdp6Table);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "port_end");
@@ -666,7 +676,6 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     cJSON_Delete(object);
     free(string);
     free(timestamp);
-
 }
 
 // Get installed programs inventory
