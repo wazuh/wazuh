@@ -168,3 +168,89 @@ def ossec_log_summary(months=3):
             else:
                 continue
     return categories
+
+
+def upload_file(xml_file, path):
+    """
+    Updates a group file
+
+    :param xml_file: File contents in string
+    :param file_name: File name to update
+    :return: Confirmation message in string
+    """
+    with open(xml_file) as f:
+        xml_file_data = f.read()
+
+    if len(xml_file_data) == 0:
+        raise WazuhException(1112)
+
+    return upload_rules(xml_file_data, path)
+
+
+def upload_rules(xml_file, path):
+    """
+    Updates local rules
+    :param group_id: Group to update
+    :param xml_file: File contents of the new rules.
+    :return: Confirmation message.
+    """
+
+    # path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+
+    # create temporary file for parsing xml input
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            # beauty xml file
+            xml = parseString('<root>' +  xml_file + '</root>')
+            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            # revert xml.dom replacings
+            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
+                                   .replace("&gt;", ">")
+            tmp_file.write(pretty_xml)
+    except Exception as e:
+        raise WazuhException(1113, str(e))
+
+    try:
+        # check xml format
+        try:
+            load_wazuh_xml(tmp_file_path)
+        except Exception as e:
+            raise WazuhException(1113, str(e))
+
+        # move temporary file to group folder
+        try:
+            new_conf_path = "{}/{}".format(common.ossec_path, path)
+            move(tmp_file_path, new_conf_path)
+        except Exception as e:
+            raise WazuhException(1017, str(e))
+
+        return 'Local rules were updated successfully'
+    except Exception as e:
+        # remove created temporary file
+        remove(tmp_file_path)
+        raise e
+
+
+def get_file(path, output_format):
+    """
+    Returns a file as dictionary.
+
+    :return: file as dictionary.
+    """
+
+    file_path = common.ossec_path + path
+    output = {}
+
+    if output_format == 'json':
+        with open(file_path) as f:
+            for line in f:
+                if '\n' in line:
+                    line = line.replace('\n', '')
+                key = line.split(':')[0]
+                value = line.split(':')[1]
+                output[key] = value
+
+    return output

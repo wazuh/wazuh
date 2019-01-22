@@ -228,6 +228,14 @@ functions = {
         'function': manager.ossec_log,
         'type': 'local_any'
     },
+    '/manager/files': {
+        'function': manager.get_file,
+        'type': 'local_any'
+    },
+    'POST/manager/files': {
+        'function': manager.upload_file,
+        'type': 'local_any'
+    },
 
     # Cluster
     '/cluster/status': {
