@@ -1942,7 +1942,11 @@ class Agent:
         except requests.exceptions.RequestException as e:
             raise WazuhException(1713, e.code)
 
-        versions = [version.split() for version in result.text.split('\n')]
+        if result.ok:
+            versions = [version.split() for version in result.text.split('\n')]
+        else:
+            error = "Can't access to the versions file in {}".format(versions_url)
+            raise WazuhException(1713, error)
 
         return versions
 
@@ -2024,11 +2028,16 @@ class Agent:
 
         try:
             result = requests.get(wpk_url)
+        except requests.exceptions.RequestException as e:
+            raise WazuhException(1713, e.code)
+
+        if result.ok:
             with open(wpk_file_path, 'wb') as fd:
                 for chunk in result.iter_content(chunk_size=128):
                     fd.write(chunk)
-        except requests.exceptions.RequestException as e:
-            raise WazuhException(1713, e.code)
+        else:
+            error = "Can't access to the WPK file in {}".format(wpk_url)
+            raise WazuhException(1713, error)
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
