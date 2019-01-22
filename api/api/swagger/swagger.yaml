@@ -1,0 +1,431 @@
+---
+swagger: "2.0"
+info:
+  description: "The Wazuh API is an open source RESTful API that allows for interaction\
+    \ with the Wazuh manager from a web browser, command line tool like cURL or any\
+    \ script or program that can make web requests. The Wazuh Kibana app relies on\
+    \ this heavily and Wazuh’s goal is to accommodate complete remote management of\
+    \ the Wazuh infrastructure via the Wazuh Kibana app. Use the API to easily perform\
+    \ everyday actions like adding an agent, restarting the manager(s) or agent(s)\
+    \ or looking up syscheck details.\n"
+  version: "3.8.0"
+  title: "Wazuh API"
+  license:
+    name: "GPL 2.0"
+    url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
+schemes:
+- "https"
+- "http"
+paths:
+  /agents:
+    get:
+      summary: "Get all agents"
+      description: "Returns a list with the available agents."
+      operationId: "get_all_agents"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "offset"
+        in: "query"
+        description: "First element to return in the collection"
+        required: false
+        type: "integer"
+        format: "int32"
+      - name: "limit"
+        in: "query"
+        description: "Maximum number of elements to return"
+        required: false
+        type: "integer"
+        format: "int32"
+      - name: "select"
+        in: "query"
+        description: "Select which fields to return (separated by comma)"
+        required: false
+        type: "array"
+        items:
+          type: "string"
+        collectionFormat: "multi"
+      - name: "sort"
+        in: "query"
+        description: "Sorts the collection by a field or fields (separated by comma).\
+          \ Use +/- at the beginning to list in ascending or descending order.\n"
+        required: false
+        type: "string"
+      - name: "search"
+        in: "query"
+        description: "Looks for elements with the specified string"
+        required: false
+        type: "string"
+      - name: "status"
+        in: "query"
+        description: "Filters by agent status. Use commas to enter multiple statuses."
+        required: false
+        type: "array"
+        items:
+          type: "string"
+          enum:
+          - "active"
+          - "pending"
+          - "neverconnected"
+          - "disconnected"
+        collectionFormat: "multi"
+      - name: "q"
+        in: "query"
+        description: "Query to filter results by. For example q=&quot;status=Active&quot;"
+        required: false
+        type: "string"
+      - name: "older_than"
+        in: "query"
+        description: "Filters out disconnected agents for longer than specified. Time\
+          \ in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’\
+          . For never connected agents, uses the register date.\n"
+        required: false
+        type: "string"
+      - name: "os_platform"
+        in: "query"
+        description: "Filters by OS platform."
+        required: false
+        type: "string"
+      - name: "os_version"
+        in: "query"
+        description: "Filters by OS version."
+        required: false
+        type: "string"
+      - name: "os_name"
+        in: "query"
+        description: "Filters by OS name."
+        required: false
+        type: "string"
+      - name: "manager"
+        in: "query"
+        description: "Filters by manager hostname to which agents are connected."
+        required: false
+        type: "string"
+      - name: "version"
+        in: "query"
+        description: "Filters by agents version."
+        required: false
+        type: "string"
+      - name: "group"
+        in: "query"
+        description: "Filters by group of agents."
+        required: false
+        type: "string"
+      - name: "node_name"
+        in: "query"
+        description: "Filters by node name."
+        required: false
+        type: "string"
+      - name: "name"
+        in: "query"
+        description: "Filters by agent name."
+        required: false
+        type: "string"
+      - name: "ip"
+        in: "query"
+        description: "Filters by agent IP"
+        required: false
+        type: "string"
+      responses:
+        200:
+          description: "List of agents or error description"
+          schema:
+            allOf:
+            - $ref: "#/definitions/ApiResponse"
+            - type: "object"
+              properties:
+                data:
+                  type: "object"
+                  allOf:
+                  - $ref: "#/definitions/ListMetadata"
+                  - type: "object"
+                    properties:
+                      items:
+                        type: "array"
+                        items:
+                          $ref: "#/definitions/Agent"
+            example:
+              error: 0
+              data:
+                totalItems: 7
+                items:
+                - status: "Active"
+                  configSum: "ab73af41699f13fdd81903b5f23d8d00"
+                  group:
+                  - "default"
+                  name: "agent1"
+                  mergedSum: "f1a9e24e02ba4cc5ea80a9d3feb3bb9a"
+                  ip: "192.168.185.7"
+                  manager: "manager"
+                  node_name: "node02"
+                  dateAdd: "2018-10-11 09:38:47"
+                  version: "Wazuh v3.8.0"
+                  lastKeepAlive: "2018-10-11 13:58:08"
+                  os:
+                    major: "16"
+                    name: "Ubuntu"
+                    uname: "Linux |ubuntu |4.4.0-135-generic |#161-Ubuntu SMP Mon\
+                      \ Aug 27 10:45:01 UTC 2018 |x86_64"
+                    platform: "ubuntu"
+                    version: "16.04.5 LTS"
+                    codename: "Xenial Xerus"
+                    arch: "x86_64"
+                    minor: "04"
+                  id: "001"
+                - status: "Active"
+                  name: "manager"
+                  ip: "127.0.0.1"
+                  manager: "manager"
+                  node_name: "node01"
+                  dateAdd: "2018-10-11 09:37:23"
+                  version: "Wazuh v3.8.0"
+                  lastKeepAlive: "9999-12-31 23:59:59"
+                  os:
+                    major: "18"
+                    name: "Ubuntu"
+                    uname: "Linux |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon\
+                      \ Sep 24 16:19:09 UTC 2018 |x86_64"
+                    platform: "ubuntu"
+                    version: "18.04.1 LTS"
+                    codename: "Bionic Beaver"
+                    arch: "x86_64"
+                    minor: "04"
+                  id: "000"
+                - status: "Never connected"
+                  dateAdd: "2018-10-11 13:58:23"
+                  name: "NewHost_2"
+                  ip: "10.0.10.10"
+                  id: "123"
+                  node_name: "unknown"
+                - status: "Never connected"
+                  dateAdd: "2018-10-11 13:58:22"
+                  name: "NewHost"
+                  ip: "10.0.0.9"
+                  id: "007"
+                  node_name: "unknown"
+                - status: "Never connected"
+                  dateAdd: "2018-10-11 13:58:10"
+                  group:
+                  - "default"
+                  name: "server001"
+                  ip: "10.0.0.62"
+                  id: "002"
+                  node_name: "unknown"
+      x-swagger-router-controller: "api.controllers.default_controller"
+    delete:
+      summary: "Delete agents"
+      description: "Removes agents, using a list of them or a criterion based on the\
+        \ status or time of the last connection. The Wazuh API must be restarted after\
+        \ removing an agent.\n"
+      operationId: "delete_agents"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "ids"
+        in: "query"
+        description: "Array of agent ID’s"
+        required: false
+        type: "array"
+        items:
+          type: "string"
+        collectionFormat: "multi"
+      - name: "purge"
+        in: "query"
+        description: "Delete an agent from the key store"
+        required: false
+        type: "boolean"
+      - name: "status"
+        in: "query"
+        description: "Filters by agent status. Use commas to enter multiple statuses."
+        required: false
+        type: "array"
+        items:
+          type: "string"
+          enum:
+          - "active"
+          - "pending"
+          - "neverconnected"
+          - "disconnected"
+        collectionFormat: "multi"
+      - name: "older_than"
+        in: "query"
+        description: "Filters out disconnected agents for longer than specified. Time\
+          \ in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’\
+          . For never connected agents, uses the register date.\n"
+        required: false
+        type: "string"
+      responses:
+        200:
+          description: "Delete agents"
+          schema:
+            allOf:
+            - $ref: "#/definitions/ApiResponse"
+            - type: "object"
+              properties:
+                data:
+                  $ref: "#/definitions/AgentDeleted"
+            example:
+              error: 0
+              data:
+                msg: "All selected agents were removed"
+                older_than: "10s"
+                affected_agents:
+                - "003"
+                - "005"
+                total_affected_agents: 2
+      x-swagger-router-controller: "api.controllers.default_controller"
+definitions:
+  ApiResponse:
+    type: "object"
+    required:
+    - "error"
+    properties:
+      error:
+        type: "integer"
+        format: "int32"
+      message:
+        type: "string"
+  ListMetadata:
+    type: "object"
+    properties:
+      totalItems:
+        type: "integer"
+        format: "int32"
+  Agent:
+    type: "object"
+    properties:
+      status:
+        $ref: "#/definitions/AgentStatus"
+      configSum:
+        type: "string"
+      group:
+        type: "array"
+        items:
+          type: "string"
+      name:
+        type: "string"
+      mergedSum:
+        type: "string"
+      ip:
+        type: "string"
+      manager:
+        type: "string"
+      node_name:
+        type: "string"
+      dateAdd:
+        type: "string"
+      version:
+        type: "string"
+      lastKeepAlive:
+        type: "string"
+      os:
+        $ref: "#/definitions/Agent_os"
+      id:
+        type: "string"
+  AgentDeleted:
+    type: "object"
+    properties:
+      msg:
+        type: "string"
+      older_than:
+        type: "string"
+      affected_agents:
+        type: "array"
+        items:
+          type: "string"
+      failed_ids:
+        type: "array"
+        items:
+          type: "string"
+      total_affected_agents:
+        type: "integer"
+        format: "int32"
+  AgentStatus:
+    type: "string"
+    enum:
+    - "active"
+    - "pending"
+    - "neverconnected"
+    - "disconnected"
+  inline_response_200:
+    properties:
+      ApiResponse:
+        $ref: "#/definitions/ApiResponse"
+      data:
+        type: "object"
+        allOf:
+        - $ref: "#/definitions/ListMetadata"
+        - type: "object"
+          properties:
+            items:
+              type: "array"
+              items:
+                $ref: "#/definitions/Agent"
+    example: "{error=0, data={totalItems=7, items=[{status=Active, configSum=ab73af41699f13fdd81903b5f23d8d00,\
+      \ group=[default], name=agent1, mergedSum=f1a9e24e02ba4cc5ea80a9d3feb3bb9a,\
+      \ ip=192.168.185.7, manager=manager, node_name=node02, dateAdd=2018-10-11 09:38:47,\
+      \ version=Wazuh v3.8.0, lastKeepAlive=2018-10-11 13:58:08, os={major=16, name=Ubuntu,\
+      \ uname=Linux |ubuntu |4.4.0-135-generic |#161-Ubuntu SMP Mon Aug 27 10:45:01\
+      \ UTC 2018 |x86_64, platform=ubuntu, version=16.04.5 LTS, codename=Xenial Xerus,\
+      \ arch=x86_64, minor=04}, id=001}, {status=Active, name=manager, ip=127.0.0.1,\
+      \ manager=manager, node_name=node01, dateAdd=2018-10-11 09:37:23, version=Wazuh\
+      \ v3.8.0, lastKeepAlive=9999-12-31 23:59:59, os={major=18, name=Ubuntu, uname=Linux\
+      \ |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon Sep 24 16:19:09 UTC 2018 |x86_64,\
+      \ platform=ubuntu, version=18.04.1 LTS, codename=Bionic Beaver, arch=x86_64,\
+      \ minor=04}, id=000}, {status=Never connected, dateAdd=2018-10-11 13:58:23,\
+      \ name=NewHost_2, ip=10.0.10.10, id=123, node_name=unknown}, {status=Never connected,\
+      \ dateAdd=2018-10-11 13:58:22, name=NewHost, ip=10.0.0.9, id=007, node_name=unknown},\
+      \ {status=Never connected, dateAdd=2018-10-11 13:58:10, group=[default], name=server001,\
+      \ ip=10.0.0.62, id=002, node_name=unknown}]}}"
+  inline_response_200_1:
+    properties:
+      ApiResponse:
+        $ref: "#/definitions/ApiResponse"
+      data:
+        $ref: "#/definitions/AgentDeleted"
+    example: "{error=0, data={msg=All selected agents were removed, older_than=10s,\
+      \ affected_agents=[003, 005], total_affected_agents=2}}"
+  Agent_os:
+    properties:
+      major:
+        type: "string"
+      name:
+        type: "string"
+      uname:
+        type: "string"
+      platform:
+        type: "string"
+      version:
+        type: "string"
+      codename:
+        type: "string"
+      arch:
+        type: "string"
+      minor:
+        type: "string"
+parameters:
+  olderThanParam:
+    name: "older_than"
+    in: "query"
+    description: "Filters out disconnected agents for longer than specified. Time\
+      \ in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For\
+      \ never connected agents, uses the register date.\n"
+    required: false
+    type: "string"
+  statusParam:
+    name: "status"
+    in: "query"
+    description: "Filters by agent status. Use commas to enter multiple statuses."
+    required: false
+    type: "array"
+    items:
+      type: "string"
+      enum:
+      - "active"
+      - "pending"
+      - "neverconnected"
+      - "disconnected"
+    collectionFormat: "multi"
+externalDocs:
+  description: "Find more about Wazuh API usage"
+  url: "https://documentation.wazuh.com/current/user-manual/api/index.html"
