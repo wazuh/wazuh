@@ -13,6 +13,7 @@
 
 import os
 import sys
+import requests
 import contextlib
 from glob import glob
 from zipfile import ZipFile
@@ -30,12 +31,6 @@ from json import dumps
 # Set framework path
 sys.path.append(os.path.dirname(sys.argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 from wazuh.cluster.cluster import read_config
-
-try:
-    from urllib2 import urlopen, URLError, HTTPError
-except:
-    from urllib.request import urlopen  # Python 3
-    from urllib.error import URLError, HTTPError
 
 
 class RulesetLogger:
@@ -267,15 +262,16 @@ def get_new_ruleset(source, url, branch_name=None):
 
         # Download
         try:
-            f_url = urlopen(url_ruleset)
+            f_url = requests.get(url_ruleset)
+        except requests.exceptions.RequestException as e:
+            exit(2, "\tDownload Error:{0}.\nExit.".format(e.reason))
+
+        if f_url.ok:
             with open(ruleset_zip, "wb") as f_local:
-                f_local.write(f_url.read())
-        except HTTPError as e:
-            exit(2, "\tHTTP Error {0}: {1}".format(e.code, url_ruleset))
-        except URLError as e:
-            exit(2, "\tURL Error - {0}: {1}".format(e.reason, url_ruleset))
-        except Exception as e:
-            exit(2, "\tDownload Error:{0}.\nExit.".format(e))
+                for chunk in f_url.iter_content(chunk_size=128):
+                    f_local.write(chunk)
+        else:
+            error = "Can't download the ruleset file from {}".format(url_ruleset)
 
         # Extract
         try:
