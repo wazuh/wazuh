@@ -2029,7 +2029,7 @@ class Agent:
         try:
             result = requests.get(wpk_url)
         except requests.exceptions.RequestException as e:
-            raise WazuhException(1713, e.code)
+            raise WazuhException(1714, e.code)
 
         if result.ok:
             with open(wpk_file_path, 'wb') as fd:
@@ -2037,7 +2037,7 @@ class Agent:
                     fd.write(chunk)
         else:
             error = "Can't access to the WPK file in {}".format(wpk_url)
-            raise WazuhException(1713, error)
+            raise WazuhException(1714, error)
 
         # Get SHA1 file sum
         sha1hash = hashlib.sha1(open(wpk_file_path, 'rb').read()).hexdigest()
