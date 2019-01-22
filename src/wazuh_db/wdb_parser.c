@@ -87,6 +87,20 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_syscheck(wdb, next, output);
             }
+        } else if (strcmp(query, "policy-monitoring") == 0) {
+            if (!next) {
+                mdebug1("Invalid DB query syntax.");
+                mdebug2("DB query error near: %s", query);
+                snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+                result = -1;
+            } else {
+                result = wdb_parse_policy_monitoring(wdb, next, output);
+                if (wdb_parse_policy_monitoring(wdb, next, output) < 0){
+                    merror("Unable to update 'pm_event' table for agent '%s'", sagent_id);
+                } else {
+                    result = 0;
+                }
+            }
         } else if (strcmp(query, "netinfo") == 0) {
             if (!next) {
                 mdebug1("DB(%s) Invalid DB query syntax.", sagent_id);
@@ -409,6 +423,108 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
+        return -1;
+    }
+}
+
+int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
+    char * curr;
+    char * next;
+    char * log;
+    char * pm_id;
+    long date_last;
+    char * result_check; // Pass, failed, unknown
+    int result;
+
+    if (next = strchr(input, ' '), !next) {
+        mdebug1("Invalid policy monitoring query syntax.");
+        mdebug2("policy monitoring query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", input);
+        return -1;
+    }
+
+    curr = input;
+    *next++ = '\0';
+
+    if (strcmp(curr, "query") == 0) {
+
+        char result_found[OS_MAXSTR + 1] = {0};
+        pm_id = next;
+        result = wdb_policy_monitoring_find(wdb, pm_id, &result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query Rootcheck.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query Rootcheck");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update") == 0) {
+
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        result_check = next;
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        pm_id = next;
+
+        if (result = wdb_policy_monitoring_update(wdb, result_check, pm_id), result < 0) {
+            mdebug1("Cannot update policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot update policy monitoring information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "insert") == 0) {
+
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        date_last = strtol(curr,NULL,10);
+        *next++ = '\0';
+        log = next;
+
+        if (result = wdb_policy_monitoring_save(wdb, date_last, log,NULL,NULL,NULL,NULL,NULL,NULL), result < 0) {
+            mdebug1("Cannot save policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else {
+        mdebug1("Invalid policy monitoring query syntax.");
+        mdebug2("DB query error near: %s", curr);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid Rootcheck query syntax, near '%.32s'", curr);
         return -1;
     }
 }

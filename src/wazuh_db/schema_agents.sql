@@ -221,4 +221,34 @@ CREATE TABLE IF NOT EXISTS scan_info (
     fim_third_check INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS scan_info (
+    module TEXT PRIMARY KEY,
+    first_start INTEGER,
+    first_end INTEGER,
+    start_scan INTEGER,
+    end_scan INTEGER,
+    fim_first_check INTEGER,
+    fim_second_check INTEGER,
+    fim_third_check INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS pm_global (
+    profile TEXT PRIMARY KEY,
+    pass INTEGER,
+    failed INTEGER,
+    unknown INTEGER,
+    score INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS pm_check (
+    pm_id TEXT PRIMARY KEY,
+    title TEXT,
+    description TEXT,
+    file TEXT,
+    reference TEXT,
+    pci_dss TEXT,
+    cis TEXT,
+    result TEXT NOT NULL CHECK (format IN ('pass', 'fail', 'unknown'))
+);
+
 PRAGMA journal_mode=WAL;
