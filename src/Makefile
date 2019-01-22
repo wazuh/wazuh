@@ -1,4 +1,13 @@
+# Copyright (C) 2015-2019, Wazuh Inc.
 # TODO: mysql and postgresql?
+#
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
 
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')

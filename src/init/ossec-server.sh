@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -128,6 +130,8 @@ help()
     exit 1;
 }
 
+AUTHD_MSG="This option is deprecated because Authd is now enabled by default. If you want to change it, modify the ossec.conf file."
+
 # Enables additional daemons
 enable()
 {
@@ -146,6 +150,8 @@ enable()
         echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
+    elif [ "X$2" = "Xauth" ]; then
+        echo "$AUTHD_MSG"
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
@@ -180,6 +186,8 @@ disable()
     elif [ "X$2" = "Xintegrator" ]; then
         echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
         daemon='ossec-integratord'
+    elif [ "X$2" = "Xauth" ]; then
+        echo "$AUTHD_MSG"
     elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
     else
