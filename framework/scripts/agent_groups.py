@@ -1,38 +1,26 @@
-#!/usr/bin/env python
+#!/var/ossec/python/bin/python3
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from sys import exit, path, argv
-from os.path import dirname, basename
+from sys import exit, argv
+from os.path import basename
 from getopt import GetoptError, getopt
 from signal import signal, SIGINT
 import logging
-
-# Set framework path
-path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Wazuh package
 from wazuh.cluster.cluster import read_config
-
-# Import framework
-try:
-    from wazuh import Wazuh
-    from wazuh.agent import Agent
-    from wazuh.exception import WazuhException
-except Exception as e:
-    print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
-    exit()
+from wazuh import Wazuh
+from wazuh.agent import Agent
+from wazuh.exception import WazuhException
 
 # Global variables
 debug = False
 
+
 # Functions
 def get_stdin(msg):
-    try:
-        stdin = raw_input(msg)
-    except:
-        # Python 3
-        stdin = input(msg)
+    stdin = input(msg)
     return stdin
 
 
@@ -57,11 +45,13 @@ def show_group(agent_id):
     str_group = ', '.join(agent_info['group']) if 'group' in agent_info else "Null"
     print("The agent '{0}' with ID '{1}' belongs to groups: {2}.".format(agent_info['name'], agent_info['id'], str_group))
 
+
 def show_synced_agent(agent_id):
 
     result = Agent(agent_id).get_sync_group(agent_id)
 
     print("Agent '{}' is{} synchronized. ".format(agent_id,'' if result['synced'] else ' not'))
+
 
 def show_agents_with_group(group_id):
     agents_data = Agent.get_agent_group(group_id, limit=None)

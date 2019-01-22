@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -168,6 +168,8 @@ class WazuhException(Exception):
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
+        3020: 'Timeout sending request',
+        3021: 'Timeout executing API request',
 
         # > 9000: Authd
     }
@@ -194,3 +196,6 @@ class WazuhException(Exception):
 
     def __str__(self):
         return "Error {0} - {1}".format(self.code, self.message)
+
+    def to_dict(self):
+        return {'error': self.code, 'message': self.message}

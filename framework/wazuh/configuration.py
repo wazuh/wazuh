@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -25,8 +25,8 @@ except ImportError:
     from io import StringIO
 
 import logging
-import hashlib
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger('wazuh')
 
 # Aux functions
 
