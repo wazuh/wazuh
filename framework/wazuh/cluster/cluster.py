@@ -681,26 +681,28 @@ def remove_bulk_agents(agent_ids_list):
         return  # the function doesn't make sense if there is no agents to remove
 
     logger.info("Removing agent files")
-    # Get info from DB
-    agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agent_ids_list]),
-                                           select={'fields': ['ip', 'id', 'name']})['items']
+    # the agents must be removed in groups of 999:
+    for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
+        # Get info from DB
+        agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
+                                               select={'fields': ['ip', 'id', 'name']})['items']
 
-    # Remove agent files that need agent name and ip
-    agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
-    remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
+        # Remove agent files that need agent name and ip
+        agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
+        remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
 
-    # Remove agent files that only need agent id
-    agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}']
-    remove_agent_file_type(('*',), ('id',), agent_files)
+        # Remove agent files that only need agent id
+        agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}']
+        remove_agent_file_type(('*',), ('id',), agent_files)
 
-    # remove agent from groups
-    db_global = glob.glob(common.database_path_global)
-    if not db_global:
-        raise WazuhException(1600)
+        # remove agent from groups
+        db_global = glob.glob(common.database_path_global)
+        if not db_global:
+            raise WazuhException(1600)
 
-    conn = Connection(db_global[0])
-    agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agent_ids_list}
-    conn.execute('delete from belongs where {}'.format(
-        ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
-    conn.commit()
+        conn = Connection(db_global[0])
+        agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agents_ids_sublist}
+        conn.execute('delete from belongs where {}'.format(
+            ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
+        conn.commit()
     logger.info("Agent files removed")
