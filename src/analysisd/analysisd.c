@@ -59,6 +59,7 @@ int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
 int DecodeWinevt(Eventinfo *lf);
+int DecodeRootcheckJSON(Eventinfo *lf,int *socket);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -131,6 +132,9 @@ void * w_decode_hostinfo_thread(__attribute__((unused)) void * args);
 /* Decode rootcheck threads */
 void * w_decode_rootcheck_thread(__attribute__((unused)) void * args);
 
+/* Decode policy monitoring threads */
+void * w_decode_policy_monitoring_thread(__attribute__((unused)) void * args);
+
 /* Decode event threads */
 void * w_decode_event_thread(__attribute__((unused)) void * args);
 
@@ -181,6 +185,9 @@ static w_queue_t * decode_queue_syscollector_input;
 
 /* Decode rootcheck input queue */
 static w_queue_t * decode_queue_rootcheck_input;
+
+/* Decode policy monitoring input queue */
+static w_queue_t * decode_queue_policy_monitoring_input;
 
 /* Decode hostinfo input queue */
 static w_queue_t * decode_queue_hostinfo_input;
@@ -904,6 +911,11 @@ void OS_ReadMSG_analysisd(int m_queue)
         w_create_thread(w_decode_rootcheck_thread,NULL);
     }
 
+    /* Create decode policy monitoring threads */
+    for(i = 0; i < num_decode_rootcheck_threads;i++){
+        w_create_thread(w_decode_policy_monitoring_thread,NULL);
+    }
+
     /* Create decode event threads */
     for(i = 0; i < num_decode_event_threads;i++){
         w_create_thread(w_decode_event_thread,NULL);
@@ -1596,8 +1608,34 @@ void * ad_input_main(void * args) {
 
                 /* Increment number of events received */
                 hourly_events++;
-            }
-            else if(msg[0] == SYSCOLLECTOR_MQ){
+            } else if(msg[0] == POLICY_MONITORING_MQ){
+                os_strdup(buffer, copy);
+
+                if(queue_full(decode_queue_policy_monitoring_input)){
+                    if(!reported_rootcheck){
+                        reported_rootcheck = 1;
+                        mwarn("Policy monitoring decoder queue is full.");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                result = queue_push_ex(decode_queue_policy_monitoring_input,copy);
+
+                if(result < 0){
+                    if(!reported_rootcheck){
+                        reported_rootcheck = 1;
+                        mwarn("Policy monitoring json decoder queue is full.");
+                    }
+                    w_inc_dropped_events();
+                    free(copy);
+                    continue;
+                }
+
+                /* Increment number of events received */
+                hourly_events++;
+            } else if(msg[0] == SYSCOLLECTOR_MQ){
 
                 os_strdup(buffer, copy);
 
@@ -1938,6 +1976,49 @@ void * w_decode_rootcheck_thread(__attribute__((unused)) void * args){
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
             if (!DecodeRootcheck(lf)) {
+                /* We don't process rootcheck events further */
+                w_free_event_info(lf);
+            }
+            else{
+                if (queue_push_ex_block(decode_queue_event_output,lf) < 0) {
+                    w_free_event_info(lf);
+                }
+            }
+
+            w_inc_rootcheck_decoded_events();
+        }
+    }
+}
+
+void * w_decode_policy_monitoring_thread(__attribute__((unused)) void * args){
+    Eventinfo *lf = NULL;
+    char *msg = NULL;
+    int socket = -1;
+
+    while(1){
+
+        /* Receive message from queue */
+        if (msg = queue_pop_ex(decode_queue_policy_monitoring_input), msg) {
+
+            os_calloc(1, sizeof(Eventinfo), lf);
+            os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+
+            /* Default values for the log info */
+            Zero_Eventinfo(lf);
+
+            if (OS_CleanMSG(msg, lf) < 0) {
+                merror(IMSG_ERROR, msg);
+                Free_Eventinfo(lf);
+                free(msg);
+                continue;
+            }
+
+            free(msg);
+
+            /* Msg cleaned */
+            DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
+
+            if (!DecodeRootcheckJSON(lf,&socket)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
             }
@@ -2580,6 +2661,9 @@ void w_init_queues(){
 
     /* Init the decode rootcheck queue input */
     decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+
+    /* Init the decode rootcheck json queue input */
+    decode_queue_policy_monitoring_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
 
     /* Init the decode hostinfo queue input */
     decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));

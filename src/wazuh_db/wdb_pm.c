@@ -96,6 +96,105 @@ int wdb_delete_pm(int id) {
     return result;
 }
 
+/* Look for a policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_policy_monitoring_find(wdb_t * wdb, char * pm_id, char * output) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_FIND) < 0) {
+        mdebug1("cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_FIND];
+
+    sqlite3_bind_text(stmt, 1, pm_id, -1, NULL);
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            snprintf(output,OS_MAXSTR,"%s",(char*)sqlite3_column_text(stmt, 1));
+            return 1;
+            break;
+        case SQLITE_DONE:
+            return 0;
+            break;
+        default:
+            merror(" at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+    }
+}
+
+/* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
+int wdb_policy_monitoring_save(wdb_t * wdb, char * pm_id, char * title, char * description, char * file,char * reference, char * pci_dss, char * cis, char * result) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_INSERT) < 0) {
+        mdebug1("at wdb_rootcheck_save(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_INSERT];
+
+    sqlite3_bind_text(stmt, 1, pm_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, title, -1, NULL);
+    sqlite3_bind_text(stmt, 3, description, -1, NULL);
+    sqlite3_bind_text(stmt, 4, file, -1, NULL);
+    sqlite3_bind_text(stmt, 5, reference, -1, NULL);
+    sqlite3_bind_text(stmt, 6, pci_dss, -1, NULL);
+    sqlite3_bind_text(stmt, 7, cis, -1, NULL);
+    sqlite3_bind_text(stmt, 8, result, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        free(pci_dss);
+        free(cis);
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        free(pci_dss);
+        free(cis);
+        return -1;
+    }
+}
+
+/* Update a policy monitoring entry. Returns affected rows on success or -1 on error (new) */
+int wdb_policy_monitoring_update(wdb_t * wdb, char * result, char * pm_id) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_UPDATE) < 0) {
+        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_UPDATE];
+
+    sqlite3_bind_text(stmt, 1, result,-1, NULL);
+    sqlite3_bind_text(stmt, 2, pm_id, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return sqlite3_changes(wdb->db);
+    } else {
+        merror("at wdb_rootcheck_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 /* Delete PM events of all agents */
 void wdb_delete_pm_all() {
     int *agents = wdb_get_all_agents();
