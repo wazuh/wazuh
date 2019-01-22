@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2016 Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is a free software; you can redistribute it
@@ -700,7 +700,7 @@ InstallCommon(){
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/bin
     fi
 
-  ${INSTALL} -d -m 0750 -o root -g 0 ${PREFIX}/lib
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/lib
 
     if [ ${NUNAME} = 'Darwin' ]
     then
@@ -710,7 +710,7 @@ InstallCommon(){
         fi
     elif [ -f libwazuhext.so ]
     then
-        ${INSTALL} -m 0750 -o root -g 0 libwazuhext.so ${PREFIX}/lib
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} libwazuhext.so ${PREFIX}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${PREFIX}/lib/libwazuhext.so
@@ -754,7 +754,7 @@ InstallCommon(){
          ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/localtime ${PREFIX}/etc
     fi
 
-  ${INSTALL} -d -m 1750 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
+  ${INSTALL} -d -m 1770 -o root -g ${OSSEC_GROUP} ${PREFIX}/tmp
 
     if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} /etc/TIMEZONE ${PREFIX}/etc/
@@ -848,7 +848,7 @@ InstallLocal(){
     ${INSTALL} -m 0750 -o root -g 0 ossec-csyslogd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-dbd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 ossec-makelists ${PREFIX}/bin
-    ${INSTALL} -m 0750 -o root -g 0 verify-agent-conf ${PREFIX}/bin/
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} verify-agent-conf ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 clear_stats ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 ossec-regex ${PREFIX}/bin/
     ${INSTALL} -m 0750 -o root -g 0 syscheck_update ${PREFIX}/bin/

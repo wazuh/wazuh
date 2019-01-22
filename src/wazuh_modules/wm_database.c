@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for SQLite database syncing
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * November 29, 2016
  *
  * This program is a free software; you can redistribute it
@@ -530,6 +530,8 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     clock_t clock0 = clock();
     regmatch_t match[2];
     int match_size;
+
+    strncpy(node_name, "unknown", sizeof(node_name) - 1);
 
     if (!(fp = fopen(path, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, path, errno, strerror(errno));

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -119,5 +120,12 @@ uint32_t wnet_order(uint32_t value);
 
 /* Set the maximum buffer size for the socket */
 int OS_SetSocketSize(int sock, int mode, int max_msg_size);
+
+/* Receive a message from a stream socket, full message (MSG_WAITALL)
+ * Returns size on success.
+ * Returns -1 on socket error.
+ * Returns 0 on socket disconnected or timeout.
+ */
+ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 
 #endif /* __OS_NET_H */

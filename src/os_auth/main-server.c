@@ -1,4 +1,5 @@
-/* Copyright (C) 2010 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2010 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -364,6 +365,11 @@ int main(int argc, char **argv)
             nowDebug();
             debug_level--;
         }
+    }
+
+    if (w_is_worker()) {
+        minfo("Cluster worker node: Disabling Authd daemon.");
+        exit(0);
     }
 
     /* Start daemon -- NB: need to double fork and setsid */

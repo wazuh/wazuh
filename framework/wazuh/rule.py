@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -386,7 +387,7 @@ class Rule:
     def __load_rules_from_file(rule_file, rule_path, rule_status):
         try:
             rules = []
-            
+
             root = load_wazuh_xml("{}/{}".format(rule_path, rule_file))
 
             for xml_group in root.getchildren():
@@ -418,6 +419,15 @@ class Rule:
                                     rule.description += value
                                 elif tag == "field":
                                     rule.add_detail(xml_rule_tags.attrib['name'], value)
+                                elif tag in ("list", "info"):
+                                    list_detail = {'name': value}
+                                    for attrib, attrib_value in xml_rule_tags.attrib.items():
+                                        list_detail[attrib] = attrib_value
+                                    rule.add_detail(tag, list_detail)
+                                # show rule variables
+                                elif tag in {'regex', 'match', 'user', 'id'} and value != '' and value[0] == "$":
+                                    for variable in filter(lambda x: x.get('name') == value[1:], root.findall('var')):
+                                        rule.add_detail(tag, variable.text)
                                 else:
                                     rule.add_detail(tag, value)
 

@@ -1,6 +1,6 @@
 /*
  * Subprocess execution library
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * May 1, 2018
  *
  * This program is a free software; you can redistribute it

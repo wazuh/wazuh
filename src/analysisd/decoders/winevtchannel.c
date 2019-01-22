@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2018 Wazuh Inc.
+* Copyright (C) 2015-2019, Wazuh Inc.
 * December 05, 2018.
 *
 * This program is a free software; you can redistribute it
@@ -97,7 +97,7 @@ int DecodeWinevt(Eventinfo *lf){
     os_calloc(OS_MAXSTR, sizeof(char), msg_from_prov);
 
     find_event = strstr(lf->log, "Event");
-    
+
     if(find_event){
         find_event = find_event + 8;
         end_event = strchr(find_event, '"');
@@ -105,7 +105,7 @@ int DecodeWinevt(Eventinfo *lf){
         if(end_event){
             real_end = end_event;
             aux = *(end_event + 1);
-            
+
             if(aux != '}' && aux != ','){
                 while(1){
                     next = real_end + 1;
@@ -138,10 +138,10 @@ int DecodeWinevt(Eventinfo *lf){
 
             memcpy(event, find_event, num);
             event[num] = '\0';
-            find_event = '\0';
-            end_event = '\0';
-            real_end = '\0';
-            next = '\0';
+            find_event = NULL;
+            end_event = NULL;
+            real_end = NULL;
+            next = NULL;
             aux = 0;
         }
     } else {
@@ -201,7 +201,7 @@ int DecodeWinevt(Eventinfo *lf){
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Security")) {
                                 if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "Security UserID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "SecurityUserID", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
                                 if (level){
@@ -242,7 +242,7 @@ int DecodeWinevt(Eventinfo *lf){
                             }
                         } else {
                             mdebug1("Unexpected element (%s). Decoding it.", child[j]->element);
-                            
+
                             XML_NODE extra_data_child = NULL;
                             extra_data_child = OS_GetElementsbyNode(&xml, child_attr[p]);
                             int h=0;
@@ -306,7 +306,7 @@ int DecodeWinevt(Eventinfo *lf){
                         category = "UNKNOWN";
                 }
 
-                cJSON_AddStringToObject(json_system_in, "SeverityValue", category);    
+                cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
             }
         }
         xml_init = 1;
@@ -352,11 +352,11 @@ int DecodeWinevt(Eventinfo *lf){
             memcpy(msg_from_prov, find_msg, num);
             msg_from_prov[num] = '\0';
             cJSON_AddStringToObject(json_system_in, "Message", msg_from_prov);
-            
-            find_msg = '\0';
-            end_msg = '\0';
-            real_end = '\0';
-            next = '\0';
+
+            find_msg = NULL;
+            end_msg = NULL;
+            real_end = NULL;
+            next = NULL;
             aux = 0;
         }
     } else {
@@ -379,14 +379,14 @@ int DecodeWinevt(Eventinfo *lf){
     cJSON_AddItemToObject(final_event, "EventChannel", json_event);
 
     returned_event = cJSON_PrintUnformatted(final_event);
-    
+
     if (returned_event){
         lf->full_log[strlen(returned_event)] = '\0';
         memcpy(lf->full_log, returned_event, strlen(returned_event));
     } else {
-        lf->full_log = '\0';
+        lf->full_log = NULL;
     }
-    
+
     lf->log = lf->full_log;
     lf->decoder_info = winevt_decoder;
 

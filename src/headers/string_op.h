@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -81,5 +82,8 @@ char * wstr_delete_repeated_groups(const char * string);
  * Returns 0 if success, or -1 if fail.
  */
 int wm_strcat(char **str1, const char *str2, char sep);
+
+// Check if str ends in str_end
+int wstr_end(char *str, const char *str_end);
 
 #endif

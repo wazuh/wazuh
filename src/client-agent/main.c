@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -150,7 +151,6 @@ int main(int argc, char **argv)
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
 
     /* Check auth keys */
     if (!OS_CheckKeys()) {
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 
     /* Check client keys */
     OS_ReadKeys(&keys, 1, 0, 0);
-    
+
     /* Exit if test config */
     if (test_config) {
         exit(0);

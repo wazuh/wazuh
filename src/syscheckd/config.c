@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -172,6 +173,10 @@ cJSON *getSyscheckConfig(void) {
             if (syscheck.opts[i] & CHECK_SEECHANGES) cJSON_AddItemToArray(opts, cJSON_CreateString("report_changes"));
             if (syscheck.opts[i] & CHECK_SHA256SUM) cJSON_AddItemToArray(opts, cJSON_CreateString("check_sha256sum"));
             if (syscheck.opts[i] & CHECK_WHODATA) cJSON_AddItemToArray(opts, cJSON_CreateString("check_whodata"));
+#ifdef WIN32
+            if (syscheck.opts[i] & CHECK_ATTRS) cJSON_AddItemToArray(opts, cJSON_CreateString("check_attrs"));
+#endif
+            if (syscheck.opts[i] & CHECK_FOLLOW) cJSON_AddItemToArray(opts, cJSON_CreateString("follow_symbolic_link"));
             cJSON_AddItemToObject(pair,"opts",opts);
             cJSON_AddStringToObject(pair,"dir",syscheck.dir[i]);
             cJSON_AddNumberToObject(pair,"recursion_level",syscheck.recursion_level[i]);
@@ -198,6 +203,17 @@ cJSON *getSyscheckConfig(void) {
             cJSON_AddItemToArray(igns, cJSON_CreateString(syscheck.ignore[i]));
         }
         cJSON_AddItemToObject(syscfg,"ignore",igns);
+    }
+    cJSON *whodata = cJSON_CreateObject();
+    if (syscheck.audit_key) {
+        cJSON *audkey = cJSON_CreateArray();
+        for (i=0;syscheck.audit_key[i];i++) {
+            cJSON_AddItemToArray(audkey, cJSON_CreateString(syscheck.audit_key[i]));
+        }
+        if (cJSON_GetArraySize(audkey) > 0) {
+            cJSON_AddItemToObject(whodata,"audit_key",audkey);
+            cJSON_AddItemToObject(syscfg,"whodata",whodata);
+        }
     }
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
