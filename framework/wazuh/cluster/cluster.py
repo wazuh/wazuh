@@ -8,16 +8,16 @@ from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
+from wazuh.database import Connection
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink, environ
+from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
 import json
 from stat import S_IRWXG, S_IRWXU
-from difflib import unified_diff
 import errno
 import logging
 import logging.handlers
@@ -506,16 +506,11 @@ def _check_removed_agents(new_client_keys):
     client_keys_dict = parse_client_keys(client_keys)
 
     # get removed agents: the ones missing in the new client keys and present in the old
-    for removed in client_keys_dict.keys() - new_client_keys_dict.keys():
-        try:
-            Agent(removed).remove()
-            logger.info("[Cluster] Agent '{}' removed successfully.".format(removed))
-        except WazuhException as e:
-            logger.error("[Cluster] Agent '{0}': Error - '{1}'.".format(removed, str(e)))
-            # the exception needs to be raised to prevent the new client keys to be written
-            # if the agent wasn't correctly removed
-            if e.code != 1701 or e.code != 9011:
-                raise e
+    try:
+        remove_bulk_agents(client_keys_dict.keys() - new_client_keys_dict.keys())
+    except Exception as e:
+        logger.error("Error removing agent files: {}".format(e))
+        raise e
 
 
 #
@@ -667,3 +662,45 @@ class ClusterFilter(logging.Filter):
 
     def update_subtag(self, new_subtag: str):
         self.subtag = new_subtag
+
+
+def remove_bulk_agents(agent_ids_list):
+    """
+    Removes files created by agents in worker nodes. This function doesn't remove agents from client.keys since the
+    client.keys file is overwritten by the master node.
+    :param agent_ids_list: List of agents ids to remove.
+    :return: None.
+    """
+    def remove_agent_file_type(glob_args, agent_args, agent_files):
+        for filetype in agent_files:
+            for agent_file in set(glob.iglob(filetype.format(common.ossec_path, *glob_args))) & \
+                              {filetype.format(common.ossec_path, *(a[arg] for arg in agent_args)) for a in agent_info}:
+                remove(agent_file)
+
+    if not agent_ids_list:
+        return  # the function doesn't make sense if there is no agents to remove
+
+    logger.info("Removing agent files")
+    # Get info from DB
+    agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agent_ids_list]),
+                                           select={'fields': ['ip', 'id', 'name']})['items']
+
+    # Remove agent files that need agent name and ip
+    agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
+    remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
+
+    # Remove agent files that only need agent id
+    agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}']
+    remove_agent_file_type(('*',), ('id',), agent_files)
+
+    # remove agent from groups
+    db_global = glob.glob(common.database_path_global)
+    if not db_global:
+        raise WazuhException(1600)
+
+    conn = Connection(db_global[0])
+    agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agent_ids_list}
+    conn.execute('delete from belongs where {}'.format(
+        ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
+    conn.commit()
+    logger.info("Agent files removed")
