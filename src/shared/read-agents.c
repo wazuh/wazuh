@@ -1367,7 +1367,7 @@ int query_wazuhdb(const char *wazuhdb_query, const char *source, char **output) 
 
     // Send query to Wazuh DB
     if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if (errno == EAGAIN) {
             merror("%s: database socket is full", source);
         } else if (errno == EPIPE) {
             // Retry to connect

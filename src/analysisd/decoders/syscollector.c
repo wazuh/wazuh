@@ -1382,7 +1382,7 @@ int sc_send_db(char *msg, int *sock) {
 
     // Send msg to Wazuh DB
     if (OS_SendSecureTCP(*sock, size + 1, msg) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if (errno == EAGAIN) {
             merror("at sc_send_db(): database socket is full");
         } else if (errno == EPIPE) {
             // Retry to connect

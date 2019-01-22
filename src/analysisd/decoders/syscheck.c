@@ -447,7 +447,7 @@ int send_query_wazuhdb(char *wazuhdb_query, char **output, _sdb *sdb) {
 
     // Send query to Wazuh DB
     if (OS_SendSecureTCP(sdb->socket, size + 1, wazuhdb_query) != 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        if (errno == EAGAIN) {
             mterror(ARGV0, "FIM decoder: database socket is full");
         } else if (errno == EPIPE) {
             // Retry to connect
