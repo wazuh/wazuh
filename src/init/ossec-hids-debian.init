@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # OSSEC         Controls Wazuh
 # Author:       Daniel B. Cid <dcid@ossec.net>
 # Modified for Debian by Michael Starks (patch by Costas Drogos)

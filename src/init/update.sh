@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Shell script update functions for the OSSEC HIDS
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 

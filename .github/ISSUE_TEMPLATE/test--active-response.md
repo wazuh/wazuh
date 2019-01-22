@@ -22,6 +22,7 @@ about: Test suite for Active response
 - [ ] Check rules_id filter
 - [ ] Check the period of the reverse command (timeout option)
 - [ ] Check incremental timeouts (repeated_offenders)
+- [ ] Check the exec daemon runs when active-response is disabled.
 
 ## Command
 

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -22,7 +23,6 @@ w_queue_t * winexec_queue;
 void *receiver_thread(__attribute__((unused)) void *none)
 {
     ssize_t recv_b;
-    uint32_t length;
     size_t msg_length;
     int reads;
     int undefined_msg_logged = 0;
@@ -86,14 +86,15 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     break;
                 }
 
-                recv_b = recv(agt->sock, (char*)&length, sizeof(length), MSG_WAITALL);
-                length = wnet_order(length);
-
-                // Manager disconnected or error
+                recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
 
                 if (recv_b <= 0) {
-                    if (recv_b < 0) {
-                        merror("Receiver: %s [%d]", strerror(errno), errno);
+                    switch (recv_b) {
+                    case OS_SOCKTERR:
+                        merror("Corrupt payload (exceeding size) received.");
+                        break;
+                    case -1:
+                        merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
                     }
 
                     update_status(GA_STATUS_NACTIVE);
@@ -103,19 +104,6 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     minfo(SERVER_UP);
                     os_delwait();
                     update_status(GA_STATUS_ACTIVE);
-                    break;
-                }else if (length == 0) {
-                    merror("Empty message from manager");
-                    break;
-                }else if (length > OS_MAXSTR) {
-                    merror("Too big message size from manager.");
-                    break;
-                }
-
-                recv_b = recv(agt->sock, buffer, length, MSG_WAITALL);
-
-                if (recv_b != (ssize_t)length) {
-                    merror("Incorrect message size from manager: expecting %u, got %d", length, (int)recv_b);
                     break;
                 }
             } else {

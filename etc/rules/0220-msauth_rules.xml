@@ -1,8 +1,9 @@
 <!--
   -  Microsoft Windows rules
   -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  Copyright (C) 2009 Trend Micro Inc.
-  -  Updated by Wazuh, Inc. <support@wazuh.com>.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -816,7 +817,7 @@
 
   <!--
   2016 Nov 18 10:37:26 WinEvtLog: Application: INFORMATION(302): ESENT: (no user): no domain: BNC-O9020: Music.UI (25428) {87E550B7-AD4D-40F7-BE5E-263C3D44C124}: The database engine has successfully completed recovery steps.
-  2018 Aug 16 21:01:50 WinEvtLog: Application: INFORMATION(300): ESENT: (no user): no domain: Dan.domain.ca: lsass (500) The database engine is initiating recovery steps.  
+  2018 Aug 16 21:01:50 WinEvtLog: Application: INFORMATION(300): ESENT: (no user): no domain: Dan.domain.ca: lsass (500) The database engine is initiating recovery steps.
   -->
   <rule id="18270" level="0">
     <if_sid>18257</if_sid>
@@ -923,12 +924,14 @@
 
   <rule id="18152" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_group>win_authentication_failed</if_matched_group>
+    <same_source_ip />
     <description>Multiple Windows Logon Failures.</description>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="18153" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>18105</if_matched_sid>
+    <same_source_ip />
     <description>Multiple Windows audit failure events.</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
@@ -996,7 +999,8 @@
     <if_sid>20000</if_sid>
     <field name="EventChannel.System.Channel">System</field>
     <field name="EventChannel.System.EventID">^1$|^6$|^12$|^16$|^18$|^20$|^27$|^32$|^36$|^41$|^55$|^98$|^104$|
-                |^508$|^1101$|^1102$|^1501$|^2505$|^4321$|^6005$|^6008$|^6009$|^6013$|^7001$|^7002$|^7026$|^7034$|
+                |^508$|^1002$|^1005$|^1015$|^1101$|^1102$|^1107$|^1116$|^1117$|^1118$|^1119$|^1501$|^2001$|^2003$|
+                |^2004$|^2012$|^2505$|^3002$|^4321$|^5007$|^5008$|^6005$|^6008$|^6009$|^6013$|^7001$|^7002$|^7026$|^7034$|
                 |^7040$|^7045$|^10010$|^10016$|^16962$|^36887$|^36888$|^50036$|^51046$</field>
     <description>Windows System event.</description>
     <options>no_full_log</options>
@@ -1170,45 +1174,6 @@
     <if_sid>20018</if_sid>
     <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
     <description>[Sysmon][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20025" level="0">
-    <if_sid>20000</if_sid>
-    <description>Windows Security Essentials event.</description>
-    <options>no_full_log</options>
-    <field name="EventChannel.System.Channel">Microsoft Antimalware</field>
-  </rule>
-
-  <rule id="20026" level="0">
-    <if_sid>20025</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[Security Essentials][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20027" level="0">
-    <if_sid>20025</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[Security Essentials][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20028" level="5">
-    <if_sid>20025</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[Security Essentials][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20029" level="3">
-    <if_sid>20025</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[Security Essentials][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
     <options>no_full_log</options>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
@@ -1477,7 +1442,7 @@
 
   <rule id="20062" level="3">
     <if_sid>20007</if_sid>
-    <field name="EventChannel.System.EventID">^20158$</field>
+    <field name="EventChannel.System.EventID">^20308$</field>
     <description>Windows: Remote access login success.</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
@@ -1628,7 +1593,7 @@
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  
+
   <!-- Some services change their startup type automatically -->
   <rule id="20080" level="3">
     <if_sid>20002</if_sid>
@@ -1673,7 +1638,7 @@
 
   <!-- Granular group rules -->
 
-  <rule id="20101" level="5">
+  <rule id="20251" level="5">
     <if_sid>20010</if_sid>
     <field name="EventChannel.System.EventID">^631$|^4727$|^635$|^4731$|^658$|^4754$|^648$|^4744$|^653$|
                 ^4749$|^663$|^4759$</field>
@@ -1682,7 +1647,7 @@
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20102" level="5">
+  <rule id="20252" level="5">
     <if_sid>20010</if_sid>
     <field name="EventChannel.System.EventID">^634$|^4730$|^638$|^4734$|^662$|^4758$|^652$|^4748$|
             ^657$|^4753$|^667$|^4763$</field>
@@ -1691,8 +1656,8 @@
     <group>group_deleted,win_group_deleted,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20103" level="5">
-    <if_sid>20101</if_sid>
+  <rule id="20253" level="5">
+    <if_sid>20251</if_sid>
     <field name="EventChannel.System.EventID">^631$|^4727$</field>
     <description>Windows: Security Enabled Global Group Created</description>
     <options>no_full_log</options>
@@ -1700,7 +1665,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=631</info>
   </rule>
 
-  <rule id="20104" level="5">
+  <rule id="20254" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^632$|^4728$</field>
     <description>Windows: Security Enabled Global Group Member '$(EventChannel.EventData.MemberSid)' Added</description>
@@ -1709,7 +1674,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=632</info>
   </rule>
 
-  <rule id="20105" level="5">
+  <rule id="20255" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^633$|^4729$</field>
     <description>Windows: Security Enabled Global Group Member '$(EventChannel.EventData.MemberSid)' Removed</description>
@@ -1718,7 +1683,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=633</info>
   </rule>
 
-  <rule id="20106" level="5">
+  <rule id="20256" level="5">
     <if_sid>20010</if_sid>
     <field name="EventChannel.System.EventID">^634$|^4730$</field>
     <description>Windows: Security Enabled Global Group '$(EventChannel.EventData.MemberSid)' Deleted</description>
@@ -1727,8 +1692,8 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=634</info>
   </rule>
 
-  <rule id="20107" level="5">
-    <if_sid>20101</if_sid>
+  <rule id="20257" level="5">
+    <if_sid>20251</if_sid>
     <field name="EventChannel.System.EventID">^635$|^4731$</field>
     <description>Windows: Security Enabled Local Group '$(EventChannel.EventData.MemberSid)' Created</description>
     <options>no_full_log</options>
@@ -1736,7 +1701,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=635</info>
   </rule>
 
-  <rule id="20108" level="5">
+  <rule id="20258" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^636$|^4732$</field>
     <description>Windows: Security Enabled Local Group Member '$(EventChannel.EventData.MemberSid)' Added</description>
@@ -1745,7 +1710,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=636</info>
   </rule>
 
-  <rule id="20109" level="5">
+  <rule id="20259" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^637$|^4733$</field>
     <description>Windows: Security Enabled Local Group Member '$(EventChannel.EventData.MemberSid)' Removed</description>
@@ -1754,7 +1719,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=637</info>
   </rule>
 
-  <rule id="20110" level="5">
+  <rule id="20260" level="5">
     <if_sid>20010</if_sid>
     <field name="EventChannel.System.EventID">^638$|^4734$</field>
     <description>Windows: Security Enabled Local Group Deleted</description>
@@ -1763,7 +1728,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=638</info>
   </rule>
 
-  <rule id="20111" level="5">
+  <rule id="20261" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^639$|^4735$</field>
     <description>Windows: Security Enabled Local Group Changed</description>
@@ -1772,7 +1737,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=639</info>
   </rule>
 
-  <rule id="20112" level="5">
+  <rule id="20262" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^641$|^4737$</field>
     <description>Windows: Security Enabled Global Group Changed</description>
@@ -1781,8 +1746,8 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=641</info>
   </rule>
 
-  <rule id="20113" level="5">
-    <if_sid>20101</if_sid>
+  <rule id="20263" level="5">
+    <if_sid>20251</if_sid>
     <field name="EventChannel.System.EventID">^658$|^4754$</field>
     <description>Windows: Security Enabled Universal Group Created</description>
     <options>no_full_log</options>
@@ -1790,7 +1755,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=658</info>
   </rule>
 
-  <rule id="20114" level="5">
+  <rule id="20264" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^659$|^4755$</field>
     <description>Windows: Security Enabled Universal Group Changed</description>
@@ -1799,7 +1764,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=659</info>
   </rule>
 
-  <rule id="20115" level="5">
+  <rule id="20265" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^660$|^4756$</field>
     <description>Windows: Security Enabled Universal Group Member Added</description>
@@ -1808,7 +1773,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=660</info>
   </rule>
 
-  <rule id="20116" level="5">
+  <rule id="20266" level="5">
     <if_sid>20054</if_sid>
     <field name="EventChannel.System.EventID">^661$|^4757$</field>
     <description>Windows: Security Enabled Universal Group Member Removed</description>
@@ -1817,7 +1782,7 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=661</info>
   </rule>
 
-  <rule id="20117" level="5">
+  <rule id="20267" level="5">
     <if_sid>20010</if_sid>
     <field name="EventChannel.System.EventID">^662$|^4758$</field>
     <description>Windows: Security Enabled Universal Group Deleted</description>
@@ -1826,8 +1791,8 @@
     <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=662</info>
   </rule>
 
-  <rule id="20118" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20268" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*\p*S-1-5-32-544</field>
     <description>Windows: Administrators Group Changed</description>
     <options>no_full_log</options>
@@ -1835,8 +1800,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20119" level="5">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20269" level="5">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-1-0</field>
     <description>Windows: Everyone Group Changed</description>
     <options>no_full_log</options>
@@ -1844,8 +1809,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20120" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20270" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-9</field>
     <description>Windows: Enterprise Domain Controllers Group Changed</description>
     <options>no_full_log</options>
@@ -1853,8 +1818,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20121" level="5">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20271" level="5">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-11</field>
     <description>Windows: Authenticated Users Group Changed</description>
     <options>no_full_log</options>
@@ -1862,8 +1827,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20122" level="5">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20272" level="5">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-13</field>
     <description>Windows: Terminal Server Users Group Changed</description>
     <options>no_full_log</options>
@@ -1871,8 +1836,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20123" level="12">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20273" level="12">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-512</field>
     <description>Windows: Domain Admins Group Changed</description>
     <options>no_full_log</options>
@@ -1880,8 +1845,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20124" level="5">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20274" level="5">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-513</field>
     <description>Windows: Domain Users Group Changed</description>
     <options>no_full_log</options>
@@ -1889,16 +1854,16 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20125" level="0">
-    <if_sid>20124,20104</if_sid>
+  <rule id="20275" level="0">
+    <if_sid>20274,20254</if_sid>
     <field name="EventChannel.EventData.SubjectAccountName">None</field>
     <description>Windows: Local User Group NONE</description>
     <options>no_full_log</options>
     <info>Bogus group user added to upon creation</info>
   </rule>
 
-  <rule id="20126" level="12">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20276" level="12">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-514</field>
     <description>Windows: Domain Guests Group Changed</description>
     <options>no_full_log</options>
@@ -1906,8 +1871,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20127" level="5">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20277" level="5">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-515</field>
     <description>Windows: Domain Computers Group Changed</description>
     <options>no_full_log</options>
@@ -1915,8 +1880,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20128" level="12">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20278" level="12">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-516</field>
     <description>Windows: Domain Controllers Group Changed</description>
     <options>no_full_log</options>
@@ -1924,8 +1889,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20129" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20279" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-517</field>
     <description>Windows: Cert Publishers Group Changed</description>
     <options>no_full_log</options>
@@ -1933,8 +1898,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20130" level="12">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20280" level="12">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-518</field>
     <description>Windows: Schema Admins Group Changed</description>
     <options>no_full_log</options>
@@ -1942,8 +1907,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20131" level="12">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20281" level="12">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-519</field>
     <description>Windows: Enterprise Admins Group Changed</description>
     <options>no_full_log</options>
@@ -1951,8 +1916,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20132" level="10">
-    <if_sid>20104,20105</if_sid>
+  <rule id="20282" level="10">
+    <if_sid>20254,20255</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-520</field>
     <description>Windows: Group Policy Creator Owners Group Changed</description>
     <options>no_full_log</options>
@@ -1960,8 +1925,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20133" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20283" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-21\S*-553</field>
     <description>Windows: RAS and IAS Servers Group Changed</description>
     <options>no_full_log</options>
@@ -1969,8 +1934,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20134" level="5">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20284" level="5">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-545</field>
     <description>Windows: Users Group Changed</description>
     <options>no_full_log</options>
@@ -1978,8 +1943,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20135" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20285" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-546</field>
     <description>Windows: Guests Group Changed</description>
     <options>no_full_log</options>
@@ -1987,8 +1952,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20136" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20286" level="10">
+    <if_sid>20258,20259</if_sid>
     <regex> ID:\s+%{S-1-5-32-547}| ID:\s+S-1-5-32-547</regex>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-547</field>
     <description>Windows: Power Users Group Changed</description>
@@ -1997,8 +1962,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20137" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20287" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-548</field>
     <description>Windows: Account Operators Group Changed</description>
     <options>no_full_log</options>
@@ -2006,8 +1971,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20138" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20288" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-549</field>
     <description>Windows: Server Operators Group Changed</description>
     <options>no_full_log</options>
@@ -2015,8 +1980,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20139" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20289" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-550</field>
     <description>Windows: Print Operators Group Changed</description>
     <options>no_full_log</options>
@@ -2024,8 +1989,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20140" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20290" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-551</field>
     <description>Windows: Backup Operators Group Changed</description>
     <options>no_full_log</options>
@@ -2033,8 +1998,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20141" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20291" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-552</field>
     <description>Windows: Replicators Group Changed</description>
     <options>no_full_log</options>
@@ -2042,8 +2007,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20142" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20292" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-554</field>
     <description>Pre-Windows 2000 Compatible Access Group Changed</description>
     <options>no_full_log</options>
@@ -2051,8 +2016,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20143" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20293" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-555</field>
     <description>Windows: Remote Desktop Users Group Changed</description>
     <options>no_full_log</options>
@@ -2060,8 +2025,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20144" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20294" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-556</field>
     <description>Windows: Network Configuration Operators Group Changed</description>
     <options>no_full_log</options>
@@ -2069,8 +2034,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20145" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20295" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-557</field>
     <description>Windows: Incoming Forest Trust Builders Group Changed</description>
     <options>no_full_log</options>
@@ -2078,8 +2043,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20146" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20296" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-558</field>
     <description>Windows: Performance Monitor Users Group Changed</description>
     <options>no_full_log</options>
@@ -2087,8 +2052,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20147" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20297" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-559</field>
     <description>Windows: Performance Log Users Group Changed</description>
     <options>no_full_log</options>
@@ -2096,8 +2061,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20148" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20298" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-560</field>
     <description>Windows Authorization Access Group Changed</description>
     <options>no_full_log</options>
@@ -2105,8 +2070,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20149" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20299" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-561</field>
     <description>Windows: Terminal Server License Servers Group Changed</description>
     <options>no_full_log</options>
@@ -2114,8 +2079,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20150" level="8">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20300" level="8">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32\S*-562</field>
     <description>Windows: Distributed COM Users Group Changed</description>
     <options>no_full_log</options>
@@ -2123,8 +2088,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20151" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20301" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-\s*21\s*-498</field>
     <description>Windows: Enterprise Read-only Domain Controllers Group Changed</description>
     <options>no_full_log</options>
@@ -2132,8 +2097,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20152" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20302" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-\s*21\s*-529</field>
     <description>Windows: Read-only Domain Controllers Group Changed</description>
     <options>no_full_log</options>
@@ -2141,8 +2106,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20153" level="12">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20303" level="12">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32-569</field>
     <description>Windows: Cryptographic Operators Group Changed</description>
     <options>no_full_log</options>
@@ -2150,8 +2115,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20154" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20304" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-\s*21\s*-571</field>
     <description>Windows: Allowed RODC Password Replication Group Changed</description>
     <options>no_full_log</options>
@@ -2159,8 +2124,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20155" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20305" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-\s*21\s*-572</field>
     <description>Windows: Denied RODC Password Replication Group Changed</description>
     <options>no_full_log</options>
@@ -2168,8 +2133,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20156" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20306" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32-573</field>
     <description>Windows: Event Log Readers Group Changed</description>
     <options>no_full_log</options>
@@ -2177,8 +2142,8 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20157" level="10">
-    <if_sid>20108,20109</if_sid>
+  <rule id="20307" level="10">
+    <if_sid>20258,20259</if_sid>
     <field name="EventChannel.EventData.SubjectUserSid">\s*S-1-5-32-574</field>
     <description>Windows: Certificate Service DCOM Access Group Changed</description>
     <options>no_full_log</options>
@@ -2186,7 +2151,7 @@
     <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
-  <rule id="20158" level="3">
+  <rule id="20308" level="3">
     <if_sid>20007</if_sid>
     <field name="EventChannel.System.EventID">^200$|^300$|^302$</field>
     <description>Windows: TS Gateway login success.</description>
@@ -2196,13 +2161,13 @@
   </rule>
 
   <rule id="20098" level="0">
-    <if_sid>20158</if_sid>
+    <if_sid>20308</if_sid>
     <field name="EventChannel.System.Message">\.*The database engine has successfully completed recovery steps|The database engine is initiating recovery steps</field>
     <description>Ignore rule 200157: TS Gateway login success</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="20159" level="5">
+  <rule id="20309" level="5">
     <if_sid>20008,20009</if_sid>
     <field name="EventChannel.System.EventID">^201$|^203$|^204$|^301$|^304$|^305$|^306$|^1001$</field>
     <description>Windows: TS Gateway login failure.</description>
@@ -2222,7 +2187,7 @@
   <!-- Ignore Login events, type 5, from Advapi for:
     -  LOCAL SERVICE and NETWORK SERVICE.
     -->
-  <rule id="20161" level="0">
+  <rule id="20149" level="0">
     <if_sid>20047,20084</if_sid>
     <field name="EventChannel.System.EventID">^528$|^538$|^540$|^4624$</field>
     <field name="EventChannel.EventData.SubjectUserName">^LOCAL SERVICE|^NETWORK SERVICE|^ANONYMOUS LOGON</field>
@@ -2233,7 +2198,7 @@
 
 
   <!-- Kerberos failures that may indicate an attack -->
-  <rule id="20162" level="10">
+  <rule id="20150" level="10">
     <if_sid>20034</if_sid>
     <field name="EventChannel.EventData.FailureCode">0x1F</field>
     <description>Windows DC integrity check on decrypted </description>
@@ -2271,7 +2236,7 @@
     <options>no_full_log</options>
   </rule>
 
-  <rule id="20100" level="3">
+  <rule id="20240" level="3">
     <if_sid>20010</if_sid>
     <field name="EventChannel.System.EventID">^18454$|^18453$</field>
     <description>MS SQL Server Logon Success.</description>
@@ -2297,7 +2262,7 @@
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
-  
+
   <!-- Composite rules -->
   <rule id="20085" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>20048</if_matched_sid>
@@ -2345,7 +2310,7 @@
   </rule>
 
   <rule id="20091" level="10" frequency="$MS_FREQ" timeframe="240">
-      <if_matched_sid>20159</if_matched_sid>
+      <if_matched_sid>20309</if_matched_sid>
       <description>Windows: Multiple TS Gateway login failures.</description>
       <options>no_full_log</options>
       <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>

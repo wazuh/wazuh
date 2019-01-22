@@ -57,7 +57,8 @@ about: Test suite for upgrade.
 ## Sources
 
 - [ ] Check the upgrade building the source code.
-- [ ] Check that the databases are purged.
+- [ ] Check that the databases located at _var/db_ are purged.
+- [ ] Check that the databases located at _queue/db_ are upgraded.
 
 ## Remote upgrades (WPK)
 

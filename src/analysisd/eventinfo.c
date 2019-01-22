@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -634,7 +635,7 @@ void Free_Eventinfo(Eventinfo *lf)
         EventNode *prev = lf->node->prev;
         w_mutex_lock(&prev->mutex);
         prev->next = NULL;
-        while (lf->node->count > 0);
+        while (lf->node->count > 0) {}
         w_mutex_unlock(&prev->mutex);
     }
 

@@ -20,3 +20,6 @@ about: Test suite for Syslog.
 - [ ] Send alert in `splunk` format.
 - [ ] Send alert in `cef` format.
 - [ ] Send alerts for a specific log location.
+
+**Side note**
+If two identical alerts are sent to the syslog server **it won't log them** in `/var/log/syslog`. We must change some fields values between alerts in order to get the information properly.

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 25, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -476,7 +476,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
             if(retval != 0){
                 kill(pid,SIGTERM);
-                retval = ETIMEDOUT;
+                retval = WM_ERROR_TIMEOUT;
 
                 // Wait for child process
 

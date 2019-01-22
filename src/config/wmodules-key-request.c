@@ -1,3 +1,11 @@
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * All right reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+*/
 
 #include "wazuh_modules/wmodules.h"
 #include <stdio.h>
@@ -24,6 +32,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
     os_calloc(1, sizeof(wm_krequest_t), key_request);
     key_request->enabled = 1;
     key_request->force_insert = 1;
+    key_request->timeout = 60;
     key_request->threads = 1;
     key_request->queue_size = 1024;
     module->context = &WM_KEY_REQUEST_CONTEXT;
@@ -75,7 +84,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         {
             key_request->timeout = strtoul(nodes[i]->content, NULL, 0);
 
-            if (key_request->timeout == 0 || key_request->timeout == UINT_MAX) {
+            if (key_request->timeout < 1 || key_request->timeout >= UINT_MAX) {
                 merror("Invalid interval at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -86,7 +95,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         {
             key_request->threads = strtoul(nodes[i]->content, NULL, 0);
 
-            if (key_request->threads == 0 || key_request->threads >= 32) {
+            if (key_request->threads < 1 || key_request->threads > 32) {
                 merror("Invalid number of threads at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -95,7 +104,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         {
             key_request->queue_size = strtoul(nodes[i]->content, NULL, 0);
 
-            if (key_request->queue_size == 0 || key_request->queue_size >= 220000) {
+            if (key_request->queue_size < 1 || key_request->queue_size > 220000) {
                 merror("Invalid queue size at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
                 return OS_INVALID;
             }

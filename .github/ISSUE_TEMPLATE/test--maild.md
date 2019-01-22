@@ -17,6 +17,7 @@ about: Test suite for Maild.
 ## Configuration
 
 - [ ] Check the typical settings such as `email_reply_to`.
+- [ ] Test the option `email_log_source` since Wazuh v3.8.0.
 
 ## Filters
 

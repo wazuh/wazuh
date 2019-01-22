@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -1309,6 +1310,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_INODE,
         CHECK_WHODATA,
         CHECK_ATTRS,
+        CHECK_FOLLOW,
 	0
 	};
     char *check_strings[] = {
@@ -1325,6 +1327,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "inode",
         "whodata",
         "attributes",
+        "follow_symbolic_link",
 	NULL
 	};
 

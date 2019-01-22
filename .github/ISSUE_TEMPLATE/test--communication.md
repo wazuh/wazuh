@@ -19,7 +19,7 @@ about: Test suite for host communication.
 - [ ] Test both crypto methods available (AES and blowfish).
 - [ ] Configure several managers to an agent, check if it works. (1)
 - [ ] Test large messages (up to 64K) (3).
-- [ ] Test large labels (up to 64K).
+- [ ] Test large labels (up to 20K).
 - [ ] Connect to a manager by resolving its domain with DNS. (1)
 - [ ] Use legacy configuration (server-ip, server-hostname, protocol, port).
 - [ ] Check statistics files for analysisd, remoted and agentd.

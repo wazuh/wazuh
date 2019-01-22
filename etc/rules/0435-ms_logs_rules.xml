@@ -1,6 +1,7 @@
 <!--
   -  Windows logs rules
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -8,7 +9,7 @@
 
 <group name="windows,windows_logs,">
 
-        <!--
+    <!--
     2017 Mar 28 10:08:59 WinEvtLog: Security: INFORMATION(1102): Microsoft-Windows-Eventlog: (no user): no domain: WIN-P57C9KN929H: The audit log was cleared.  Subject:   Security ID: S-1-5-21-2895701376-138392475-4243184240-1000   Account Name: Alberto   Domain Name: WIN-P57C9KN929H   Logon ID: 0x18709
     -->
     <rule id="83200" level="5">

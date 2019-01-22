@@ -1,11 +1,12 @@
-/* Copyright (C) 2010-2012 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- */
+*/
 
 /* ossec-analysisd
  * Responsible for correlation and log decoding
@@ -16,9 +17,6 @@
 #endif
 
 #include <time.h>
-#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-#include <sys/sysctl.h>
-#endif
 #include "shared.h"
 #include "alerts/alerts.h"
 #include "alerts/getloglocation.h"
@@ -230,7 +228,7 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                   };
 
 /* CPU Info*/
-static cpu_info *cpu_information;
+static int cpu_cores;
 
 /* Print help statement */
 __attribute__((noreturn))
@@ -431,12 +429,12 @@ int main_analysisd(int argc, char **argv)
     /* Check the CPU INFO */
     /* If we have the threads set to 0 on internal_options.conf, then */
     /* we assign them automatically based on the number of cores */
-    cpu_information = get_cpu_info();
+    cpu_cores = get_nproc();
 
     num_rule_matching_threads = getDefine_Int("analysisd", "rule_matching_threads", 0, 32);
 
     if(num_rule_matching_threads == 0){
-        num_rule_matching_threads = cpu_information->cpu_cores;
+        num_rule_matching_threads = cpu_cores;
     }
 
     /* Continuing in Daemon mode */
@@ -816,7 +814,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     /* Initialize label cache */
     if (!labels_init()) merror_exit("Error allocating labels");
-    
+
     Config.label_cache_maxage = getDefine_Int("analysisd", "label_cache_maxage", 0, 60);
     Config.show_hidden_labels = getDefine_Int("analysisd", "show_hidden_labels", 0, 1);
 
@@ -837,27 +835,27 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
 
     if(num_decode_event_threads == 0){
-        num_decode_event_threads = cpu_information->cpu_cores;
+        num_decode_event_threads = cpu_cores;
     }
 
     if(num_decode_syscheck_threads == 0){
-        num_decode_syscheck_threads = cpu_information->cpu_cores;
+        num_decode_syscheck_threads = cpu_cores;
     }
 
     if(num_decode_syscollector_threads == 0){
-        num_decode_syscollector_threads = cpu_information->cpu_cores;
+        num_decode_syscollector_threads = cpu_cores;
     }
 
     if(num_decode_rootcheck_threads == 0){
-        num_decode_rootcheck_threads = cpu_information->cpu_cores;
+        num_decode_rootcheck_threads = cpu_cores;
     }
 
     if(num_decode_hostinfo_threads == 0){
-        num_decode_hostinfo_threads = cpu_information->cpu_cores;
+        num_decode_hostinfo_threads = cpu_cores;
     }
 
     if(num_decode_winevt_threads == 0){
-        num_decode_winevt_threads = cpu_information->cpu_cores;
+        num_decode_winevt_threads = cpu_cores;
     }
 
     /* Initiate the FTS list */
@@ -2556,143 +2554,6 @@ void w_get_initial_queues_size(){
     s_writer_archives_queue_size = writer_queue->size;
     s_writer_firewall_queue_size = writer_queue_log_firewall->size;
     s_writer_statistical_queue_size = writer_queue_log_statistical->size;
-}
-
-cpu_info *get_cpu_info(){
-
-#if defined(__OpenBSD__) || defined(__FreeBSD__) || defined(__MACH__)
-    return get_cpu_info_bsd();
-#else
-    return get_cpu_info_linux();
-#endif
-
-}
-
-/* Get CPU information */
-cpu_info *get_cpu_info_linux(){
-
-    FILE *fp;
-    cpu_info *info;
-    char string[OS_MAXSTR];
-
-    char *end;
-
-    os_calloc(1, sizeof(cpu_info), info);
-
-    if (!(fp = fopen("/proc/cpuinfo", "r"))) {
-        mterror(WM_ANALYSISD_LOGTAG, "Unable to read cpuinfo file.");
-        info->cpu_name = strdup("unknown");
-    } else {
-        char *aux_string = NULL;
-        while (fgets(string, OS_MAXSTR, fp) != NULL){
-            if ((aux_string = strstr(string, "model name")) != NULL){
-
-                char *cpuname;
-                cpuname = strtok(string, ":");
-                cpuname = strtok(NULL, "\n");
-                if (cpuname[0] == '\"' && (end = strchr(++cpuname, '\"'), end)) {
-                    *end = '\0';
-                }
-
-                free(info->cpu_name);
-                info->cpu_name = strdup(cpuname);
-            } else if ((aux_string = strstr(string, "cpu cores")) != NULL){
-
-                char *cores;
-                cores = strtok(string, ":");
-                cores = strtok(NULL, "\n");
-                if (cores[0] == '\"' && (end = strchr(++cores, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_cores = atoi(cores);
-
-            } else if ((aux_string = strstr(string, "cpu MHz")) != NULL){
-
-                char *frec;
-                frec = strtok(string, ":");
-                frec = strtok(NULL, "\n");
-                if (frec[0] == '\"' && (end = strchr(++frec, '\"'), end)) {
-                    *end = '\0';
-                }
-                info->cpu_MHz = atof(frec);
-            }
-        }
-        free(aux_string);
-        fclose(fp);
-    }
-
-    return info;
-}
-
-cpu_info *get_cpu_info_bsd(){
-#if defined(__MACH__) || defined(__FreeBSD__) || defined(__OpenBSD__)
-    cpu_info *info;
-    os_calloc(1, sizeof(cpu_info), info);
-
-    int mib[2];
-    size_t len;
-
-    /* CPU Name */
-    char cpu_name[1024];
-    mib[0] = CTL_HW;
-    mib[1] = HW_MODEL;
-    len = sizeof(cpu_name);
-    if (!sysctl(mib, 2, &cpu_name, &len, NULL, 0)){
-        info->cpu_name = strdup(cpu_name);
-    }else{
-        info->cpu_name = strdup("unknown");
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU name due to (%s)", strerror(errno));
-    }
-
-    /* Number of cores */
-    unsigned int cpu_cores;
-    mib[0] = CTL_HW;
-    mib[1] = HW_NCPU;
-    len = sizeof(cpu_cores);
-    if (!sysctl(mib, 2, &cpu_cores, &len, NULL, 0)){
-        info->cpu_cores = (int)cpu_cores;
-    }else{
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU cores due to (%s)", strerror(errno));
-    }
-
-    /* CPU clockrate (MHz) */
-#if defined(__OpenBSD__)
-
-    unsigned long cpu_MHz;
-    mib[0] = CTL_HW;
-    mib[1] = HW_CPUSPEED;
-    len = sizeof(cpu_MHz);
-    if (!sysctl(mib, 2, &cpu_MHz, &len, NULL, 0)){
-        info->cpu_MHz = (double)cpu_MHz/1000000.0;
-    }else{
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
-    }
-
-#elif defined(__FreeBSD__) || defined(__MACH__)
-
-    char *clockrate;
-    clockrate = calloc(CLOCK_LENGTH, sizeof(char));
-
-#if defined(__FreeBSD__)
-    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.clockrate");
-#elif defined(__MACH__)
-    snprintf(clockrate, CLOCK_LENGTH-1, "%s", "hw.cpufrequency");
-#endif
-
-    unsigned long cpu_MHz;
-    len = sizeof(cpu_MHz);
-    if (!sysctlbyname(clockrate, &cpu_MHz, &len, NULL, 0)){
-        info->cpu_MHz = (double)cpu_MHz/1000000.0;
-    }else{
-        mtdebug1(WM_ANALYSISD_LOGTAG, "sysctl failed getting CPU clockrate due to (%s)", strerror(errno));
-    }
-
-    free(clockrate);
-
-#endif
-    return info;
-#endif
-    return NULL;
 }
 
 void w_init_queues(){

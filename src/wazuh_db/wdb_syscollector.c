@@ -1,6 +1,6 @@
 /*
  * Wazuh SQLite integration
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * August 30, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -797,14 +797,12 @@ int wdb_process_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 15, rgroup, -1, NULL);
     sqlite3_bind_text(stmt, 16, sgroup, -1, NULL);
     sqlite3_bind_text(stmt, 17, fgroup, -1, NULL);
-    if (priority >= 0)
+    if (priority >= 0) {
         sqlite3_bind_int(stmt, 18, priority);
-    else
+    } else {
         sqlite3_bind_null(stmt, 18);
-    if (nice >= 0)
-        sqlite3_bind_int(stmt, 19, nice);
-    else
-        sqlite3_bind_null(stmt, 19);
+    }
+    sqlite3_bind_int(stmt, 19, nice);
     if (size >= 0)
         sqlite3_bind_int(stmt, 20, size);
     else

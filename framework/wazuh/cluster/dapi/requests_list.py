@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-#!/usr/bin/env python
-
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -153,7 +149,7 @@ functions = {
         'type': 'local_master'
     },
     'POST/agents/groups/:group_id/configuration': {
-        'function': configuration.upload_group_configuration,
+        'function': configuration.upload_group_file,
         'type': 'local_master'
     },
     'POST/agents/groups/:group_id/files/:file_name': {

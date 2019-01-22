@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
+import random
+import time
 from os import remove, path as os_path
 import re
 from shutil import move
@@ -644,8 +646,7 @@ def upload_group_configuration(group_id, xml_file):
         raise WazuhException(1710)
 
     # path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}.xml'.format(common.ossec_path,
-                                                        datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s'))
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
     # create temporary file for parsing xml input
     try:
@@ -654,6 +655,10 @@ def upload_group_configuration(group_id, xml_file):
             xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            # revert xml.dom replacings
+            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
+                                   .replace("&gt;", ">")
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhException(1113, str(e))
@@ -667,7 +672,8 @@ def upload_group_configuration(group_id, xml_file):
 
         # check Wazuh xml format
         try:
-            subprocess.check_output(['/var/ossec/bin/verify-agent-conf', '-f', tmp_file_path], stderr=subprocess.STDOUT)
+            subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', tmp_file_path],
+                                    stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             # extract error message from output.
             # Example of raw output
@@ -675,7 +681,7 @@ def upload_group_configuration(group_id, xml_file):
             # Example of desired output:
             # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output)
+                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             raise WazuhException(1114, ' '.join(output_regex))
         except Exception as e:
             raise WazuhException(1743, str(e))
@@ -694,7 +700,7 @@ def upload_group_configuration(group_id, xml_file):
         raise e
 
 
-def upload_group_file(group_id, xml_file, file_name):
+def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     """
     Updates a group file
 

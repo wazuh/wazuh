@@ -2,6 +2,7 @@
 # Adds an IP to the /etc/hosts.deny file
 # Requirements: sshd and other binaries with tcp wrappers support
 # Expect: srcip
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Daniel B. Cid
 # Last modified: Nov 09, 2005
 
