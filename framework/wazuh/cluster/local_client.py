@@ -34,7 +34,7 @@ class LocalClientHandler(client.AbstractClient):
             self.response_available.set()
             return b'ok', b'Response received'
         elif command == b'dapi_err' or command == b'err':
-            self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
+            self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
             self.response_available.set()
             return b'ok', b'Response received'
         else:
@@ -47,7 +47,7 @@ class LocalClientHandler(client.AbstractClient):
             self.response_available.set()
             return type_error + b' ' + code + b' ' + message.split(b':', 1)[1]
         else:
-            self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
+            self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
             self.response_available.set()
             return b"Error processing request: " + data
 
@@ -72,17 +72,20 @@ class LocalClient(client.AbstractClientManager):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
-        self.transport, self.protocol = await loop.create_unix_connection(
-                                         protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
-                                                                                     name=self.name, logger=self.logger,
-                                                                                     fernet_key='', manager=self,
-                                                                                     cluster_items=self.cluster_items),
-                                         path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        try:
+            self.transport, self.protocol = await loop.create_unix_connection(
+                                             protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
+                                                                                         name=self.name, logger=self.logger,
+                                                                                         fernet_key='', manager=self,
+                                                                                         cluster_items=self.cluster_items),
+                                             path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        except Exception as e:
+            raise exception.WazuhException(3009, str(e))
 
     async def send_api_request(self):
         result = (await self.protocol.send_request(self.command, self.data)).decode()
         if result.startswith('Error'):
-            raise exception.WazuhException(3000, result)
+            raise exception.WazuhException(3009, result)
         elif result.startswith('WazuhException'):
             _, code, message = result.split(' ', 2)
             raise exception.WazuhException(int(code), message)

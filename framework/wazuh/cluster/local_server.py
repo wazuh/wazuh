@@ -132,18 +132,24 @@ class LocalServerHandlerWorker(LocalServerHandler):
         return self.send_request_to_master(b'get_health', filter_nodes)
 
     def send_request_to_master(self, command: bytes, arguments: bytes):
-        request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
-        request.add_done_callback(self.get_api_response)
-        return b'ok', b'Sent request to master node'
+        if self.server.node.client is None:
+            return b'err', b'Worker is not connected to the master node'
+        else:
+            request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
+            request.add_done_callback(self.get_api_response)
+            return b'ok', b'Sent request to master node'
 
     def send_file_request(self, path):
         def get_send_file_response(future):
             result = future.result()
             asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
 
-        req = asyncio.create_task(self.server.node.client.send_file(path))
-        req.add_done_callback(get_send_file_response)
-        return b'ok', b'Forwarding file to master node'
+        if self.server.node.client is None:
+            return b'err', b'Worker is not connected to the master node'
+        else:
+            req = asyncio.create_task(self.server.node.client.send_file(path))
+            req.add_done_callback(get_send_file_response)
+            return b'ok', b'Forwarding file to master node'
 
     def get_api_response(self, future):
         result = future.result()
