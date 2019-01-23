@@ -1124,7 +1124,7 @@ void sys_hw_windows(const char* LOCATION){
     /* Call get_baseboard_serial function through syscollector DLL */
     char *serial = NULL;
     
-    if(strncmp(getuname(),"Microsoft Windows XP Professional",33)){
+    if(checkVista()) {
 
         CallFunc2 _get_baseboard_serial;
         HMODULE sys_library = LoadLibrary("syscollector_win_ext.dll");
