@@ -490,21 +490,17 @@ __declspec( dllexport ) int get_baseboard_serial(char **serial)
                 if (!*serial)
                 {
                     ret = 4;
-                    *serial = strdup("unknown");
                 }
             } else {
                 ret = 3;
-                *serial = strdup("unknown");
             }
             
             free(smbios);
         } else {
             ret = 2;
-            *serial = strdup("unknown");
         }
     } else {
         ret = 1;
-        *serial = strdup("unknown");
     }
     
     return ret;
