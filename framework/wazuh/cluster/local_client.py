@@ -25,7 +25,7 @@ class LocalClientHandler(client.AbstractClient):
 
     def process_request(self, command: bytes, data: bytes):
         self.logger.debug("Command received: {}".format(command))
-        if command == b'dapi_res':
+        if command == b'dapi_res' or command == b'send_f_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
             elif data not in self.in_str:
@@ -87,7 +87,8 @@ class LocalClient(client.AbstractClientManager):
             _, code, message = result.split(' ', 2)
             raise exception.WazuhException(int(code), message)
         else:
-            if self.command == b'dapi' or self.command == b'dapi_forward' or result == 'Sent request to master node':
+            if self.command == b'dapi' or self.command == b'dapi_forward' or self.command == b'send_file' or \
+                    result == 'Sent request to master node':
                 try:
                     timeout = None if self.wait_for_complete \
                         else self.cluster_items['intervals']['communication']['timeout_api_request']

@@ -121,8 +121,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
         elif command == b'send_file':
-            asyncio.create_task(self.server.node.client.send_file(data.decode()))
-            return b'ok', b'Forwarding file to master node'
+            return self.send_file_request(data.decode())
         else:
             return super().process_request(command, data)
 
@@ -136,6 +135,15 @@ class LocalServerHandlerWorker(LocalServerHandler):
         request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
         request.add_done_callback(self.get_api_response)
         return b'ok', b'Sent request to master node'
+
+    def send_file_request(self, path):
+        def get_send_file_response(future):
+            result = future.result()
+            asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
+
+        req = asyncio.create_task(self.server.node.client.send_file(path))
+        req.add_done_callback(get_send_file_response)
+        return b'ok', b'Forwarding file to master node'
 
     def get_api_response(self, future):
         result = future.result()
