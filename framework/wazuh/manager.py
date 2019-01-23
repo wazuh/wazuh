@@ -17,6 +17,7 @@ import hashlib
 from xml.dom.minidom import parseString
 from shutil import move
 from os import remove
+import random
 
 
 def status():
