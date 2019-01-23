@@ -326,7 +326,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         pTcpTable = (MIB_TCPTABLE_OWNER_PID *) win_alloc(dwSize);
         if (pTcpTable == NULL){
             mterror(WM_SYS_LOGTAG, "Error allocating memory for 'pTcpTable'.");
-            return;
+            goto end;
         }
     }
 
@@ -422,6 +422,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             DWORD addresslen = 128;
             char laddress[128] = {'\0'};
             char raddress[128] = {'\0'};
+            socklen_t socksize;
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
@@ -431,43 +432,53 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "tcp6");
 
-            struct sockaddr_in6 *ipv6_local_sock = NULL;
-            ipv6_local_sock->sin6_family = AF_INET6;
+            struct sockaddr_in6 ipv6_local_sock;
+            ipv6_local_sock.sin6_family = AF_INET6;
             for(j = 0; j < 16; j++) ipaddressv6.u.Byte[j] = pTcp6Table->table[i].ucLocalAddr[j];
-            ipv6_local_sock->sin6_addr = ipaddressv6;
-            ipv6_local_sock->sin6_port = (u_short)pTcp6Table->table[i].dwLocalPort;
+            ipv6_local_sock.sin6_addr = ipaddressv6;
+            ipv6_local_sock.sin6_port = (u_short)pTcp6Table->table[i].dwLocalPort;
+            socksize = sizeof(ipv6_local_sock);
 
-            if (WSAAddressToStringA((LPSOCKADDR)ipv6_local_sock, 16, NULL, laddress, &addresslen) == SOCKET_ERROR) {
+            if (WSAAddressToStringA((LPSOCKADDR)&ipv6_local_sock, socksize, NULL, laddress, &addresslen) == SOCKET_ERROR) {
                 mterror(WM_SYS_LOGTAG, "WSAAddressToStringA() failed (%d).", WSAGetLastError());
                 cJSON_AddStringToObject(port, "local_ip", "unknown");
             } else {
+                /* Remove brackets (if available) */
+                if (laddress[0] == '[') memmove(laddress, laddress + 1, strlen(laddress) - 1);
+                char *pch = strrchr(laddress, ']');
+                if (pch != NULL) *pch = '\0';
+
                 /* Remove the scope ID from the IPv6 address (if available) */
-                char *pch = strrchr(laddress, '%');
-                if (pch != NULL) pch = '\0';
+                pch = strrchr(laddress, '%');
+                if (pch != NULL) *pch = '\0';
+
                 cJSON_AddStringToObject(port, "local_ip", laddress);
             }
 
-            mtinfo(WM_SYS_LOGTAG, "TCP IPv6 Local Address: %s", laddress);
-
             cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pTcp6Table->table[i].dwLocalPort));
 
-            struct sockaddr_in6 *ipv6_remote_sock = NULL;
-            ipv6_remote_sock->sin6_family = AF_INET6;
+            struct sockaddr_in6 ipv6_remote_sock;
+            ipv6_remote_sock.sin6_family = AF_INET6;
             for(j = 0; j < 16; j++) ipaddressv6.u.Byte[j] = pTcp6Table->table[i].ucRemoteAddr[j];
-            ipv6_remote_sock->sin6_addr = ipaddressv6;
-            ipv6_remote_sock->sin6_port = (u_short)pTcp6Table->table[i].dwRemotePort;
+            ipv6_remote_sock.sin6_addr = ipaddressv6;
+            ipv6_remote_sock.sin6_port = (u_short)pTcp6Table->table[i].dwRemotePort;
+            socksize = sizeof(ipv6_remote_sock);
 
-            if (WSAAddressToStringA((LPSOCKADDR)ipv6_remote_sock, 16, NULL, raddress, &addresslen) == SOCKET_ERROR) {
+            if (WSAAddressToStringA((LPSOCKADDR)&ipv6_remote_sock, socksize, NULL, raddress, &addresslen) == SOCKET_ERROR) {
                 mterror(WM_SYS_LOGTAG, "WSAAddressToStringA() failed (%d).", WSAGetLastError());
-                cJSON_AddStringToObject(port, "local_ip", "unknown");
+                cJSON_AddStringToObject(port, "remote_ip", "unknown");
             } else {
+                /* Remove brackets */
+                if (raddress[0] == '[') memmove(raddress, raddress + 1, strlen(raddress) - 1);
+                char *pch = strrchr(raddress, ']');
+                if (pch != NULL) *pch = '\0';
+
                 /* Remove the scope ID from the IPv6 address (if available) */
-                char *pch = strrchr(raddress, '%');
-                if (pch != NULL) pch = '\0';
+                pch = strrchr(raddress, '%');
+                if (pch != NULL) *pch = '\0';
+
                 cJSON_AddStringToObject(port, "remote_ip", raddress);
             }
-
-            mtinfo(WM_SYS_LOGTAG, "TCP IPv6 Remote Address: %s", raddress);
 
             cJSON_AddNumberToObject(port, "remote_port", ntohs((u_short)pTcp6Table->table[i].dwRemotePort));
 
@@ -599,6 +610,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             char *string;
             DWORD addresslen = 128;
             char laddress[128] = {'\0'};
+            socklen_t socksize;
 
             cJSON *object = cJSON_CreateObject();
             cJSON *port = cJSON_CreateObject();
@@ -608,23 +620,28 @@ void sys_ports_windows(const char* LOCATION, int check_all){
             cJSON_AddItemToObject(object, "port", port);
             cJSON_AddStringToObject(port, "protocol", "udp6");
 
-            struct sockaddr_in6 *ipv6_local_sock = NULL;
-            ipv6_local_sock->sin6_family = AF_INET6;
+            struct sockaddr_in6 ipv6_local_sock;
+            ipv6_local_sock.sin6_family = AF_INET6;
             for(j = 0; j < 16; j++) ipaddressv6.u.Byte[j] = pUdp6Table->table[i].ucLocalAddr[j];
-            ipv6_local_sock->sin6_addr = ipaddressv6;
-            ipv6_local_sock->sin6_port = (u_short)pUdp6Table->table[i].dwLocalPort;
+            ipv6_local_sock.sin6_addr = ipaddressv6;
+            ipv6_local_sock.sin6_port = (u_short)pUdp6Table->table[i].dwLocalPort;
+            socksize = sizeof(ipv6_local_sock);
 
-            if (WSAAddressToStringA((LPSOCKADDR)ipv6_local_sock, 16, NULL, laddress, &addresslen) == SOCKET_ERROR) {
+            if (WSAAddressToStringA((LPSOCKADDR)&ipv6_local_sock, socksize, NULL, laddress, &addresslen) == SOCKET_ERROR) {
                 mterror(WM_SYS_LOGTAG, "WSAAddressToStringA() failed (%d).", WSAGetLastError());
                 cJSON_AddStringToObject(port, "local_ip", "unknown");
             } else {
+                /* Remove brackets */
+                if (laddress[0] == '[') memmove(laddress, laddress + 1, strlen(laddress) - 1);
+                char *pch = strrchr(laddress, ']');
+                if (pch != NULL) *pch = '\0';
+
                 /* Remove the scope ID from the IPv6 address (if available) */
-                char *pch = strrchr(laddress, '%');
-                if (pch != NULL) pch = '\0';
+                pch = strrchr(laddress, '%');
+                if (pch != NULL) *pch = '\0';
+
                 cJSON_AddStringToObject(port, "local_ip", laddress);
             }
-
-            mtinfo(WM_SYS_LOGTAG, "UDP IPv6 Remote Address: %s", laddress);
 
             cJSON_AddNumberToObject(port, "local_port", ntohs((u_short)pUdp6Table->table[i].dwLocalPort));
 
