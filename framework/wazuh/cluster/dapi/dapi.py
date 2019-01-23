@@ -11,6 +11,7 @@ from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh.cluster.dapi import requests_list as rq
 from wazuh import exception, agent, common, utils
 import logging
+import os
 import time
 
 
@@ -146,6 +147,7 @@ class DistributedAPI:
             # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
             # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
             res = await self.node.send_file(self.input_json['arguments']['xml_file'])
+            os.remove(self.input_json['arguments']['xml_file'])
             if res.startswith('Error'):
                 return self.print_json(data=res.decode(), error=1000)
         return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode(),
