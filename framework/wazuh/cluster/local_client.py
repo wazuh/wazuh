@@ -62,6 +62,8 @@ class LocalClient(client.AbstractClientManager):
         self.command = command
         self.data = data
         self.wait_for_complete = wait_for_complete
+        self.protocol = None
+        self.transport = None
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -70,14 +72,15 @@ class LocalClient(client.AbstractClientManager):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
-        transport, protocol = await loop.create_unix_connection(
-                            protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
-                                                                        name=self.name, logger=self.logger,
-                                                                        fernet_key='', cluster_items=self.cluster_items,
-                                                                        manager=self),
-                            path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        self.transport, self.protocol = await loop.create_unix_connection(
+                                         protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
+                                                                                     name=self.name, logger=self.logger,
+                                                                                     fernet_key='', manager=self,
+                                                                                     cluster_items=self.cluster_items),
+                                         path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
 
-        result = (await protocol.send_request(self.command, self.data)).decode()
+    async def send_api_request(self):
+        result = (await self.protocol.send_request(self.command, self.data)).decode()
         if result.startswith('Error'):
             raise exception.WazuhException(3000, result)
         elif result.startswith('WazuhException'):
@@ -87,9 +90,9 @@ class LocalClient(client.AbstractClientManager):
             if self.command == b'dapi' or self.command == b'dapi_forward' or result == 'Sent request to master node':
                 try:
                     timeout = None if self.wait_for_complete \
-                                   else self.cluster_items['intervals']['communication']['timeout_api_request']
-                    await asyncio.wait_for(protocol.response_available.wait(), timeout=timeout)
-                    request_result = protocol.response.decode()
+                        else self.cluster_items['intervals']['communication']['timeout_api_request']
+                    await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
+                    request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
                     raise exception.WazuhException(3020)
             else:
@@ -97,5 +100,13 @@ class LocalClient(client.AbstractClientManager):
         return request_result
 
 
-async def execute(command: bytes, data: bytes, wait_for_complete: bool):
-    return await LocalClient(command, data, wait_for_complete).start()
+async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> str:
+    lc = LocalClient(command, data, wait_for_complete)
+    await lc.start()
+    return await lc.send_api_request()
+
+
+async def send_file(path: str) -> str:
+    lc = LocalClient(b'send_file', path.encode(), False)
+    await lc.start()
+    return await lc.send_api_request()

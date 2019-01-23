@@ -120,6 +120,9 @@ class LocalServerHandlerWorker(LocalServerHandler):
                 return b'ok', b'Added request to API requests queue'
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
+        elif command == b'send_file':
+            asyncio.create_task(self.server.node.client.send_file(data.decode()))
+            return b'ok', b'Forwarding file to master node'
         else:
             return super().process_request(command, data)
 
