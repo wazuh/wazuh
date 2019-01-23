@@ -1141,12 +1141,10 @@ void sys_hw_windows(const char* LOCATION){
             mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to load syscollector_win_ext.dll: %s (%lu).", messageBuffer, error);
             LocalFree(messageBuffer);
             
-            serial = strdup("unknown");
         } else {
             _get_baseboard_serial = (CallFunc2)GetProcAddress(sys_library, "get_baseboard_serial");
             if (!_get_baseboard_serial) {
                 mterror(WM_SYS_LOGTAG, "At sys_hw_windows(): Unable to access 'get_baseboard_serial' on syscollector_win_ext.dll.");
-                serial = strdup("unknown");
             } else {
                 int ret = _get_baseboard_serial(&serial);
                 switch(ret)
@@ -1182,12 +1180,11 @@ void sys_hw_windows(const char* LOCATION){
         output = popen(command, "r");
         if (!output){
             mtwarn(WM_SYS_LOGTAG, "Unable to execute command '%s'.", command);
-        }else{
+        } else {
             if (fgets(read_buff, SERIAL_LENGTH, output)) {
                 if (strncmp(read_buff ,"SerialNumber", 12) == 0) {
                     if (!fgets(read_buff, SERIAL_LENGTH, output)){
                         mtwarn(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number.");
-                        serial = strdup("unknown");
                     }
                     else if (end = strpbrk(read_buff,"\r\n"), end) {
                         *end = '\0';
@@ -1196,13 +1193,11 @@ void sys_hw_windows(const char* LOCATION){
                             read_buff[i] = '\0';
                             i--;
                         }
-                        serial = strdup(read_buff);
-                    }else
-                        serial = strdup("unknown");
+                        os_strdup(read_buff, serial);
+                    }
                 }
             } else {
                 mtdebug1(WM_SYS_LOGTAG, "Unable to get Motherboard Serial Number (bad header).");
-                serial = strdup("unknown");
             }
 
             if (status = pclose(output), status) {
@@ -1210,7 +1205,11 @@ void sys_hw_windows(const char* LOCATION){
             }
         }
     }
-	cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
+
+    if (!serial)
+        os_strdup("unknown", serial);
+
+    cJSON_AddStringToObject(hw_inventory, "board_serial", serial);
     free(serial);
 
     /* Get CPU and memory information */
