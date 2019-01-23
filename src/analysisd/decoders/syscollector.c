@@ -214,7 +214,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (mtu) {
             char _mtu[OS_MAXSTR];
             snprintf(_mtu, OS_MAXSTR - 1, "%d", mtu->valueint);
-            fillData(lf,"netinfo.iface._mtu",_mtu);
+            fillData(lf,"netinfo.iface.mtu",_mtu);
             wm_strcat(&msg, _mtu, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -230,7 +230,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (tx_packets) {
             char txpack[OS_MAXSTR];
             snprintf(txpack, OS_MAXSTR - 1, "%d", tx_packets->valueint);
-            fillData(lf,"netinfo.iface.txpack",txpack);
+            fillData(lf,"netinfo.iface.tx_packets",txpack);
             wm_strcat(&msg, txpack, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -239,7 +239,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (rx_packets) {
             char rxpack[OS_MAXSTR];
             snprintf(rxpack, OS_MAXSTR - 1, "%d", rx_packets->valueint);
-            fillData(lf,"netinfo.iface.rxpack",rxpack);
+            fillData(lf,"netinfo.iface.rx_packets",rxpack);
             wm_strcat(&msg, rxpack, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -248,7 +248,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (tx_bytes) {
             char txbytes[OS_MAXSTR];
             snprintf(txbytes, OS_MAXSTR - 1, "%d", tx_bytes->valueint);
-            fillData(lf,"netinfo.iface.txbytes",txbytes);
+            fillData(lf,"netinfo.iface.tx_bytes",txbytes);
             wm_strcat(&msg, txbytes, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -257,7 +257,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (rx_bytes) {
             char rxbytes[OS_MAXSTR];
             snprintf(rxbytes, OS_MAXSTR - 1, "%d", rx_bytes->valueint);
-            fillData(lf,"netinfo.iface.rxbytes",rxbytes);
+            fillData(lf,"netinfo.iface.rx_bytes",rxbytes);
             wm_strcat(&msg, rxbytes, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -266,7 +266,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (tx_errors) {
             char txerrors[OS_MAXSTR];
             snprintf(txerrors, OS_MAXSTR - 1, "%d", tx_errors->valueint);
-            fillData(lf,"netinfo.iface.txerrors",txerrors);
+            fillData(lf,"netinfo.iface.tx_errors",txerrors);
             wm_strcat(&msg, txerrors, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -275,7 +275,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (rx_errors) {
             char rxerrors[OS_MAXSTR];
             snprintf(rxerrors, OS_MAXSTR - 1, "%d", rx_errors->valueint);
-            fillData(lf,"netinfo.iface.rxerrors",rxerrors);
+            fillData(lf,"netinfo.iface.rx_errors",rxerrors);
             wm_strcat(&msg, rxerrors, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -284,7 +284,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (tx_dropped) {
             char txdropped[OS_MAXSTR];
             snprintf(txdropped, OS_MAXSTR - 1, "%d", tx_dropped->valueint);
-            fillData(lf,"netinfo.iface.txdropped",txdropped);
+            fillData(lf,"netinfo.iface.tx_dropped",txdropped);
             wm_strcat(&msg, txdropped, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -293,7 +293,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (rx_dropped) {
             char rxdropped[OS_MAXSTR];
             snprintf(rxdropped, OS_MAXSTR - 1, "%d", rx_dropped->valueint);
-            fillData(lf,"netinfo.iface.rxdropped",rxdropped);
+            fillData(lf,"netinfo.iface.rx_dropped",rxdropped);
             wm_strcat(&msg, rxdropped, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -404,19 +404,31 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         }
 
                         if (sc_send_db(msg,socket) < 0) {
+                            if (ip4_address) {
+                                free(ip4_address);
+                            }
+                            if(ip4_netmask) {
+                                free(ip4_netmask);
+                            }
+                            if(ip4_broadcast) {
+                                free(ip4_broadcast);
+                            }
                             return -1;
                         }
                     }
 
-                    fillData(lf,"netinfo.iface.ipv4.address", ip4_address);
-                    if(ip4_netmask)
+                    if (ip4_address) {
+                        fillData(lf,"netinfo.iface.ipv4.address", ip4_address);
+                        free(ip4_address);
+                    }
+                    if(ip4_netmask) {
                         fillData(lf,"netinfo.iface.ipv4.netmask", ip4_netmask);
-                    if(ip4_broadcast)
+                        free(ip4_netmask);
+                    }
+                    if(ip4_broadcast) {
                         fillData(lf,"netinfo.iface.ipv4.broadcast",ip4_broadcast);
-
-                    free(ip4_address);
-                    free(ip4_netmask);
-                    free(ip4_broadcast);
+                        free(ip4_broadcast);
+                    }
                 }
             }
 
@@ -447,12 +459,14 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
                 if (gateway) {
                     wm_strcat(&msg, gateway->valuestring, '|');
+                    fillData(lf, "netinfo.iface.ipv6.gateway",gateway->valuestring);
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
 
                 if (dhcp) {
                     wm_strcat(&msg, dhcp->valuestring, '|');
+                    fillData(lf, "netinfo.iface.ipv6.dhcp",dhcp->valuestring);
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
@@ -515,19 +529,31 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                         }
 
                         if (sc_send_db(msg,socket) < 0) {
+                            if (ip6_address) {
+                                free(ip6_address);
+                            }
+                            if(ip6_netmask) {
+                                free(ip6_netmask);
+                            }
+                            if(ip6_broadcast) {
+                                free(ip6_broadcast);
+                            }
                             return -1;
                         }
                     }
 
-                    fillData(lf,"netinfo.iface.ipv6.address", ip6_address);
-                    if(ip6_netmask)
-                        fillData(lf,"netinfo.iface.ipv6.netmask", ip6_netmask);
-                    if(ip6_broadcast)
-                        fillData(lf,"netinfo.iface.ipv6.broadcast", ip6_broadcast);
-
-                    free(ip6_address);
-                    free(ip6_netmask);
-                    free(ip6_broadcast);
+                    if (ip6_address) {
+                        fillData(lf,"netinfo.iface.ipv4.address", ip6_address);
+                        free(ip6_address);
+                    }
+                    if(ip6_netmask) {
+                        fillData(lf,"netinfo.iface.ipv4.netmask", ip6_netmask);
+                        free(ip6_netmask);
+                    }
+                    if(ip6_broadcast) {
+                        fillData(lf,"netinfo.iface.ipv4.broadcast",ip6_broadcast);
+                        free(ip6_broadcast);
+                    }
 
                 }
             }
@@ -1066,7 +1092,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
 
         if (installtime) {
             wm_strcat(&msg, installtime->valuestring, '|');
-            fillData(lf,"program.installtime",installtime->valuestring);
+            fillData(lf,"program.install_time",installtime->valuestring);
         } else {
             wm_strcat(&msg, "NULL", '|');
         }
@@ -1341,7 +1367,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (priority) {
             char prior[OS_MAXSTR];
             snprintf(prior, OS_MAXSTR - 1, "%d", priority->valueint);
-            fillData(lf,"process.prior",prior);
+            fillData(lf,"process.priority",prior);
             wm_strcat(&msg, prior, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
@@ -1368,7 +1394,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (vm_size) {
             char vms[OS_MAXSTR];
             snprintf(vms, OS_MAXSTR - 1, "%d", vm_size->valueint);
-            fillData(lf,"process.vms",vms);
+            fillData(lf,"process.vm_size",vms);
             wm_strcat(&msg, vms, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
