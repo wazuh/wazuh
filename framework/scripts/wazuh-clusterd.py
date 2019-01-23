@@ -149,7 +149,7 @@ if __name__ == '__main__':
     # Drop privileges to ossec
     if not args.root:
         os.setgid(common.ossec_gid)
-        os.seteuid(common.ossec_uid)
+        os.setuid(common.ossec_uid)
 
     main_logger = set_logging(args.foreground, debug_mode)
 
