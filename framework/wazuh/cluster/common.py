@@ -188,7 +188,7 @@ class Handler(asyncio.Protocol):
         """
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
-            return b"Length of command '" + command + b"' exceeds limit."
+            raise Exception("Length of command '{}' exceeds limit ({}/{}).".format(command, cmd_len, self.cmd_len))
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
@@ -254,7 +254,10 @@ class Handler(asyncio.Protocol):
         response = Response()
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
-        self.push(self.msg_build(command, msg_counter, data))
+        try:
+            self.push(self.msg_build(command, msg_counter, data))
+        except Exception as e:
+            return "Error sending request: {}".format(e).encode()
         try:
             response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
         except asyncio.TimeoutError:
