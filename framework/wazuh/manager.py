@@ -5,6 +5,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
+from wazuh.exception import WazuhException
+from wazuh.utils import load_wazuh_xml
 from wazuh import common
 from datetime import datetime
 import time
@@ -12,6 +14,9 @@ from os.path import exists
 from glob import glob
 import re
 import hashlib
+from xml.dom.minidom import parseString
+from shutil import move
+from os import remove
 
 
 def status():
@@ -252,5 +257,8 @@ def get_file(path, output_format):
                 key = line.split(':')[0]
                 value = line.split(':')[1]
                 output[key] = value
+    elif output_format == 'xml':
+        with open(file_path) as f:
+            output = f.readline()
 
     return output
