@@ -658,17 +658,12 @@ def upload_group_configuration(group_id, xml_file):
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
-                                   .replace("&gt;", ">")
+                                   .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhException(1113, str(e))
 
     try:
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except Exception as e:
-            raise WazuhException(1113, str(e))
 
         # check Wazuh xml format
         try:
@@ -705,10 +700,16 @@ def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     Updates a group file
 
     :param group_id: Group to update
-    :param xml_file: File contents in string
+    :param xml_file: File name from origin
     :param file_name: File name to update
     :return: Confirmation message in string
     """
+    # check xml format (temporary file from API)
+    try:
+        load_wazuh_xml(xml_file)
+    except Exception as e:
+        raise WazuhException(1113, str(e))
+
     if file_name == 'agent.conf':
         with open(xml_file) as f:
             xml_file_data = f.read()
