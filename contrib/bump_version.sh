@@ -98,7 +98,7 @@ then
 
     # File wazuh-installer.wxs
 
-    egrep '<Product Id="\*" Name="Wazuh Agent .+" Language="1033" Version=".+" Manufacturer=' $MSI_FILE > /dev/null
+    egrep '<Product Id="\*" Name="Wazuh Agent" Language="1033" Version=".+" Manufacturer=' $MSI_FILE > /dev/null
 
     if [ $? != 0 ]
     then
