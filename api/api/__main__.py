@@ -3,11 +3,8 @@
 import connexion
 
 from api import encoder
-
-#import sys
-#sys.path.append("pycharm-debug-py3k.egg")
-#import pydevd
-#pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+from wazuh import Wazuh, WazuhException
+from wazuh.cluster.cluster import read_config
 
 
 def main():
@@ -18,4 +15,11 @@ def main():
 
 
 if __name__ == '__main__':
+
+    wazuh = Wazuh(ossec_path='/var/ossec')
+    cluster_config = read_config()
+    executable_name = "Wazuh API"
+    master_ip = cluster_config['nodes'][0]
+    if cluster_config['node_type'] != 'master' and cluster_config['disabled'] == 'no':
+        raise WazuhException(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
     main()

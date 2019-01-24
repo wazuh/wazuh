@@ -10,15 +10,22 @@ info:
 schemes:
   - https
   - http
+tags:
+- name: agents
+  description: 'Agents management related operations'
 paths:
   /agents:
     get:
+      tags:
+      - agents
       summary: 'Get all agents'
       description: 'Returns a list with the available agents.'
       operationId: getAllAgents
       produces:
         - application/json
       parameters:
+        - $ref: '#/parameters/pretty'
+        - $ref: '#/parameters/wait_for_complete'
         - in: query
           name: offset
           description: First element to return in the collection
@@ -174,6 +181,8 @@ paths:
                   node_name: unknown
 
     delete:
+      tags:
+      - agents
       summary: Delete agents
       description: |
         Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.
@@ -181,6 +190,8 @@ paths:
       produces:
         - application/json
       parameters:
+        - $ref: '#/parameters/pretty'
+        - $ref: '#/parameters/wait_for_complete'
         - in: query
           name: ids
           description: Array of agent ID’s
@@ -193,7 +204,7 @@ paths:
           type: boolean
         - $ref: '#/parameters/statusParam'
         - $ref: '#/parameters/olderThanParam'
-      
+
       responses:
         '200':
           description: Delete agents
@@ -214,11 +225,32 @@ paths:
                 - '005'
                 total_affected_agents: 2
 
+  /agents/restart:
+    put:
+      tags:
+      - agents
+      summary: 'Restarts all agents'
+      operationId: restart_all_agents
+      produces:
+        - application/json
+      parameters:
+        - $ref: '#/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Agents restarted
+          schema:
+            allOf:
+            - $ref: '#/definitions/ApiResponse'
+            example:
+              data: "Restarting all agents"
+              error: 0
+
+
 parameters:
   olderThanParam:
     in: query
     name: older_than
-    description: | 
+    description: |
       Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
     type: string
   statusParam:
@@ -233,6 +265,18 @@ parameters:
       - pending
       - neverconnected
       - disconnected
+  pretty:
+    in: query
+    name: pretty
+    description: |
+      Show results in human-readable format
+    type: boolean
+  wait_for_complete:
+    in: query
+    name: wait_for_complete
+    description: |
+      Disable timeout response
+    type: boolean
 
 
 definitions:

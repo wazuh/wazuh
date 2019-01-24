@@ -6,10 +6,11 @@ import itertools
 import json
 import operator
 import random
-from typing import Dict, Union, Tuple
+from importlib import import_module
+from typing import Callable, Dict, Union, Tuple
 from wazuh.cluster import local_client, cluster, common as c_common
-from wazuh.cluster.dapi import requests_list as rq
 from wazuh import exception, agent, common, utils
+from wazuh import Wazuh
 import logging
 import time
 
@@ -18,8 +19,9 @@ class DistributedAPI:
     """
     Represents a distributed API request
     """
-    def __init__(self, input_json: Dict, logger: logging.Logger, node: c_common.Handler = None, debug: bool = False,
-                 pretty: bool = False):
+    def __init__(self, f: Callable, logger: logging.Logger, f_kwargs: Dict = {}, node: c_common.Handler = None,
+                 debug: bool = False, pretty: bool = False, request_type: str = "local_master",
+                 wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False):
         """
         Class constructor
 
@@ -30,13 +32,18 @@ class DistributedAPI:
         :param pretty: Return request result with pretty indent
         """
         self.logger = logger
-        self.input_json = input_json
+        self.f = f
+        self.f_kwargs = f_kwargs
         self.node = node if node is not None else local_client
         self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
         self.node_info = cluster.get_node()
         self.request_id = str(random.randint(0, 2**10 - 1))
+        self.request_type = request_type
+        self.wait_for_complete = wait_for_complete
+        self.from_cluster = from_cluster
+        self.is_async = is_async
 
     async def distribute_function(self) -> str:
         """
@@ -45,27 +52,23 @@ class DistributedAPI:
         :return: Dictionary with API response
         """
         try:
-            request_type = rq.functions[self.input_json['function']]['type']
             is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
-
-            if 'wait_for_complete' not in self.input_json['arguments']:
-                self.input_json['arguments']['wait_for_complete'] = False
 
             # First case: execute the request local.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or cluster.check_cluster_status() or request_type == 'local_any' or \
-                    (request_type == 'local_master' and self.node_info['type'] == 'master') or \
-                    (request_type == 'distributed_master' and self.input_json['from_cluster']):
+            if not is_dapi_enabled or cluster.check_cluster_status() or self.request_type == 'local_any' or \
+                    (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
+                    (self.request_type == 'distributed_master' and self.from_cluster):
 
                 return await self.execute_local_request()
 
             # Second case: forward the request
             # Only the master node will forward a request, and it will only be forwarded if its type is distributed_
             # master
-            elif request_type == 'distributed_master' and self.node_info['type'] == 'master':
+            elif self.request_type == 'distributed_master' and self.node_info['type'] == 'master':
                 return await self.forward_request()
 
             # Last case: execute the request remotely.
@@ -89,7 +92,8 @@ class DistributedAPI:
                 self.print_json(error=1000, data="Wazuh-Python Internal Error: data encoding unknown ({})".format(e))
 
         output = {'message' if error else 'data': data, 'error': error}
-        return json.dumps(obj=output, default=encode_json, indent=4 if self.pretty else None)
+        # return json.dumps(obj=output, default=encode_json, indent=4 if self.pretty else None)
+        return output
 
     async def execute_local_request(self) -> str:
         """
@@ -99,20 +103,16 @@ class DistributedAPI:
         """
         def run_local():
             self.logger.debug("Starting to execute request locally")
-            if 'arguments' in self.input_json and self.input_json['arguments']:
-                data = rq.functions[self.input_json['function']]['function'](**self.input_json['arguments'])
-            else:
-                data = rq.functions[self.input_json['function']]['function']()
+            data = self.f(**self.f_kwargs)
             self.logger.debug("Finished executing request locally")
             return data
         try:
             before = time.time()
 
-            timeout = None if self.input_json['arguments']['wait_for_complete'] \
-                           else self.cluster_items['intervals']['communication']['timeout_api_exe']
-            del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
+            timeout = None if self.wait_for_complete \
+                           else self.cluster_items['intervals']['communication']['timeout_api_request']
 
-            if rq.functions[self.input_json['function']]['is_async']:
+            if self.is_async:
                 task = run_local()
             else:
                 loop = asyncio.get_running_loop()
@@ -136,14 +136,23 @@ class DistributedAPI:
                 raise
             return self.print_json(data=str(e), error=1000)
 
+    def to_dict(self):
+        return {"f": self.f,
+                "f_kwargs": self.f_kwargs,
+                "request_type": self.request_type,
+                "wait_for_complete": self.wait_for_complete,
+                "from_cluster": self.from_cluster,
+                "is_async": self.is_async
+                }
+
     async def execute_remote_request(self) -> str:
         """
         Executes a remote request. This function is used by worker nodes to execute master_only API requests.
 
         :return: JSON response
         """
-        return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode(),
-                                       wait_for_complete=self.input_json['arguments']['wait_for_complete'])
+        return await self.node.execute(command=b'dapi', data=json.dumps(self.to_dict(), cls=CallableEncoder).encode(),
+                                       wait_for_complete=self.wait_for_complete)
 
     async def forward_request(self):
         """
@@ -160,21 +169,24 @@ class DistributedAPI:
             :return: a JSON response
             """
             node_name, agent_id = node_name
-            if agent_id and ('agent_id' not in self.input_json['arguments'] or isinstance(self.input_json['arguments']['agent_id'], list)):
-                self.input_json['arguments']['agent_id'] = agent_id
+            if agent_id and ('agent_id' not in self.f_kwargs or isinstance(self.f_kwargs['agent_id'], list)):
+                self.f_kwargs['agent_id'] = agent_id
             if node_name == 'unknown' or node_name == '' or node_name == self.node_info['node']:
                 # The request will be executed locally if the the node to forward to is unknown, empty or the master
                 # itself
                 response = await self.distribute_function()
             else:
                 response = await self.node.execute(b'dapi_forward',
-                                                   "{} {}".format(node_name, json.dumps(self.input_json)).encode(),
-                                                   self.input_json['arguments']['wait_for_complete'])
+                                                   "{} {}".format(node_name,
+                                                                  json.dumps(self.to_dict(),
+                                                                             cls=CallableEncoder)
+                                                                  ).encode(),
+                                                   self.wait_for_complete)
             return response
 
         # get the node(s) who has all available information to answer the request.
         nodes = self.get_solver_node()
-        self.input_json['from_cluster'] = True
+        self.from_cluster = True
         if len(nodes) > 1:
             results = map(json.loads, await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()])))
             final_json = {}
@@ -191,17 +203,17 @@ class DistributedAPI:
         :return: node name and whether the result is list or not
         """
         select_node = {'fields': ['node_name']}
-        if 'agent_id' in self.input_json['arguments']:
+        if 'agent_id' in self.f_kwargs:
             # the request is for multiple agents
-            if isinstance(self.input_json['arguments']['agent_id'], list):
+            if isinstance(self.f_kwargs['agent_id'], list):
                 agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                         filters={'id': self.input_json['arguments']['agent_id']},
+                                                         filters={'id': self.f_kwargs['agent_id']},
                                                          sort={'fields': ['node'], 'order': 'desc'})['items']
                 node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                              itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
                 # add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(self.input_json['arguments']['agent_id']) -
+                non_existent_ids = list(set(self.f_kwargs['agent_id']) -
                                         set(map(operator.itemgetter('id'), agents)))
                 if non_existent_ids:
                     if self.node_info['node'] in node_name:
@@ -213,13 +225,13 @@ class DistributedAPI:
             # if the request is only for one agent
             else:
                 # Get the node where the agent 'agent_id' is reporting
-                node_name = agent.Agent.get_agent(self.input_json['arguments']['agent_id'],
+                node_name = agent.Agent.get_agent(self.f_kwargs['agent_id'],
                                                   select=select_node)['node_name']
-                return {node_name: [self.input_json['arguments']['agent_id']]}
+                return {node_name: [self.f_kwargs['agent_id']]}
 
-        elif 'node_id' in self.input_json['arguments']:
-            node_id = self.input_json['arguments']['node_id']
-            del self.input_json['arguments']['node_id']
+        elif 'node_id' in self.f_kwargs:
+            node_id = self.f_kwargs['node_id']
+            del self.f_kwargs['node_id']
             return {node_id: []}
 
         else:  # agents, syscheck, rootcheck and syscollector
@@ -273,17 +285,17 @@ class DistributedAPI:
                         final_json[key] = field
 
         if 'data' in final_json and 'items' in final_json['data'] and isinstance(final_json['data']['items'], list):
-            if 'offset' not in self.input_json['arguments']:
-                self.input_json['arguments']['offset'] = 0
-            if 'limit' not in self.input_json['arguments']:
-                self.input_json['arguments']['limit'] = common.database_limit
+            if 'offset' not in self.f_kwargs:
+                self.f_kwargs['offset'] = 0
+            if 'limit' not in self.f_kwargs:
+                self.f_kwargs['limit'] = common.database_limit
 
-            if 'sort' in self.input_json['arguments']:
+            if 'sort' in self.f_kwargs:
                 final_json['data']['items'] = utils.sort_array(final_json['data']['items'],
-                                                               self.input_json['arguments']['sort']['fields'],
-                                                               self.input_json['arguments']['sort']['order'])
+                                                               self.f_kwargs['sort']['fields'],
+                                                               self.f_kwargs['sort']['order'])
 
-            offset, limit = self.input_json['arguments']['offset'], self.input_json['arguments']['limit']
+            offset, limit = self.f_kwargs['offset'], self.f_kwargs['limit']
             final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
 
         return final_json
@@ -310,7 +322,10 @@ class APIRequestQueue:
             names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
             node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
-            result = await DistributedAPI(input_json=json.loads(request), logger=self.logger, node=node).distribute_function()
+
+            result = await DistributedAPI(**json.loads(request, object_hook=as_callable),
+                                          logger=self.logger,
+                                          node=node).distribute_function()
             task_id = await node.send_string(result.encode())
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id)
@@ -328,3 +343,49 @@ class APIRequestQueue:
         """
         self.logger.info("Receiving request: {}".format(request))
         self.request_queue.put_nowait(request.decode())
+
+
+class CallableEncoder(json.JSONEncoder):
+    def default(self, obj):
+
+        if callable(obj):
+            result = {'__callable__': {}}
+            attributes = result['__callable__']
+            if hasattr(obj, '__name__'):
+                attributes['__name__'] = obj.__name__
+            if hasattr(obj, '__module__'):
+                attributes['__module__'] = obj.__module__
+            if hasattr(obj, '__qualname__'):
+                attributes['__qualname__'] = obj.__qualname__
+            if hasattr(obj, '__self__'):
+                if isinstance(obj.__self__, Wazuh):
+                    attributes['__wazuh__'] = obj.__self__.to_dict()
+            attributes['__type__'] = type(obj).__name__
+            return result
+
+        return json.JSONEncoder.default(self, obj)
+
+
+def as_callable(dct: Dict):
+    try:
+        if '__callable__' in dct:
+            encoded_callable = dct['__callable__']
+            funcname = encoded_callable['__name__']
+            if '__wazuh__' in encoded_callable:
+                # Encoded Wazuh instance method
+                wazuh_dict = encoded_callable['__wazuh__']
+                wazuh = Wazuh(ossec_path=wazuh_dict.get('path', '/var/ossec'))
+                return getattr(wazuh, funcname)
+            else:
+                # Encoded function or static method
+                qualname = encoded_callable['__qualname__'].split('.')
+                classname = qualname[0] if len(qualname) > 1 else None
+                module_path = encoded_callable['__module__']
+                module = import_module(module_path)
+                if classname is None:
+                    return getattr(module, funcname)
+                else:
+                    return getattr(getattr(module, classname), funcname)
+        return dct
+    except (KeyError, AttributeError):
+        raise TypeError(f"Wazuh object cannot be decoded from JSON {encoded_callable}")

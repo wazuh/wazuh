@@ -67,6 +67,11 @@ class Wazuh:
     def __str__(self):
         return str(self.to_dict())
 
+    def __eq__(self, other):
+        if isinstance(other, Wazuh):
+            return self.to_dict() == other.to_dict()
+        return False
+
     def to_dict(self):
         return {'path': self.path, 'version': self.version, 'compilation_date': self.installation_date, 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
 

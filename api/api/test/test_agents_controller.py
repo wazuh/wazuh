@@ -5,20 +5,23 @@ from __future__ import absolute_import
 from flask import json
 from six import BytesIO
 
-from swagger_server.models.inline_response200 import InlineResponse200  # noqa: E501
-from swagger_server.models.inline_response2001 import InlineResponse2001  # noqa: E501
-from swagger_server.test import BaseTestCase
+from api.models.inline_response200 import InlineResponse200  # noqa: E501
+from api.models.inline_response2001 import InlineResponse2001  # noqa: E501
+from api.models.inline_response2002 import InlineResponse2002  # noqa: E501
+from api.test import BaseTestCase
 
 
-class TestDefaultController(BaseTestCase):
-    """DefaultController integration test stubs"""
+class TestAgentsController(BaseTestCase):
+    """AgentsController integration test stubs"""
 
     def test_delete_agents(self):
         """Test case for delete_agents
 
         Delete agents
         """
-        query_string = [('ids', 'ids_example'),
+        query_string = [('pretty', true),
+                        ('wait_for_complete', true),
+                        ('ids', 'ids_example'),
                         ('purge', true),
                         ('status', 'status_example'),
                         ('older_than', 'older_than_example')]
@@ -34,7 +37,9 @@ class TestDefaultController(BaseTestCase):
 
         Get all agents
         """
-        query_string = [('offset', 56),
+        query_string = [('pretty', true),
+                        ('wait_for_complete', true),
+                        ('offset', 56),
                         ('limit', 56),
                         ('select', 'select_example'),
                         ('sort', 'sort_example'),
@@ -54,6 +59,19 @@ class TestDefaultController(BaseTestCase):
         response = self.client.open(
             '/agents',
             method='GET',
+            query_string=query_string)
+        self.assert200(response,
+                       'Response body is : ' + response.data.decode('utf-8'))
+
+    def test_restart_all_agents(self):
+        """Test case for restart_all_agents
+
+        Restarts all agents
+        """
+        query_string = [('wait_for_complete', true)]
+        response = self.client.open(
+            '/agents/restart',
+            method='PUT',
             query_string=query_string)
         self.assert200(response,
                        'Response body is : ' + response.data.decode('utf-8'))

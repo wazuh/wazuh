@@ -139,3 +139,13 @@ def _deserialize_dict(data, boxed_type):
     """
     return {k: _deserialize(v, boxed_type)
             for k, v in six.iteritems(data)}
+
+
+def remove_nones_to_dict(dct):
+    """Removes none values from a dict recursively
+
+    :param dct: dict to filter
+    :return: new dict without none values
+    """
+    return {k: v if not isinstance(v, dict) else remove_nones_to_dict(v)
+            for k, v in dct.items() if v is not None}

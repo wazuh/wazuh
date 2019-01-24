@@ -13,18 +13,33 @@ info:
   license:
     name: "GPL 2.0"
     url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
+tags:
+- name: "agents"
+  description: "Agents management related operations"
 schemes:
 - "https"
 - "http"
 paths:
   /agents:
     get:
+      tags:
+      - "agents"
       summary: "Get all agents"
       description: "Returns a list with the available agents."
       operationId: "get_all_agents"
       produces:
       - "application/json"
       parameters:
+      - name: "pretty"
+        in: "query"
+        description: "Show results in human-readable format\n"
+        required: false
+        type: "boolean"
+      - name: "wait_for_complete"
+        in: "query"
+        description: "Disable timeout response\n"
+        required: false
+        type: "boolean"
       - name: "offset"
         in: "query"
         description: "First element to return in the collection"
@@ -211,8 +226,10 @@ paths:
                   ip: "10.0.0.62"
                   id: "002"
                   node_name: "unknown"
-      x-swagger-router-controller: "api.controllers.default_controller"
+      x-swagger-router-controller: "api.controllers.agents_controller"
     delete:
+      tags:
+      - "agents"
       summary: "Delete agents"
       description: "Removes agents, using a list of them or a criterion based on the\
         \ status or time of the last connection. The Wazuh API must be restarted after\
@@ -221,6 +238,16 @@ paths:
       produces:
       - "application/json"
       parameters:
+      - name: "pretty"
+        in: "query"
+        description: "Show results in human-readable format\n"
+        required: false
+        type: "boolean"
+      - name: "wait_for_complete"
+        in: "query"
+        description: "Disable timeout response\n"
+        required: false
+        type: "boolean"
       - name: "ids"
         in: "query"
         description: "Array of agent ID’s"
@@ -273,7 +300,32 @@ paths:
                 - "003"
                 - "005"
                 total_affected_agents: 2
-      x-swagger-router-controller: "api.controllers.default_controller"
+      x-swagger-router-controller: "api.controllers.agents_controller"
+  /agents/restart:
+    put:
+      tags:
+      - "agents"
+      summary: "Restarts all agents"
+      operationId: "restart_all_agents"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "wait_for_complete"
+        in: "query"
+        description: "Disable timeout response\n"
+        required: false
+        type: "boolean"
+      responses:
+        200:
+          description: "Agents restarted"
+          schema:
+            allOf:
+            - $ref: "#/definitions/ApiResponse"
+            - {}
+            example:
+              data: "Restarting all agents"
+              error: 0
+      x-swagger-router-controller: "api.controllers.agents_controller"
 definitions:
   ApiResponse:
     type: "object"
@@ -385,6 +437,11 @@ definitions:
         $ref: "#/definitions/AgentDeleted"
     example: "{error=0, data={msg=All selected agents were removed, older_than=10s,\
       \ affected_agents=[003, 005], total_affected_agents=2}}"
+  inline_response_200_2:
+    properties:
+      ApiResponse:
+        $ref: "#/definitions/ApiResponse"
+    example: "{data=Restarting all agents, error=0}"
   Agent_os:
     properties:
       major:
@@ -426,6 +483,18 @@ parameters:
       - "neverconnected"
       - "disconnected"
     collectionFormat: "multi"
+  pretty:
+    name: "pretty"
+    in: "query"
+    description: "Show results in human-readable format\n"
+    required: false
+    type: "boolean"
+  wait_for_complete:
+    name: "wait_for_complete"
+    in: "query"
+    description: "Disable timeout response\n"
+    required: false
+    type: "boolean"
 externalDocs:
   description: "Find more about Wazuh API usage"
   url: "https://documentation.wazuh.com/current/user-manual/api/index.html"
