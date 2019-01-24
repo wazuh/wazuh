@@ -190,10 +190,10 @@ def upload_file(xml_file, path):
     if len(xml_file_data) == 0:
         raise WazuhException(1112)
 
-    return upload_rules(xml_file_data, path)
+    return upload_xml(xml_file_data, path)
 
 
-def upload_rules(xml_file, path):
+def upload_xml(xml_file, path):
     """
     Updates local rules
     :param group_id: Group to update
@@ -214,7 +214,7 @@ def upload_rules(xml_file, path):
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
-                                   .replace("&gt;", ">")
+                                   .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhException(1113, str(e))
@@ -233,7 +233,7 @@ def upload_rules(xml_file, path):
         except Exception as e:
             raise WazuhException(1017, str(e))
 
-        return 'Local rules were updated successfully'
+        return 'Local rules were updated successfully' # may be a decoder
     except Exception as e:
         # remove created temporary file
         remove(tmp_file_path)
@@ -243,8 +243,9 @@ def upload_rules(xml_file, path):
 def get_file(path, output_format):
     """
     Returns a file as dictionary.
-
-    :return: file as dictionary.
+    :param path: Path of file from origin
+    :param file_name: File name to update
+    :return: file as dictionary or XML string.
     """
 
     file_path = common.ossec_path + path
@@ -260,6 +261,6 @@ def get_file(path, output_format):
                 output[key] = value
     elif output_format == 'xml':
         with open(file_path) as f:
-            output = f.readline()
+            output = f.read()
 
     return output
