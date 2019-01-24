@@ -27,6 +27,7 @@
 
 static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Module main function. It won't return
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
+static int wm_policy_monitoring_do_scan(wm_policy_monitoring_t * data);  // Do policy scan
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t * data);     // Read config
 
 const wm_context WM_POLICY_MONITORING_CONTEXT = {
@@ -42,8 +43,6 @@ typedef enum _request_type{
 
 // Module main function. It won't return
 void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
-    unsigned int i;
-
     // If module is disabled, exit
     if (data->enabled) {
         minfo("Module started");
@@ -51,10 +50,56 @@ void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
         minfo("Module disabled. Exiting.");
         pthread_exit(NULL);
     }
+
+    wm_policy_monitoring_do_scan(data);
     
     return NULL;
 }
 
+static int wm_policy_monitoring_do_scan(wm_policy_monitoring_t * data) {
+    FILE *fp;
+    int i = 0;
+
+    /* Read every policy file */
+    for(i = 0; data->profile[i]; i++) {
+        char path[PATH_MAX];
+
+        sprintf(path,"%s/%s",DEFAULTDIR ROOTCHECKCFG_DIR,data->profile[i]);
+
+        fp = fopen(path,"r");
+
+        if(!fp) {
+            mwarn("Policy file not found '%s'",path);
+            goto next;
+        }
+
+        /* Yaml parsing */
+        yaml_document_t document;
+        cJSON * object;
+        char * json;
+
+        if (yaml_parse_file(path, &document)) {
+            merror("Policy file could not be parsed '%s'",path);
+            goto next;
+        }
+
+        if (object = yaml2json(&document), !object) {
+            merror("Transforming yaml to json '%s'",path);
+            goto next;
+        }
+
+        yaml_document_delete(&document);
+        json = cJSON_Print(object);
+        minfo("JSON: %s",json);
+next:
+        if(fp){
+            fclose(fp);
+        }
+       
+    }
+    
+    return 0;
+}
 
 // Destroy data
 void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data) {
