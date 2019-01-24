@@ -326,7 +326,7 @@ class APIRequestQueue:
             result = await DistributedAPI(**json.loads(request, object_hook=as_callable),
                                           logger=self.logger,
                                           node=node).distribute_function()
-            task_id = await node.send_string(result.encode())
+            task_id = await node.send_string(json.dumps(result).encode())
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id)
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')

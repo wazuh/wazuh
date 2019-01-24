@@ -3,6 +3,8 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh.cluster import local_client
 from wazuh import common, exception
+from wazuh.agent import Agent
+from wazuh.cluster.dapi.dapi import CallableEncoder
 import json
 
 
@@ -38,13 +40,16 @@ async def get_agents(filter_node=None, filter_status=None):
     filter_node = ["all"] if not filter_node else filter_node
     select_fields = {'id', 'ip', 'name', 'status', 'node_name', 'version'}
 
-    input_json = {'function': '/agents', 'from_cluster': False,
-                  'arguments': {
+    input_json = {'f': Agent.get_agents_overview,
+                  'f_kwargs': {
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
-                      'limit': None, 'wait_for_complete': False,
-                      'select': {'fields': list(select_fields)}}}
+                      'limit': None,
+                      'select': {'fields': list(select_fields)}
+                      }
+                  }
 
-    result = json.loads(await local_client.execute(command=b'dapi', data=json.dumps(input_json).encode(),
+    result = json.loads(await local_client.execute(command=b'dapi',
+                                                   data=json.dumps(input_json, cls=CallableEncoder).encode(),
                                                    wait_for_complete=False))
     if result['error'] > 0:
         raise Exception(result['message'])
