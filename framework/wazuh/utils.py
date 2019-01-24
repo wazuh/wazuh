@@ -365,13 +365,13 @@ def mkdir_with_mode(name, mode=0o770):
                 raise
         if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
             return
-    try:         
+    try:
         mkdir(name, mode)
     except OSError as e:
         # be happy if someone already created the path
         if e.errno != errno.EEXIST:
             raise
-            
+
     chmod(name, mode)
 
 
@@ -493,7 +493,7 @@ def load_wazuh_xml(xml_path):
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # & characters should be scaped if they don't represent an &entity;
-    data = re.sub(r"&(?!\w+;)", "&amp;", data)
+    data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
 
     return fromstring('<root_tag>' + data + '</root_tag>')
 
