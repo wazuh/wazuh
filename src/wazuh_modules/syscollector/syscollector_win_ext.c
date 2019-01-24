@@ -11,6 +11,10 @@
 
 #ifdef WIN32
 
+#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
+#define strdup _strdup
+#endif
+
 #define _WIN32_WINNT 0x600  // Windows Vista or later
 
 #define MAXSTR 1024
@@ -39,7 +43,7 @@ __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
 
 }
 
-__declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp){
+__declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp){
 
     PIP_ADAPTER_UNICAST_ADDRESS pUnicast = NULL;
     PIP_ADAPTER_GATEWAY_ADDRESS_LH pGateway = NULL;
@@ -158,20 +162,24 @@ __declspec( dllexport ) char* get_network(PIP_ADAPTER_ADDRESSES pCurrAddresses, 
     SecureZeroMemory((PVOID) &ifRow, sizeof(MIB_IF_ROW2));
 
     ifRow.InterfaceIndex = pCurrAddresses->IfIndex;
+    if (ifRow.InterfaceIndex == 0) ifRow.InterfaceIndex = pCurrAddresses->Ipv6IfIndex;
 
-    if ((retVal = GetIfEntry2(&ifRow)) == NO_ERROR) {
+    /* Only get this information if we have a valid interface index */
+    if (ifRow.InterfaceIndex != 0) {
+        retVal = GetIfEntry2(&ifRow);
+        if (retVal == NO_ERROR) {
+            ULONG64 tx_packets = ifRow.OutUcastPkts + ifRow.OutNUcastPkts;
+            ULONG64 rx_packets = ifRow.InUcastPkts + ifRow.InNUcastPkts;
 
-        int tx_packets = ifRow.OutUcastPkts + ifRow.OutNUcastPkts;
-        int rx_packets = ifRow.InUcastPkts + ifRow.InNUcastPkts;
-
-        cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
-        cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
-        cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.OutOctets);
-        cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.InOctets);
-        cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.OutErrors);
-        cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.InErrors);
-        cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.OutDiscards);
-        cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.InDiscards);
+            cJSON_AddNumberToObject(iface_info, "tx_packets", tx_packets);
+            cJSON_AddNumberToObject(iface_info, "rx_packets", rx_packets);
+            cJSON_AddNumberToObject(iface_info, "tx_bytes", ifRow.OutOctets);
+            cJSON_AddNumberToObject(iface_info, "rx_bytes", ifRow.InOctets);
+            cJSON_AddNumberToObject(iface_info, "tx_errors", ifRow.OutErrors);
+            cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.InErrors);
+            cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.OutDiscards);
+            cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.InDiscards);
+        }
     }
 
     /* Extract IPv4 and IPv6 addresses */
