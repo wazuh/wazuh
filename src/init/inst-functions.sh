@@ -957,7 +957,7 @@ InstallServer(){
     GenerateAuthCert
 
     ### Install Python
-    ${MAKEBIN} wpython
+    ${MAKEBIN} wpython PREFIX=${PREFIX}
 }
 
 InstallAgent(){
