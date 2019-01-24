@@ -70,6 +70,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
+int Read_PolicyMonitoring(const OS_XML *xml, xml_node *node, void *d1);
 int Read_Labels(XML_NODE node, void *d1, void *d2);
 int Read_Authd(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
