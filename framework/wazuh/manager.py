@@ -176,29 +176,29 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(xml_file, path):
+def upload_file(file, path):
     """
     Updates a group file
 
-    :param xml_file: File contents in string
-    :param file_name: File name to update
+    :param file: File name from origin
+    :param path: Path of destination of the new file
     :return: Confirmation message in string
     """
-    with open(xml_file) as f:
-        xml_file_data = f.read()
+    with open(file) as f:
+        file_data = f.read()
 
-    if len(xml_file_data) == 0:
+    if len(file_data) == 0:
         raise WazuhException(1112)
-
-    return upload_xml(xml_file_data, path)
+    ## llamar a upload_json cuando proceda
+    return upload_xml(file_data, path)
 
 
 def upload_xml(xml_file, path):
     """
-    Updates local rules
-    :param group_id: Group to update
-    :param xml_file: File contents of the new rules.
-    :return: Confirmation message.
+    Updates XML files (rules and decoders)
+    :param xml_file: content of the XML file
+    :param path: Destination of the new XML file
+    :return: Confirmation message
     """
 
     # path of temporary files for parsing xml input
@@ -231,7 +231,7 @@ def upload_xml(xml_file, path):
             new_conf_path = "{}/{}".format(common.ossec_path, path)
             move(tmp_file_path, new_conf_path)
         except Exception as e:
-            raise WazuhException(1017, str(e))
+            raise WazuhException(1016, str(e))
 
         return 'Local rules were updated successfully' # may be a decoder
     except Exception as e:
@@ -240,11 +240,40 @@ def upload_xml(xml_file, path):
         raise e
 
 
+def upload_json(json_file, path):
+    """
+    Updates JSON files (lists)
+    :param json_file: content of the JSON file
+    :param path: Destination of the new JSON file
+    :return: Confirmation message.
+    """
+    # path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.json'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+
+    # create temporary file for parsing xml input
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            # write json in tmp_file_path
+            for key, value in tmp_file:
+                tmp_file.write(key + ':' + value + '\n')
+    except Exception as e:
+        raise WazuhException(1115, str(e))
+
+    # move temporary file to group folder
+    try:
+        new_conf_path = "{}/{}".format(common.ossec_path, path)
+        move(tmp_file_path, new_conf_path)
+    except Exception as e:
+        raise WazuhException(1016, str(e))
+
+    return 'Local lists were updated successfully'
+
+
 def get_file(path, output_format):
     """
     Returns a file as dictionary.
-    :param path: Path of file from origin
-    :param file_name: File name to update
+    :param path: Relative path of file from origin
+    :output format: Output format (XML or JSON)
     :return: file as dictionary or XML string.
     """
 

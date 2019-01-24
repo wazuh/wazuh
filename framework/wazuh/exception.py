@@ -46,6 +46,7 @@ class WazuhException(Exception):
         1112: "Empty files aren't supported",
         1113: "XML syntax error",
         1114: "Wazuh syntax error",
+        1115: "JSON syntax error",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
