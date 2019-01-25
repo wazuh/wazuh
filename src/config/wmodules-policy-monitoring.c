@@ -15,6 +15,7 @@ static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_PROFILE = "profile";
+static const char *XML_SKIP_NFS = "skip_nfs";
 
 static short eval_bool(const char *str)
 {
@@ -33,12 +34,22 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
     policy_monitoring->scan_on_start = 1;
     policy_monitoring->week_day = NULL;
     policy_monitoring->time = NULL;
+    policy_monitoring->skip_nfs = 1;
+    policy_monitoring->alert_msg = NULL;
     module->context = &WM_POLICY_MONITORING_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = policy_monitoring;
 
     if (!nodes)
         return 0;
+
+    /* We store up to 255 alerts in there */
+    os_calloc(256, sizeof(char *), policy_monitoring->alert_msg);
+    int c = 0;
+    while (c <= 255) {
+        policy_monitoring->alert_msg[c] = NULL;
+        c++;
+    }
 
     for(i = 0; nodes[i]; i++)
     {
@@ -100,6 +111,17 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
             os_strdup(nodes[i]->content,policy_monitoring->profile[profiles]);
             policy_monitoring->profile[profiles + 1] = NULL;
             profiles++;
+        }
+        else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
+        {
+            int skip_nfs = eval_bool(nodes[i]->content);
+
+            if(skip_nfs == OS_INVALID){
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_NFS, WM_POLICY_MONITORING_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            policy_monitoring->skip_nfs = skip_nfs;
         }
         else
         {

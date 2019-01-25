@@ -12,14 +12,35 @@
 #ifndef WM_POLICY_MONITORING_H
 #define WM_POLICY_MONITORING_H
 
-#define WM_POLICY_MONITORING_LOGTAG ARGV0 ":" KEY_WM_NAME
+#define WM_POLICY_MONITORING_LOGTAG ARGV0 ":" KEY_PM_NAME
+#define WM_POLICY_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
+#define WM_POLICY_MONITORING_INVALID_RKCL_NAME  "(1251): Invalid rk configuration name: '%s'."
+#define WM_POLICY_MONITORING_INVALID_RKCL_VALUE "(1252): Invalid rk configuration value: '%s'."
+#define WM_POLICY_MONITORING_INVALID_ROOTDIR    "(1253): Invalid rootdir (unable to retrieve)."
+#define WM_POLICY_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
+
+#define WM_POLICY_MONITORING_ALERT_POLICY_VIOLATION  4
+
+/* Types of values */
+#define WM_POLICY_MONITORING_TYPE_FILE      1
+#define WM_POLICY_MONITORING_TYPE_REGISTRY  2
+#define WM_POLICY_MONITORING_TYPE_PROCESS   3
+#define WM_POLICY_MONITORING_TYPE_DIR       4
+
+#define WM_POLICY_MONITORING_COND_ALL       0x001
+#define WM_POLICY_MONITORING_COND_ANY       0x002
+#define WM_POLICY_MONITORING_COND_REQ       0x004
+#define WM_POLICY_MONITORING_COND_NON       0x008
+#define WM_POLICY_MONITORING_COND_INV       0x016
 
 typedef struct wm_policy_monitoring_t {
     int enabled:1;
     int scan_on_start:1;
+    int skip_nfs:1;
     char* week_day;
     char* time;
     char** profile;
+    char **alert_msg;
 } wm_policy_monitoring_t;
 
 extern const wm_context WM_POLICY_MONITORING_CONTEXT;
