@@ -904,7 +904,7 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         sqlite3_bind_text(stmt, 2, rvul_it->OS, -1, NULL);
         sqlite3_bind_text(stmt, 3, rvul_it->package_name, -1, NULL);
         sqlite3_bind_int(stmt, 4, 0);
-        sqlite3_bind_text(stmt, 5, "less than or equal", -1, NULL);
+        sqlite3_bind_text(stmt, 5, "less than", -1, NULL);
         sqlite3_bind_text(stmt, 6, rvul_it->package_version, -1, NULL);
         sqlite3_bind_text(stmt, 7, NULL, -1, NULL);
         sqlite3_bind_text(stmt, 8, NULL, -1, NULL);

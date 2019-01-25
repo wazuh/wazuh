@@ -1,6 +1,14 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.8.1]
+
+### Fixed
+
+- Fixed memory leak in Logcollector when reading Windows eventchannel. ([#2450](https://github.com/wazuh/wazuh/pull/2450))
+- Fixed script parsing error in Solaris 10. ([#2449](https://github.com/wazuh/wazuh/pull/2449))
+- Fixed version comparisons on Red Hat systems. ([#2445](https://github.com/wazuh/wazuh/pull/2445))
+
 ## [v3.8.0]
 
 ### Added
