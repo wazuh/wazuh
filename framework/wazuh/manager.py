@@ -184,9 +184,12 @@ def upload_file(file, path):
     :param path: Path of destination of the new file
     :return: Confirmation message in string
     """
-    with open(file) as f:
-        import json
-        file_data = json.loads(f.read())
+    try:
+        with open(file) as f:
+            import json
+            file_data = json.loads(f.read())
+    except Exception as e:
+        raise WazuhException(1005)
 
     if len(file_data) == 0:
         raise WazuhException(1112)
@@ -248,7 +251,7 @@ def upload_json(json_file, path):
     :param path: Destination of the new JSON file
     :return: Confirmation message.
     """
-    # path of temporary files for parsing xml input
+    # path of temporary file
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.json'.format(common.ossec_path, time.time(), random.randint(0, 1000))
     #return {"tipo -> ": str(type(json_file))}
     # create temporary file for parsing xml input
@@ -281,16 +284,19 @@ def get_file(path, output_format):
     file_path = common.ossec_path + path
     output = {}
 
-    if output_format == 'text':
-        with open(file_path) as f:
-            for line in f:
-                if '\n' in line:
-                    line = line.replace('\n', '')
-                key = line.split(':')[0]
-                value = line.split(':')[1]
-                output[key] = value
-    elif output_format == 'xml':
-        with open(file_path) as f:
-            output = f.read()
+    try:
+        if output_format == 'text':
+            with open(file_path) as f:
+                for line in f:
+                    if '\n' in line:
+                        line = line.replace('\n', '')
+                    key = line.split(':')[0]
+                    value = line.split(':')[1]
+                    output[key] = value
+        elif output_format == 'xml':
+            with open(file_path) as f:
+                output = f.read()
+    except Exception as e:
+        raise WazuhException(1005)
 
     return output
