@@ -92,7 +92,7 @@ class DistributedAPI:
                 self.print_json(error=1000, data="Wazuh-Python Internal Error: data encoding unknown ({})".format(e))
 
         output = {'message' if error else 'data': data, 'error': error}
-        # return json.dumps(obj=output, default=encode_json, indent=4 if self.pretty else None)
+        #return json.dumps(obj=output, default=encode_json, indent=4 if self.pretty else None)
         return output
 
     async def execute_local_request(self) -> str:
@@ -176,21 +176,21 @@ class DistributedAPI:
                 # itself
                 response = await self.distribute_function()
             else:
-                response = await self.node.execute(b'dapi_forward',
-                                                   "{} {}".format(node_name,
-                                                                  json.dumps(self.to_dict(),
-                                                                             cls=CallableEncoder)
-                                                                  ).encode(),
-                                                   self.wait_for_complete)
+                response = json.loads(await self.node.execute(b'dapi_forward',
+                                                              "{} {}".format(node_name,
+                                                                             json.dumps(self.to_dict(),
+                                                                                        cls=CallableEncoder)
+                                                                             ).encode(),
+                                                              self.wait_for_complete))
             return response
 
         # get the node(s) who has all available information to answer the request.
         nodes = self.get_solver_node()
         self.from_cluster = True
         if len(nodes) > 1:
-            results = map(json.loads, await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()])))
+            results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
             final_json = {}
-            response = json.dumps(self.merge_results(results, final_json))
+            response = self.merge_results(results, final_json)
         else:
             response = await forward(next(iter(nodes.items())))
         return response
