@@ -18,6 +18,7 @@ from xml.dom.minidom import parseString
 from shutil import move
 from os import remove
 import random
+import json
 
 
 def status():
@@ -176,7 +177,7 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(file, path):
+def upload_file(file, path, content_type):
     """
     Updates a group file
 
@@ -186,15 +187,22 @@ def upload_file(file, path):
     """
     try:
         with open(file) as f:
-            import json
-            file_data = json.loads(f.read())
+            if content_type == 'application/xml':
+                file_data = f.read()
+            elif content_type == 'application/json':
+                file_data = json.loads(f.read())
+            else:
+                raise WazuhException(1005) #  cambiar
     except Exception as e:
         raise WazuhException(1005)
 
     if len(file_data) == 0:
         raise WazuhException(1112)
-    ## llamar a upload_json cuando proceda
-    return upload_json(file_data, path)
+
+    if content_type == 'application/xml':
+        return upload_xml(file_data, path)
+    else:
+        return upload_json(file_data, path)
 
 
 def upload_xml(xml_file, path):
