@@ -185,12 +185,13 @@ def upload_file(file, path):
     :return: Confirmation message in string
     """
     with open(file) as f:
-        file_data = f.read()
+        import json
+        file_data = json.loads(f.read())
 
     if len(file_data) == 0:
         raise WazuhException(1112)
     ## llamar a upload_json cuando proceda
-    return upload_xml(file_data, path)
+    return upload_json(file_data, path)
 
 
 def upload_xml(xml_file, path):
@@ -249,12 +250,12 @@ def upload_json(json_file, path):
     """
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.json'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-
+    #return {"tipo -> ": str(type(json_file))}
     # create temporary file for parsing xml input
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # write json in tmp_file_path
-            for key, value in tmp_file:
+            for key, value in json_file.items():
                 tmp_file.write(key + ':' + value + '\n')
     except Exception as e:
         raise WazuhException(1115, str(e))
@@ -280,7 +281,7 @@ def get_file(path, output_format):
     file_path = common.ossec_path + path
     output = {}
 
-    if output_format == 'json':
+    if output_format == 'text':
         with open(file_path) as f:
             for line in f:
                 if '\n' in line:
