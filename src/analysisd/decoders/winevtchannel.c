@@ -59,7 +59,7 @@ char *replace_win_format(char *str){
 
     //Remove trailing spaces
     end = ret3 + strlen(ret3) - 1;
-    while(end > str && isspace((unsigned char)*end)) end--;
+    while(end > ret3 && isspace((unsigned char)*end)) end--;
     end[1] = '\0';
 
     os_free(ret1);
