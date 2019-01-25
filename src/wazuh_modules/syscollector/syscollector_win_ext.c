@@ -11,10 +11,6 @@
 
 #ifdef WIN32
 
-#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
-#define strdup _strdup
-#endif
-
 #define _WIN32_WINNT 0x600  // Windows Vista or later
 
 #define MAXSTR 1024

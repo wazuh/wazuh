@@ -12,21 +12,9 @@
 #ifdef WIN32
 
 #include <winternl.h>
+#include <ntstatus.h>
 #include "syscollector.h"
 #include "file_op.h"
-
-#if (defined(_MSC_VER) && !defined(__INTEL_COMPILER))
-#define NT_SUCCESS(x) ((x) >= 0)
-#define STATUS_INFO_LENGTH_MISMATCH 0xc0000004
-
-typedef struct _UNICODE_STRING {
-    USHORT Length;
-    USHORT MaximumLength;
-    PWSTR Buffer;
-} UNICODE_STRING;
-#else
-#include <ntstatus.h>
-#endif
 
 #define MAXSTR 1024
 
