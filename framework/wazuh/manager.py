@@ -18,7 +18,6 @@ from xml.dom.minidom import parseString
 from shutil import move
 from os import remove
 import random
-import json
 
 
 def status():
@@ -187,12 +186,7 @@ def upload_file(file, path, content_type):
     """
     try:
         with open(file) as f:
-            if content_type == 'application/xml':
-                file_data = f.read()
-            elif content_type == 'application/json':
-                file_data = json.loads(f.read())
-            else:
-                raise WazuhException(1005) #  cambiar
+            file_data = f.read()
     except Exception as e:
         raise WazuhException(1005)
 
@@ -201,8 +195,10 @@ def upload_file(file, path, content_type):
 
     if content_type == 'application/xml':
         return upload_xml(file_data, path)
+    elif content_type == 'application/octet-stream':
+        return upload_list(file_data, path)
     else:
-        return upload_json(file_data, path)
+        raise WazuhException(1016)
 
 
 def upload_xml(xml_file, path):
@@ -245,14 +241,14 @@ def upload_xml(xml_file, path):
         except Exception as e:
             raise WazuhException(1016, str(e))
 
-        return 'Local rules were updated successfully' # may be a decoder
+        return 'File updated successfully' # may be a decoder
     except Exception as e:
         # remove created temporary file
         remove(tmp_file_path)
         raise e
 
 
-def upload_json(json_file, path):
+def upload_list(list_file, path):
     """
     Updates JSON files (lists)
     :param json_file: content of the JSON file
@@ -261,13 +257,13 @@ def upload_json(json_file, path):
     """
     # path of temporary file
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.json'.format(common.ossec_path, time.time(), random.randint(0, 1000))
-    #return {"tipo -> ": str(type(json_file))}
-    # create temporary file for parsing xml input
+
     try:
+        # create temporary file
         with open(tmp_file_path, 'w') as tmp_file:
             # write json in tmp_file_path
-            for key, value in json_file.items():
-                tmp_file.write(key + ':' + value + '\n')
+            for element in list_file.split('\n')[:-1]:
+                tmp_file.write(element + '\n')
     except Exception as e:
         raise WazuhException(1115, str(e))
 
@@ -278,10 +274,10 @@ def upload_json(json_file, path):
     except Exception as e:
         raise WazuhException(1016, str(e))
 
-    return 'Local lists were updated successfully'
+    return 'File updated successfully'
 
 
-def get_file(path, output_format):
+def get_file(path):
     """
     Returns a file as dictionary.
     :param path: Relative path of file from origin
@@ -293,17 +289,8 @@ def get_file(path, output_format):
     output = {}
 
     try:
-        if output_format == 'text':
-            with open(file_path) as f:
-                for line in f:
-                    if '\n' in line:
-                        line = line.replace('\n', '')
-                    key = line.split(':')[0]
-                    value = line.split(':')[1]
-                    output[key] = value
-        elif output_format == 'xml':
-            with open(file_path) as f:
-                output = f.read()
+        with open(file_path) as f:
+            output = f.read()
     except Exception as e:
         raise WazuhException(1005)
 
