@@ -88,9 +88,13 @@ class LocalServerHandlerMaster(LocalServerHandler):
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_forward':
             node_name, request = data.split(b' ', 1)
-            asyncio.create_task(self.server.node.clients[node_name.decode()].
-                                send_request(b'dapi', self.name.encode() + b' ' + request))
-            return b'ok', b'Request forwarded to worker node'
+            node_name = node_name.decode()
+            if node_name in self.server.node.clients:
+                asyncio.create_task(
+                    self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
+                return b'ok', b'Request forwarded to worker node'
+            else:
+                raise exception.WazuhException(3022, node_name)
         else:
             return super().process_request(command, data)
 

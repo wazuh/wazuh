@@ -159,7 +159,7 @@ class WazuhException(Exception):
         3006: 'Error reading cluster configuration',
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
-        3009: 'Error executing request to internal socket',
+        3009: 'Error executing distributed API request',
         3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
@@ -171,6 +171,7 @@ class WazuhException(Exception):
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
         3020: 'Timeout sending request',
         3021: 'Timeout executing API request',
+        3022: 'Unknown node ID'
 
         # > 9000: Authd
     }

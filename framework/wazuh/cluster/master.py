@@ -122,11 +122,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
         if command == b'dapi_forward':
             client, request = data.split(b' ', 1)
-            result = (await self.server.clients[client.decode()].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+            client = client.decode()
+            if not client in self.server.clients:
+                raise WazuhException(3022, client)
+            else:
+                result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
-            request_result = json.dumps({'error': 1000, 'message': result})
+            request_result = json.dumps({'error': 3009, 'message': result})
         else:
             if command == b'dapi' or command == b'dapi_forward':
                 try:
@@ -135,7 +139,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                     request_result = self.server.pending_api_requests[request_id]['Response']
                 except asyncio.TimeoutError:
-                    request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
+                    request_result = json.dumps({'error': 3000, 'message': 'Timeout exceeded'})
             else:
                 request_result = result
         return request_result
