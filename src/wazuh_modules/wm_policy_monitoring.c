@@ -27,7 +27,19 @@
 
 static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Module main function. It won't return
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
-static int wm_policy_monitoring_do_scan(wm_policy_monitoring_t * data);  // Do policy scan
+static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
+static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data);  // Do scan
+/* Extra functions */
+static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars);
+static char * wm_policy_monitoring_get_name(char *buf, char *ref, int *condition); // Get name
+static int wm_policy_monitoring_is_name(const char *buf); // Is name
+static char * wm_policy_monitoring_get_value(char *buf, int *type); // Get value
+static char * wm_policy_monitoring_get_pattern(char *value); // Get pattern
+static int wm_policy_monitoring_check_file(char *file, char *pattern,wm_policy_monitoring_t * data); // Check file
+static int wm_policy_monitoring_pt_check_negate(const char *pattern); // Check pattern negate
+static int wm_policy_monitoring_pt_matches(const char *str, char *pattern); // Check pattern match
+static int wm_policy_monitoring_check_dir(const char *dir, const char *file, char *pattern,wm_policy_monitoring_t * data); // Check dir
+static int wm_policy_monitoring_is_process(char *value, OSList *p_list,wm_policy_monitoring_t * data); // Check is a process
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t * data);     // Read config
 
 const wm_context WM_POLICY_MONITORING_CONTEXT = {
@@ -51,12 +63,12 @@ void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
         pthread_exit(NULL);
     }
 
-    wm_policy_monitoring_do_scan(data);
+    wm_policy_monitoring_start(data);
     
     return NULL;
 }
 
-static int wm_policy_monitoring_do_scan(wm_policy_monitoring_t * data) {
+static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
     FILE *fp;
     int i = 0;
 
@@ -76,7 +88,6 @@ static int wm_policy_monitoring_do_scan(wm_policy_monitoring_t * data) {
         /* Yaml parsing */
         yaml_document_t document;
         cJSON * object;
-        char * json;
 
         if (yaml_parse_file(path, &document)) {
             merror("Policy file could not be parsed '%s'",path);
@@ -89,16 +100,926 @@ static int wm_policy_monitoring_do_scan(wm_policy_monitoring_t * data) {
         }
 
         yaml_document_delete(&document);
-        json = cJSON_Print(object);
-        minfo("JSON: %s",json);
+
+        OSList *plist = w_os_get_process_list();
+        cJSON *variables = cJSON_GetObjectItem(object, "variables");
+        cJSON *profiles = cJSON_GetObjectItem(object, "profile");
+
+        if(!profiles){
+            merror("Obtaining profile from json");
+            goto next;
+        }
+
+        OSStore *vars = OSStore_Create();
+
+        if( wm_policy_monitoring_get_vars(variables,vars) != 0 ){
+            goto next;
+        }
+
+        wm_policy_monitoring_do_scan(plist,profiles,object,vars,"System Audit:",data);
+        w_del_plist(plist);
+
+
 next:
         if(fp){
             fclose(fp);
         }
-       
+
+        if(object) {
+            cJSON_free(object);
+        }
+
+        if(vars) {
+            OSStore_Free(vars);
+        }
     }
     
     return 0;
+}
+
+static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data) {
+
+    int type = 0, condition = 0;
+    char *nbuf;
+    char buf[OS_SIZE_1024 + 2];
+    char root_dir[OS_SIZE_1024 + 2];
+    char final_file[2048 + 1];
+    char ref[255 + 1];
+    char *value;
+    char *name = NULL;
+    cJSON *p_name = NULL;
+
+    /* Initialize variables */
+    memset(buf, '\0', sizeof(buf));
+    memset(root_dir, '\0', sizeof(root_dir));
+    memset(final_file, '\0', sizeof(final_file));
+    memset(ref, '\0', sizeof(ref));
+
+#ifdef WIN32
+    /* Get Windows rootdir */
+    _rkcl_getrootdir(root_dir, sizeof(root_dir) - 1);
+    if (root_dir[0] == '\0') {
+        mterror(ARGV0, INVALID_ROOTDIR);
+    }
+#endif
+
+    cJSON_ArrayForEach(profile,object){
+
+        if( strcmp(profile->string,"variables") )
+        {
+            p_name = cJSON_GetObjectItem(profile, "name");
+            cJSON *p_checks = cJSON_GetObjectItem(profile, "checks");
+
+            /* Get first name */
+            name = wm_policy_monitoring_get_name(p_name->valuestring, ref, &condition);
+            if (name == NULL || condition == WM_POLICY_MONITORING_COND_INV) {
+                merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, nbuf);
+                goto clean_return;
+            }
+        
+            if(p_checks){
+                cJSON *p_check;
+
+                int g_found = 0;
+                int not_found = 0;
+
+                cJSON_ArrayForEach(p_check,p_checks)
+                {
+
+                    
+
+                    mtdebug2(ARGV0, "Checking entry: '%s'.", name);
+
+                    /* Get each value */
+                    //do {
+                        int negate = 0;
+                        int found = 0;
+                        value = NULL;
+                        nbuf = p_check->valuestring;
+                    
+                        /* Get value to look for */
+                        value = wm_policy_monitoring_get_value(nbuf, &type);
+                        if (value == NULL) {
+                            mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VALUE, nbuf);
+                            goto clean_return;
+                        }
+
+                        /* Get negate value */
+                        if (*value == '!') {
+                            negate = 1;
+                            value++;
+                        }
+
+                        /* Check for a file */
+                        if (type == WM_POLICY_MONITORING_TYPE_FILE) {
+                            char *pattern = NULL;
+                            char *f_value = NULL;
+
+                            pattern = wm_policy_monitoring_get_pattern(value);
+                            f_value = value;
+
+                            /* Get any variable */
+                            if (value[0] == '$') {
+                                f_value = (char *) OSStore_Get(vars, value);
+                                if (!f_value) {
+                                    mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
+                                    continue;
+                                }
+                            }
+
+            #ifdef WIN32
+                            else if (value[0] == '\\') {
+                                final_file[0] = '\0';
+                                final_file[sizeof(final_file) - 1] = '\0';
+
+                                snprintf(final_file, sizeof(final_file) - 2, "%s%s",
+                                        root_dir, value);
+                                f_value = final_file;
+                            } else {
+                                final_file[0] = '\0';
+                                final_file[sizeof(final_file) - 1] = '\0';
+
+                                ExpandEnvironmentStrings(value, final_file,
+                                                        sizeof(final_file) - 2);
+                                f_value = final_file;
+                            }
+            #endif
+
+                            mtdebug2(ARGV0, "Checking file: '%s'.", f_value);
+                            if (wm_policy_monitoring_check_file(f_value, pattern,data)) {
+                                mtdebug2(ARGV0, "Found file.");
+                                found = 1;
+                            }
+                        }
+
+            #ifdef WIN32
+                        /* Check for a registry entry */
+                        else if (type == WM_POLICY_MONITORING_TYPE_REGISTRY) {
+                            char *entry = NULL;
+                            char *pattern = NULL;
+
+                            /* Look for additional entries in the registry
+                            * and a pattern to match.
+                            */
+                            entry = wm_policy_monitoring_get_pattern(value);
+                            if (entry) {
+                                pattern = wm_policy_monitoring_get_pattern(entry);
+                            }
+
+                            mtdebug2(ARGV0, "Checking registry: '%s'.", value);
+                            if (is_registry(value, entry, pattern)) {
+                                mtdebug2(ARGV0, "Found registry.");
+                                found = 1;
+                            }
+
+                        }
+            #endif
+                        /* Check for a directory */
+                        else if (type == WM_POLICY_MONITORING_TYPE_DIR) {
+                            char *file = NULL;
+                            char *pattern = NULL;
+                            char *f_value = NULL;
+                            char *dir = NULL;
+
+                            file = wm_policy_monitoring_get_pattern(value);
+                            if (!file) {
+                                mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
+                                continue;
+                            }
+
+                            pattern = wm_policy_monitoring_get_pattern(file);
+
+                            /* Get any variable */
+                            if (value[0] == '$') {
+                                f_value = (char *) OSStore_Get(vars, value);
+                                if (!f_value) {
+                                    mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
+                                    continue;
+                                }
+                            } else {
+                                f_value = value;
+                            }
+
+                            /* Check for multiple comma separated directories */
+                            dir = f_value;
+                            f_value = strchr(dir, ',');
+                            if (f_value) {
+                                *f_value = '\0';
+                            }
+
+                            while (dir) {
+
+                                mdebug2("Checking dir: %s", dir);
+
+                                short is_nfs = IsNFS(dir);
+                                if( is_nfs == 1 && data->skip_nfs ) {
+                                    mdebug1("rootcheck.skip_nfs enabled and %s is flagged as NFS.", dir);
+                                }
+                                else {
+                                    mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
+
+                                    if (wm_policy_monitoring_check_dir(dir, file, pattern,data)) {
+                                        mdebug2("Found dir.");
+                                        found = 1;
+                                    }
+                                }
+
+                                if (f_value) {
+                                    *f_value = ',';
+                                    f_value++;
+
+                                    dir = f_value;
+
+                                    f_value = strchr(dir, ',');
+                                    if (f_value) {
+                                        *f_value = '\0';
+                                    }
+                                } else {
+                                    dir = NULL;
+                                }
+                            }
+                        }
+
+                        /* Check for a process */
+                        else if (type == WM_POLICY_MONITORING_TYPE_PROCESS) {
+                            mdebug2("Checking process: '%s'.", value);
+                            if (wm_policy_monitoring_is_process(value, p_list,data)) {
+                                mdebug2("Found process.");
+                                found = 1;
+                            }
+                        }
+
+                        /* Switch the values if ! is present */
+                        if (negate) {
+                            if (found) {
+                                found = 0;
+                            } else {
+                                found = 1;
+                            }
+                        }
+
+                        /* Check the conditions */
+                        if (condition & WM_POLICY_MONITORING_COND_ANY) {
+                            mdebug2("Condition ANY.");
+                            if (found) {
+                                g_found = 1;
+                            }
+                        } else if (condition & WM_POLICY_MONITORING_COND_NON) {
+                            mdebug2("Condition NON.");
+                            if (!found && (not_found != -1)) {
+                                mdebug2("Condition NON setze not_found=1.");
+                                not_found = 1;
+                            } else {
+                                not_found = -1;
+                            }
+                        } else {
+                            /* Condition for ALL */
+                            mdebug2("Condition ALL.");
+                            if (found && (g_found != -1)) {
+                                g_found = 1;
+                            } else {
+                                g_found = -1;
+                            }
+                        }
+                    //} while (value != NULL);
+                }
+
+                if (condition & WM_POLICY_MONITORING_COND_NON) {
+                    if (not_found == -1){ g_found = 0;} else {g_found = 1;}
+                }
+
+                /* Alert if necessary */
+                if (g_found == 1) {
+                    int j = 0;
+                    char op_msg[OS_SIZE_1024 + 1];
+                    char **p_alert_msg = data->alert_msg;
+
+                    while (1) {
+                        if (ref[0] != '\0') {
+                            snprintf(op_msg, OS_SIZE_1024, "%s %s.%s"
+                                    " Reference: %s .", msg, name,
+                                    p_alert_msg[j] ? p_alert_msg[j] : "\0",
+                                    ref);
+                        } else {
+                            snprintf(op_msg, OS_SIZE_1024, "%s %s.%s", msg,
+                                    name, p_alert_msg[j] ? p_alert_msg[j] : "\0");
+                        }
+
+                        if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
+                            //notify_rk(WM_POLICY_MONITORING_ALERT_POLICY_VIOLATION, op_msg);
+                            // TODO: notify alert
+                        }
+
+                        if (p_alert_msg[j]) {
+                            free(p_alert_msg[j]);
+                            p_alert_msg[j] = NULL;
+                            j++;
+
+                            if (!p_alert_msg[j]) {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    int j = 0;
+                    while (data->alert_msg[j]) {
+                        free(data->alert_msg[j]);
+                        data->alert_msg[j] = NULL;
+                        j++;
+                    }
+
+                    /* Check if this entry is required for the rest of the file */
+                    if (condition & WM_POLICY_MONITORING_COND_REQ) {
+                        goto clean_return;
+                    }
+                }
+
+                /* End if we don't have anything else */
+                if (!nbuf) {
+                    goto clean_return;
+                }
+
+                /* Clean up name */
+                if (name) {
+                    free(name);
+                    name = NULL;
+                }
+            }
+        }
+    }
+
+/* Clean up memory */
+clean_return:
+    if (name) {
+        free(name);
+        name = NULL;
+    }
+
+    return 0;
+
+}
+
+static char *wm_policy_monitoring_get_name(char *buf, char *ref, int *condition)
+{
+    char *tmp_location;
+    char *tmp_location2;
+    *condition = 0;
+
+    /* Check if name is valid */
+    if (!wm_policy_monitoring_is_name(buf)) {
+        return (NULL);
+    }
+
+    /* Set name */
+    buf++;
+    tmp_location = strchr(buf, ']');
+    if (!tmp_location) {
+        return (NULL);
+    }
+    *tmp_location = '\0';
+
+    /* Get condition */
+    tmp_location++;
+    if (*tmp_location != ' ' && tmp_location[1] != '[') {
+        return (NULL);
+    }
+    tmp_location += 2;
+
+    tmp_location2 = strchr(tmp_location, ']');
+    if (!tmp_location2) {
+        return (NULL);
+    }
+    *tmp_location2 = '\0';
+    tmp_location2++;
+
+    /* Get condition */
+    if (strcmp(tmp_location, "all") == 0) {
+        *condition |= WM_POLICY_MONITORING_COND_ALL;
+    } else if (strcmp(tmp_location, "any") == 0) {
+        *condition |= WM_POLICY_MONITORING_COND_ANY;
+    } else if (strcmp(tmp_location, "none") == 0) {
+        *condition |= WM_POLICY_MONITORING_COND_NON;
+    } else if (strcmp(tmp_location, "any required") == 0) {
+        *condition |= WM_POLICY_MONITORING_COND_ANY;
+        *condition |= WM_POLICY_MONITORING_COND_REQ;
+    } else if (strcmp(tmp_location, "all required") == 0) {
+        *condition |= WM_POLICY_MONITORING_COND_ALL;
+        *condition |= WM_POLICY_MONITORING_COND_REQ;
+    } else {
+        *condition = WM_POLICY_MONITORING_COND_INV;
+        return (NULL);
+    }
+
+    /* Get reference */
+    if (*tmp_location2 != ' ' && tmp_location2[1] != '[') {
+        return (NULL);
+    }
+
+    tmp_location2 += 2;
+    tmp_location = strchr(tmp_location2, ']');
+    if (!tmp_location) {
+        return (NULL);
+    }
+    *tmp_location = '\0';
+
+    /* Copy reference */
+    strncpy(ref, tmp_location2, 255);
+
+    return (strdup(buf));
+}
+
+static int wm_policy_monitoring_is_name(const char *buf)
+{
+    if (*buf == '[' && buf[strlen(buf) - 1] == ']') {
+        return (1);
+    }
+    return (0);
+}
+
+static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars) {
+
+    cJSON *variable;
+    cJSON_ArrayForEach(variable,variables){
+
+        /* If not a variable, return 0 */
+        if (*variable->string != '$') {
+            merror(WM_POLICY_MONITORING_INVALID_RKCL_VAR, variable->string);
+            return (0);
+        }
+
+        /* Remove semicolon from the end */
+        char *tmp = strchr(variable->valuestring, ';');
+        if (tmp) {
+            *tmp = '\0';
+        } else {
+            return (-1);
+        }
+
+        char * var_value;
+        os_strdup(variable->valuestring,var_value);
+        OSStore_Put(vars, variable->string, var_value);
+    }
+
+    return 0;
+}
+
+static char *wm_policy_monitoring_get_value(char *buf, int *type)
+{
+    char *tmp_str;
+    char *value;
+
+    /* Zero type before using it to make sure return is valid
+     * in case of error.
+     */
+    *type = 0;
+
+    value = strchr(buf, ':');
+    if (value == NULL) {
+        return (NULL);
+    }
+
+    *value = '\0';
+    value++;
+
+    tmp_str = strchr(value, ';');
+    if (tmp_str == NULL) {
+        return (NULL);
+    }
+    *tmp_str = '\0';
+
+    /* Get types - removing negate flag (using later) */
+    if (*buf == '!') {
+        buf++;
+    }
+
+    if (strcmp(buf, "f") == 0) {
+        *type = WM_POLICY_MONITORING_TYPE_FILE;
+    } else if (strcmp(buf, "r") == 0) {
+        *type = WM_POLICY_MONITORING_TYPE_REGISTRY;
+    } else if (strcmp(buf, "p") == 0) {
+        *type = WM_POLICY_MONITORING_TYPE_PROCESS;
+    } else if (strcmp(buf, "d") == 0) {
+        *type = WM_POLICY_MONITORING_TYPE_DIR;
+    } else {
+        return (NULL);
+    }
+
+    return (value);
+}
+
+static char *wm_policy_monitoring_get_pattern(char *value)
+{
+    while (*value != '\0') {
+        if ((*value == ' ') && (value[1] == '-') &&
+                (value[2] == '>') && (value[3] == ' ')) {
+            *value = '\0';
+            value += 4;
+
+            return (value);
+        }
+        value++;
+    }
+
+    return (NULL);
+}
+
+static int wm_policy_monitoring_check_file(char *file, char *pattern,wm_policy_monitoring_t * data)
+{
+    char *split_file;
+    int full_negate = 0;
+    int pt_result = 0;
+    FILE *fp;
+    char buf[OS_SIZE_2048 + 1];
+
+    if (file == NULL) {
+        return (0);
+    }
+
+    /* Check if the file is divided */
+    split_file = strchr(file, ',');
+    if (split_file) {
+        *split_file = '\0';
+        split_file++;
+    }
+
+    /* Get each file */
+    do {
+        /* If we don't have a pattern, just check if the file/dir is there */
+        if (pattern == NULL) {
+            if (w_is_file(file)) {
+                int i = 0;
+                char _b_msg[OS_SIZE_1024 + 1];
+
+                _b_msg[OS_SIZE_1024] = '\0';
+                snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                         file);
+
+                /* Already present */
+                if (w_is_str_in_array(data->alert_msg, _b_msg)) {
+                    return (1);
+                }
+
+                while (data->alert_msg[i] && (i < 255)) {
+                    i++;
+                }
+
+                if (!data->alert_msg[i]) {
+                    os_strdup(_b_msg, data->alert_msg[i]);
+                }
+
+                return (1);
+            }
+        } else {
+            full_negate = wm_policy_monitoring_pt_check_negate(pattern);
+            /* Check for content in the file */
+            mdebug2("Checking file: %s", file);
+            fp = fopen(file, "r");
+            if (fp) {
+
+                mdebug2("Starting new file: %s", file);
+                buf[OS_SIZE_2048] = '\0';
+                while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
+                    char *nbuf;
+
+                    /* Remove end of line */
+                    nbuf = strchr(buf, '\n');
+                    if (nbuf) {
+                        *nbuf = '\0';
+                    }
+#ifdef WIN32
+                    /* Remove end of line */
+                    nbuf = strchr(buf, '\r');
+                    if (nbuf) {
+                        *nbuf = '\0';
+                    }
+#endif
+                    /* Matched */
+                    pt_result = wm_policy_monitoring_pt_matches(buf, pattern);
+                    mdebug2("Buf == \"%s\"", buf);
+                    mdebug2("Pattern == \"%s\"", pattern);
+                    mdebug2("pt_result == %d and full_negate == %d", pt_result, full_negate);
+                    if ((pt_result == 1 && full_negate == 0) ) {
+                        mdebug1("Alerting file %s on line %s", file, buf);
+                        int i = 0;
+                        char _b_msg[OS_SIZE_1024 + 1];
+
+                        /* Close the file before dealing with the alert */
+                        fclose(fp);
+
+                        /* Generate the alert itself */
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                                 file);
+
+                        /* Already present */
+                        if (w_is_str_in_array(data->alert_msg, _b_msg)) {
+                            return (1);
+                        }
+
+                        while (data->alert_msg[i] && (i < 255)) {
+                            i++;
+                        }
+
+                        if (!data->alert_msg[i]) {
+                            os_strdup(_b_msg, data->alert_msg[i]);
+                        }
+
+                        return (1);
+                    } else if ((pt_result == 0 && full_negate == 1) ) {
+                        /* Found a full+negate match so no longer need to search
+                         * break out of loop and make sure the full negate does
+                         * not alert.
+                         */
+                        mdebug2("Found a complete match for full_negate");
+                        full_negate = 0;
+                        break;
+                    }
+                }
+
+                fclose(fp);
+
+                if (full_negate == 1) {
+                    mdebug2("Full_negate alerting - file %s", file);
+                    int i = 0;
+                    char _b_msg[OS_SIZE_1024 + 1];
+
+                    /* Generate the alert itself */
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                             file);
+
+                    /* Already present */
+                    if (w_is_str_in_array(data->alert_msg, _b_msg)) {
+                        return (1);
+                    }
+
+                    while (data->alert_msg[i] && (i < 255)) {
+                        i++;
+                    }
+
+                    if (!data->alert_msg[i]) {
+                        os_strdup(_b_msg, data->alert_msg[i]);
+                    }
+
+                    return (1);
+                }
+            }
+        }
+
+        if (split_file) {
+            file = split_file;
+            split_file = strchr(split_file, ',');
+            if (split_file) {
+                split_file++;
+            }
+        }
+
+
+    } while (split_file);
+
+    return (0);
+}
+
+/* Check if the pattern is all negate values */
+static int wm_policy_monitoring_pt_check_negate(const char *pattern)
+{
+    char *mypattern = NULL;
+    os_strdup(pattern, mypattern);
+    char *tmp_pt = mypattern;
+    char *tmp_pattern = mypattern;
+
+    while (tmp_pt != NULL) {
+        /* First look for " && " */
+        tmp_pt = strchr(tmp_pattern, ' ');
+        if (tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ') {
+            *tmp_pt = '\0';
+            tmp_pt += 4;
+        } else {
+            tmp_pt = NULL;
+        }
+
+        if (*tmp_pattern != '!') {
+            free(mypattern);
+            return 0;
+        }
+
+        tmp_pattern = tmp_pt;
+    }
+
+    mdebug2("Pattern: %s is fill_negate", pattern);
+    free(mypattern);
+    return (1);
+}
+
+static int  wm_policy_monitoring_pt_matches(const char *str, char *pattern)
+{
+    int neg = 0;
+    int ret_code = 0;
+    char *tmp_pt = pattern;
+    char *tmp_ret = NULL;
+
+    if (str == NULL) {
+        return (0);
+    }
+
+    while (tmp_pt != NULL) {
+        /* First look for " && " */
+        tmp_pt = strchr(pattern, ' ');
+        if (tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ') {
+            /* Mark pointer to clean it up */
+            tmp_ret = tmp_pt;
+
+            *tmp_pt = '\0';
+            tmp_pt += 4;
+        } else {
+            tmp_pt = NULL;
+        }
+
+        /* Check for negate values */
+        neg = 0;
+        ret_code = 0;
+        if (*pattern == '!') {
+            pattern++;
+            neg = 1;
+        }
+
+        /* Do the actual comparison */
+        if (strncasecmp(pattern, "=:", 2) == 0) {
+            pattern += 2;
+            if (strcasecmp(pattern, str) == 0) {
+                ret_code = 1;
+            }
+        } else if (strncasecmp(pattern, "r:", 2) == 0) {
+            pattern += 2;
+            if (OS_Regex(pattern, str)) {
+                mdebug2("Pattern: %s matches %s.", pattern, str);
+                ret_code = 1;
+            }
+        } else if (strncasecmp(pattern, "<:", 2) == 0) {
+            pattern += 2;
+            if (strcmp(pattern, str) < 0) {
+                ret_code = 1;
+            }
+        } else if (strncasecmp(pattern, ">:", 2) == 0) {
+            pattern += 2;
+            if (strcmp(pattern, str) > 0) {
+                ret_code = 1;
+            }
+        } else {
+#ifdef WIN32
+            char final_file[2048 + 1];
+
+            /* Try to get Windows variable */
+            if (*pattern == '%') {
+                final_file[0] = '\0';
+                final_file[2048] = '\0';
+
+                ExpandEnvironmentStrings(pattern, final_file, 2047);
+            } else {
+                strncpy(final_file, pattern, 2047);
+            }
+
+            /* Compare against the expanded variable */
+            if (strcasecmp(final_file, str) == 0) {
+                ret_code = 1;
+            }
+#else
+            if (strcasecmp(pattern, str) == 0) {
+                ret_code = 1;
+            }
+#endif
+        }
+        /* Fix tmp_ret entry */
+        if (tmp_ret != NULL) {
+            *tmp_ret = ' ';
+            tmp_ret = NULL;
+        }
+
+        /* If we have "!", return true if we don't match */
+        if (neg == 1) {
+            if (ret_code) {
+                ret_code = 0;
+                break;
+            }
+        } else {
+            if (!ret_code) {
+                ret_code = 0;
+                break;
+            }
+        }
+
+        ret_code = 1;
+        pattern = tmp_pt;
+    }
+
+    return (ret_code);
+}
+
+static int wm_policy_monitoring_check_dir(const char *dir, const char *file, char *pattern,wm_policy_monitoring_t * data)
+{
+    int ret_code = 0;
+    char f_name[PATH_MAX + 2];
+    struct dirent *entry;
+    struct stat statbuf_local;
+    DIR *dp = NULL;
+
+    f_name[PATH_MAX + 1] = '\0';
+
+    dp = opendir(dir);
+    if (!dp) {
+        return (0);
+    }
+
+    while ((entry = readdir(dp)) != NULL) {
+        /* Ignore . and ..  */
+        if ((strcmp(entry->d_name, ".") == 0) ||
+                (strcmp(entry->d_name, "..") == 0)) {
+            continue;
+        }
+
+        /* Create new file + path string */
+        snprintf(f_name, PATH_MAX + 1, "%s/%s", dir, entry->d_name);
+
+        /* Check if the read entry matches the provided file name */
+        if (strncasecmp(file, "r:", 2) == 0) {
+            if (OS_Regex(file + 2, entry->d_name)) {
+                if (wm_policy_monitoring_check_file(f_name, pattern,data)) {
+                    ret_code = 1;
+                }
+            }
+        } else {
+            /* ... otherwise try without regex */
+            if (OS_Match2(file, entry->d_name)) {
+                if (wm_policy_monitoring_check_file(f_name, pattern,data)) {
+                    ret_code = 1;
+                }
+            }
+        }
+
+        /* Check if file is a directory */
+        if (lstat(f_name, &statbuf_local) == 0) {
+            if (S_ISDIR(statbuf_local.st_mode)) {
+                if (wm_policy_monitoring_check_dir(f_name, file, pattern,data)) {
+                    ret_code = 1;
+                }
+            }
+        }
+    }
+
+    closedir(dp);
+    return (ret_code);
+
+}
+
+/* Check if a process is running */
+static int wm_policy_monitoring_is_process(char *value, OSList *p_list,wm_policy_monitoring_t * data)
+{
+    OSListNode *l_node;
+    if (p_list == NULL) {
+        return (0);
+    }
+    if (!value) {
+        return (0);
+    }
+
+    l_node = OSList_GetFirstNode(p_list);
+    while (l_node) {
+        W_Proc_Info *pinfo;
+
+        pinfo = (W_Proc_Info *)l_node->data;
+
+        /* Check if value matches */
+        if (wm_policy_monitoring_pt_matches(pinfo->p_path, value)) {
+            int i = 0;
+            char _b_msg[OS_SIZE_1024 + 1];
+
+            _b_msg[OS_SIZE_1024] = '\0';
+
+            snprintf(_b_msg, OS_SIZE_1024, " Process: %s.",
+                     pinfo->p_path);
+
+            /* Already present */
+            if (w_is_str_in_array(data->alert_msg, _b_msg)) {
+                return (1);
+            }
+
+            while (data->alert_msg[i] && (i < 255)) {
+                i++;
+            }
+
+            if (!data->alert_msg[i]) {
+                os_strdup(_b_msg, data->alert_msg[i]);
+            }
+
+            return (1);
+        }
+
+        l_node = OSList_GetNextNode(p_list);
+    }
+
+    return (0);
 }
 
 // Destroy data

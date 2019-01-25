@@ -238,5 +238,6 @@ extern const char *__local_name;
 #include "yaml2json.h"
 #include "cluster_utils.h"
 #include "auth_client.h"
+#include "os_utils.h"
 
 #endif /* __SHARED_H */
