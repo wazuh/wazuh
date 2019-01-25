@@ -281,7 +281,7 @@ def get_file(path, output_format):
     :return: file as dictionary or XML string.
     """
 
-    file_path = common.ossec_path + path
+    file_path = common.ossec_path + '/' + path
     output = {}
 
     try:
