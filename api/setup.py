@@ -1,4 +1,8 @@
-# coding: utf-8
+#!/usr/bin/env python
+
+# Copyright (C) 2015-2019, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
 from setuptools import setup, find_packages
@@ -22,15 +26,17 @@ setup(
     name=NAME,
     version=VERSION,
     description="Wazuh API",
-    author_email="",
-    url="",
+    author_email="hello@wazuh.com",
+    author="Wazuh",
+    url="https://github.com/wazuh",
     keywords=["Wazuh API"],
     install_requires=REQUIRES,
     packages=find_packages(),
     package_data={'': ['spec/spec.yaml']},
     include_package_data=True,
+    zip_safe=False,
+    license='GPLv2',
     long_description="""\
     The Wazuh API is an open source RESTful API that allows for interaction with the Wazuh manager from a web browser, command line tool like cURL or any script or program that can make web requests. The Wazuh Kibana app relies on this heavily and Wazuh’s goal is to accommodate complete remote management of the Wazuh infrastructure via the Wazuh Kibana app. Use the API to easily perform everyday actions like adding an agent, restarting the manager(s) or agent(s) or looking up syscheck details. 
     """
 )
-
