@@ -1380,7 +1380,7 @@ endif
 
 WPYTHON_DIR := ${PREFIX}/python
 
-wpython: build_python install_python install_dependencies install_framework
+wpython: build_python install_python install_dependencies install_framework install_api
 
 build_python:
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
@@ -1399,6 +1399,9 @@ install_dependencies: install_python
 
 install_framework:
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+
+install_api:
+	cd ../api && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
 
 ####################

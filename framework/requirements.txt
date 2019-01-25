@@ -5,4 +5,3 @@ docker==3.7.0
 pytz==2018.9
 requests==2.21.0
 uvloop==0.11.3
-connexion[swagger-ui]==2.2.0
