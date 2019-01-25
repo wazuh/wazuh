@@ -2,7 +2,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # May 3, 2017
 #
-# Syntax: make [ all | build | install | examples | clean ]
+# Syntax: make [ all | install]
 
 OSSEC_GROUP       = ossec
 PREFIX            = /var/ossec
@@ -18,10 +18,10 @@ INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 all: install
 
 install:
-	$(INSTALL_DIR) $(PREFIX)/api
-	$(INSTALL_DIR) $(PREFIX)/api/controllers
-	$(INSTALL_DIR) $(PREFIX)/api/models
-	$(INSTALL_DIR) $(PREFIX)/api/spec
+	$(INSTALL_DIR) $(PREFIX)/api/api
+	$(INSTALL_DIR) $(PREFIX)/api/api/controllers
+	$(INSTALL_DIR) $(PREFIX)/api/api/models
+	$(INSTALL_DIR) $(PREFIX)/api/api/spec
 
 	$(INSTALL_FILE) api/*.py ${PREFIX}/api/api
 	$(INSTALL_FILE) api/controllers/*.py ${PREFIX}/api/api/controllers
