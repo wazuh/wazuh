@@ -1,6 +1,9 @@
 ---
 name: 'Test: SCAP'
 about: Test suite for OpenSCAP and CIS-CAT.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

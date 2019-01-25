@@ -1,6 +1,9 @@
 ---
 name: Feature request
 about: Submit an issue with the feature you miss in Wazuh.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
@@ -15,5 +18,3 @@ _Syscheck/Rootcheck/Logcollector/Analysisd/Remoted/Decoders/Rules/Groups..._
 
 Description
 --------------
-
-
