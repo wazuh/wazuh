@@ -51,10 +51,16 @@ char *replace_win_format(char *str){
     char *ret1 = NULL;
     char *ret2 = NULL;
     char *ret3 = NULL;
+    char *end = NULL;
 
     ret1 = wstr_replace(str, "\\r", "");
     ret2 = wstr_replace(ret1, "\\t", "");
     ret3 = wstr_replace(ret2, "\\n", "");
+
+    //Remove trailing spaces
+    end = ret3 + strlen(ret3) - 1;
+    while(end > str && isspace((unsigned char)*end)) end--;
+    end[1] = '\0';
 
     os_free(ret1);
     os_free(ret2);
