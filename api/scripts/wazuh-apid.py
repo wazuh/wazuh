@@ -66,7 +66,7 @@ def print_version():
 
 
 def main():
-    app = connexion.App(__name__, specification_dir='./spec/')
+    app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
     app.run(port=8080)
