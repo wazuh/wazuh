@@ -101,9 +101,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'dapi_cluster':
             return self.process_dapi_cluster(data)
         elif command == b'get_nodes':
-            return self.get_nodes(data)
+            cmd, res = self.get_nodes(json.loads(data))
+            return cmd, json.dumps(res).encode()
         elif command == b'get_health':
-            return self.get_health(data)
+            cmd, res = self.get_health(json.loads(data))
+            return cmd, json.dumps(res).encode()
         else:
             return super().process_request(command, data)
 
@@ -179,21 +181,19 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         api_call_info = json.loads(arguments.decode())
         del api_call_info['arguments']['wait_for_complete']
         if api_call_info['function'] == '/cluster/healthcheck':
-            cmd, res = self.get_health(json.dumps(api_call_info).encode())
-            res = json.loads(res.decode())
+            cmd, res = self.get_health(api_call_info['arguments'])
         else:
-            cmd, res = self.get_nodes(json.dumps(api_call_info).encode())
-            res = json.loads(res.decode())
+            cmd, res = self.get_nodes(api_call_info['arguments'])
             if api_call_info['function'] == '/cluster/nodes/:node_name':
                 res = res['items'][0] if len(res['items']) > 0 else {}
 
         return cmd, json.dumps({'error': 0, 'data': res}).encode()
 
-    def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.get_connected_nodes(**json.loads(arguments.decode()))).encode()
+    def get_nodes(self, arguments: Dict) -> Tuple[bytes, Dict]:
+        return b'ok', self.server.get_connected_nodes(**arguments)
 
-    def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.get_health(filter_nodes)).encode()
+    def get_health(self, filter_nodes: Dict) -> Tuple[bytes, Dict]:
+        return b'ok', self.server.get_health(filter_nodes)
 
     def get_permission(self, sync_type: bytes) -> Tuple[bytes, bytes]:
         if sync_type == b'sync_i_w_m_p':
@@ -433,8 +433,8 @@ class Master(server.AbstractServer):
         :param filter_node: Node to filter by
         :return: Dictionary
         """
-        filter_node = json.loads(filter_node)
-        workers_info = {key: val.to_dict() for key, val in self.clients.items() if filter_node is None or key in filter_node}
+        workers_info = {key: val.to_dict() for key, val in self.clients.items()
+                        if filter_node is None or filter_node == {} or key in filter_node}
         n_connected_nodes = len(workers_info) + 1  # all workers + 1 master
         if filter_node is None or self.configuration['node_name'] in filter_node:
             workers_info.update({self.configuration['node_name']: self.to_dict()})

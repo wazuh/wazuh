@@ -5,6 +5,7 @@ import uvloop
 from typing import Tuple, Union
 import json
 import random
+import functools
 from wazuh.cluster import server, common as c_common, client
 from wazuh import common, exception
 from wazuh.cluster.dapi import dapi
@@ -97,7 +98,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
         return b'ok', json.dumps(self.server.node.get_connected_nodes(**json.loads(arguments.decode()))).encode()
 
     def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.node.get_health(filter_nodes)).encode()
+        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
 
 
 class LocalServerMaster(LocalServer):
@@ -136,7 +137,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
             return b'err', b'Worker is not connected to the master node'
         else:
             request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
-            request.add_done_callback(self.get_api_response)
+            request.add_done_callback(functools.partial(self.get_api_response, command))
             return b'ok', b'Sent request to master node'
 
     def send_file_request(self, path):
@@ -151,14 +152,15 @@ class LocalServerHandlerWorker(LocalServerHandler):
             req.add_done_callback(get_send_file_response)
             return b'ok', b'Forwarding file to master node'
 
-    def get_api_response(self, future):
+    def get_api_response(self, in_command, future):
         result = future.result()
         if result.startswith(b'Error'):
             result = json.dumps(exception.WazuhException(3000, result.decode()).to_dict()).encode()
         elif result.startswith(b'WazuhException'):
             _, code, message = result.decode().split(' ', 2)
             result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
-        asyncio.create_task(self.send_request(command=b'dapi_res', data=result))
+        asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
+                                              data=result))
 
 
 class LocalServerWorker(LocalServer):

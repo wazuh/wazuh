@@ -32,6 +32,11 @@ class LocalClientHandler(client.AbstractClient):
                 return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
             self.response = self.in_str[data].payload
             self.response_available.set()
+        elif command == b'control_res':
+            if data.startswith(b'Error'):
+                return b'err', self.process_error_from_peer(data)
+            self.response = data
+            self.response_available.set()
             return b'ok', b'Response received'
         elif command == b'dapi_err' or command == b'err':
             self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
