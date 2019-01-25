@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 
                 /* Read local ones */
 
-                c = ReadDecodeXML("etc/local_decoder.xml");
+                c = ReadDecodeXML(XML_LDECODER);
                 if (!c) {
                     if ((c != -2)) {
                         merror_exit(CONFIG_ERROR,  XML_LDECODER);
