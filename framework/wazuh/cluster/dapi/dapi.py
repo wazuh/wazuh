@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import functools
 import itertools
 import json
 import operator
@@ -98,12 +99,9 @@ class DistributedAPI:
 
         :return: a JSON response.
         """
-        def run_local():
+        def run_local(args):
             self.logger.debug("Starting to execute request locally")
-            if 'arguments' in self.input_json and self.input_json['arguments']:
-                data = rq.functions[self.input_json['function']]['function'](**self.input_json['arguments'])
-            else:
-                data = rq.functions[self.input_json['function']]['function']()
+            data = rq.functions[self.input_json['function']]['function'](**args)
             self.logger.debug("Finished executing request locally")
             return data
         try:
@@ -111,13 +109,14 @@ class DistributedAPI:
 
             timeout = None if self.input_json['arguments']['wait_for_complete'] \
                            else self.cluster_items['intervals']['communication']['timeout_api_exe']
-            del self.input_json['arguments']['wait_for_complete']  # local requests don't use this parameter
+            local_args = self.input_json['arguments'].copy()
+            del local_args['wait_for_complete']  # local requests don't use this parameter
 
             if rq.functions[self.input_json['function']]['is_async']:
-                task = run_local()
+                task = run_local(local_args)
             else:
                 loop = asyncio.get_running_loop()
-                task = loop.run_in_executor(None, run_local)
+                task = loop.run_in_executor(None, functools.partial(run_local, local_args))
 
             try:
                 data = await asyncio.wait_for(task, timeout=timeout)
