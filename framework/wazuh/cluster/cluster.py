@@ -686,7 +686,7 @@ def remove_bulk_agents(agent_ids_list):
     for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
         # Get info from DB
         agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
-                                               select={'fields': ['ip', 'id', 'name']})['items']
+                                               select={'fields': ['ip', 'id', 'name']}, limit=None)['items']
 
         # Remove agent files that need agent name and ip
         agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
