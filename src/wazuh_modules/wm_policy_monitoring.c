@@ -1,7 +1,7 @@
 /*
- * Wazuh Module for remote key requests
+ * Wazuh Module for policy monitoring
  * Copyright (C) 2015-2019, Wazuh Inc.
- * November 25, 2018.
+ * January 25, 2019.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -19,15 +19,16 @@
 #undef mdebug1
 #undef mdebug2
 
-#define minfo(msg, ...) _mtinfo(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mwarn(msg, ...) _mtwarn(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define merror(msg, ...) _mterror(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug1(msg, ...) _mtdebug1(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug2(msg, ...) _mtdebug2(WM_KEY_REQUEST_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define minfo(msg, ...) _mtinfo(WM_POLICY_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_POLICY_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_POLICY_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_POLICY_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_POLICY_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Module main function. It won't return
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
+static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data);  // Read policy monitoring files
 static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data);  // Do scan
 /* Extra functions */
 static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars);
@@ -69,10 +70,140 @@ void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
 }
 
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
+
+    int status = 0;
+    time_t time_start = 0;
+    time_t time_sleep = 0;
+
+    if (!data->scan_on_start) {
+        time_start = time(NULL);
+
+        if (data->scan_day) {
+            do {
+                status = check_day_to_scan(data->scan_day, data->scan_time);
+                if (status == 0) {
+                    time_sleep = get_time_to_hour(data->scan_time);
+                } else {
+                    wm_delay(1000); // Sleep one second to avoid an infinite loop
+                    time_sleep = get_time_to_hour("00:00");
+                }
+
+                mtdebug2(WM_POLICY_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+                wm_delay(1000 * time_sleep);
+
+            } while (status < 0);
+
+        } else if (data->scan_wday >= 0) {
+
+            time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
+            mtinfo(WM_POLICY_MONITORING_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_POLICY_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            wm_delay(1000 * time_sleep);
+
+        } else if (data->scan_time) {
+
+            time_sleep = get_time_to_hour(data->scan_time);
+            mtinfo(WM_POLICY_MONITORING_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_POLICY_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            wm_delay(1000 * time_sleep);
+
+        } else if (data->next_time == 0 || data->next_time > time_start) {
+
+            // On first run, take into account the interval of time specified
+            time_sleep = data->next_time == 0 ?
+                         (time_t)data->interval :
+                         data->next_time - time_start;
+
+            mtinfo(WM_POLICY_MONITORING_LOGTAG, "Waiting for turn to evaluate.");
+            mtdebug2(WM_POLICY_MONITORING_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
+            wm_delay(1000 * time_sleep);
+
+        }
+    }
+
+    while(1) {
+        // Get time and execute
+        time_start = time(NULL);
+
+        mtinfo(WM_POLICY_MONITORING_LOGTAG, "Starting evaluation.");
+
+        // Set unique ID for each scan
+
+#ifndef WIN32
+        int id = os_random();
+        if (id < 0)
+            id = -id;
+#else
+        unsigned int id1 = os_random();
+        unsigned int id2 = os_random();
+
+        char random_id[OS_MAXSTR];
+        snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
+
+        int id = atoi(random_id);
+        if (id < 0)
+            id = -id;
+#endif
+
+        ///////// RUN FILES
+        wm_policy_monitoring_read_files(data);
+     
+        wm_delay(1000); // Avoid infinite loop when execution fails
+        time_sleep = time(NULL) - time_start;
+
+        mtinfo(WM_POLICY_MONITORING_LOGTAG, "Evaluation finished.");
+
+        if (data->scan_day) {
+            int interval = 0, i = 0;
+            status = 0;
+            interval = data->interval / 60;   // interval in num of months
+
+            do {
+                status = check_day_to_scan(data->scan_day, data->scan_time);
+                if (status == 0) {
+                    time_sleep = get_time_to_hour(data->scan_time);
+                    i++;
+                } else {
+                    wm_delay(1000);
+                    time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
+                }
+
+                mtdebug2(WM_POLICY_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+                wm_delay(1000 * time_sleep);
+
+            } while ((status < 0) && (i < interval));
+
+        } else {
+
+            if (data->scan_wday >= 0) {
+                time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
+                time_sleep += WEEK_SEC * ((data->interval / WEEK_SEC) - 1);
+                data->next_time = (time_t)time_sleep + time_start;
+            } else if (data->scan_time) {
+                time_sleep = get_time_to_hour(data->scan_time);
+                time_sleep += DAY_SEC * ((data->interval / DAY_SEC) - 1);
+                data->next_time = (time_t)time_sleep + time_start;
+            } else if ((time_t)data->interval >= time_sleep) {
+                time_sleep = data->interval - time_sleep;
+                data->next_time = data->interval + time_start;
+            } else {
+                mterror(WM_POLICY_MONITORING_LOGTAG, "Interval overtaken.");
+                time_sleep = data->next_time = 0;
+            }
+
+            mtdebug2(WM_POLICY_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            wm_delay(1000 * time_sleep);
+        }
+    }
+
+    return 0;
+}
+
+static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data) {
     FILE *fp;
     int i = 0;
 
-    /* Read every policy file */
+    /* Read every policy monitoring file */
     for(i = 0; data->profile[i]; i++) {
         char path[PATH_MAX];
 
@@ -119,7 +250,6 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
         wm_policy_monitoring_do_scan(plist,profiles,object,vars,"System Audit:",data);
         w_del_plist(plist);
 
-
 next:
         if(fp){
             fclose(fp);
@@ -133,8 +263,6 @@ next:
             OSStore_Free(vars);
         }
     }
-    
-    return 0;
 }
 
 static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data) {
@@ -185,9 +313,6 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *obj
 
                 cJSON_ArrayForEach(p_check,p_checks)
                 {
-
-                    
-
                     mtdebug2(ARGV0, "Checking entry: '%s'.", name);
 
                     /* Get each value */
@@ -1030,8 +1155,53 @@ void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data) {
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
-    cJSON_AddStringToObject(wm_wd,"enabled","yes");
+
+    cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
+    cJSON_AddStringToObject(wm_wd, "skip_nfs", data->skip_nfs ? "yes" : "no");
+    if (data->interval) cJSON_AddNumberToObject(wm_wd, "interval", data->interval);
+    if (data->scan_day) cJSON_AddNumberToObject(wm_wd, "day", data->scan_day);
+
+    switch (data->scan_wday) {
+        case 0:
+            cJSON_AddStringToObject(wm_wd, "wday", "sunday");
+            break;
+        case 1:
+            cJSON_AddStringToObject(wm_wd, "wday", "monday");
+            break;
+        case 2:
+            cJSON_AddStringToObject(wm_wd, "wday", "tuesday");
+            break;
+        case 3:
+            cJSON_AddStringToObject(wm_wd, "wday", "wednesday");
+            break;
+        case 4:
+            cJSON_AddStringToObject(wm_wd, "wday", "thursday");
+            break;
+        case 5:
+            cJSON_AddStringToObject(wm_wd, "wday", "friday");
+            break;
+        case 6:
+            cJSON_AddStringToObject(wm_wd, "wday", "saturday");
+            break;
+        default:
+            break;
+    }
+    if (data->scan_time) cJSON_AddStringToObject(wm_wd, "time", data->scan_time);
+
+    if (data->profile && *data->profile) {
+        cJSON *profiles = cJSON_CreateArray();
+        int i;
+        for (i=0;data->profile[i];i++) {
+            cJSON *profile = cJSON_CreateObject();
+            cJSON_AddStringToObject(profile,"profile",data->profile[i]);
+            cJSON_AddItemToArray(profiles, profile);
+        }
+        cJSON_AddItemToObject(wm_wd,"profiles",profiles);
+    }
+
     cJSON_AddItemToObject(root,"policy-monitoring",wm_wd);
+
+    
     return root;
 }
