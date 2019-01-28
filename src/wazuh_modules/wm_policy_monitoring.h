@@ -32,6 +32,7 @@
 #define WM_POLICY_MONITORING_COND_REQ       0x004
 #define WM_POLICY_MONITORING_COND_NON       0x008
 #define WM_POLICY_MONITORING_COND_INV       0x016
+#define WM_POLICY_MONITORING_STAMP          "policy-monitoring"
 
 typedef struct wm_policy_monitoring_t {
     int enabled:1;
@@ -44,6 +45,7 @@ typedef struct wm_policy_monitoring_t {
     char* scan_time;
     char** profile;
     char **alert_msg;
+    int queue;
 } wm_policy_monitoring_t;
 
 extern const wm_context WM_POLICY_MONITORING_CONTEXT;
