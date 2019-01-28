@@ -246,11 +246,6 @@ int main(int argc, char **argv)
     /* Signal manipulation */
     StartSIG(ARGV0);
 
-    /* Create PID files */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
-
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
