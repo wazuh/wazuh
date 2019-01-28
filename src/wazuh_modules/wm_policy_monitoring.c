@@ -28,8 +28,10 @@
 static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Module main function. It won't return
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
-static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data);  // Read policy monitoring files
-static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data);  // Do scan
+static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id);  // Read policy monitoring files
+static int wm_policy_monitoring_do_scan(OSList *plist,char *description,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data,int id);  // Do scan
+static int wm_policy_monitoring_send_alert(wm_policy_monitoring_t * data,cJSON *json_alert); // Send alert
+
 /* Extra functions */
 static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars);
 static char * wm_policy_monitoring_get_name(char *buf, char *ref, int *condition); // Get name
@@ -41,6 +43,17 @@ static int wm_policy_monitoring_pt_check_negate(const char *pattern); // Check p
 static int wm_policy_monitoring_pt_matches(const char *str, char *pattern); // Check pattern match
 static int wm_policy_monitoring_check_dir(const char *dir, const char *file, char *pattern,wm_policy_monitoring_t * data); // Check dir
 static int wm_policy_monitoring_is_process(char *value, OSList *p_list,wm_policy_monitoring_t * data); // Check is a process
+
+#ifndef WIN32
+static int wm_policy_monitoring_is_registry(__attribute__((unused)) char *entry_name,__attribute__((unused)) char *reg_option, __attribute__((unused)) char *reg_value);
+#else
+static int wm_policy_monitoring_is_registry(char *entry_name, char *reg_option, char *reg_value);
+static char *wm_policy_monitoring_os_winreg_getkey(char *reg_entry);
+static int wm_policy_monitoring_open_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value);
+static int wm_policy_monitoring_winreg_querykey(HKEY hKey,__attribute__((unused))char *p_key,__attribute__((unused)) char *full_key_name,char *reg_option, char *reg_value);
+static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size);
+#endif
+
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t * data);     // Read config
 
 const wm_context WM_POLICY_MONITORING_CONTEXT = {
@@ -67,6 +80,26 @@ void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
     wm_policy_monitoring_start(data);
     
     return NULL;
+}
+
+static int wm_policy_monitoring_send_alert(wm_policy_monitoring_t * data,cJSON *json_alert)
+{
+    char *msg = cJSON_PrintUnformatted(json_alert);
+
+    /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
+    if (SendMSG(data->queue, msg, WM_POLICY_MONITORING_STAMP, POLICY_MONITORING_MQ) < 0) {
+        mterror(ARGV0, QUEUE_SEND);
+
+        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        }
+
+        if (SendMSG(data->queue, msg, WM_POLICY_MONITORING_STAMP, POLICY_MONITORING_MQ) < 0) {
+            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        }
+    }
+
+    return (0);
 }
 
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
@@ -145,13 +178,28 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
             id = -id;
 #endif
 
-        ///////// RUN FILES
-        wm_policy_monitoring_read_files(data);
+        /* Send scan start message */
+        cJSON *start_scan = cJSON_CreateObject();
+        cJSON_AddStringToObject(start_scan, "type", "info");
+        cJSON_AddStringToObject(start_scan, "message", "Policy monitoring scan started");
+        wm_policy_monitoring_send_alert(data,start_scan);
+        cJSON_Delete(start_scan);
+
+        /* Do scan for every profile file */
+        wm_policy_monitoring_read_files(data,id);
      
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
         mtinfo(WM_POLICY_MONITORING_LOGTAG, "Evaluation finished.");
+
+        /* Send scan ending message */
+        cJSON *end_scan = cJSON_CreateObject();
+        cJSON_AddStringToObject(end_scan, "type", "info");
+        cJSON_AddStringToObject(end_scan, "message", "Policy monitoring scan finished");
+        wm_policy_monitoring_send_alert(data,end_scan);
+        minfo("Ending policy monitoring scan.");
+        cJSON_Delete(end_scan);
 
         if (data->scan_day) {
             int interval = 0, i = 0;
@@ -199,7 +247,7 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
     return 0;
 }
 
-static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data) {
+static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id) {
     FILE *fp;
     int i = 0;
 
@@ -234,7 +282,18 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data) {
 
         OSList *plist = w_os_get_process_list();
         cJSON *variables = cJSON_GetObjectItem(object, "variables");
+        cJSON *description = cJSON_GetObjectItem(object, "description");
         cJSON *profiles = cJSON_GetObjectItem(object, "profile");
+
+        char *profile_description = NULL;
+        
+        if(description) {
+            cJSON *name = cJSON_GetObjectItem(description, "name");
+
+            if(name){
+                profile_description = name->valuestring;
+            }
+        }
 
         if(!profiles){
             merror("Obtaining profile from json");
@@ -247,7 +306,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data) {
             goto next;
         }
 
-        wm_policy_monitoring_do_scan(plist,profiles,object,vars,"System Audit:",data);
+        wm_policy_monitoring_do_scan(plist,profile_description,profiles,object,vars,"Policy Monitoring:",data,id);
         w_del_plist(plist);
 
 next:
@@ -265,7 +324,7 @@ next:
     }
 }
 
-static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data) {
+static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data,int id) {
 
     int type = 0, condition = 0;
     char *nbuf;
@@ -285,7 +344,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *obj
 
 #ifdef WIN32
     /* Get Windows rootdir */
-    _rkcl_getrootdir(root_dir, sizeof(root_dir) - 1);
+    wm_policy_monitoring_getrootdir(root_dir, sizeof(root_dir) - 1);
     if (root_dir[0] == '\0') {
         mterror(ARGV0, INVALID_ROOTDIR);
     }
@@ -293,7 +352,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *obj
 
     cJSON_ArrayForEach(profile,object){
 
-        if( strcmp(profile->string,"variables") )
+        if( strcmp(profile->string,"profile") == 0 )
         {
             p_name = cJSON_GetObjectItem(profile, "name");
             cJSON *p_checks = cJSON_GetObjectItem(profile, "checks");
@@ -301,7 +360,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *obj
             /* Get first name */
             name = wm_policy_monitoring_get_name(p_name->valuestring, ref, &condition);
             if (name == NULL || condition == WM_POLICY_MONITORING_COND_INV) {
-                merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, nbuf);
+                merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, p_name->valuestring);
                 goto clean_return;
             }
         
@@ -392,7 +451,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *obj
                             }
 
                             mtdebug2(ARGV0, "Checking registry: '%s'.", value);
-                            if (is_registry(value, entry, pattern)) {
+                            if (wm_policy_monitoring_is_registry(value, entry, pattern)) {
                                 mtdebug2(ARGV0, "Found registry.");
                                 found = 1;
                             }
@@ -531,8 +590,62 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile,cJSON *obj
                         }
 
                         if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
-                            //notify_rk(WM_POLICY_MONITORING_ALERT_POLICY_VIOLATION, op_msg);
                             // TODO: notify alert
+                            cJSON *json_alert = cJSON_CreateObject();
+                            cJSON_AddStringToObject(json_alert, "type", "alert");
+                            cJSON_AddNumberToObject(json_alert, "id", id);
+
+                            if(description) {
+                                cJSON_AddStringToObject(json_alert, "profile", description);
+                            } else {
+                                cJSON_AddStringToObject(json_alert, "profile", "unknown");
+                            }
+                           
+                            cJSON *check = cJSON_CreateObject();
+                            cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+                            cJSON *title = cJSON_GetObjectItem(profile, "title");
+                            cJSON_AddNumberToObject(check, "pm_id", pm_id->valueint);
+
+                            if(title){
+                                cJSON_AddStringToObject(check, "title", title->valuestring);
+                            } else {
+                                cJSON_AddStringToObject(check, "title", "unknown");
+                            }
+                           
+                            cJSON *references = cJSON_GetObjectItem(profile, "references");
+
+                            if(references) {
+                                cJSON *add_references = cJSON_CreateArray();
+                                cJSON *reference;
+                                cJSON_ArrayForEach(reference,references)
+                                {
+                                    cJSON_AddItemToArray(add_references,cJSON_CreateString(reference->valuestring));
+                                }
+                                cJSON_AddItemToObject(check,"reference",add_references);
+                            }
+
+                            // Get File from alert
+                            char *alert_file = strstr(p_alert_msg[j],"File:");
+                            if(alert_file){
+                                alert_file+= 5;
+                                *alert_file = '\0';
+                                alert_file++;
+                                cJSON_AddStringToObject(check, "file", alert_file);
+                            }
+
+                            cJSON *cis = cJSON_GetObjectItem(profile, "cis");
+
+                            if(cis){
+                                cJSON_AddStringToObject(check, "cis", cis->valuestring);
+                            } else {
+                                cJSON_AddStringToObject(check, "cis", "unknown");
+                            }
+
+                            cJSON_AddStringToObject(check, "result", "fail");
+                            cJSON_AddItemToObject(json_alert,"check",check);
+
+                            wm_policy_monitoring_send_alert(data,json_alert);
+                            cJSON_Delete(json_alert);
                         }
 
                         if (p_alert_msg[j]) {
@@ -1151,6 +1264,256 @@ static int wm_policy_monitoring_is_process(char *value, OSList *p_list,wm_policy
 void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data) {
     os_free(data);
 }
+
+#ifndef WIN32
+static int wm_policy_monitoring_is_registry(__attribute__((unused)) char *entry_name,__attribute__((unused)) char *reg_option, __attribute__((unused)) char *reg_value){
+    return 0;
+}
+#else
+static int wm_policy_monitoring_is_registry(char *entry_name, char *reg_option, char *reg_value) {
+    char *rk;
+
+    rk = wm_policy_monitoring_os_winreg_getkey(entry_name);
+    if (rk_sub_tree == NULL || rk == NULL) {
+        mterror(ARGV0, SK_INV_REG, entry_name);
+        return (0);
+    }
+
+    return wm_policy_monitoring_open_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value) || wm_policy_monitoring_open_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value);
+}
+static char *wm_policy_monitoring_os_winreg_getkey(char *reg_entry)
+{
+    char *ret = NULL;
+    char *tmp_str;
+
+    /* Get only the sub tree first */
+    tmp_str = strchr(reg_entry, '\\');
+    if (tmp_str) {
+        *tmp_str = '\0';
+        ret = tmp_str + 1;
+    }
+
+    /* Set sub tree */
+    if ((strcmp(reg_entry, "HKEY_LOCAL_MACHINE") == 0) ||
+            (strcmp(reg_entry, "HKLM") == 0)) {
+        rk_sub_tree = HKEY_LOCAL_MACHINE;
+    } else if (strcmp(reg_entry, "HKEY_CLASSES_ROOT") == 0) {
+        rk_sub_tree = HKEY_CLASSES_ROOT;
+    } else if (strcmp(reg_entry, "HKEY_CURRENT_CONFIG") == 0) {
+        rk_sub_tree = HKEY_CURRENT_CONFIG;
+    } else if (strcmp(reg_entry, "HKEY_USERS") == 0) {
+        rk_sub_tree = HKEY_USERS;
+    } else if ((strcmp(reg_entry, "HKCU") == 0) ||
+               (strcmp(reg_entry, "HKEY_CURRENT_USER") == 0)) {
+        rk_sub_tree = HKEY_CURRENT_USER;
+    } else {
+        /* Set sub tree to null */
+        rk_sub_tree = NULL;
+
+        /* Return tmp_str to the previous value */
+        if (tmp_str && (*tmp_str == '\0')) {
+            *tmp_str = '\\';
+        }
+        return (NULL);
+    }
+
+    /* Check if ret has nothing else */
+    if (ret && (*ret == '\0')) {
+        ret = NULL;
+    }
+
+    /* Fixing tmp_str and the real name of the registry */
+    if (tmp_str && (*tmp_str == '\0')) {
+        *tmp_str = '\\';
+    }
+
+    return (ret);
+}
+
+static int wm_policy_monitoring_open_key(char *subkey, char *full_key_name, unsigned long arch,
+                         char *reg_option, char *reg_value)
+{
+    int ret = 1;
+    HKEY oshkey;
+
+    if (RegOpenKeyEx(rk_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
+        return (0);
+    }
+
+    /* If option is set, return the value of query key */
+    if (reg_option) {
+        ret = wm_policy_monitoring_winreg_querykey(oshkey, subkey, full_key_name,
+                                   reg_option, reg_value);
+    }
+
+    RegCloseKey(oshkey);
+    return (ret);
+}
+
+static int wm_policy_monitoring_winreg_querykey(HKEY hKey,
+        __attribute__((unused))char *p_key,
+        __attribute__((unused)) char *full_key_name,
+                         char *reg_option, char *reg_value)
+{
+    int rc;
+    DWORD i, j;
+
+    /* QueryInfo and EnumKey variables */
+    TCHAR class_name_b[MAX_PATH + 1];
+    DWORD class_name_s = MAX_PATH;
+
+    /* Number of sub keys */
+    DWORD subkey_count = 0;
+
+    /* Number of values */
+    DWORD value_count;
+
+    /* Variables for RegEnumValue */
+    TCHAR value_buffer[MAX_VALUE_NAME + 1];
+    TCHAR data_buffer[MAX_VALUE_NAME + 1];
+    DWORD value_size;
+    DWORD data_size;
+
+    /* Data type for RegEnumValue */
+    DWORD data_type = 0;
+
+    /* Storage var */
+    char var_storage[MAX_VALUE_NAME + 1];
+
+    /* Initialize the memory for some variables */
+    class_name_b[0] = '\0';
+    class_name_b[MAX_PATH] = '\0';
+
+    /* We use the class_name, subkey_count and the value count */
+    rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
+                         &subkey_count, NULL, NULL, &value_count,
+                         NULL, NULL, NULL, NULL);
+    if (rc != ERROR_SUCCESS) {
+        return (0);
+    }
+
+    /* Get values (if available) */
+    if (value_count) {
+        char *mt_data;
+
+        /* Clear the values for value_size and data_size */
+        value_buffer[MAX_VALUE_NAME] = '\0';
+        data_buffer[MAX_VALUE_NAME] = '\0';
+        var_storage[MAX_VALUE_NAME] = '\0';
+
+        /* Get each value */
+        for (i = 0; i < value_count; i++) {
+            value_size = MAX_VALUE_NAME;
+            data_size = MAX_VALUE_NAME;
+
+            value_buffer[0] = '\0';
+            data_buffer[0] = '\0';
+            var_storage[0] = '\0';
+
+            rc = RegEnumValue(hKey, i, value_buffer, &value_size,
+                              NULL, &data_type, (LPBYTE)data_buffer, &data_size);
+
+            /* No more values available */
+            if (rc != ERROR_SUCCESS) {
+                break;
+            }
+
+            /* Check if no value name is specified */
+            if (value_buffer[0] == '\0') {
+                value_buffer[0] = '@';
+                value_buffer[1] = '\0';
+            }
+
+            /* Check if the entry name matches the reg_option */
+            if (strcasecmp(value_buffer, reg_option) != 0) {
+                continue;
+            }
+
+            /* If a value is not present and the option matches,
+             * we can return ok
+             */
+            if (!reg_value) {
+                return (1);
+            }
+
+            /* Write value into a string */
+            switch (data_type) {
+                    int size_available;
+
+                case REG_SZ:
+                case REG_EXPAND_SZ:
+                    snprintf(var_storage, MAX_VALUE_NAME, "%s", data_buffer);
+                    break;
+                case REG_MULTI_SZ:
+                    /* Printing multiple strings */
+                    size_available = MAX_VALUE_NAME - 3;
+                    mt_data = data_buffer;
+
+                    while (*mt_data) {
+                        if (size_available > 2) {
+                            strncat(var_storage, mt_data, size_available);
+                            strncat(var_storage, " ", 2);
+                            size_available = MAX_VALUE_NAME -
+                                             (strlen(var_storage) + 2);
+                        }
+                        mt_data += strlen(mt_data) + 1;
+                    }
+
+                    break;
+                case REG_DWORD:
+                    snprintf(var_storage, MAX_VALUE_NAME,
+                             "%x", (unsigned int)*data_buffer);
+                    break;
+                default:
+                    size_available = MAX_VALUE_NAME - 2;
+                    for (j = 0; j < data_size; j++) {
+                        char tmp_c[12];
+
+                        snprintf(tmp_c, 12, "%02x",
+                                 (unsigned int)data_buffer[j]);
+
+                        if (size_available > 2) {
+                            strncat(var_storage, tmp_c, size_available);
+                            size_available = MAX_VALUE_NAME -
+                                             (strlen(var_storage) + 2);
+                        }
+                    }
+                    break;
+            }
+
+            /* Check if value matches */
+            if (wm_policy_monitoring_pt_matches(var_storage, reg_value)) {
+                return (1);
+            }
+
+            return (0);
+        }
+    }
+
+    return (0);
+}
+
+static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
+{
+    char final_file[2048 + 1];
+    char *tmp;
+
+    final_file[0] = '\0';
+    final_file[2048] = '\0';
+
+    ExpandEnvironmentStrings("%WINDIR%", final_file, 2047);
+
+    tmp = strchr(final_file, '\\');
+    if (tmp) {
+        *tmp = '\0';
+        strncpy(root_dir, final_file, dir_size);
+        return (root_dir);
+    }
+
+    return (NULL);
+}
+
+#endif
 
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t *data) {
     cJSON *root = cJSON_CreateObject();

@@ -51,9 +51,10 @@ void PolicyMonitoringInit()
 /* Special decoder for Windows eventchannel */
 int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
 {
-    int ret_val = 0;
+    int ret_val = 1;
     int result_db = 0;
     cJSON *json_event = NULL;
+    cJSON *type = NULL;
     cJSON *id = NULL;
     cJSON *timestamp = NULL;
     cJSON *profile = NULL;
@@ -74,6 +75,38 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
     }
 
     /* TODO - Check if the event is a final event */
+    type = cJSON_GetObjectItem(json_event, "type");
+
+    if(type) {
+
+        if(strcmp(type->valuestring,"info") == 0){
+            cJSON *message = cJSON_GetObjectItem(json_event, "message");
+
+            if(message) {
+                minfo("%s",cJSON_PrintUnformatted(json_event));
+                cJSON_Delete(json_event);
+                ret_val = 1;
+                return ret_val;
+            }
+        }
+        else if (strcmp(type->valuestring,"alert") == 0){
+            minfo("%s",cJSON_PrintUnformatted(json_event));
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } 
+        else if (strcmp(type->valuestring,"summary") == 0){
+            minfo("%s",cJSON_PrintUnformatted(json_event));
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        }
+    } else {
+        ret_val = 0;
+        goto end;
+    }
+
+  
 
     /* Check if the event is a check */
     id = cJSON_GetObjectItem(json_event, "id");
@@ -90,7 +123,7 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
     result = cJSON_GetObjectItem(check, "result");
 
 
-    result_db = FindEventcheck(lf, pm_id->valuestring, socket, result);
+   /* result_db = FindEventcheck(lf, pm_id->valuestring, socket, result);
     switch (result_db)
     {
     case -1:
@@ -114,7 +147,7 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
         break;
     default:
         goto end;
-    }
+    }*/
 
     ret_val = 1;
 
