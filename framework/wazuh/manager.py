@@ -250,13 +250,13 @@ def upload_xml(xml_file, path):
 
 def upload_list(list_file, path):
     """
-    Updates JSON files (lists)
-    :param json_file: content of the JSON file
-    :param path: Destination of the new JSON file
+    Updates CDB lists
+    :param list_file: content of the list
+    :param path: Destination of the new list file
     :return: Confirmation message.
     """
     # path of temporary file
-    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.json'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.txt'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
     try:
         # create temporary file
@@ -265,7 +265,7 @@ def upload_list(list_file, path):
             for element in list_file.split('\n')[:-1]:
                 tmp_file.write(element + '\n')
     except Exception as e:
-        raise WazuhException(1115, str(e))
+        raise WazuhException(1114, str(e))
 
     # move temporary file to group folder
     try:
