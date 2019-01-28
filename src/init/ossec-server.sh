@@ -249,7 +249,7 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
-        if [ X"$i" = "Xwazuh-clusterd" ]; then
+        if [ X"$i" = "Xwazuh-clusterd" ] || [ X"$i" = "Xwazuh-apid" ]; then
             continue
         fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
