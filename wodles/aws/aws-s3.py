@@ -653,6 +653,7 @@ class AWSBucket(WazuhIntegration):
 
     def iter_files_in_bucket(self, aws_account_id, aws_region):
         try:
+            object_counter = 0
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
 
             if 'Contents' not in bucket_files:
@@ -662,7 +663,7 @@ class AWSBucket(WazuhIntegration):
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
-
+                object_counter += 1
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -680,8 +681,6 @@ class AWSBucket(WazuhIntegration):
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
-            # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -696,6 +695,7 @@ class AWSBucket(WazuhIntegration):
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
+                    object_counter += 1
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
                             debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -712,9 +712,12 @@ class AWSBucket(WazuhIntegration):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
-                # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
-                self.db_connector.commit()
+            if int(object_counter * 1.1) > self.retain_db_records:
+                self.retain_db_records = int(object_counter * 1.1)
+                debug("+++ DB Retain Exceeded - temporarily increasing:{0}".format(int(object_counter * 1.1)), 1)
+            # optimize DB
+            self.db_maintenance(aws_account_id, aws_region)
+            self.db_connector.commit()
         except SystemExit:
             raise
         except Exception as err:
@@ -948,6 +951,7 @@ class AWSConfigBucket(AWSLogsBucket):
 
     def iter_files_in_bucket(self, aws_account_id, aws_region, date):
         try:
+            object_counter = 0
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date))
 
             if 'Contents' not in bucket_files:
@@ -958,6 +962,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 if not bucket_file['Key']:
                     continue
 
+                object_counter += 1
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -975,8 +980,6 @@ class AWSConfigBucket(AWSLogsBucket):
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
-            # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -991,6 +994,7 @@ class AWSConfigBucket(AWSLogsBucket):
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
+                    object_counter += 1
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region):
                         if self.reparse:
                             debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -1007,9 +1011,14 @@ class AWSConfigBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
-                # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
                 self.db_connector.commit()
+
+            if int(object_counter * 1.1) > self.retain_db_records:
+                self.retain_db_records = int(object_counter * 1.1)
+                debug("+++ DB Retain Exceeded - temporarily increasing:{0}".format(int(object_counter * 1.1)), 1)
+            # optimize DB
+            self.db_maintenance(aws_account_id, aws_region)
+            self.db_connector.commit()
         except SystemExit:
             raise
         except Exception as err:
@@ -1345,6 +1354,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
     def iter_files_in_bucket(self, aws_account_id, aws_region, date, flow_log_id):
         try:
+            object_counter = 0
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region, date, flow_log_id))
 
             if 'Contents' not in bucket_files:
@@ -1355,7 +1365,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
             for bucket_file in bucket_files['Contents']:
                 if not bucket_file['Key']:
                     continue
-
+                object_counter += 1
                 if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
                     if self.reparse:
                         debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -1373,8 +1383,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-            # optimize DB
-            self.db_maintenance(aws_account_id, aws_region, flow_log_id)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -1390,6 +1398,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 for bucket_file in bucket_files['Contents']:
                     if not bucket_file['Key']:
                         continue
+                    object_counter += 1
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, flow_log_id):
                         if self.reparse:
                             debug("++ File previously processed, but reparse flag set: {file}".format(
@@ -1406,9 +1415,12 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         debug("+++ Remove file from S3 Bucket:{0}".format(bucket_file['Key']), 2)
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
-                # optimize DB
-                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
-                self.db_connector.commit()
+            if int(object_counter * 1.1) > self.retain_db_records:
+                self.retain_db_records = int(object_counter * 1.1)
+                debug("+++ DB Retain Exceeded - temporarily increasing:{0}".format(int(object_counter * 1.1)), 1)
+            # optimize DB
+            self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+            self.db_connector.commit()
         except SystemExit:
             raise
         except Exception as err:
