@@ -648,7 +648,7 @@ def upload_group_configuration(group_id, xml_file):
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
-    # create temporary file for parsing xml input
+    # create temporary file for parsing xml input and validate XML format
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
@@ -658,7 +658,7 @@ def upload_group_configuration(group_id, xml_file):
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
-                                   .replace("&gt;", ">").replace('&apos', "'")
+                                   .replace("&gt;", ">")
             tmp_file.write(pretty_xml)
     except Exception as e:
         raise WazuhException(1113, str(e))
@@ -698,18 +698,11 @@ def upload_group_configuration(group_id, xml_file):
 def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     """
     Updates a group file
-
     :param group_id: Group to update
-    :param xml_file: File name from origin
+    :param xml_file: File contents in string
     :param file_name: File name to update
     :return: Confirmation message in string
     """
-    # check xml format (temporary file from API)
-    try:
-        load_wazuh_xml(xml_file)
-    except Exception as e:
-        raise WazuhException(1113, str(e))
-
     if file_name == 'agent.conf':
         with open(xml_file) as f:
             xml_file_data = f.read()
