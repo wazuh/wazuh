@@ -51,7 +51,8 @@ class LocalClientHandler(client.AbstractClient):
             type_error, code, message = data.split(b' ', 2)
             self.response = json.dumps({'error': int(code), 'message': message.decode()}).encode()
             self.response_available.set()
-            return type_error + b' ' + code + b' ' + message.split(b': ', 1)[-1]
+            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
+            return type_error + b' ' + code + b' ' + extra_msg
         else:
             self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
             self.response_available.set()
