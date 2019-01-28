@@ -1,6 +1,13 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.8.2]
+
+### Fixed
+
+- Fixed use-after-free corruption in Analysisd at the accumulator library. ([#2456](https://github.com/wazuh/wazuh/pull/2456))
+- Fixed crash in Modulesd when parsing command with missing tag ([#2470](https://github.com/wazuh/wazuh/pull/2470))
+
 ## [v3.8.1]
 
 ### Fixed
