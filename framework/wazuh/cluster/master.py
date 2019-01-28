@@ -79,7 +79,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.task_loggers = {}
 
     def to_dict(self):
-        return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
+        return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
                            'sync_agent_info_free': self.sync_agent_info_free, 'last_sync_agent_info': self.sync_agent_info_status,
                            'sync_extra_valid_free': self.sync_extra_valid_free, 'last_sync_agent_groups': self.sync_extra_valid_status,
@@ -416,7 +416,7 @@ class Master(server.AbstractServer):
 
     def to_dict(self):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
-                'version': metadata.__version__, 'address': self.configuration['nodes'][0]}}
+                'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     async def file_status_update(self):
         file_integrity_logger = self.setup_task_logger("File integrity")

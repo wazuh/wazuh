@@ -31,7 +31,7 @@ class AbstractServerHandler(c_common.Handler):
         self.transport = None
 
     def to_dict(self):
-        return {'info': {'address': self.ip, 'name': self.name}}
+        return {'info': {'ip': self.ip, 'name': self.name}}
 
     def connection_made(self, transport):
         """
@@ -136,7 +136,7 @@ class AbstractServer:
         self.loop = asyncio.get_running_loop()
 
     def to_dict(self):
-        return {'info': {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
+        return {'info': {'ip': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
 
     def setup_task_logger(self, task_tag: str):
         task_logger = self.logger.getChild(task_tag)
