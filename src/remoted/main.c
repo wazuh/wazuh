@@ -152,7 +152,7 @@ int main(int argc, char **argv)
 
     if (logr.conn == NULL) {
         /* Not configured */
-        mwarn("Remoted connection is not configured... Exiting." );
+        minfo("Remoted connection is not configured... Exiting.");
         exit(0);
     }
 
@@ -198,6 +198,9 @@ int main(int argc, char **argv)
     signal(SIGPIPE, SIG_IGN);
 
     os_random();
+
+    /* Start up message */
+    mdebug2(STARTUP_MSG, (int)getpid());
 
     //Start shared download
     w_init_shared_download();
