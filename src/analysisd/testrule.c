@@ -221,6 +221,7 @@ int main(int argc, char **argv)
                 /* Legacy loading */
                 /* Read decoders */
                 Read_Rules(NULL, &Config, NULL);
+                free_ruleset_structures();
 
                 /* New loaded based on file specified in ossec.conf */
                 char **decodersfiles;

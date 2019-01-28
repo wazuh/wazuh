@@ -167,6 +167,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
 
         fail:
         OS_ClearNode(chld_node);
+        free_ruleset_structures();
         return (OS_INVALID);
     }
 
