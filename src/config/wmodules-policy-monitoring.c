@@ -11,8 +11,10 @@
 #include <stdio.h>
 
 static const char *XML_ENABLED = "enabled";
+static const char *XML_SCAN_DAY = "day";
 static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
+static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_PROFILE = "profile";
 static const char *XML_SKIP_NFS = "skip_nfs";
@@ -27,13 +29,15 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
 {
     unsigned int i;
     unsigned int profiles = 0;
+    int month_interval = 0;
     wm_policy_monitoring_t *policy_monitoring;
 
     os_calloc(1, sizeof(wm_policy_monitoring_t), policy_monitoring);
     policy_monitoring->enabled = 1;
     policy_monitoring->scan_on_start = 1;
-    policy_monitoring->week_day = NULL;
-    policy_monitoring->time = NULL;
+    policy_monitoring->scan_wday = -1;
+    policy_monitoring->scan_day = -1;
+    policy_monitoring->scan_time = NULL;
     policy_monitoring->skip_nfs = 1;
     policy_monitoring->alert_msg = NULL;
     module->context = &WM_POLICY_MONITORING_CONTEXT;
@@ -71,21 +75,70 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_WEEK_DAY))
         {
-            if(strlen(nodes[i]->content) > 9) {
-                merror("Week day is too long at module '%s'. Max week day length is %d", WM_POLICY_MONITORING_CONTEXT.name,9);
-                return OS_INVALID;
+            policy_monitoring->scan_wday = w_validate_wday(nodes[i]->content);
+            if (policy_monitoring->scan_wday < 0 || policy_monitoring->scan_wday > 6) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
             }
-
-            os_strdup(nodes[i]->content,policy_monitoring->week_day);
+        }
+        else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
+            if (!OS_StrIsNum(nodes[i]->content)) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            } else {
+                policy_monitoring->scan_day = atoi(nodes[i]->content);
+                if (policy_monitoring->scan_day < 1 || policy_monitoring->scan_day > 31) {
+                    merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                    return (OS_INVALID);
+                }
+            }
         }
         else if (!strcmp(nodes[i]->element, XML_TIME))
         {
-            if(strlen(nodes[i]->content) > 5) {
-                merror("Time is too long at module '%s'. Max time length is %d", WM_POLICY_MONITORING_CONTEXT.name,5);
+            policy_monitoring->scan_time = w_validate_time(nodes[i]->content);
+            if (!policy_monitoring->scan_time) {
+                merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+                return (OS_INVALID);
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
+            char *endptr;
+            policy_monitoring->interval = strtoul(nodes[i]->content, &endptr, 0);
+
+            if (policy_monitoring->interval == 0 || policy_monitoring->interval == UINT_MAX) {
+                merror("Invalid interval at module '%s'", WM_POLICY_MONITORING_CONTEXT.name);
                 return OS_INVALID;
             }
 
-            os_strdup(nodes[i]->content,policy_monitoring->time);
+            switch (*endptr) {
+            case 'M':
+                month_interval = 1;
+                policy_monitoring->interval *= 60; // We can`t calculate seconds of a month
+                break;
+            case 'w':
+                policy_monitoring->interval *= 604800;
+                break;
+            case 'd':
+                policy_monitoring->interval *= 86400;
+                break;
+            case 'h':
+                policy_monitoring->interval *= 3600;
+                break;
+            case 'm':
+                policy_monitoring->interval *= 60;
+                break;
+            case 's':
+            case '\0':
+                break;
+            default:
+                merror("Invalid interval at module '%s'", WM_POLICY_MONITORING_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            if (policy_monitoring->interval < 60) {
+                merror("At module '%s': Interval must be greater than 60 seconds.", WM_POLICY_MONITORING_CONTEXT.name);
+                return OS_INVALID;
+            }
         }
         else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START))
         {
@@ -127,7 +180,37 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
         {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_POLICY_MONITORING_CONTEXT.name);
         }
-
     }
+
+    // Validate scheduled scan parameters and interval value
+
+    if (policy_monitoring->scan_day && (policy_monitoring->scan_wday >= 0)) {
+        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_POLICY_MONITORING_CONTEXT.name);
+        return OS_INVALID;
+    } else if (policy_monitoring->scan_day) {
+        if (!month_interval) {
+            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_POLICY_MONITORING_CONTEXT.name);
+            policy_monitoring->interval = 60; // 1 month
+        }
+        if (!policy_monitoring->scan_time)
+            policy_monitoring->scan_time = strdup("00:00");
+    } else if (policy_monitoring->scan_wday >= 0) {
+        if (w_validate_interval(policy_monitoring->interval, 1) != 0) {
+            policy_monitoring->interval = 604800;  // 1 week
+            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_POLICY_MONITORING_CONTEXT.name);
+        }
+        if (policy_monitoring->interval == 0)
+            policy_monitoring->interval = 604800;
+        if (!policy_monitoring->scan_time)
+            policy_monitoring->scan_time = strdup("00:00");
+    } else if (policy_monitoring->scan_time) {
+        if (w_validate_interval(policy_monitoring->interval, 0) != 0) {
+            policy_monitoring->interval = WM_DEF_INTERVAL;  // 1 day
+            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_POLICY_MONITORING_CONTEXT.name);
+        }
+    }
+    if (!policy_monitoring->interval)
+        policy_monitoring->interval = WM_DEF_INTERVAL;
+
     return 0;
 }
