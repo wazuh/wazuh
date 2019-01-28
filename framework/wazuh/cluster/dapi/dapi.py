@@ -293,6 +293,9 @@ class DistributedAPI:
             offset, limit = self.input_json['arguments']['offset'], self.input_json['arguments']['limit']
             final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
 
+        if final_json['error'] > 0 and 'data' in final_json:
+            del final_json['data']
+
         return final_json
 
 
