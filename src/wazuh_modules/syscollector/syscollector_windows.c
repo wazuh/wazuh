@@ -425,7 +425,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 mtwarn(WM_SYS_LOGTAG, "TCP/IPv4 is not installed in any network interface. Unable to retrieve TCP/IPv4 port data.");
                 break;
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv4 network sockets open. TCP/IPv4 port data unavailable.");
+                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv4 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
@@ -545,7 +545,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
                 mtwarn(WM_SYS_LOGTAG, "TCP/IPv6 is not installed in any network interface. Unable to retrieve TCP/IPv6 port data.");
                 break;
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open. TCP/IPv6 port data unavailable.");
+                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
@@ -617,7 +617,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     } else {
         switch(dwRetVal) {
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv4 network sockets open. UDP/IPv4 port data unavailable.");
+                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv4 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
@@ -702,7 +702,7 @@ void sys_ports_windows(const char* LOCATION, int check_all){
     } else {
         switch(dwRetVal) {
             case ERROR_NO_DATA:
-                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open. UDP/IPv6 port data unavailable.");
+                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open.");
                 break;
             default:
                 mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
