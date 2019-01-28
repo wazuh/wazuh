@@ -106,3 +106,6 @@ src/wazuh_modules/vulnerability-detector/windows_poc/cpe_extractv1/cpe_extractor
 src/wazuh_modules/vulnerability-detector/windows_poc/cpe_generatev1.1/cpe_database_create
 src/wazuh_modules/vulnerability-detector/windows_poc/external/sqlite/
 src/wazuh_modules/vulnerability-detector/windows_poc/nvd_generate/nvd_database_create
+src/wazuh_modules/vulnerability-detector/windows_poc/cpe_db_create/cpe_db_create
+src/wazuh_modules/vulnerability-detector/windows_poc/agent_cpe_extractor/agent_cpe_extractor
+src/wazuh_modules/vulnerability-detector/windows_poc/vuln.db
