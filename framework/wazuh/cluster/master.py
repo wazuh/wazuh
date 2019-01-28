@@ -185,7 +185,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         api_call_info = json.loads(arguments.decode())
         del api_call_info['arguments']['wait_for_complete']
         if api_call_info['function'] == '/cluster/healthcheck':
-            cmd, res = self.get_health(api_call_info['arguments'])
+            filter_node = None if 'filter_node' not in api_call_info['arguments'] else \
+                               [api_call_info['arguments']['filter_node']]
+            cmd, res = self.get_health(filter_node)
         else:
             cmd, res = self.get_nodes(api_call_info['arguments'])
             if api_call_info['function'] == '/cluster/nodes/:node_name':

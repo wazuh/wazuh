@@ -64,7 +64,7 @@ async def print_health(config, more, filter_node):
 
     for node, node_info in sorted(result["nodes"].items()):
 
-        msg2 += "\n    {} ({})\n".format(node, node_info['info']['address'])
+        msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
         msg2 += "        Version: {}\n".format(node_info['info']['version'])
         msg2 += "        Type: {}\n".format(node_info['info']['type'])
         msg2 += "        Active agents: {}\n".format(node_info['info']['n_active_agents'])
@@ -73,7 +73,7 @@ async def print_health(config, more, filter_node):
 
             if not more:
                 msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {} | Last keep alive: {}.\n".format(
-                    node, node_info['info']['address'], node_info['status']['last_sync_integrity']['date_end_master'],
+                    node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'],
                     node_info['status']['last_sync_agent_info']['date_end_master'],
                     node_info['status']['last_sync_agent_groups']['date_end_master'],
                     node_info['status']['last_keep_alive']
