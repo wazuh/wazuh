@@ -40,7 +40,7 @@ DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-sy
 
 if ! is_rhel_le_5
 then
-    DAEMONS="wazuh-clusterd $DAEMONS"
+    DAEMONS="wazuh-clusterd wazuh-apid $DAEMONS"
 fi
 
 # Reverse order of daemons
