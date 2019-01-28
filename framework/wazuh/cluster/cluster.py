@@ -169,7 +169,7 @@ def check_cluster_status():
 
 
 def get_status_json():
-    return {"enabled": "yes" if check_cluster_status() else "no",
+    return {"enabled": "no" if check_cluster_status() else "yes",
             "running": "yes" if status()['wazuh-clusterd'] == 'running' else "no"}
 
 
