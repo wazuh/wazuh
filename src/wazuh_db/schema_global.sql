@@ -9,7 +9,8 @@
 CREATE TABLE IF NOT EXISTS agent (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
-    ip TEXT,
+    register_ip TEXT,
+    reporting_ip TEXT,
     internal_key TEXT,
     os_name TEXT,
     os_version TEXT,
@@ -34,9 +35,9 @@ CREATE TABLE IF NOT EXISTS agent (
 );
 
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
-CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
+CREATE INDEX IF NOT EXISTS agent_ip ON agent (reporting_ip);
 
-INSERT INTO agent (id, ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', 'localhost', datetime(CURRENT_TIMESTAMP, 'localtime'), '9999-12-31 23:59:59', NULL);
+INSERT INTO agent (id, register_ip, reporting_ip, name, date_add, last_keepalive, `group`) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', datetime(CURRENT_TIMESTAMP, 'localtime'), '9999-12-31 23:59:59', NULL);
 
 CREATE TABLE IF NOT EXISTS info (
     key TEXT PRIMARY KEY,

@@ -179,7 +179,7 @@ int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
+int wdb_insert_agent(int id, const char *name, const char *register_ip, const char *reporting_ip, const char *key, const char *group, int keep_date);
 
 /* Update agent name. It doesn't rename agent DB file. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_update_agent_name(int id, const char *name);

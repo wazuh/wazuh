@@ -16,8 +16,8 @@
 #define chown(x, y, z) 0
 #endif
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
-static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?);";
+static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
+static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
@@ -36,13 +36,13 @@ static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHER
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
+static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND reporting_ip = ?;";
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date) {
+int wdb_insert_agent(int id, const char *name, const char *register_ip, const char *reporting_ip, const char *key, const char *group, int keep_date) {
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
@@ -71,20 +71,24 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
 
-    if (ip)
-        sqlite3_bind_text(stmt, 3, ip, -1, NULL);
+    if (register_ip)
+        sqlite3_bind_text(stmt, 3, register_ip, -1, NULL);
     else
         sqlite3_bind_null(stmt, 3);
-    if (key)
-        sqlite3_bind_text(stmt, 4, key, -1, NULL);
+    if (reporting_ip)
+        sqlite3_bind_text(stmt, 4, reporting_ip, -1, NULL);
     else
-        sqlite3_bind_null(stmt, 4);
+        sqlite3_bind_text(stmt, 4, register_ip, -1, NULL);
+    if (key)
+        sqlite3_bind_text(stmt, 5, key, -1, NULL);
+    else
+        sqlite3_bind_null(stmt, 5);
 
     if(date) {
-        sqlite3_bind_text(stmt, 5, date, -1, NULL);
-        sqlite3_bind_text(stmt, 6, group, -1, NULL);
+        sqlite3_bind_text(stmt, 6, date, -1, NULL);
+        sqlite3_bind_text(stmt, 7, group, -1, NULL);
     } else {
-        sqlite3_bind_text(stmt, 5, group, -1, NULL);
+        sqlite3_bind_text(stmt, 6, group, -1, NULL);
     }
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
