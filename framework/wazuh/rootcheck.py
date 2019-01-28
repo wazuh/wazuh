@@ -132,9 +132,13 @@ def clear(agent_id=None, all_agents=False):
         conn.begin()
         try:
             conn.execute('DELETE FROM pm_event')
+        except WazuhException as e:
+            raise e
         except Exception as exception:
+            conn.commit()
+            conn.vacuum()
             raise WazuhException(1654, exception)
-        finally:
+        else:
             conn.commit()
             conn.vacuum()
 
