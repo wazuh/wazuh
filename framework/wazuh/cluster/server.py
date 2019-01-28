@@ -150,7 +150,7 @@ class AbstractServer:
         :return: A dictionary containing data from each node
         """
         def return_node(node_info):
-            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] in filter_type)
+            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] == filter_type)
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
@@ -159,6 +159,9 @@ class AbstractServer:
             if not set(select['fields']).issubset(default_fields):
                 raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
                     ', '.join(default_fields), ', '.join(set(select['fields']) - default_fields)))
+
+        if filter_type != 'all' and filter_type not in {'worker', 'master'}:
+            raise exception.WazuhException(1728, "Valid types are 'worker' and 'master'.")
 
         res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
                if return_node(val.to_dict()['info'])]
