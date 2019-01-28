@@ -70,9 +70,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
-                                       'total_agent_info': 0}
+                                       'total_agentinfo': 0}
         self.sync_extra_valid_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
-                                        'total_extra_valid': 0}
+                                        'total_agentgroups': 0}
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
@@ -81,8 +81,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     def to_dict(self):
         return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
-                           'sync_agent_info_free': self.sync_agent_info_free, 'last_sync_agent_info': self.sync_agent_info_status,
-                           'sync_extra_valid_free': self.sync_extra_valid_free, 'last_sync_agent_groups': self.sync_extra_valid_status,
+                           'sync_agentinfo_free': self.sync_agent_info_free, 'last_sync_agentinfo': self.sync_agent_info_status,
+                           'sync_extravalid_free': self.sync_extra_valid_free, 'last_sync_agentgroups': self.sync_extra_valid_status,
                            'last_keep_alive': self.last_keepalive}}
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
