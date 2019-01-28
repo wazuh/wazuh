@@ -51,7 +51,6 @@ All notable changes to this project will be documented in this file.
 - AWS VPC configuration in the AWS wodle ([#2242](https://github.com/wazuh/wazuh/pull/2242)).
 - Hide warning log by FIM when cannot open a file that has just been removed. ([#2201](https://github.com/wazuh/wazuh/pull/2201))
 - The default FIM configuration will ignore some temporary files. ([#2202](https://github.com/wazuh/wazuh/pull/2202))
-- Add connection retries to global.db by vulnerability-detector ([#2148](https://github.com/wazuh/wazuh/pull/2148))
 
 ### Fixed
 
