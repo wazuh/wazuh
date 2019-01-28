@@ -281,8 +281,7 @@ def get_file(path):
     """
     Returns a file as dictionary.
     :param path: Relative path of file from origin
-    :output format: Output format (XML or JSON)
-    :return: file as dictionary or XML string.
+    :return: file as string.
     """
 
     file_path = common.ossec_path + '/' + path
