@@ -420,7 +420,17 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
+        switch(dwRetVal) {
+            case ERROR_NOT_SUPPORTED:
+                mtwarn(WM_SYS_LOGTAG, "TCP/IPv4 is not installed in any network interface. Unable to retrieve TCP/IPv4 port data.");
+                break;
+            case ERROR_NO_DATA:
+                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv4 network sockets open. TCP/IPv4 port data unavailable.");
+                break;
+            default:
+                mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
+                break;
+        }
         goto end;
     }
 
@@ -530,7 +540,17 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
+        switch(dwRetVal) {
+            case ERROR_NOT_SUPPORTED:
+                mtwarn(WM_SYS_LOGTAG, "TCP/IPv6 is not installed in any network interface. Unable to retrieve TCP/IPv6 port data.");
+                break;
+            case ERROR_NO_DATA:
+                mtinfo(WM_SYS_LOGTAG, "No TCP/IPv6 network sockets open. TCP/IPv6 port data unavailable.");
+                break;
+            default:
+                mterror(WM_SYS_LOGTAG, "Call to GetExtendedTcpTable failed with error: %lu", dwRetVal);
+                break;
+        }
         goto end;
     }
 
@@ -595,7 +615,14 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
+        switch(dwRetVal) {
+            case ERROR_NO_DATA:
+                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv4 network sockets open. UDP/IPv4 port data unavailable.");
+                break;
+            default:
+                mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
+                break;
+        }
         goto end;
     }
 
@@ -673,7 +700,15 @@ void sys_ports_windows(const char* LOCATION, int check_all){
         }
 
     } else {
-        mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
+        switch(dwRetVal) {
+            case ERROR_NO_DATA:
+                mtinfo(WM_SYS_LOGTAG, "No UDP/IPv6 network sockets open. UDP/IPv6 port data unavailable.");
+                break;
+            default:
+                mterror(WM_SYS_LOGTAG, "Call to GetExtendedUdpTable failed with error: %lu", dwRetVal);
+                break;
+        }
+        goto end;
     }
 	
 end:
@@ -1509,8 +1544,6 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
             cJSON_AddNumberToObject(iface_info, "rx_errors", ifRow.dwInErrors);
             cJSON_AddNumberToObject(iface_info, "tx_dropped", ifRow.dwOutDiscards);
             cJSON_AddNumberToObject(iface_info, "rx_dropped", ifRow.dwInDiscards);
-        } else {
-            //mterror(WM_SYS_LOGTAG, "GetIfEntry() failed for interface with index '%lu' (%lu).", ifRow.dwIndex, retVal);
         }
     }
 
