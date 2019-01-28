@@ -515,8 +515,8 @@ class Handler(asyncio.Protocol):
         """
         if data.startswith(b'WazuhException'):
             type_error, code, message = data.split(b' ', 2)
-            _, extra_msg = message.split(b':', 1)  # remove first part of the exception message
-            return type_error + b' ' + code + b' ' + extra_msg
+            # remove first part of the exception message
+            return type_error + b' ' + code + b' ' + message.split(b':', 1)[-1]
         else:
             return b"Error processing request: " + data
 

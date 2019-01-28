@@ -169,7 +169,8 @@ class AbstractServer:
         if search is not None:
             res = utils.search_array(array=res, text=search['value'], negation=search['negation'])
 
-        return {'totalItems': len(res), 'items': [{k: v[k] for k in select['fields']} for v in res][offset:limit]}
+        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select['fields']} for v in res],
+                                                                 offset, limit)}
 
     async def check_clients_keepalive(self):
         """
