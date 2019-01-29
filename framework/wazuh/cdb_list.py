@@ -93,3 +93,5 @@ def get_path_lists():
                 if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name):
                     output.append({'path': join(common.lists_path, name), \
                         'name': subdir_name})
+
+    return output

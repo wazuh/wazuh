@@ -455,6 +455,11 @@ functions = {
         'function': cdb_list.get_lists,
         'type': 'local_master'
     },
+    '/lists/paths': {
+        'function': cdb_list.get_path_lists,
+        'type': 'local_master'
+    },
+
 
 }
 
