@@ -55,12 +55,13 @@ char *replace_win_format(char *str){
     char *end = NULL;
     int spaces = 0;
 
+    // Remove undesired characters from the string
     ret1 = wstr_replace(str, "\\r", "");
     ret2 = wstr_replace(ret1, "\\t", "");
     ret3 = wstr_replace(ret2, "\\n", "");
     ret4 = wstr_replace(ret3, "\\\\", "\\");
 
-    //Remove trailing spaces
+    // Remove trailing spaces at the end of the string
     end = ret4 + strlen(ret4) - 1;
     while(end > ret4 && isspace((unsigned char)*end)) {
         end--;
