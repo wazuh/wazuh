@@ -5,6 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
+from wazuh.exception import WazuhException
 from wazuh import common
 from datetime import datetime
 import time
@@ -12,6 +13,7 @@ from os.path import exists
 from glob import glob
 import re
 import hashlib
+import subprocess
 
 
 def status():
@@ -168,3 +170,12 @@ def ossec_log_summary(months=3):
             else:
                 continue
     return categories
+
+
+def restart():
+    try:
+        subprocess.check_output(['{}/bin/ossec-control'.format(common.ossec_path), 'restart'],
+            stderr=subprocess.STDOUT)
+        return "Manager was restarted successfully"
+    except Exception as e:
+        raise WazuhException(2008)

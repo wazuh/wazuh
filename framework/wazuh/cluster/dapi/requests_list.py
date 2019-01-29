@@ -228,6 +228,10 @@ functions = {
         'function': manager.ossec_log,
         'type': 'local_any'
     },
+    'PUT/manager/restart': {
+        'function': manager.restart,
+        'type': 'local_any'
+    },
 
     # Cluster
     '/cluster/status': {
