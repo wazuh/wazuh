@@ -9,6 +9,7 @@ from wazuh.exception import WazuhException
 from wazuh import common
 from os import listdir
 from os.path import isfile, isdir, join
+from wazuh.utils import sort_array, search_array
 
 
 def get_lists(path=None, offset=None, limit=None, sort=None, search=None):
@@ -21,17 +22,18 @@ def get_lists(path=None, offset=None, limit=None, sort=None, search=None):
     :param search:
     :return: CDB list
     """
+
+    output = []
+
     if path:
-        return {'totalItems': 1, 'items': get_list_from_file(path)}
+        items = get_list_from_file(path)
+        output.append(items)
     else:
         dir_content = listdir(common.lists_path)
-        output = []
-        total_items = 0
         for name in dir_content:
             absolute_path = join(common.lists_path, name)
             relative_path = join('etc/lists', name)
             if (isfile(absolute_path)) and ('.cdb' not in name):
-                total_items = total_items + 1
                 items = get_list_from_file(relative_path)
                 output.append({'path': relative_path, 'items': items})
             elif isdir(absolute_path):
@@ -40,11 +42,19 @@ def get_lists(path=None, offset=None, limit=None, sort=None, search=None):
                     subdir_absolute_path = join(common.lists_path, name, subdir_name)
                     subdir_relative_path = join('etc/lists', name, subdir_name)
                     if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name):
-                        total_items = total_items + 1
                         items = get_list_from_file(subdir_relative_path)
                         output.append({'path': subdir_relative_path, 'items': items})
 
-        return {'totalItems' : total_items, 'items': output}
+    if search:
+        output = search_array(output, search['value'], search['negation'])
+
+    if sort:
+        output = sort_array(output, sort['fields'], sort['order'])
+
+    if limit:
+        output = output[0:limit]
+
+    return {'totalItems' : len(output), 'items': output}
 
 
 def get_list_from_file(path):
