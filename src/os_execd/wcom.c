@@ -186,7 +186,7 @@ size_t wcom_dispatch(char *command, size_t length, char ** output){
         if (timeout < -1) {
             os_strdup("err Invalid timeout", *output);
         } else {
-            os_strdup("ok", *output);
+            os_strdup("ok ", *output);
             if (timeout == -1 || timeout > max_restart_lock) {
                 if (timeout > max_restart_lock) {
                     mwarn("Timeout exceeds the maximum allowed.");
@@ -237,7 +237,7 @@ size_t wcom_open(const char *file_path, const char *mode, char ** output) {
 
     if (file.fp = fopen(final_path, mode), file.fp) {
         strncpy(file.path, final_path, PATH_MAX);
-        os_strdup("ok", *output);
+        os_strdup("ok ", *output);
         return strlen(*output);
     } else {
         merror(FOPEN_ERROR, file_path, errno, strerror(errno));
@@ -269,7 +269,7 @@ size_t wcom_write(const char *file_path, char *buffer, size_t length, char ** ou
     }
 
     if (fwrite(buffer, 1, length, file.fp) == length) {
-        os_strdup("ok", *output);
+        os_strdup("ok ", *output);
         return strlen(*output);
     } else {
         merror("At WCOM write: Cannot write on '%s'", final_path);
@@ -306,7 +306,7 @@ size_t wcom_close(const char *file_path, char ** output){
         os_strdup("err Cannot close", *output);
         return strlen(*output);
     } else {
-        os_strdup("ok", *output);
+        os_strdup("ok ", *output);
         return strlen(*output);
     }
 }
@@ -345,7 +345,7 @@ size_t wcom_unmerge(const char *file_path, char ** output){
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
     } else {
-        os_strdup("ok", *output);
+        os_strdup("ok ", *output);
         return strlen(*output);
     }
 }
@@ -398,7 +398,7 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         os_strdup("err Unable to read source", *output);
     } else {
         unlink(final_source);
-        os_strdup("ok", *output);
+        os_strdup("ok ", *output);
     }
 
     gzclose(fsource);
@@ -541,13 +541,13 @@ size_t wcom_restart(char ** output) {
                 }
             break;
             default:
-                os_strdup("ok", *output);
+                os_strdup("ok ", *output);
             break;
         }
 #else
         char exec_cm[] = {"\"" AR_BINDIR "/restart-ossec.cmd\" add \"-\" \"null\" \"(from_the_server) (no_rule_id)\""};
         ExecCmd_Win32(exec_cm);
-        if (!*output) os_strdup("ok", *output);
+        if (!*output) os_strdup("ok ", *output);
 #endif
     } else {
         minfo(LOCK_RES, (int)lock);
@@ -564,7 +564,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
 
     if (strcmp(section, "active-response") == 0){
         if (cfg = getARConfig(), cfg) {
-            os_strdup("ok", *output);
+            os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -575,7 +575,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "logging") == 0){
         if (cfg = getLoggingConfig(), cfg) {
-            os_strdup("ok", *output);
+            os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -586,7 +586,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
         }
     } else if (strcmp(section, "internal") == 0){
         if (cfg = getExecdInternalOptions(), cfg) {
-            os_strdup("ok", *output);
+            os_strdup("ok ", *output);
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
@@ -615,7 +615,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             close(sock);
 
             if (cfg = getClusterConfig(), cfg) {
-                os_strdup("ok", *output);
+                os_strdup("ok ", *output);
                 json_str = cJSON_PrintUnformatted(cfg);
                 wm_strcat(output, json_str, ' ');
                 free(json_str);
