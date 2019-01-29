@@ -313,6 +313,222 @@
         },
         "data": {
           "properties": {
+            "AA": {
+              "type": "keyword"
+            },
+            "RA": {
+              "type": "keyword"
+            },
+            "RD": {
+              "type": "keyword"
+            },
+            "TC": {
+              "type": "keyword"
+            },
+            "TTLs": {
+              "type": "keyword"
+            },
+            "Z": {
+              "type": "keyword"
+            },
+            "alert": {
+              "properties": {
+                "action": {
+                  "type": "keyword"
+                },
+                "category": {
+                  "type": "keyword"
+                },
+                "gid": {
+                  "type": "keyword"
+                },
+                "rev": {
+                  "type": "keyword"
+                },
+                "severity": {
+                  "type": "long"
+                },
+                "signature": {
+                  "type": "keyword"
+                },
+                "signature_id": {
+                  "type": "long"
+                }
+              }
+            },
+            "answers": {
+              "type": "keyword"
+            },
+            "app_proto": {
+              "type": "keyword"
+            },
+            "app_proto_orig": {
+              "type": "keyword"
+            },
+            "app_proto_tc": {
+              "type": "keyword"
+            },
+            "app_proto_ts": {
+              "type": "keyword"
+            },
+            "bro_engine": {
+              "type": "keyword"
+            },
+            "conn_state": {
+              "type": "keyword"
+            },
+            "dns": {
+              "properties": {
+                "aa": {
+                  "type": "keyword"
+                },
+                "flags": {
+                  "type": "keyword"
+                },
+                "grouped": {
+                  "properties": {
+                    "A": {
+                      "type": "keyword"
+                    },
+                    "AAAA": {
+                      "type": "keyword"
+                    },
+                    "CNAME": {
+                      "type": "keyword"
+                    },
+                    "MX": {
+                      "type": "keyword"
+                    },
+                    "PTR": {
+                      "type": "keyword"
+                    }
+                  }
+                },
+                "id": {
+                  "type": "keyword"
+                },
+                "qr": {
+                  "type": "keyword"
+                },
+                "ra": {
+                  "type": "keyword"
+                },
+                "rcode": {
+                  "type": "keyword"
+                },
+                "rd": {
+                  "type": "keyword"
+                },
+                "rrname": {
+                  "type": "keyword"
+                },
+                "rrtype": {
+                  "type": "keyword"
+                },
+                "tx_id": {
+                  "type": "keyword"
+                },
+                "type": {
+                  "type": "keyword"
+                },
+                "version": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "duration": {
+              "type": "long"
+            },
+            "email": {
+              "properties": {
+                "attachment": {
+                  "type": "keyword"
+                },
+                "cc": {
+                  "type": "keyword"
+                },
+                "from": {
+                  "type": "keyword"
+                },
+                "status": {
+                  "type": "keyword"
+                },
+                "to": {
+                  "type": "keyword"
+                },
+                "url": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "event_type": {
+              "type": "keyword"
+            },
+            "file": {
+              "type": "keyword"
+            },
+            "fileinfo": {
+              "properties": {
+                "filename": {
+                  "type": "keyword"
+                },
+                "gaps": {
+                  "type": "keyword"
+                },
+                "size": {
+                  "type": "long"
+                },
+                "state": {
+                  "type": "keyword"
+                },
+                "stored": {
+                  "type": "keyword"
+                },
+                "tx_id": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "flow": {
+              "properties": {
+                "age": {
+                  "type": "keyword"
+                },
+                "alerted": {
+                  "type": "keyword"
+                },
+                "bytes_toclient": {
+                  "type": "long"
+                },
+                "bytes_toserver": {
+                  "type": "long"
+                },
+                "end": {
+                  "type": "date"
+                },
+                "pkts_toclient": {
+                  "type": "long"
+                },
+                "pkts_toserver": {
+                  "type": "long"
+                },
+                "reason": {
+                  "type": "keyword"
+                },
+                "start": {
+                  "type": "date"
+                },
+                "state": {
+                  "type": "keyword"
+                },
+                "wrong_thread": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "flow_id": {
+              "type": "keyword"
+            },
             "protocol": {
               "type": "keyword",
               "doc_values": "true"
