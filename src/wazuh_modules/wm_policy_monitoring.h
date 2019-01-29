@@ -13,11 +13,11 @@
 #define WM_POLICY_MONITORING_H
 
 #define WM_POLICY_MONITORING_LOGTAG ARGV0 ":" PM_WM_NAME
-#define WM_POLICY_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
-#define WM_POLICY_MONITORING_INVALID_RKCL_NAME  "(1251): Invalid rk configuration name: '%s'."
-#define WM_POLICY_MONITORING_INVALID_RKCL_VALUE "(1252): Invalid rk configuration value: '%s'."
+#define WM_POLICY_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid pm variable: '%s'."
+#define WM_POLICY_MONITORING_INVALID_RKCL_NAME  "(1251): Invalid pm configuration name: '%s'."
+#define WM_POLICY_MONITORING_INVALID_RKCL_VALUE "(1252): Invalid pm configuration value: '%s'."
 #define WM_POLICY_MONITORING_INVALID_ROOTDIR    "(1253): Invalid rootdir (unable to retrieve)."
-#define WM_POLICY_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid rk variable: '%s'."
+#define WM_POLICY_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid pm variable: '%s'."
 
 #define WM_POLICY_MONITORING_ALERT_POLICY_VIOLATION  4
 

@@ -31,6 +31,7 @@
 
 static int FindEventcheck(Eventinfo *lf, char *pm_id, int *socket, char *check_result);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, char * pm_id, char * description, char * file, char * reference,char * pci_dss,char * cis,char * result);
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * module,int scan_id, int pm_start_scan, int pm_end_scan, int update);
 static int pm_send_db(char *msg, char *response, int *sock);
 
 static OSDecoderInfo *rootcheck_json_dec = NULL;
@@ -97,6 +98,49 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
         } 
         else if (strcmp(type->valuestring,"summary") == 0){
             minfo("%s",cJSON_PrintUnformatted(json_event));
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } 
+        else if (strcmp(type->valuestring,"scan-started") == 0){
+            minfo("%s",cJSON_PrintUnformatted(json_event));
+
+            cJSON *pm_scan_id;
+            cJSON *pm_scan_start;
+
+            pm_scan_id = cJSON_GetObjectItem(json_event, "scan_id");
+            pm_scan_start = cJSON_GetObjectItem(json_event, "time");
+
+            if(!pm_scan_id || !pm_scan_start) {
+                cJSON_Delete(json_event);
+                ret_val = 0;
+                return ret_val;
+            }
+
+            SaveScanInfo(lf,socket,"policy-monitoring",pm_scan_id->valueint,pm_scan_start->valueint,0,0);
+
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } 
+        else if (strcmp(type->valuestring,"scan-ended") == 0){
+            minfo("%s",cJSON_PrintUnformatted(json_event));
+
+            cJSON *pm_scan_id;
+            cJSON *pm_scan_end;
+
+            pm_scan_id = cJSON_GetObjectItem(json_event, "scan_id");
+            pm_scan_end = cJSON_GetObjectItem(json_event, "time");
+
+
+            if(!pm_scan_id || !pm_scan_end) {
+                cJSON_Delete(json_event);
+                ret_val = 0;
+                return ret_val;
+            }
+
+            SaveScanInfo(lf,socket,"policy-monitoring",pm_scan_id->valueint,0,pm_scan_end->valueint,1);
+
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
@@ -201,6 +245,32 @@ int SaveEventcheck(Eventinfo *lf, int exists, int *socket, char * pm_id, char * 
         snprintf(msg, OS_MAXSTR - 1, "agent %s rootcheck update %ld|%s", lf->agent_id, (long int)lf->time.tv_sec, lf->log);
     else
         snprintf(msg, OS_MAXSTR - 1, "agent %s rootcheck insert %ld|%s", lf->agent_id, (long int)lf->time.tv_sec, lf->log);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+static int SaveScanInfo(Eventinfo *lf,int *socket,char * module,int scan_id, int pm_start_scan, int pm_end_scan,int update) {
+    
+    char *msg = NULL;
+    char *response = NULL;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+ 
+    if(update) {
+        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_scan_info %s|%d|%d|%d",lf->agent_id, module, scan_id,pm_start_scan,pm_end_scan );
+    } else {
+        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info %s|%d",lf->agent_id, module,pm_end_scan );
+    }
+   
 
     if (pm_send_db(msg, response, socket) == 0)
     {

@@ -115,6 +115,7 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
 
     int status = 0;
     time_t time_start = 0;
+    time_t time_end = 0;
     time_t time_sleep = 0;
 
     if (!data->scan_on_start) {
@@ -189,8 +190,10 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
 
         /* Send scan start message */
         cJSON *start_scan = cJSON_CreateObject();
-        cJSON_AddStringToObject(start_scan, "type", "info");
+        cJSON_AddStringToObject(start_scan, "type", "scan-started");
         cJSON_AddStringToObject(start_scan, "message", "Policy monitoring scan started");
+        cJSON_AddNumberToObject(start_scan, "time", (long)time_start);
+        cJSON_AddNumberToObject(start_scan, "scan_id", id);
         wm_policy_monitoring_send_alert(data,start_scan);
         cJSON_Delete(start_scan);
 
@@ -199,13 +202,15 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
      
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
-
+        time_end = time(NULL);
         mtinfo(WM_POLICY_MONITORING_LOGTAG, "Evaluation finished.");
 
         /* Send scan ending message */
         cJSON *end_scan = cJSON_CreateObject();
-        cJSON_AddStringToObject(end_scan, "type", "info");
+        cJSON_AddStringToObject(end_scan, "type", "scan-ended");
         cJSON_AddStringToObject(end_scan, "message", "Policy monitoring scan finished");
+        cJSON_AddNumberToObject(end_scan, "time", (long)time_end);
+        cJSON_AddNumberToObject(end_scan, "scan_id", id);
         wm_policy_monitoring_send_alert(data,end_scan);
         minfo("Ending policy monitoring scan.");
         cJSON_Delete(end_scan);
@@ -305,7 +310,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         }
 
         if(!profiles){
-            merror("Obtaining profile from json");
+            merror("Obtaining 'check' from json");
             goto next;
         }
 
