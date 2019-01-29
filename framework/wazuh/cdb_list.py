@@ -5,25 +5,28 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from wazuh.exception import WazuhException
 from wazuh import common
+from wazuh.exception import WazuhException
+from wazuh.utils import sort_array, search_array
 from os import listdir
 from os.path import isfile, isdir, join
-from wazuh.utils import sort_array, search_array
 
 
 def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Get CDB lists
     :param path: Relative path of list file to get
-    :param offset:
-    :param limit:
-    :param sort:
-    :param search:
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items.
+    :param search:  Looks for items with the specified string.
     :return: CDB list
     """
 
     output = []
+
+    if limit == 0:
+        raise WazuhException(1406)
 
     if path:
         items = get_list_from_file(path)
@@ -56,8 +59,8 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
     if sort:
         output = sort_array(output, sort['fields'], sort['order'])
 
-    if limit:
-        output = output[0:limit]
+    # limit is common.database_limit by default
+    output = output[:limit]
 
     return {'totalItems' : len(output), 'items': output}
 
