@@ -89,7 +89,7 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
                 return ret_val;
             }
         }
-        else if (strcmp(type->valuestring,"alert") == 0){
+        else if (strcmp(type->valuestring,"check") == 0){
             minfo("%s",cJSON_PrintUnformatted(json_event));
             cJSON_Delete(json_event);
             ret_val = 1;

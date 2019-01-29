@@ -29,13 +29,16 @@ static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Mod
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
 static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id);  // Read policy monitoring files
-static int wm_policy_monitoring_do_scan(OSList *plist,char *description,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data,int id);  // Do scan
+static int wm_policy_monitoring_do_scan(OSList *plist,char *description,cJSON *profile,cJSON *object,OSStore *vars,wm_policy_monitoring_t * data,int id);  // Do scan
+static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,char *profile,unsigned int passed, unsigned int failed,unsigned int unknown);  // Send summary
+static void wm_policy_monitoring_summary_increment_passed();
+static void wm_policy_monitoring_summary_increment_failed();
+static void wm_policy_monitoring_reset_summary();
 static int wm_policy_monitoring_send_alert(wm_policy_monitoring_t * data,cJSON *json_alert); // Send alert
 
 /* Extra functions */
 static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars);
-static char * wm_policy_monitoring_get_name(char *buf, char *ref, int *condition); // Get name
-static int wm_policy_monitoring_is_name(const char *buf); // Is name
+static void wm_policy_monitoring_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_policy_monitoring_get_value(char *buf, int *type); // Get value
 static char * wm_policy_monitoring_get_pattern(char *value); // Get pattern
 static int wm_policy_monitoring_check_file(char *file, char *pattern,wm_policy_monitoring_t * data); // Check file
@@ -66,6 +69,10 @@ const wm_context WM_POLICY_MONITORING_CONTEXT = {
 typedef enum _request_type{
     W_TYPE_ID,W_TYPE_IP
 } _request_type_t;
+
+static unsigned int summary_passed = 0;
+static unsigned int summary_failed = 0;
+static unsigned int summary_unknown = 0;
 
 // Module main function. It won't return
 void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
@@ -98,6 +105,8 @@ static int wm_policy_monitoring_send_alert(wm_policy_monitoring_t * data,cJSON *
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
         }
     }
+
+    os_free(msg);
 
     return (0);
 }
@@ -283,7 +292,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         OSList *plist = w_os_get_process_list();
         cJSON *variables = cJSON_GetObjectItem(object, "variables");
         cJSON *description = cJSON_GetObjectItem(object, "description");
-        cJSON *profiles = cJSON_GetObjectItem(object, "profile");
+        cJSON *profiles = cJSON_GetObjectItem(object, "check");
 
         char *profile_description = NULL;
         
@@ -306,7 +315,9 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
-        wm_policy_monitoring_do_scan(plist,profile_description,profiles,object,vars,"Policy Monitoring:",data,id);
+        wm_policy_monitoring_do_scan(plist,profile_description,profiles,object,vars,data,id);
+        wm_policy_monitoring_send_summary(data,id,profile_description,summary_passed,summary_failed,summary_unknown);
+        wm_policy_monitoring_reset_summary();
         w_del_plist(plist);
 
 next:
@@ -324,23 +335,22 @@ next:
     }
 }
 
-static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *profile,cJSON *object,OSStore *vars,char *msg,wm_policy_monitoring_t * data,int id) {
+static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *profile,cJSON *object,OSStore *vars,wm_policy_monitoring_t * data,int id) {
 
     int type = 0, condition = 0;
     char *nbuf;
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
     char final_file[2048 + 1];
-    char ref[255 + 1];
     char *value;
     char *name = NULL;
-    cJSON *p_name = NULL;
+    cJSON *c_title = NULL;
+    cJSON *c_condition = NULL;
 
     /* Initialize variables */
     memset(buf, '\0', sizeof(buf));
     memset(root_dir, '\0', sizeof(root_dir));
     memset(final_file, '\0', sizeof(final_file));
-    memset(ref, '\0', sizeof(ref));
 
 #ifdef WIN32
     /* Get Windows rootdir */
@@ -352,15 +362,28 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *
 
     cJSON_ArrayForEach(profile,object){
 
-        if( strcmp(profile->string,"profile") == 0 )
+        if( profile->string && strcmp(profile->string,"check") == 0 )
         {
-            p_name = cJSON_GetObjectItem(profile, "name");
-            cJSON *p_checks = cJSON_GetObjectItem(profile, "checks");
+            c_title = cJSON_GetObjectItem(profile, "title");
+            c_condition = cJSON_GetObjectItem(profile, "condition");
+            cJSON *p_checks = cJSON_GetObjectItem(profile, "rules");
 
             /* Get first name */
-            name = wm_policy_monitoring_get_name(p_name->valuestring, ref, &condition);
+            if(c_title) {
+                name = c_title->valuestring;
+            } else {
+                name = NULL;
+            }
+
+            /* Get condition */
+            if(c_condition) {
+                wm_policy_monitoring_set_condition(c_condition->valuestring,&condition);
+            } else {
+                wm_policy_monitoring_set_condition("invalid",&condition);
+            }
+
             if (name == NULL || condition == WM_POLICY_MONITORING_COND_INV) {
-                merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, p_name->valuestring);
+                merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, name );
                 goto clean_return;
             }
         
@@ -547,22 +570,29 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *
                             mdebug2("Condition ANY.");
                             if (found) {
                                 g_found = 1;
+                                wm_policy_monitoring_summary_increment_failed();
+                            } else {
+                                wm_policy_monitoring_summary_increment_passed();
                             }
                         } else if (condition & WM_POLICY_MONITORING_COND_NON) {
                             mdebug2("Condition NON.");
                             if (!found && (not_found != -1)) {
                                 mdebug2("Condition NON setze not_found=1.");
                                 not_found = 1;
+                                wm_policy_monitoring_summary_increment_failed();
                             } else {
                                 not_found = -1;
+                                wm_policy_monitoring_summary_increment_passed();
                             }
                         } else {
                             /* Condition for ALL */
                             mdebug2("Condition ALL.");
                             if (found && (g_found != -1)) {
                                 g_found = 1;
+                                wm_policy_monitoring_summary_increment_failed();
                             } else {
                                 g_found = -1;
+                                wm_policy_monitoring_summary_increment_passed();
                             }
                         }
                     //} while (value != NULL);
@@ -575,24 +605,13 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *
                 /* Alert if necessary */
                 if (g_found == 1) {
                     int j = 0;
-                    char op_msg[OS_SIZE_1024 + 1];
                     char **p_alert_msg = data->alert_msg;
 
                     while (1) {
-                        if (ref[0] != '\0') {
-                            snprintf(op_msg, OS_SIZE_1024, "%s %s.%s"
-                                    " Reference: %s .", msg, name,
-                                    p_alert_msg[j] ? p_alert_msg[j] : "\0",
-                                    ref);
-                        } else {
-                            snprintf(op_msg, OS_SIZE_1024, "%s %s.%s", msg,
-                                    name, p_alert_msg[j] ? p_alert_msg[j] : "\0");
-                        }
-
                         if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
                             // TODO: notify alert
                             cJSON *json_alert = cJSON_CreateObject();
-                            cJSON_AddStringToObject(json_alert, "type", "alert");
+                            cJSON_AddStringToObject(json_alert, "type", "check");
                             cJSON_AddNumberToObject(json_alert, "id", id);
 
                             if(description) {
@@ -604,7 +623,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *
                             cJSON *check = cJSON_CreateObject();
                             cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
                             cJSON *title = cJSON_GetObjectItem(profile, "title");
-                            cJSON_AddNumberToObject(check, "pm_id", pm_id->valueint);
+                            cJSON_AddNumberToObject(check, "id", pm_id->valueint);
 
                             if(title){
                                 cJSON_AddStringToObject(check, "title", title->valuestring);
@@ -699,81 +718,23 @@ clean_return:
 
 }
 
-static char *wm_policy_monitoring_get_name(char *buf, char *ref, int *condition)
-{
-    char *tmp_location;
-    char *tmp_location2;
-    *condition = 0;
-
-    /* Check if name is valid */
-    if (!wm_policy_monitoring_is_name(buf)) {
-        return (NULL);
-    }
-
-    /* Set name */
-    buf++;
-    tmp_location = strchr(buf, ']');
-    if (!tmp_location) {
-        return (NULL);
-    }
-    *tmp_location = '\0';
-
+static void wm_policy_monitoring_set_condition(char *c_cond, int *condition) {
     /* Get condition */
-    tmp_location++;
-    if (*tmp_location != ' ' && tmp_location[1] != '[') {
-        return (NULL);
-    }
-    tmp_location += 2;
-
-    tmp_location2 = strchr(tmp_location, ']');
-    if (!tmp_location2) {
-        return (NULL);
-    }
-    *tmp_location2 = '\0';
-    tmp_location2++;
-
-    /* Get condition */
-    if (strcmp(tmp_location, "all") == 0) {
+    if (strcmp(c_cond, "all") == 0) {
         *condition |= WM_POLICY_MONITORING_COND_ALL;
-    } else if (strcmp(tmp_location, "any") == 0) {
+    } else if (strcmp(c_cond, "any") == 0) {
         *condition |= WM_POLICY_MONITORING_COND_ANY;
-    } else if (strcmp(tmp_location, "none") == 0) {
+    } else if (strcmp(c_cond, "none") == 0) {
         *condition |= WM_POLICY_MONITORING_COND_NON;
-    } else if (strcmp(tmp_location, "any required") == 0) {
+    } else if (strcmp(c_cond, "any required") == 0) {
         *condition |= WM_POLICY_MONITORING_COND_ANY;
         *condition |= WM_POLICY_MONITORING_COND_REQ;
-    } else if (strcmp(tmp_location, "all required") == 0) {
+    } else if (strcmp(c_cond, "all required") == 0) {
         *condition |= WM_POLICY_MONITORING_COND_ALL;
         *condition |= WM_POLICY_MONITORING_COND_REQ;
     } else {
         *condition = WM_POLICY_MONITORING_COND_INV;
-        return (NULL);
     }
-
-    /* Get reference */
-    if (*tmp_location2 != ' ' && tmp_location2[1] != '[') {
-        return (NULL);
-    }
-
-    tmp_location2 += 2;
-    tmp_location = strchr(tmp_location2, ']');
-    if (!tmp_location) {
-        return (NULL);
-    }
-    *tmp_location = '\0';
-
-    /* Copy reference */
-    strncpy(ref, tmp_location2, 255);
-
-    return (strdup(buf));
-}
-
-static int wm_policy_monitoring_is_name(const char *buf)
-{
-    if (*buf == '[' && buf[strlen(buf) - 1] == ']') {
-        return (1);
-    }
-    return (0);
 }
 
 static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars) {
@@ -1514,6 +1475,36 @@ static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
 }
 
 #endif
+
+static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,char *profile,unsigned int passed, unsigned int failed,unsigned int unknown) {
+    cJSON *json_summary = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(json_summary, "type", "summary");
+    cJSON_AddNumberToObject(json_summary, "scan_id", scan_id);
+    cJSON_AddStringToObject(json_summary, "profile", profile);
+    cJSON_AddNumberToObject(json_summary, "passed", passed);
+    cJSON_AddNumberToObject(json_summary, "failed", failed);
+    cJSON_AddNumberToObject(json_summary, "unknown", unknown);
+
+    wm_policy_monitoring_send_alert(data,json_summary);
+    cJSON_Delete(json_summary);
+
+    return 0;
+}
+
+static void wm_policy_monitoring_summary_increment_passed() {
+    summary_passed++;
+}
+
+static void wm_policy_monitoring_summary_increment_failed() {
+    summary_failed++;
+}
+
+static void wm_policy_monitoring_reset_summary() {
+    summary_failed = 0;
+    summary_passed = 0;
+    summary_unknown = 0;
+}
 
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t *data) {
     cJSON *root = cJSON_CreateObject();
