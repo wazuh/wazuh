@@ -853,6 +853,13 @@ end:
 
 int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
 {
+    int opts;
+    size_t dir_size;
+    char *f_name;
+    short is_nfs;
+    DIR *dp;
+    struct dirent *entry;
+
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
@@ -864,35 +871,15 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
                 dir_name);
         return 0;
     case 1:
-    {
-#ifdef WIN32
-        char *real_path;
-        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-        if (real_path_win(dir_name, real_path)) {
-            mdebug2("Directory added to FIM configuration by link '%s'", real_path);
-        } else {
-            mdebug2("real_path_win() failed on %s", real_path);
-        }
-        os_free(real_path);
-#else
         mdebug2("Directory added to FIM configuration by link '%s'", dir_name);
-#endif
         return 0;
-    }
     case 0:
         break;
     default:
         return -1;
     }
 
-    int opts;
-    size_t dir_size;
-    char *f_name;
-    short is_nfs;
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
-
-    DIR *dp;
-    struct dirent *entry;
 
     opts = syscheck.opts[dir_position];
 
@@ -1338,8 +1325,9 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 
         /* Check for real time flag */
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
-#ifdef INOTIFY_ENABLED
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
             realtime_adddir(real_path, opts & CHECK_WHODATA);
+            mdebug2("Folder '%s' added to real time monitoring by link", real_path);
 #else
             mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
 #endif

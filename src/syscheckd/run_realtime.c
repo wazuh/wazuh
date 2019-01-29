@@ -131,28 +131,22 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             struct stat statbuf;
             if (lstat(file_name, &statbuf) < 0) {
                 mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
-                return -1;
             }
-            if S_ISLNK(statbuf.st_mode) {
+            if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
                 read_dir(file_name, pos, evt, depth, 1);
-            } else {
-                read_dir(file_name, pos, evt, depth, 0);
+                return 0;
+            } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
+                return 0;
             }
 #else
-            if (islink_win(file_name)) {
-                char *real_path;
-                os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-                if (!real_path_win(file_name, real_path)) {
-                    mdebug2("real_path_win() failed in %s", file_name);
-                    os_free(real_path);
-                    return -1;
-                }
-                str_lowercase(real_path);
-                read_dir(real_path, pos, evt, depth, 1);
-            } else {
-                read_dir(file_name, pos, evt, depth, 0);
+            if (islink_win(file_name) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
+                read_dir(file_name, pos, evt, depth, 1);
+                return 0;
+            } else if (islink_win(file_name) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
+                return 0;
             }
 #endif
+            read_dir(file_name, pos, evt, depth, 0);
         }
 
     }
