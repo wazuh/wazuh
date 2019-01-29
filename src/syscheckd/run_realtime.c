@@ -135,15 +135,27 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             }
             if S_ISLNK(statbuf.st_mode) {
                 read_dir(file_name, pos, evt, depth, 1);
-            } else
-#endif
-            {
+            } else {
                 read_dir(file_name, pos, evt, depth, 0);
             }
+#else
+            if (islink_win(file_name)) {
+                char *real_path;
+                os_calloc(PATH_MAX + 2, sizeof(char), real_path);
+                if (!real_path_win(file_name, real_path)) {
+                    mdebug2("real_path_win() failed in %s", file_name);
+                    os_free(real_path);
+                    return -1;
+                }
+                str_lowercase(real_path);
+                read_dir(real_path, pos, evt, depth, 1);
+            } else {
+                read_dir(file_name, pos, evt, depth, 0);
+            }
+#endif
         }
 
     }
-
 
     return (0);
 }

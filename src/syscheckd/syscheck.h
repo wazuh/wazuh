@@ -14,6 +14,36 @@
 #include "config/syscheck-config.h"
 #include "external/cJSON/cJSON.h"
 
+#ifdef WIN32
+/* Windows reparse data buffer type for symbolic links*/
+typedef struct _REPARSE_DATA_BUFFER {
+  ULONG  ReparseTag;
+  USHORT  ReparseDataLength;
+  USHORT  Reserved;
+  union {
+    struct {
+      USHORT  SubstituteNameOffset;
+      USHORT  SubstituteNameLength;
+      USHORT  PrintNameOffset;
+      USHORT  PrintNameLength;
+      ULONG   Flags; // it seems that the docu is missing this entry (at least 2008-03-07)
+      WCHAR  PathBuffer[1];
+      } SymbolicLinkReparseBuffer;
+    struct {
+      USHORT  SubstituteNameOffset;
+      USHORT  SubstituteNameLength;
+      USHORT  PrintNameOffset;
+      USHORT  PrintNameLength;
+      WCHAR  PathBuffer[1];
+      } MountPointReparseBuffer;
+    struct {
+      UCHAR  DataBuffer[1];
+    } GenericReparseBuffer;
+  };
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+#endif
+
+
 #define MAX_LINE PATH_MAX+256
 
 /* Notify list size */
@@ -131,9 +161,14 @@ int fim_check_restrict(const char *file_name, OSMatch *restriction);
 #ifndef WIN32
 // Com request thread dispatcher
 void * syscom_main(void * arg);
+#else
 // Checking links to follow
-int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link);
+char *real_path_win(const char *file_name, char *real_path);
+int islink_win(const char *file_name);
+int absolute_path(char *file_name, const char *relative_path);
+int is_relative_path(const char *file_name);
 #endif
+int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link);
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
