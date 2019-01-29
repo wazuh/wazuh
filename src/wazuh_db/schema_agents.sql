@@ -210,16 +210,6 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-CREATE TABLE IF NOT EXISTS scan_info (
-    module TEXT PRIMARY KEY,
-    first_start INTEGER,
-    first_end INTEGER,
-    start_scan INTEGER,
-    end_scan INTEGER,
-    fim_first_check INTEGER,
-    fim_second_check INTEGER,
-    fim_third_check INTEGER
-);
 
 CREATE TABLE IF NOT EXISTS scan_info (
     module TEXT PRIMARY KEY,
@@ -229,10 +219,14 @@ CREATE TABLE IF NOT EXISTS scan_info (
     end_scan INTEGER,
     fim_first_check INTEGER,
     fim_second_check INTEGER,
-    fim_third_check INTEGER
+    fim_third_check INTEGER,
+    pm_start_scan INTEGER,
+    pm_end_scan INTEGER,
+    pm_scan_id INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS pm_global (
+    scan_id INTEGER REFERENCES scan_info (pm_scan_id),
     profile TEXT PRIMARY KEY,
     pass INTEGER,
     failed INTEGER,
@@ -241,14 +235,18 @@ CREATE TABLE IF NOT EXISTS pm_global (
 );
 
 CREATE TABLE IF NOT EXISTS pm_check (
-    pm_id TEXT PRIMARY KEY,
+    profile TEXT REFERENCES pm_global (profile),
+    id INTEGER PRIMARY KEY,
     title TEXT,
     description TEXT,
     file TEXT,
+    process TEXT,
+    directory TEXT,
+    registry TEXT,
     reference TEXT,
     pci_dss TEXT,
     cis TEXT,
-    result TEXT NOT NULL CHECK (format IN ('pass', 'fail', 'unknown'))
+    result TEXT NOT NULL
 );
 
 PRAGMA journal_mode=WAL;

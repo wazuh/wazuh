@@ -89,6 +89,8 @@ typedef enum wdb_stmt {
     WDB_STMT_PM_FIND,
     WDB_STMT_PM_UPDATE,
     WDB_STMT_PM_INSERT,
+    WDB_STMT_PM_SCAN_INFO_INSERT,
+    WDB_STMT_PM_SCAN_INFO_UPDATE,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -189,6 +191,12 @@ int wdb_policy_monitoring_update(wdb_t * wdb, char * result, char * pm_id);
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error (new) */
 int wdb_policy_monitoring_save(wdb_t * wdb, char * pm_id, char * title, char * description, char * file,char * reference, char * pci_dss, char * cis, char * result);
+
+/* Insert scan info policy monitoring entry. Returns ID on success or -1 on error (new) */
+int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, char * module, int start_scan, int end_scan, int scan_id);
+
+/* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
+int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_scan);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
