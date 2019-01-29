@@ -33,7 +33,8 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
         for name in dir_content:
             absolute_path = join(common.lists_path, name)
             relative_path = join('etc/lists', name)
-            if (isfile(absolute_path)) and ('.cdb' not in name):
+            if (isfile(absolute_path)) and ('.cdb' not in name) \
+                and ('~' not in name):
                 items = get_list_from_file(relative_path)
                 output.append({'path': relative_path, 'items': items})
             elif isdir(absolute_path):
@@ -41,7 +42,8 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
                 for subdir_name in subdir_content:
                     subdir_absolute_path = join(common.lists_path, name, subdir_name)
                     subdir_relative_path = join('etc/lists', name, subdir_name)
-                    if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name):
+                    if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name) \
+                        and ('~' not in subdir_name):
                         items = get_list_from_file(subdir_relative_path)
                         output.append({'path': subdir_relative_path, 'items': items})
 
@@ -95,7 +97,8 @@ def get_path_lists():
         absolute_path = join(common.lists_path, name)
         relative_path = 'etc/lists'
 
-        if (isfile(absolute_path)) and ('.cdb' not in name):
+        if (isfile(absolute_path)) and ('.cdb' not in name) \
+            and ('~' not in name):
             output.append({'path': relative_path, 'name': name})
 
         elif isdir(absolute_path):
@@ -105,7 +108,8 @@ def get_path_lists():
                 subdir_absolute_path = join(absolute_path, subdir_name)
                 subdir_relative_path = join(relative_path, name)
 
-                if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name):
+                if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name) \
+                    and ('~' not in subdir_name):
                     output.append({'path': subdir_relative_path, \
                         'name': subdir_name})
 
