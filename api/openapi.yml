@@ -13,7 +13,42 @@ schemes:
 tags:
 - name: agents
   description: 'Agents management related operations'
+- name: login
+  description: 'User authentication'
+securityDefinitions:
+  basicAuth:
+    type: basic
+    description: "Intended method to get a token"
+  authToken:
+    name: api_token
+    type: apiKey
+    in: header
+    description: "This is the preferable method to access all endpoints"
+security:
+  - authToken: []
 paths:
+  /token:
+    get:
+      tags:
+      - login
+      summary: 'User/password authentication to get an access token'
+      description: 'This method should be called to get an API token. This token will expire at some time.'
+      operationId: loginUser
+      produces:
+        - application/json
+      security:
+        - basicAuth: []
+      responses:
+        '200':
+          description: 'Login successful'
+          schema:
+            type: object
+            properties:
+              token:
+                type: string
+        '401':
+          description: 'Access unauthorized'
+
   /agents:
     get:
       tags:

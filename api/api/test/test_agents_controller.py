@@ -5,9 +5,9 @@ from __future__ import absolute_import
 from flask import json
 from six import BytesIO
 
-from api.models.inline_response200 import InlineResponse200  # noqa: E501
-from api.models.inline_response2001 import InlineResponse2001  # noqa: E501
-from api.models.inline_response2002 import InlineResponse2002  # noqa: E501
+from api.models.agent_deleted_data import AgentDeletedData  # noqa: E501
+from api.models.agent_restarted import AgentRestarted  # noqa: E501
+from api.models.all_agents import AllAgents  # noqa: E501
 from api.test import BaseTestCase
 
 

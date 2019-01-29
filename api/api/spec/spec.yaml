@@ -16,10 +16,35 @@ info:
 tags:
 - name: "agents"
   description: "Agents management related operations"
+- name: "login"
+  description: "User authentication"
 schemes:
 - "https"
 - "http"
+security:
+- authToken: []
 paths:
+  /token:
+    get:
+      tags:
+      - "login"
+      summary: "User/password authentication to get an access token"
+      description: "This method should be called to get an API token. This token will\
+        \ expire at some time."
+      operationId: "login_user"
+      produces:
+      - "application/json"
+      parameters: []
+      responses:
+        200:
+          description: "Login successful"
+          schema:
+            $ref: "#/definitions/TokenResponse"
+        401:
+          description: "Access unauthorized"
+      security:
+      - basicAuth: []
+      x-swagger-router-controller: "api.controllers.login_controller"
   /agents:
     get:
       tags:
@@ -145,87 +170,7 @@ paths:
         200:
           description: "List of agents or error description"
           schema:
-            allOf:
-            - $ref: "#/definitions/ApiResponse"
-            - type: "object"
-              properties:
-                data:
-                  type: "object"
-                  allOf:
-                  - $ref: "#/definitions/ListMetadata"
-                  - type: "object"
-                    properties:
-                      items:
-                        type: "array"
-                        items:
-                          $ref: "#/definitions/Agent"
-            example:
-              error: 0
-              data:
-                totalItems: 7
-                items:
-                - status: "Active"
-                  configSum: "ab73af41699f13fdd81903b5f23d8d00"
-                  group:
-                  - "default"
-                  name: "agent1"
-                  mergedSum: "f1a9e24e02ba4cc5ea80a9d3feb3bb9a"
-                  ip: "192.168.185.7"
-                  manager: "manager"
-                  node_name: "node02"
-                  dateAdd: "2018-10-11 09:38:47"
-                  version: "Wazuh v3.8.0"
-                  lastKeepAlive: "2018-10-11 13:58:08"
-                  os:
-                    major: "16"
-                    name: "Ubuntu"
-                    uname: "Linux |ubuntu |4.4.0-135-generic |#161-Ubuntu SMP Mon\
-                      \ Aug 27 10:45:01 UTC 2018 |x86_64"
-                    platform: "ubuntu"
-                    version: "16.04.5 LTS"
-                    codename: "Xenial Xerus"
-                    arch: "x86_64"
-                    minor: "04"
-                  id: "001"
-                - status: "Active"
-                  name: "manager"
-                  ip: "127.0.0.1"
-                  manager: "manager"
-                  node_name: "node01"
-                  dateAdd: "2018-10-11 09:37:23"
-                  version: "Wazuh v3.8.0"
-                  lastKeepAlive: "9999-12-31 23:59:59"
-                  os:
-                    major: "18"
-                    name: "Ubuntu"
-                    uname: "Linux |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon\
-                      \ Sep 24 16:19:09 UTC 2018 |x86_64"
-                    platform: "ubuntu"
-                    version: "18.04.1 LTS"
-                    codename: "Bionic Beaver"
-                    arch: "x86_64"
-                    minor: "04"
-                  id: "000"
-                - status: "Never connected"
-                  dateAdd: "2018-10-11 13:58:23"
-                  name: "NewHost_2"
-                  ip: "10.0.10.10"
-                  id: "123"
-                  node_name: "unknown"
-                - status: "Never connected"
-                  dateAdd: "2018-10-11 13:58:22"
-                  name: "NewHost"
-                  ip: "10.0.0.9"
-                  id: "007"
-                  node_name: "unknown"
-                - status: "Never connected"
-                  dateAdd: "2018-10-11 13:58:10"
-                  group:
-                  - "default"
-                  name: "server001"
-                  ip: "10.0.0.62"
-                  id: "002"
-                  node_name: "unknown"
+            $ref: "#/definitions/AllAgents"
       x-swagger-router-controller: "api.controllers.agents_controller"
     delete:
       tags:
@@ -285,21 +230,7 @@ paths:
         200:
           description: "Delete agents"
           schema:
-            allOf:
-            - $ref: "#/definitions/ApiResponse"
-            - type: "object"
-              properties:
-                data:
-                  $ref: "#/definitions/AgentDeleted"
-            example:
-              error: 0
-              data:
-                msg: "All selected agents were removed"
-                older_than: "10s"
-                affected_agents:
-                - "003"
-                - "005"
-                total_affected_agents: 2
+            $ref: "#/definitions/AgentDeletedData"
       x-swagger-router-controller: "api.controllers.agents_controller"
   /agents/restart:
     put:
@@ -319,13 +250,19 @@ paths:
         200:
           description: "Agents restarted"
           schema:
-            allOf:
-            - $ref: "#/definitions/ApiResponse"
-            - {}
-            example:
-              data: "Restarting all agents"
-              error: 0
+            $ref: "#/definitions/AgentRestarted"
       x-swagger-router-controller: "api.controllers.agents_controller"
+securityDefinitions:
+  basicAuth:
+    description: "Intended method to get a token"
+    type: "basic"
+    x-basicInfoFunc: "api.authentication.check_user"
+  authToken:
+    description: "This is the preferable method to access all endpoints"
+    type: "apiKey"
+    name: "api_token"
+    in: "header"
+    x-apikeyInfoFunc: "api.authentication.check_token"
 definitions:
   ApiResponse:
     type: "object"
@@ -343,6 +280,12 @@ definitions:
       totalItems:
         type: "integer"
         format: "int32"
+  TokenResponse:
+    properties:
+      token:
+        type: "string"
+    example:
+      token: "token"
   Agent:
     type: "object"
     properties:
@@ -392,6 +335,111 @@ definitions:
       total_affected_agents:
         type: "integer"
         format: "int32"
+  AgentDeletedData:
+    allOf:
+    - $ref: "#/definitions/ApiResponse"
+    - type: "object"
+      properties:
+        data:
+          $ref: "#/definitions/AgentDeleted"
+    example:
+      error: 0
+      data:
+        msg: "All selected agents were removed"
+        older_than: "10s"
+        affected_agents:
+        - "003"
+        - "005"
+        total_affected_agents: 2
+  AgentRestarted:
+    allOf:
+    - $ref: "#/definitions/ApiResponse"
+    - {}
+    example:
+      data: "Restarting all agents"
+      error: 0
+  AllAgents:
+    allOf:
+    - $ref: "#/definitions/ApiResponse"
+    - type: "object"
+      properties:
+        data:
+          type: "object"
+          allOf:
+          - $ref: "#/definitions/ListMetadata"
+          - type: "object"
+            properties:
+              items:
+                type: "array"
+                items:
+                  $ref: "#/definitions/Agent"
+    example:
+      error: 0
+      data:
+        totalItems: 7
+        items:
+        - status: "Active"
+          configSum: "ab73af41699f13fdd81903b5f23d8d00"
+          group:
+          - "default"
+          name: "agent1"
+          mergedSum: "f1a9e24e02ba4cc5ea80a9d3feb3bb9a"
+          ip: "192.168.185.7"
+          manager: "manager"
+          node_name: "node02"
+          dateAdd: "2018-10-11 09:38:47"
+          version: "Wazuh v3.8.0"
+          lastKeepAlive: "2018-10-11 13:58:08"
+          os:
+            major: "16"
+            name: "Ubuntu"
+            uname: "Linux |ubuntu |4.4.0-135-generic |#161-Ubuntu SMP Mon Aug 27 10:45:01\
+              \ UTC 2018 |x86_64"
+            platform: "ubuntu"
+            version: "16.04.5 LTS"
+            codename: "Xenial Xerus"
+            arch: "x86_64"
+            minor: "04"
+          id: "001"
+        - status: "Active"
+          name: "manager"
+          ip: "127.0.0.1"
+          manager: "manager"
+          node_name: "node01"
+          dateAdd: "2018-10-11 09:37:23"
+          version: "Wazuh v3.8.0"
+          lastKeepAlive: "9999-12-31 23:59:59"
+          os:
+            major: "18"
+            name: "Ubuntu"
+            uname: "Linux |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon Sep 24 16:19:09\
+              \ UTC 2018 |x86_64"
+            platform: "ubuntu"
+            version: "18.04.1 LTS"
+            codename: "Bionic Beaver"
+            arch: "x86_64"
+            minor: "04"
+          id: "000"
+        - status: "Never connected"
+          dateAdd: "2018-10-11 13:58:23"
+          name: "NewHost_2"
+          ip: "10.0.10.10"
+          id: "123"
+          node_name: "unknown"
+        - status: "Never connected"
+          dateAdd: "2018-10-11 13:58:22"
+          name: "NewHost"
+          ip: "10.0.0.9"
+          id: "007"
+          node_name: "unknown"
+        - status: "Never connected"
+          dateAdd: "2018-10-11 13:58:10"
+          group:
+          - "default"
+          name: "server001"
+          ip: "10.0.0.62"
+          id: "002"
+          node_name: "unknown"
   AgentStatus:
     type: "string"
     enum:
@@ -399,49 +447,6 @@ definitions:
     - "pending"
     - "neverconnected"
     - "disconnected"
-  inline_response_200:
-    properties:
-      ApiResponse:
-        $ref: "#/definitions/ApiResponse"
-      data:
-        type: "object"
-        allOf:
-        - $ref: "#/definitions/ListMetadata"
-        - type: "object"
-          properties:
-            items:
-              type: "array"
-              items:
-                $ref: "#/definitions/Agent"
-    example: "{error=0, data={totalItems=7, items=[{status=Active, configSum=ab73af41699f13fdd81903b5f23d8d00,\
-      \ group=[default], name=agent1, mergedSum=f1a9e24e02ba4cc5ea80a9d3feb3bb9a,\
-      \ ip=192.168.185.7, manager=manager, node_name=node02, dateAdd=2018-10-11 09:38:47,\
-      \ version=Wazuh v3.8.0, lastKeepAlive=2018-10-11 13:58:08, os={major=16, name=Ubuntu,\
-      \ uname=Linux |ubuntu |4.4.0-135-generic |#161-Ubuntu SMP Mon Aug 27 10:45:01\
-      \ UTC 2018 |x86_64, platform=ubuntu, version=16.04.5 LTS, codename=Xenial Xerus,\
-      \ arch=x86_64, minor=04}, id=001}, {status=Active, name=manager, ip=127.0.0.1,\
-      \ manager=manager, node_name=node01, dateAdd=2018-10-11 09:37:23, version=Wazuh\
-      \ v3.8.0, lastKeepAlive=9999-12-31 23:59:59, os={major=18, name=Ubuntu, uname=Linux\
-      \ |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon Sep 24 16:19:09 UTC 2018 |x86_64,\
-      \ platform=ubuntu, version=18.04.1 LTS, codename=Bionic Beaver, arch=x86_64,\
-      \ minor=04}, id=000}, {status=Never connected, dateAdd=2018-10-11 13:58:23,\
-      \ name=NewHost_2, ip=10.0.10.10, id=123, node_name=unknown}, {status=Never connected,\
-      \ dateAdd=2018-10-11 13:58:22, name=NewHost, ip=10.0.0.9, id=007, node_name=unknown},\
-      \ {status=Never connected, dateAdd=2018-10-11 13:58:10, group=[default], name=server001,\
-      \ ip=10.0.0.62, id=002, node_name=unknown}]}}"
-  inline_response_200_1:
-    properties:
-      ApiResponse:
-        $ref: "#/definitions/ApiResponse"
-      data:
-        $ref: "#/definitions/AgentDeleted"
-    example: "{error=0, data={msg=All selected agents were removed, older_than=10s,\
-      \ affected_agents=[003, 005], total_affected_agents=2}}"
-  inline_response_200_2:
-    properties:
-      ApiResponse:
-        $ref: "#/definitions/ApiResponse"
-    example: "{data=Restarting all agents, error=0}"
   Agent_os:
     properties:
       major:

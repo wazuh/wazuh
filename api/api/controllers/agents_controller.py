@@ -1,3 +1,7 @@
+# Copyright (C) 2015-2019, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import logging
 
@@ -28,7 +32,7 @@ def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, s
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. 
     :type older_than: str
 
-    :rtype: InlineResponse2001
+    :rtype: AgentDeletedData
     """
 
     f_kwargs = {'list_agent_ids': ids,
@@ -94,7 +98,7 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param ip: Filters by agent IP
     :type ip: str
 
-    :rtype: InlineResponse200
+    :rtype: AllAgents
     """
 
     f_kwargs = {'offset': offset,
@@ -139,7 +143,7 @@ def restart_all_agents(wait_for_complete=False):  # noqa: E501
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
 
-    :rtype: InlineResponse2002
+    :rtype: AgentRestarted
     """
     dapi = DistributedAPI(f=Agent.restart_agents,
                           f_kwargs={'restart_all': True},
