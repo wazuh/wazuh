@@ -12,7 +12,7 @@ from os.path import isfile, isdir, join
 from wazuh.utils import sort_array, search_array
 
 
-def get_lists(path=None, offset=None, limit=None, sort=None, search=None):
+def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Get CDB lists
     :param path: Relative path of list file to get
@@ -44,6 +44,9 @@ def get_lists(path=None, offset=None, limit=None, sort=None, search=None):
                     if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name):
                         items = get_list_from_file(subdir_relative_path)
                         output.append({'path': subdir_relative_path, 'items': items})
+
+    if offset:
+        output = output[offset:]
 
     if search:
         output = search_array(output, search['value'], search['negation'])
