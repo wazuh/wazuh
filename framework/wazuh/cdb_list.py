@@ -93,18 +93,20 @@ def get_path_lists():
 
     for name in dir_content:
         absolute_path = join(common.lists_path, name)
+        relative_path = 'etc/lists'
 
         if (isfile(absolute_path)) and ('.cdb' not in name):
-            output.append({'path': common.lists_path, 'name': name})
+            output.append({'path': relative_path, 'name': name})
 
         elif isdir(absolute_path):
-            subdir_content = listdir(join(common.lists_path, name))
+            subdir_content = listdir(absolute_path)
 
             for subdir_name in subdir_content:
-                subdir_absolute_path = join(common.lists_path, name, subdir_name)
+                subdir_absolute_path = join(absolute_path, subdir_name)
+                subdir_relative_path = join(relative_path, name)
 
                 if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name):
-                    output.append({'path': join(common.lists_path, name), \
+                    output.append({'path': subdir_relative_path, \
                         'name': subdir_name})
 
     return output
