@@ -712,6 +712,7 @@ def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     :param file_name: File name to update
     :return: Confirmation message in string
     """
+    xml_file = common.ossec_path + xml_file
     if file_name == 'agent.conf':
         with open(xml_file) as f:
             xml_file_data = f.read()
