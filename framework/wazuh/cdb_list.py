@@ -109,4 +109,4 @@ def get_path_lists():
                     output.append({'path': subdir_relative_path, \
                         'name': subdir_name})
 
-    return output
+    return {'totalItems': len(output), 'items': output}
