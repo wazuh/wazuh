@@ -300,7 +300,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 logger.error(result)
                 return result
 
-            result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + compressed_data.encode())
+            result = await self.send_request(command=b'sync_m_c_e',
+                                             data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True

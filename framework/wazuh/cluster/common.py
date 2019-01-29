@@ -10,7 +10,7 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict, Callable
-from wazuh import exception
+from wazuh import exception, common
 from wazuh.cluster import cluster
 
 
@@ -276,19 +276,20 @@ class Handler(asyncio.Protocol):
                 return "File {} not found.".format(filename).encode()
 
             filename = filename.encode()
-            response = await self.send_request(command=b'new_file', data=filename)
+            relative_path = filename.replace(common.ossec_path.encode(), b'')
+            response = await self.send_request(command=b'new_file', data=relative_path)
             if response.startswith(b"Error"):
                 return response
 
             file_hash = hashlib.sha256()
             with open(filename, 'rb') as f:
-                for chunk in iter(lambda: f.read(self.request_chunk - len(filename) - 1), b''):
-                    response = await self.send_request(command=b'file_upd', data=filename + b' ' + chunk)
+                for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
+                    response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                     if response.startswith(b"Error"):
                         return response
                     file_hash.update(chunk)
 
-            response = await self.send_request(command=b'file_end', data=filename + b' ' + file_hash.digest())
+            response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
             if response.startswith(b"Error"):
                 return response
 
@@ -443,7 +444,7 @@ class Handler(asyncio.Protocol):
         :param data: File name
         :return: Message
         """
-        self.in_file[data] = {'fd': open(data, 'wb'), 'checksum': hashlib.sha256()}
+        self.in_file[data] = {'fd': open(common.ossec_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -545,7 +546,7 @@ class WazuhCommon:
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         task_name, filename = task_and_file_names.split(' ', 1)
-        self.sync_tasks[task_name].filename = filename
+        self.sync_tasks[task_name].filename = common.ossec_path + filename
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
 

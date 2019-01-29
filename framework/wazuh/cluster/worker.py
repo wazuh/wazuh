@@ -53,7 +53,8 @@ class SyncWorker:
             result = await self.worker.send_request(command=self.cmd+b'_e', data=task_id + b' ' + b'Error')
         else:
             self.logger.info("Worker files sent to master.")
-            result = await self.worker.send_request(command=self.cmd+b'_e', data=task_id + b' ' + compressed_data_path.encode())
+            result = await self.worker.send_request(
+                command=self.cmd+b'_e', data=task_id + b' ' + compressed_data_path.replace(common.ossec_path, '').encode())
 
         if result.startswith(b'Error'):
             self.logger.error(result)
