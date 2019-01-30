@@ -129,14 +129,16 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             }
 #ifndef WIN32
             struct stat statbuf;
+
             if (lstat(file_name, &statbuf) < 0) {
                 mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
-            }
-            if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                read_dir(file_name, pos, evt, depth, 1);
-                return 0;
-            } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
-                return 0;
+            } else {
+                if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
+                    read_dir(file_name, pos, evt, depth, 1);
+                    return 0;
+                } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
+                    return 0;
+                }
             }
 #endif
             read_dir(file_name, pos, evt, depth, 0);

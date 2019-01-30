@@ -662,12 +662,6 @@ void audit_parse(char *buffer) {
                 os_malloc(match_size + 1, path1);
                 snprintf (path1, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
             }
-            // path2
-            if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
-                match_size = match[1].rm_eo - match[1].rm_so;
-                os_malloc(match_size + 1, path2);
-                snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
-            }
             // inode
             if(regexec(&regexCompiled_inode, buffer, 2, match, 0) == 0) {
                 match_size = match[1].rm_eo - match[1].rm_so;
@@ -727,6 +721,7 @@ void audit_parse(char *buffer) {
                                 break;
                             }
 
+                            free(file_path);
                             w_evt->path = real_path;
 
                             if (filterpath_audit_events(w_evt->path)) {
@@ -742,6 +737,12 @@ void audit_parse(char *buffer) {
                     }
                     break;
                 case 3:
+                    // path2
+                    if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_malloc(match_size + 1, path2);
+                        snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
                     if (cwd && path1 && path2) {
                         if (file_path = gen_audit_path(cwd, path1, path2), file_path) {
                             w_evt->path = file_path;
