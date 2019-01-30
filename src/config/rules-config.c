@@ -99,6 +99,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 {
     int i = 0;
     int retval = 0;
+    unsigned int j = 0;
+    unsigned int k = 0;
 
     char path[PATH_MAX + 2];
     char f_name[PATH_MAX + 2];
@@ -190,7 +192,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             // <rule_include>
             else if (strcmp(node[i]->element, xml_rules_rule) == 0) {
                 int found = 0;
-                for(unsigned int j=0; j<rules_size-1; j++){
+                for(j=0; j<rules_size-1; j++){
                     if(aux_include_rules[j] && node[i]->content && !strcmp(node[i]->content, aux_include_rules[j])){
                         found = 1;
                         break;
@@ -220,7 +222,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             // <decoder_include>
             } else if (strcmp(node[i]->element, xml_rules_decoders) == 0) {
                 int found = 0;
-                for(unsigned int j=0; j<decoders_size-1; j++){
+                for(j=0; j<decoders_size-1; j++){
                     if(aux_include_decoders[j] && node[i]->content && !strcmp(node[i]->content, aux_include_decoders[j])){
                         found = 1;
                         break;
@@ -256,7 +258,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             // <rule_exclude>
             } else if (strcmp(node[i]->element, xml_rules_exclude) == 0) {
                 int found = 0;
-                for(unsigned int j=0; j<total_rules_excluded; j++){
+                for(j=0; j<total_rules_excluded; j++){
                     if(aux_exclude_rules[j] && node[i]->content && !strcmp(node[i]->content, aux_exclude_rules[j])){
                         found = 1;
                         break;
@@ -272,7 +274,7 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
             // <decoder_exclude>
             } else if (strcmp(node[i]->element, xml_rules_exclude_decoder) == 0) {
                 int found = 0;
-                for(unsigned int j=0; j<total_decoders_excluded; j++){
+                for(j=0; j<total_decoders_excluded; j++){
                     if(aux_exclude_decoders[j] && node[i]->content && !strcmp(node[i]->content, aux_exclude_decoders[j])){
                         found = 1;
                         break;
@@ -403,8 +405,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 // Exclude
                 if (file_in_list(decoders_exclude_size, f_name, entry->d_name, exclude_decoders)) {
                     int found = 0;
-                    for(unsigned int i=0; i<total_decoders_excluded; i++){
-                        if(aux_exclude_decoders[i] && !strcmp(f_name, aux_exclude_decoders[i])){
+                    for(k=0; k<total_decoders_excluded; k++){
+                        if(aux_exclude_decoders[k] && !strcmp(f_name, aux_exclude_decoders[k])){
                             found = 1;
                             break;
                         }
@@ -425,8 +427,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
                 if (OSRegex_Execute(f_name, &regex)) {
                     int found = 0;
-                    for(unsigned int i=0; i<decoders_size-1; i++){
-                        if(aux_include_decoders[i] && !strcmp(f_name, aux_include_decoders[i])){
+                    for(k=0; k<decoders_size-1; k++){
+                        if(aux_include_decoders[k] && !strcmp(f_name, aux_include_decoders[k])){
                             found = 1;
                             break;
                         }
@@ -484,8 +486,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
                 // Exclude
                 if (file_in_list(rules_exclude_size, f_name, entry->d_name, exclude_rules)) {
                     int found = 0;
-                    for(unsigned int i=0; i<total_rules_excluded; i++){
-                        if(aux_exclude_rules[i] && !strcmp(f_name, aux_exclude_rules[i])){
+                    for(k=0; k<total_rules_excluded; k++){
+                        if(aux_exclude_rules[k] && !strcmp(f_name, aux_exclude_rules[k])){
                             found = 1;
                             break;
                         }
@@ -506,8 +508,8 @@ int Read_Rules(XML_NODE node, void *configp, __attribute__((unused)) void *mailp
 
                 if (OSRegex_Execute(f_name, &regex)) {
                     int found = 0;
-                    for(unsigned int i=0; i<rules_size-1; i++){
-                        if(aux_include_rules[i] && !strcmp(f_name, aux_include_rules[i])){
+                    for(k=0; k<rules_size-1; k++){
+                        if(aux_include_rules[k] && !strcmp(f_name, aux_include_rules[k])){
                             found = 1;
                             break;
                         }
