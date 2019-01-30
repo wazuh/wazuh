@@ -253,7 +253,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 mdebug2("Follow symbolic links disabled: '%s'", file_name);
                 os_free(wd_sum);
                 os_free(alert_msg);
-                return (-1);
+                return (0);
             }
         }
 #endif
@@ -1322,12 +1322,14 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
                                 max_depth, syscheck.tag[dir_position],
                                 -1);
         }
-
         /* Check for real time flag */
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
-#if defined (INOTIFY_ENABLED) || defined (WIN32)
+#ifdef INOTIFY_ENABLED
+#ifdef WIN32
+            realtime_adddir(real_path, dir_position+1);
+#else
             realtime_adddir(real_path, opts & CHECK_WHODATA);
-            mdebug2("Folder '%s' added to real time monitoring by link", real_path);
+#endif
 #else
             mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
 #endif
