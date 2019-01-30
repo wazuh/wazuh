@@ -164,4 +164,4 @@ class WazuhDBConnection:
             else:
                 return response
         else:
-            return self.__send(query_lower)[0].values()[0]
+            return list(self.__send(query_lower)[0].values())[0]
