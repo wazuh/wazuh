@@ -106,7 +106,7 @@ then
         exit 1
     fi
 
-    sed -E -i'' -e "s/(<Product Id=\"\*\" Name=\"Wazuh Agent ).+(\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2${version:1}\3/g" $MSI_FILE
+    sed -E -i'' -e "s/(<Product Id=\"\*\" Name=\"Wazuh Agent\" Language=\"1033\" Version=\").+(\" Manufacturer=)/\1${version:1}\2/g" $MSI_FILE
 
     # Framework
 
