@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "os_net/os_net.h"
+#include <ifaddrs.h>
 
 int rotate_log;
 
@@ -39,6 +40,11 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         merror(MEM_ERROR, errno, strerror(errno));
     } else
         minfo("Version detected -> %s", getuname());
+
+    reporting_ip = getReportingIP();
+    if(!reporting_ip){
+        merror("Unable to obtain the reporting IP");
+    }
 
     /* Set group ID */
     if (Privsep_SetGroup(gid) < 0) {
@@ -218,4 +224,58 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
             EventForward();
         }
     }
+}
+
+char* getReportingIP(){
+     /* Get Primary IP */
+    char * reporting_ip = NULL;
+    char **ifaces_list;
+    struct ifaddrs *ifaddr, *ifa;
+    int size;
+    int i = 0;
+    
+    if (getifaddrs(&ifaddr) == -1) {
+        merror("getifaddrs() failed.");
+    }
+    else {
+        for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
+            i++;
+        }
+        os_calloc(i, sizeof(char *), ifaces_list);
+
+        /* Create interfaces list */
+        size = getIfaceslist(ifaces_list, ifaddr);
+
+        if(!ifaces_list[0]){
+            merror("No interface found. No reporting ip.");
+            free(ifaces_list);
+            return;
+        }
+
+        for (i=0; i<size; i++){
+            cJSON *object = cJSON_CreateObject();
+            getNetworkIface(object, ifaces_list[i], ifaddr);
+            cJSON *interface = cJSON_GetObjectItem(object, "iface");
+            cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
+            if(ipv4){
+                cJSON *gateway = cJSON_GetObjectItem(ipv4, "gateway");
+                if(strcmp("unknown", gateway->valuestring)){
+                    cJSON *addresses = cJSON_GetObjectItem(ipv4,"address");
+                    cJSON *address = cJSON_GetArrayItem(addresses,0);
+                    os_strdup(address->valuestring, reporting_ip);
+                    mdebug2("Reporting ip: %s",reporting_ip);
+                    break;
+                }
+            }
+            cJSON_Delete(object);
+        }
+
+        freeifaddrs(ifaddr);
+        for (i=0; ifaces_list[i]; i++){
+            free(ifaces_list[i]);
+        }
+        free(ifaces_list);
+    }
+
+    return reporting_ip;
 }

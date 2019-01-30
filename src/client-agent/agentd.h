@@ -123,6 +123,9 @@ void * agcom_main(void * arg);
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);
 
+// Get Agent IP
+char *getReportingIP();
+
 /*** Global variables ***/
 extern int agent_debug_level;
 extern int win_debug_level;
@@ -143,6 +146,7 @@ extern int timeout;
 extern int interval;
 extern int remote_conf;
 extern int min_eps;
+char *reporting_ip;
 
 
 /* Global variables. Only modified during startup. */
