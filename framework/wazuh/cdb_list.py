@@ -5,17 +5,73 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+from os import listdir
+from os.path import isfile, isdir, join
+import re
+
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import sort_array, search_array
-from os import listdir
-from os.path import isfile, isdir, join
+
+
+def _get_relative_path(path):
+    """
+    Get relative path
+    :param path: Original path
+    :return: Relative path (from Wazuh base directory)
+    """
+    return path.replace(common.ossec_path, '')[1:]
+
+
+def _check_path(path):
+    """
+    Check if path is well formed (without './' or '../')
+    :param path: Path to check
+    :return: Result of check the path (boolean)
+    """
+    regex_path = r'^(etc/lists/)[\d\w.\-]+$'
+    pattern = re.compile(regex_path)
+    if not pattern.match(path):
+        raise WazuhException(1801)
+
+
+def _iterate_lists(absolute_path, only_names=False):
+    """
+    Get the content of all CDB lists
+    :param absolute_path: Full path of directory to get CDB lists
+    :param relative_path: Relative path of directory
+    :param dir_content: Content of the directory
+    :param only_names: If this parameter is true, only the name of all lists will be showed
+    :return: List with all CDB lists
+    """
+    output = []
+    dir_content = listdir(absolute_path)
+
+    for name in dir_content:
+        new_absolute_path = join(absolute_path, name)
+        new_relative_path = _get_relative_path(new_absolute_path)
+        # '.cdb' files are skipped
+        if (isfile(new_absolute_path)) \
+            and ('.cdb' not in name)  \
+            and ('~' not in name):
+            items = get_list_from_file(new_relative_path)
+            if only_names:
+                output.append({'path': new_relative_path, 'name': name})
+            else:
+                output.append({'path': new_relative_path, 'items': items})
+        elif isdir(new_absolute_path):
+            if only_names:
+                output += _iterate_lists(new_absolute_path, only_names=True)
+            else:
+                output += _iterate_lists(new_absolute_path)
+
+    return output
 
 
 def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Get CDB lists
-    :param path: Relative path of list file to get
+    :param path: Relative path of list file to get (if it is not specified, all lists will be returned)
     :param offset: First item to return.
     :param limit: Maximum number of items to return.
     :param sort: Sorts the items.
@@ -28,27 +84,13 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
     if limit == 0:
         raise WazuhException(1406)
 
+    # if path parameter is present, return only CDB list from path
     if path:
-        items = get_list_from_file(path)
-        output.append(items)
+        # check if path is correct
+        _check_path(path)
+        output.append(get_list_from_file(path))
     else:
-        dir_content = listdir(common.lists_path)
-        for name in dir_content:
-            absolute_path = join(common.lists_path, name)
-            relative_path = join('etc/lists', name)
-            if (isfile(absolute_path)) and ('.cdb' not in name) \
-                and ('~' not in name):
-                items = get_list_from_file(relative_path)
-                output.append({'path': relative_path, 'items': items})
-            elif isdir(absolute_path):
-                subdir_content = listdir(join(common.lists_path, name))
-                for subdir_name in subdir_content:
-                    subdir_absolute_path = join(common.lists_path, name, subdir_name)
-                    subdir_relative_path = join('etc/lists', name, subdir_name)
-                    if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name) \
-                        and ('~' not in subdir_name):
-                        items = get_list_from_file(subdir_relative_path)
-                        output.append({'path': subdir_relative_path, 'items': items})
+        output = _iterate_lists(common.lists_path)
 
     if offset:
         output = output[offset:]
@@ -77,12 +119,17 @@ def get_list_from_file(path):
     try:
         with open(file_path) as f:
             for line in f.read().splitlines():
-                key = line.split(':')[0]
-                value = line.split(':')[1]
+                key, value = line.split(':')
                 output.append({'key': key, 'value': value})
-                        
-    except Exception as e:
-        raise WazuhException(1005)
+
+    except IOError:
+        raise WazuhException(1006)
+
+    except ValueError:
+        raise WazuhException(1800, {'path': path})
+
+    except Exception:
+        raise WazuhException(1000)
 
     return output
 
@@ -92,28 +139,6 @@ def get_path_lists():
     Get paths of all CDB lists
     :return: List with paths of all CDB lists
     """
-    dir_content = listdir(common.lists_path)
-
-    output = []
-
-    for name in dir_content:
-        absolute_path = join(common.lists_path, name)
-        relative_path = 'etc/lists'
-
-        if (isfile(absolute_path)) and ('.cdb' not in name) \
-            and ('~' not in name):
-            output.append({'path': relative_path, 'name': name})
-
-        elif isdir(absolute_path):
-            subdir_content = listdir(absolute_path)
-
-            for subdir_name in subdir_content:
-                subdir_absolute_path = join(absolute_path, subdir_name)
-                subdir_relative_path = join(relative_path, name)
-
-                if (isfile(subdir_absolute_path)) and ('.cdb' not in subdir_name) \
-                    and ('~' not in subdir_name):
-                    output.append({'path': subdir_relative_path, \
-                        'name': subdir_name})
+    output = _iterate_lists(common.lists_path, only_names=True)
 
     return {'totalItems': len(output), 'items': output}
