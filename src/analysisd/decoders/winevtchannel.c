@@ -226,19 +226,22 @@ int DecodeWinevt(Eventinfo *lf){
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
                             if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
                                 for (l = 0; child_attr[p]->attributes[l]; l++) {
-                                    if (!strcmp(child_attr[p]->attributes[l], "Name")) {
+                                    if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
+                                            && strcmp(child_attr[p]->content, "-") != 0) {
                                         filtered_string = replace_win_format(child_attr[p]->content);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                         break;
-                                    } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0){
+                                    } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
+                                            && strcmp(child_attr[p]->content, "-") != 0){
                                         filtered_string = replace_win_format(child_attr[p]->content);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                     }
                                 }
-                            } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0){
+                            } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
+                                    && strcmp(child_attr[p]->content, "-") != 0){
                                 filtered_string = replace_win_format(child_attr[p]->content);
                                 cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
                                 os_free(filtered_string);
@@ -251,9 +254,11 @@ int DecodeWinevt(Eventinfo *lf){
                             int h=0;
 
                             while(extra_data_child && extra_data_child[h]){
-                                filtered_string = replace_win_format(extra_data_child[h]->content);
-                                cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
-                                os_free(filtered_string);
+                                if(strcmp(extra_data_child[h]->content, "(NULL)") != 0 && strcmp(extra_data_child[h]->content, "-") != 0){
+                                    filtered_string = replace_win_format(extra_data_child[h]->content);
+                                    cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
+                                    os_free(filtered_string);
+                                }
                                 h++;
                             }
                             if(extra){
