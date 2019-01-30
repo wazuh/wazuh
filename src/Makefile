@@ -1545,7 +1545,7 @@ clean-test:
 	find . -name "*.gcno" -exec rm {} \;
 	find . -name "*.gcda" -exec rm {} \;
 
-clean-external:
+clean-external: clean-wpython
 ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} $(EXTERNAL_JSON)libcjson.*
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
@@ -1559,13 +1559,14 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
 
-ifneq (${PREFIX},/var/ossec)
-	-cd ${EXTERNAL_CPYTHON} && make clean && make dist-clean
-endif
-
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
 endif
+endif
+
+clean-wpython:
+ifneq ($(wildcard external/cpython/*),)
+	cd ${EXTERNAL_CPYTHON} && make clean && make distclean
 endif
 
 clean-deps:
