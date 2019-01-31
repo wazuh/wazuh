@@ -235,12 +235,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 os_free(s_node->checksum);
                 os_free(s_node);
             }
+#ifndef WIN32
             // Delete from inode hash table
             if (evt && evt->inode) {
                 if (inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), inode) {
                     os_free(inode);
                 }
             }
+#endif
             os_free(alert_msg);
             os_free(wd_sum);
             return (0);
