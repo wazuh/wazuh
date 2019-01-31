@@ -364,15 +364,15 @@ static void ExecdStart(int q)
         }
 
         /* Get the command to execute (valid name) */
-        if(!strcmp(name,"api-restart-ossec")) {
+        if(!strcmp(name, "api-restart-ossec")) {
             char *cmd[MAX_ARGS];
 
             /* Initialize the cmd arguments */
             for (i = 0; i <= MAX_ARGS + 1; i++) {
                 cmd[i] = NULL;
             }
-            os_strdup("/var/ossec/active-response/bin/restart-ossec.sh",cmd[0]);
-            os_strdup("add",cmd[1]);
+            os_strdup("/var/ossec/active-response/bin/restart-ossec.sh", cmd[0]);
+            os_strdup("add", cmd[1]);
 
             ExecCmd(cmd);
             continue;

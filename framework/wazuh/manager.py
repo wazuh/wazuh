@@ -176,16 +176,47 @@ def ossec_log_summary(months=3):
 
 
 def restart():
+    """
+    Restart Wazuh manager.
+
+    :return: Confirmation message.
+    """
+    # files to check
+    files = []
+
     try:
         # initialize socket
         socket_path = common.EXECQ
         conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         conn.connect(socket_path)
         # send msg to socket
-        #msg = struct.pack('restart-ossec0 ossec-monitord ')
-        msg = 'restart-ossec0 ossec-monitord -'
-        #msg = 'restart-ossec0 - - 1548860015.0 502 ossec-monitord - -'
+        #msg = 'restart-ossec0 ossec-monitord -'
+        msg = 'api-restart-ossec '
         conn.send(msg.encode())
         return "Manager was restarted successfully"
     except Exception as e:
         raise WazuhException(2008)
+
+
+def _check_wazuh_xml(files):
+    """
+    Check Wazuh XML format from a list of files.
+
+    :param files: List of files to check.
+    :return: None
+    """
+    for f in files:
+        try:
+            subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', f],
+                                    stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            # extract error message from output.
+            # Example of raw output
+            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
+            # Example of desired output:
+            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
+                                                r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
+            raise WazuhException(1114, ' '.join(output_regex))
+        except Exception as e:
+            raise WazuhException(1743, str(e))
