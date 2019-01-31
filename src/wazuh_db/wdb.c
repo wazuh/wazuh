@@ -66,11 +66,12 @@ static const char *SQL_STMT[] = {
     "SELECT fim_first_check FROM scan_info WHERE module = ?;",
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
     "SELECT fim_third_check FROM scan_info WHERE module = ?;",
-    "SELECT pm_id,result FROM pm_check WHERE pm_id = ?;",
-    "UPDATE pm_check SET result = ? WHERE pm_id = ?;",
-    "INSERT INTO pm_check (pm_id,title,description,file,reference,pci_dss,cis,result) VALUES (?,?,?,?,?,?,?,?);",
+    "SELECT id,result FROM pm_check WHERE id = ?;",
+    "UPDATE pm_check SET result = ? WHERE id = ?;",
+    "INSERT INTO pm_check (id,name,title,cis_control,description,rationale,remediation,default_value,file,directory,process,registry,reference,result) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     "INSERT INTO scan_info (module,pm_start_scan,pm_end_scan,pm_scan_id) VALUES (?,?,?,?);",
-    "UPDATE scan_info SET pm_end_scan = ? WHERE module = ?;"
+    "UPDATE scan_info SET pm_end_scan = ? WHERE module = ?;",
+    "INSERT INTO pm_global (scan_id,name,description,os_required,pass,failed,score) VALUES(?,?,?,?,?,?,?)"
 };
 
 sqlite3 *wdb_global = NULL;

@@ -97,7 +97,7 @@ int wdb_delete_pm(int id) {
 }
 
 /* Look for a policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_find(wdb_t * wdb, char * pm_id, char * output) {
+int wdb_policy_monitoring_find(wdb_t * wdb, int pm_id, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -113,11 +113,11 @@ int wdb_policy_monitoring_find(wdb_t * wdb, char * pm_id, char * output) {
 
     stmt = wdb->stmt[WDB_STMT_PM_FIND];
 
-    sqlite3_bind_text(stmt, 1, pm_id, -1, NULL);
+    sqlite3_bind_int(stmt, 1, pm_id);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s",(char*)sqlite3_column_text(stmt, 1));
+            snprintf(output,OS_MAXSTR,"%d",sqlite3_column_int(stmt, 1));
             return 1;
             break;
         case SQLITE_DONE:
@@ -130,7 +130,7 @@ int wdb_policy_monitoring_find(wdb_t * wdb, char * pm_id, char * output) {
 }
 
 /* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
-int wdb_policy_monitoring_save(wdb_t * wdb, char * pm_id, char * title, char * description, char * file,char * reference, char * pci_dss, char * cis, char * result) {
+int wdb_policy_monitoring_save(wdb_t * wdb, int id,char * name,char * title,char *cis_control,char *description,char *rationale,char *remediation,char *default_value, char * file,char * directory,char * process,char * registry,char * reference,char * result) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
@@ -146,23 +146,56 @@ int wdb_policy_monitoring_save(wdb_t * wdb, char * pm_id, char * title, char * d
 
     stmt = wdb->stmt[WDB_STMT_PM_INSERT];
 
-    sqlite3_bind_text(stmt, 1, pm_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, title, -1, NULL);
-    sqlite3_bind_text(stmt, 3, description, -1, NULL);
-    sqlite3_bind_text(stmt, 4, file, -1, NULL);
-    sqlite3_bind_text(stmt, 5, reference, -1, NULL);
-    sqlite3_bind_text(stmt, 6, pci_dss, -1, NULL);
-    sqlite3_bind_text(stmt, 7, cis, -1, NULL);
-    sqlite3_bind_text(stmt, 8, result, -1, NULL);
-
+    sqlite3_bind_int(stmt, 1, id);
+    sqlite3_bind_text(stmt, 2, name, -1, NULL);
+    sqlite3_bind_text(stmt, 3, title, -1, NULL);
+    sqlite3_bind_text(stmt, 4, cis_control, -1, NULL);
+    sqlite3_bind_text(stmt, 5, description, -1, NULL);
+    sqlite3_bind_text(stmt, 6, rationale, -1, NULL);
+    sqlite3_bind_text(stmt, 7, remediation, -1, NULL);
+    sqlite3_bind_text(stmt, 8, default_value, -1, NULL);
+    sqlite3_bind_text(stmt, 9, file, -1, NULL);
+    sqlite3_bind_text(stmt, 10, directory, -1, NULL);
+    sqlite3_bind_text(stmt, 11, process, -1, NULL);
+    sqlite3_bind_text(stmt, 12, registry, -1, NULL);
+    sqlite3_bind_text(stmt, 13, reference, -1, NULL);
+    sqlite3_bind_text(stmt, 14, result, -1, NULL);
+    
     if (sqlite3_step(stmt) == SQLITE_DONE) {
-        free(pci_dss);
-        free(cis);
         return 0;
     } else {
         merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        free(pci_dss);
-        free(cis);
+        return -1;
+    }
+}
+
+int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_GLOBAL_INSERT) < 0) {
+        mdebug1("at wdb_rootcheck_save(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_GLOBAL_INSERT];
+
+    sqlite3_bind_int(stmt, 1, scan_id);
+    sqlite3_bind_text(stmt, 2, name, -1, NULL);
+    sqlite3_bind_text(stmt, 2, description, -1, NULL);
+    sqlite3_bind_text(stmt, 2, os_required, -1, NULL);
+    sqlite3_bind_int(stmt, 1, pass);
+    sqlite3_bind_int(stmt, 1, failed);
+    sqlite3_bind_int(stmt, 1, score);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
 }

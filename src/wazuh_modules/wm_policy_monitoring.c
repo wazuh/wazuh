@@ -29,8 +29,9 @@ static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Mod
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
 static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id);  // Read policy monitoring files
-static int wm_policy_monitoring_do_scan(OSList *plist,char *description,cJSON *profile,cJSON *object,OSStore *vars,wm_policy_monitoring_t * data,int id);  // Do scan
-static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,char *profile,unsigned int passed, unsigned int failed,unsigned int unknown);  // Send summary
+static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy);  // Do scan
+static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy);  // Send summary
+static int wm_policy_monitoring_check_policy(cJSON *policy);
 static void wm_policy_monitoring_summary_increment_passed();
 static void wm_policy_monitoring_summary_increment_failed();
 static void wm_policy_monitoring_reset_summary();
@@ -72,7 +73,6 @@ typedef enum _request_type{
 
 static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
-static unsigned int summary_unknown = 0;
 
 // Module main function. It won't return
 void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
@@ -292,25 +292,24 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
+        minfo("json_is: %s",cJSON_Print(object));
+
         yaml_document_delete(&document);
 
         OSList *plist = w_os_get_process_list();
+        cJSON *policy = cJSON_GetObjectItem(object, "policy");
         cJSON *variables = cJSON_GetObjectItem(object, "variables");
-        cJSON *description = cJSON_GetObjectItem(object, "description");
-        cJSON *profiles = cJSON_GetObjectItem(object, "check");
+        cJSON *profiles = cJSON_GetObjectItem(object, "checks");
 
-        char *profile_description = NULL;
-        
-        if(description) {
-            cJSON *name = cJSON_GetObjectItem(description, "name");
-
-            if(name){
-                profile_description = name->valuestring;
-            }
+        if(wm_policy_monitoring_check_policy(policy)) {
+            merror("Check your 'policy' field");
+            goto next;
         }
 
+        char *profile_description = NULL;
+
         if(!profiles){
-            merror("Obtaining 'check' from json");
+            merror("Obtaining 'checks' from json");
             goto next;
         }
 
@@ -320,8 +319,8 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
-        wm_policy_monitoring_do_scan(plist,profile_description,profiles,object,vars,data,id);
-        wm_policy_monitoring_send_summary(data,id,profile_description,summary_passed,summary_failed,summary_unknown);
+        wm_policy_monitoring_do_scan(plist,profiles,vars,data,id,policy);
+        wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy);
         wm_policy_monitoring_reset_summary();
         w_del_plist(plist);
 
@@ -340,7 +339,48 @@ next:
     }
 }
 
-static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *profile,cJSON *object,OSStore *vars,wm_policy_monitoring_t * data,int id) {
+static int wm_policy_monitoring_check_policy(cJSON *policy) {
+    int retval;
+    cJSON *id;
+    cJSON *name;
+    cJSON *description;
+    cJSON *os_required;
+
+    retval = 1;
+
+    if(!policy) {
+        return retval;
+    }
+
+    id = cJSON_GetObjectItem(policy, "id");
+    if(!id) {
+        merror("Field 'id' not found on policy");
+        return retval;
+    }
+
+    name = cJSON_GetObjectItem(policy, "name");
+    if(!name) {
+        merror("Field 'name' not found on policy");
+        return retval;
+    }
+
+    description = cJSON_GetObjectItem(policy, "description");
+    if(!description) {
+        merror("Field 'description' not found on policy");
+        return retval;
+    }
+
+    os_required = cJSON_GetObjectItem(policy, "os_required");
+    if(!os_required) {
+        merror("Field 'description' not found on policy");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy) {
 
     int type = 0, condition = 0;
     char *nbuf;
@@ -364,350 +404,389 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,char *description,cJSON *
         mterror(ARGV0, INVALID_ROOTDIR);
     }
 #endif
+    cJSON *profile = NULL;
 
-    cJSON_ArrayForEach(profile,object){
+    cJSON_ArrayForEach(profile,profile_check){
 
-        if( profile->string && strcmp(profile->string,"check") == 0 )
-        {
-            c_title = cJSON_GetObjectItem(profile, "title");
-            c_condition = cJSON_GetObjectItem(profile, "condition");
-            cJSON *p_checks = cJSON_GetObjectItem(profile, "rules");
+        c_title = cJSON_GetObjectItem(profile, "title");
+        c_condition = cJSON_GetObjectItem(profile, "condition");
+        cJSON *p_checks = cJSON_GetObjectItem(profile, "rules");
 
-            /* Get first name */
-            if(c_title) {
-                name = c_title->valuestring;
-            } else {
-                name = NULL;
-            }
+        /* Get first name */
+        if(c_title) {
+            name = c_title->valuestring;
+        } else {
+            name = NULL;
+        }
 
-            /* Get condition */
-            if(c_condition) {
-                wm_policy_monitoring_set_condition(c_condition->valuestring,&condition);
-            } else {
-                wm_policy_monitoring_set_condition("invalid",&condition);
-            }
+        /* Get condition */
+        if(c_condition) {
+            wm_policy_monitoring_set_condition(c_condition->valuestring,&condition);
+        } else {
+            wm_policy_monitoring_set_condition("invalid",&condition);
+        }
 
-            if (name == NULL || condition == WM_POLICY_MONITORING_COND_INV) {
-                merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, name );
-                goto clean_return;
-            }
-        
-            if(p_checks){
-                cJSON *p_check;
+        if (name == NULL || condition == WM_POLICY_MONITORING_COND_INV) {
+            merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, name );
+            goto clean_return;
+        }
+    
+        if(p_checks){
+            cJSON *p_check;
 
-                int g_found = 0;
-                int not_found = 0;
+            int g_found = 0;
+            int not_found = 0;
 
-                cJSON_ArrayForEach(p_check,p_checks)
-                {
-                    mtdebug2(ARGV0, "Checking entry: '%s'.", name);
+            cJSON_ArrayForEach(p_check,p_checks)
+            {
+                mtdebug2(ARGV0, "Checking entry: '%s'.", name);
 
-                    /* Get each value */
-                    //do {
-                        int negate = 0;
-                        int found = 0;
-                        value = NULL;
-                        nbuf = p_check->valuestring;
-                    
-                        /* Get value to look for */
-                        value = wm_policy_monitoring_get_value(nbuf, &type);
-                        if (value == NULL) {
-                            mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VALUE, nbuf);
-                            goto clean_return;
+                int negate = 0;
+                int found = 0;
+                value = NULL;
+                nbuf = p_check->valuestring;
+            
+                /* Get value to look for */
+                value = wm_policy_monitoring_get_value(nbuf, &type);
+                if (value == NULL) {
+                    mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VALUE, nbuf);
+                    goto clean_return;
+                }
+
+                /* Get negate value */
+                if (*value == '!') {
+                    negate = 1;
+                    value++;
+                }
+
+                /* Check for a file */
+                if (type == WM_POLICY_MONITORING_TYPE_FILE) {
+                    char *pattern = NULL;
+                    char *f_value = NULL;
+
+                    pattern = wm_policy_monitoring_get_pattern(value);
+                    f_value = value;
+
+                    /* Get any variable */
+                    if (value[0] == '$') {
+                        f_value = (char *) OSStore_Get(vars, value);
+                        if (!f_value) {
+                            mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
+                            continue;
                         }
+                    }
 
-                        /* Get negate value */
-                        if (*value == '!') {
-                            negate = 1;
-                            value++;
+    #ifdef WIN32
+                    else if (value[0] == '\\') {
+                        final_file[0] = '\0';
+                        final_file[sizeof(final_file) - 1] = '\0';
+
+                        snprintf(final_file, sizeof(final_file) - 2, "%s%s",
+                                root_dir, value);
+                        f_value = final_file;
+                    } else {
+                        final_file[0] = '\0';
+                        final_file[sizeof(final_file) - 1] = '\0';
+
+                        ExpandEnvironmentStrings(value, final_file,
+                                                sizeof(final_file) - 2);
+                        f_value = final_file;
+                    }
+    #endif
+
+                    mtdebug2(ARGV0, "Checking file: '%s'.", f_value);
+                    if (wm_policy_monitoring_check_file(f_value, pattern,data)) {
+                        mtdebug2(ARGV0, "Found file.");
+                        found = 1;
+                    }
+                }
+
+    #ifdef WIN32
+                /* Check for a registry entry */
+                else if (type == WM_POLICY_MONITORING_TYPE_REGISTRY) {
+                    char *entry = NULL;
+                    char *pattern = NULL;
+
+                    /* Look for additional entries in the registry
+                    * and a pattern to match.
+                    */
+                    entry = wm_policy_monitoring_get_pattern(value);
+                    if (entry) {
+                        pattern = wm_policy_monitoring_get_pattern(entry);
+                    }
+
+                    mtdebug2(ARGV0, "Checking registry: '%s'.", value);
+                    if (wm_policy_monitoring_is_registry(value, entry, pattern)) {
+                        mtdebug2(ARGV0, "Found registry.");
+                        found = 1;
+                    }
+
+                }
+    #endif
+                /* Check for a directory */
+                else if (type == WM_POLICY_MONITORING_TYPE_DIR) {
+                    char *file = NULL;
+                    char *pattern = NULL;
+                    char *f_value = NULL;
+                    char *dir = NULL;
+
+                    file = wm_policy_monitoring_get_pattern(value);
+                    if (!file) {
+                        mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
+                        continue;
+                    }
+
+                    pattern = wm_policy_monitoring_get_pattern(file);
+
+                    /* Get any variable */
+                    if (value[0] == '$') {
+                        f_value = (char *) OSStore_Get(vars, value);
+                        if (!f_value) {
+                            mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
+                            continue;
                         }
+                    } else {
+                        f_value = value;
+                    }
 
-                        /* Check for a file */
-                        if (type == WM_POLICY_MONITORING_TYPE_FILE) {
-                            char *pattern = NULL;
-                            char *f_value = NULL;
+                    /* Check for multiple comma separated directories */
+                    dir = f_value;
+                    f_value = strchr(dir, ',');
+                    if (f_value) {
+                        *f_value = '\0';
+                    }
 
-                            pattern = wm_policy_monitoring_get_pattern(value);
-                            f_value = value;
+                    while (dir) {
 
-                            /* Get any variable */
-                            if (value[0] == '$') {
-                                f_value = (char *) OSStore_Get(vars, value);
-                                if (!f_value) {
-                                    mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
-                                    continue;
-                                }
-                            }
+                        mdebug2("Checking dir: %s", dir);
 
-            #ifdef WIN32
-                            else if (value[0] == '\\') {
-                                final_file[0] = '\0';
-                                final_file[sizeof(final_file) - 1] = '\0';
+                        short is_nfs = IsNFS(dir);
+                        if( is_nfs == 1 && data->skip_nfs ) {
+                            mdebug1("rootcheck.skip_nfs enabled and %s is flagged as NFS.", dir);
+                        }
+                        else {
+                            mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
 
-                                snprintf(final_file, sizeof(final_file) - 2, "%s%s",
-                                        root_dir, value);
-                                f_value = final_file;
-                            } else {
-                                final_file[0] = '\0';
-                                final_file[sizeof(final_file) - 1] = '\0';
-
-                                ExpandEnvironmentStrings(value, final_file,
-                                                        sizeof(final_file) - 2);
-                                f_value = final_file;
-                            }
-            #endif
-
-                            mtdebug2(ARGV0, "Checking file: '%s'.", f_value);
-                            if (wm_policy_monitoring_check_file(f_value, pattern,data)) {
-                                mtdebug2(ARGV0, "Found file.");
+                            if (wm_policy_monitoring_check_dir(dir, file, pattern,data)) {
+                                mdebug2("Found dir.");
                                 found = 1;
                             }
                         }
 
-            #ifdef WIN32
-                        /* Check for a registry entry */
-                        else if (type == WM_POLICY_MONITORING_TYPE_REGISTRY) {
-                            char *entry = NULL;
-                            char *pattern = NULL;
+                        if (f_value) {
+                            *f_value = ',';
+                            f_value++;
 
-                            /* Look for additional entries in the registry
-                            * and a pattern to match.
-                            */
-                            entry = wm_policy_monitoring_get_pattern(value);
-                            if (entry) {
-                                pattern = wm_policy_monitoring_get_pattern(entry);
-                            }
-
-                            mtdebug2(ARGV0, "Checking registry: '%s'.", value);
-                            if (wm_policy_monitoring_is_registry(value, entry, pattern)) {
-                                mtdebug2(ARGV0, "Found registry.");
-                                found = 1;
-                            }
-
-                        }
-            #endif
-                        /* Check for a directory */
-                        else if (type == WM_POLICY_MONITORING_TYPE_DIR) {
-                            char *file = NULL;
-                            char *pattern = NULL;
-                            char *f_value = NULL;
-                            char *dir = NULL;
-
-                            file = wm_policy_monitoring_get_pattern(value);
-                            if (!file) {
-                                mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
-                                continue;
-                            }
-
-                            pattern = wm_policy_monitoring_get_pattern(file);
-
-                            /* Get any variable */
-                            if (value[0] == '$') {
-                                f_value = (char *) OSStore_Get(vars, value);
-                                if (!f_value) {
-                                    mterror(ARGV0, WM_POLICY_MONITORING_INVALID_RKCL_VAR, value);
-                                    continue;
-                                }
-                            } else {
-                                f_value = value;
-                            }
-
-                            /* Check for multiple comma separated directories */
                             dir = f_value;
+
                             f_value = strchr(dir, ',');
                             if (f_value) {
                                 *f_value = '\0';
                             }
-
-                            while (dir) {
-
-                                mdebug2("Checking dir: %s", dir);
-
-                                short is_nfs = IsNFS(dir);
-                                if( is_nfs == 1 && data->skip_nfs ) {
-                                    mdebug1("rootcheck.skip_nfs enabled and %s is flagged as NFS.", dir);
-                                }
-                                else {
-                                    mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
-
-                                    if (wm_policy_monitoring_check_dir(dir, file, pattern,data)) {
-                                        mdebug2("Found dir.");
-                                        found = 1;
-                                    }
-                                }
-
-                                if (f_value) {
-                                    *f_value = ',';
-                                    f_value++;
-
-                                    dir = f_value;
-
-                                    f_value = strchr(dir, ',');
-                                    if (f_value) {
-                                        *f_value = '\0';
-                                    }
-                                } else {
-                                    dir = NULL;
-                                }
-                            }
-                        }
-
-                        /* Check for a process */
-                        else if (type == WM_POLICY_MONITORING_TYPE_PROCESS) {
-                            mdebug2("Checking process: '%s'.", value);
-                            if (wm_policy_monitoring_is_process(value, p_list,data)) {
-                                mdebug2("Found process.");
-                                found = 1;
-                            }
-                        }
-
-                        /* Switch the values if ! is present */
-                        if (negate) {
-                            if (found) {
-                                found = 0;
-                            } else {
-                                found = 1;
-                            }
-                        }
-
-                        /* Check the conditions */
-                        if (condition & WM_POLICY_MONITORING_COND_ANY) {
-                            mdebug2("Condition ANY.");
-                            if (found) {
-                                g_found = 1;
-                                wm_policy_monitoring_summary_increment_failed();
-                            } else {
-                                wm_policy_monitoring_summary_increment_passed();
-                            }
-                        } else if (condition & WM_POLICY_MONITORING_COND_NON) {
-                            mdebug2("Condition NON.");
-                            if (!found && (not_found != -1)) {
-                                mdebug2("Condition NON setze not_found=1.");
-                                not_found = 1;
-                                wm_policy_monitoring_summary_increment_failed();
-                            } else {
-                                not_found = -1;
-                                wm_policy_monitoring_summary_increment_passed();
-                            }
                         } else {
-                            /* Condition for ALL */
-                            mdebug2("Condition ALL.");
-                            if (found && (g_found != -1)) {
-                                g_found = 1;
-                                wm_policy_monitoring_summary_increment_failed();
-                            } else {
-                                g_found = -1;
-                                wm_policy_monitoring_summary_increment_passed();
-                            }
+                            dir = NULL;
                         }
-                    //} while (value != NULL);
+                    }
                 }
 
-                if (condition & WM_POLICY_MONITORING_COND_NON) {
-                    if (not_found == -1){ g_found = 0;} else {g_found = 1;}
+                /* Check for a process */
+                else if (type == WM_POLICY_MONITORING_TYPE_PROCESS) {
+                    mdebug2("Checking process: '%s'.", value);
+                    if (wm_policy_monitoring_is_process(value, p_list,data)) {
+                        mdebug2("Found process.");
+                        found = 1;
+                    }
                 }
 
-                /* Alert if necessary */
-                if (g_found == 1) {
-                    int j = 0;
-                    char **p_alert_msg = data->alert_msg;
+                /* Switch the values if ! is present */
+                if (negate) {
+                    if (found) {
+                        found = 0;
+                    } else {
+                        found = 1;
+                    }
+                }
 
-                    while (1) {
-                        if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
-                            // TODO: notify alert
-                            cJSON *json_alert = cJSON_CreateObject();
-                            cJSON_AddStringToObject(json_alert, "type", "check");
-                            cJSON_AddNumberToObject(json_alert, "id", id);
-
-                            if(description) {
-                                cJSON_AddStringToObject(json_alert, "profile", description);
-                            } else {
-                                cJSON_AddStringToObject(json_alert, "profile", "unknown");
-                            }
-                           
-                            cJSON *check = cJSON_CreateObject();
-                            cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
-                            cJSON *title = cJSON_GetObjectItem(profile, "title");
-                            cJSON_AddNumberToObject(check, "id", pm_id->valueint);
-
-                            if(title){
-                                cJSON_AddStringToObject(check, "title", title->valuestring);
-                            } else {
-                                cJSON_AddStringToObject(check, "title", "unknown");
-                            }
-                           
-                            cJSON *references = cJSON_GetObjectItem(profile, "references");
-
-                            if(references) {
-                                cJSON *add_references = cJSON_CreateArray();
-                                cJSON *reference;
-                                cJSON_ArrayForEach(reference,references)
-                                {
-                                    cJSON_AddItemToArray(add_references,cJSON_CreateString(reference->valuestring));
-                                }
-                                cJSON_AddItemToObject(check,"reference",add_references);
-                            }
-
-                            // Get File from alert
-                            char *alert_file = strstr(p_alert_msg[j],"File:");
-                            if(alert_file){
-                                alert_file+= 5;
-                                *alert_file = '\0';
-                                alert_file++;
-                                cJSON_AddStringToObject(check, "file", alert_file);
-                            }
-
-                            cJSON *cis = cJSON_GetObjectItem(profile, "cis");
-
-                            if(cis){
-                                cJSON_AddStringToObject(check, "cis", cis->valuestring);
-                            } else {
-                                cJSON_AddStringToObject(check, "cis", "unknown");
-                            }
-
-                            cJSON_AddStringToObject(check, "result", "fail");
-                            cJSON_AddItemToObject(json_alert,"check",check);
-
-                            wm_policy_monitoring_send_alert(data,json_alert);
-                            cJSON_Delete(json_alert);
-                        }
-
-                        if (p_alert_msg[j]) {
-                            free(p_alert_msg[j]);
-                            p_alert_msg[j] = NULL;
-                            j++;
-
-                            if (!p_alert_msg[j]) {
-                                break;
-                            }
-                        } else {
-                            break;
-                        }
+                /* Check the conditions */
+                if (condition & WM_POLICY_MONITORING_COND_ANY) {
+                    mdebug2("Condition ANY.");
+                    if (found) {
+                        g_found = 1;
+                        wm_policy_monitoring_summary_increment_failed();
+                    } else {
+                        wm_policy_monitoring_summary_increment_passed();
+                    }
+                } else if (condition & WM_POLICY_MONITORING_COND_NON) {
+                    mdebug2("Condition NON.");
+                    if (!found && (not_found != -1)) {
+                        mdebug2("Condition NON setze not_found=1.");
+                        not_found = 1;
+                        wm_policy_monitoring_summary_increment_failed();
+                    } else {
+                        not_found = -1;
+                        wm_policy_monitoring_summary_increment_passed();
                     }
                 } else {
-                    int j = 0;
-                    while (data->alert_msg[j]) {
-                        free(data->alert_msg[j]);
-                        data->alert_msg[j] = NULL;
-                        j++;
-                    }
-
-                    /* Check if this entry is required for the rest of the file */
-                    if (condition & WM_POLICY_MONITORING_COND_REQ) {
-                        goto clean_return;
+                    /* Condition for ALL */
+                    mdebug2("Condition ALL.");
+                    if (found && (g_found != -1)) {
+                        g_found = 1;
+                        wm_policy_monitoring_summary_increment_failed();
+                    } else {
+                        g_found = -1;
+                        wm_policy_monitoring_summary_increment_passed();
                     }
                 }
+            }
 
-                /* End if we don't have anything else */
-                if (!nbuf) {
+            if (condition & WM_POLICY_MONITORING_COND_NON) {
+                if (not_found == -1){ g_found = 0;} else {g_found = 1;}
+            }
+
+            /* Alert if necessary */
+            if (g_found == 1) {
+                int j = 0;
+                char **p_alert_msg = data->alert_msg;
+
+                while (1) {
+                    if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
+                        // TODO: notify alert
+                        cJSON *json_alert = cJSON_CreateObject();
+                        cJSON_AddStringToObject(json_alert, "type", "check");
+                        cJSON_AddNumberToObject(json_alert, "id", id);
+
+                        cJSON *name = cJSON_GetObjectItem(policy,"name");
+                        cJSON_AddStringToObject(json_alert, "profile", name->valuestring);
+                        
+                        
+                        cJSON *check = cJSON_CreateObject();
+                        cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+                        cJSON *title = cJSON_GetObjectItem(profile, "title");
+                        cJSON *cis_control = cJSON_GetObjectItem(profile, "cis_control");
+                        cJSON *description = cJSON_GetObjectItem(profile, "description");
+                        cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
+                        cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
+                        cJSON *default_value = cJSON_GetObjectItem(profile, "default_value");
+                        cJSON_AddNumberToObject(check, "id", pm_id->valueint);
+
+                        if(title){
+                            cJSON_AddStringToObject(check, "title", title->valuestring);
+                        } else {
+                            cJSON_AddStringToObject(check, "title", "unknown");
+                        }
+
+                        if(cis_control){
+                            cJSON_AddStringToObject(check, "cis_control", cis_control->valuestring);
+                        } else {
+                            cJSON_AddStringToObject(check, "cis_control", "unknown");
+                        }
+
+
+                        if(description){
+                            cJSON_AddStringToObject(check, "description", description->valuestring);
+                        } else {
+                            cJSON_AddStringToObject(check, "description", "unknown");
+                        }
+
+                        if(rationale){
+                            cJSON_AddStringToObject(check, "rationale", rationale->valuestring);
+                        } else {
+                            cJSON_AddStringToObject(check, "rationale", "unknown");
+                        }
+
+                        if(remediation){
+                            cJSON_AddStringToObject(check, "remediation", remediation->valuestring);
+                        } else {
+                            cJSON_AddStringToObject(check, "remediation", "unknown");
+                        }
+
+                        if(default_value){
+                            cJSON_AddStringToObject(check, "default_value", default_value->valuestring);
+                        } else {
+                            cJSON_AddStringToObject(check, "default_value", "unknown");
+                        }
+
+                        cJSON *compliances = cJSON_GetObjectItem(profile, "compliance");
+
+                        if(compliances) {
+                            cJSON *add_compliances = cJSON_CreateObject();
+                            cJSON *compliance;
+
+                            cJSON_ArrayForEach(compliance,compliances)
+                            {
+                                if(compliance->child->valuestring){
+                                    cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
+                                } else if(compliance->child->valueint) {
+                                    cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
+                                }     
+                            }
+
+                            cJSON_AddItemToObject(check,"compliance",add_compliances);
+                        }
+                        
+                        cJSON *references = cJSON_GetObjectItem(profile, "references");
+
+                        if(references) {
+                            cJSON *add_references = cJSON_CreateArray();
+                            cJSON *reference;
+                            cJSON_ArrayForEach(reference,references)
+                            {
+                                cJSON_AddItemToArray(add_references,cJSON_CreateString(reference->valuestring));
+                            }
+                            cJSON_AddItemToObject(check,"reference",add_references);
+                        }
+
+                        // Get File from alert
+                        char *alert_file = strstr(p_alert_msg[j],"File:");
+                        if(alert_file){
+                            alert_file+= 5;
+                            *alert_file = '\0';
+                            alert_file++;
+                            cJSON_AddStringToObject(check, "file", alert_file);
+                        }
+
+                        cJSON_AddStringToObject(check, "result", "fail");
+                        cJSON_AddItemToObject(json_alert,"check",check);
+
+                        wm_policy_monitoring_send_alert(data,json_alert);
+                        cJSON_Delete(json_alert);
+                    }
+
+                    if (p_alert_msg[j]) {
+                        free(p_alert_msg[j]);
+                        p_alert_msg[j] = NULL;
+                        j++;
+
+                        if (!p_alert_msg[j]) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                int j = 0;
+                while (data->alert_msg[j]) {
+                    free(data->alert_msg[j]);
+                    data->alert_msg[j] = NULL;
+                    j++;
+                }
+
+                /* Check if this entry is required for the rest of the file */
+                if (condition & WM_POLICY_MONITORING_COND_REQ) {
                     goto clean_return;
                 }
+            }
 
-                /* Clean up name */
-                if (name) {
-                    free(name);
-                    name = NULL;
-                }
+            /* End if we don't have anything else */
+            if (!nbuf) {
+                goto clean_return;
+            }
+
+            /* Clean up name */
+            if (name) {
+                free(name);
+                name = NULL;
             }
         }
     }
@@ -1017,7 +1096,7 @@ static int wm_policy_monitoring_pt_check_negate(const char *pattern)
     return (1);
 }
 
-static int  wm_policy_monitoring_pt_matches(const char *str, char *pattern)
+static int wm_policy_monitoring_pt_matches(const char *str, char *pattern)
 {
     int neg = 0;
     int ret_code = 0;
@@ -1481,15 +1560,23 @@ static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
 
 #endif
 
-static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,char *profile,unsigned int passed, unsigned int failed,unsigned int unknown) {
+static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
     cJSON_AddNumberToObject(json_summary, "scan_id", scan_id);
-    cJSON_AddStringToObject(json_summary, "profile", profile);
+
+    cJSON *name = cJSON_GetObjectItem(policy,"name");
+    cJSON *description = cJSON_GetObjectItem(policy,"description");
+    cJSON *os_required = cJSON_GetObjectItem(policy,"os_required");
+
+    cJSON_AddStringToObject(json_summary, "name", name->valuestring);
+    cJSON_AddStringToObject(json_summary, "description", description->valuestring);
+    cJSON_AddStringToObject(json_summary, "os_required", os_required->valuestring);
+    
     cJSON_AddNumberToObject(json_summary, "passed", passed);
     cJSON_AddNumberToObject(json_summary, "failed", failed);
-    cJSON_AddNumberToObject(json_summary, "unknown", unknown);
+    cJSON_AddNumberToObject(json_summary, "score", 0);
 
     wm_policy_monitoring_send_alert(data,json_summary);
     cJSON_Delete(json_summary);
@@ -1508,7 +1595,6 @@ static void wm_policy_monitoring_summary_increment_failed() {
 static void wm_policy_monitoring_reset_summary() {
     summary_failed = 0;
     summary_passed = 0;
-    summary_unknown = 0;
 }
 
 cJSON *wm_policy_monitoring_dump(const wm_policy_monitoring_t *data) {
