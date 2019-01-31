@@ -229,7 +229,7 @@ functions = {
         'type': 'local_any'
     },
     'PUT/manager/restart': {
-        'function': manager.restart,
+        'function': manager.restart_master,
         'type': 'local_any'
     },
 
@@ -296,6 +296,14 @@ functions = {
     },
     '/cluster/:node_id/logs': {
         'function': manager.ossec_log,
+        'type': 'distributed_master'
+    },
+    'PUT/cluster/restart': {
+        'function': manager.restart_cluster,
+        'type': 'distributed_master'
+    },
+    'PUT/cluster/:node_id/restart': {
+        'function': manager.restart_node,
         'type': 'distributed_master'
     },
 

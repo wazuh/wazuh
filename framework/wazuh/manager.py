@@ -175,7 +175,7 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def restart():
+def restart_master():
     """
     Restart Wazuh manager.
 
@@ -196,6 +196,25 @@ def restart():
         return "Manager was restarted successfully"
     except Exception as e:
         raise WazuhException(2008)
+
+
+def restart_node(node_id):
+    """
+    Restart a cluster node.
+
+    :param node_id: Name of the node to restart
+    :return: Confirmation message.
+    """
+    pass
+
+
+def restart_cluster():
+    """
+    Restart Wazuh manager.
+
+    :return: Confirmation message.
+    """
+    pass
 
 
 def _check_wazuh_xml(files):
