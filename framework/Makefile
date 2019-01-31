@@ -52,7 +52,7 @@ ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
 endif
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
-	$(foreach script,$(wildcard wrappers/*),$(INSTALL_EXEC) $(script) $(patsubst wrappers/%.sh,$(PREFIX)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst wrappers/%.sh,$(PREFIX)/bin/%,$(script));)
 
 examples: install
 	$(INSTALL_DIR) $(PREFIX)/framework/examples
