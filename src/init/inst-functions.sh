@@ -956,8 +956,12 @@ InstallServer(){
 
     GenerateAuthCert
 
+    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
+        CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
+    fi
+
     ### Install Python
-    ${MAKEBIN} wpython PREFIX=${PREFIX}
+    ${MAKEBIN} wpython PREFIX=${PREFIX} ${CPYTHON_FLAGS}
 }
 
 InstallAgent(){
