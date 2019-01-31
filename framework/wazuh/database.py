@@ -35,6 +35,7 @@ class Connection:
         self.max_attempts = max_attempts
 
         self.__conn = sqlite3.connect(database = db_path, timeout = busy_sleep)
+        self.__conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
         self.__cur = self.__conn.cursor()
 
     def __iter__(self):
