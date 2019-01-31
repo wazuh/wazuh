@@ -102,7 +102,8 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
         output = output[offset:]
 
     if search:
-        output = search_array(output, search['value'], search['negation'])
+        # only search in path field
+        output = search_array(output, search['value'], search['negation'], fields='path')
 
     if sort:
         output = sort_array(output, sort['fields'], sort['order'])
