@@ -81,7 +81,7 @@ int create_db(void);
 int run_dbcheck(void);
 
 /* Scan directory */
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link);
+int read_dir(char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
@@ -113,7 +113,7 @@ int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
 
 
-int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
+int realtime_checksumfile(char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Find container directory */
 int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));

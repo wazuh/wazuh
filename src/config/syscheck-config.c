@@ -152,7 +152,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
         }
     }
 
-    return (1);
+    return (pl);
 }
 
 #ifdef WIN32

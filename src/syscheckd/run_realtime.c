@@ -36,10 +36,10 @@ volatile int audit_db_consistency_flag;
 pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Prototypes */
-int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
+int realtime_checksumfile(char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
 
 /* Checksum of the realtime file being monitored */
-int realtime_checksumfile(const char *file_name, whodata_evt *evt)
+int realtime_checksumfile(char *file_name, whodata_evt *evt)
 {
     char *buf;
     syscheck_node *s_node;
@@ -129,19 +129,43 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             }
 #ifndef WIN32
             struct stat statbuf;
+            struct stat statbuf_lnk;
+
             if (lstat(file_name, &statbuf) < 0) {
                 mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
-            }
-            if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                read_dir(file_name, pos, evt, depth, 1);
-                return 0;
-            } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
-                return 0;
+            } else {
+                if (stat(file_name, &statbuf_lnk) < 0) {
+                    mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
+                } else {
+                    if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW) && (S_ISDIR(statbuf_lnk.st_mode))) {
+                        read_dir(file_name, pos, evt, depth, 1);
+                        return 0;
+                    } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
+                        return 0;
+                    } else if (S_ISREG(statbuf_lnk.st_mode)) {
+                        mdebug2("A file can't be added to be monitored in realtime: '%s'", file_name);
+                        return 0;
+                    }
+                }
             }
 #else
             if (islink_win(file_name) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                read_dir(file_name, pos, evt, depth, 1);
-                return 0;
+                char *real_path;
+                os_calloc(PATH_MAX+2, sizeof(char), real_path);
+                if (real_path_win(file_name, real_path)) {
+                    if (GetFileAttributes(real_path) & FILE_ATTRIBUTE_DIRECTORY) {
+                        mdebug2("Llega real_path directory: '%s'", real_path);
+                        os_free(real_path);
+                        read_dir(file_name, pos, evt, depth, 1);
+                        return 0;
+                    } else {
+                        os_free(real_path);
+                        mdebug2("A file can't be added to be monitored in realtime: '%s'", real_path);
+                    }
+                } else {
+                    os_free(real_path);
+                    mdebug2("real_path_win() failed on: '%s'", file_name);
+                }
             } else if (islink_win(file_name) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
                 return 0;
             }

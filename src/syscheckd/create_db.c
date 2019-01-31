@@ -20,7 +20,7 @@
 #include "syscheck_op.h"
 
 /* Prototypes */
-static int read_file(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth)  __attribute__((nonnull(1)));
+static int read_file(char *dir_name, int dir_position, whodata_evt *evt, int max_depth)  __attribute__((nonnull(1)));
 
 static int read_dir_diff(char *dir_name);
 
@@ -174,9 +174,10 @@ void remove_local_diff(){
 }
 
 /* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, int dir_position, whodata_evt *evt, int max_depth)
+static int read_file(char *file_name, int dir_position, whodata_evt *evt, int max_depth)
 {
     int opts;
+    int islink = 0;
     OSMatch *restriction;
     char *buf;
     syscheck_node *s_node;
@@ -194,6 +195,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #else
     char str_owner[50], str_group[50], str_perm[50];
     char *hash_file_name;
+    char *file_inode;
+    char *inode;
 #endif
 
     opts = syscheck.opts[dir_position];
@@ -208,6 +211,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     /* Win32 does not have lstat */
     if (stat(file_name, &statbuf) < 0)
 #else
+    if (evt && evt->inode) {
+        if (file_inode = OSHash_Get_ex(syscheck.inode_hash, evt->inode), file_inode) {
+            file_name = file_inode;
+        }
+    }
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
@@ -228,6 +236,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 os_free(s_node->checksum);
                 os_free(s_node);
             }
+#ifndef WIN32
+            // Delete from inode hash table
+            if (evt && evt->inode) {
+                if (inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), inode) {
+                    os_free(inode);
+                }
+            }
+#endif
             os_free(alert_msg);
             os_free(wd_sum);
             return (0);
@@ -291,6 +307,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (S_ISLNK(statbuf.st_mode)) {
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
+                        islink = 1;
+                        if (opts & CHECK_FOLLOW) {
+                            strncpy(file_name, real_path, PATH_MAX+2);
+                        }
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
                             strncpy(mf_sum, "n/a", 4);
                             strncpy(sf_sum, "n/a", 4);
@@ -327,7 +347,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     return -1;
                 } else {
                     if (stat(real_path, &statbuf_lnk) == 0) {
+                        islink = 1;
                         if (S_ISREG(statbuf_lnk.st_mode)) {
+                            if (opts & CHECK_FOLLOW) {
+                                strncpy(file_name, real_path, PATH_MAX+2);
+                            }
                             if (OS_MD5_SHA1_SHA256_File(real_path, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
                                 strncpy(mf_sum, "n/a", 4);
                                 strncpy(sf_sum, "n/a", 4);
@@ -377,12 +401,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifdef WIN32
             // Get the user name and its id
             if (opts & CHECK_OWNER) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
+                if (islink) {
                         user = get_user(real_path, statbuf_lnk.st_uid, &sid);
-                    } else {
-                        user = get_user(file_name, statbuf.st_uid, &sid);
-                    }
                 } else {
                     user = get_user(file_name, statbuf.st_uid, &sid);
                 }
@@ -392,19 +412,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (opts & CHECK_PERM) {
                 int error;
                 char perm_unescaped[OS_SIZE_6144 + 1];
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        if (error = w_get_file_permissions(real_path, perm_unescaped, OS_SIZE_6144), error) {
-                            merror("It was not possible to extract the permissions of '%s'. Error: %d.", real_path, error);
-                        } else {
-                            str_perm = escape_perm_sum(perm_unescaped);
-                        }
+                if (islink) {
+                    if (error = w_get_file_permissions(real_path, perm_unescaped, OS_SIZE_6144), error) {
+                        merror("It was not possible to extract the permissions of '%s'. Error: %d.", real_path, error);
                     } else {
-                        if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-                            merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
-                        } else {
-                            str_perm = escape_perm_sum(perm_unescaped);
-                        }
+                        str_perm = escape_perm_sum(perm_unescaped);
                     }
                 } else {
                     if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
@@ -416,12 +428,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_SIZE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
-                    } else {
-                        sprintf(str_size,"%ld",(long)statbuf.st_size);
-                    }
+                if (islink && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
@@ -430,12 +438,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
-                    } else {
-                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                    }
+                if (islink && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
@@ -444,12 +448,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
+                if (islink && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
@@ -475,19 +475,15 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     user ? user : "",
-                    opts & CHECK_GROUP ? get_group(islink_win(file_name) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+                    opts & CHECK_GROUP ? get_group(islink ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
-                    opts & CHECK_ATTRS ? w_get_file_attrs(opts & CHECK_FOLLOW ? islink_win(file_name) ? real_path : file_name : file_name) : 0);
+                    opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0);
 #else
             if (opts & CHECK_SIZE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
-                    } else {
-                        sprintf(str_size,"%ld",(long)statbuf.st_size);
-                    }
+                if (S_ISLNK(statbuf.st_mode) && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
@@ -526,12 +522,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
-                    } else {
-                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                    }
+                if (S_ISLNK(statbuf.st_mode) && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
@@ -540,12 +532,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
+                if (S_ISLNK(statbuf.st_mode) && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
@@ -620,12 +608,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
 #ifdef WIN32
             if (opts & CHECK_SIZE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
-                    } else {
-                        sprintf(str_size,"%ld",(long)statbuf.st_size);
-                    }
+                if (islink && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
@@ -634,12 +618,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
-                    } else {
-                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                    }
+                if (islink) {
+                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
@@ -648,12 +628,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (islink_win(file_name)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
+                if (islink && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
@@ -668,11 +644,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 user ? user : "",
-                opts & CHECK_GROUP ? get_group(islink_win(file_name) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+                opts & CHECK_GROUP ? get_group(islink ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
-                opts & CHECK_ATTRS ? w_get_file_attrs(opts & CHECK_FOLLOW ? islink_win(file_name) ? real_path : file_name : file_name) : 0,
+                opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 file_name,
@@ -682,12 +658,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(user);
 #else
             if (opts & CHECK_SIZE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
-                    } else {
-                        sprintf(str_size,"%ld",(long)statbuf.st_size);
-                    }
+                if (S_ISLNK(statbuf.st_mode) && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
@@ -726,12 +698,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_MTIME) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
-                    } else {
-                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                    }
+                if (S_ISLNK(statbuf.st_mode) && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
@@ -740,12 +708,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 
             if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
+                if (S_ISLNK(statbuf.st_mode) && (opts & CHECK_FOLLOW)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
@@ -851,7 +815,7 @@ end:
     return 0;
 }
 
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
+int read_dir(char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
 {
     int opts;
     size_t dir_size;
@@ -1304,17 +1268,18 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         }
 
         real_path[strlen(real_path) - 1] = '\0';
+        int pos;
 
         if(syscheck.filerestrict[dir_position]) {
-            dump_syscheck_entry(&syscheck,
-                                real_path,
-                                opts,
-                                0,
-                                syscheck.filerestrict[dir_position]->raw,
-                                max_depth, syscheck.tag[dir_position],
-                                -1);
+            pos = dump_syscheck_entry(&syscheck,
+                                    real_path,
+                                    opts,
+                                    0,
+                                    syscheck.filerestrict[dir_position]->raw,
+                                    max_depth, syscheck.tag[dir_position],
+                                    -1);
         } else {
-            dump_syscheck_entry(&syscheck,
+            pos = dump_syscheck_entry(&syscheck,
                                 real_path,
                                 opts,
                                 0,
@@ -1324,9 +1289,9 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         }
         /* Check for real time flag */
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
-#ifdef INOTIFY_ENABLED
+#if defined (INOTIFY_ENABLED) || defined (WIN32)
 #ifdef WIN32
-            realtime_adddir(real_path, dir_position+1);
+            realtime_adddir(real_path, pos+1);
 #else
             realtime_adddir(real_path, opts & CHECK_WHODATA);
 #endif
