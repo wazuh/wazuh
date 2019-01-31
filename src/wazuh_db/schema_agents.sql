@@ -227,26 +227,35 @@ CREATE TABLE IF NOT EXISTS scan_info (
 
 CREATE TABLE IF NOT EXISTS pm_global (
     scan_id INTEGER REFERENCES scan_info (pm_scan_id),
-    profile TEXT PRIMARY KEY,
+    name TEXT,
+    description TEXT,
+    os_required TEXT,
     pass INTEGER,
     failed INTEGER,
-    unknown INTEGER,
     score INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS pm_check (
-    profile TEXT REFERENCES pm_global (profile),
+    name TEXT,
     id INTEGER PRIMARY KEY,
+    cis_control TEXT,
     title TEXT,
     description TEXT,
+    rationale TEXT,
+    remediation TEXT,
+    default_value TEXT,
     file TEXT,
     process TEXT,
     directory TEXT,
     registry TEXT,
     reference TEXT,
-    pci_dss TEXT,
-    cis TEXT,
     result TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS pm_check_compliance (
+    id_check INTEGER REFERENCES pm_check (id),
+   `key` TEXT,
+   `value` TEXT
 );
 
 PRAGMA journal_mode=WAL;

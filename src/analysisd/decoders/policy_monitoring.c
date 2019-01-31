@@ -29,9 +29,14 @@
 #define INFORMATION 4
 #define VERBOSE 5
 
-static int FindEventcheck(Eventinfo *lf, char *pm_id, int *socket, char *check_result);
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, char * pm_id, char * description, char * file, char * reference,char * pci_dss,char * cis,char * result);
+static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket);
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,char * name,char * title,char *cis_control,char *description,char *rationale,char *remediation,char *default_value, char * file,char * directory,char * process,char * registry,char * reference,char * result);
+static int SaveGlobalInfo(Eventinfo *lf, int exists, int *socket,int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * module,int scan_id, int pm_start_scan, int pm_end_scan, int update);
+static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
+static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event);
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title, cJSON **cis_control,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **default_value,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result);
+static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **description,cJSON **os_required,cJSON **pass,cJSON **failed,cJSON **score);
 static int pm_send_db(char *msg, char *response, int *sock);
 
 static OSDecoderInfo *rootcheck_json_dec = NULL;
@@ -56,18 +61,6 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
     int result_db = 0;
     cJSON *json_event = NULL;
     cJSON *type = NULL;
-    cJSON *id = NULL;
-    cJSON *timestamp = NULL;
-    cJSON *profile = NULL;
-    cJSON *description = NULL;
-    cJSON *check = NULL;
-    cJSON *pm_id = NULL;
-    cJSON *title = NULL;
-    cJSON *files = NULL;
-    cJSON *references = NULL;
-    cJSON *cis = NULL;
-    cJSON *pci_dss = NULL;
-    cJSON *result = NULL;
 
     if (json_event = cJSON_Parse(lf->log), !json_event)
     {
@@ -92,12 +85,17 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
         }
         else if (strcmp(type->valuestring,"check") == 0){
             minfo("%s",cJSON_PrintUnformatted(json_event));
+
+            HandleCheckEvent(lf,socket,json_event);
+
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         } 
         else if (strcmp(type->valuestring,"summary") == 0){
             minfo("%s",cJSON_PrintUnformatted(json_event));
+
+            
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
@@ -150,49 +148,6 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
         goto end;
     }
 
-  
-
-    /* Check if the event is a check */
-    id = cJSON_GetObjectItem(json_event, "id");
-    timestamp = cJSON_GetObjectItem(json_event, "timestamp");
-    profile = cJSON_GetObjectItem(json_event, "profile");
-    check = cJSON_GetObjectItem(json_event, "check");
-    pm_id = cJSON_GetObjectItem(check, "pm_id");
-    title = cJSON_GetObjectItem(check, "title");
-    files = cJSON_GetObjectItem(check, "file");
-    references = cJSON_GetObjectItem(check, "reference");
-    pci_dss = cJSON_GetObjectItem(check, "pci_dss");
-    cis = cJSON_GetObjectItem(check, "cis");
-    description = cJSON_GetObjectItem(check, "description");
-    result = cJSON_GetObjectItem(check, "result");
-
-
-   /* result_db = FindEventcheck(lf, pm_id->valuestring, socket, result);
-    switch (result_db)
-    {
-    case -1:
-        merror("Error querying rootcheck database for agent %s", lf->agent_id);
-        goto end;
-    case 0: // It exists, update
-        result = SaveEventcheck(lf, 1, socket,pm_id->valuestring,description ? description->valuestring : "unknown",files,NULL,pci_dss,cis ? cis->valuestring : "unknown",result ? result->valuestring : "unknown");
-        if (result < 0)
-        {
-            merror("Error updating rootcheck database for agent %s", lf->agent_id);
-            goto end;
-        }
-        goto end;
-    case 1: // It not exists, insert
-        result = SaveEventcheck(lf, 0, socket,pm_id->valuestring,description ? description->valuestring : "unknown",files,NULL,pci_dss,cis ? cis->valuestring : "unknown",result ? result->valuestring : "unknown");
-        if (result < 0)
-        {
-            merror("Error storing rootcheck information for agent %s", lf->agent_id);
-            goto end;
-        }
-        break;
-    default:
-        goto end;
-    }*/
-
     ret_val = 1;
 
 end:
@@ -200,7 +155,7 @@ end:
     return (ret_val);
 }
 
-int FindEventcheck(Eventinfo *lf, char *pm_id, int *socket, char *check_result)
+int FindEventcheck(Eventinfo *lf, int pm_id, int *socket)
 {
 
     char *msg = NULL;
@@ -210,7 +165,7 @@ int FindEventcheck(Eventinfo *lf, char *pm_id, int *socket, char *check_result)
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s rootcheck query %s", lf->agent_id, pm_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring query %d", lf->agent_id, pm_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -232,7 +187,7 @@ int FindEventcheck(Eventinfo *lf, char *pm_id, int *socket, char *check_result)
     return retval;
 }
 
-int SaveEventcheck(Eventinfo *lf, int exists, int *socket, char * pm_id, char * description, char * file, char * reference,char * pci_dss,char * cis,char * result)
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,char * name,char * title,char *cis_control,char *description,char *rationale,char *remediation,char *default_value, char * file,char * directory,char * process,char * registry,char * reference,char * result)
 {
 
     char *msg = NULL;
@@ -242,9 +197,9 @@ int SaveEventcheck(Eventinfo *lf, int exists, int *socket, char * pm_id, char * 
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if (exists)
-        snprintf(msg, OS_MAXSTR - 1, "agent %s rootcheck update %ld|%s", lf->agent_id, (long int)lf->time.tv_sec, lf->log);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update %ld|%s", lf->agent_id, (long int)lf->time.tv_sec, lf->log);
     else
-        snprintf(msg, OS_MAXSTR - 1, "agent %s rootcheck insert %ld|%s", lf->agent_id, (long int)lf->time.tv_sec, lf->log);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert %d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", lf->agent_id,id,name,title,cis_control,description,rationale,remediation,default_value,file,directory,process,registry,reference,result);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -265,13 +220,12 @@ static int SaveScanInfo(Eventinfo *lf,int *socket,char * module,int scan_id, int
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
  
-    if(update) {
+    if(!update) {
         snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_scan_info %s|%d|%d|%d",lf->agent_id, module, scan_id,pm_start_scan,pm_end_scan );
     } else {
         snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info %s|%d",lf->agent_id, module,pm_end_scan );
     }
    
-
     if (pm_send_db(msg, response, socket) == 0)
     {
         return 0;
@@ -280,6 +234,204 @@ static int SaveScanInfo(Eventinfo *lf,int *socket,char * module,int scan_id, int
     {
         return -1;
     }
+}
+
+static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
+
+    cJSON *scan_id;
+    cJSON *id;
+    cJSON *name;
+    cJSON *cis_control;
+    cJSON *title;
+    cJSON *description;
+    cJSON *rationale;
+    cJSON *remediation;
+    cJSON *default_value;
+    cJSON *check;
+    cJSON *compliance;
+    cJSON *reference;
+    cJSON *file;
+    cJSON *directory;
+    cJSON *process;
+    cJSON *registry;
+    cJSON *result;
+
+    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&cis_control,&description,&rationale,&remediation,&default_value,&compliance,&check,&reference,&file,&directory,&process,&registry,&result)) {
+       
+        int result_event = 0;
+        int result_db = FindEventcheck(lf, id->valueint, socket);
+
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+                break;
+            case 0: // It exists, update
+                //result_event = SaveEventcheck(lf, 1, socket,id->valueint,description ? description->valuestring : "unknown",file,NULL,pci_dss,cis->valuestring,result ? result->valuestring : "unknown");
+                if (result_event < 0)
+                {
+                    merror("Error updating policy monitoring database for agent %s", lf->agent_id);
+                }
+                break;
+            case 1: // It not exists, insert
+                result_event = SaveEventcheck(lf, 0, socket,id->valueint,name ? name->valuestring : NULL,title ? title->valuestring : NULL,cis_control ? cis_control->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,default_value ? default_value->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL);
+                if (result_event < 0)
+                {
+                    merror("Error storing policy monitoring information for agent %s", lf->agent_id);
+                }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event) {
+
+    cJSON *scan_id;
+    cJSON *name;
+    cJSON *description;
+    cJSON *os_required;
+    cJSON *pass;
+    cJSON *failed;
+    cJSON *scored;
+
+
+    if(!CheckGlobalJSON(event,&scan_id,&name,&description,&os_required,&pass,&failed,&scored)) {
+       
+    }
+
+}
+
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title, cJSON **cis_control,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **default_value,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result) {
+    int retval = 1;
+
+    if( *scan_id = cJSON_GetObjectItem(event, "id"), !*scan_id) {
+        merror("Malformed JSON: field 'id' not found");
+        return retval;
+    }
+
+    if( *name = cJSON_GetObjectItem(event, "profile"), !*name) {
+        merror("Malformed JSON: field 'profile' not found");
+        return retval;
+    }
+
+    if( *check = cJSON_GetObjectItem(event, "check"), !*check) {
+        merror("Malformed JSON: field 'check' not found");
+        return retval;
+
+    } else {
+
+        if( *id = cJSON_GetObjectItem(*check, "id"), !*id) {
+            merror("Malformed JSON: field 'id' not found");
+            return retval;
+        }
+
+        if( *title = cJSON_GetObjectItem(*check, "title"), !*title) {
+            merror("Malformed JSON: field 'title' not found");
+            return retval;
+        }
+
+        if( *cis_control = cJSON_GetObjectItem(*check, "cis_control"), !*cis_control) {
+            merror("Malformed JSON: field 'cis_control' not found");
+            return retval;
+        }
+
+        if( *description = cJSON_GetObjectItem(*check, "description"), !*description) {
+            merror("Malformed JSON: field 'description' not found");
+            return retval;
+        }
+
+        if( *rationale = cJSON_GetObjectItem(*check, "rationale"), !*rationale) {
+            merror("Malformed JSON: field 'rationale' not found");
+            return retval;
+        }
+
+        if( *remediation = cJSON_GetObjectItem(*check, "remediation"), !*remediation) {
+            merror("Malformed JSON: field 'remediation' not found");
+            return retval;
+        }
+
+        if( *default_value = cJSON_GetObjectItem(*check, "default_value"), !*default_value) {
+            merror("Malformed JSON: field 'default_value' not found");
+            return retval;
+        }
+
+        if( *compliance = cJSON_GetObjectItem(*check, "compliance"), !*compliance) {
+            merror("Malformed JSON: field 'compliance' not found");
+            return retval;
+        }
+
+        if( *reference = cJSON_GetObjectItem(*check, "reference"), !*reference) {
+            merror("Malformed JSON: field 'reference' not found");
+            return retval;
+        }
+
+        *file = cJSON_GetObjectItem(*check, "file");
+        *directory = cJSON_GetObjectItem(*check, "directory");
+        *process = cJSON_GetObjectItem(*check, "process");
+        *registry = cJSON_GetObjectItem(*check, "registry");
+
+        if(!*file && !*directory && !*process && !*registry){
+            merror("Malformed JSON: field 'file' or 'directory' or 'process' or 'registry' not found");
+            return retval;
+        }
+        
+        if( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
+            merror("Malformed JSON: field 'result' not found");
+            return retval;
+        }
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **description,cJSON **os_required,cJSON **pass,cJSON **failed,cJSON **score){
+    int retval = 1;
+
+    if( *scan_id = cJSON_GetObjectItem(event, "scan_id"), !*scan_id) {
+        merror("Malformed JSON: field 'id' not found");
+        return retval;
+    }
+
+    if( *name = cJSON_GetObjectItem(event, "name"), !*name) {
+        merror("Malformed JSON: field 'name' not found");
+        return retval;
+    }
+
+    if( *description = cJSON_GetObjectItem(event, "description"), !*description) {
+        merror("Malformed JSON: field 'description' not found");
+        return retval;
+    }
+
+    if( *os_required = cJSON_GetObjectItem(event, "os_required"), !*os_required) {
+        merror("Malformed JSON: field 'os_required' not found");
+        return retval;
+    }
+
+    if( *pass = cJSON_GetObjectItem(event, "pass"), !*pass) {
+        merror("Malformed JSON: field 'pass' not found");
+        return retval;
+    }
+
+    if( *failed = cJSON_GetObjectItem(event, "failed"), !*failed) {
+        merror("Malformed JSON: field 'failed' not found");
+        return retval;
+    }
+
+    if( *score = cJSON_GetObjectItem(event, "score"), !*score) {
+        merror("Malformed JSON: field 'score' not found");
+        return retval;
+    }
+
+    retval = 0;
+    return retval;
+}
+
+
+static int SaveGlobalInfo(Eventinfo *lf, int exists, int *socket,int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score) {
+
 }
 
 int pm_send_db(char *msg, char *response, int *sock)

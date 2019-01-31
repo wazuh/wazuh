@@ -91,6 +91,7 @@ typedef enum wdb_stmt {
     WDB_STMT_PM_INSERT,
     WDB_STMT_PM_SCAN_INFO_INSERT,
     WDB_STMT_PM_SCAN_INFO_UPDATE,
+    WDB_STMT_PM_GLOBAL_INSERT,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -184,19 +185,22 @@ int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 
 /* Look for a policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_find(wdb_t * wdb, char * pm_id, char * output);
+int wdb_policy_monitoring_find(wdb_t * wdb, int pm_id, char * output);
 
 /* Update a policy monitoring entry. Returns ID on success or -1 on error (new) */
 int wdb_policy_monitoring_update(wdb_t * wdb, char * result, char * pm_id);
 
 /* Insert policy monitoring entry. Returns ID on success or -1 on error (new) */
-int wdb_policy_monitoring_save(wdb_t * wdb, char * pm_id, char * title, char * description, char * file,char * reference, char * pci_dss, char * cis, char * result);
+int wdb_policy_monitoring_save(wdb_t * wdb, int id,char * name,char * title,char *cis_control,char *description,char *rationale,char *remediation,char *default_value, char * file,char * directory,char * process,char * registry,char * reference,char * result);
 
 /* Insert scan info policy monitoring entry. Returns ID on success or -1 on error (new) */
 int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, char * module, int start_scan, int end_scan, int scan_id);
 
 /* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
 int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_scan);
+
+/* Update global policy monitoring entry. Returns number of affected rows or -1 on error.  */
+int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
