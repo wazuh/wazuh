@@ -571,7 +571,7 @@ def usage():
     Additional Params:
     \t-f, --force-update  Force to update the ruleset. By default, only it is updated the new/changed decoders/rules/rootchecks.
     \t-s, --source        Select ruleset source path (instead of download it).
-    \t-j, --json          JSON output. It should be used with '-s' or '-S' argument.
+    \t-j, --json          JSON output. It should be used with '-s' argument.
     \t-d, --debug         Debug mode.
     \t-u, --url           URL of ruleset zip (default: https://github.com/wazuh/wazuh-ruleset/archive/$BRANCH-NAME.zip)
     \t                    It requires -n parameter.
@@ -669,7 +669,7 @@ if __name__ == "__main__":
     ossec_ruleset_log = "{0}/logs/ruleset.log".format(ossec_path)
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
     ossec_rootchecks = "{0}/etc/rootcheck".format(ossec_path)
-    ossec_update_script = "{0}/bin/update_ruleset".format(ossec_path)
+    ossec_update_script = sys.argv[0]
     ossec_ruleset = "{0}/ruleset".format(ossec_path)
     ossec_rules = "{0}/rules".format(ossec_ruleset)
     ossec_decoders = "{0}/decoders".format(ossec_ruleset)
