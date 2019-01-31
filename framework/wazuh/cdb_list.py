@@ -29,7 +29,7 @@ def _check_path(path):
     :param path: Path to check
     :return: Result of check the path (boolean)
     """
-    regex_path = r'^(etc/lists/)[\d\w.\-/]+$'
+    regex_path = r'^(etc/lists/)[\w\.\-/]+$'
     pattern = re.compile(regex_path)
 
     if './' in path or '../' in path or not pattern.match(path):
@@ -48,13 +48,18 @@ def _iterate_lists(absolute_path, only_names=False):
     output = []
     dir_content = listdir(absolute_path)
 
+    # for skipping .swp files
+    regex_swp = r'^\.{1}[\w\-/]+(.swp){1}$'
+    pattern = re.compile(regex_swp)
+
     for name in dir_content:
         new_absolute_path = join(absolute_path, name)
         new_relative_path = _get_relative_path(new_absolute_path)
-        # '.cdb' files are skipped
+        # '.cdb' and '.swp' files are skipped
         if (isfile(new_absolute_path)) \
             and ('.cdb' not in name)  \
-            and ('~' not in name):
+            and ('~' not in name) \
+            and not pattern.search(name):
             items = get_list_from_file(new_relative_path)
             if only_names:
                 output.append({'path': new_relative_path, 'name': name})
@@ -120,8 +125,11 @@ def get_list_from_file(path):
     try:
         with open(file_path) as f:
             for line in f.read().splitlines():
-                key, value = line.split(':')
-                output.append({'key': key, 'value': value})
+                if 'TEMPLATE' in line:
+                    continue
+                else:
+                    key, value = line.split(':')
+                    output.append({'key': key, 'value': value})
 
     except IOError:
         raise WazuhException(1006)
