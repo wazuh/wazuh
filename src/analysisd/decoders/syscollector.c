@@ -543,15 +543,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     }
 
                     if (ip6_address) {
-                        fillData(lf,"netinfo.iface.ipv4.address", ip6_address);
+                        fillData(lf,"netinfo.iface.ipv6.address", ip6_address);
                         free(ip6_address);
                     }
                     if(ip6_netmask) {
-                        fillData(lf,"netinfo.iface.ipv4.netmask", ip6_netmask);
+                        fillData(lf,"netinfo.iface.ipv6.netmask", ip6_netmask);
                         free(ip6_netmask);
                     }
                     if(ip6_broadcast) {
-                        fillData(lf,"netinfo.iface.ipv4.broadcast",ip6_broadcast);
+                        fillData(lf,"netinfo.iface.ipv6.broadcast",ip6_broadcast);
                         free(ip6_broadcast);
                     }
 
