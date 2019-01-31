@@ -29,9 +29,10 @@ def _check_path(path):
     :param path: Path to check
     :return: Result of check the path (boolean)
     """
-    regex_path = r'^(etc/lists/)[\d\w.\-]+$'
+    regex_path = r'^(etc/lists/)[\d\w.\-/]+$'
     pattern = re.compile(regex_path)
-    if not pattern.match(path):
+
+    if './' in path or '../' in path or not pattern.match(path):
         raise WazuhException(1801)
 
 
