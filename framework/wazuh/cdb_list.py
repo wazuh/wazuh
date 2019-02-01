@@ -152,6 +152,9 @@ def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None
     """
     output = _iterate_lists(common.lists_path, only_names=True)
 
+    if limit == 0:
+        raise WazuhException(1406)
+
     if offset:
         output = output[offset:]
 
