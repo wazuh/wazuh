@@ -19,6 +19,7 @@ import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
 import wazuh.active_response as active_response
+import wazuh.cdb_list as cdb_list
 
 # Requests types:
 #   * local_master       -> requests that must be executed in the master node.
@@ -456,5 +457,17 @@ functions = {
         'function': syscheck.clear,
         'type': 'distributed_master'
     },
+
+    # Lists
+    '/lists': {
+        'function': cdb_list.get_lists,
+        'type': 'local_master'
+    },
+    '/lists/files': {
+        'function': cdb_list.get_path_lists,
+        'type': 'local_master'
+    },
+
+
 }
 
