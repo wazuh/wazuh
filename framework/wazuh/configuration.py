@@ -489,7 +489,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
-    try:       
+    try:
 
         # Read RAW file
         if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
@@ -497,7 +497,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
                 data = xml_data.read().replace('\n', '')
                 return data
         # Parse XML to JSON
-        else: 
+        else:
             # Read XML
             xml_data = load_wazuh_xml(agent_conf)
 
@@ -648,7 +648,7 @@ def upload_group_configuration(group_id, xml_file):
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
-    # create temporary file for parsing xml input
+    # create temporary file for parsing xml input and validate XML format
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
@@ -664,11 +664,6 @@ def upload_group_configuration(group_id, xml_file):
         raise WazuhException(1113, str(e))
 
     try:
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except Exception as e:
-            raise WazuhException(1113, str(e))
 
         # check Wazuh xml format
         try:
