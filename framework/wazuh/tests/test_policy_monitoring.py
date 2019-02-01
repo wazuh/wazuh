@@ -105,4 +105,4 @@ class TestPolicyMonitoring(TestCase):
             assert(len(result) > 0)
             pm = result[0]
             assert(isinstance(pm, dict))
-            assert(set(pm.keys()) == set(fields_translation_pm_check.values()))
+            assert(set(pm.keys()) == set(fields_translation_pm_check.values()) | {'compliance'})

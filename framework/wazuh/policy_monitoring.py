@@ -27,7 +27,7 @@ fields_translation_pm = {'scan_id': 'scan_id',
                          'start_scan': 'pm_start_scan'}
 fields_translation_pm_check = {'name': 'name',
                                'id': 'id',
-                               'cis_control': 'cis_control',
+                               'cis': 'cis_control',
                                'title': 'title',
                                'description': 'description',
                                'rationale': 'rationale',
@@ -78,7 +78,12 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
     def _get_data(self):
         self._substitute_params()
-        self._data = self.conn.execute(f'agent {self.agent_id} sql ' + self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))))
+        self._data = self.conn.execute(f'agent {self.agent_id} sql '
+                                       + self.query.format(','.join(map(lambda x: self.fields[x],
+                                                                        self.select['fields'] | self.min_select_fields)
+                                                                    )
+                                                           )
+                                       )
 
     def _format_data_into_dictionary(self):
         return self._data
@@ -130,10 +135,11 @@ def get_pm_checks(name, agent_id=None, q="", offset=0, limit=common.database_lim
     result = []
     # Rearrange check and compliance fields
     for _, group in groups:
-        check_dict = {k: v for k, v in group[0].items() if k in fields_translation_pm_check.values()}
+        group_list = list(group)
+        check_dict = {k: v for k, v in group_list[0].items() if k in fields_translation_pm_check.values()}
         check_dict['compliance'] = [{k: v for k, v in elem.items()
                                      if k in fields_translation_pm_check_compliance.values()}
-                                    for elem in group
+                                    for elem in group_list
                                     ]
         result.append(check_dict)
 
