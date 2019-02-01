@@ -160,7 +160,7 @@ def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None
         output = search_array(output, search['value'], search['negation'], fields=['name', 'path'])
 
     if sort:
-        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name'])
+        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name', 'path'])
 
     # limit is common.database_limit by default
     output = output[:limit]
