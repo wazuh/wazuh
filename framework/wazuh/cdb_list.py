@@ -14,6 +14,10 @@ from wazuh.exception import WazuhException
 from wazuh.utils import sort_array, search_array
 
 
+_regex_path = r'^(etc/lists/)[\w\.\-/]+$'
+_pattern_path = re.compile(_regex_path)
+
+
 def _get_relative_path(path):
     """
     Get relative path
@@ -29,10 +33,7 @@ def _check_path(path):
     :param path: Path to check
     :return: Result of check the path (boolean)
     """
-    regex_path = r'^(etc/lists/)[\w\.\-/]+$'
-    pattern = re.compile(regex_path)
-
-    if './' in path or '../' in path or not pattern.match(path):
+    if './' in path or '../' in path or not _pattern_path.match(path):
         raise WazuhException(1801)
 
 
