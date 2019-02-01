@@ -292,8 +292,6 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
-        minfo("json_is: %s",cJSON_Print(object));
-
         yaml_document_delete(&document);
 
         OSList *plist = w_os_get_process_list();
@@ -305,8 +303,6 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             merror("Check your 'policy' field");
             goto next;
         }
-
-        char *profile_description = NULL;
 
         if(!profiles){
             merror("Obtaining 'checks' from json");
@@ -736,15 +732,27 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                             cJSON_AddItemToObject(check,"reference",add_references);
                         }
 
-                        // Get File from alert
-                        char *alert_file = strstr(p_alert_msg[j],"File:");
-                        if(alert_file){
-                            alert_file+= 5;
-                            *alert_file = '\0';
-                            alert_file++;
-                            cJSON_AddStringToObject(check, "file", alert_file);
+                        // Get File or Process from alert
+                        if(p_alert_msg[j]) {
+                            char *alert_file = strstr(p_alert_msg[j],"File:");
+                            if(alert_file){
+                                alert_file+= 5;
+                                *alert_file = '\0';
+                                alert_file++;
+                                cJSON_AddStringToObject(check, "file", alert_file);
+                            } else {
+                                char *alert_process = strstr(p_alert_msg[j],"Process:");
+                                if(alert_process){
+                                    alert_process+= 8;
+                                    *alert_process = '\0';
+                                    alert_process++;
+                                    cJSON_AddStringToObject(check, "process", alert_process);
+                                }
+                            }
+                        } else {
+                            cJSON_AddStringToObject(check, "file", "\0");
                         }
-
+                      
                         cJSON_AddStringToObject(check, "result", "fail");
                         cJSON_AddItemToObject(json_alert,"check",check);
 
@@ -1576,7 +1584,12 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
     
     cJSON_AddNumberToObject(json_summary, "passed", passed);
     cJSON_AddNumberToObject(json_summary, "failed", failed);
-    cJSON_AddNumberToObject(json_summary, "score", 0);
+
+    float passedf = passed;
+    float failedf = failed;
+    float score = ((passedf/(failedf+passedf)))* 100;
+    
+    cJSON_AddNumberToObject(json_summary, "score", score);
 
     wm_policy_monitoring_send_alert(data,json_summary);
     cJSON_Delete(json_summary);

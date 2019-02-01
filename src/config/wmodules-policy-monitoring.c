@@ -36,7 +36,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
     policy_monitoring->enabled = 1;
     policy_monitoring->scan_on_start = 1;
     policy_monitoring->scan_wday = -1;
-    policy_monitoring->scan_day = -1;
+    policy_monitoring->scan_day = 0;
     policy_monitoring->scan_time = NULL;
     policy_monitoring->skip_nfs = 1;
     policy_monitoring->alert_msg = NULL;
