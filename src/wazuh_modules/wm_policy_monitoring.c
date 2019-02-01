@@ -367,10 +367,6 @@ static int wm_policy_monitoring_check_policy(cJSON *policy) {
     }
 
     os_required = cJSON_GetObjectItem(policy, "os_required");
-    if(!os_required) {
-        merror("Field 'description' not found on policy");
-        return retval;
-    }
 
     retval = 0;
     return retval;
@@ -1580,7 +1576,7 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
 
     cJSON_AddStringToObject(json_summary, "name", name->valuestring);
     cJSON_AddStringToObject(json_summary, "description", description->valuestring);
-    cJSON_AddStringToObject(json_summary, "os_required", os_required->valuestring);
+    cJSON_AddStringToObject(json_summary, "os_required", os_required ? os_required->valuestring : NULL );
     
     cJSON_AddNumberToObject(json_summary, "passed", passed);
     cJSON_AddNumberToObject(json_summary, "failed", failed);

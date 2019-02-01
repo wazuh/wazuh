@@ -421,14 +421,14 @@ static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 merror("Error querying policy monitoring database for agent %s", lf->agent_id);
                 break;
             case 0: // It exists, update
-                result_event = SaveGlobalInfo(lf,socket,scan_id->valueint,name->valuestring,description->valuestring,os_required->valuestring,pass->valueint,failed->valueint,scored->valueint,1);
+                result_event = SaveGlobalInfo(lf,socket,scan_id->valueint,name->valuestring,description->valuestring,os_required ? os_required->valuestring: NULL,pass->valueint,failed->valueint,scored->valueint,1);
                 if (result_event < 0)
                 {
                     merror("Error updating global policy monitoring database for agent %s", lf->agent_id);
                 }
                 break;
             case 1: // It not exists, insert
-                result_event = SaveGlobalInfo(lf,socket,scan_id->valueint,name->valuestring,description->valuestring,os_required->valuestring,pass->valueint,failed->valueint,scored->valueint,0);
+                result_event = SaveGlobalInfo(lf,socket,scan_id->valueint,name->valuestring,description->valuestring,os_required ? os_required->valuestring : NULL,pass->valueint,failed->valueint,scored->valueint,0);
                 if (result_event < 0)
                 {
                     merror("Error storing global policy monitoring information for agent %s", lf->agent_id);
@@ -611,11 +611,8 @@ static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **des
         return retval;
     }
 
-    if( *os_required = cJSON_GetObjectItem(event, "os_required"), !*os_required) {
-        merror("Malformed JSON: field 'os_required' not found");
-        return retval;
-    }
-
+    *os_required = cJSON_GetObjectItem(event, "os_required");
+     
     if( *pass = cJSON_GetObjectItem(event, "passed"), !*pass) {
         merror("Malformed JSON: field 'passed' not found");
         return retval;
