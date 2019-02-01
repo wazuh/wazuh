@@ -3,7 +3,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
 from unittest import TestCase
 
 from wazuh import WazuhException
