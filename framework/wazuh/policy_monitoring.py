@@ -54,7 +54,7 @@ class WazuhDBQueryPM(WazuhDBQuery):
         self.agent_id = agent_id
         self._default_query_str = default_query
         Agent(agent_id).get_basic_information()  # check if the agent exists
-        db_path = glob('{0}/{1}.db'.format(common.database_path_agents, agent_id))
+        db_path = glob('{0}/{1}.db'.format(common.wdb_path, agent_id))
         if not db_path:
             raise WazuhException(1600)
 

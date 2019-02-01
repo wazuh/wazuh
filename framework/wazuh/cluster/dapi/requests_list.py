@@ -1,21 +1,22 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-from wazuh import Wazuh
-from wazuh import common
-from wazuh.agent import Agent
-from wazuh.rule import Rule
-from wazuh.decoder import Decoder
+import wazuh.active_response as active_response
+import wazuh.ciscat as ciscat
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
 import wazuh.manager as manager
-import wazuh.stats as stats
+import wazuh.policy_monitoring as policy_monitoring
 import wazuh.rootcheck as rootcheck
+import wazuh.stats as stats
 import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
-import wazuh.ciscat as ciscat
-import wazuh.active_response as active_response
+from wazuh import Wazuh
+from wazuh import common
+from wazuh.agent import Agent
+from wazuh.decoder import Decoder
+from wazuh.rule import Rule
 
 # Requests types:
 #   * local_master       -> requests that must be executed in the master node.
@@ -385,6 +386,18 @@ functions = {
     },
     'DELETE/rootcheck': {
         'function': rootcheck.clear,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+
+    # Policy monitoring
+    '/policy_monitoring/:agent_id': {
+        'function': policy_monitoring.get_pm_list,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/policy_monitoring/:agent_id/checks': {
+        'function': policy_monitoring.get_pm_checks,
         'type': 'distributed_master',
         'is_async': False
     },
