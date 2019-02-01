@@ -111,12 +111,20 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         sqlite3_bind_null(stmt, 16);
     }
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        return 0;
-    }
-    else {
-        merror("at wdb_netinfo_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_DONE:
+            return 0;
+        case SQLITE_CONSTRAINT:
+            if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
+                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return 0;
+            } else {
+                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return -1;
+            }
+        default:
+            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
     }
 }
 
@@ -164,12 +172,20 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
     sqlite3_bind_text(stmt, 4, gateway, -1, NULL);
     sqlite3_bind_text(stmt, 5, dhcp, -1, NULL);
 
-    if (sqlite3_step(stmt) == SQLITE_DONE){
-        return 0;
-    }
-    else {
-        merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
-        return -1;
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_DONE:
+            return 0;
+        case SQLITE_CONSTRAINT:
+            if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
+                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return 0;
+            } else {
+                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                return -1;
+            }
+        default:
+            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
     }
 }
 

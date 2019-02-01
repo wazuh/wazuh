@@ -992,387 +992,117 @@
     <decoded_as>windows_eventchannel</decoded_as>
     <field name="EventChannel.System.ProviderName">\.+</field>
     <options>no_full_log</options>
-    <description>Group of windows rules.</description>
+    <description>Group of windows rules</description>
   </rule>
 
   <rule id="20001" level="0">
     <if_sid>20000</if_sid>
-    <field name="EventChannel.System.Channel">System</field>
-    <field name="EventChannel.System.EventID">^1$|^6$|^12$|^16$|^18$|^20$|^27$|^32$|^36$|^41$|^55$|^98$|^104$|
-                |^508$|^1002$|^1005$|^1015$|^1101$|^1102$|^1107$|^1116$|^1117$|^1118$|^1119$|^1501$|^2001$|^2003$|
-                |^2004$|^2012$|^2505$|^3002$|^4321$|^5007$|^5008$|^6005$|^6008$|^6009$|^6013$|^7001$|^7002$|^7026$|^7034$|
-                |^7040$|^7045$|^10010$|^10016$|^16962$|^36887$|^36888$|^50036$|^51046$</field>
-    <description>Windows System event.</description>
+    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
+    <description>Windows informational event</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="20002" level="0">
-    <if_sid>20001</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[System][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20003" level="0">
-    <if_sid>20001</if_sid>
+    <if_sid>20000</if_sid>
     <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[System][WARNING] Windows event.</description>
+    <description>Windows warning event</description>
     <options>no_full_log</options>
     <group>gpg13_4.12,</group>
   </rule>
 
   <!--{"EventChannel":{"System":{"ProviderName":"NetBT","EventID":"4321","Level":"2","Task":"0","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:40.107861400Z","EventRecordID":"1701","Channel":"System","Computer":"qnu","SeverityValue":"ERROR","Message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"EventData":{"Data":"","Data":"WORKGROUP      :1d","Data":"10.0.2.15","Data":"10.0.2.2","Binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}}-->
-  <rule id="20004" level="5">
-    <if_sid>20001</if_sid>
+  <rule id="20003" level="5">
+    <if_sid>20000</if_sid>
     <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[System][ERROR] Windows event.</description>
+    <description>Windows System error event</description>
     <options>no_full_log</options>
     <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
+  </rule>
+
+  <rule id="20004" level="0">
+    <if_sid>20000</if_sid>
+    <field name="EventChannel.System.SeverityValue">^AUDIT_SUCCESS|^success</field>
+    <description>Windows audit success event</description>
+    <options>no_full_log</options>
   </rule>
 
   <rule id="20005" level="5">
-    <if_sid>20001</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[System][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20006" level="0">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.Channel">Security</field>
-    <list field="EventChannel.System.EventID" lookup="match_key">etc/lists/security-eventchannel</list>
-    <description>Windows Security event.</description>
-    <options>no_full_log</options>
-  </rule>
-
-  <rule id="20007" level="0">
-    <if_sid>20006</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[Security][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20008" level="0">
-    <if_sid>20006</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[Security][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20009" level="5">
-    <if_sid>20006</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[Security][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20010" level="0">
-    <if_sid>20006</if_sid>
-    <field name="EventChannel.System.SeverityValue">^AUDIT_SUCCESS|^success</field>
-    <description>[Security][AUDIT_SUCCESS] Windows event.</description>
-    <options>no_full_log</options>
-  </rule>
-
-  <rule id="20011" level="4">
-    <if_sid>20006</if_sid>
-    <field name="EventChannel.System.SeverityValue">^AUDIT_FAILURE|^failure</field>
-    <description>[Security][AUDIT_FAILURE] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20012" level="3">
-    <if_sid>20006</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[Security][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20013" level="0">
-    <if_sid>20000</if_sid>
-    <description>Windows Application event.</description>
-    <options>no_full_log</options>
-    <field name="EventChannel.System.Channel">Application</field>
-    <field name="EventChannel.System.EventID">^1$|^2$|^3$|^4$|^5$|^6$|^102$|^103$|^105$|^258$|^300$|^301$|^302$|
-    |^326$|^327$|^900$|^902$|^903$|^1001$|^1003$|^1004$|^1005$|^1040$|^1066$|^1530$|^1531$|^1534$|^2001$|
-    |^2003$|^3036$|^4097$|^4321$|^4625$|^4690$|^5611$|^5615$|^5617$|^6000$|^6003$|^8197$|
-    |^8224$|^8225$|^9009$|^10000$|^10001$|^11707$|^11724$|^16384$</field>
-  </rule>
-
-  <rule id="20014" level="0">
-    <if_sid>20013</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[Application][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20015" level="0">
-    <if_sid>20013</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[Application][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20016" level="5">
-    <if_sid>20013</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[Application][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20017" level="3">
-    <if_sid>20013</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[Application][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20018" level="0">
-    <if_sid>20000</if_sid>
-    <description>Windows Sysmon event.</description>
-    <options>no_full_log</options>
-    <field name="EventChannel.System.Channel">Microsoft-Windows-Sysmon/Operational</field>
-    <field name="EventChannel.System.EventID">^1$|^2$|^3$|^4$|^5$|^6$|^7$|
-                ^8$|^9$|^10$|^11$|^12$|^13$|^14$|^15$|</field>
-  </rule>
-
-  <rule id="20019" level="0">
-    <if_sid>20018</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[Sysmon][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20020" level="0">
-    <if_sid>20018</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[Sysmon][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20021" level="5">
-    <if_sid>20018</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[Sysmon][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20022" level="3">
-    <if_sid>20018</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[Sysmon][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20030" level="0">
-    <if_sid>20000</if_sid>
-    <description>Windows Defender event.</description>
-    <options>no_full_log</options>
-    <field name="EventChannel.System.Channel">Microsoft-Windows-Windows Defender/Operational</field>
-    <field name="EventChannel.System.EventID">^1116$|^1117$</field>
-  </rule>
-
-  <rule id="20031" level="0">
-    <if_sid>20030</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[Security Essentials][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20032" level="0">
-    <if_sid>20030</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[Security Essentials][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20033" level="5">
-    <if_sid>20030</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[Security Essentials][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20034" level="3">
-    <if_sid>20030</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[Security Essentials][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20035" level="0">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.Channel">Microsoft-Windows-Eventlog</field>
-    <description>Windows Eventlog event.</description>
-    <options>no_full_log</options>
-  </rule>
-
-  <rule id="20036" level="0">
-    <if_sid>20035</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[Eventlog][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20037" level="0">
-    <if_sid>20035</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[Eventlog][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20038" level="5">
-    <if_sid>20035</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[Eventlog][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20039" level="3">
-    <if_sid>20035</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[Eventlog][UNKNOWN] Windows event. '$(EventChannel.System.Message)'</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20040" level="0">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.SeverityValue">^INFORMATION</field>
-    <description>[UNKNOWN][INFORMATION] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20041" level="0">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>[UNKNOWN][WARNING] Windows event.</description>
-    <options>no_full_log</options>
-    <group>gpg13_4.12,</group>
-  </rule>
-
-  <rule id="20042" level="5">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>[UNKNOWN][ERROR] Windows event.</description>
-    <options>no_full_log</options>
-    <group>system_error,gpg13_4.3,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20043" level="0">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.SeverityValue">^AUDIT_SUCCESS|^success</field>
-    <description>[UNKNOWN][AUDIT_SUCCESS] Windows event.</description>
-    <options>no_full_log</options>
-  </rule>
-
-  <rule id="20044" level="4">
     <if_sid>20000</if_sid>
     <field name="EventChannel.System.SeverityValue">^AUDIT_FAILURE|^failure</field>
-    <description>[UNKNOWN][AUDIT_FAILURE] Windows event.</description>
-    <options>no_full_log</options>
+    <description>Windows audit failure event</description>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
+    <options>no_full_log</options>
   </rule>
 
-  <rule id="20045" level="3">
-    <if_sid>20000</if_sid>
-    <field name="EventChannel.System.SeverityValue">^UNKNOWN</field>
-    <description>[UNKNOWN][UNKNOWN] Windows event.</description>
-    <options>no_full_log</options>
-    <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-  </rule>
-
-  <rule id="20046" level="5">
-    <if_sid>20011</if_sid>
+  <rule id="20006" level="5">
+    <if_sid>20005</if_sid>
     <field name="EventChannel.System.EventID">^529$|^530$|^531$|^532$|^533$|^534$|^535$|^536$|^537$|^539$|^4625$</field>
-    <description>Windows Logon Failure ($(EventChannel.EventData.TargetUserName)).</description>
+    <description>Windows Logon Failure</description>
     <options>no_full_log</options>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <!--{"EventChannel":{"System":{"ProviderName":"Microsoft-Windows-Security-Auditing","ProviderGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","EventID":"4624","Version":"1","Level":"0","Task":"12544","Opcode":"0","Keywords":"0x802000000000000","SystemTime":"2018-12-18T10:55:48.073081500Z","EventRecordID":"7017","ProcessID":"548","ThreadID":"3212","Channel":"Security","Computer":"qnu","SeverityValue":"AUDIT_SUCCESS","Message":"L’ouverture de session d’un compte s’est correctement déroulée."},"EventData":{"SubjectUserSid":"S-1-5-18","SubjectUserName":"QNU$","SubjectDomainName":"WORKGROUP","SubjectLogonId":"0x3e7","TargetUserSid":"S-1-5-18","TargetUserName":"Système","TargetDomainName":"AUTORITE NT","TargetLogonId":"0x3e7","LogonType":"5","LogonProcessName":"Advapi  ","AuthenticationPackageName":"Negotiate","WorkstationName":"-","LogonGuid":"{00000000-0000-0000-0000-000000000000}","TransmittedServices":"-","LmPackageName":"-","KeyLength":"0","ProcessId":"0x21c","ProcessName":"C:\\\\Windows\\\\System32\\\\services.exe","IpAddress":"-","IpPort":"-","ImpersonationLevel":"%%1833"}}}-->
-  <rule id="20047" level="3">
-    <if_sid>20010</if_sid>
+  <rule id="20007" level="3">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^528$|^540$|^673$|^4624$|^4769$</field>
-    <description>Windows Logon Success ($(EventChannel.EventData.TargetUserName)).</description>
+    <description>Windows Logon Success</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20048" level="4">
-    <if_sid>20011</if_sid>
+  <rule id="20008" level="4">
+    <if_sid>20005</if_sid>
     <field name="EventChannel.System.EventID">^577$|^4673$</field>
     <description>Windows: Failed attempt to perform a privileged operation</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20049" level="3">
-    <if_sid>20010</if_sid>
+  <rule id="20009" level="3">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^682$|^683$|^4778$|^4779$</field>
-    <description>Windows: Session reconnected/disconnected to winstation.</description>
+    <description>Windows: Session reconnected/disconnected to winstation</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_8.1.5,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20050" level="8">
-    <if_sid>20010</if_sid>
+  <rule id="20010" level="8">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^624$|^626$|^4720$|^4722$</field>
-    <description>Windows: User account '$(EventChannel.EventData.TargetUserName)' enabled or created by '$(EventChannel.EventData.SubjectUserName)'.</description>
+    <description>Windows: User account enabled or created</description>
     <options>no_full_log</options>
     <group>adduser,account_changed,</group>
     <group>pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20051" level="8">
-    <if_sid>20010</if_sid>
+  <rule id="20011" level="8">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^628$|^642$|^685$|^4738$|^4781$</field>
-    <description>Windows: User account '$(EventChannel.EventData.TargetUserName)' changed.</description>
+    <description>Windows: User account changed</description>
     <options>no_full_log</options>
     <group>account_changed,</group>
     <group>pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20052" level="8">
-    <if_sid>20010</if_sid>
+  <rule id="20012" level="8">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^630$|^629$|^4725$|^4726$</field>
-    <description>Windows: User account $(EventChannel.EventData.TargetUserName) disabled or deleted.</description>
+    <description>Windows: User account disabled or deleted</description>
     <options>no_full_log</options>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20053" level="8">
-    <if_sid>20010</if_sid>
+  <rule id="20013" level="8">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^612$|^643$|^4719$|^4907$|^4912$|^4719$</field>
-    <description>Windows Audit Policy changed.</description>
+    <description>Windows Audit Policy changed</description>
     <options>no_full_log</options>
     <group>policy_changed,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20054" level="5">
-    <if_sid>20010</if_sid>
+  <rule id="20014" level="5">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^632$|^4728$|^633$|^4729$|^636$|^4732$|^637$|^4733$|^639$|^4735$|
             |^641$|^4737$|^637$|^4733$|^659$|^4755$|^660$|^4766$|^668$|^4764$|
             |^649$|^4745$|^650$|^4746$|^651$|^4747$|^654$|^4750$|^655$|^4751$|
@@ -1383,255 +1113,246 @@
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20055" level="8">
-    <if_sid>20010</if_sid>
+  <rule id="20015" level="8">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^640$</field>
-    <description>Windows: General account database changed.</description>
+    <description>Windows: General account database changed</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com259.html</info>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20056" level="9">
-    <if_sid>20010</if_sid>
+  <rule id="20016" level="9">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^644$|^4740$</field>
-    <description>Windows: User account $(EventChannel.System.SubjectUserName) locked out (multiple login errors).</description>
+    <description>Windows: User account locked out (multiple login errors)</description>
     <options>no_full_log</options>
     <group>authentication_failures,pci_dss_8.1.6,pci_dss_11.4,gpg13_7.5,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20057" level="7">
-    <if_sid>20010</if_sid>
+  <rule id="20017" level="7">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^513$|^4609$</field>
-    <description>Windows is shutting down.</description>
+    <description>Windows is shutting down</description>
     <options>no_full_log</options>
     <group>system_shutdown,</group>
   </rule>
 
-  <rule id="20058" level="9">
-    <if_sid>20010</if_sid>
+  <rule id="20018" level="9">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^517$|^1102$</field>
-    <description>Windows audit log was cleared.</description>
+    <description>Windows audit log was cleared</description>
     <options>no_full_log</options>
     <group>logs_cleared,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20059" level="3">
-    <if_sid>20047</if_sid>
+  <rule id="20019" level="3">
+    <if_sid>20007</if_sid>
     <options>alert_by_email</options>
     <if_fts />
-    <description>Windows: First time this user logged in this system.</description>
+    <description>Windows: First time this user logged in this system</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20060" level="0">
-    <if_sid>20011</if_sid>
+  <rule id="20020" level="0">
+    <if_sid>20005</if_sid>
     <field name="EventChannel.System.EventID">^680$</field>
-    <description>Windows login attempt (ignored). Duplicated.</description>
+    <description>Windows login attempt (ignored). Duplicated</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="20061" level="5">
-    <if_sid>20008,20009</if_sid>
+  <rule id="20025" level="5">
+    <if_sid>20002,20003</if_sid>
     <field name="EventChannel.System.EventID">^20187$|^20014$|^20078$|^20050$|^20049$|^20189$</field>
-    <description>Windows: Remote access login failure.</description>
+    <description>Windows: Remote access login failure</description>
     <options>no_full_log</options>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20062" level="3">
-    <if_sid>20007</if_sid>
-    <field name="EventChannel.System.EventID">^20308$</field>
-    <description>Windows: Remote access login success.</description>
+  <rule id="20026" level="3">
+    <if_sid>20001</if_sid>
+    <field name="EventChannel.System.EventID">^20158$</field>
+    <description>Windows: Remote access login success</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gpg13_7.2,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20063" level="5">
-    <if_sid>20010</if_sid>
+  <rule id="20027" level="5">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^646$|^645$|^647$|^4741$|^4742$|^4743$</field>
-    <description>Windows: Computer account $(EventChannel.EventData.User) added/changed/deleted.</description>
+    <description>Windows: Computer account added/changed/deleted</description>
     <options>no_full_log</options>
     <group>account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20064" level="8">
-    <if_sid>20009</if_sid>
+  <rule id="20029" level="8">
+    <if_sid>20003</if_sid>
     <field name="EventChannel.System.EventID">^13570$</field>
-    <description>Windows file system full.</description>
+    <description>Windows file system full</description>
     <options>no_full_log</options>
     <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <!-- Granular windows login rules -->
-  <rule id="20065" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20030" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^529$|^4625$</field>
-    <description>Windows: Logon Failure - UNKNOWN user $(EventChannel.EventData.User) or bad password.</description>
+    <description>Windows: Logon Failure - Unknown user or bad password</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com190.html</info>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20066" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20031" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^530$</field>
-    <description>Windows: Logon Failure - Account logon time restriction violation. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows: Logon Failure - Account logon time restriction violation</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com191.html</info>
     <group>win_authentication_failed,login_denied,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20067" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20032" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^531$</field>
-    <description>Windows: Logon Failure - Account currently disabled. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows: Logon Failure - Account currently disabled</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com192.html</info>
     <group>win_authentication_failed,login_denied,pci_dss_10.2.5,pci_dss_8.1.4,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20068" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20033" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^532$</field>
-    <description>Windows: Logon Failure - Specified account expired. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows: Logon Failure - Specified account expired</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com193.html</info>
     <group>win_authentication_failed,login_denied,pci_dss_10.2.5,pci_dss_8.1.5,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20069" level="7">
-    <if_sid>20046</if_sid>
+  <rule id="20034" level="7">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^533$</field>
-    <description>Windows: Logon Failure - User $(EventChannel.EventData.TargetUserName) not allowed to login at this computer.</description>
+    <description>Windows: Logon Failure - User not allowed to login at this computer</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com194.html</info>
     <group>win_authentication_failed,login_denied,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20070" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20035" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^534$</field>
-    <description>Windows: Logon Failure - User $(EventChannel.EventData.TargetUserName) not granted logon type.</description>
+    <description>Windows: Logon Failure - User not granted logon type</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com195.html</info>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20071" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20036" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^535$</field>
-    <description>Windows: Logon Failure - Account's password expired. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows: Logon Failure - Account's password expired</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com196.html</info>
     <group>win_authentication_failed,pci_dss_10.2.5,pci_dss_8.2.4,gpg13_7.5,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20072" level="5">
-    <if_sid>20046</if_sid>
+  <rule id="20037" level="5">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^536$|^537$</field>
-    <description>Windows: Logon Failure - Internal error. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows: Logon Failure - Internal error</description>
     <options>no_full_log</options>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20073" level="7">
-    <if_sid>20046</if_sid>
+  <rule id="20038" level="7">
+    <if_sid>20006</if_sid>
     <field name="EventChannel.System.EventID">^539$</field>
-    <description>Windows: Logon Failure - Account locked out. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows: Logon Failure - Account locked out</description>
     <options>no_full_log</options>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_8.1.6,gpg13_7.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20074" level="5">
-    <if_sid>20011</if_sid>
+  <rule id="20039" level="5">
+    <if_sid>20005</if_sid>
     <field name="EventChannel.System.EventID">^673$|^675$|^681$|^4769$</field>
-    <description>Windows DC Logon Failure. $(EventChannel.EventData.TargetUserName)</description>
+    <description>Windows DC Logon Failure</description>
     <options>no_full_log</options>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20075" level="5">
-    <if_sid>20010</if_sid>
+  <rule id="20040" level="5">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^520$|^4616$</field>
-    <description>Windows: System time changed.</description>
+    <description>Windows: System time changed</description>
     <options>no_full_log</options>
     <group>time_changed,pci_dss_10.6.1,gpg13_1.3,gpg13_4.13,gdpr_IV_35.7.d,</group>
   </rule>
 
-  <rule id="20076" level="7">
-    <if_sid>20003</if_sid>
+  <rule id="20041" level="7">
+    <if_sid>20002</if_sid>
     <field name="EventChannel.System.EventID">^1076$</field>
     <group>system_error, system_shutdown,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-    <description>Unexpected Windows shutdown.</description>
+    <description>Unexpected Windows shutdown</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="20077" level="5">
-    <if_sid>20010</if_sid>
+  <rule id="20042" level="5">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^671$|^4767$</field>
-    <description>Windows: User account $(EventChannel.EventData.TargetUserName) unlocked.</description>
+    <description>Windows: User account unlocked</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/events/com291.html</info>
     <group>account_changed,pci_dss_10.2.5,pci_dss_8.1.6,gpg13_7.10,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20078" level="8">
-    <if_sid>20054</if_sid>
+  <rule id="20043" level="8">
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^631$|^635$|^658$</field>
-    <description>Windows: Security enabled group created.</description>
+    <description>Windows: Security enabled group created</description>
     <options>no_full_log</options>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20079" level="8">
-    <if_sid>20054</if_sid>
+  <rule id="20044" level="8">
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^634$|^638$|^662$</field>
-    <description>Windows: Security enabled group deleted.</description>
+    <description>Windows: Security enabled group deleted</description>
     <options>no_full_log</options>
     <group>adduser,account_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
 
   <!-- Some services change their startup type automatically -->
-  <rule id="20080" level="3">
-    <if_sid>20002</if_sid>
+  <rule id="20045" level="3">
+    <if_sid>20001</if_sid>
     <field name="EventChannel.System.EventID">^7040$</field>
     <group>policy_changed,pci_dss_10.6,gdpr_IV_35.7.d,</group>
-    <description>Windows: Service startup type was changed.</description>
+    <description>Windows: Service startup type was changed</description>
     <options>no_full_log</options>
-    <info type="text">This does not appear to be logged on Windows 2000.</info>
+    <info type="text">This does not appear to be logged on Windows 2000</info>
   </rule>
 
-  <rule id="20081" level="5">
-    <if_sid>20014</if_sid>
+  <rule id="20046" level="5">
+    <if_sid>20001</if_sid>
     <field name="EventChannel.System.EventID">^11724$</field>
     <options>alert_by_email</options>
-    <description>Windows: Application Uninstalled. $(EventChannel.EventData.Data)</description>
+    <description>Windows: Application Uninstalled $(EventChannel.EventData.Data)</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="20082" level="5">
-    <if_sid>20014</if_sid>
+  <rule id="20047" level="5">
+    <if_sid>20001</if_sid>
     <field name="EventChannel.System.EventID">^11707$</field>
     <options>alert_by_email</options>
-    <description>Windows: Application Installed. $(EventChannel.EventData.Data)</description>
+    <description>Windows: Application Installed $(EventChannel.EventData.Data)</description>
     <options>no_full_log</options>
   </rule>
 
-  <rule id="20083" level="3">
-    <if_sid>20010</if_sid>
+  <rule id="20048" level="3">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^4608$</field>
-    <description>Windows is starting up.</description>
+    <description>Windows is starting up</description>
     <options>no_full_log</options>
     <group></group>
   </rule>
 
-  <rule id="20084" level="3">
-    <if_sid>20010</if_sid>
+  <rule id="20049" level="3">
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^538$|^551$|^4634$|^4647$</field>
-    <description>Windows User Logoff. ($(EventChannel.EventData.TargetUserName))</description>
+    <description>Windows User Logoff</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gdpr_IV_32.2,</group>
   </rule>
@@ -1639,7 +1360,7 @@
   <!-- Granular group rules -->
 
   <rule id="20251" level="5">
-    <if_sid>20010</if_sid>
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^631$|^4727$|^635$|^4731$|^658$|^4754$|^648$|^4744$|^653$|
                 ^4749$|^663$|^4759$</field>
     <description>Windows: Group Account Created</description>
@@ -1648,7 +1369,7 @@
   </rule>
 
   <rule id="20252" level="5">
-    <if_sid>20010</if_sid>
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^634$|^4730$|^638$|^4734$|^662$|^4758$|^652$|^4748$|
             ^657$|^4753$|^667$|^4763$</field>
     <description>Windows: Group Account Deleted</description>
@@ -1662,88 +1383,78 @@
     <description>Windows: Security Enabled Global Group Created</description>
     <options>no_full_log</options>
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=631</info>
   </rule>
 
   <rule id="20254" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^632$|^4728$</field>
-    <description>Windows: Security Enabled Global Group Member '$(EventChannel.EventData.MemberSid)' Added</description>
+    <description>Windows: Security Enabled Global Group Member Added $(EventChannel.EventData.MemberSid)</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=632</info>
   </rule>
 
   <rule id="20255" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^633$|^4729$</field>
-    <description>Windows: Security Enabled Global Group Member '$(EventChannel.EventData.MemberSid)' Removed</description>
+    <description>Windows: Security Enabled Global Group Member Removed $(EventChannel.EventData.MemberSid)</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=633</info>
   </rule>
 
   <rule id="20256" level="5">
-    <if_sid>20010</if_sid>
+    <if_sid>20001</if_sid>
     <field name="EventChannel.System.EventID">^634$|^4730$</field>
-    <description>Windows: Security Enabled Global Group '$(EventChannel.EventData.MemberSid)' Deleted</description>
+    <description>Windows: Security Enabled Global Group Deleted $(EventChannel.EventData.MemberSid)</description>
     <options>no_full_log</options>
     <group>group_deleted,win_group_deleted,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=634</info>
   </rule>
 
   <rule id="20257" level="5">
     <if_sid>20251</if_sid>
     <field name="EventChannel.System.EventID">^635$|^4731$</field>
-    <description>Windows: Security Enabled Local Group '$(EventChannel.EventData.MemberSid)' Created</description>
+    <description>Windows: Security Enabled Local Group Created $(EventChannel.EventData.MemberSid)</description>
     <options>no_full_log</options>
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=635</info>
   </rule>
 
   <rule id="20258" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^636$|^4732$</field>
-    <description>Windows: Security Enabled Local Group Member '$(EventChannel.EventData.MemberSid)' Added</description>
+    <description>Windows: Security Enabled Local Group Member Added $(EventChannel.EventData.MemberSid)</description>
     <options>no_full_log</options>
    <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=636</info>
   </rule>
 
   <rule id="20259" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^637$|^4733$</field>
-    <description>Windows: Security Enabled Local Group Member '$(EventChannel.EventData.MemberSid)' Removed</description>
+    <description>Windows: Security Enabled Local Group Member Removed $(EventChannel.EventData.MemberSid)</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=637</info>
   </rule>
 
   <rule id="20260" level="5">
-    <if_sid>20010</if_sid>
+    <if_sid>20252</if_sid>
     <field name="EventChannel.System.EventID">^638$|^4734$</field>
     <description>Windows: Security Enabled Local Group Deleted</description>
     <options>no_full_log</options>
     <group>group_deleted,win_group_deleted,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=638</info>
   </rule>
 
   <rule id="20261" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^639$|^4735$</field>
     <description>Windows: Security Enabled Local Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=639</info>
   </rule>
 
   <rule id="20262" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^641$|^4737$</field>
     <description>Windows: Security Enabled Global Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=641</info>
   </rule>
 
   <rule id="20263" level="5">
@@ -1752,43 +1463,38 @@
     <description>Windows: Security Enabled Universal Group Created</description>
     <options>no_full_log</options>
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=658</info>
   </rule>
 
   <rule id="20264" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^659$|^4755$</field>
     <description>Windows: Security Enabled Universal Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=659</info>
   </rule>
 
   <rule id="20265" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^660$|^4756$</field>
     <description>Windows: Security Enabled Universal Group Member Added</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=660</info>
   </rule>
 
   <rule id="20266" level="5">
-    <if_sid>20054</if_sid>
+    <if_sid>20014</if_sid>
     <field name="EventChannel.System.EventID">^661$|^4757$</field>
     <description>Windows: Security Enabled Universal Group Member Removed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=661</info>
   </rule>
 
   <rule id="20267" level="5">
-    <if_sid>20010</if_sid>
+    <if_sid>20252</if_sid>
     <field name="EventChannel.System.EventID">^662$|^4758$</field>
     <description>Windows: Security Enabled Universal Group Deleted</description>
     <options>no_full_log</options>
     <group>group_deleted,win_group_deleted,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://www.ultimatewindowssecurity.com/securitylog/encyclopedia/event.aspx?eventid=662</info>
   </rule>
 
   <rule id="20268" level="12">
@@ -1797,7 +1503,6 @@
     <description>Windows: Administrators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20269" level="5">
@@ -1806,7 +1511,6 @@
     <description>Windows: Everyone Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20270" level="12">
@@ -1815,7 +1519,6 @@
     <description>Windows: Enterprise Domain Controllers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20271" level="5">
@@ -1824,7 +1527,6 @@
     <description>Windows: Authenticated Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20272" level="5">
@@ -1833,7 +1535,6 @@
     <description>Windows: Terminal Server Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20273" level="12">
@@ -1842,7 +1543,6 @@
     <description>Windows: Domain Admins Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20274" level="5">
@@ -1851,7 +1551,6 @@
     <description>Windows: Domain Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20275" level="0">
@@ -1868,7 +1567,6 @@
     <description>Windows: Domain Guests Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20277" level="5">
@@ -1877,7 +1575,6 @@
     <description>Windows: Domain Computers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20278" level="12">
@@ -1886,7 +1583,6 @@
     <description>Windows: Domain Controllers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20279" level="10">
@@ -1895,7 +1591,6 @@
     <description>Windows: Cert Publishers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20280" level="12">
@@ -1904,7 +1599,6 @@
     <description>Windows: Schema Admins Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20281" level="12">
@@ -1913,7 +1607,6 @@
     <description>Windows: Enterprise Admins Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20282" level="10">
@@ -1922,7 +1615,6 @@
     <description>Windows: Group Policy Creator Owners Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20283" level="10">
@@ -1931,7 +1623,6 @@
     <description>Windows: RAS and IAS Servers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20284" level="5">
@@ -1940,7 +1631,6 @@
     <description>Windows: Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20285" level="12">
@@ -1949,7 +1639,6 @@
     <description>Windows: Guests Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20286" level="10">
@@ -1959,7 +1648,6 @@
     <description>Windows: Power Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20287" level="10">
@@ -1968,7 +1656,6 @@
     <description>Windows: Account Operators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20288" level="10">
@@ -1977,7 +1664,6 @@
     <description>Windows: Server Operators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20289" level="8">
@@ -1986,7 +1672,6 @@
     <description>Windows: Print Operators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20290" level="12">
@@ -1995,7 +1680,6 @@
     <description>Windows: Backup Operators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20291" level="10">
@@ -2004,7 +1688,6 @@
     <description>Windows: Replicators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20292" level="8">
@@ -2013,7 +1696,6 @@
     <description>Pre-Windows 2000 Compatible Access Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20293" level="10">
@@ -2022,7 +1704,6 @@
     <description>Windows: Remote Desktop Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20294" level="10">
@@ -2031,7 +1712,6 @@
     <description>Windows: Network Configuration Operators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20295" level="10">
@@ -2040,7 +1720,6 @@
     <description>Windows: Incoming Forest Trust Builders Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20296" level="8">
@@ -2049,7 +1728,6 @@
     <description>Windows: Performance Monitor Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20297" level="8">
@@ -2058,7 +1736,6 @@
     <description>Windows: Performance Log Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20298" level="8">
@@ -2067,7 +1744,6 @@
     <description>Windows Authorization Access Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20299" level="8">
@@ -2076,7 +1752,6 @@
     <description>Windows: Terminal Server License Servers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20300" level="8">
@@ -2085,7 +1760,6 @@
     <description>Windows: Distributed COM Users Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20301" level="12">
@@ -2094,7 +1768,6 @@
     <description>Windows: Enterprise Read-only Domain Controllers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20302" level="12">
@@ -2103,7 +1776,6 @@
     <description>Windows: Read-only Domain Controllers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20303" level="12">
@@ -2112,7 +1784,6 @@
     <description>Windows: Cryptographic Operators Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20304" level="10">
@@ -2121,7 +1792,6 @@
     <description>Windows: Allowed RODC Password Replication Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20305" level="10">
@@ -2130,7 +1800,6 @@
     <description>Windows: Denied RODC Password Replication Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20306" level="10">
@@ -2139,7 +1808,6 @@
     <description>Windows: Event Log Readers Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20307" level="10">
@@ -2148,16 +1816,14 @@
     <description>Windows: Certificate Service DCOM Access Group Changed</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>http://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="20308" level="3">
-    <if_sid>20007</if_sid>
+    <if_sid>20001</if_sid>
     <field name="EventChannel.System.EventID">^200$|^300$|^302$</field>
-    <description>Windows: TS Gateway login success.</description>
+    <description>Windows: TS Gateway login success</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
-    <info>https://technet.microsoft.com/en-us/library/cc775181(v=ws.10).aspx</info>
   </rule>
 
   <rule id="20098" level="0">
@@ -2168,30 +1834,28 @@
   </rule>
 
   <rule id="20309" level="5">
-    <if_sid>20008,20009</if_sid>
+    <if_sid>20002,20003</if_sid>
     <field name="EventChannel.System.EventID">^201$|^203$|^204$|^301$|^304$|^305$|^306$|^1001$</field>
-    <description>Windows: TS Gateway login failure.</description>
+    <description>Windows: TS Gateway login failure</description>
     <options>no_full_log</options>
     <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <info>https://technet.microsoft.com/en-us/library/cc775181(v=ws.10).aspx</info>
   </rule>
 
   <rule id="20160" level="3">
-    <if_sid>20007</if_sid>
+    <if_sid>20001</if_sid>
     <field name="EventChannel.System.EventID">^202$|^303$</field>
-    <description>Windows: TS Gateway user disconnected.</description>
+    <description>Windows: TS Gateway user disconnected</description>
     <options>no_full_log</options>
-    <info>https://technet.microsoft.com/en-us/library/cc775181(v=ws.10).aspx</info>
   </rule>
 
   <!-- Ignore Login events, type 5, from Advapi for:
     -  LOCAL SERVICE and NETWORK SERVICE.
     -->
   <rule id="20149" level="0">
-    <if_sid>20047,20084</if_sid>
+    <if_sid>20007,20049</if_sid>
     <field name="EventChannel.System.EventID">^528$|^538$|^540$|^4624$</field>
     <field name="EventChannel.EventData.SubjectUserName">^LOCAL SERVICE|^NETWORK SERVICE|^ANONYMOUS LOGON</field>
-    <description>Windows Logon Success (ignored).</description>
+    <description>Windows Logon Success (ignored)</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
@@ -2199,75 +1863,72 @@
 
   <!-- Kerberos failures that may indicate an attack -->
   <rule id="20150" level="10">
-    <if_sid>20034</if_sid>
+    <if_sid>20039</if_sid>
     <field name="EventChannel.EventData.FailureCode">0x1F</field>
-    <description>Windows DC integrity check on decrypted </description>
+    <description>Windows DC integrity check on decrypted</description>
     <options>no_full_log</options>
-    <description>field failed.</description>
-    <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
+    <description>field failed</description>
     <group>win_authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="20163" level="10">
-    <if_sid>20034</if_sid>
+    <if_sid>20039</if_sid>
     <field name="EventChannel.EventData.FailureCode">0x22</field>
-    <description>Windows DC - Possible replay attack.</description>
+    <description>Windows DC - Possible replay attack</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
     <group>win_authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="20164" level="7">
-    <if_sid>20034</if_sid>
+    <if_sid>20039</if_sid>
     <field name="EventChannel.EventData.FailureCode">0x25</field>
-    <description>Windows DC - Clock skew too great.</description>
+    <description>Windows DC - Clock skew too great</description>
     <options>no_full_log</options>
-    <info type="link">http://www.ultimatewindowssecurity.com/kerberrors.html</info>
     <group>win_authentication_failed,attacks,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
 
   <!-- MS SQL rules -->
   <rule id="20099" level="5">
-    <if_sid>20011</if_sid>
+    <if_sid>20005</if_sid>
     <field name="EventChannel.System.EventID">^18456$</field>
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
-    <description>MS SQL Server Logon Failure.</description>
+    <description>MS SQL Server Logon Failure</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="20240" level="3">
-    <if_sid>20010</if_sid>
+    <if_sid>20004</if_sid>
     <field name="EventChannel.System.EventID">^18454$|^18453$</field>
-    <description>MS SQL Server Logon Success.</description>
+    <description>MS SQL Server Logon Success</description>
     <options>no_full_log</options>
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
 <!-- Detail logon rules -->
   <rule id="20166" level="3">
-    <if_sid>20047</if_sid>
+    <if_sid>20007</if_sid>
     <field name="EventChannel.System.EventID">^4624$</field>
     <field name="EventChannel.EventData.LogonType">8</field>
-    <description>MS Exchange Logon Success.</description>
+    <description>MS Exchange Logon Success</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="20167" level="0">
-    <if_sid>20084</if_sid>
+    <if_sid>20049</if_sid>
     <field name="EventChannel.System.EventID">^4634$</field>
     <field name="EventChannel.EventData.LogonType">8</field>
-    <description>MS Exchange User Logoff.</description>
+    <description>MS Exchange User Logoff</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
   <!-- Composite rules -->
   <rule id="20085" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>20048</if_matched_sid>
+    <if_matched_sid>20008</if_matched_sid>
     <same_user />
-    <description>Windows: Multiple failed attempts to perform a privileged operation by the same user: $(EventChannel.EventData.SubjectUserName)</description>
+    <description>Windows: Multiple failed attempts to perform a privileged operation by the same user</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -2275,43 +1936,41 @@
   <rule id="20086" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_group>win_authentication_failed</if_matched_group>
     <same_source_ip />
-    <description>Multiple Windows Logon Failures: $(EventChannel.EventData.TargetUserName)</description>
+    <description>Multiple Windows Logon Failures</description>
     <options>no_full_log</options>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="20087" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>20011</if_matched_sid>
+    <if_matched_sid>20005</if_matched_sid>
     <same_source_ip />
-    <description>Multiple Windows audit failure events.</description>
+    <description>Multiple Windows audit failure events</description>
     <options>no_full_log</options>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
   </rule>
 
   <rule id="20088" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>20000</if_matched_sid>
-    <field name="EventChannel.System.SeverityValue">^ERROR</field>
-    <description>Multiple Windows error events.</description>
+    <if_matched_sid>20003</if_matched_sid>
+    <description>Multiple Windows error events</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="20089" level="10" frequency="$MS_FREQ" timeframe="120">
-    <if_matched_sid>20000</if_matched_sid>
-    <field name="EventChannel.System.SeverityValue">^WARNING</field>
-    <description>Multiple Windows WARNING events.</description>
+    <if_matched_sid>20002</if_matched_sid>
+    <description>Multiple Windows WARNING events</description>
     <options>no_full_log</options>
   </rule>
 
   <rule id="20090" level="10" frequency="$MS_FREQ" timeframe="240">
-    <if_matched_sid>20061</if_matched_sid>
-    <description>Windows: Multiple remote access login failures: $(EventChannel.EventData.TargetUserName)</description>
+    <if_matched_sid>20025</if_matched_sid>
+    <description>Windows: Multiple remote access login failures</description>
     <options>no_full_log</options>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,pci_dss_8.1.5,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="20091" level="10" frequency="$MS_FREQ" timeframe="240">
       <if_matched_sid>20309</if_matched_sid>
-      <description>Windows: Multiple TS Gateway login failures.</description>
+      <description>Windows: Multiple TS Gateway login failures</description>
       <options>no_full_log</options>
       <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -2323,7 +1982,7 @@
   Updated by Wazuh
   -->
   <rule id="20092" level="5">
-      <if_sid>20014</if_sid>
+      <if_sid>20003</if_sid>
       <field name="EventChannel.System.ProviderName">chromoting</field>
       <field name="EventChannel.System.Message">\.*Access denied for client</field>
       <description>Chrome Remote Desktop attempt - access denied $(EventChannel.EventData.Data)</description>
@@ -2332,7 +1991,7 @@
   </rule>
 
   <rule id="20093" level="5">
-      <if_sid>20014</if_sid>
+      <if_sid>20001</if_sid>
       <field name="EventChannel.System.ProviderName">chromoting</field>
       <field name="EventChannel.System.EventID">^1$</field>
       <description>Chrome Remote Desktop attempt - Client connected $(EventChannel.EventData.Data)</description>
@@ -2341,7 +2000,7 @@
   </rule>
 
   <rule id="20094" level="5">
-      <if_sid>20014</if_sid>
+      <if_sid>20001</if_sid>
       <field name="EventChannel.System.ProviderName">chromoting</field>
       <field name="EventChannel.System.EventID">^2$</field>
       <description>Chrome Remote Desktop attempt - disconnected ($(EventChannel.EventData.Data))</description>
@@ -2351,7 +2010,7 @@
 
   <!--{"EventChannel":{"System":{"ProviderName":"chromoting","EventID":"5","Level":"4","Task":"1","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:48.000000000Z","EventRecordID":"1801","Channel":"Application","Computer":"qnu","SeverityValue":"INFORMATION","Message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"EventData":{"Data":"user@gmail.com"}}}-->
   <rule id="20095" level="5">
-      <if_sid>20014</if_sid>
+      <if_sid>20001</if_sid>
       <field name="EventChannel.System.ProviderName">chromoting</field>
       <field name="EventChannel.System.EventID">^5$</field>
       <description>Chrome Remote Desktop attempt - started connection from $(EventChannel.EventData.Data)</description>
@@ -2360,19 +2019,19 @@
   </rule>
 
   <rule id="20096" level="3">
-      <if_sid>20014</if_sid>
+      <if_sid>20001</if_sid>
       <field name="EventChannel.System.EventID">^1$</field>
       <field name="EventChannel.System.ProviderName">Microsoft-Windows-Search-ProfileNotify</field>
-      <description>Windows Search Service indexed data for user $(EventChannel.EventData.TargetUserName) successfully removed in response to user profile deletion.</description>
+      <description>Windows Search Service indexed data for user successfully removed in response to user profile deletion</description>
       <options>no_full_log</options>
       <group>gdpr_IV_32.2,</group>
   </rule>
 
   <rule id="20097" level="3">
-      <if_sid>20014</if_sid>
+      <if_sid>20001</if_sid>
       <field name="EventChannel.System.EventID">^16$</field>
       <field name="EventChannel.System.ProviderName">Microsoft-Windows-Search-ProfileNotify</field>
-      <description>Created default configuration for user $(EventChannel.EventData.TargetUserName).</description>
+      <description>Created default configuration for user</description>
       <options>no_full_log</options>
       <group>gdpr_IV_32.2,</group>
   </rule>
