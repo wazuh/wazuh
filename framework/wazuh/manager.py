@@ -10,12 +10,13 @@ from wazuh.utils import load_wazuh_xml
 from wazuh import common
 from datetime import datetime
 import time
-from os.path import exists
+from os.path import exists, join
 from glob import glob
 import re
 import hashlib
 from xml.dom.minidom import parseString
-from shutil import move
+from xml.parsers.expat import ExpatError
+from shutil import move, Error
 from os import remove
 import random
 
@@ -51,7 +52,7 @@ def status():
     return data
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
+    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -65,7 +66,7 @@ def __get_ossec_log_fields(log):
             category = "ossec-rootcheck"
 
         if "(" in category:  # Remove ()
-            category = re.sub("\(\d\d\d\d\)", "", category)
+            category = re.sub(r"\(\d\d\d\d\)", "", category)
     else:
         return None
 
@@ -187,8 +188,10 @@ def upload_file(file, path, content_type):
     try:
         with open(file) as f:
             file_data = f.read()
-    except Exception as e:
+    except IOError:
         raise WazuhException(1005)
+    except Exception:
+        raise WazuhException(1000)
 
     if len(file_data) == 0:
         raise WazuhException(1112)
@@ -224,8 +227,12 @@ def upload_xml(xml_file, path):
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
                                    .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
+    except IOError:
+        raise WazuhException(1005)
+    except ExpatError:
+        raise WazuhException(1113)
     except Exception as e:
-        raise WazuhException(1113, str(e))
+        raise WazuhException(1000)
 
     try:
         # check xml format
@@ -236,14 +243,17 @@ def upload_xml(xml_file, path):
 
         # move temporary file to group folder
         try:
-            new_conf_path = "{}/{}".format(common.ossec_path, path)
+            new_conf_path = join(common.ossec_path, path)
             move(tmp_file_path, new_conf_path)
-        except Exception as e:
-            raise WazuhException(1016, str(e))
+        except Error:
+            raise WazuhException(1016)
+        except Exception :
+            raise WazuhException(1000)
 
-        return 'File updated successfully' # may be a decoder
+        return 'File updated successfully'
+
     except Exception as e:
-        # remove created temporary file
+        # remove created temporary file if an exception happens
         remove(tmp_file_path)
         raise e
 
@@ -264,15 +274,19 @@ def upload_list(list_file, path):
             # write json in tmp_file_path
             for element in list_file.split('\n')[:-1]:
                 tmp_file.write(element + '\n')
-    except Exception as e:
-        raise WazuhException(1114, str(e))
+    except IOError:
+        raise WazuhException(1005)
+    except Exception:
+        raise WazuhException(1000)
 
     # move temporary file to group folder
     try:
-        new_conf_path = "{}/{}".format(common.ossec_path, path)
+        new_conf_path = join(common.ossec_path, path)
         move(tmp_file_path, new_conf_path)
-    except Exception as e:
-        raise WazuhException(1016, str(e))
+    except Error:
+        raise WazuhException(1016)
+    except Exception:
+        raise WazuhException(1000)
 
     return 'File updated successfully'
 
@@ -284,13 +298,15 @@ def get_file(path):
     :return: file as string.
     """
 
-    file_path = common.ossec_path + '/' + path
+    file_path = join(common.ossec_path, path)
     output = {}
 
     try:
         with open(file_path) as f:
             output = f.read()
-    except Exception as e:
+    except IOError:
         raise WazuhException(1005)
+    except Exception:
+        raise WazuhException(1000)
 
     return output
