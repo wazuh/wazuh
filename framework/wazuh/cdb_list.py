@@ -104,7 +104,7 @@ def get_lists(path=None, offset=0, limit=common.database_limit, sort=None, searc
 
     if search:
         # only search in path field
-        output = search_array(output, search['value'], search['negation'], fields='path')
+        output = search_array(output, search['value'], search['negation'], fields=['path'])
 
     if sort:
         output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['path'])
@@ -145,11 +145,24 @@ def get_list_from_file(path):
     return output
 
 
-def get_path_lists():
+def get_path_lists(offset=0, limit=common.database_limit, sort=None, search=None):
     """
     Get paths of all CDB lists
     :return: List with paths of all CDB lists
     """
     output = _iterate_lists(common.lists_path, only_names=True)
+
+    if offset:
+        output = output[offset:]
+
+    if search:
+        # only search in path field
+        output = search_array(output, search['value'], search['negation'], fields=['name', 'path'])
+
+    if sort:
+        output = sort_array(output, sort['fields'], sort['order'], allowed_sort_fields=['name'])
+
+    # limit is common.database_limit by default
+    output = output[:limit]
 
     return {'totalItems': len(output), 'items': output}
