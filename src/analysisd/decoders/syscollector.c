@@ -145,10 +145,10 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
     char *msg = NULL;
     cJSON * iface;
-    char id[OS_MAXSTR];
+    char id[OS_SIZE_1024];
     int i;
 
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
     if (iface = cJSON_GetObjectItem(logJSON, "iface"), iface) {
         cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
@@ -168,10 +168,10 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * rx_dropped = cJSON_GetObjectItem(iface, "rx_dropped");
         cJSON * mtu = cJSON_GetObjectItem(iface, "MTU");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo save", lf->agent_id);
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s netinfo save", lf->agent_id);
 
         if (scan_id) {
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
         } else {
             wm_strcat(&msg, "NULL", ' ');
@@ -212,8 +212,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (mtu) {
-            char _mtu[OS_MAXSTR];
-            snprintf(_mtu, OS_MAXSTR - 1, "%d", mtu->valueint);
+            char _mtu[OS_SIZE_128];
+            snprintf(_mtu, OS_SIZE_128 - 1, "%d", mtu->valueint);
             fillData(lf,"netinfo.iface.mtu",_mtu);
             wm_strcat(&msg, _mtu, '|');
         } else {
@@ -228,8 +228,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tx_packets) {
-            char txpack[OS_MAXSTR];
-            snprintf(txpack, OS_MAXSTR - 1, "%d", tx_packets->valueint);
+            char txpack[OS_SIZE_512];
+            snprintf(txpack, OS_SIZE_512 - 1, "%d", tx_packets->valueint);
             fillData(lf,"netinfo.iface.tx_packets",txpack);
             wm_strcat(&msg, txpack, '|');
         } else {
@@ -237,8 +237,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (rx_packets) {
-            char rxpack[OS_MAXSTR];
-            snprintf(rxpack, OS_MAXSTR - 1, "%d", rx_packets->valueint);
+            char rxpack[OS_SIZE_512];
+            snprintf(rxpack, OS_SIZE_512 - 1, "%d", rx_packets->valueint);
             fillData(lf,"netinfo.iface.rx_packets",rxpack);
             wm_strcat(&msg, rxpack, '|');
         } else {
@@ -246,8 +246,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tx_bytes) {
-            char txbytes[OS_MAXSTR];
-            snprintf(txbytes, OS_MAXSTR - 1, "%d", tx_bytes->valueint);
+            char txbytes[OS_SIZE_512];
+            snprintf(txbytes, OS_SIZE_512 - 1, "%d", tx_bytes->valueint);
             fillData(lf,"netinfo.iface.tx_bytes",txbytes);
             wm_strcat(&msg, txbytes, '|');
         } else {
@@ -255,8 +255,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (rx_bytes) {
-            char rxbytes[OS_MAXSTR];
-            snprintf(rxbytes, OS_MAXSTR - 1, "%d", rx_bytes->valueint);
+            char rxbytes[OS_SIZE_512];
+            snprintf(rxbytes, OS_SIZE_512 - 1, "%d", rx_bytes->valueint);
             fillData(lf,"netinfo.iface.rx_bytes",rxbytes);
             wm_strcat(&msg, rxbytes, '|');
         } else {
@@ -264,8 +264,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tx_errors) {
-            char txerrors[OS_MAXSTR];
-            snprintf(txerrors, OS_MAXSTR - 1, "%d", tx_errors->valueint);
+            char txerrors[OS_SIZE_512];
+            snprintf(txerrors, OS_SIZE_512 - 1, "%d", tx_errors->valueint);
             fillData(lf,"netinfo.iface.tx_errors",txerrors);
             wm_strcat(&msg, txerrors, '|');
         } else {
@@ -273,8 +273,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (rx_errors) {
-            char rxerrors[OS_MAXSTR];
-            snprintf(rxerrors, OS_MAXSTR - 1, "%d", rx_errors->valueint);
+            char rxerrors[OS_SIZE_512];
+            snprintf(rxerrors, OS_SIZE_512 - 1, "%d", rx_errors->valueint);
             fillData(lf,"netinfo.iface.rx_errors",rxerrors);
             wm_strcat(&msg, rxerrors, '|');
         } else {
@@ -282,8 +282,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tx_dropped) {
-            char txdropped[OS_MAXSTR];
-            snprintf(txdropped, OS_MAXSTR - 1, "%d", tx_dropped->valueint);
+            char txdropped[OS_SIZE_512];
+            snprintf(txdropped, OS_SIZE_512 - 1, "%d", tx_dropped->valueint);
             fillData(lf,"netinfo.iface.tx_dropped",txdropped);
             wm_strcat(&msg, txdropped, '|');
         } else {
@@ -291,8 +291,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (rx_dropped) {
-            char rxdropped[OS_MAXSTR];
-            snprintf(rxdropped, OS_MAXSTR - 1, "%d", rx_dropped->valueint);
+            char rxdropped[OS_SIZE_512];
+            snprintf(rxdropped, OS_SIZE_512 - 1, "%d", rx_dropped->valueint);
             fillData(lf,"netinfo.iface.rx_dropped",rxdropped);
             wm_strcat(&msg, rxdropped, '|');
         } else {
@@ -312,8 +312,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
-                os_calloc(OS_MAXSTR, sizeof(char), msg);
-                snprintf(msg, OS_MAXSTR - 1, "agent %s netproto save", lf->agent_id);
+                os_calloc(OS_SIZE_6144, sizeof(char), msg);
+                snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
 
                 if (scan_id) {
                     wm_strcat(&msg, id, ' ');
@@ -356,8 +356,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     char *ip4_broadcast = NULL;
                     for (i = 0; i < cJSON_GetArraySize(address); i++) {
 
-                        os_calloc(OS_MAXSTR, sizeof(char), msg);
-                        snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", lf->agent_id);
+                        os_calloc(OS_SIZE_6144, sizeof(char), msg);
+                        snprintf(msg, OS_SIZE_6144 - 1, "agent %s netaddr save", lf->agent_id);
 
                         if (scan_id) {
                             wm_strcat(&msg, id, ' ');
@@ -439,8 +439,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
-                os_calloc(OS_MAXSTR, sizeof(char), msg);
-                snprintf(msg, OS_MAXSTR - 1, "agent %s netproto save", lf->agent_id);
+                os_calloc(OS_SIZE_6144, sizeof(char), msg);
+                snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
 
                 if (scan_id) {
                     wm_strcat(&msg, id, ' ');
@@ -481,8 +481,8 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                     char *ip6_broadcast = NULL;
                     for (i = 0; i < cJSON_GetArraySize(address); i++) {
 
-                        os_calloc(OS_MAXSTR, sizeof(char), msg);
-                        snprintf(msg, OS_MAXSTR - 1, "agent %s netaddr save", lf->agent_id);
+                        os_calloc(OS_SIZE_6144, sizeof(char), msg);
+                        snprintf(msg, OS_SIZE_6144 - 1, "agent %s netaddr save", lf->agent_id);
 
                         if (scan_id) {
                             wm_strcat(&msg, id, ' ');
@@ -571,7 +571,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         } else if (strcmp(msg_type, "network_end") == 0) {
 
             cJSON * scan_id = cJSON_GetObjectItem(logJSON, "ID");
-            snprintf(msg, OS_MAXSTR - 1, "agent %s netinfo del %d", lf->agent_id, scan_id->valueint);
+            snprintf(msg, OS_SIZE_6144 - 1, "agent %s netinfo del %d", lf->agent_id, scan_id->valueint);
 
             if (sc_send_db(msg,socket) < 0) {
                 return -1;
@@ -607,14 +607,14 @@ int decode_osinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * version = cJSON_GetObjectItem(inventory, "version");
 
         char * msg = NULL;
-        os_calloc(OS_MAXSTR, sizeof(char), msg);
+        os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s osinfo save", lf->agent_id);
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s osinfo save", lf->agent_id);
 
 
         if (scan_id) {
-            char id[OS_MAXSTR];
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            char id[OS_SIZE_1024];
+            snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
         } else {
             wm_strcat(&msg, "NULL", ' ');
@@ -728,7 +728,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         return -1;
     }
 
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
     cJSON * inventory;
 
@@ -754,10 +754,10 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * pid = cJSON_GetObjectItem(inventory, "PID");
         cJSON * process = cJSON_GetObjectItem(inventory, "process");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s port save", lf->agent_id);
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s port save", lf->agent_id);
 
-        char id[OS_MAXSTR];
-        snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+        char id[OS_SIZE_1024];
+        snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
         wm_strcat(&msg, id, ' ');
 
         if (scan_time) {
@@ -781,8 +781,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (local_port) {
-            char lport[OS_MAXSTR];
-            snprintf(lport, OS_MAXSTR - 1, "%d", local_port->valueint);
+            char lport[OS_SIZE_128];
+            snprintf(lport, OS_SIZE_128 - 1, "%d", local_port->valueint);
             fillData(lf,"port.local_port",lport);
             wm_strcat(&msg, lport, '|');
         } else {
@@ -797,8 +797,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (remote_port) {
-            char rport[OS_MAXSTR];
-            snprintf(rport, OS_MAXSTR - 1, "%d", remote_port->valueint);
+            char rport[OS_SIZE_128];
+            snprintf(rport, OS_SIZE_128 - 1, "%d", remote_port->valueint);
             fillData(lf,"port.remote_port",rport);
             wm_strcat(&msg, rport, '|');
         } else {
@@ -806,8 +806,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tx_queue) {
-            char txq[OS_MAXSTR];
-            snprintf(txq, OS_MAXSTR - 1, "%d", tx_queue->valueint);
+            char txq[OS_SIZE_512];
+            snprintf(txq, OS_SIZE_512 - 1, "%d", tx_queue->valueint);
             fillData(lf,"port.tx_queue",txq);
             wm_strcat(&msg, txq, '|');
         } else {
@@ -815,8 +815,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (rx_queue) {
-            char rxq[OS_MAXSTR];
-            snprintf(rxq, OS_MAXSTR - 1, "%d", rx_queue->valueint);
+            char rxq[OS_SIZE_512];
+            snprintf(rxq, OS_SIZE_512 - 1, "%d", rx_queue->valueint);
             fillData(lf,"port.rx_queue",rxq);
             wm_strcat(&msg, rxq, '|');
         } else {
@@ -824,8 +824,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (inode) {
-            char _inode[OS_MAXSTR];
-            snprintf(_inode, OS_MAXSTR - 1, "%d", inode->valueint);
+            char _inode[OS_SIZE_512];
+            snprintf(_inode, OS_SIZE_512 - 1, "%d", inode->valueint);
             fillData(lf,"port.inode",_inode);
             wm_strcat(&msg, _inode, '|');
         } else {
@@ -840,8 +840,8 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (pid) {
-            char _pid[OS_MAXSTR];
-            snprintf(_pid, OS_MAXSTR - 1, "%d", pid->valueint);
+            char _pid[OS_SIZE_512];
+            snprintf(_pid, OS_SIZE_512 - 1, "%d", pid->valueint);
             fillData(lf,"port.pid",_pid);
             wm_strcat(&msg, _pid, '|');
         } else {
@@ -881,7 +881,7 @@ int decode_port( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 }
             }
 
-            snprintf(msg, OS_MAXSTR - 1, "agent %s port del %d", lf->agent_id, scan_id->valueint);
+            snprintf(msg, OS_SIZE_6144 - 1, "agent %s port del %d", lf->agent_id, scan_id->valueint);
 
             if (sc_send_db(msg,socket) < 0) {
                 error_port = 1;
@@ -912,13 +912,13 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * ram_usage = cJSON_GetObjectItem(inventory, "ram_usage");
 
         char * msg = NULL;
-        os_calloc(OS_MAXSTR, sizeof(char), msg);
+        os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s hardware save", lf->agent_id);
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s hardware save", lf->agent_id);
 
         if (scan_id) {
-            char id[OS_MAXSTR];
-            snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+            char id[OS_SIZE_1024];
+            snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
             wm_strcat(&msg, id, ' ');
         } else {
             wm_strcat(&msg, "NULL", ' ');
@@ -946,8 +946,8 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (cpu_cores) {
-            char cores[OS_MAXSTR];
-            snprintf(cores, OS_MAXSTR - 1, "%d", cpu_cores->valueint);
+            char cores[OS_SIZE_128];
+            snprintf(cores, OS_SIZE_128 - 1, "%d", cpu_cores->valueint);
             fillData(lf,"hardware.cpu_cores",cores);
             wm_strcat(&msg, cores, '|');
         } else {
@@ -955,8 +955,8 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (cpu_mhz) {
-            char freq[OS_MAXSTR];
-            snprintf(freq, OS_MAXSTR - 1, "%f", cpu_mhz->valuedouble);
+            char freq[OS_SIZE_512];
+            snprintf(freq, OS_SIZE_512 - 1, "%f", cpu_mhz->valuedouble);
             fillData(lf,"hardware.cpu_mhz",freq);
             wm_strcat(&msg, freq, '|');
         } else {
@@ -964,8 +964,8 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (ram_total) {
-            char total[OS_MAXSTR];
-            snprintf(total, OS_MAXSTR - 1, "%f", ram_total->valuedouble);
+            char total[OS_SIZE_512];
+            snprintf(total, OS_SIZE_512 - 1, "%f", ram_total->valuedouble);
             fillData(lf,"harware.ram_total",total);
             wm_strcat(&msg, total, '|');
         } else {
@@ -973,8 +973,8 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (ram_free) {
-            char rfree[OS_MAXSTR];
-            snprintf(rfree, OS_MAXSTR - 1, "%f", ram_free->valuedouble);
+            char rfree[OS_SIZE_512];
+            snprintf(rfree, OS_SIZE_512 - 1, "%f", ram_free->valuedouble);
             fillData(lf,"hardware.ram_free",rfree);
             wm_strcat(&msg, rfree, '|');
         } else {
@@ -982,8 +982,8 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (ram_usage) {
-            char usage[OS_MAXSTR];
-            snprintf(usage, OS_MAXSTR - 1, "%d", ram_usage->valueint);
+            char usage[OS_SIZE_128];
+            snprintf(usage, OS_SIZE_128 - 1, "%d", ram_usage->valueint);
             fillData(lf,"hardware.ram_usage",usage);
             wm_strcat(&msg, usage, '|');
         } else {
@@ -1008,7 +1008,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         return -1;
     }
 
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
     if (package = cJSON_GetObjectItem(logJSON, "program"), package) {
         if (error_package) {
@@ -1034,10 +1034,10 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         cJSON * installtime = cJSON_GetObjectItem(package, "install_time");
         cJSON * location = cJSON_GetObjectItem(package, "location");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s package save", lf->agent_id);
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s package save", lf->agent_id);
 
-        char id[OS_MAXSTR];
-        snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+        char id[OS_SIZE_1024];
+        snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
         wm_strcat(&msg, id, ' ');
 
         if (scan_time) {
@@ -1075,8 +1075,8 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
         }
 
         if (size) {
-            char _size[OS_MAXSTR];
-            snprintf(_size, OS_MAXSTR - 1, "%d", size->valueint);
+            char _size[OS_SIZE_512];
+            snprintf(_size, OS_SIZE_512 - 1, "%d", size->valueint);
             fillData(lf,"program.size",_size);
             wm_strcat(&msg, _size, '|');
         } else {
@@ -1166,7 +1166,7 @@ int decode_package( Eventinfo *lf,cJSON * logJSON,int *socket) {
                 }
             }
 
-            snprintf(msg, OS_MAXSTR - 1, "agent %s package del %d", lf->agent_id, scan_id->valueint);
+            snprintf(msg, OS_SIZE_6144 - 1, "agent %s package del %d", lf->agent_id, scan_id->valueint);
 
             if (sc_send_db(msg,socket) < 0) {
                 error_package = 1;
@@ -1191,7 +1191,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         return -1;
     }
 
-    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_SIZE_6144, sizeof(char), msg);
 
     cJSON * inventory;
 
@@ -1234,10 +1234,10 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         cJSON * tty = cJSON_GetObjectItem(inventory, "tty");
         cJSON * processor = cJSON_GetObjectItem(inventory, "processor");
 
-        snprintf(msg, OS_MAXSTR - 1, "agent %s process save", lf->agent_id);
+        snprintf(msg, OS_SIZE_6144 - 1, "agent %s process save", lf->agent_id);
 
-        char id[OS_MAXSTR];
-        snprintf(id, OS_MAXSTR - 1, "%d", scan_id->valueint);
+        char id[OS_SIZE_1024];
+        snprintf(id, OS_SIZE_1024 - 1, "%d", scan_id->valueint);
         wm_strcat(&msg, id, ' ');
 
         if (scan_time) {
@@ -1247,8 +1247,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (pid) {
-            char _pid[OS_MAXSTR];
-            snprintf(_pid, OS_MAXSTR - 1, "%d", pid->valueint);
+            char _pid[OS_SIZE_128];
+            snprintf(_pid, OS_SIZE_128 - 1, "%d", pid->valueint);
             fillData(lf,"process.pid",_pid);
             wm_strcat(&msg, _pid, '|');
         } else {
@@ -1270,8 +1270,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (ppid) {
-            char _ppid[OS_MAXSTR];
-            snprintf(_ppid, OS_MAXSTR - 1, "%d", ppid->valueint);
+            char _ppid[OS_SIZE_128];
+            snprintf(_ppid, OS_SIZE_128 - 1, "%d", ppid->valueint);
             fillData(lf,"process.ppid",_ppid);
             wm_strcat(&msg, _ppid, '|');
         } else {
@@ -1279,8 +1279,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (utime) {
-            char _utime[OS_MAXSTR];
-            snprintf(_utime, OS_MAXSTR - 1, "%d", utime->valueint);
+            char _utime[OS_SIZE_128];
+            snprintf(_utime, OS_SIZE_128 - 1, "%d", utime->valueint);
             fillData(lf,"process.utime",_utime);
             wm_strcat(&msg, _utime, '|');
         } else {
@@ -1288,8 +1288,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (stime) {
-            char _stime[OS_MAXSTR];
-            snprintf(_stime, OS_MAXSTR - 1, "%d", stime->valueint);
+            char _stime[OS_SIZE_128];
+            snprintf(_stime, OS_SIZE_128 - 1, "%d", stime->valueint);
             fillData(lf,"process.stime",_stime);
             wm_strcat(&msg, _stime, '|');
         } else {
@@ -1365,8 +1365,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (priority) {
-            char prior[OS_MAXSTR];
-            snprintf(prior, OS_MAXSTR - 1, "%d", priority->valueint);
+            char prior[OS_SIZE_128];
+            snprintf(prior, OS_SIZE_128 - 1, "%d", priority->valueint);
             fillData(lf,"process.priority",prior);
             wm_strcat(&msg, prior, '|');
         } else {
@@ -1374,8 +1374,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (nice) {
-            char _nice[OS_MAXSTR];
-            snprintf(_nice, OS_MAXSTR - 1, "%d", nice->valueint);
+            char _nice[OS_SIZE_128];
+            snprintf(_nice, OS_SIZE_128 - 1, "%d", nice->valueint);
             fillData(lf,"process.nice",_nice);
             wm_strcat(&msg, _nice, '|');
         } else {
@@ -1383,8 +1383,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (size) {
-            char _size[OS_MAXSTR];
-            snprintf(_size, OS_MAXSTR - 1, "%d", size->valueint);
+            char _size[OS_SIZE_512];
+            snprintf(_size, OS_SIZE_512 - 1, "%d", size->valueint);
             fillData(lf,"process.size",_size);
             wm_strcat(&msg, _size, '|');
         } else {
@@ -1392,8 +1392,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (vm_size) {
-            char vms[OS_MAXSTR];
-            snprintf(vms, OS_MAXSTR - 1, "%d", vm_size->valueint);
+            char vms[OS_SIZE_512];
+            snprintf(vms, OS_SIZE_512 - 1, "%d", vm_size->valueint);
             fillData(lf,"process.vm_size",vms);
             wm_strcat(&msg, vms, '|');
         } else {
@@ -1401,8 +1401,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (resident) {
-            char _resident[OS_MAXSTR];
-            snprintf(_resident, OS_MAXSTR - 1, "%d", resident->valueint);
+            char _resident[OS_SIZE_512];
+            snprintf(_resident, OS_SIZE_512 - 1, "%d", resident->valueint);
             fillData(lf,"process.resident",_resident);
             wm_strcat(&msg, _resident, '|');
         } else {
@@ -1410,8 +1410,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (share) {
-            char _share[OS_MAXSTR];
-            snprintf(_share, OS_MAXSTR - 1, "%d", share->valueint);
+            char _share[OS_SIZE_512];
+            snprintf(_share, OS_SIZE_512 - 1, "%d", share->valueint);
             fillData(lf,"process.share",_share);
             wm_strcat(&msg, _share, '|');
         } else {
@@ -1419,8 +1419,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (start_time) {
-            char start[OS_MAXSTR];
-            snprintf(start, OS_MAXSTR - 1, "%d", start_time->valueint);
+            char start[OS_SIZE_512];
+            snprintf(start, OS_SIZE_512 - 1, "%d", start_time->valueint);
             fillData(lf,"process.start_time",start);
             wm_strcat(&msg, start, '|');
         } else {
@@ -1428,8 +1428,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (pgrp) {
-            char _pgrp[OS_MAXSTR];
-            snprintf(_pgrp, OS_MAXSTR - 1, "%d", pgrp->valueint);
+            char _pgrp[OS_SIZE_512];
+            snprintf(_pgrp, OS_SIZE_512 - 1, "%d", pgrp->valueint);
             fillData(lf,"process.pgrp",_pgrp);
             wm_strcat(&msg, _pgrp, '|');
         } else {
@@ -1437,8 +1437,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (session) {
-            char _session[OS_MAXSTR];
-            snprintf(_session, OS_MAXSTR - 1, "%d", session->valueint);
+            char _session[OS_SIZE_512];
+            snprintf(_session, OS_SIZE_512 - 1, "%d", session->valueint);
             fillData(lf,"process.session",_session);
             wm_strcat(&msg, _session, '|');
         } else {
@@ -1446,8 +1446,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (nlwp) {
-            char _nlwp[OS_MAXSTR];
-            snprintf(_nlwp, OS_MAXSTR - 1, "%d", nlwp->valueint);
+            char _nlwp[OS_SIZE_512];
+            snprintf(_nlwp, OS_SIZE_512 - 1, "%d", nlwp->valueint);
             fillData(lf,"process.nlwp",_nlwp);
             wm_strcat(&msg, _nlwp, '|');
         } else {
@@ -1455,8 +1455,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tgid) {
-            char _tgid[OS_MAXSTR];
-            snprintf(_tgid, OS_MAXSTR - 1, "%d", tgid->valueint);
+            char _tgid[OS_SIZE_512];
+            snprintf(_tgid, OS_SIZE_512 - 1, "%d", tgid->valueint);
             fillData(lf,"process.tgid",_tgid);
             wm_strcat(&msg, _tgid, '|');
         } else {
@@ -1464,8 +1464,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (tty) {
-            char _tty[OS_MAXSTR];
-            snprintf(_tty, OS_MAXSTR - 1, "%d", tty->valueint);
+            char _tty[OS_SIZE_512];
+            snprintf(_tty, OS_SIZE_512 - 1, "%d", tty->valueint);
             fillData(lf,"process.tty",_tty);
             wm_strcat(&msg, _tty, '|');
         } else {
@@ -1473,8 +1473,8 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
         }
 
         if (processor) {
-            char proc[OS_MAXSTR];
-            snprintf(proc, OS_MAXSTR - 1, "%d", processor->valueint);
+            char proc[OS_SIZE_512];
+            snprintf(proc, OS_SIZE_512 - 1, "%d", processor->valueint);
             fillData(lf,"process.processor",proc);
             wm_strcat(&msg, proc, '|');
         } else {
@@ -1508,7 +1508,7 @@ int decode_process(Eventinfo *lf, cJSON * logJSON,int *socket) {
                 }
             }
 
-            snprintf(msg, OS_MAXSTR - 1, "agent %s process del %d", lf->agent_id, scan_id->valueint);
+            snprintf(msg, OS_SIZE_6144 - 1, "agent %s process del %d", lf->agent_id, scan_id->valueint);
 
             if (sc_send_db(msg,socket) < 0) {
                 error_process = 1;
