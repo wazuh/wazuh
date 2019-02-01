@@ -38,12 +38,17 @@ int wm_config() {
         return -1;
     }
 
+    wmodule *module;
+
 #ifdef CLIENT
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
+
+    module = wm_control_read();
+    wm_add(module);
+
 #else
-    wmodule *module;
 
     // The database module won't be available on agents
 
