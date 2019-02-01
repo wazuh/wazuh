@@ -31,6 +31,7 @@
 #define OS_SIZE_4096    4096
 #define OS_SIZE_2048    2048
 #define OS_SIZE_1024    1024
+#define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
 
