@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "os_net/os_net.h"
+#include "os_xml/os_xml.h"
 #include "global-config.h"
 #include "mail-config.h"
 #include "config.h"
@@ -55,6 +56,8 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
+            mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_auto_ignore, xml_auto_ignore);
+
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_auto_ignore = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -91,6 +94,8 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             }
 
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
+            mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_alert_new_files, xml_alert_new_files);
+
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_alert_new = 1;
             } else if (strcmp(node[i]->content, "no") == 0) {
@@ -117,7 +122,113 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-int Read_Global(XML_NODE node, void *configp, void *mailp)
+
+int Read_FIM(XML_NODE node, void *configp)
+{
+    const char *xml_ignore = "ignore";
+    const char *xml_alert_new_files = "alert_new_files";
+    const char *xml_auto_ignore = "auto_ignore";
+    const char *xml_ignore_frequency = "frequency";
+    const char *xml_ignore_time = "timeframe";
+
+    _Config *Config;
+    Config = (_Config *)configp;
+
+    if (!Config) {
+        return (0);
+    }
+
+    if (!node) {
+        return (0);
+    }
+
+
+    /* Ignored files/directories list size */
+    unsigned int fim_ign_size = 1;
+
+    int i = 0;
+    int j = 0;
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+
+        } else if (strcmp(node[i]->element, xml_ignore) == 0) {
+             if (Config) {
+                 fim_ign_size++;
+                 Config->fim_ignore = (char **)
+                                       realloc(Config->fim_ignore, sizeof(char *)*fim_ign_size);
+                 if (!Config->fim_ignore) {
+                     merror(MEM_ERROR, errno, strerror(errno));
+                     return (OS_INVALID);
+                 }
+
+                 os_strdup(node[i]->content, Config->fim_ignore[fim_ign_size - 2]);
+                 Config->fim_ignore[fim_ign_size - 1] = NULL;
+            }
+
+        } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                Config->syscheck_alert_new = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                Config->syscheck_alert_new = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+        } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                Config->syscheck_auto_ignore = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                Config->syscheck_auto_ignore = 0;
+            } else {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            for (j = 0; node[i]->attributes && node[i]->attributes[j]; ++j) {
+                if (strcmp(node[i]->attributes[j], xml_ignore_frequency) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[0])) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                    Config->syscheck_ignore_frequency = atoi(node[i]->values[0]);
+                    if (Config->syscheck_ignore_frequency < 1 || Config->syscheck_ignore_frequency > 99) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                } else if (strcmp(node[i]->attributes[j], xml_ignore_time) == 0) {
+                    if (!OS_StrIsNum(node[i]->values[j])) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                    Config->syscheck_ignore_time = atoi(node[i]->values[1]);
+                    if (Config->syscheck_ignore_time < 0 || Config->syscheck_ignore_time > 43200) {
+                        merror(XML_VALUEERR, node[i]->attributes[j], node[i]->values[j]);
+                        return (OS_INVALID);
+                    }
+                } else {
+                    merror(XML_INVATTR, node[i]->attributes[j], node[i]->element);
+                    return OS_INVALID;
+                }
+            }
+
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
+    }
+
+    return 0;
+}
+
+
+int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
 {
     int i = 0;
 
@@ -160,6 +271,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     const char *xml_mailmaxperhour = "email_maxperhour";
     const char *xml_maillogsource = "email_log_source";
     const char *xml_queue_size = "queue_size";
+    const char *xml_fim = "fim";
 
 #ifdef LIBGEOIP_ENABLED
     const char *xml_geoip_db_path = "geoip_db_path";
@@ -662,6 +774,14 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
 
             }
+        } else if (strcmp(node[i]->element, xml_fim) == 0) {
+            XML_NODE chld_node = NULL;
+            chld_node = OS_GetElementsbyNode(xml, node[i]);
+
+            int result;
+            if (result = Read_FIM(chld_node, configp), result) {
+                return result;
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -783,4 +903,12 @@ void config_free(_Config *config) {
         free(config->node_type);
     }
 
+    if (config->fim_ignore) {
+        int i = 0;
+        while (config->fim_ignore[i]) {
+            free(config->fim_ignore[i]);
+            i++;
+        }
+        free(config->fim_ignore);
+    }
 }

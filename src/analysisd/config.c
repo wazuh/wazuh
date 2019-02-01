@@ -63,6 +63,7 @@ int GlobalConf(const char *cfgfile)
     Config.syscheck_ignore_time = 3600;
     Config.ar = 0;
 
+    Config.fim_ignore = NULL;
     Config.syscheck_ignore = NULL;
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
@@ -136,6 +137,7 @@ cJSON *getGlobalConfig(void) {
     unsigned int i;
     cJSON *root = cJSON_CreateObject();
     cJSON *global = cJSON_CreateObject();
+    cJSON *fim = cJSON_CreateObject();
 
     if (Config.mailnotify) cJSON_AddStringToObject(global,"email_notification","yes"); else cJSON_AddStringToObject(global,"email_notification","no");
     if (Config.logall) cJSON_AddStringToObject(global,"logall","yes"); else cJSON_AddStringToObject(global,"logall","no");
@@ -175,6 +177,31 @@ cJSON *getGlobalConfig(void) {
     if (Config.custom_alert_output) cJSON_AddStringToObject(global,"custom_alert_output",Config.custom_alert_output_format);
     cJSON_AddNumberToObject(global,"rotate_interval",Config.rotate_interval);
     cJSON_AddNumberToObject(global,"max_output_size",Config.max_output_size);
+
+    // <fim> block
+    {
+        // The list of ignored files is optional, or the elements may all be empty.
+        if (Config.fim_ignore) {
+            cJSON *ignore_list = cJSON_CreateArray();
+            for (i = 0; Config.fim_ignore[i]; i++) {
+                cJSON_AddItemToArray(ignore_list, cJSON_CreateString(Config.fim_ignore[i]));
+            }
+            cJSON_AddItemToObject(fim, "ignore", ignore_list);
+        }
+
+        // This option contains default values. Always present in the output.
+        cJSON_AddStringToObject(fim, "alert_new_files", Config.syscheck_alert_new ? "yes" : "no");
+
+        // This option contains default values. Always present in the output, including the attributes.
+        cJSON *auto_ignore = cJSON_CreateObject();
+        cJSON_AddStringToObject(auto_ignore, "item", Config.syscheck_auto_ignore ? "yes" : "no");
+        cJSON_AddNumberToObject(auto_ignore, "frequency", Config.syscheck_ignore_frequency);
+        cJSON_AddNumberToObject(auto_ignore, "timeframe", Config.syscheck_ignore_time);
+        cJSON_AddItemToObject(fim, "auto_ignore", auto_ignore);
+
+        // The 'fim' block is always present in the output, since it contains elements with default values.
+        if (fim) cJSON_AddItemToObject(global, "fim", fim);
+    }
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoip_db_path) cJSON_AddStringToObject(global,"geoip_db_path",Config.geoip_db_path);

@@ -10,4 +10,11 @@
     <email_maxperhour>12</email_maxperhour>
     <email_log_source>alerts.log</email_log_source>
     <queue_size>131072</queue_size>
+    <fim>
+      <!-- Generate alert when new file detected -->
+      <alert_new_files>yes</alert_new_files>
+
+      <!-- Don't ignore files that change more than 'frequency' times -->
+      <auto_ignore frequency="10" timeframe="3600">no</auto_ignore>
+    </fim>
   </global>

@@ -176,8 +176,9 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
     }
 
     // Check if file is supposed to be ignored
-    if (Config.syscheck_ignore) {
-        char **ff_ig = Config.syscheck_ignore;
+    // on the global level
+    if (Config.fim_ignore) {
+        char **ff_ig = Config.fim_ignore;
 
         while (*ff_ig) {
             if (strncasecmp(*ff_ig, f_name, strlen(*ff_ig)) == 0) {

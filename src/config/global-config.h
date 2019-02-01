@@ -71,6 +71,9 @@ typedef struct __Config {
     /* List of files to ignore (syscheck) */
     char **syscheck_ignore;
 
+    /* List of files to ignore (analysisd) */
+    char **fim_ignore;
+
     /* List of ips to never block */
     os_ip **white_list;
 

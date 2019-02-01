@@ -54,9 +54,6 @@ WriteSyscheck()
         echo "" >> $NEWCONFIG
         echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
-        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
         echo "  </syscheck>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
       else
