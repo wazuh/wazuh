@@ -35,14 +35,15 @@ class TestPolicyMonitoring(TestCase):
         """
         Checks exception is raised when db not found
         """
-        with self.assertRaises(WazuhException):
-            WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
-        with patch('wazuh.common.database_path_agents', test_data_path):
+        with patch('wazuh.common.wdb_path', '/do/not/exists'):
+            with self.assertRaises(WazuhException):
+                WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
+        with patch('wazuh.common.wdb_path', test_data_path):
             print()
             query = WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
             assert(isinstance(query, WazuhDBQueryPM))
 
-    @patch('wazuh.common.database_path_agents', test_data_path)
+    @patch('wazuh.common.wdb_path', test_data_path)
     def test_get_pm_list(self):
         """
         Checks data are properly loaded from database
@@ -56,7 +57,7 @@ class TestPolicyMonitoring(TestCase):
             assert(isinstance(pm, dict))
             assert(set(pm.keys()) == set(fields_translation_pm.values()))
 
-    @patch('wazuh.common.database_path_agents', test_data_path)
+    @patch('wazuh.common.wdb_path', test_data_path)
     def test_get_pm_list_select_param(self):
         """
         Checks only selected fields are loaded from database
@@ -71,7 +72,7 @@ class TestPolicyMonitoring(TestCase):
             assert (isinstance(pm, dict))
             assert (set(pm.keys()) == set(fields['fields']))
 
-    @patch('wazuh.common.database_path_agents', test_data_path)
+    @patch('wazuh.common.wdb_path', test_data_path)
     def test_get_pm_list_search_param(self):
         """
         Checks only selected fields are loaded from database
@@ -93,7 +94,7 @@ class TestPolicyMonitoring(TestCase):
             assert (isinstance(result, list))
             assert (len(result) > 0)
 
-    @patch('wazuh.common.database_path_agents', test_data_path)
+    @patch('wazuh.common.wdb_path', test_data_path)
     def test_get_pm_checks(self):
         """
         Checks pm checks data are properly loaded from database
