@@ -493,6 +493,19 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             }
         }
 
+        char *aux;
+        aux = strdup(path);
+        if(aux) {
+            str_lowercase(aux);
+            int pos = find_dir_pos(aux, 1, 0, 0);
+            if (pos < 0) {
+                mdebug2("This file is not monitored by whodata: '%s'", aux);
+                os_free(aux);
+                goto clean;
+            }
+            os_free(aux);
+        }
+
         if (buffer[1].Type != EvtVarTypeString) {
             mwarn(INV_WDATA_PAR, buffer[1].Type, "user_name");
             user_name = NULL;

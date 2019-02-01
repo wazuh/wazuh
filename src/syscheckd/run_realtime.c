@@ -154,7 +154,6 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
                 os_calloc(PATH_MAX+2, sizeof(char), real_path);
                 if (real_path_win(file_name, real_path)) {
                     if (GetFileAttributes(real_path) & FILE_ATTRIBUTE_DIRECTORY) {
-                        mdebug2("Llega real_path directory: '%s'", real_path);
                         os_free(real_path);
                         read_dir(file_name, pos, evt, depth, 1);
                         return 0;

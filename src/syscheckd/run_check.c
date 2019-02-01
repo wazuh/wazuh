@@ -340,8 +340,10 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     }
 #endif
 
+#ifdef WIN32
     int opts;
     opts = syscheck.opts[pos];
+#endif
     /* Clean sums */
     strncpy(mf_sum,  "", 1);
     strncpy(sf_sum,  "", 1);

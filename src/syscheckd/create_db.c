@@ -177,7 +177,6 @@ void remove_local_diff(){
 static int read_file(char *file_name, int dir_position, whodata_evt *evt, int max_depth)
 {
     int opts;
-    int islink = 0;
     OSMatch *restriction;
     char *buf;
     syscheck_node *s_node;
@@ -189,6 +188,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     char *c_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
+    int islink = 0;
     char *sid = NULL;
     char *user = NULL;
     char *str_perm = NULL;
@@ -290,12 +290,13 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #ifdef WIN32
     if (S_ISREG(statbuf.st_mode))
     {
-        char *real_path;
-        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
 #else
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     {
 #endif
+        char *real_path;
+        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
+
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -307,14 +308,15 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
             if (S_ISLNK(statbuf.st_mode)) {
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
-                        islink = 1;
-                        if (opts & CHECK_FOLLOW) {
-                            strncpy(file_name, real_path, PATH_MAX+2);
-                        }
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
                             strncpy(mf_sum, "n/a", 4);
                             strncpy(sf_sum, "n/a", 4);
                             strncpy(sf256_sum, "n/a", 4);
+                        }
+                        if (opts & CHECK_FOLLOW) {
+                            realpath(file_name, real_path);
+                            strncpy(file_name, real_path, PATH_MAX+2);
+                            os_free(real_path);
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
@@ -349,13 +351,13 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                     if (stat(real_path, &statbuf_lnk) == 0) {
                         islink = 1;
                         if (S_ISREG(statbuf_lnk.st_mode)) {
-                            if (opts & CHECK_FOLLOW) {
-                                strncpy(file_name, real_path, PATH_MAX+2);
-                            }
-                            if (OS_MD5_SHA1_SHA256_File(real_path, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
+                            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
                                 strncpy(mf_sum, "n/a", 4);
                                 strncpy(sf_sum, "n/a", 4);
                                 strncpy(sf256_sum, "n/a", 4);
+                            }
+                            if (opts & CHECK_FOLLOW) {
+                                strncpy(file_name, real_path, PATH_MAX+2);
                             }
                         } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                             if (!(opts & CHECK_FOLLOW)) {
@@ -1291,7 +1293,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
 #if defined (INOTIFY_ENABLED) || defined (WIN32)
 #ifdef WIN32
-            realtime_adddir(real_path, pos+1);
+            realtime_adddir(real_path, opts & CHECK_WHODATA ? pos + 1 : 0);
 #else
             realtime_adddir(real_path, opts & CHECK_WHODATA);
 #endif
