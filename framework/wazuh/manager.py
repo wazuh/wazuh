@@ -183,7 +183,7 @@ def upload_file(file, path, content_type):
     :return: Confirmation message in string
     """
     try:
-        with open(file) as f:
+        with open('{}/{}'.format(common.ossec_path, file)) as f:
             file_data = f.read()
     except IOError:
         raise WazuhException(1005)

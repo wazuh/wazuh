@@ -367,6 +367,16 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    '/cluster/:node_id/files': {
+        'function': manager.get_file,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'POST/cluster/:node_id/files': {
+        'function': manager.upload_file,
+        'type': 'distributed_master',
+        'is_async': False
+    },
 
     # Rootcheck
     '/rootcheck/:agent_id': {
