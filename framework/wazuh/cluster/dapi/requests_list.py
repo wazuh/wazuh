@@ -287,7 +287,8 @@ functions = {
     },
     'PUT/manager/restart': {
         'function': manager.restart_master,
-        'type': 'local_any'
+        'type': 'local_any',
+        'is_async': False
     },
 
     # Cluster
@@ -372,12 +373,14 @@ functions = {
         'is_async': False
     },
     'PUT/cluster/restart': {
-        'function': manager.restart_cluster,
-        'type': 'distributed_master'
+        'function': manager.restart_master,
+        'type': 'distributed_master',
+        'is_async': False
     },
     'PUT/cluster/:node_id/restart': {
         'function': manager.restart_node,
-        'type': 'distributed_master'
+        'type': 'distributed_master',
+        'is_async': False
     },
 
     # Rootcheck

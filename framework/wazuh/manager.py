@@ -326,6 +326,7 @@ def restart_master():
 
     :return: Confirmation message.
     """
+
     try:
         # initialize socket
         socket_path = common.EXECQ
