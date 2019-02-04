@@ -141,6 +141,7 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
                 }
             }
 #else
+#ifdef EVENTCHANNEL_SUPPORT
             if (islink_win(file_name) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
                 char *real_path;
                 os_calloc(PATH_MAX+2, sizeof(char), real_path);
@@ -160,7 +161,7 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
             } else if (islink_win(file_name) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
                 return 0;
             }
-
+#endif
 #endif
             read_dir(file_name, pos, evt, depth, 0);
         }

@@ -163,12 +163,16 @@ int fim_check_restrict(const char *file_name, OSMatch *restriction);
 void * syscom_main(void * arg);
 #else
 // Checking links to follow
-char *real_path_win(const char *file_name, char *real_path);
 int islink_win(const char *file_name);
+#ifdef EVENTCHANNEL_SUPPORT
+char *real_path_win(const char *file_name, char *real_path);
 int absolute_path(char *file_name, const char *relative_path);
 int is_relative_path(const char *file_name);
 #endif
+#endif
+#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
 int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link);
+#endif
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 

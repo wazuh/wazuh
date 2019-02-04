@@ -188,7 +188,9 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     char *c_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
+#ifdef EVENTCHANNEL_SUPPORT
     int islink = 0;
+#endif
     char *sid = NULL;
     char *user = NULL;
     char *str_perm = NULL;
@@ -260,6 +262,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #ifdef WIN32
         /* Directory links are not supported */
         if (islink_win(file_name)) {
+#ifdef EVENTCHANNEL_SUPPORT
             if(opts & CHECK_FOLLOW) {
                 mdebug2("Directory symbolic link: %s", file_name);
                 os_free(wd_sum);
@@ -271,6 +274,12 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 os_free(alert_msg);
                 return (0);
             }
+#else
+            mwarn("Links are not supported: '%s'", file_name);
+            os_free(wd_sum);
+            os_free(alert_msg);
+            return (-1);
+#endif
         }
 #endif
         os_free(wd_sum);
@@ -294,9 +303,10 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     {
 #endif
+#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
         char *real_path;
         os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-
+#endif
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -340,6 +350,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 }
             } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
 #else
+#ifdef EVENTCHANNEL_SUPPORT
             if (islink_win(file_name)) {
                 if (!real_path_win(file_name, real_path)) {
                     mdebug2("real_path_win() failed in %s", file_name);
@@ -384,6 +395,9 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                     }
                 }
             } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
+#else
+            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
+#endif
 #endif
             {
                 snprintf(mf_sum, 4, "n/a");
@@ -403,17 +417,22 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #ifdef WIN32
             // Get the user name and its id
             if (opts & CHECK_OWNER) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
                         user = get_user(real_path, statbuf_lnk.st_uid, &sid);
                 } else {
                     user = get_user(file_name, statbuf.st_uid, &sid);
                 }
+#else
+                user = get_user(file_name, statbuf.st_uid, &sid);
+#endif
             }
 
             // Get the file permissions
             if (opts & CHECK_PERM) {
                 int error;
                 char perm_unescaped[OS_SIZE_6144 + 1];
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
                     if (error = w_get_file_permissions(real_path, perm_unescaped, OS_SIZE_6144), error) {
                         merror("It was not possible to extract the permissions of '%s'. Error: %d.", real_path, error);
@@ -427,34 +446,53 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                         str_perm = escape_perm_sum(perm_unescaped);
                     }
                 }
+#else
+                if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+                    merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+                } else {
+                    str_perm = escape_perm_sum(perm_unescaped);
+                }
+#endif
             }
 
             if (opts & CHECK_SIZE) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
+#else
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+#endif
             } else {
                 *str_size = '\0';
             }
 
             if (opts & CHECK_MTIME) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
+#else
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+#endif
             } else {
                 *str_mtime = '\0';
             }
 
             if (opts & CHECK_INODE) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
+#else
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+#endif
             } else {
                 *str_inode = '\0';
             }
@@ -477,7 +515,11 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     user ? user : "",
+#ifdef EVENTCHANNEL_SUPPORT
                     opts & CHECK_GROUP ? get_group(islink ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+#else
+                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+#endif
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -610,31 +652,43 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 
 #ifdef WIN32
             if (opts & CHECK_SIZE) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
+#else
+                sprintf(str_size,"%ld",(long)statbuf.st_size);
+#endif
             } else {
                 *str_size = '\0';
             }
 
             if (opts & CHECK_MTIME) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
                     sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
+#else
+                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
+#endif
             } else {
                 *str_mtime = '\0';
             }
 
             if (opts & CHECK_INODE) {
+#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
+#else
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+#endif
             } else {
                 *str_inode = '\0';
             }
@@ -646,7 +700,11 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 user ? user : "",
+#ifdef EVENTCHANNEL_SUPPORT
                 opts & CHECK_GROUP ? get_group(islink ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
+#else
+                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
+#endif
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -656,7 +714,6 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
-            os_free(real_path);
             os_free(user);
 #else
             if (opts & CHECK_SIZE) {
@@ -742,6 +799,9 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 send_syscheck_msg(alert_msg);
             }
 
+#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
+            os_free(real_path);
+#endif
             os_free(alert_msg);
             os_free(alertdump);
         } else {
@@ -831,6 +891,7 @@ int read_dir(char *dir_name, int dir_position, whodata_evt *evt, int max_depth, 
         return 0;
     }
 
+#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
     switch(read_links(dir_name, dir_position, max_depth, is_link)) {
     case 2:
         mdebug2("Discarding symbolic link '%s' is already added in the configuration.",
@@ -844,6 +905,7 @@ int read_dir(char *dir_name, int dir_position, whodata_evt *evt, int max_depth, 
     default:
         return -1;
     }
+#endif
 
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
 
@@ -1224,6 +1286,8 @@ int fim_check_restrict (const char *file_name, OSMatch *restriction) {
     return (0);
 }
 
+#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
+// Every OS except Windows XP or lower
 int read_links(const char *dir_name, int dir_position, int max_depth, unsigned int is_link) {
     char *dir_name_full;
     char *real_path;
@@ -1311,6 +1375,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
     free(dir_name_full);
     return 0;
 }
+#endif
 // WIN32
 #ifdef WIN32
 int islink_win(const char *file_name) {
@@ -1326,6 +1391,7 @@ int islink_win(const char *file_name) {
     }
 }
 
+#ifdef EVENTCHANNEL_SUPPORT
 char *real_path_win(const char *file_name, char *real_path) {
     HANDLE handle = CreateFile(
             file_name,
@@ -1459,4 +1525,5 @@ int is_relative_path(const char *file_name) {
     }
     return 1;
 }
+#endif
 #endif

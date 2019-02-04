@@ -456,6 +456,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
     /* Attributes*/
 #ifdef WIN32
+#ifdef EVENTCHANNEL_SUPPORT
     char *real_path;
     os_calloc(PATH_MAX+2, sizeof(char), real_path);
     if (islink_win(file_name)) {
@@ -463,12 +464,17 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             mdebug2("real_path_win() failed on: '%s'", file_name);
         }
     }
+#endif
     if (oldsum[9] == '+') {
+#ifdef EVENTCHANNEL_SUPPORT
         if (islink_win(file_name) && (opts & CHECK_FOLLOW)) {
             attributes = w_get_file_attrs(real_path);
         } else {
             attributes = w_get_file_attrs(file_name);
         }
+#else
+        attributes = w_get_file_attrs(file_name);
+#endif
     }
 #endif
 
@@ -571,6 +577,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         sha256sum  == 0 ? "" : sf256_sum,
         0);
 #else
+#ifdef EVENTCHANNEL_SUPPORT
     if (islink_win(file_name) && (opts & CHECK_FOLLOW)) {
             if (stat(real_path, &statbuf_lnk) == 0) {
                 user = get_user(real_path, statbuf_lnk.st_uid, &sid);
@@ -604,6 +611,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                 }
             }
     } else {
+#endif
         user = get_user(file_name, statbuf.st_uid, &sid);
 
         if (size == 0){
@@ -633,7 +641,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         } else {
             sprintf(str_inode, "%ld", (long)statbuf.st_ino);
         }
+#ifdef EVENTCHANNEL_SUPPORT
     }
+#endif
 
     snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
@@ -653,7 +663,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             LocalFree(sid);
         }
         free(str_perm);
+#ifdef EVENTCHANNEL_SUPPORT
         os_free(real_path);
+#endif
 #endif
 
     return (0);
