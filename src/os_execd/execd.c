@@ -253,7 +253,7 @@ static void ExecdStart(int q)
     }
 
     /* Initialize the api cmd arguments */
-    for (i = 0; i <= MAX_ARGS + 1; i++) {
+    for (i = 0; i < MAX_ARGS; i++) {
         cmd_api[i] = NULL;
     }
 

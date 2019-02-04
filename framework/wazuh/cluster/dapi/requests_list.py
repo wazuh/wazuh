@@ -277,11 +277,13 @@ functions = {
     },
     '/manager/files': {
         'function': manager.get_file,
-        'type': 'local_any'
+        'type': 'local_any',
+        'is_async': False
     },
     'POST/manager/files': {
         'function': manager.upload_file,
-        'type': 'local_any'
+        'type': 'local_any',
+        'is_async': False
     },
     'PUT/manager/restart': {
         'function': manager.restart_master,
@@ -570,11 +572,13 @@ functions = {
     # Lists
     '/lists': {
         'function': cdb_list.get_lists,
-        'type': 'local_master'
+        'type': 'local_master',
+        'is_async': False
     },
     '/lists/files': {
         'function': cdb_list.get_path_lists,
-        'type': 'local_master'
+        'type': 'local_master',
+        'is_async': False
     },
 
 
