@@ -28,6 +28,7 @@
 static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Module main function. It won't return
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
+static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result);  // Send check event
 static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id);  // Read policy monitoring files
 static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy);  // Do scan
 static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy);  // Send summary
@@ -643,117 +644,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                 while (1) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
                         // TODO: notify alert
-                        cJSON *json_alert = cJSON_CreateObject();
-                        cJSON_AddStringToObject(json_alert, "type", "check");
-                        cJSON_AddNumberToObject(json_alert, "id", id);
-
-                        cJSON *name = cJSON_GetObjectItem(policy,"name");
-                        cJSON_AddStringToObject(json_alert, "profile", name->valuestring);
-                        
-                        
-                        cJSON *check = cJSON_CreateObject();
-                        cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
-                        cJSON *title = cJSON_GetObjectItem(profile, "title");
-                        cJSON *cis_control = cJSON_GetObjectItem(profile, "cis_control");
-                        cJSON *description = cJSON_GetObjectItem(profile, "description");
-                        cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
-                        cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
-                        cJSON *default_value = cJSON_GetObjectItem(profile, "default_value");
-                        cJSON_AddNumberToObject(check, "id", pm_id->valueint);
-
-                        if(title){
-                            cJSON_AddStringToObject(check, "title", title->valuestring);
-                        } else {
-                            cJSON_AddStringToObject(check, "title", "unknown");
-                        }
-
-                        if(cis_control){
-                            cJSON_AddStringToObject(check, "cis_control", cis_control->valuestring);
-                        } else {
-                            cJSON_AddStringToObject(check, "cis_control", "unknown");
-                        }
-
-
-                        if(description){
-                            cJSON_AddStringToObject(check, "description", description->valuestring);
-                        } else {
-                            cJSON_AddStringToObject(check, "description", "unknown");
-                        }
-
-                        if(rationale){
-                            cJSON_AddStringToObject(check, "rationale", rationale->valuestring);
-                        } else {
-                            cJSON_AddStringToObject(check, "rationale", "unknown");
-                        }
-
-                        if(remediation){
-                            cJSON_AddStringToObject(check, "remediation", remediation->valuestring);
-                        } else {
-                            cJSON_AddStringToObject(check, "remediation", "unknown");
-                        }
-
-                        if(default_value){
-                            cJSON_AddStringToObject(check, "default_value", default_value->valuestring);
-                        } else {
-                            cJSON_AddStringToObject(check, "default_value", "unknown");
-                        }
-
-                        cJSON *compliances = cJSON_GetObjectItem(profile, "compliance");
-
-                        if(compliances) {
-                            cJSON *add_compliances = cJSON_CreateObject();
-                            cJSON *compliance;
-
-                            cJSON_ArrayForEach(compliance,compliances)
-                            {
-                                if(compliance->child->valuestring){
-                                    cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
-                                } else if(compliance->child->valueint) {
-                                    cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
-                                }     
-                            }
-
-                            cJSON_AddItemToObject(check,"compliance",add_compliances);
-                        }
-                        
-                        cJSON *references = cJSON_GetObjectItem(profile, "references");
-
-                        if(references) {
-                            cJSON *add_references = cJSON_CreateArray();
-                            cJSON *reference;
-                            cJSON_ArrayForEach(reference,references)
-                            {
-                                cJSON_AddItemToArray(add_references,cJSON_CreateString(reference->valuestring));
-                            }
-                            cJSON_AddItemToObject(check,"reference",add_references);
-                        }
-
-                        // Get File or Process from alert
-                        if(p_alert_msg[j]) {
-                            char *alert_file = strstr(p_alert_msg[j],"File:");
-                            if(alert_file){
-                                alert_file+= 5;
-                                *alert_file = '\0';
-                                alert_file++;
-                                cJSON_AddStringToObject(check, "file", alert_file);
-                            } else {
-                                char *alert_process = strstr(p_alert_msg[j],"Process:");
-                                if(alert_process){
-                                    alert_process+= 8;
-                                    *alert_process = '\0';
-                                    alert_process++;
-                                    cJSON_AddStringToObject(check, "process", alert_process);
-                                }
-                            }
-                        } else {
-                            cJSON_AddStringToObject(check, "file", "\0");
-                        }
-                      
-                        cJSON_AddStringToObject(check, "result", "fail");
-                        cJSON_AddItemToObject(json_alert,"check",check);
-
-                        wm_policy_monitoring_send_alert(data,json_alert);
-                        cJSON_Delete(json_alert);
+                        wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"fail");
                     }
 
                     if (p_alert_msg[j]) {
@@ -770,6 +661,26 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                 }
             } else {
                 int j = 0;
+                char **p_alert_msg = data->alert_msg;
+                while (1) {
+                    if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
+                        // TODO: notify alert
+                        wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"passed");
+                    }
+
+                    if (p_alert_msg[j]) {
+                        free(p_alert_msg[j]);
+                        p_alert_msg[j] = NULL;
+                        j++;
+
+                        if (!p_alert_msg[j]) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+                j = 0;
                 while (data->alert_msg[j]) {
                     free(data->alert_msg[j]);
                     data->alert_msg[j] = NULL;
@@ -1591,6 +1502,121 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
     cJSON_Delete(json_summary);
 
     return 0;
+}
+
+static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result) {
+    // TODO: notify alert
+    cJSON *json_alert = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_alert, "type", "check");
+    cJSON_AddNumberToObject(json_alert, "id", id);
+
+    cJSON *name = cJSON_GetObjectItem(policy,"name");
+    cJSON_AddStringToObject(json_alert, "profile", name->valuestring);
+    
+    
+    cJSON *check = cJSON_CreateObject();
+    cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+    cJSON *title = cJSON_GetObjectItem(profile, "title");
+    cJSON *cis_control = cJSON_GetObjectItem(profile, "cis_control");
+    cJSON *description = cJSON_GetObjectItem(profile, "description");
+    cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
+    cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
+    cJSON *default_value = cJSON_GetObjectItem(profile, "default_value");
+    cJSON_AddNumberToObject(check, "id", pm_id->valueint);
+
+    if(title){
+        cJSON_AddStringToObject(check, "title", title->valuestring);
+    } else {
+        cJSON_AddStringToObject(check, "title", "unknown");
+    }
+
+    if(cis_control){
+        cJSON_AddStringToObject(check, "cis_control", cis_control->valuestring);
+    } else {
+        cJSON_AddStringToObject(check, "cis_control", "unknown");
+    }
+
+
+    if(description){
+        cJSON_AddStringToObject(check, "description", description->valuestring);
+    } else {
+        cJSON_AddStringToObject(check, "description", "unknown");
+    }
+
+    if(rationale){
+        cJSON_AddStringToObject(check, "rationale", rationale->valuestring);
+    } else {
+        cJSON_AddStringToObject(check, "rationale", "unknown");
+    }
+
+    if(remediation){
+        cJSON_AddStringToObject(check, "remediation", remediation->valuestring);
+    } else {
+        cJSON_AddStringToObject(check, "remediation", "unknown");
+    }
+
+    if(default_value){
+        cJSON_AddStringToObject(check, "default_value", default_value->valuestring);
+    } else {
+        cJSON_AddStringToObject(check, "default_value", "unknown");
+    }
+
+    cJSON *compliances = cJSON_GetObjectItem(profile, "compliance");
+
+    if(compliances) {
+        cJSON *add_compliances = cJSON_CreateObject();
+        cJSON *compliance;
+
+        cJSON_ArrayForEach(compliance,compliances)
+        {
+            if(compliance->child->valuestring){
+                cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
+            } else if(compliance->child->valueint) {
+                cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
+            }     
+        }
+
+        cJSON_AddItemToObject(check,"compliance",add_compliances);
+    }
+    
+    cJSON *references = cJSON_GetObjectItem(profile, "references");
+
+    if(references) {
+        cJSON *add_references = cJSON_CreateArray();
+        cJSON *reference;
+        cJSON_ArrayForEach(reference,references)
+        {
+            cJSON_AddItemToArray(add_references,cJSON_CreateString(reference->valuestring));
+        }
+        cJSON_AddItemToObject(check,"reference",add_references);
+    }
+
+    // Get File or Process from alert
+    if(p_alert_msg[index]) {
+        char *alert_file = strstr(p_alert_msg[index],"File:");
+        if(alert_file){
+            alert_file+= 5;
+            *alert_file = '\0';
+            alert_file++;
+            cJSON_AddStringToObject(check, "file", alert_file);
+        } else {
+            char *alert_process = strstr(p_alert_msg[index],"Process:");
+            if(alert_process){
+                alert_process+= 8;
+                *alert_process = '\0';
+                alert_process++;
+                cJSON_AddStringToObject(check, "process", alert_process);
+            }
+        }
+    } else {
+        cJSON_AddStringToObject(check, "file", "\0");
+    }
+    
+    cJSON_AddStringToObject(check, "result", result);
+    cJSON_AddItemToObject(json_alert,"check",check);
+
+    wm_policy_monitoring_send_alert(data,json_alert);
+    cJSON_Delete(json_alert);
 }
 
 static void wm_policy_monitoring_summary_increment_passed() {
