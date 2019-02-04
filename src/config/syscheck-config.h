@@ -208,12 +208,10 @@ typedef struct _config {
     int max_fd_win_rt;
     whodata wdata;
     whodata_event_list wlist;
-#else
-    int max_audit_entries;          /* Maximum entries for Audit (whodata) */
-    int audit_healthcheck;
 #endif
-
-    char **audit_key;                // Listen audit keys
+    int max_audit_entries;          /* Maximum entries for Audit (whodata) */
+    char **audit_key;               // Listen audit keys
+    int audit_healthcheck;          // Startup health-check for whodata
 
     OSHash *fp;
     OSHash *last_check;
