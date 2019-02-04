@@ -27,7 +27,7 @@
 static void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector);
 static void wm_vuldet_destroy(wm_vuldet_t * vulnerability_detector);
 static int wm_vuldet_updatedb(update_node **updates);
-static char * wm_vuldet_xml_preparser(char *path, distribution dist);
+static char * wm_vuldet_xml_preparser(char *path, vu_feed dist);
 static int wm_vuldet_update_feed(update_node *update);
 static int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update);
 static int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, update_node *update, vu_logic condition);
@@ -50,7 +50,7 @@ static int wm_vuldet_check_update_period(update_node *upd);
 static int wm_vuldet_check_update(update_node *upd, const char *dist);
 static int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext);
 static int wm_vuldet_compare(char *version_it, char *cversion_it);
-static const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vuldet_set_oval);
+static const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, vu_feed *wm_vuldet_set_oval);
 static int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **updates);
 static int check_timestamp(const char *OS, char *timst, char *ret_timst);
 static cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector);
@@ -66,14 +66,12 @@ const wm_context WM_VULNDETECTOR_CONTEXT = {
     (cJSON * (*)(const void *))wm_vuldet_dump
 };
 
-const char *vu_dist_tag[] = {
+const char *vu_feed_tag[] = {
     "UBUNTU",
     "DEBIAN",
     "REDHAT",
     "CENTOS",
     "AMAZLINUX",
-    "WINDOWS",
-    "MACOS",
     "PRECISE",
     "TRUSTY",
     "XENIAL",
@@ -84,28 +82,17 @@ const char *vu_dist_tag[] = {
     "RHEL5",
     "RHEL6",
     "RHEL7",
-    "WXP",
-    "W7",
-    "W8",
-    "W81",
-    "W10",
-    "WS2008",
-    "WS2008R2",
-    "WS2012",
-    "WS2012R2",
-    "WS2016",
-    "MACOSX",
+    "NVD",
+    "CPED",
     "UNKNOWN"
 };
 
-const char *vu_dist_ext[] = {
+const char *vu_feed_ext[] = {
     "Ubuntu",
     "Debian",
     "Red Hat Enterprise Linux",
     "CentOS",
     "Amazon Linux",
-    "Microsoft Windows",
-    "Apple Mac OS",
     "Ubuntu Precise",
     "Ubuntu Trusty",
     "Ubuntu Xenial",
@@ -116,23 +103,14 @@ const char *vu_dist_ext[] = {
     "Red Hat Enterprise Linux 5",
     "Red Hat Enterprise Linux 6",
     "Red Hat Enterprise Linux 7",
-    "Windows XP",
-    "Windows 7",
-    "Windows 8",
-    "Windows 8.1",
-    "Windows 10",
-    "Windows Server 2008",
-    "Windows Server 2008 R2",
-    "Windows Server 2012",
-    "Windows Server 2012 R2",
-    "Windows Server 2016",
-    "Mac OS X",
+    "National Vulnerability Database",
+    "Common Platform Enumeration Dictionary",
     "Unknown OS"
 };
 
 const char *unknown_value = "Unknown";
 
-const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
+const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, vu_feed *agent_dist) {
     const char *retval = NULL;
     int i;
 
@@ -563,7 +541,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
 
         mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_START_AG_AN, agents_it->agent_id);
 
-        if (agents_it->dist != DIS_REDHAT) {
+        if (agents_it->dist != FEED_REDHAT) {
             query = vu_queries[VU_JOIN_QUERY];
         } else {
             query = vu_queries[VU_JOIN_RH_QUERY];
@@ -853,9 +831,9 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
     if (wm_vuldet_remove_OS_table(db, CVE_TABLE, parsed_oval->OS)                          ||
         wm_vuldet_remove_OS_table(db, METADATA_TABLE, parsed_oval->OS)                     ||
         wm_vuldet_remove_OS_table(db, CVE_INFO_TABLE, parsed_oval->OS)                     ||
-        (rvul_it && wm_vuldet_remove_OS_table(db, CVE_TABLE, vu_dist_tag[DIS_RHEL5])) ||
-        (rvul_it && wm_vuldet_remove_OS_table(db, CVE_TABLE, vu_dist_tag[DIS_RHEL6])) ||
-        (rvul_it && wm_vuldet_remove_OS_table(db, CVE_TABLE, vu_dist_tag[DIS_RHEL7]))) {
+        (rvul_it && wm_vuldet_remove_OS_table(db, CVE_TABLE, vu_feed_tag[FEED_RHEL5])) ||
+        (rvul_it && wm_vuldet_remove_OS_table(db, CVE_TABLE, vu_feed_tag[FEED_RHEL6])) ||
+        (rvul_it && wm_vuldet_remove_OS_table(db, CVE_TABLE, vu_feed_tag[FEED_RHEL7]))) {
         return wm_vuldet_sql_error(db, stmt);
     }
 
@@ -1107,7 +1085,7 @@ void wm_vuldet_add_vulnerability_info(wm_vuldet_db *ctrl_block) {
     ctrl_block->info_cves = new;
 }
 
-char * wm_vuldet_xml_preparser(char *path, distribution dist) {
+char * wm_vuldet_xml_preparser(char *path, vu_feed dist) {
     FILE *input, *output = NULL;
     char buffer[OS_MAXSTR + 1];
     parser_state state = V_OVALDEFINITIONS;
@@ -1134,7 +1112,7 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
     }
 
     while (fgets(buffer, OS_MAXSTR, input)) {
-        if (dist == DIS_UBUNTU) { //5.11.1
+        if (dist == FEED_UBUNTU) { //5.11.1
             switch (state) {
                 case V_OBJECTS:
                     if (found = strstr(buffer, "</objects>"), found) {
@@ -1163,7 +1141,7 @@ char * wm_vuldet_xml_preparser(char *path, distribution dist) {
                       //continue;
                   }
             }
-        } else if (dist == DIS_DEBIAN) { //5.3
+        } else if (dist == FEED_DEBIAN) { //5.3
             switch (state) {
                 case V_OVALDEFINITIONS:
                     if (found = strstr(buffer, "?>"), found) {
@@ -1264,7 +1242,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
     vulnerability *vuln;
     char *found;
     XML_NODE chld_node = NULL;
-    distribution dist = update->dist_ref;
+    vu_feed dist = update->dist_ref;
     static const char *XML_OVAL_DEFINITIONS = "oval_definitions";
     static const char *XML_GENERATOR = "generator";
     static const char *XML_DEFINITIONS = "definitions";
@@ -1321,8 +1299,8 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             return OS_INVALID;
         }
 
-        if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_STATE)) ||
-            (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_STATE))) {
+        if ((dist == FEED_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_STATE)) ||
+            (dist == FEED_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_STATE))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1339,8 +1317,8 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
                 }
             }
-        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_TEST)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_TEST))) {
+        } else if ((dist == FEED_UBUNTU && !strcmp(node[i]->element, XML_DPKG_LINUX_INFO_TEST)) ||
+                   (dist == FEED_DEBIAN && !strcmp(node[i]->element, XML_DPKG_INFO_TEST))) {
             if (chld_node = OS_GetElementsbyNode(xml, node[i]), !chld_node) {
                 goto invalid_elem;
             }
@@ -1359,8 +1337,8 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             if (wm_vuldet_xml_parser(xml, chld_node, parsed_oval, update, VU_PACKG) == OS_INVALID) {
                 goto end;
             }
-        } else if ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
+        } else if ((dist == FEED_UBUNTU && !strcmp(node[i]->element, XML_LINUX_DEF_EVR)) ||
+                   (dist == FEED_DEBIAN && !strcmp(node[i]->element, XML_EVR))) {
             if (node[i]->attributes) {
                 for (j = 0; node[i]->attributes[j]; j++) {
                     if (!strcmp(node[i]->attributes[j], XML_OPERATION)) {
@@ -1375,8 +1353,8 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
 
             }
         } else if ((condition == VU_PACKG) &&
-                   ((dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE)) ||
-                   (dist == DIS_DEBIAN && !strcmp(node[i]->element, XML_STATE)))) {
+                   ((dist == FEED_UBUNTU && !strcmp(node[i]->element, XML_LINUX_STATE)) ||
+                   (dist == FEED_DEBIAN && !strcmp(node[i]->element, XML_STATE)))) {
             // Windows oval has multi-state tests
             for (j = 0; node[i]->attributes[j]; j++) {
                 if (!strcmp(node[i]->attributes[j], XML_STATE_REF)) {
@@ -1440,7 +1418,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
         } else if (!strcmp(node[i]->element, XML_TITLE)) {
                 os_strdup(node[i]->content, parsed_oval->info_cves->title);
                 // Debian Wheezy OVAL has its CVE of the title
-                if (dist == DIS_DEBIAN && !strcmp(parsed_oval->OS, vu_dist_tag[DIS_WHEEZY])) {
+                if (dist == FEED_DEBIAN && !strcmp(parsed_oval->OS, vu_feed_tag[FEED_WHEEZY])) {
                     if (!parsed_oval->info_cves->cveid) {
                         os_strdup(node[i]->content, parsed_oval->info_cves->cveid);
                     }
@@ -1559,7 +1537,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
 
                     switch (dist) {
-                        case DIS_UBUNTU:
+                        case FEED_UBUNTU:
                             if (found = strstr(node[i]->values[j], "'"), found) {
                                 char *base = ++found;
                                 if (found = strstr(found, "'"), found) {
@@ -1569,7 +1547,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                                 }
                             }
                         break;
-                        case DIS_DEBIAN:
+                        case FEED_DEBIAN:
                             if (found = strstr(node[i]->values[j], " DPKG is earlier than"), found) {
                                *found = '\0';
                                os_strdup(node[i]->values[j], parsed_oval->vulnerabilities->package_name);
@@ -1621,7 +1599,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                     }
                 }
             }
-        } else if (dist == DIS_UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) {
+        } else if (dist == FEED_UBUNTU && !strcmp(node[i]->element, XML_PUBLIC_DATE)) {
             os_strdup(node[i]->content, parsed_oval->info_cves->published);
         } else if (!strcmp(node[i]->element, XML_OVAL_DEFINITIONS)  ||
                    !strcmp(node[i]->element, XML_DEFINITIONS)       ||
@@ -1676,7 +1654,7 @@ int wm_vuldet_update_feed(update_node *update) {
     if (update->json_format) {
         // It is the Red Hat feed in JSON format
         if (json_feed =  json_fread(update->path ? update->path : CVE_FIT_TEMP_FILE, 0), !json_feed) {
-            mterror(WM_VULNDETECTOR_LOGTAG, VU_PARSED_FEED_ERROR, vu_dist_ext[DIS_REDHAT]);
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_PARSED_FEED_ERROR, vu_feed_ext[FEED_REDHAT]);
             goto free_mem;
         }
         if (wm_vuldet_json_parser(json_feed, &parsed_vulnerabilities, update)) {
@@ -1773,11 +1751,11 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
         w_strdup(raw, *package_name);
 
         if (strstr(*package_version, ".el7")) {
-            *OS = vu_dist_tag[DIS_RHEL7];
+            *OS = vu_feed_tag[FEED_RHEL7];
         } else if (strstr(*package_version, ".el6")) {
-            *OS = vu_dist_tag[DIS_RHEL6];
+            *OS = vu_feed_tag[FEED_RHEL6];
         } else if (strstr(*package_version, ".el5")) {
-            *OS = vu_dist_tag[DIS_RHEL5];
+            *OS = vu_feed_tag[FEED_RHEL5];
         }
 
         return retv;
@@ -1845,7 +1823,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
     int attempts;
     *need_update = 1;
 
-    if (update->dist_ref == DIS_REDHAT) {
+    if (update->dist_ref == FEED_REDHAT) {
         update->json_format = 1;
     }
 
@@ -1855,21 +1833,21 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
     }
 
     if (!update->url) {
-        if (update->dist_ref == DIS_UBUNTU) {
+        if (update->dist_ref == FEED_UBUNTU) {
             os_strdup(update->version, low_repo);
             for(i = 0; low_repo[i] != '\0'; i++) {
                 low_repo[i] = tolower(low_repo[i]);
             }
             snprintf(repo, OS_SIZE_2048, CANONICAL_REPO, low_repo);
             free(low_repo);
-        } else if (update->dist_ref == DIS_DEBIAN) {
+        } else if (update->dist_ref == FEED_DEBIAN) {
             os_strdup(update->version, low_repo);
             for(i = 0; low_repo[i] != '\0'; i++) {
                 low_repo[i] = tolower(low_repo[i]);
             }
             snprintf(repo, OS_SIZE_2048, DEBIAN_REPO, low_repo);
             free(low_repo);
-        } else if (update->dist_ref != DIS_REDHAT) {
+        } else if (update->dist_ref != FEED_REDHAT) {
             mterror(WM_VULNDETECTOR_LOGTAG, VU_OS_VERSION_ERROR);
             return OS_INVALID;
         }
@@ -1877,7 +1855,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
         snprintf(repo, OS_SIZE_2048, "%s", update->url);
     }
 
-    if (update->dist_ref == DIS_REDHAT) {
+    if (update->dist_ref == FEED_REDHAT) {
         int page = 1;
         int attempt = 0;
         char first_line;
@@ -2032,16 +2010,19 @@ int wm_vuldet_updatedb(update_node **updates) {
         return OS_INVALID;
     }
         // Ubuntu
-    if (wm_vuldet_run_update(updates[CVE_BIONIC],   vu_dist_tag[DIS_BIONIC],   vu_dist_ext[DIS_BIONIC])   ||
-        wm_vuldet_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL])   ||
-        wm_vuldet_run_update(updates[CVE_TRUSTY],   vu_dist_tag[DIS_TRUSTY],   vu_dist_ext[DIS_TRUSTY])   ||
-        wm_vuldet_run_update(updates[CVE_PRECISE],   vu_dist_tag[DIS_PRECISE],  vu_dist_ext[DIS_PRECISE]) ||
+    if (wm_vuldet_run_update(updates[CVE_BIONIC],   vu_feed_tag[FEED_BIONIC],   vu_feed_ext[FEED_BIONIC])   ||
+        wm_vuldet_run_update(updates[CVE_XENIAL],   vu_feed_tag[FEED_XENIAL],   vu_feed_ext[FEED_XENIAL])   ||
+        wm_vuldet_run_update(updates[CVE_TRUSTY],   vu_feed_tag[FEED_TRUSTY],   vu_feed_ext[FEED_TRUSTY])   ||
+        wm_vuldet_run_update(updates[CVE_PRECISE],   vu_feed_tag[FEED_PRECISE],  vu_feed_ext[FEED_PRECISE]) ||
         // Debian
-        wm_vuldet_run_update(updates[CVE_STRETCH],  vu_dist_tag[DIS_STRETCH],  vu_dist_ext[DIS_STRETCH])  ||
-        wm_vuldet_run_update(updates[CVE_JESSIE],   vu_dist_tag[DIS_JESSIE],   vu_dist_ext[DIS_JESSIE])   ||
-        wm_vuldet_run_update(updates[CVE_WHEEZY],   vu_dist_tag[DIS_WHEEZY],   vu_dist_ext[DIS_WHEEZY])   ||
+        wm_vuldet_run_update(updates[CVE_STRETCH],  vu_feed_tag[FEED_STRETCH],  vu_feed_ext[FEED_STRETCH])  ||
+        wm_vuldet_run_update(updates[CVE_JESSIE],   vu_feed_tag[FEED_JESSIE],   vu_feed_ext[FEED_JESSIE])   ||
+        wm_vuldet_run_update(updates[CVE_WHEEZY],   vu_feed_tag[FEED_WHEEZY],   vu_feed_ext[FEED_WHEEZY])   ||
         // RedHat
-        wm_vuldet_run_update(updates[CVE_REDHAT],    vu_dist_tag[DIS_REDHAT],    vu_dist_ext[DIS_REDHAT])) {
+        wm_vuldet_run_update(updates[CVE_REDHAT],    vu_feed_tag[FEED_REDHAT],    vu_feed_ext[FEED_REDHAT]) ||
+        // NVD
+        wm_vuldet_run_update(updates[CVE_NVD],    vu_feed_tag[CVE_NVD],    vu_feed_ext[CVE_NVD])            ||
+        wm_vuldet_run_update(updates[CPE_NVD],    vu_feed_tag[CPE_NVD],    vu_feed_ext[CPE_NVD])) {
         return OS_INVALID;
     }
 
@@ -2052,7 +2033,7 @@ int wm_vuldet_updatedb(update_node **updates) {
 int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities, update_node *update) {
     cJSON *json_it;
     cJSON *cve_content;
-    distribution ref = update->dist_ref;
+    vu_feed ref = update->dist_ref;
     time_t l_time;
     struct tm *tm_time;
     // RH Security API - CVE LIST VALUES
@@ -2076,7 +2057,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
     char *m_schema_version = NULL;
     char m_timestamp[27] = { '\0' };
 
-    if (ref == DIS_REDHAT) {
+    if (ref == FEED_REDHAT) {
         for (json_it  = json_feed->child; json_it; json_it = json_it->next) {
             char *tmp_cve = NULL;
             char *tmp_severity = NULL;
@@ -2164,19 +2145,19 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                         // The operating system of the package could not be specified. It will be added for all
                         char *pname = parsed_vulnerabilities->rh_vulnerabilities->package_name;
                         char *pversion = parsed_vulnerabilities->rh_vulnerabilities->package_version;
-                        parsed_vulnerabilities->rh_vulnerabilities->OS = vu_dist_tag[DIS_RHEL7];
+                        parsed_vulnerabilities->rh_vulnerabilities->OS = vu_feed_tag[FEED_RHEL7];
 
                         wm_vuldet_add_rvulnerability(parsed_vulnerabilities);
                         os_strdup(tmp_cve, parsed_vulnerabilities->rh_vulnerabilities->cve_id);
                         os_strdup(pname, parsed_vulnerabilities->rh_vulnerabilities->package_name);
                         os_strdup(pversion, parsed_vulnerabilities->rh_vulnerabilities->package_version);
-                        parsed_vulnerabilities->rh_vulnerabilities->OS = vu_dist_tag[DIS_RHEL6];
+                        parsed_vulnerabilities->rh_vulnerabilities->OS = vu_feed_tag[FEED_RHEL6];
 
                         wm_vuldet_add_rvulnerability(parsed_vulnerabilities);
                         os_strdup(tmp_cve, parsed_vulnerabilities->rh_vulnerabilities->cve_id);
                         os_strdup(pname, parsed_vulnerabilities->rh_vulnerabilities->package_name);
                         os_strdup(pversion, parsed_vulnerabilities->rh_vulnerabilities->package_version);
-                        parsed_vulnerabilities->rh_vulnerabilities->OS = vu_dist_tag[DIS_RHEL5];
+                        parsed_vulnerabilities->rh_vulnerabilities->OS = vu_feed_tag[FEED_RHEL5];
                     }
                 }
             }
@@ -2546,7 +2527,7 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
     char *os_version;
     char *arch;
     const char *agent_os;
-    distribution agent_dist;
+    vu_feed agent_dist;
 
     snprintf(global_db, OS_FLSIZE, "%s%s/%s", isChroot() ? "/" : "", WDB_DIR, WDB_GLOB_NAME);
 
@@ -2580,55 +2561,55 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
             continue;
         }
 
-        if (strcasestr(os_name, vu_dist_ext[DIS_UBUNTU])) {
+        if (strcasestr(os_name, vu_feed_ext[FEED_UBUNTU])) {
             if (strstr(os_version, "18")) {
-                agent_os = vu_dist_tag[DIS_BIONIC];
+                agent_os = vu_feed_tag[FEED_BIONIC];
             } else if (strstr(os_version, "16")) {
-                agent_os = vu_dist_tag[DIS_XENIAL];
+                agent_os = vu_feed_tag[FEED_XENIAL];
             } else if (strstr(os_version, "14")) {
-                agent_os = vu_dist_tag[DIS_TRUSTY];
+                agent_os = vu_feed_tag[FEED_TRUSTY];
             } else if (strstr(os_version, "12")) {
-                agent_os = vu_dist_tag[DIS_PRECISE];
+                agent_os = vu_feed_tag[FEED_PRECISE];
             } else {
-                dist_error = DIS_UBUNTU;
+                dist_error = FEED_UBUNTU;
             }
-            agent_dist = DIS_UBUNTU;
-        } else if (strcasestr(os_name, vu_dist_ext[DIS_DEBIAN])) {
+            agent_dist = FEED_UBUNTU;
+        } else if (strcasestr(os_name, vu_feed_ext[FEED_DEBIAN])) {
             if (strstr(os_version, "7")) {
-                agent_os = vu_dist_tag[DIS_WHEEZY];
+                agent_os = vu_feed_tag[FEED_WHEEZY];
             } else if (strstr(os_version, "8")) {
-                agent_os = vu_dist_tag[DIS_JESSIE];
+                agent_os = vu_feed_tag[FEED_JESSIE];
             } else if (strstr(os_version, "9")) {
-                agent_os = vu_dist_tag[DIS_STRETCH];
+                agent_os = vu_feed_tag[FEED_STRETCH];
             } else {
-                dist_error = DIS_DEBIAN;
+                dist_error = FEED_DEBIAN;
             }
-            agent_dist = DIS_DEBIAN;
-        }  else if (strcasestr(os_name, vu_dist_ext[DIS_REDHAT])) {
+            agent_dist = FEED_DEBIAN;
+        }  else if (strcasestr(os_name, vu_feed_ext[FEED_REDHAT])) {
             if (strstr(os_version, "7")) {
-                agent_os = vu_dist_tag[DIS_RHEL7];
+                agent_os = vu_feed_tag[FEED_RHEL7];
             } else if (strstr(os_version, "6")) {
-                agent_os = vu_dist_tag[DIS_RHEL6];
+                agent_os = vu_feed_tag[FEED_RHEL6];
             } else if (strstr(os_version, "5")) {
-                agent_os = vu_dist_tag[DIS_RHEL5];
+                agent_os = vu_feed_tag[FEED_RHEL5];
             } else {
-                dist_error = DIS_REDHAT;
+                dist_error = FEED_REDHAT;
             }
-            agent_dist = DIS_REDHAT;
-        } else if (strcasestr(os_name, vu_dist_ext[DIS_CENTOS])) {
+            agent_dist = FEED_REDHAT;
+        } else if (strcasestr(os_name, vu_feed_ext[FEED_CENTOS])) {
             if (strstr(os_version, "7")) {
-                agent_os = vu_dist_tag[DIS_RHEL7];
+                agent_os = vu_feed_tag[FEED_RHEL7];
             } else if (strstr(os_version, "6")) {
-                agent_os = vu_dist_tag[DIS_RHEL6];
+                agent_os = vu_feed_tag[FEED_RHEL6];
             } else if (strstr(os_version, "5")) {
-                agent_os = vu_dist_tag[DIS_RHEL5];
+                agent_os = vu_feed_tag[FEED_RHEL5];
             } else {
-                dist_error = DIS_CENTOS;
+                dist_error = FEED_CENTOS;
             }
-            agent_dist = DIS_REDHAT;
-        } else if (strcasestr(os_name, vu_dist_ext[DIS_AMAZL])) {
-            agent_os = vu_dist_tag[DIS_RHEL7];
-            agent_dist = DIS_REDHAT;
+            agent_dist = FEED_REDHAT;
+        } else if (strcasestr(os_name, vu_feed_ext[FEED_AMAZL])) {
+            agent_os = vu_feed_tag[FEED_RHEL7];
+            agent_dist = FEED_REDHAT;
         } else {
             // Operating system not supported in any of its versions
             dist_error = -2;
@@ -2641,7 +2622,7 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
                     mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AGENT_UNSOPPORTED, name);
                     continue;
                 } else {
-                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_dist_ext[dist_error], name);
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_UNS_OS_VERSION, vu_feed_ext[dist_error], name);
                     continue;
                 }
             }

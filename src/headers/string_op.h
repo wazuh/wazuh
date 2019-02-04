@@ -28,6 +28,10 @@ char *convert_windows_string(LPCWSTR string);
 // Convert string to lowercase
 #define str_lowercase(str_lc) { char *x = str_lc; while (*x != '\0') { *x = tolower(*x); x++; } }
 
+// Convert string to uppercase
+#define str_uppercase(str_lc) { char *x = str_lc; while (*x != '\0') { *x = toupper(*x); x++; } }
+
+
 // Convert double to string
 #define w_double_str(x) ({char *do_str; os_calloc(20, sizeof(char),do_str); snprintf(do_str, 19, "%f", x); do_str;})
 

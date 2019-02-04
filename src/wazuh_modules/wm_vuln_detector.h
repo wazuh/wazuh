@@ -29,9 +29,6 @@
 #define RED_HAT_REPO_MAX_ATTEMPTS 3
 #define RED_HAT_REPO_REQ_SIZE 1000
 #define RED_HAT_REPO "https://access.redhat.com/labs/securitydataapi/cve.json?after=%d-01-01&per_page=%d&page=%d"
-#define CISECURITY_REPO "oval.cisecurity.org"
-#define WINDOWS_OVAL "/repository/download/5.11.2/vulnerability/microsoft_windows_%s.xml"
-#define MACOSX_OVAL "/repository/download/5.11.2/vulnerability/apple_mac_os_%s.xml"
 #define JSON_FILE_TEST "/tmp/package_test.json"
 #define DEFAULT_OVAL_PORT 443
 #define KEY_SIZE OS_SIZE_6144
@@ -57,8 +54,8 @@
 #define VU_BUILD_REF_RHSA "https://access.redhat.com/errata/%s"
 
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
-extern const char *vu_dist_tag[];
-extern const char *vu_dist_ext[];
+extern const char *vu_feed_tag[];
+extern const char *vu_feed_ext[];
 
 typedef enum vu_logic {
     VU_TRUE,
@@ -76,50 +73,36 @@ typedef enum vu_logic {
     VU_NOT_FIXED
 } vu_logic;
 
-typedef enum distribution{
-    DIS_UBUNTU,
-    DIS_DEBIAN,
-    DIS_REDHAT,
-    DIS_CENTOS,
-    DIS_AMAZL,
-    DIS_WINDOWS,
-    DIS_MACOS,
+typedef enum vu_feed{
+    FEED_UBUNTU,
+    FEED_DEBIAN,
+    FEED_REDHAT,
+    FEED_CENTOS,
+    FEED_AMAZL,
     // Ubuntu versions
-    DIS_PRECISE,
-    DIS_TRUSTY,
-    DIS_XENIAL,
-    DIS_BIONIC,
+    FEED_PRECISE,
+    FEED_TRUSTY,
+    FEED_XENIAL,
+    FEED_BIONIC,
     // Debian versions
-    DIS_JESSIE,
-    DIS_STRETCH,
-    DIS_WHEEZY,
+    FEED_JESSIE,
+    FEED_STRETCH,
+    FEED_WHEEZY,
     // RedHat versions
-    DIS_RHEL5,
-    DIS_RHEL6,
-    DIS_RHEL7,
-    // Windows versions
-    DIS_WXP,
-    DIS_W7,
-    DIS_W8,
-    DIS_W81,
-    DIS_W10,
-    DIS_WS2008,
-    DIS_WS2008R2,
-    DIS_WS2012,
-    DIS_WS2012R2,
-    DIS_WS2016,
-    // MacOS versions
-    DIS_MACOSX,
-    DIS_UNKNOW
-} distribution;
+    FEED_RHEL5,
+    FEED_RHEL6,
+    FEED_RHEL7,
+    // NVD
+    FEED_NVD,
+    FEED_CPED,
+    FEED_UNKNOW
+} vu_feed;
 
 typedef struct update_flags {
     unsigned int update:1;
     unsigned int update_ubuntu:1;
     unsigned int update_debian:1;
     unsigned int update_redhat:1;
-    unsigned int update_windows:1;
-    unsigned int update_macos:1;
 } update_flags;
 
 typedef struct wm_vuldet_flags {
@@ -138,13 +121,13 @@ typedef struct agent_software {
     char *agent_ip;
     char *agent_OS;
     char *arch;
-    distribution dist;
+    vu_feed dist;
     char info;
     struct agent_software *next;
     struct agent_software *prev;
 } agent_software;
 
-typedef enum {
+typedef enum cve_db{
     CVE_PRECISE,
     CVE_TRUSTY,
     CVE_XENIAL,
@@ -153,29 +136,20 @@ typedef enum {
     CVE_STRETCH,
     CVE_WHEEZY,
     CVE_REDHAT,
-    CVE_WXP,
-    CVE_W7,
-    CVE_W8,
-    CVE_W81,
-    CVE_W10,
-    CVE_WS2008,
-    CVE_WS2008R2,
-    CVE_WS2012,
-    CVE_WS2012R2,
-    CVE_WS2016,
-    CVE_MACOSX,
+    CVE_NVD,
+    CPE_NVD,
     OS_SUPP_SIZE
 } cve_db;
 
 typedef struct update_node {
     char *dist;
     char *version;
-    distribution dist_ref;
+    vu_feed dist_ref;
     const char *dist_tag;
     const char *dist_ext;
     time_t last_update;
     unsigned long interval;
-    int update_from_year; // only for Red Hat feed
+    int update_from_year; // only for Red Hat and NVD feeds
     char *url;
     in_port_t port;
     char *path;
