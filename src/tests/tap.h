@@ -13,7 +13,7 @@ static int tap_fail;
 #define CEXTERN    "\033[1;35m"
 #define CEND    "\033[0m"
 
-#define ENDLINE                  \
+#define ENDLINE_TEST             \
     {                            \
         if (tap_todo)            \
         {                        \
@@ -42,7 +42,7 @@ static int tap_fail;
         printf(CGREEN "    ok %*d - ", 2 , tap_count);  \
     }                                                   \
     printf(msg, ##args);                                \
-    ENDLINE;                                            \
+    ENDLINE_TEST;                                       \
 }
 
 #define TODO tap_todo = 1
