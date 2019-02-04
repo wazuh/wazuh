@@ -1478,6 +1478,10 @@ static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
 
     return (NULL);
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 54fa895f041784b2930b65e214304bbd16e177b5
 #endif
 
 static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy) {
@@ -1579,7 +1583,7 @@ static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,c
                 cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
             } else if(compliance->child->valueint) {
                 cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
-            }     
+            }
         }
 
         cJSON_AddItemToObject(check,"compliance",add_compliances);

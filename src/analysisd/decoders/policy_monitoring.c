@@ -587,13 +587,10 @@ static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **des
 
     if( *description = cJSON_GetObjectItem(event, "description"), !*description) {
         merror("Malformed JSON: field 'description' not found");
-        return retval;
     }
 
-    *os_required = cJSON_GetObjectItem(event, "os_required");
-     
     if( *pass = cJSON_GetObjectItem(event, "passed"), !*pass) {
-        merror("Malformed JSON: field 'passed' not found");
+        merror("Malformed JSON: field 'pass' not found");
         return retval;
     }
 
