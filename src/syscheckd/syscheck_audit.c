@@ -375,7 +375,7 @@ int audit_init(void) {
             return -1;
         }
     } else {
-        mwarn("Audit health check is disabled. Whodata could not work correctly.");
+        minfo("Audit health check is disabled. Whodata could not work correctly.");
     }
 
     // Add Audit rules
@@ -1142,6 +1142,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
     }
 
+    free(cache_id);
     free(cache);
     free(buffer);
 }
