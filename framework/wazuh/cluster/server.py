@@ -188,7 +188,7 @@ class AbstractServer:
         while True:
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
-            for client_name, client in self.clients.items():
+            for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
                                             "Disconnecting".format(client_name))
