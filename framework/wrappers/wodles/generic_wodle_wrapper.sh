@@ -3,8 +3,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-PYTHON_BIN="python/bin/python3.7"
-AGENT_BIN_CHECK="ossec-agentd"
+WPYTHON_BIN="python/bin/python3.7"
+WPYTHON_LIB="lib/libpython3.7m.so.1.0"
 
 SCRIPT_PATH_NAME="$0"
 # Eliminate everything from the string until
@@ -23,9 +23,14 @@ fi
 
 # If WPYTHON_PATH variable is not defined and the wodle isn't
 # running in a wazuh-agent, set WPYTHON_PATH. If it is running
-# in a wazuh-agent, the wodle will run using the Python from the env
-if [ -z "${WPYTHON_PATH}" ] && [ ! -x ${WAZUH_PATH}/bin/${AGENT_BIN_CHECK} ]; then
-    WPYTHON_PATH="${WAZUH_PATH}/${PYTHON_BIN}"
+# in a wazuh-agent, the wodle will run using the Python from the env.
+if [ -z "${WPYTHON_PATH}" ]; then
+    # If Python is installed, use the Python interpreter from
+    # ${WAZUH_PATH}/${WPYTHON_BIN}. The Python interpreter is only installed
+    # in wazuh-manager and wazuh-hybrid installation.
+    if [ -x ${WAZUH_PATH}/${WPYTHON_BIN} ] && [ -L ${WAZUH_PATH}/${WPYTHON_LIB} ]; then
+        WPYTHON_PATH="${WAZUH_PATH}/${WPYTHON_BIN}"
+    fi
 fi
 
 # If WPYTHON_PATH is not defined, the wodle will be executed
