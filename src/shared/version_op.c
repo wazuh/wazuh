@@ -667,7 +667,9 @@ os_info *get_unix_version()
                 len += strlen(info->os_version);
                 len += strlen(info->os_codename);
                 os_realloc(info->os_version, len, info->os_version);
-                snprintf(info->os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                char tmp_os_version[len];
+                strncpy(tmp_os_version, info->os_version, len);
+                snprintf(info->os_version, len, "%s (%s)", tmp_os_version, info->os_codename);
             }
         }
     } else {
