@@ -34,6 +34,10 @@
 #define WM_POLICY_MONITORING_COND_INV       0x016
 #define WM_POLICY_MONITORING_STAMP          "policy-monitoring"
 
+#ifdef WIN32
+HKEY wm_policy_monitoring_sub_tree;
+#endif
+
 typedef struct wm_policy_monitoring_t {
     int enabled:1;
     int scan_on_start:1;

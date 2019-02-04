@@ -211,7 +211,7 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
 
         /* Do scan for every profile file */
         wm_policy_monitoring_read_files(data,id);
-     
+
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
         time_end = time(NULL);
@@ -283,8 +283,11 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         OSStore *vars = NULL;
         cJSON * object = NULL;
 
-        sprintf(path,"%s/%s",DEFAULTDIR ROOTCHECKCFG_DIR,data->profile[i]);
-
+#ifdef WIN32
+        sprintf(path,"%s\\%s",SHAREDCFG_DIR, data->profile[i]);
+#else
+        sprintf(path,"%s/%s",DEFAULTDIR ROOTCHECKCFG_DIR, data->profile[i]);
+#endif
         fp = fopen(path,"r");
 
         if(!fp) {
@@ -1235,7 +1238,7 @@ static int wm_policy_monitoring_is_registry(char *entry_name, char *reg_option, 
     char *rk;
 
     rk = wm_policy_monitoring_os_winreg_getkey(entry_name);
-    if (rk_sub_tree == NULL || rk == NULL) {
+    if (wm_policy_monitoring_sub_tree == NULL || rk == NULL) {
         mterror(ARGV0, SK_INV_REG, entry_name);
         return (0);
     }
@@ -1257,19 +1260,19 @@ static char *wm_policy_monitoring_os_winreg_getkey(char *reg_entry)
     /* Set sub tree */
     if ((strcmp(reg_entry, "HKEY_LOCAL_MACHINE") == 0) ||
             (strcmp(reg_entry, "HKLM") == 0)) {
-        rk_sub_tree = HKEY_LOCAL_MACHINE;
+        wm_policy_monitoring_sub_tree = HKEY_LOCAL_MACHINE;
     } else if (strcmp(reg_entry, "HKEY_CLASSES_ROOT") == 0) {
-        rk_sub_tree = HKEY_CLASSES_ROOT;
+        wm_policy_monitoring_sub_tree = HKEY_CLASSES_ROOT;
     } else if (strcmp(reg_entry, "HKEY_CURRENT_CONFIG") == 0) {
-        rk_sub_tree = HKEY_CURRENT_CONFIG;
+        wm_policy_monitoring_sub_tree = HKEY_CURRENT_CONFIG;
     } else if (strcmp(reg_entry, "HKEY_USERS") == 0) {
-        rk_sub_tree = HKEY_USERS;
+        wm_policy_monitoring_sub_tree = HKEY_USERS;
     } else if ((strcmp(reg_entry, "HKCU") == 0) ||
                (strcmp(reg_entry, "HKEY_CURRENT_USER") == 0)) {
-        rk_sub_tree = HKEY_CURRENT_USER;
+        wm_policy_monitoring_sub_tree = HKEY_CURRENT_USER;
     } else {
         /* Set sub tree to null */
-        rk_sub_tree = NULL;
+        wm_policy_monitoring_sub_tree = NULL;
 
         /* Return tmp_str to the previous value */
         if (tmp_str && (*tmp_str == '\0')) {
@@ -1297,7 +1300,7 @@ static int wm_policy_monitoring_open_key(char *subkey, char *full_key_name, unsi
     int ret = 1;
     HKEY oshkey;
 
-    if (RegOpenKeyEx(rk_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
+    if (RegOpenKeyEx(wm_policy_monitoring_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
         return (0);
     }
 
