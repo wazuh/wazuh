@@ -41,6 +41,7 @@ static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event,int start);
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title, cJSON **cis_control,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **default_value,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result);
 static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **description,cJSON **os_required,cJSON **pass,cJSON **failed,cJSON **score);
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title, cJSON *cis_control,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *default_value,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result);
 static int pm_send_db(char *msg, char *response, int *sock);
 
 static OSDecoderInfo *rootcheck_json_dec = NULL;
@@ -54,10 +55,9 @@ void PolicyMonitoringInit()
     rootcheck_json_dec->name = POLICY_MONITORING_MOD;
     rootcheck_json_dec->fts = 0;
 
-    mdebug1("RootcheckJSONInit completed.");
+    mdebug1("PolicyMonitoringInit completed.");
 }
 
-/* Special decoder for Windows eventchannel */
 int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
 {
     int ret_val = 1;
@@ -345,6 +345,8 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
        
         int result_event = 0;
         int result_db = FindEventcheck(lf, id->valueint, socket);
+
+        FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
 
         switch (result_db)
         {
@@ -635,6 +637,126 @@ static int SaveGlobalInfo(Eventinfo *lf, int *socket,int scan_id, char *name,cha
     }
 }
 
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title, cJSON *cis_control,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *default_value,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result) {
+    
+    fillData(lf, "pm.type", "check");
+
+    if(scan_id) {
+        char *value[OS_SIZE_128];
+
+        if(scan_id->valuedouble){
+            sprintf(value, "%d", scan_id->valueint);
+        } else if (scan_id->valueint) {
+             sprintf(value, "%lf", scan_id->valueint);
+        } 
+        fillData(lf, "pm.scan_id", value);
+    }
+
+    if(name) {
+        fillData(lf, "pm.profile", name->valuestring);
+    }
+
+    if(id) {
+        char *value[OS_SIZE_128];
+
+        if(id->valuedouble){
+            sprintf(value, "%d", id->valueint);
+        } else if (scan_id->valueint) {
+             sprintf(value, "%lf", id->valueint);
+        } 
+
+        fillData(lf, "pm.check.id", value);
+    }
+
+    if(title) {
+        fillData(lf, "pm.check.title", title->valuestring);
+    }
+
+    if(cis_control) {
+        char *value[OS_SIZE_128];
+        
+        if(cis_control->valuedouble){
+            sprintf(value, "%d", cis_control->valueint);
+        } else if (cis_control->valueint) {
+             sprintf(value, "%lf", cis_control->valueint);
+        } 
+
+        fillData(lf, "pm.check.cis_control", value);
+    }
+
+    if(description) {
+        fillData(lf, "pm.check.description", description->valuestring);
+    }
+
+    if(rationale) {
+        fillData(lf, "pm.check.rationale", rationale->valuestring);
+    }
+
+    if(remediation) {
+        fillData(lf, "pm.check.remediation", remediation->valuestring);
+    }
+
+    if(default_value) {
+        fillData(lf, "pm.check.default_value", default_value->valuestring);
+    }
+
+    if(compliance) {
+       // Save compliance
+        cJSON *comp;
+        cJSON_ArrayForEach(comp,compliance){
+
+            char *key = comp->string;
+            char *value = NULL;
+            int free_value = 0;
+
+            if(!comp->valuestring){
+                if(comp->valueint) {
+                    os_calloc(OS_SIZE_1024, sizeof(char), value);
+                    sprintf(value, "%d", comp->valueint);
+                    free_value = 1;
+                } else if(comp->valuedouble) {
+                    os_calloc(OS_SIZE_1024, sizeof(char), value);
+                    sprintf(value, "%lf", comp->valuedouble);
+                    free_value = 1;
+                }
+            } else {
+                value = comp->valuestring;
+            }
+
+            char compliance_key[OS_SIZE_1024];
+            snprintf(compliance_key,OS_SIZE_1024,"pm.check.compliance.%s",key);
+            fillData(lf, compliance_key, value);
+
+            if(free_value) {
+                os_free(value);
+            }
+        }
+    }
+
+    if(reference) {
+        fillData(lf, "pm.check.reference", reference->valuestring);
+    }
+
+    if(file){
+        fillData(lf, "pm.check.file", file->valuestring);
+    }
+
+    if(directory) {
+        fillData(lf, "pm.check.directory", directory->valuestring);
+    }
+
+    if(registry) {
+        fillData(lf, "pm.check.registry", registry->valuestring);
+    }
+
+    if(process){
+        fillData(lf, "pm.check.process", process->valuestring);
+    }
+
+    if(result) {
+        fillData(lf, "pm.check.result", result->valuestring);
+    }
+}
 int pm_send_db(char *msg, char *response, int *sock)
 {
     ssize_t length;

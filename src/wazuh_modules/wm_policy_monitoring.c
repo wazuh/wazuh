@@ -285,6 +285,8 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
 
 #ifdef WIN32
         sprintf(path,"%s\\%s",SHAREDCFG_DIR, data->profile[i]);
+#elif CLIENT
+        sprintf(path,"%s/%s",DEFAULTDIR SHAREDCFG_DIR, data->profile[i]);
 #else
         sprintf(path,"%s/%s",DEFAULTDIR ROOTCHECKCFG_DIR, data->profile[i]);
 #endif
