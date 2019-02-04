@@ -741,7 +741,8 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3.py
+  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
@@ -818,7 +819,8 @@ InstallCommon()
   if [ ! ${INSTYPE} = 'agent' ]; then
       # Add Azure script (for manager only)
       ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/azure
-      ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/azure/azure-logs.py ${PREFIX}/wodles/azure/azure-logs
+      ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/azure/azure-logs.py ${PREFIX}/wodles/azure/azure-logs.py
+      ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/azure/azure-logs
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
@@ -959,6 +961,13 @@ InstallServer()
     fi
 
     GenerateAuthCert
+
+    if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
+        CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
+    fi
+
+    ### Install Python
+    ${MAKEBIN} wpython PREFIX=${PREFIX} ${CPYTHON_FLAGS}
 }
 
 InstallAgent()

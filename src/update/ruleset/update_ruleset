@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/var/ossec/python/bin/python3
 # Wazuh Ruleset Update
 
 # Copyright (C) 2015-2019, Wazuh Inc.
@@ -13,6 +13,7 @@
 
 import os
 import sys
+import requests
 import contextlib
 from glob import glob
 from zipfile import ZipFile
@@ -28,14 +29,9 @@ from time import time
 from json import dumps
 
 # Set framework path
-sys.path.append(os.path.dirname(sys.argv[0]) + '/../framework')  # It is necessary to import Wazuh package
+from wazuh import Wazuh
+from wazuh import common
 from wazuh.cluster.cluster import read_config
-
-try:
-    from urllib2 import urlopen, URLError, HTTPError
-except:
-    from urllib.request import urlopen  # Python 3
-    from urllib.error import URLError, HTTPError
 
 
 class RulesetLogger:
@@ -267,15 +263,16 @@ def get_new_ruleset(source, url, branch_name=None):
 
         # Download
         try:
-            f_url = urlopen(url_ruleset)
+            f_url = requests.get(url_ruleset)
+        except requests.exceptions.RequestException as e:
+            exit(2, "\tDownload Error:{0}.\nExit.".format(e.reason))
+
+        if f_url.ok:
             with open(ruleset_zip, "wb") as f_local:
-                f_local.write(f_url.read())
-        except HTTPError as e:
-            exit(2, "\tHTTP Error {0}: {1}".format(e.code, url_ruleset))
-        except URLError as e:
-            exit(2, "\tURL Error - {0}: {1}".format(e.reason, url_ruleset))
-        except Exception as e:
-            exit(2, "\tDownload Error:{0}.\nExit.".format(e))
+                for chunk in f_url.iter_content(chunk_size=128):
+                    f_local.write(chunk)
+        else:
+            error = "Can't download the ruleset file from {}".format(url_ruleset)
 
         # Extract
         try:
@@ -573,9 +570,8 @@ def usage():
 
     Additional Params:
     \t-f, --force-update  Force to update the ruleset. By default, only it is updated the new/changed decoders/rules/rootchecks.
-    \t-o, --ossec-path    Set OSSEC path. Default: '/var/ossec'
     \t-s, --source        Select ruleset source path (instead of download it).
-    \t-j, --json          JSON output. It should be used with '-s' or '-S' argument.
+    \t-j, --json          JSON output. It should be used with '-s' argument.
     \t-d, --debug         Debug mode.
     \t-u, --url           URL of ruleset zip (default: https://github.com/wazuh/wazuh-ruleset/archive/$BRANCH-NAME.zip)
     \t                    It requires -n parameter.
@@ -585,7 +581,7 @@ def usage():
 
 
 if __name__ == "__main__":
-
+    mywazuh = Wazuh(get_init=True)
     cluster_config = read_config()
 
     if cluster_config['node_type'] != 'master' and cluster_config['disabled'] == 'no':
@@ -606,7 +602,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Arguments
-    arguments = {'ossec_path': '/var/ossec', 'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False, 'branch-name': False, 'url': False}
+    arguments = {'source': 'download', 'restart': 'ask', 'backups': False, 'force': False, 'debug': False, 'json': False, 'branch-name': False, 'url': False}
     restart_args = 0
 
     try:
@@ -627,10 +623,7 @@ if __name__ == "__main__":
         elif o in ("-s", "--source"):
             arguments['source'] = a
         elif o in ("-o", "--ossec-path"):
-            arguments['ossec_path'] = a
-            if not os.path.exists(arguments['ossec_path']):
-                print("ERROR: '{0}' does not exist.".format(arguments['ossec_path']))
-                sys.exit(1)
+            print("WARNING: Deprecated argument -o, --ossec_path. Using {}.".format(common.ossec_path))
         elif o in ("-r", "--restart"):
             arguments['restart'] = True
             restart_args += 1
@@ -672,11 +665,11 @@ if __name__ == "__main__":
     # Capture Cntrl + C
     signal(SIGINT, signal_handler)
 
-    ossec_path = arguments['ossec_path']
+    ossec_path = common.ossec_path
     ossec_ruleset_log = "{0}/logs/ruleset.log".format(ossec_path)
     ossec_conf = "{0}/etc/ossec.conf".format(ossec_path)
     ossec_rootchecks = "{0}/etc/rootcheck".format(ossec_path)
-    ossec_update_script = "{0}/bin/update_ruleset".format(ossec_path)
+    ossec_update_script = sys.argv[0]
     ossec_ruleset = "{0}/ruleset".format(ossec_path)
     ossec_rules = "{0}/rules".format(ossec_ruleset)
     ossec_decoders = "{0}/decoders".format(ossec_ruleset)
