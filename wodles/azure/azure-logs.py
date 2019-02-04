@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/var/ossec/python/bin/python3
 
  ###
  # Integration of Wazuh agent with Microsoft Azure
@@ -26,6 +26,8 @@ import uuid
 import datetime
 import argparse
 import hashlib
+from wazuh import Wazuh, common
+my_wazuh = Wazuh(get_init=True)
 try:
 	import requests
 except Exception as e:
@@ -45,7 +47,7 @@ except Exception as e:
 	print("Azure Storage SDK for Python is missing: '{}', try 'pip install azure-storage-blob'.".format(e))
 	sys.exit(1)
 
-ADDR = '/var/ossec/queue/ossec/queue'
+ADDR = '{}/queue/ossec/queue'.format(common.ossec_path)
 BLEN = 212992
 
 utc = pytz.UTC
@@ -102,23 +104,6 @@ if args.blobs:
 	blobs_format = args.blobs.replace('"','')
 
 ################################################################################################
-# Gets the path to write logs.
-################################################################################################
-
-def get_log_path():
-
-	path_result = ""
-	ossec_init = open ('/etc/ossec-init.conf')
-	for line in ossec_init:
-		if "DIRECTORY=" in line:
-			ossec_path = line.replace('DIRECTORY=','')
-			half_path= ossec_path.replace('"','')
-			path_result = half_path.replace('\n','')
-	path_result = path_result + "/logs/azure_logs.log"
-	return path_result
-
-
-################################################################################################
 # Configure the log settings.
 ################################################################################################
 
@@ -127,7 +112,7 @@ def set_logger():
 	if args.verbose:
 		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 	else: 
-		log_path = get_log_path()
+		log_path = "{}/logs/azure_logs.log".format(common.ossec_path)
 		logging.basicConfig(filename=log_path, level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 
 
@@ -197,7 +182,7 @@ def read_auth_path(auth_path):
 				field_auth['key'] = fields[lenght_field].replace("\n","")
 			field_iterator += 1
 
-		return field_auth;
+		return field_auth
 
 	except Exception as e:
 		logging.error("Error: The configuration file could not be opened: '{}'".format(e))
@@ -259,7 +244,7 @@ def get_analytic(date, last_time_list, url, log_headers):
 	logging.info("Log Analytics: Sending a request to the Log Analytics API.")	
 
 	try:
-		query_md5 = hashlib.md5(la_format_query).hexdigest()
+		query_md5 = hashlib.md5(la_format_query.encode()).hexdigest()
 		# Differentiates the first execution of the script from the rest of the executions.
 		if date != "0":
 			date_search = date
@@ -301,8 +286,6 @@ def get_time_list(request_received, last_timegen, no_results, md5):
 				else:
 					last_timegen['log_analytics'][md5] = request_received.json()['tables'][0]['rows'][last_row][time_position]
 					file_json = request_received.json()
-					if args.verbose:
-						show_content(file_json)
 					get_log_analytics_event(columns, rows)
 		else:
 			if args.verbose == True:
@@ -319,7 +302,7 @@ def get_time_list(request_received, last_timegen, no_results, md5):
 def get_TimeGenerated_position(columns):
 
 	position=0
-	found = "false";
+	found = "false"
 	for column in columns:
 		if column['name'] == 'TimeGenerated':
 			found = "true"
@@ -399,7 +382,7 @@ def start_graph():
 			logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
 
 		try:
-			graph_md5 = hashlib.md5(graph_format_query).hexdigest()
+			graph_md5 = hashlib.md5(graph_format_query.encode()).hexdigest()
 			# first time for this query
 			if graph_md5 not in all_dates['graph']:
 				range_time = format_date(args.graph_time_offset)
@@ -460,11 +443,9 @@ def graph_pagination(url, api, graph_headers, md5, all_dates, first_date):
 
 		else:
 			logging.info("Graph: There are no new results")
-		if args.verbose == True:
-			show_content(pag_json)
 		try: 
 			next_url = pag_json['@odata.nextLink']
-			graph_pagination(next_url, api, g_headers, md5, all_dates, False)
+			graph_pagination(next_url, api, graph_headers, md5, all_dates, False)
 		except Exception as e:
 			logging.info("Graph: No @odata.nextLink field: '{}'.".format(e))
 	else:
@@ -544,7 +525,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 		else:
 			name = container_format
 
-		container_md5 = hashlib.md5(name).hexdigest()
+		container_md5 = hashlib.md5(name.encode()).hexdigest()
 		next_marker = None
 
 		while True:
@@ -586,9 +567,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 
 						if last_modified > last_blob:
 							if last_modified > max_blob:
-								max_blob = last_modified
-							if args.verbose == True:
-								show_blob(name, blob.name)														
+								max_blob = last_modified														
 							socket_data = str(data.content)
 							socket_data = os.linesep.join([s for s in socket_data.splitlines() if s])
 							split_data = socket_data.splitlines()
@@ -622,7 +601,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 										if args.storage_tag:
 											send_data = "azure_tag: azure-storage. azure_storage_tag: {}. {}".format(args.storage_tag, line)
 										else:
-											send_data = "azure_tag: azure-storage. {}".format(section, line)
+											send_data = "azure_tag: azure-storage. {}".format(line)
 
 									if send_data != "":
 										if storage_counter == 30:

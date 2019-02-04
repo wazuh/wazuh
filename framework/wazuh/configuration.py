@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -25,8 +25,8 @@ except ImportError:
     from io import StringIO
 
 import logging
-import hashlib
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger('wazuh')
 
 # Aux functions
 
@@ -677,7 +677,10 @@ def upload_group_configuration(group_id, xml_file):
             # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
+            if output_regex:
+                raise WazuhException(1114, ' '.join(output_regex))
+            else:
+                raise WazuhException(1115, e.output.decode())
         except Exception as e:
             raise WazuhException(1743, str(e))
 
@@ -703,6 +706,7 @@ def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     :param file_name: File name to update
     :return: Confirmation message in string
     """
+    xml_file = common.ossec_path + xml_file
     if file_name == 'agent.conf':
         with open(xml_file) as f:
             xml_file_data = f.read()

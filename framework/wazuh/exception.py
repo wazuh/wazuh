@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -46,6 +46,7 @@ class WazuhException(Exception):
         1112: "Empty files aren't supported",
         1113: "XML syntax error",
         1114: "Wazuh syntax error",
+        1115: "Error executing verify-agent-conf",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -162,7 +163,7 @@ class WazuhException(Exception):
         3006: 'Error reading cluster configuration',
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
-        3009: 'Error executing request to internal socket',
+        3009: 'Error executing distributed API request',
         3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
@@ -172,6 +173,9 @@ class WazuhException(Exception):
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
+        3020: 'Timeout sending request',
+        3021: 'Timeout executing API request',
+        3022: 'Unknown node ID'
 
         # > 9000: Authd
     }
@@ -198,3 +202,6 @@ class WazuhException(Exception):
 
     def __str__(self):
         return "Error {0} - {1}".format(self.code, self.message)
+
+    def to_dict(self):
+        return {'error': self.code, 'message': self.message}

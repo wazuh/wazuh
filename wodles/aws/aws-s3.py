@@ -2018,8 +2018,10 @@ def main(argv):
                 service.get_alerts()
 
     except Exception as err:
-        debug("+++ Error: {}".format(err.message), 2)
-        print("ERROR: {}".format(err.message))
+        debug("+++ Error: {}".format(err), 2)
+        if debug_level > 0:
+            raise
+        print("ERROR: {}".format(err))
         sys.exit(12)
 
 
