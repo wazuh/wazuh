@@ -12,6 +12,9 @@
 #ifndef __OS_UTILS_OP_H
 #define __OS_UTILS_OP_H
 
+#ifdef WIN32
+#include <tlhelp32.h>
+#endif
 /* Process struct */
 typedef struct W_Proc_Info {
     char *p_name;

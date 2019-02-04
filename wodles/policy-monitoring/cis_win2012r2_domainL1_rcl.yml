@@ -1,0 +1,102 @@
+policy:
+  id: "cis_debian"
+  name: "CIS benchmark for Debian/Linux"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
+  references:
+    - http://workbench.cisecurity.org/
+
+checks:
+#1.1.2 Ensure 'Maximum password age' is set to '60 or fewer days, but not 0'
+ - id: 1001
+   title: "Ensure 'Maximum password age' is set to '60 or fewer days, but not 0'"
+   cis_control: "1.1.2"
+   description: "This policy setting defines how long a user can use their password before it expires. Values for this policy setting range from 0 to 999 days. If you set the value to 0, the password will never expire. Because attackers can crack passwords, the more frequently you change the password the less opportunity an attacker has to use a cracked password. However, the lower this value is set, the higher the potential for an increase in calls to help desk support due to users having to change their password or forgetting which password is current. The recommended state for this setting is 60 or fewer days, but not 0 ."
+   rationale: "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user is authorized access."
+   remediation: "To establish the recommended configuration via GP, set the following UI path to 60 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age."
+   default_value: "42 days."
+   compliance:
+    - cis: "16.5"
+    - cis_dss: "2.2" ###
+   references:
+    - https://workbench.cisecurity.org/benchmarks/288 ###
+   condition: any
+   rules:
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 0;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 3D;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 3E;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 3F;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:4\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:5\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:6\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:7\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:8\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:9\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:A\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:B\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:C\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:D\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:E\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:F\w;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> r:\w\w\w+;
+ - id: 1002
+   title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts"
+   cis_control: "2.3.1.2"
+   description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
+   rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
+   remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts : Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
+   default_value: "Users are able to use Microsoft accounts with Windows."
+   compliance:
+    - cis: "16"
+    - cis_dss: "2.2" ###
+   references:
+    - https://workbench.cisecurity.org/benchmarks/288 ###
+   condition: any
+   rules:
+     - r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 0;
+     - r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 1;
+     - r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> !NoConnectedUser;
+ - id: 1003
+   title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled"
+   cis_control: "2.3.1.4"
+   description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
+   rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domain-based password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
+   remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only."
+   default_value: "Enabled."
+   compliance:
+    - cis: "16"
+    - cis_dss: "2.2" ###
+   references:
+    - https://workbench.cisecurity.org/benchmarks/288 ###
+   condition: any
+   rules:
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 0;
+ - id: 1004
+   title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'"
+   cis_control: "2.3.2.1"
+   description: "The /4asdasd directory is a world-writable directory used for temporary storage by all users and some applications."
+   rationale: "Making /4tsdasdas its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
+   remediation: "Configure /4etc/fstab as appropiate or enable systemd /tmp mounting and edit /etc/systemd/system/local-fs.target.wants/tmp.mount to configure the /tmp mount."
+   compliance:
+    - cis: "5.1"
+    - cis_dss: "2.2" ###
+   references:
+    - https://workbench.cisecurity.org/benchmarks/288 ###
+   condition: any
+   rules:
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> !1;
+ - id: 1005
+   title: "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'"
+   cis_control: "2.3.2.2"
+   description: "This policy setting determines whether the system shuts down if it is unable to log Security events. It is a requirement for Trusted Computer System Evaluation Criteria (TCSEC)-C2 and Common Criteria certification to prevent auditable events from occurring if the audit system is unable to log them. Microsoft has chosen to meet this requirement by halting the system and displaying a stop message if the auditing system experiences a failure. When this policy setting is enabled, the system will be shut down if a security audit cannot be logged for any reason."
+   rationale: "If the computer is unable to record events to the Security log, critical evidence or important troubleshooting information may not be available for review after a security incident. Also, an attacker could potentially generate a large volume of Security log events to purposely force a computer shutdown."
+   remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Shut down system immediately if unable to log security audits."
+   default_value: "Disabled."
+   compliance:
+    - cis: "6"
+    - cis_dss: "2.2" ###
+   references:
+    - https://workbench.cisecurity.org/benchmarks/288 ###
+   condition: any
+   rules:
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 1;
+     - r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 2;

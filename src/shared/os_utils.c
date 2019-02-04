@@ -111,6 +111,7 @@ OSList *w_os_get_process_list()
     return (p_list);
 }
 
+#endif
 /* Check if a file exists */
 int w_is_file(char *file)
 {
@@ -168,4 +169,104 @@ int w_del_plist(OSList *p_list)
     return (1);
 }
 
+#ifdef WIN32
+/* Get list of win32 processes */
+OSList *w_os_get_process_list()
+{
+    OSList *p_list = NULL;
+    HANDLE hsnap;
+    HANDLE hpriv;
+    PROCESSENTRY32 p_entry;
+    p_entry.dwSize = sizeof(PROCESSENTRY32);
+
+    /* Get token to enable Debug privilege */
+    if (!OpenThreadToken(GetCurrentThread(),
+                         TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, FALSE, &hpriv)) {
+        if (GetLastError() == ERROR_NO_TOKEN) {
+            if (!ImpersonateSelf(SecurityImpersonation)) {
+                mterror(ARGV0, "os_get_win32_process_list -> ImpersonateSelf");
+                return (NULL);
+            }
+
+            if (!OpenThreadToken(GetCurrentThread(),
+                                 TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY,
+                                 FALSE, &hpriv)) {
+                mterror(ARGV0, "os_get_win32_process_list -> OpenThread");
+                return (NULL) ;
+            }
+        } else {
+            mterror(ARGV0, "os_get_win32_process_list -> OpenThread");
+            return (NULL);
+        }
+    }
+
+    /* Enable debug privilege */
+    if (!os_win32_setdebugpriv(hpriv, 1)) {
+        mterror(ARGV0, "os_win32_setdebugpriv");
+        CloseHandle(hpriv);
+        return (NULL);
+    }
+
+    /* Make a snapshot of every process */
+    hsnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hsnap == INVALID_HANDLE_VALUE) {
+        mterror(ARGV0, "CreateToolhelp32Snapshot");
+        return (NULL);
+    }
+
+    /* Get first and second processes -- system entries */
+    if (!Process32First(hsnap, &p_entry) && !Process32Next(hsnap, &p_entry )) {
+        mterror(ARGV0, "Process32First");
+        CloseHandle(hsnap);
+        return (NULL);
+    }
+
+    /* Create process list */
+    p_list = OSList_Create();
+    if (!p_list) {
+        CloseHandle(hsnap);
+        mterror(ARGV0, LIST_ERROR);
+        return (0);
+    }
+
+    /* Get each process name and path */
+    while (Process32Next( hsnap, &p_entry)) {
+        char *p_name;
+        char *p_path;
+        W_Proc_Info *p_info;
+
+        /* Set process name */
+        os_strdup(p_entry.szExeFile, p_name);
+
+        /* Get additional information from modules */
+        HANDLE hmod = INVALID_HANDLE_VALUE;
+        MODULEENTRY32 m_entry;
+        m_entry.dwSize = sizeof(MODULEENTRY32);
+
+        /* Snapshot of the process */
+        hmod = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, p_entry.th32ProcessID);
+
+        if (hmod == INVALID_HANDLE_VALUE) {
+            os_strdup(p_name, p_path);
+        } else if (!Module32First(hmod, &m_entry)) {
+            /* Get executable path (first entry in the module list) */
+            CloseHandle(hmod);
+            os_strdup(p_name, p_path);
+        } else {
+            os_strdup(m_entry.szExePath, p_path);
+            CloseHandle(hmod);
+        }
+
+        os_calloc(1, sizeof(W_Proc_Info), p_info);
+        p_info->p_name = p_name;
+        p_info->p_path = p_path;
+        OSList_AddData(p_list, p_info);
+    }
+
+    /* Remove debug privileges */
+    os_win32_setdebugpriv(hpriv, 0);
+
+    CloseHandle(hsnap);
+    return (p_list);
+}
 #endif
