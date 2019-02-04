@@ -782,6 +782,7 @@ int SetDecodeXML()
     addDecoder2list(SYSCOLLECTOR_MOD);
     addDecoder2list(CISCAT_MOD);
     addDecoder2list(WINEVT_MOD);
+    addDecoder2list(POLICY_MONITORING_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {
