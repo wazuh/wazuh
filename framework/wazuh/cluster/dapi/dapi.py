@@ -14,6 +14,7 @@ from wazuh import exception, agent, common, utils
 import logging
 import os
 import time
+import copy
 
 
 class DistributedAPI:
@@ -109,7 +110,7 @@ class DistributedAPI:
 
             timeout = None if self.input_json['arguments']['wait_for_complete'] \
                            else self.cluster_items['intervals']['communication']['timeout_api_exe']
-            local_args = self.input_json['arguments'].copy()
+            local_args = copy.deepcopy(self.input_json['arguments'])
             del local_args['wait_for_complete']  # local requests don't use this parameter
 
             if rq.functions[self.input_json['function']]['is_async']:
