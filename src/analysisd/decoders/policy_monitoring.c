@@ -61,7 +61,6 @@ void PolicyMonitoringInit()
 int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
 {
     int ret_val = 1;
-    int result_db = 0;
     cJSON *json_event = NULL;
     cJSON *type = NULL;
 
@@ -347,7 +346,8 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
         int result_db = FindEventcheck(lf, id->valueint, socket);
 
         FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
-
+        JSON_Decoder_Exec(lf,NULL);
+        
         switch (result_db)
         {
             case -1:
@@ -642,12 +642,12 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     fillData(lf, "pm.type", "check");
 
     if(scan_id) {
-        char *value[OS_SIZE_128];
+        char value[OS_SIZE_128];
 
-        if(scan_id->valuedouble){
+        if(scan_id->valueint){
             sprintf(value, "%d", scan_id->valueint);
-        } else if (scan_id->valueint) {
-             sprintf(value, "%lf", scan_id->valueint);
+        } else if (scan_id->valuedouble) {
+             sprintf(value, "%lf", scan_id->valuedouble);
         } 
         fillData(lf, "pm.scan_id", value);
     }
@@ -657,12 +657,12 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(id) {
-        char *value[OS_SIZE_128];
+        char value[OS_SIZE_128];
 
-        if(id->valuedouble){
+        if(id->valueint){
             sprintf(value, "%d", id->valueint);
-        } else if (scan_id->valueint) {
-             sprintf(value, "%lf", id->valueint);
+        } else if (scan_id->valuedouble) {
+             sprintf(value, "%lf", id->valuedouble);
         } 
 
         fillData(lf, "pm.check.id", value);
@@ -673,12 +673,12 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(cis_control) {
-        char *value[OS_SIZE_128];
+        char value[OS_SIZE_128];
         
-        if(cis_control->valuedouble){
+        if(cis_control->valueint){
             sprintf(value, "%d", cis_control->valueint);
-        } else if (cis_control->valueint) {
-             sprintf(value, "%lf", cis_control->valueint);
+        } else if (cis_control->valuedouble) {
+             sprintf(value, "%lf", cis_control->valuedouble);
         } 
 
         fillData(lf, "pm.check.cis_control", value);
@@ -734,7 +734,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(reference) {
-        fillData(lf, "pm.check.reference", reference->valuestring);
+        fillData(lf, "pm.check.reference", reference->child->valuestring);
     }
 
     if(file){
