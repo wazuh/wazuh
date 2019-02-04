@@ -37,6 +37,9 @@ static void wm_policy_monitoring_summary_increment_passed();
 static void wm_policy_monitoring_summary_increment_failed();
 static void wm_policy_monitoring_reset_summary();
 static int wm_policy_monitoring_send_alert(wm_policy_monitoring_t * data,cJSON *json_alert); // Send alert
+static int wm_policy_monitoring_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile);
+static int wm_policy_monitoring_hash_integrity(OSHash *cis_db_hash);
+static void wm_policy_monitoring_free_hash_data(char *data);
 
 /* Extra functions */
 static int wm_policy_monitoring_get_vars(cJSON *variables,OSStore *vars);
@@ -49,9 +52,7 @@ static int wm_policy_monitoring_pt_matches(const char *str, char *pattern); // C
 static int wm_policy_monitoring_check_dir(const char *dir, const char *file, char *pattern,wm_policy_monitoring_t * data); // Check dir
 static int wm_policy_monitoring_is_process(char *value, OSList *p_list,wm_policy_monitoring_t * data); // Check is a process
 
-#ifndef WIN32
-static int wm_policy_monitoring_is_registry(__attribute__((unused)) char *entry_name,__attribute__((unused)) char *reg_option, __attribute__((unused)) char *reg_value);
-#else
+#ifdef WIN32
 static int wm_policy_monitoring_is_registry(char *entry_name, char *reg_option, char *reg_value);
 static char *wm_policy_monitoring_os_winreg_getkey(char *reg_entry);
 static int wm_policy_monitoring_open_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value);
@@ -74,6 +75,7 @@ typedef enum _request_type{
 
 static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
+OSHash *cis_db;
 
 // Module main function. It won't return
 void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
@@ -85,6 +87,15 @@ void * wm_policy_monitoring_main(wm_policy_monitoring_t * data) {
         pthread_exit(NULL);
     }
 
+    cis_db = OSHash_Create();
+    if (!cis_db) {
+        merror(LIST_ERROR);
+        return (0);
+    }
+
+    OSHash_SetFreeDataPointer(cis_db, (void (*)(void *))wm_policy_monitoring_free_hash_data);
+
+    sleep(2); /* Wait for daemons to settle */
     wm_policy_monitoring_start(data);
     
     return NULL;
@@ -269,6 +280,8 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
     /* Read every policy monitoring file */
     for(i = 0; data->profile[i]; i++) {
         char path[PATH_MAX];
+        OSStore *vars = NULL;
+        cJSON * object = NULL;
 
         sprintf(path,"%s/%s",DEFAULTDIR ROOTCHECKCFG_DIR,data->profile[i]);
 
@@ -281,8 +294,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
 
         /* Yaml parsing */
         yaml_document_t document;
-        cJSON * object;
-
+       
         if (yaml_parse_file(path, &document)) {
             merror("Policy file could not be parsed '%s'",path);
             goto next;
@@ -310,7 +322,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
-        OSStore *vars = OSStore_Create();
+        vars = OSStore_Create();
 
         if( wm_policy_monitoring_get_vars(variables,vars) != 0 ){
             goto next;
@@ -340,8 +352,6 @@ static int wm_policy_monitoring_check_policy(cJSON *policy) {
     int retval;
     cJSON *id;
     cJSON *name;
-    cJSON *description;
-    cJSON *os_required;
 
     retval = 1;
 
@@ -360,14 +370,6 @@ static int wm_policy_monitoring_check_policy(cJSON *policy) {
         merror("Field 'name' not found on policy");
         return retval;
     }
-
-    description = cJSON_GetObjectItem(policy, "description");
-    if(!description) {
-        merror("Field 'description' not found on policy");
-        return retval;
-    }
-
-    os_required = cJSON_GetObjectItem(policy, "os_required");
 
     retval = 0;
     return retval;
@@ -643,8 +645,9 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
 
                 while (1) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
-                        // TODO: notify alert
-                        wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"fail");
+                        if(wm_policy_monitoring_check_hash(cis_db,"fail",profile)) {
+                            wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"fail");
+                        }
                     }
 
                     if (p_alert_msg[j]) {
@@ -664,8 +667,10 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                 char **p_alert_msg = data->alert_msg;
                 while (1) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
-                        // TODO: notify alert
-                        wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"passed");
+
+                        if(wm_policy_monitoring_check_hash(cis_db,"passed",profile)) {
+                            wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"passed");
+                        }
                     }
 
                     if (p_alert_msg[j]) {
@@ -1225,11 +1230,7 @@ void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data) {
     os_free(data);
 }
 
-#ifndef WIN32
-static int wm_policy_monitoring_is_registry(__attribute__((unused)) char *entry_name,__attribute__((unused)) char *reg_option, __attribute__((unused)) char *reg_value){
-    return 0;
-}
-#else
+#ifdef WIN32
 static int wm_policy_monitoring_is_registry(char *entry_name, char *reg_option, char *reg_value) {
     char *rk;
 
@@ -1472,7 +1473,6 @@ static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
 
     return (NULL);
 }
-
 #endif
 
 static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy) {
@@ -1486,9 +1486,15 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
     cJSON *os_required = cJSON_GetObjectItem(policy,"os_required");
 
     cJSON_AddStringToObject(json_summary, "name", name->valuestring);
-    cJSON_AddStringToObject(json_summary, "description", description->valuestring);
-    cJSON_AddStringToObject(json_summary, "os_required", os_required ? os_required->valuestring : NULL );
-    
+
+    if(description) {
+        cJSON_AddStringToObject(json_summary, "description", description->valuestring);
+    }
+  
+    if(os_required) {
+        cJSON_AddStringToObject(json_summary, "os_required", os_required ? os_required->valuestring : NULL );
+    }
+   
     cJSON_AddNumberToObject(json_summary, "passed", passed);
     cJSON_AddNumberToObject(json_summary, "failed", failed);
 
@@ -1505,7 +1511,6 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
 }
 
 static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result) {
-    // TODO: notify alert
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -1522,43 +1527,39 @@ static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,c
     cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
     cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
     cJSON *default_value = cJSON_GetObjectItem(profile, "default_value");
+
+    if(!pm_id) {
+        merror("No 'id' field found on check");
+        return 1; 
+    }
+
     cJSON_AddNumberToObject(check, "id", pm_id->valueint);
 
     if(title){
         cJSON_AddStringToObject(check, "title", title->valuestring);
     } else {
-        cJSON_AddStringToObject(check, "title", "unknown");
+        merror("No 'title' field found on check '%d'",pm_id->valueint);
+        return 1;
     }
 
     if(cis_control){
         cJSON_AddStringToObject(check, "cis_control", cis_control->valuestring);
-    } else {
-        cJSON_AddStringToObject(check, "cis_control", "unknown");
     }
-
 
     if(description){
         cJSON_AddStringToObject(check, "description", description->valuestring);
-    } else {
-        cJSON_AddStringToObject(check, "description", "unknown");
     }
 
     if(rationale){
         cJSON_AddStringToObject(check, "rationale", rationale->valuestring);
-    } else {
-        cJSON_AddStringToObject(check, "rationale", "unknown");
     }
 
     if(remediation){
         cJSON_AddStringToObject(check, "remediation", remediation->valuestring);
-    } else {
-        cJSON_AddStringToObject(check, "remediation", "unknown");
     }
 
     if(default_value){
         cJSON_AddStringToObject(check, "default_value", default_value->valuestring);
-    } else {
-        cJSON_AddStringToObject(check, "default_value", "unknown");
     }
 
     cJSON *compliances = cJSON_GetObjectItem(profile, "compliance");
@@ -1617,6 +1618,50 @@ static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,c
 
     wm_policy_monitoring_send_alert(data,json_alert);
     cJSON_Delete(json_alert);
+
+    return 0;
+}
+
+static int wm_policy_monitoring_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile) {
+    char *hashed_result = NULL;
+    char id_hashed[OS_SIZE_128];
+    int ret_add = 0;
+    cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+
+    if(!pm_id) {
+        return 0;
+    }
+
+    sprintf(id_hashed, "%d", pm_id->valueint);
+
+    hashed_result = OSHash_Get(cis_db_hash,id_hashed);
+
+    if(hashed_result){
+        if(strcmp(result,hashed_result) == 0) {
+            return 0;
+        } else {
+            if (ret_add = OSHash_Update(cis_db_hash,id_hashed,strdup(result)), ret_add != 1) {
+                merror("Unable to add cis id to db: %d", pm_id->valueint);
+                return 0;
+            }
+            return 1;
+        }
+    } else {
+        if (ret_add = OSHash_Add(cis_db_hash,id_hashed,strdup(result)), ret_add != 2) {
+            merror("Unable to add cis id to db: %d", pm_id->valueint);
+            return 0;
+        }
+        return 1;
+    }
+}
+
+static void wm_policy_monitoring_free_hash_data(char *data) {
+    os_free(data);
+}
+
+static int wm_policy_monitoring_hash_integrity(OSHash *cis_db_hash) {
+
+    return 0;
 }
 
 static void wm_policy_monitoring_summary_increment_passed() {

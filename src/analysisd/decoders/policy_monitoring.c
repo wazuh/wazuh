@@ -541,47 +541,24 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
             return retval;
         }
 
-        if( *cis_control = cJSON_GetObjectItem(*check, "cis_control"), !*cis_control) {
-            merror("Malformed JSON: field 'cis_control' not found");
-            return retval;
-        }
+        *cis_control = cJSON_GetObjectItem(*check, "cis_control");
+          
+        *description = cJSON_GetObjectItem(*check, "description");
 
-        if( *description = cJSON_GetObjectItem(*check, "description"), !*description) {
-            merror("Malformed JSON: field 'description' not found");
-            return retval;
-        }
+        *rationale = cJSON_GetObjectItem(*check, "rationale");
 
-        if( *rationale = cJSON_GetObjectItem(*check, "rationale"), !*rationale) {
-            merror("Malformed JSON: field 'rationale' not found");
-            return retval;
-        }
+        *remediation = cJSON_GetObjectItem(*check, "remediation");
 
-        if( *remediation = cJSON_GetObjectItem(*check, "remediation"), !*remediation) {
-            merror("Malformed JSON: field 'remediation' not found");
-            return retval;
-        }
-
-        if( *default_value = cJSON_GetObjectItem(*check, "default_value"), !*default_value) {
-            merror("Malformed JSON: field 'default_value' not found");
-            return retval;
-        }
+        *default_value = cJSON_GetObjectItem(*check, "default_value");
 
         *reference = cJSON_GetObjectItem(*check, "reference");
             
-        if( *compliance = cJSON_GetObjectItem(*check, "compliance"), !*compliance) {
-            merror("Malformed JSON: field 'compliance' not found");
-            return retval;
-        }
+        *compliance = cJSON_GetObjectItem(*check, "compliance");
 
         *file = cJSON_GetObjectItem(*check, "file");
         *directory = cJSON_GetObjectItem(*check, "directory");
         *process = cJSON_GetObjectItem(*check, "process");
         *registry = cJSON_GetObjectItem(*check, "registry");
-
-        if(!*file && !*directory && !*process && !*registry){
-            merror("Malformed JSON: field 'file' or 'directory' or 'process' or 'registry' not found");
-            return retval;
-        }
         
         if( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
             merror("Malformed JSON: field 'result' not found");
