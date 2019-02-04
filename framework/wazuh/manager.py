@@ -320,15 +320,12 @@ def get_file(path):
     return output
 
 
-    def restart_master():
+def restart_master():
     """
     Restart Wazuh manager.
 
     :return: Confirmation message.
     """
-    # files to check
-    files = []
-
     try:
         # initialize socket
         socket_path = common.EXECQ
