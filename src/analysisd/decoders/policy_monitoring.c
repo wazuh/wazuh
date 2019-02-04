@@ -599,6 +599,8 @@ static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **des
         return retval;
     }
 
+    *os_required = cJSON_GetObjectItem(event, "failed");
+   
     if( *score = cJSON_GetObjectItem(event, "score"), !*score) {
         merror("Malformed JSON: field 'score' not found");
         return retval;
