@@ -221,8 +221,12 @@ void start_agent(int is_startup)
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
+                    } else {
+                        send_msg(msg, -1);
                     }
+                }
 
+                if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                     send_msg(msg, -1);
                 }
 
