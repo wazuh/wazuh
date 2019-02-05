@@ -868,8 +868,8 @@ config/%.o: config/%.c
 
 wmodules_c := $(wildcard wazuh_modules/wm*.c)
 
-ifeq (${TARGET},agent)
-	wmodules_c := $(filter-out wazuh_modules/wm_vuln_detector.c,$(wmodules_c))
+ifneq (${TARGET},agent)
+	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/vulnerability_detector/*.c)
 endif
 
 ifndef DISABLE_SYSC
