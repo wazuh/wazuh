@@ -199,7 +199,7 @@ int wdb_policy_monitoring_update(wdb_t * wdb, char * result, int pm_id);
 int wdb_policy_monitoring_save(wdb_t * wdb, int id,char * name,char * title,char *cis_control,char *description,char *rationale,char *remediation,char *default_value, char * file,char * directory,char * process,char * registry,char * reference,char * result);
 
 /* Insert scan info policy monitoring entry. Returns ID on success or -1 on error (new) */
-int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, char * module, int start_scan, int end_scan, int scan_id);
+int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id, char * policy_id);
 
 /* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
 int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_scan);
@@ -220,7 +220,7 @@ int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,cha
 int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *module, char * output);
 
 /* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * module, int start_scan);
+int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);

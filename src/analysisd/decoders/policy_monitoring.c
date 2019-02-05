@@ -31,10 +31,10 @@
 
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
 static int FindGlobal(Eventinfo *lf, char *name, int *socket);
-static int FindScanInfo(Eventinfo *lf, char *module, int *socket);
+static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,char * name,char * title,char *cis_control,char *description,char *rationale,char *remediation,char *default_value, char * file,char * directory,char * process,char * registry,char * reference,char * result);
 static int SaveGlobalInfo(Eventinfo *lf, int *socket,int scan_id, char *name,char *description,char *references,int pass,int failed,int score,int update);
-static int SaveScanInfo(Eventinfo *lf,int *socket, char * module,int scan_id, int pm_start_scan, int pm_end_scan, int update,int start);
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int update,int start);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event);
@@ -234,7 +234,7 @@ static int FindGlobal(Eventinfo *lf, char *name, int *socket){
     return retval;
 }
 
-static int FindScanInfo(Eventinfo *lf, char *module, int *socket) {
+static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket) {
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
@@ -242,7 +242,7 @@ static int FindScanInfo(Eventinfo *lf, char *module, int *socket) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring query_scan %s", lf->agent_id, module);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring query_scan %s", lf->agent_id, policy_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -288,7 +288,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,char * n
     }
 }
 
-static int SaveScanInfo(Eventinfo *lf,int *socket,char * module,int scan_id, int pm_start_scan, int pm_end_scan,int update,int start) {
+static int SaveScanInfo(Eventinfo *lf,int *socket,char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan,int update,int start) {
     
     char *msg = NULL;
     char *response = NULL;
@@ -297,12 +297,12 @@ static int SaveScanInfo(Eventinfo *lf,int *socket,char * module,int scan_id, int
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if(!update) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_scan_info %s|%d|%d|%d",lf->agent_id, module, scan_id,pm_start_scan,pm_end_scan );
+        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_scan_info %d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id );
     } else {
         if(start) {
-            snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info_start %s|%d",lf->agent_id, module,pm_start_scan );
+            snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info_start %s|%d",lf->agent_id, policy_id,pm_start_scan );
         } else {
-            snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info %s|%d",lf->agent_id, module,pm_end_scan );
+            snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info %s|%d",lf->agent_id, policy_id,pm_end_scan );
         }
     }
    
@@ -475,8 +475,14 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event,int start) {
     cJSON *pm_scan_id;
     cJSON *pm_scan_start;
     cJSON *pm_scan_end;
+    cJSON *policy_id;
 
     pm_scan_id = cJSON_GetObjectItem(event, "scan_id");
+    policy_id =  cJSON_GetObjectItem(event, "policy_id");
+
+    if(!policy_id) {
+        return;
+    }
 
     if(!pm_scan_id){
         return;
@@ -498,7 +504,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event,int start) {
    
 
     int result_event = 0;
-    int result_db = FindScanInfo(lf,"policy-monitoring",socket);
+    int result_db = FindScanInfo(lf,policy_id->valuestring,socket);
 
     switch (result_db)
     {
@@ -507,13 +513,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event,int start) {
             break;
         case 0: // It exists, update
             if(start){
-                result_event = SaveScanInfo(lf,socket,"policy-monitoring",pm_scan_id->valueint,pm_scan_start->valueint,0,1,1);
+                result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,0,1,1);
                 if (result_event < 0)
                 {
                     merror("Error updating scan policy monitoring database for agent %s", lf->agent_id);
                 }
             } else {
-                result_event = SaveScanInfo(lf,socket,"policy-monitoring",pm_scan_id->valueint,0,pm_scan_end->valueint,1,0);
+                result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,0,pm_scan_end->valueint,1,0);
                 if (result_event < 0)
                 {
                     merror("Error updating scan policy monitoring database for agent %s", lf->agent_id);
@@ -522,13 +528,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event,int start) {
             break;
         case 1: // It not exists, insert
             if(start) {
-                result_event = SaveScanInfo(lf,socket,"policy-monitoring",pm_scan_id->valueint,pm_scan_start->valueint,0,0,1);
+                result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,0,0,1);
                 if (result_event < 0)
                 {
                     merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
                 }
             } else {
-                result_event = SaveScanInfo(lf,socket,"policy-monitoring",pm_scan_id->valueint,0,pm_scan_end->valueint,0,0);
+                result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,0,pm_scan_end->valueint,0,0);
                 if (result_event < 0)
                 {
                     merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);

@@ -210,23 +210,15 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-
-CREATE TABLE IF NOT EXISTS scan_info (
-    module TEXT PRIMARY KEY,
-    first_start INTEGER,
-    first_end INTEGER,
+CREATE TABLE IF NOT EXISTS pm_scan_info (
+    scan_id INTEGER PRIMARY KEY,
     start_scan INTEGER,
     end_scan INTEGER,
-    fim_first_check INTEGER,
-    fim_second_check INTEGER,
-    fim_third_check INTEGER,
-    pm_start_scan INTEGER,
-    pm_end_scan INTEGER,
-    pm_scan_id INTEGER
+    policy_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_global (
-    scan_id INTEGER REFERENCES scan_info (pm_scan_id),
+    scan_id INTEGER REFERENCES pm_scan_info (pm_scan_id),
     name TEXT,
     description TEXT,
     `references` TEXT,

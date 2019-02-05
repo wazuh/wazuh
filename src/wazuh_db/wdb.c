@@ -69,14 +69,14 @@ static const char *SQL_STMT[] = {
     "SELECT id,result FROM pm_check WHERE id = ?;",
     "UPDATE pm_check SET result = ? WHERE id = ?;",
     "INSERT INTO pm_check (id,name,title,cis_control,description,rationale,remediation,default_value,file,directory,process,registry,reference,result) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
-    "INSERT INTO scan_info (module,pm_start_scan,pm_end_scan,pm_scan_id) VALUES (?,?,?,?);",
-    "UPDATE scan_info SET pm_end_scan = ? WHERE module = ?;",
+    "INSERT INTO pm_scan_info (start_scan,end_scan,scan_id,policy_id) VALUES (?,?,?,?);",
+    "UPDATE pm_scan_info SET end_scan = ? WHERE policy_id = ?;",
     "INSERT INTO pm_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
     "UPDATE pm_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
     "SELECT name FROM pm_global WHERE name = ?;",
     "INSERT INTO pm_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
-    "SELECT module FROM scan_info WHERE module = ?;",
-    "UPDATE scan_info SET pm_start_scan = ? WHERE module = ?;",
+    "SELECT policy_id FROM pm_scan_info WHERE policy_id = ?;",
+    "UPDATE pm_scan_info SET start_scan = ? WHERE policy_id = ?;",
 };
 
 sqlite3 *wdb_global = NULL;

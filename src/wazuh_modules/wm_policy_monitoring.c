@@ -127,7 +127,6 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
 
     int status = 0;
     time_t time_start = 0;
-    time_t time_end = 0;
     time_t time_sleep = 0;
 
     if (!data->scan_on_start) {
@@ -200,31 +199,15 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
             id = -id;
 #endif
 
-        /* Send scan start message */
-        cJSON *start_scan = cJSON_CreateObject();
-        cJSON_AddStringToObject(start_scan, "type", "scan-started");
-        cJSON_AddStringToObject(start_scan, "message", "Policy monitoring scan started");
-        cJSON_AddNumberToObject(start_scan, "time", (long)time_start);
-        cJSON_AddNumberToObject(start_scan, "scan_id", id);
-        wm_policy_monitoring_send_alert(data,start_scan);
-        cJSON_Delete(start_scan);
+        
 
         /* Do scan for every profile file */
         wm_policy_monitoring_read_files(data,id);
 
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
-        time_end = time(NULL);
 
-        /* Send scan ending message */
-        cJSON *end_scan = cJSON_CreateObject();
-        cJSON_AddStringToObject(end_scan, "type", "scan-ended");
-        cJSON_AddStringToObject(end_scan, "message", "Policy monitoring scan finished");
-        cJSON_AddNumberToObject(end_scan, "time", (long)time_end);
-        cJSON_AddNumberToObject(end_scan, "scan_id", id);
-        wm_policy_monitoring_send_alert(data,end_scan);
         minfo("Ended policy monitoring scan.");
-        cJSON_Delete(end_scan);
 
         if (data->scan_day) {
             int interval = 0, i = 0;
@@ -348,12 +331,41 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
 
         
         if(wm_policy_monitoring_do_scan(plist,new,vars,data,id,policy,1) == 0){
+            /* Send scan start message */
+            time_t time_start = 0;
+            time_t time_end = 0;
+            time_start = time(NULL);
+
+            cJSON *start_scan = cJSON_CreateObject();
+            cJSON_AddStringToObject(start_scan, "type", "scan-started");
+            cJSON_AddStringToObject(start_scan, "message", "Policy monitoring scan started");
+            cJSON *policy_id = cJSON_GetObjectItem(policy, "id");
+            cJSON_AddStringToObject(start_scan, "policy_id", policy_id->valuestring);
+            cJSON_AddNumberToObject(start_scan, "time", (long)time_start);
+            cJSON_AddNumberToObject(start_scan, "scan_id", id);
+            wm_policy_monitoring_send_alert(data,start_scan);
+            cJSON_Delete(start_scan);
+
             wm_policy_monitoring_do_scan(plist,profiles,vars,data,id,policy,0);
             wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy);
             wm_policy_monitoring_reset_summary();
+
+
+            /* Send scan ending message */
+            time_end = time(NULL);
+            cJSON *end_scan = cJSON_CreateObject();
+            cJSON_AddStringToObject(end_scan, "type", "scan-ended");
+            cJSON_AddStringToObject(end_scan, "message", "Policy monitoring scan finished");
+            cJSON_AddStringToObject(end_scan, "policy_id", policy_id->valuestring);
+            cJSON_AddNumberToObject(end_scan, "time", (long)time_end);
+            cJSON_AddNumberToObject(end_scan, "scan_id", id);
+            wm_policy_monitoring_send_alert(data,end_scan);
+            cJSON_Delete(end_scan);
         }
 
         w_del_plist(plist);
+
+        
         mtinfo(WM_POLICY_MONITORING_LOGTAG, "Evaluation finished for policy '%s'.",data->profile[i]);
 
 next:
@@ -1511,8 +1523,10 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
     cJSON *name = cJSON_GetObjectItem(policy,"name");
     cJSON *description = cJSON_GetObjectItem(policy,"description");
     cJSON *references = cJSON_GetObjectItem(policy,"references");
+    cJSON *policy_id = cJSON_GetObjectItem(policy,"id");
 
     cJSON_AddStringToObject(json_summary, "name", name->valuestring);
+    cJSON_AddStringToObject(json_summary, "policy_id", policy_id->valuestring);
 
     if(description) {
         cJSON_AddStringToObject(json_summary, "description", description->valuestring);

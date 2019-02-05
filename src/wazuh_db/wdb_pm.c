@@ -327,7 +327,7 @@ int wdb_policy_monitoring_compliance_save(wdb_t * wdb, int id_check, char *key, 
 }
 
 /* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
-int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, char * module, int start_scan, int end_scan, int scan_id) {
+int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id) {
 
      if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -343,10 +343,10 @@ int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, char * module, int start_s
 
     stmt = wdb->stmt[WDB_STMT_PM_SCAN_INFO_INSERT];
 
-    sqlite3_bind_text(stmt, 1, module, -1, NULL);
-    sqlite3_bind_int(stmt, 2, start_scan);
-    sqlite3_bind_int(stmt, 3, end_scan);
-    sqlite3_bind_int(stmt, 4, scan_id);
+    sqlite3_bind_int(stmt, 1, start_scan);
+    sqlite3_bind_int(stmt, 2, end_scan);
+    sqlite3_bind_int(stmt, 3, scan_id);
+    sqlite3_bind_text(stmt, 4, policy_id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -382,7 +382,7 @@ int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_s
     }
 }
 
-int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * module, int start_scan){
+int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan){
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
         return -1;
@@ -398,7 +398,7 @@ int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * module, int
     stmt = wdb->stmt[WDB_STMT_PM_SCAN_INFO_UPDATE_START];
 
     sqlite3_bind_int(stmt, 1, start_scan);
-    sqlite3_bind_text(stmt, 2, module, -1, NULL);
+    sqlite3_bind_text(stmt, 2, policy_id, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
