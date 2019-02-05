@@ -30,7 +30,7 @@ static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Des
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
 static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result);  // Send check event
 static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id);  // Read policy monitoring files
-static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy);  // Do scan
+static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy,int requirements_scan);  // Do scan
 static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy);  // Send summary
 static int wm_policy_monitoring_check_policy(cJSON *policy);
 static void wm_policy_monitoring_summary_increment_passed();
@@ -316,6 +316,9 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         cJSON *policy = cJSON_GetObjectItem(object, "policy");
         cJSON *variables = cJSON_GetObjectItem(object, "variables");
         cJSON *profiles = cJSON_GetObjectItem(object, "checks");
+        cJSON *new = cJSON_CreateArray();
+        cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
+        cJSON_AddItemToArray(new, requirements);
 
         if(wm_policy_monitoring_check_policy(policy)) {
             merror("Check your 'policy' field");
@@ -326,6 +329,17 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             merror("Obtaining 'checks' from json");
             goto next;
         }
+        char *json_profile = cJSON_PrintUnformatted(profiles);
+        char *json_new = cJSON_PrintUnformatted(new);
+        merror("json profiles : %s",json_profile);
+        merror("json new: %s",json_new);
+        os_free(json_profile);
+        os_free(json_new);
+
+        if(!requirements){
+            merror("Could not find 'requirements' from json");
+            goto next;
+        }
 
         vars = OSStore_Create();
 
@@ -333,9 +347,13 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
-        wm_policy_monitoring_do_scan(plist,profiles,vars,data,id,policy);
-        wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy);
-        wm_policy_monitoring_reset_summary();
+        
+        if(wm_policy_monitoring_do_scan(plist,new,vars,data,id,policy,1) == 0){
+            wm_policy_monitoring_do_scan(plist,profiles,vars,data,id,policy,0);
+            wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy);
+            wm_policy_monitoring_reset_summary();
+        }
+
         w_del_plist(plist);
 
 next:
@@ -380,7 +398,7 @@ static int wm_policy_monitoring_check_policy(cJSON *policy) {
     return retval;
 }
 
-static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy) {
+static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy,int requirements_scan) {
 
     int type = 0, condition = 0;
     char *nbuf;
@@ -389,6 +407,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
     char final_file[2048 + 1];
     char *value;
     char *name = NULL;
+    int ret_val = 0;
     cJSON *c_title = NULL;
     cJSON *c_condition = NULL;
 
@@ -670,7 +689,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
             } else {
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
-                while (1) {
+                while (1 && !requirements_scan) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
 
                         if(wm_policy_monitoring_check_hash(cis_db,"passed",profile)) {
@@ -699,6 +718,9 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
 
                 /* Check if this entry is required for the rest of the file */
                 if (condition & WM_POLICY_MONITORING_COND_REQ) {
+                    if (requirements_scan == 1){
+                        ret_val = 1;
+                    }
                     goto clean_return;
                 }
             }
@@ -723,7 +745,7 @@ clean_return:
         name = NULL;
     }
 
-    return 0;
+    return ret_val;
 
 }
 
