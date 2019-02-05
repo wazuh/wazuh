@@ -495,8 +495,10 @@ def _check_removed_agents(new_client_keys):
         :param client_keys_contents: \n splitted contents of client.keys file
         :return: generator of dictionaries.
         """
+        ck_line = re.compile(r'\d+ \S+ \S+ \S+')
         return {a_id: {'name': a_name, 'ip': a_ip, 'key': a_key} for a_id, a_name, a_ip, a_key in
-                map(lambda x: x.split(' '), client_keys_contents[:-1]) if not a_name.startswith('!')}
+                map(lambda x: x.split(' '), filter(lambda x: ck_line.match(x) is not None, client_keys_contents))
+                if not a_name.startswith('!')}
 
     with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
         # can't use readlines function since it leaves a \n at the end of each item of the list
