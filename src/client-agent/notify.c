@@ -73,6 +73,9 @@ void run_notify()
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
+    char *reporting_ip;
+    int sock;
+    char label_ip[50];
 
     keep_alive_random[0] = '\0';
     curr_time = time(0);
@@ -127,23 +130,45 @@ void run_notify()
             return;
         }
     }
-
+    
+    os_calloc(16,sizeof(char),reporting_ip);
+    if(sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128), sock  < 0) {
+        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        snprintf(label_ip,50,"#\"reporting_ip\":any");
+    }
+    else{
+        if (OS_SendUnix(sock, reporting_ip, 16) < 0) {
+            merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
+            snprintf(label_ip,50,"#\"reporting_ip\":any");
+        }
+        else{
+            if(OS_RecvUnix(sock, 16, reporting_ip) == 0){
+                merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                snprintf(label_ip,50,"#\"reporting_ip\":any");
+            }
+            else{
+                snprintf(label_ip,50,"#\"reporting_ip\":%s", reporting_ip);
+            }
+        }
+    }
+    
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
-                 getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
+                 getuname(), md5sum, tmp_labels, shared_files,label_ip, keep_alive_random);
     } else {
         snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
-                 getuname(), tmp_labels, shared_files, keep_alive_random);
+                 getuname(), tmp_labels, shared_files,label_ip, keep_alive_random);
     }
 
     /* Send status message */
     mdebug2("Sending keep alive: %s", tmp_msg);
     send_msg(tmp_msg, -1);
 
+    free(reporting_ip);
     free(shared_files);
     update_keepalive(curr_time);
     return;

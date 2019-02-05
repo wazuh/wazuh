@@ -210,11 +210,11 @@ int four_bytes_to_int32(u_int8_t* bytes);
 // Read index entry from a RPM header
 int read_entry(u_int8_t* bytes, rpm_data *info);
 
-//Get the inventory for a network interface in the object passed as parameter
+// Get the inventory for a network interface in the object passed as parameter
 struct ifaddrs;
 void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
 
-//Create the interface list
+// Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 
 #endif
