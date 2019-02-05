@@ -136,6 +136,7 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
                 if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
                     if (stat(file_name, &statbuf_lnk) < 0) {
                         mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
+                        return 0;
                     } else {
                         if (S_ISDIR(statbuf_lnk.st_mode)) {
                             read_dir(file_name, pos, evt, depth, 1);
