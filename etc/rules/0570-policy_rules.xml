@@ -21,13 +21,13 @@
     <description>Policy monitoring check event: Passed checks: $(pm.passed) Failed checks: $(pm.failed) Score: $(pm.score)</description>
   </rule>
 
-  <rule id="19003" level="9">
+  <rule id="19003" level="7">
     <if_sid>19002</if_sid>
     <field name="pm.check.result">^fail</field>
     <options>no_full_log</options>
     <description>Check with id $(pm.check.id) for profile $(pm.profile) failed</description>
   </rule>
-  
+
   <rule id="19004" level="3">
     <if_sid>19002</if_sid>
     <field name="pm.check.result">^passed</field>

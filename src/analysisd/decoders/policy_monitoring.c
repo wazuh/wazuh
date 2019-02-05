@@ -702,10 +702,12 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     if(cis_control) {
         char value[OS_SIZE_128];
         
-        if(cis_control->valueint){
+        if(cis_control->valuedouble){
+            sprintf(value, "%lf", cis_control->valuedouble);
+        } else if (cis_control->valueint) {
             sprintf(value, "%d", cis_control->valueint);
-        } else if (cis_control->valuedouble) {
-             sprintf(value, "%lf", cis_control->valuedouble);
+        } else {
+            sprintf(value, "%s", cis_control->valuestring);
         } 
 
         fillData(lf, "pm.check.cis_control", value);

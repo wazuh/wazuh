@@ -1548,7 +1548,17 @@ static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,c
     }
 
     if(cis_control){
-        cJSON_AddStringToObject(check, "cis_control", cis_control->valuestring);
+        char value[OS_SIZE_128];
+        
+        if(cis_control->valuedouble){
+            sprintf(value, "%lf", cis_control->valuedouble);
+        } else if (cis_control->valueint) {
+            sprintf(value, "%d", cis_control->valueint);
+        } else {
+            sprintf(value, "%s", cis_control->valuestring);
+        }
+
+        cJSON_AddStringToObject(check, "cis_control", value);
     }
 
     if(description){
