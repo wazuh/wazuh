@@ -500,7 +500,12 @@ def _check_removed_agents(new_client_keys):
                 map(lambda x: x.split(' '), filter(lambda x: ck_line.match(x) is not None, client_keys_contents))
                 if not a_name.startswith('!')}
 
-    with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
+    ck_path = "{0}/etc/client.keys".format(common.ossec_path)
+    if not os.path.exists(ck_path):
+        # if the client.keys doesn't exist, it doesn't make sense to parse it
+        return
+
+    with open(ck_path) as ck:
         # can't use readlines function since it leaves a \n at the end of each item of the list
         client_keys = ck.read().split('\n')
 
