@@ -63,6 +63,7 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
     int ret_val = 1;
     cJSON *json_event = NULL;
     cJSON *type = NULL;
+    lf->decoder_info = rootcheck_json_dec;
 
     if (json_event = cJSON_Parse(lf->log), !json_event)
     {
@@ -86,10 +87,23 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
             }
         }
         else if (strcmp(type->valuestring,"check") == 0){
-            minfo("%s",cJSON_PrintUnformatted(json_event));
+            char *final_evt;
+            final_evt = cJSON_PrintUnformatted(json_event);
+            minfo("%s",final_evt);
+
+            if (final_evt){
+                lf->full_log[strlen(final_evt)] = '\0';
+                memcpy(lf->full_log, final_evt, strlen(final_evt));
+            } else {
+                lf->full_log = NULL;
+            }
+
+            lf->log = lf->full_log;
+            lf->decoder_info = rootcheck_json_dec;
 
             HandleCheckEvent(lf,socket,json_event);
 
+            os_free(final_evt);
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
@@ -346,7 +360,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
         int result_db = FindEventcheck(lf, id->valueint, socket);
 
         FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
-        JSON_Decoder_Exec(lf,NULL);
         
         switch (result_db)
         {
@@ -400,6 +413,8 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
             default:
                 break;
         }
+
+        JSON_Decoder_Exec(lf,NULL);
     }
 }
 

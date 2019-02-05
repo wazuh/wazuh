@@ -1,6 +1,6 @@
 <group name="ossec,">
 
-  <rule id="19000" level="9">
+  <rule id="19000" level="0">
     <category>ossec</category>
     <decoded_as>policy_monitoring</decoded_as>
     <options>no_full_log</options>

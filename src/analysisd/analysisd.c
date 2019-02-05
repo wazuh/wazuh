@@ -738,6 +738,9 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize windows event */
     WinevtInit();
 
+    /* Initialize policy monitoring event */
+    PolicyMonitoringInit();
+
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
         merror("accumulator: ERROR: Initialization failed");
