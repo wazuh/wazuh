@@ -42,9 +42,7 @@ int test_success_match() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(!OS_Match2(tests[i][0], tests[i][1])){
-            return 0;
-        }
+        w_assert_int_eq(OS_Match2(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -70,11 +68,9 @@ int test_fail_match() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(OS_Match2(tests[i][0], tests[i][1])){
-            return 1;
-        }
+        w_assert_int_eq(OS_Match2(tests[i][0], tests[i][1]), 1);
     }
-    return 0;
+    return 1;
 }
 
 int test_success_regex() {
@@ -143,9 +139,7 @@ int test_success_regex() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(!OS_Regex(tests[i][0], tests[i][1])){
-            return 0;
-        }
+        w_assert_int_eq(OS_Regex(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -182,11 +176,9 @@ int test_fail_regex() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(OS_Regex(tests[i][0], tests[i][1])){
-            return 1;
-        }
+        w_assert_int_eq(OS_Regex(tests[i][0], tests[i][1]), 1);
     }
-    return 0;
+    return 1;
 }
 
 int test_success_wordmatch() {
@@ -205,11 +197,9 @@ int test_success_wordmatch() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(OS_WordMatch(tests[i][0], tests[i][1])){
-            return 1;
-        }
+        w_assert_int_eq(OS_WordMatch(tests[i][0], tests[i][1]), 1);
     }
-    return 0;
+    return 1;
 }
 
 int test_fail_wordmatch() {
@@ -228,9 +218,7 @@ int test_fail_wordmatch() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(!OS_WordMatch(tests[i][0], tests[i][1])){
-            return 0;
-        }
+        w_assert_int_eq(OS_WordMatch(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -248,11 +236,9 @@ int test_success_strisnum() {
     };
 
     for (i = 0; tests[i] != NULL ; i++) {
-        if(OS_StrIsNum(tests[i])){
-            return 1;
-        }
+        w_assert_int_eq(OS_StrIsNum(tests[i]), 1);
     }
-    return 0;
+    return 1;
 }
 
 int test_fail_strisnum() {
@@ -270,9 +256,7 @@ int test_fail_strisnum() {
     };
 
     for (i = 0; tests[i] != NULL ; i++) {
-        if(!OS_StrIsNum(tests[i])){
-            return 0;
-        }
+        w_assert_int_eq(OS_StrIsNum(tests[i]), 1);
     }
     return 1;
 }
@@ -293,9 +277,8 @@ int test_success_strhowclosedmatch() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(OS_StrHowClosedMatch(tests[i][0], tests[i][1]) != (unsigned) atoi(tests[i][2])){
-            return 0;
-        }
+        w_assert_uint_eq(OS_StrHowClosedMatch(tests[i][0], tests[i][1])
+                          , (unsigned) atoi(tests[i][2]));
     }
     return 1;
 }
@@ -303,6 +286,7 @@ int test_success_strhowclosedmatch() {
 int test_strbreak() {
 
     int i;
+
     /*
      * Please note that all strings are \ escaped
      */
@@ -322,24 +306,16 @@ int test_strbreak() {
 
         int j = 3;
         if (tests[i][j] == NULL) {
-            if(result != NULL){
-                return 0;
-            }
+            w_assert_ptr_eq(result, NULL);
             continue;
         }
 
         int k;
         for (k = 0; tests[i][j] != NULL; j++, k++) {
-            if(result[k] == NULL){
-                return 0;
-            }
-            if(strcmp(result[k],tests[i][j]) != 0){
-                return 0;
-            }
+            w_assert_ptr_ne(result[k], NULL);
+            w_assert_str_eq(result[k], tests[i][j]);
         }
-        if(result[k] != NULL){
-            return 0;
-        }
+        w_assert_ptr_eq(result[k], NULL);
 
         k = 0;
         while (result[k]) {
@@ -368,29 +344,20 @@ int test_regex_extraction() {
 
     for (i = 0; tests[i][0] != NULL; i++) {
         OSRegex reg;
-        if(OSRegex_Compile(tests[i][0], &reg, OS_RETURN_SUBSTRING) != 1){
-            return 0;
-        }
+        w_assert_int_eq(OSRegex_Compile(tests[i][0], &reg, OS_RETURN_SUBSTRING), 1);
+        w_assert_ptr_ne((void *)OSRegex_Execute(tests[i][1], &reg), NULL);
 
-        if((void *)OSRegex_Execute(tests[i][1], &reg) == NULL){
-            return 0;
-        }
+
 
         char **result = reg.d_sub_strings;
 
         int j;
         int k;
         for (j = 2, k = 0; tests[i][j] != NULL; j++, k++) {
-            if(result[k] == NULL){
-                return 0;
-            }
-            if(strcmp(result[k], tests[i][j]) != 0){
-                return 0;
-            }
+            w_assert_ptr_ne(result[k], NULL);
+            w_assert_str_eq(result[k], tests[i][j]);
         }
-        if(result[k] != NULL){
-            return 0;
-        }
+        w_assert_ptr_eq(result[k], NULL);
 
         OSRegex_FreePattern(&reg);
     }
@@ -408,11 +375,9 @@ int test_hostname_map() {
                 || test == '(' || test == ')' || test == '-'
                 || test == '.' || test == '@' || test == '/'
                 || test == '_') {
-            if(isValidChar(test) != 1){
-                return 0;
-            }
-        } else if(isValidChar(test) == 1){
-                return 0;
+            w_assert_int_eq(isValidChar(test), 1);
+        } else {
+            w_assert_int_ne(isValidChar(test), 1);
         }
 
         if (test == 255) {
@@ -429,11 +394,9 @@ int test_case_insensitive_char_map() {
 
     while (1) {
         if (test >= 65 && test <= 90) { // A-Z
-            if(charmap[test] != test + 32){
-                return 0;
-            }
-        } else if (charmap[test] != test){
-            return 0;
+            w_assert_int_eq(charmap[test], test+32);
+        } else {
+            w_assert_int_eq(charmap[test], test);
         }
 
         if (test == 255) {
@@ -450,11 +413,9 @@ int test_regexmap_digit() {
 
     while (1) {
         if (test >= '0' && test <= '9') {
-            if(regexmap[1][test] != 1){
-                return 0;
-            }
-        } else if (regexmap[1][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[1][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[1][test], 1);
         }
 
         if (test == 255) {
@@ -475,11 +436,9 @@ int test_regexmap_word() {
                 || (test >= '0' && test <= '9')
                 || test == '-' || test == '@'
                 || test == '_') {
-            if(regexmap[2][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[2][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[2][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[2][test], 1);
         }
 
         if (test == 255) {
@@ -496,11 +455,9 @@ int test_regexmap_space() {
 
     while (1) {
         if (test == ' ') {
-            if(regexmap[3][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[3][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[3][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[3][test], 1);
         }
 
         if (test == 255) {
@@ -525,11 +482,9 @@ int test_regexmap_punctuation() {
                 || test == '.' || test == ';' || test == '='
                 || test == '[' || test == ']' || test == '{'
                 || test == '}') {
-            if(regexmap[4][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[4][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[4][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[4][test], 1);
         }
 
         if (test == 255) {
@@ -546,11 +501,9 @@ int test_regexmap_lparenthesis() {
 
     while (1) {
         if (test == '(') {
-            if(regexmap[5][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[5][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[5][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[5][test], 1);
         }
 
         if (test == 255) {
@@ -567,12 +520,9 @@ int test_regexmap_rparenthesis() {
 
     while (1) {
         if (test == ')') {
-            if(regexmap[6][test] != 1){
-                return 0;
-            }
-            if(regexmap[5][test] == 1){
-                return 0;
-            }
+            w_assert_int_eq(regexmap[6][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[6][test], 1);
         }
 
         if (test == 255) {
@@ -589,11 +539,9 @@ int test_regexmap_backslash() {
 
     while (1) {
         if (test == '\\') {
-            if(regexmap[7][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[7][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[7][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[7][test], 1);
         }
 
         if (test == 255) {
@@ -610,11 +558,9 @@ int test_regexmap_nondigit() {
 
     while (1) {
         if (!(test >= '0' && test <= '9')) {
-            if(regexmap[8][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[8][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[8][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[8][test], 1);
         }
 
         if (test == 255) {
@@ -635,11 +581,9 @@ int test_regexmap_nonword() {
                 || (test >= '0' && test <= '9')
                 || test == '-' || test == '@'
                 || test == '_')) {
-            if(regexmap[9][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[9][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[9][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[9][test], 1);
         }
 
         if (test == 255) {
@@ -657,11 +601,9 @@ int test_regexmap_nonspace() {
 
     while (1) {
         if (test != ' ') {
-            if(regexmap[10][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[10][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[10][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[10][test], 1);
         }
 
         if (test == 255) {
@@ -677,9 +619,7 @@ int test_regexmap_all() {
     unsigned char test = 0;
 
     while (1) {
-        if(regexmap[11][test] != 1){
-            return 0;
-        }
+        w_assert_int_eq(regexmap[11][test], 1);
 
         if (test == 255) {
             break;
@@ -695,11 +635,9 @@ int test_regexmap_tab() {
 
     while (1) {
         if (test == '\t') {
-            if(regexmap[12][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[12][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[12][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[12][test], 1);
         }
 
         if (test == 255) {
@@ -716,11 +654,9 @@ int test_regexmap_dollar() {
 
     while (1) {
         if (test == '$') {
-            if(regexmap[13][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[13][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[13][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[13][test], 1);
         }
 
         if (test == 255) {
@@ -737,11 +673,9 @@ int test_regexmap_or() {
 
     while (1) {
         if (test == '|') {
-            if(regexmap[14][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[14][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[14][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[14][test], 1);
         }
 
         if (test == 255) {
@@ -758,11 +692,9 @@ int test_regexmap_lt() {
 
     while (1) {
         if (test == '<') {
-            if(regexmap[15][test] != 1){
-                return 0;
-            }
-        } else if(regexmap[15][test] == 1){
-            return 0;
+            w_assert_int_eq(regexmap[15][test], 1);
+        } else {
+            w_assert_int_ne(regexmap[15][test], 1);
         }
 
         if (test == 255) {
@@ -788,9 +720,7 @@ int test_success_str_starts_with() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(!OS_StrStartsWith(tests[i][0], tests[i][1])){
-            return 0;
-        }
+        w_assert_int_eq(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -809,9 +739,7 @@ int test_fail_str_starts_with() {
 
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        if(!OS_StrStartsWith(tests[i][0], tests[i][1])){
-            return 0;
-        }
+        w_assert_int_eq(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
