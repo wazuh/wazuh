@@ -1389,7 +1389,7 @@ endif
 
 ### wazuh-python ###
 
-WPYTHON_DIR := ${PREFIX}/python
+WPYTHON_DIR := ${PREFIX}/framework/python
 OPTIMIZE_CPYTHON?=no
 
 ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))

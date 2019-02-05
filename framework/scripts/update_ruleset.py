@@ -1,4 +1,4 @@
-#!/var/ossec/python/bin/python3
+#!/usr/bin/env python
 # Wazuh Ruleset Update
 
 # Copyright (C) 2015-2019, Wazuh Inc.
