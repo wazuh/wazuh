@@ -41,7 +41,7 @@ static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event,int start);
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title, cJSON **cis_control,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **default_value,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result);
 static int CheckGlobalJSON(cJSON *event,cJSON **scan_id,cJSON **name,cJSON **description,cJSON **references,cJSON **pass,cJSON **failed,cJSON **score);
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title, cJSON *cis_control,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *default_value,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result);
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title, cJSON *cis_control,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *default_value,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
 static void FillGlobalInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score);
 static int pm_send_db(char *msg, char *response, int *sock);
 
@@ -372,7 +372,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 result_event = SaveEventcheck(lf, 1, socket,id->valueint,name ? name->valuestring : NULL,title ? title->valuestring : NULL,cis_control ? cis_control->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,default_value ? default_value->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL);
                
                 if(strcmp(wdb_response,result->valuestring)) {
-                    FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
+                    FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result,wdb_response);
                 }
                 if (result_event < 0)
                 {
@@ -383,7 +383,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 result_event = SaveEventcheck(lf, 0, socket,id->valueint,name ? name->valuestring : NULL,title ? title->valuestring : NULL,cis_control ? cis_control->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,default_value ? default_value->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL);
 
                 if(strcmp(wdb_response,result->valuestring)) {
-                    FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
+                    FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result,NULL);
                 }
 
                 if (result_event < 0)
@@ -664,7 +664,7 @@ static int SaveGlobalInfo(Eventinfo *lf, int *socket,int scan_id, char *name,cha
     }
 }
 
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title, cJSON *cis_control,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *default_value,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result) {
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title, cJSON *cis_control,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *default_value,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result) {
     
     fillData(lf, "pm.type", "check");
 
@@ -782,6 +782,10 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
 
     if(result) {
         fillData(lf, "pm.check.result", result->valuestring);
+    }
+
+    if(old_result) {
+        fillData(lf, "pm.check.old_result", old_result);
     }
 }
 
