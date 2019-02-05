@@ -734,20 +734,6 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
-
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
-
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3.py
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
-
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
-  ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
-
-  InstallOpenSCAPFiles
 
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 
@@ -814,13 +800,6 @@ InstallCommon()
   then
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} selinux/wazuh.pp ${PREFIX}/var/selinux/
     InstallSELinuxPolicyPackage
-  fi
-
-  if [ ! ${INSTYPE} = 'agent' ]; then
-      # Add Azure script (for manager only)
-      ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/azure
-      ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/azure/azure-logs.py ${PREFIX}/wodles/azure/azure-logs.py
-      ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/azure/azure-logs
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/backup
@@ -959,6 +938,29 @@ InstallServer()
         ${INSTALL} -m 0660 -o ossec -g ${OSSEC_GROUP} ../etc/agent.conf ${PREFIX}/etc/shared/agent-template.conf
     fi
 
+    # Install the plugins files
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
+
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/oscap/oscap
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+
+    InstallOpenSCAPFiles
+
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/aws/aws-s3
+
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/docker/DockerListener
+
+    # Add Azure script (for manager only)
+    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/azure
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/azure/azure-logs.py ${PREFIX}/wodles/azure/azure-logs.py
+    ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../framework/wrappers/wodles/generic_wodle_wrapper.sh ${PREFIX}/wodles/azure/azure-logs
+
     GenerateAuthCert
 
     if [ "X${OPTIMIZE_CPYTHON}" == "Xy" ]; then
@@ -982,6 +984,26 @@ InstallAgent()
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ../etc/wpk_root.pem ${PREFIX}/etc/
 
+    # Install the plugins files
+    if [ ! -d ${PREFIX}/wodles/oscap ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/oscap/content
+
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/oscap.py ${PREFIX}/wodles/oscap
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/oscap/template_*.xsl ${PREFIX}/wodles/oscap
+
+        InstallOpenSCAPFiles
+    fi
+
+    if [ ! -d ${PREFIX}/wodles/aws ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/aws
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/aws/aws-s3.py ${PREFIX}/wodles/aws/aws-s3
+    fi
+
+    if [ ! -d ${PREFIX}/wodles/docker ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
+        ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
+    fi
 }
 
 InstallWazuh()
