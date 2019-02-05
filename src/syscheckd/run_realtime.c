@@ -129,13 +129,22 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
             }
 #ifndef WIN32
             struct stat statbuf;
-
+            struct stat statbuf_lnk;
             if (lstat(file_name, &statbuf) < 0) {
                 mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
             } else {
                 if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                    read_dir(file_name, pos, evt, depth, 1);
-                    return 0;
+                    if (stat(file_name, &statbuf_lnk) < 0) {
+                        mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
+                    } else {
+                        if (S_ISDIR(statbuf_lnk.st_mode)) {
+                            read_dir(file_name, pos, evt, depth, 1);
+                            return 0;
+                        } else {
+                            mdebug2("A file can't be added to be monitored in realtime: '%s'", file_name);
+                            return 0;
+                        }
+                    }
                 } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
                     return 0;
                 }
@@ -153,10 +162,12 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
                     } else {
                         os_free(real_path);
                         mdebug2("A file can't be added to be monitored in realtime: '%s'", real_path);
+                        return 0;
                     }
                 } else {
                     os_free(real_path);
                     mdebug2("real_path_win() failed on: '%s'", file_name);
+                    return 0;
                 }
             } else if (islink_win(file_name) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
                 return 0;
