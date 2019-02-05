@@ -11,7 +11,7 @@
   <rule id="500" level="0">
     <category>ossec</category>
     <decoded_as>ossec</decoded_as>
-    <description>Grouping of Wazuh rules.</description>
+    <description>Grouping of ossec rules.</description>
   </rule>
 
   <rule id="501" level="3">
@@ -19,7 +19,7 @@
     <if_fts />
     <options>alert_by_email</options>
     <match>Agent started</match>
-    <description>New Wazuh agent connected.</description>
+    <description>New ossec agent connected.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -27,7 +27,7 @@
     <if_sid>500</if_sid>
     <options>alert_by_email</options>
     <match>Ossec started</match>
-    <description>Wazuh server started.</description>
+    <description>Ossec server started.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -35,7 +35,7 @@
     <if_sid>500</if_sid>
     <options>alert_by_email</options>
     <match>Agent started</match>
-    <description>Wazuh agent started.</description>
+    <description>Ossec agent started.</description>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -43,7 +43,7 @@
     <if_sid>500</if_sid>
     <options>alert_by_email</options>
     <match>Agent disconnected</match>
-    <description>Wazuh agent disconnected.</description>
+    <description>Ossec agent disconnected.</description>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -51,7 +51,7 @@
     <if_sid>500</if_sid>
     <options>alert_by_email</options>
     <match>Agent removed</match>
-    <description>Wazuh agent removed.</description>
+    <description>Ossec agent removed.</description>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,</group>
   </rule>
 
@@ -151,7 +151,7 @@
   <rule id="530" level="0">
     <if_sid>500</if_sid>
     <match>^ossec: output: </match>
-    <description>Wazuh process monitoring rules.</description>
+    <description>OSSEC process monitoring rules.</description>
     <group>process_monitor,</group>
   </rule>
 
