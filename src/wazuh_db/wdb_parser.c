@@ -716,7 +716,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         int scan_id;
         char *name;
         char *description;
-        char *os_required;
+        char *references;
         int pass;
         int failed;
         int score;
@@ -763,7 +763,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        os_required = curr;
+        references = curr;
         *next++ = '\0';
 
         curr = next;
@@ -802,7 +802,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         else
             score = strtol(curr,NULL,10);
 
-        if (result = wdb_policy_monitoring_global_save(wdb,scan_id,name,description,os_required,pass,failed,score), result < 0) {
+        if (result = wdb_policy_monitoring_global_save(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
         } else {
@@ -815,7 +815,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         int scan_id;
         char *name;
         char *description;
-        char *os_required;
+        char *references;
         int pass;
         int failed;
         int score;
@@ -862,7 +862,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        os_required = curr;
+        references = curr;
         *next++ = '\0';
 
         curr = next;
@@ -901,7 +901,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         else
             score = strtol(curr,NULL,10);
 
-        if (result = wdb_policy_monitoring_global_update(wdb,scan_id,name,description,os_required,pass,failed,score), result < 0) {
+        if (result = wdb_policy_monitoring_global_update(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
         } else {

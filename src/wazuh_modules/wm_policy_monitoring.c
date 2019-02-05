@@ -1478,10 +1478,6 @@ static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
 
     return (NULL);
 }
-<<<<<<< HEAD
-=======
-
->>>>>>> 54fa895f041784b2930b65e214304bbd16e177b5
 #endif
 
 static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy) {
@@ -1492,7 +1488,7 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
 
     cJSON *name = cJSON_GetObjectItem(policy,"name");
     cJSON *description = cJSON_GetObjectItem(policy,"description");
-    cJSON *os_required = cJSON_GetObjectItem(policy,"os_required");
+    cJSON *references = cJSON_GetObjectItem(policy,"references");
 
     cJSON_AddStringToObject(json_summary, "name", name->valuestring);
 
@@ -1500,8 +1496,8 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
         cJSON_AddStringToObject(json_summary, "description", description->valuestring);
     }
   
-    if(os_required) {
-        cJSON_AddStringToObject(json_summary, "os_required", os_required ? os_required->valuestring : NULL );
+    if(references) {
+        cJSON_AddStringToObject(json_summary, "references", references ? references->valuestring : NULL );
     }
    
     cJSON_AddNumberToObject(json_summary, "passed", passed);

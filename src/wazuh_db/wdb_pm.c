@@ -169,7 +169,7 @@ int wdb_policy_monitoring_save(wdb_t * wdb, int id,char * name,char * title,char
     }
 }
 
-int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score) {
+int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
         return -1;
@@ -187,7 +187,7 @@ int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char 
     sqlite3_bind_int(stmt, 1, scan_id);
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
     sqlite3_bind_text(stmt, 3, description, -1, NULL);
-    sqlite3_bind_text(stmt, 4, os_required, -1, NULL);
+    sqlite3_bind_text(stmt, 4, references, -1, NULL);
     sqlite3_bind_int(stmt, 5, pass);
     sqlite3_bind_int(stmt, 6, failed);
     sqlite3_bind_int(stmt, 7, score);
@@ -201,7 +201,7 @@ int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char 
 }
 
 /* Update global policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score) {
+int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
         return -1;
@@ -219,7 +219,7 @@ int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,cha
     sqlite3_bind_int(stmt, 1, scan_id);
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
     sqlite3_bind_text(stmt, 3, description, -1, NULL);
-    sqlite3_bind_text(stmt, 4, os_required, -1, NULL);
+    sqlite3_bind_text(stmt, 4, references, -1, NULL);
     sqlite3_bind_int(stmt, 5, pass);
     sqlite3_bind_int(stmt, 6, failed);
     sqlite3_bind_int(stmt, 7, score);

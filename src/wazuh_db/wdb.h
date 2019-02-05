@@ -205,7 +205,7 @@ int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, char * module, int start_s
 int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_scan);
 
 /* Insert global policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score);
+int wdb_policy_monitoring_global_save(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
 
 /* Look for a policy monitoring global entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_policy_monitoring_global_find(wdb_t * wdb, char *name, char * output);
@@ -214,7 +214,7 @@ int wdb_policy_monitoring_global_find(wdb_t * wdb, char *name, char * output);
 int wdb_policy_monitoring_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
 
 /* Update global policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *os_required,int pass,int failed,int score);
+int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
 
 /* Look for a scan policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *module, char * output);

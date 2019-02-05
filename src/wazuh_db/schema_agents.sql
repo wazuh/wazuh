@@ -229,7 +229,7 @@ CREATE TABLE IF NOT EXISTS pm_global (
     scan_id INTEGER REFERENCES scan_info (pm_scan_id),
     name TEXT,
     description TEXT,
-    os_required TEXT,
+    `references` TEXT,
     pass INTEGER,
     failed INTEGER,
     score INTEGER
