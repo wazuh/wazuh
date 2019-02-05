@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -607,7 +608,7 @@ class MasterManager(Server):
 
 
     def get_healthcheck(self, filter_nodes=None):
-        workers_info = {name:{"info":dict(data['info']), "status":data['status']} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
+        workers_info = {name:{"info":dict(data['info']), "status":data['status'].copy()} for name,data in self.get_connected_workers().items() if not filter_nodes or name in filter_nodes}
         n_connected_nodes = len(workers_info) + 1 # workers + master
 
         cluster_config = read_config()
@@ -694,7 +695,7 @@ class ClientStatusCheckThread(ClusterThread):
         while not self.stopper.is_set() and self.running:
             logger.debug("[Master ] [{}] Checking workers statuses.".format(self.thread_tag))
 
-            for worker, worker_info in self.master.get_connected_workers().items():
+            for worker, worker_info in self.master.get_connected_workers().copy().items():
                 if time.time() - worker_info['status']['last_keep_alive'] > get_cluster_items_master_intervals()['max_allowed_time_without_keepalive']:
                     logger.critical("[Master ] [{}] [{}]: Last keep alive is higher than allowed maximum. Disconnecting.".format(self.thread_tag, worker))
                     self.master.remove_worker(worker)

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory for Linux
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Aug, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -642,6 +642,10 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
             if (!strncmp(read_buff, "Package: ", 9)) {
 
+                if(object){
+                    cJSON_Delete(object);
+                }
+                
                 object = cJSON_CreateObject();
                 package = cJSON_CreateObject();
                 cJSON_AddStringToObject(object, "type", "program");
@@ -776,10 +780,12 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                     mtdebug2(WM_SYS_LOGTAG, "sys_deb_packages() sending '%s'", string);
                     wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
                     cJSON_Delete(object);
+                    object = NULL;
                     free(string);
 
                 } else {
                     cJSON_Delete(object);
+                    object = NULL;
                     continue;
                 }
 
@@ -794,6 +800,10 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
         free(timestamp);
         return NULL;
 
+    }
+
+    if(object){
+        cJSON_Delete(object);
     }
 
     object = cJSON_CreateObject();

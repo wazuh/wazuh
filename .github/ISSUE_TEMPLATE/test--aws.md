@@ -1,6 +1,9 @@
 ---
 name: 'Test: AWS'
 about: Test suite for Amazon Web Services.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

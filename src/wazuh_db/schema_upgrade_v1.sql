@@ -1,3 +1,11 @@
+/*
+ * SQL Schema for upgrading databases
+ * Copyright (C) 2015-2019, Wazuh Inc.
+ * December, 2018.
+ * This program is a free software, you can redistribute it
+ * and/or modify it under the terms of GPLv2.
+*/
+
 BEGIN;
 
 ALTER TABLE fim_entry ADD COLUMN attributes INTEGER DEFAULT 0;

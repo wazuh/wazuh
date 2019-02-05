@@ -1,6 +1,9 @@
 ---
 name: 'Test: Windows MSI'
 about: Test suite for MSI Windows installation.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
@@ -44,7 +47,7 @@ To check in every test:
 
 To check in every test:
 
-- It only remains the `local_internal_options.conf` and `ossec.log` files.
+- It only remains the `client.keys`, `ossec.conf` and `local_internal_options.conf` files.
 - The package and service are removed.
 
 - [ ] Successful uninstallation by running the MSI

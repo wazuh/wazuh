@@ -1,4 +1,5 @@
-/* Copyright (C) 2009-2012 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009-2012 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -30,6 +31,7 @@
 #define OS_SIZE_4096    4096
 #define OS_SIZE_2048    2048
 #define OS_SIZE_1024    1024
+#define OS_SIZE_512     512
 #define OS_SIZE_256     256
 #define OS_SIZE_128     128
 
@@ -59,7 +61,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v3.8.0"
+#define __ossec_version "v3.9.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -175,7 +177,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define ARQUEUE         "/queue/alerts/ar"
 
 /* Decoder file */
-#define XML_LDECODER    "/etc/decoders/local_decoder.xml"
+#define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"

@@ -1,6 +1,6 @@
 /*
  * Wazuh Module Manager
- * Copyright (C) 2016 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 27, 2016.
  *
  * This program is a free software; you can redistribute it
@@ -112,7 +112,7 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if (!strcmp(i->tag, j->tag)) {
+            if (i->tag && j->tag && !strcmp(i->tag, j->tag)) {
 
                 mdebug1("Deleting repeated module '%s'.", j->tag);
 

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -194,9 +195,9 @@ void start_agent(int is_startup)
                     break;
                 case -1:
 #ifdef WIN32
-                    merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                    mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
 #else
-                    merror("Connection socket: %s (%d)", strerror(errno), errno);
+                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
 #endif
                 }
 

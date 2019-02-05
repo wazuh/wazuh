@@ -1,4 +1,6 @@
 #!/bin/sh
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # ossec-control        This shell script takes care of starting
 #                      or stopping ossec-hids
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
@@ -186,18 +188,18 @@ pstatus()
 }
 
 wait_pid() {
-    local i=1
+    wp_counter=1
 
     while kill -0 $1 2> /dev/null
     do
-        if [ "$i" = "$MAX_KILL_TRIES" ]
+        if [ "$wp_counter" = "$MAX_KILL_TRIES" ]
         then
             return 1
         else
             # sleep doesn't work in AIX
             # read doesn't work in FreeBSD
             sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
-            i=`expr $i + 1`
+            wp_counter=`expr $wp_counter + 1`
         fi
     done
 

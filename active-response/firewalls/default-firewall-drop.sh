@@ -4,10 +4,10 @@
 # Adds an IP to the ipsec drop list (if aix)
 # Requirements: Linux with iptables, Solaris/FreeBSD/NetBSD with ipfilter or AIX with IPSec
 # Expect: srcip
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Ahmet Ozturk (ipfilter and IPSec)
 # Author: Daniel B. Cid (iptables)
-# Author: cgzones 
-# Last modified: Oct 04, 2012
+# Author: cgzones
 
 UNAME=`uname`
 ECHO="/bin/echo"

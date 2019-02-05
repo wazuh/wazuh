@@ -1,6 +1,7 @@
 <!--
   -  Qualysguard decoders
-  -  Created by Wazuh, Inc. <support@wazuh.com>.
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
   -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
 -->
 
@@ -9,7 +10,7 @@
 	<prematch>^"\d\d\d\d\d\d,""\w+"",""\d\d/\d\d/\d\d\d\d \(Overdue\)"",""\d+.\d+.\d+.\d+""</prematch>
 </decoder>
 
-<!-- 
+<!--
 EXAMPLE WITH PORT
 "000151,""Open"",""07/02/2017 (Overdue)"",""192.168.1.128"",""443"",,""blabla5757abla"",""HJFEW7823H"",""Vulnerability - level 3"",""1235"",""SSL/TLS Server supports TLSv1.0"",""John Smith (Manager)"",""05/03/2017 at 12:27:33 (GMT-0400)"",""05/03/2017 at 12:27:33 (GMT-0400)"","
 
@@ -55,14 +56,14 @@ EXAMPLE WITHOUT NETBIOS_HOSTNAME
 	<order>qualysguard.netbios_hostname</order>
 </decoder>
 
-<!-- 
+<!--
 	- The Severity is a String with (optional) spaces that is never empty,
 	- The QID is a number which is never empty
 	- The Vulnerability title is a string with spaces and is never empty
 	- The Owner is a string which is never empty and has the following structure:
 		* Name
 		* Surname
-		* (Job) 
+		* (Job)
 		But it may dipher in other log examples.
 	- The "Modified" is a date parameter which is never  empty and has the following structure
 		* dd/mm/yyyy at hh:mm:ss (\S+)

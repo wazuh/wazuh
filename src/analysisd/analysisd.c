@@ -1,11 +1,12 @@
-/* Copyright (C) 2010-2012 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2010-2012 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- */
+*/
 
 /* ossec-analysisd
  * Responsible for correlation and log decoding
@@ -1895,7 +1896,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             /** Check the date/hour changes **/
 
             if (!DecodeSyscollector(lf,&socket)) {
-                /* We don't process syscheck events further */
+                /* We don't process syscollector events further */
                 w_free_event_info(lf);
             }
             else{

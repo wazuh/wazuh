@@ -1,4 +1,6 @@
 #! /bin/bash
+
+# Copyright (C) 2015-2019, Wazuh Inc.
 # By Spransy, Derek" <DSPRANS () emory ! edu> and Charlie Scott
 
 #####

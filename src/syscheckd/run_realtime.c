@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -126,6 +127,20 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if(check_path_type(file_name) == 2){
                 depth = depth - 1;
             }
+#ifndef WIN32
+            struct stat statbuf;
+
+            if (lstat(file_name, &statbuf) < 0) {
+                mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
+            } else {
+                if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
+                    read_dir(file_name, pos, evt, depth, 1);
+                    return 0;
+                } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
+                    return 0;
+                }
+            }
+#endif
             read_dir(file_name, pos, evt, depth, 0);
         }
 

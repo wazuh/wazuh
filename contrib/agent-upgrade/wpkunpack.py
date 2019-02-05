@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Copyright (C) 2015-2019, Wazuh Inc.
 # July 23, 2017
 
 from sys import argv, stderr, exit
