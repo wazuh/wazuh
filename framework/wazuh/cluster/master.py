@@ -449,7 +449,7 @@ class Master(server.AbstractServer):
         """
         workers_info = {key: val.to_dict() for key, val in self.clients.items()
                         if filter_node is None or filter_node == {} or key in filter_node}
-        n_connected_nodes = len(workers_info) + 1  # all workers + 1 master
+        n_connected_nodes = len(workers_info)
         if filter_node is None or self.configuration['node_name'] in filter_node:
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 
