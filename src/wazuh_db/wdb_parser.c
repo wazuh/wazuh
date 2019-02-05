@@ -430,8 +430,6 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
-    char * log;
-    long date_last;
     char * result_check; // Pass, failed, unknown
     int result;
 

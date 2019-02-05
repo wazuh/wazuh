@@ -117,7 +117,7 @@ int wdb_policy_monitoring_find(wdb_t * wdb, int pm_id, char * output) {
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%d",sqlite3_column_int(stmt, 1));
+            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 1));
             return 1;
             break;
         case SQLITE_DONE:
