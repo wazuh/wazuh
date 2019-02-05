@@ -536,4 +536,4 @@ requirements:
   condition: "all required"
   rules:
     - 'f:/etc/debian_version;'
-    - 'f:/proc/sys/kernel/ostype -> Ldf;'
+    - 'f:/proc/sys/kernel/ostype -> Linux;'
