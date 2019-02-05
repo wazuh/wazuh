@@ -1,6 +1,9 @@
 ---
 name: 'Test: Wazuh App'
 about: Test suite for the Wazuh App.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
