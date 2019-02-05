@@ -1737,7 +1737,7 @@ free_mem:
         OS_ClearNode(chld_node);
         OS_ClearXML(&xml);
     }
-    if (remove(CVE_TEMP_FILE) < 0) {
+    if (remove(CVE_TEMP_FILE) < 0 && errno != ENOENT) {
         mtdebug2(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
     }
     if (remove(CVE_FIT_TEMP_FILE) < 0) {
