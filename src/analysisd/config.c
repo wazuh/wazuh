@@ -64,7 +64,6 @@ int GlobalConf(const char *cfgfile)
     Config.ar = 0;
 
     Config.fim_ignore = NULL;
-    Config.syscheck_ignore = NULL;
     Config.white_list = NULL;
     Config.hostname_white_list = NULL;
 
@@ -194,7 +193,7 @@ cJSON *getGlobalConfig(void) {
 
         // This option contains default values. Always present in the output, including the attributes.
         cJSON *auto_ignore = cJSON_CreateObject();
-        cJSON_AddStringToObject(auto_ignore, "item", Config.syscheck_auto_ignore ? "yes" : "no");
+        cJSON_AddStringToObject(auto_ignore, "value", Config.syscheck_auto_ignore ? "yes" : "no");
         cJSON_AddNumberToObject(auto_ignore, "frequency", Config.syscheck_ignore_frequency);
         cJSON_AddNumberToObject(auto_ignore, "timeframe", Config.syscheck_ignore_time);
         cJSON_AddItemToObject(fim, "auto_ignore", auto_ignore);

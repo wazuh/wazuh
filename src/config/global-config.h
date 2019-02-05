@@ -68,9 +68,6 @@ typedef struct __Config {
     /* For the correlation */
     int memorysize;
 
-    /* List of files to ignore (syscheck) */
-    char **syscheck_ignore;
-
     /* List of files to ignore (analysisd) */
     char **fim_ignore;
 

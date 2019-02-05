@@ -20,7 +20,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
 {
     int i = 0;
     int j = 0;
-    unsigned int ign_size = 1;
     const char *xml_ignore = "ignore";
     const char *xml_auto_ignore = "auto_ignore";
     const char *xml_ignore_frequency = "frequency";
@@ -34,17 +33,6 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
         return (0);
     }
 
-    /* Get right white_size */
-    if (Config && Config->syscheck_ignore) {
-        char **ww;
-        ww = Config->syscheck_ignore;
-
-        while (*ww != NULL) {
-            ign_size++;
-            ww++;
-        }
-    }
-
     if (!node)
         return 0;
 
@@ -56,6 +44,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
+
             mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_auto_ignore, xml_auto_ignore);
 
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -105,16 +94,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
-            ign_size++;
-            Config->syscheck_ignore = (char **)
-                                      realloc(Config->syscheck_ignore, sizeof(char *)*ign_size);
-            if (!Config->syscheck_ignore) {
-                merror(MEM_ERROR, errno, strerror(errno));
-                return (OS_INVALID);
-            }
-
-            os_strdup(node[i]->content, Config->syscheck_ignore[ign_size - 2]);
-            Config->syscheck_ignore[ign_size - 1] = NULL;
+            // Deprecated option that should do nothing
         }
         i++;
     }
@@ -142,9 +122,19 @@ int Read_FIM(XML_NODE node, void *configp)
         return (0);
     }
 
-
     /* Ignored files/directories list size */
     unsigned int fim_ign_size = 1;
+
+    /* Get right white_size */
+    if (Config && Config->fim_ignore) {
+        char **ww;
+        ww = Config->fim_ignore;
+
+        while (*ww != NULL) {
+            fim_ign_size++;
+            ww++;
+        }
+    }
 
     int i = 0;
     int j = 0;
@@ -158,18 +148,22 @@ int Read_FIM(XML_NODE node, void *configp)
             return (OS_INVALID);
 
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
-             if (Config) {
-                 fim_ign_size++;
-                 Config->fim_ignore = (char **)
-                                       realloc(Config->fim_ignore, sizeof(char *)*fim_ign_size);
-                 if (!Config->fim_ignore) {
-                     merror(MEM_ERROR, errno, strerror(errno));
-                     return (OS_INVALID);
-                 }
 
-                 os_strdup(node[i]->content, Config->fim_ignore[fim_ign_size - 2]);
-                 Config->fim_ignore[fim_ign_size - 1] = NULL;
+            if (node[i]->attributes && node[i]->attributes[0]) {
+                merror(XML_INVATTR, node[i]->attributes[0], node[i]->element);
+                mdebug1("Ignore option at decoder level doesn't accept regexes.");
+                return (OS_INVALID);
             }
+
+            fim_ign_size++;
+            Config->fim_ignore = (char **)
+                                  realloc(Config->fim_ignore, sizeof(char *)*fim_ign_size);
+            if (!Config->fim_ignore) {
+                merror(MEM_ERROR, errno, strerror(errno));
+                return (OS_INVALID);
+            }
+            os_strdup(node[i]->content, Config->fim_ignore[fim_ign_size - 2]);
+            Config->fim_ignore[fim_ign_size - 1] = NULL;
 
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             if (strcmp(node[i]->content, "yes") == 0) {
@@ -821,15 +815,6 @@ void config_free(_Config *config) {
 
     if (config->custom_alert_output_format) {
         free(config->custom_alert_output_format);
-    }
-
-    if (config->syscheck_ignore) {
-        int i = 0;
-        while (config->syscheck_ignore[i]) {
-            free(config->syscheck_ignore[i]);
-            i++;
-        }
-        free(config->syscheck_ignore);
     }
 
     if (config->white_list) {
