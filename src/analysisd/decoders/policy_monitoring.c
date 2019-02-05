@@ -680,7 +680,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(name) {
-        fillData(lf, "pm.profile", name->valuestring);
+        fillData(lf, "pm.policy", name->valuestring);
     }
 
     if(id) {
@@ -787,7 +787,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(old_result) {
-        fillData(lf, "pm.check.old_result", old_result);
+        fillData(lf, "pm.check.previous_result", old_result);
     }
 }
 
