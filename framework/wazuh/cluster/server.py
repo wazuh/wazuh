@@ -105,7 +105,10 @@ class AbstractServerHandler(c_common.Handler):
         :return:
         """
         if self.name:
-            self.logger.info("The client '{}' closed the connection".format(self.name))
+            if exc is None:
+                self.logger.info("The client '{}' closed the connection".format(self.name))
+            else:
+                self.logger.error("Error during connection with '{}': {}".format(self.name, exc))
             del self.server.clients[self.name]
         else:
             if exc is not None:
