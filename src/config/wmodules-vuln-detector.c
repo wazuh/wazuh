@@ -170,12 +170,12 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         upd->dist_tag = vu_feed_tag[FEED_NVD];
         upd->dist_ext = vu_feed_ext[FEED_NVD];
         upd->dist_ref = FEED_NVD;
-        os_calloc(1, sizeof(update_node), upd_list[FEED_CPED]);
-        upd_list[FEED_CPED]->dist_tag = vu_feed_tag[FEED_CPED];
-        upd_list[FEED_CPED]->dist_ext = vu_feed_ext[FEED_CPED];
-        upd_list[FEED_CPED]->dist_ref = FEED_CPED;
+        os_calloc(1, sizeof(update_node), upd_list[CPE_NVD]);
+        upd_list[CPE_NVD]->dist_tag = vu_feed_tag[FEED_CPED];
+        upd_list[CPE_NVD]->dist_ext = vu_feed_ext[FEED_CPED];
+        upd_list[CPE_NVD]->dist_ref = FEED_CPED;
     } else {
-        merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
+        merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
         goto end;
     }
@@ -259,10 +259,6 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     os_calloc(1, sizeof(wm_vuldet_t), vulnerability_detector);
     vulnerability_detector->flags.run_on_start = 1;
     vulnerability_detector->flags.enabled = 1;
-    vulnerability_detector->flags.u_flags.update = 0;
-    vulnerability_detector->flags.u_flags.update_ubuntu = 0;
-    vulnerability_detector->flags.u_flags.update_debian = 0;
-    vulnerability_detector->flags.u_flags.update_redhat = 0;
     vulnerability_detector->ignore_time = VU_DEF_IGNORE_TIME;
     vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
     vulnerability_detector->agents_software = NULL;
@@ -307,8 +303,8 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             if (version = strchr(feed, '-'), version) {
                 *version = '\0';
                 version++;
-            } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT])) {
-                merror("Invalid OS for tag '%s' at module '%s'.", XML_FEED, WM_VULNDETECTOR_CONTEXT.name);
+            } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT]) && strcmp(feed, vu_feed_tag[FEED_NVD])) {
+                merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -336,6 +332,8 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                             vulnerability_detector->flags.u_flags.update_ubuntu = 1;
                         } else if (!strcmp(updates[os_index]->dist, vu_feed_tag[FEED_DEBIAN])) {
                             vulnerability_detector->flags.u_flags.update_debian = 1;
+                        } else if (!strcmp(updates[os_index]->dist, vu_feed_tag[FEED_NVD])) {
+                            vulnerability_detector->flags.u_flags.update_nvd = 1;
                         }
                     } else {
                         merror("Invalid content for '%s' option at module '%s'", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
@@ -592,7 +590,8 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
     if (vulnerability_detector->flags.u_flags.update_ubuntu    ||
         vulnerability_detector->flags.u_flags.update_debian    ||
-        vulnerability_detector->flags.u_flags.update_redhat) {
+        vulnerability_detector->flags.u_flags.update_redhat    ||
+        vulnerability_detector->flags.u_flags.update_nvd) {
         vulnerability_detector->flags.u_flags.update = 1;
     }
 

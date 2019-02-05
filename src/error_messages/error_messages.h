@@ -324,6 +324,8 @@
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
+#define VU_UNCOMPRESS_ERROR         "(5497): Could not uncompress the file downloaded from '%s'."
+#define VU_CPES_INSERT_ERROR        "(5499): Could not insert the CPEs."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
