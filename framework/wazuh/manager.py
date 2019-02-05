@@ -326,19 +326,50 @@ def restart():
 
     :return: Confirmation message.
     """
+    # execq socket path
+    socket_path = common.EXECQ
+    # msg for restarting Wazuh manager
+    msg = 'api-restart-ossec '
+    # initialize socket
+    if exists(socket_path):
+        try:
+            conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            conn.connect(socket_path)
+        except socket.error:
+            raise WazuhException(1902)
+    else:
+        raise WazuhException(1901)
 
     try:
-        # initialize socket
-        socket_path = common.EXECQ
-        conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        conn.connect(socket_path)
-        # send msg to socket
-        #msg = 'restart-ossec0 ossec-monitord -'
-        msg = 'api-restart-ossec '
         conn.send(msg.encode())
+    except socket.error:
+        raise WazuhException(1014)
+    finally:
+        conn.close()
+
+    try:
+        from time import sleep
+        sleep(10)
+        tmp_file = join(common.ossec_path, 'tmp/api_restart')
+        confirmation = 'KO'
+        with open(tmp_file) as f:
+            confirmation = f.readline()
+    except IOError:
+        pass
+    except Exception:
+        raise WazuhException(1000)
+
+    try:
+        remove(tmp_file)
+    except FileNotFoundError:
+        pass
+    except PermissionError:
+        raise WazuhException(1903)
+
+    if 'OK' in confirmation:
         return "Manager was restarted successfully"
-    except Exception as e:
-        raise WazuhException(2008)
+    else:
+        return "Manager could not be restarted"
 
 
 def _check_wazuh_xml(files):

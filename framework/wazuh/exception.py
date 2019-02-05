@@ -142,6 +142,11 @@ class WazuhException(Exception):
         1801: '\'path\' parameter is wrong',
 
         # Manager:
+        1900: 'Error restarting manager',
+        1901: '\'execq\' socket has not been created',
+        1902: 'Could not connect to \'execq\' socket',
+        1903: 'Error deleting temporary file from API',
+
 
         # Database:
         2000: 'No such database file',
@@ -152,7 +157,6 @@ class WazuhException(Exception):
         2005: 'Could not connect to wdb socket',
         2006: 'Received JSON from Wazuh DB is not correctly formatted',
         2007: 'Error retrieving data from Wazuh DB',
-        2008: 'Error restarting manager',
 
         # Cluster
         3000: 'Cluster',
