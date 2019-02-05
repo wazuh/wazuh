@@ -26,9 +26,7 @@ int test_search_and_replace(){
 
     for (i = 0; tests[i][0] != NULL ; i++) {
         char *result = searchAndReplace(tests[i][0], tests[i][1], tests[i][2]);
-        if(strcmp(result, tests[i][3])){
-            return 0;
-        }
+        w_assert_str_eq(result, tests[i][3]);
         free(result);
     }
     return 1;
