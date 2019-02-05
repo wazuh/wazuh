@@ -77,11 +77,11 @@ class AbstractClientManager:
                                     ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
-                self.logger.error("Could not connect to server. Trying again in 10 seconds.")
+                self.logger.error("Could not connect to master. Trying again in 10 seconds.")
                 await asyncio.sleep(10)
                 continue
             except OSError as e:
-                self.logger.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
+                self.logger.error("Could not connect to master: {}. Trying again in 10 seconds.".format(e))
                 await asyncio.sleep(10)
                 continue
 
@@ -127,10 +127,10 @@ class AbstractClient(common.Handler):
         def connection_result(future_result):
             response_msg = future_result.result()[0]
             if response_msg.startswith(b'Error'):
-                self.logger.error("Could not connect to server: {}.".format(response_msg))
+                self.logger.error("Could not connect to master: {}.".format(response_msg))
                 self.transport.close()
             else:
-                self.logger.info("Sucessfully connected to server.")
+                self.logger.info("Sucessfully connected to master.")
                 self.connected = True
 
         self.transport = transport
@@ -145,7 +145,7 @@ class AbstractClient(common.Handler):
                     was aborted or closed by this side of the connection.
         """
         if exc is None:
-            self.logger.info('The server closed the connection')
+            self.logger.info('The master closed the connection')
         else:
             self.logger.error("Connection closed due to an unhandled error: {}".format(exc))
 
@@ -197,7 +197,7 @@ class AbstractClient(common.Handler):
                         self.transport.close()
                 else:
                     n_attempts = 0  # set failed attempts to 0 when the last one was successful
-                keep_alive_logger.info(result)
+                keep_alive_logger.info(result.decode())
             await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
 
     async def performance_test_client(self, test_size):

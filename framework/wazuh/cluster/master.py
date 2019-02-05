@@ -285,19 +285,19 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Analyzing worker integrity: Files checked. There are KO files.")
 
             # Compress data: master files (only KO shared and missing)
-            logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
+            logger.info("Analyzing worker integrity: Files checked. Compressing KO files.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
-            logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")
+            logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             task_name = await self.send_request(command=b'sync_m_c', data=b'')
             if task_name.startswith(b'Error'):
-                logger.error(task_name)
+                logger.error(task_name.decode())
                 return task_name
 
             result = await self.send_file(compressed_data)
             if result.startswith(b'Error'):
-                logger.error(result)
+                logger.error(result.decode())
                 return result
 
             result = await self.send_request(command=b'sync_m_c_e',
@@ -305,6 +305,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
+        logger.info("Finished integrity synchronization.")
         return result
 
     def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):

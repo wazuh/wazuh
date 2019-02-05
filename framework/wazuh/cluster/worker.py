@@ -33,7 +33,7 @@ class SyncWorker:
     async def sync(self):
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
         if result.startswith(b'Error'):
-            self.logger.error(b'Error asking for permission: ' + result)
+            self.logger.error('Error asking for permission: {}'.format(result.decode()))
             return
         elif result == b'False':
             self.logger.info('Master didnt grant permission to synchronize')
@@ -49,7 +49,7 @@ class SyncWorker:
         self.logger.info("Sending compressed file to master")
         result = await self.worker.send_file(filename=compressed_data_path)
         if result.startswith(b'Error'):
-            self.logger.error(b"Error sending files information: " + result)
+            self.logger.error("Error sending files information: {}".format(result.decode()))
             result = await self.worker.send_request(command=self.cmd+b'_e', data=task_id + b' ' + b'Error')
         else:
             self.logger.info("Worker files sent to master.")
@@ -57,7 +57,7 @@ class SyncWorker:
                 command=self.cmd+b'_e', data=task_id + b' ' + compressed_data_path.replace(common.ossec_path, '').encode())
 
         if result.startswith(b'Error'):
-            self.logger.error(result)
+            self.logger.error(result.decode())
 
 
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
@@ -241,7 +241,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 class Worker(client.AbstractClientManager):
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs, tag="Worker manager")
+        super().__init__(**kwargs, tag="Worker")
         self.cluster_name = self.configuration['name']
         self.version = metadata.__version__
         self.node_type = self.configuration['node_type']

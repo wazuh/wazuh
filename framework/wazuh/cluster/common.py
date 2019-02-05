@@ -340,14 +340,14 @@ class Handler(asyncio.Protocol):
         client = client.decode()
         res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
         if res.startswith(b'Error'):
-            error_msg = "Error forwarding string to local client: {}".format(res)
+            error_msg = "Error forwarding string to local client: {}".format(res.decode())
             self.logger.error(error_msg)
             res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
         else:
             res = await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res, b'dapi_err')
 
             if res.startswith(b'Error'):
-                error_msg = "Error sending API response to local client: {}".format(res)
+                error_msg = "Error sending API response to local client: {}".format(res.decode())
                 self.logger.error(error_msg)
                 res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
 
