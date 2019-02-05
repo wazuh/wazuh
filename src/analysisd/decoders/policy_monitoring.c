@@ -373,7 +373,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                
                 if(strcmp(wdb_response,result->valuestring)) {
                     FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
-                    JSON_Decoder_Exec(lf,NULL);
                 }
                 if (result_event < 0)
                 {
@@ -385,7 +384,6 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
                 if(strcmp(wdb_response,result->valuestring)) {
                     FillCheckEventInfo(lf,scan_id,id,name,title,cis_control,description,rationale,remediation,default_value,compliance,reference,file,directory,process,registry,result);
-                    JSON_Decoder_Exec(lf,NULL);
                 }
 
                 if (result_event < 0)
@@ -469,7 +467,6 @@ static void HandleGlobalInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 break;
         }
 
-        JSON_Decoder_Exec(lf,NULL);
     }
 }
 

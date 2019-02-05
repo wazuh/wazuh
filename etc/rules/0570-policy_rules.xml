@@ -9,7 +9,7 @@
 
   <rule id="19001" level="3">
     <if_sid>19000</if_sid>
-    <field name="type">^summary</field>
+    <field name="pm.type">^summary</field>
     <options>no_full_log</options>
     <description>Policy monitoring summary: Passed checks: $(pm.passed) Failed checks: $(pm.failed) Score: $(pm.score)</description>
   </rule>
