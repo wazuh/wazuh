@@ -21,7 +21,8 @@ int test_blowfish() {
     OS_BF_Str(string, buffer1, key, buffersize, OS_ENCRYPT);
     OS_BF_Str(buffer1, buffer2, key, buffersize, OS_DECRYPT);
 
-    return (!strcmp(buffer2, string));
+    w_assert_str_eq(buffer2, string);
+    return 1;
 }
 
 int test_md5_string() {
@@ -31,7 +32,8 @@ int test_md5_string() {
 
     OS_MD5_Str(string, -1, buffer);
 
-    return (!strcmp(buffer, string_md5));
+    w_assert_str_eq(buffer, string_md5);
+    return 1;
 }
 
 int test_md5_file() {
@@ -47,27 +49,35 @@ int test_md5_file() {
     close(fd);
 
     os_md5 buffer;
+    w_assert_int_eq(OS_MD5_File(file_name, buffer, OS_TEXT), 0);
 
-    if(OS_MD5_File(file_name, buffer, OS_TEXT) != 0){
-        return 0;
-    }
-
-    return (!strcmp(buffer, string_md5));
+    w_assert_str_eq(buffer, string_md5);
+    return 1;
 }
 
 int test_md5_file_fail() {
     os_md5 buffer;
-    return (OS_MD5_File("not_existing_file", buffer, OS_TEXT) != -1);
+    w_assert_int_ne(OS_MD5_File("not_existing_file", buffer, OS_TEXT), -1);
+    return 1;
 }
 
 int test_sha1_string() {
     const char *string = "teststring";
     const char *string_sha1 = "b8473b86d4c2072ca9b08bd28e373e8253e865c4";
+
+    /* create tmp file */
+    char file_name[256];
+    strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
+    int fd = mkstemp(file_name);
+
+    write(fd, string, strlen(string));
+    close(fd);
+
     os_sha1 buffer;
+    w_assert_int_eq(OS_SHA1_File(file_name, buffer, OS_TEXT), 0);
 
-    OS_SHA1_Str(string, -1, buffer);
-
-    return (!strcmp(buffer, string_sha1));
+    w_assert_str_eq(buffer, string_sha1);
+    return 1;
 }
 
 int test_sha1_file() {
@@ -83,16 +93,16 @@ int test_sha1_file() {
     close(fd);
 
     os_sha1 buffer;
-    if(OS_SHA1_File(file_name, buffer, OS_TEXT) != 0){
-        return 0;
-    }
+    w_assert_int_eq(OS_SHA1_File(file_name, buffer, OS_TEXT), 0);
 
-    return (!strcmp(buffer, string_sha1));
+    w_assert_str_eq(buffer, string_sha1);
+    return 1;
 }
 
 int test_sha1_file_fail() {
     os_sha1 buffer;
-    return (OS_SHA1_File("not_existing_file", buffer, OS_TEXT) != -1);
+    w_assert_int_ne(OS_SHA1_File("not_existing_file", buffer, OS_TEXT), -1);
+    return 1;
 }
 
 int test_md5_sha1_file() {
@@ -111,11 +121,11 @@ int test_md5_sha1_file() {
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    if(OS_MD5_SHA1_File(file_name, NULL, md5buffer, sha1buffer, OS_TEXT) != 0){
-        return 0;
-    }
+    w_assert_int_eq(OS_MD5_SHA1_File(file_name, NULL, md5buffer, sha1buffer, OS_TEXT), 0);
 
-    return (!strcmp(md5buffer, string_md5) && !strcmp(sha1buffer, string_sha1));
+    w_assert_str_eq(md5buffer, string_md5);
+    w_assert_str_eq(sha1buffer, string_sha1);
+    return 1;
 }
 
 int test_md5_sha1_cmd_file() {
@@ -134,18 +144,19 @@ int test_md5_sha1_cmd_file() {
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    if(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT) != 0){
-        return 0;
-    }
+    w_assert_int_eq(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT), 0);
 
-    return (!strcmp(md5buffer, string_md5) && !strcmp(sha1buffer, string_sha1));
+    w_assert_str_eq(md5buffer, string_md5);
+    w_assert_str_eq(sha1buffer, string_sha1);
+    return 1;
 }
 
 int test_md5_sha1_cmd_file_fail() {
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    return (OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer, OS_TEXT) != -1);
+    w_assert_int_ne(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer, OS_TEXT), -1);
+    return 1;
 }
 
 int main(void) {
