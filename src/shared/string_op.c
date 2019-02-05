@@ -514,3 +514,67 @@ int wstr_end(char *str, const char *str_end) {
     size_t str_end_len = strlen(str_end);
     return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
 }
+
+
+void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str) { // Add to string_op.c
+    char *new_delim = replace_delim ? replace_delim : delim;
+    size_t new_delim_size = strlen(replace_delim ? replace_delim : delim);
+    int count = 0;
+    int splitted_count;
+    char *str_cpy, *str_cpy_ref;
+    char *str_it;
+    char **acc_strs;
+
+    if (occurrences < 1) {
+        return;
+    }
+
+    os_strdup(str, str_cpy);
+    str_cpy_ref = str_cpy;
+    str_it = strtok(str_cpy, delim);
+
+    os_calloc(occurrences, sizeof(char *), acc_strs);
+
+    for (splitted_count = 0; *splitted_str && (*splitted_str)[splitted_count]; splitted_count++);
+
+    for (; str_it && *str_it; count++) {
+        os_strdup(str_it, acc_strs[count]);
+
+        if (count == occurrences - 1) {
+            // Add a new term
+            size_t term_size;
+            char *new_term_it;
+
+            for (count = term_size = 0; count < occurrences; count++) {
+                term_size += strlen(acc_strs[count]);
+            }
+
+            term_size += (occurrences - 1) * new_delim_size + 1;
+
+            os_realloc(*splitted_str, (splitted_count + 2) * sizeof(char *), *splitted_str);
+            os_calloc(term_size, sizeof(char), (*splitted_str)[splitted_count]);
+            (*splitted_str)[splitted_count + 1] = NULL;
+
+            for (count = 0, new_term_it = (*splitted_str)[splitted_count]; count < occurrences; count++) {
+                if (count) {
+                    strncpy(new_term_it, new_delim, new_delim_size);
+                    new_term_it += new_delim_size;
+                }
+                strncpy(new_term_it, acc_strs[count], strlen(acc_strs[count]));
+                new_term_it += strlen(acc_strs[count]);
+                os_free(acc_strs[count]);
+            }
+
+            splitted_count++;
+            count = -1;
+        }
+        str_it = strtok(NULL, delim);
+    }
+
+    // Remove residual terms (they are discarded)
+    for (count = 0; acc_strs[count]; count++) {
+        free(acc_strs[count]);
+    }
+    free(acc_strs);
+    free(str_cpy_ref);
+}

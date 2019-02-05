@@ -35,6 +35,14 @@ char *convert_windows_string(LPCWSTR string);
 // Convert double to string
 #define w_double_str(x) ({char *do_str; os_calloc(20, sizeof(char),do_str); snprintf(do_str, 19, "%f", x); do_str;})
 
+// Replace a character in a string
+#define wchr_replace(x, y, z) { char *x_it; for (x_it = x; *x_it != '\0'; x_it++) if (*x_it == y) *x_it = z; }
+
+// Count the words of a string
+#define w_word_counter(x) ({ int w_count = 0; char *w_it = x; \
+    while (*w_it) { if (*w_it != ' ') { w_count++; while (*w_it != ' ' && *w_it != '\0') w_it++; continue;} w_it++;} w_count;})
+
+
 /* Trim the CR and/or LF from the last positions of a string */
 void os_trimcrlf(char *str) __attribute__((nonnull));
 
@@ -89,5 +97,12 @@ int wm_strcat(char **str1, const char *str2, char sep);
 
 // Check if str ends in str_end
 int wstr_end(char *str, const char *str_end);
+
+/* Split a string within splitted_str
+ *  - delim: Words delimiter
+ *  - occurrences: Words by division
+ *  - replace_delim: (Optional) Replace the delimiter with a new one
+*/
+void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
 
 #endif
