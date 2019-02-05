@@ -105,17 +105,17 @@ void *wm_control_main(wm_control_t control){
 
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
 
-    w_create_thread(send_ip(),NULL);
+    w_create_thread(send_ip, NULL);
 
     while(1){
 
         if(reporting_ip){
-            mtinfo(WM_CONTROL_LOGTAG, "Refreshing IP");
+            mtdebug2(WM_CONTROL_LOGTAG, "Refreshing IP");
             free(reporting_ip);
         }
 
         reporting_ip = getPrimaryIP();
-        mtinfo(WM_CONTROL_LOGTAG, "Reporting IP: %s", reporting_ip);
+        mtdebug1(WM_CONTROL_LOGTAG, "Reporting IP: %s", reporting_ip);
 
 
         sleep(30);

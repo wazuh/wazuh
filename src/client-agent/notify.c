@@ -130,7 +130,7 @@ void run_notify()
             return;
         }
     }
-    
+
     os_calloc(16,sizeof(char),reporting_ip);
     if(sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128), sock  < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
@@ -151,7 +151,7 @@ void run_notify()
             }
         }
     }
-    
+
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
