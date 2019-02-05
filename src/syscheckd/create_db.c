@@ -181,7 +181,6 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     char *buf;
     syscheck_node *s_node;
     struct stat statbuf;
-    struct stat statbuf_lnk;
     char str_size[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
     char *alert_msg = NULL;
@@ -199,6 +198,9 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     char *hash_file_name;
     char *file_inode;
     char *inode;
+#endif
+#if defined (EVENTCHANNEL_SUPPORT) || !defined(WIN32)
+    struct stat statbuf_lnk;
 #endif
 
     opts = syscheck.opts[dir_position];
@@ -1334,17 +1336,29 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
         }
 
         real_path[strlen(real_path) - 1] = '\0';
+#ifdef WIN32
         int pos;
-
+#endif
         if(syscheck.filerestrict[dir_position]) {
+#ifdef WIN32
             pos = dump_syscheck_entry(&syscheck,
-                                    real_path,
-                                    opts,
-                                    0,
-                                    syscheck.filerestrict[dir_position]->raw,
-                                    max_depth, syscheck.tag[dir_position],
-                                    -1);
+                                real_path,
+                                opts,
+                                0,
+                                syscheck.filerestrict[dir_position]->raw,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
+#else
+            dump_syscheck_entry(&syscheck,
+                                real_path,
+                                opts,
+                                0,
+                                syscheck.filerestrict[dir_position]->raw,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
+#endif
         } else {
+#ifdef WIN32
             pos = dump_syscheck_entry(&syscheck,
                                 real_path,
                                 opts,
@@ -1352,6 +1366,15 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
                                 NULL,
                                 max_depth, syscheck.tag[dir_position],
                                 -1);
+#else
+            dump_syscheck_entry(&syscheck,
+                                real_path,
+                                opts,
+                                0,
+                                NULL,
+                                max_depth, syscheck.tag[dir_position],
+                                -1);
+#endif
         }
         /* Check for real time flag */
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
