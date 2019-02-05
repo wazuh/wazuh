@@ -215,7 +215,6 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
         time_end = time(NULL);
-        mtinfo(WM_POLICY_MONITORING_LOGTAG, "Evaluation finished.");
 
         /* Send scan ending message */
         cJSON *end_scan = cJSON_CreateObject();
@@ -224,7 +223,7 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
         cJSON_AddNumberToObject(end_scan, "time", (long)time_end);
         cJSON_AddNumberToObject(end_scan, "scan_id", id);
         wm_policy_monitoring_send_alert(data,end_scan);
-        minfo("Ending policy monitoring scan.");
+        minfo("Ended policy monitoring scan.");
         cJSON_Delete(end_scan);
 
         if (data->scan_day) {
@@ -337,6 +336,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy);
         wm_policy_monitoring_reset_summary();
         w_del_plist(plist);
+        mtinfo(WM_POLICY_MONITORING_LOGTAG, "Evaluation finished for policy '%s'.",data->profile[i]);
 
 next:
         if(fp){
