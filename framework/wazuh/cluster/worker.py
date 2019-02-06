@@ -166,7 +166,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         def overwrite_or_create_files(filename, data):
             full_filename_path = common.ossec_path + filename
             if os.path.basename(filename) == 'client.keys':
-                cluster._check_removed_agents(full_filename_path)
+                cluster._check_removed_agents("{}{}".format(zip_path, filename))
 
             if data['merged']:  # worker nodes can only receive agent-groups files
                 if data['merge-type'] == 'agent-info':
