@@ -285,7 +285,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Analyzing worker integrity: Files checked. There are KO files.")
 
             # Compress data: master files (only KO shared and missing)
-            logger.info("Analyzing worker integrity: Files checked. Compressing KO files.")
+            logger.debug("Analyzing worker integrity: Files checked. Compressing KO files.")
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
