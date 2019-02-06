@@ -206,15 +206,16 @@ int main(int argc, char **argv)
                 sender_ip = optarg;
                 break;
             case 'i':
-		if(optarg){
-		    merror_exit("-%c takes no argument",c);
-		}
                 use_src_ip = 1;
                 break;
             default:
                 help_agent_auth();
                 break;
         }
+    }
+	
+    if (optind < argc) {
+        mwarn("Extra arguments detected. They will be ignored.");
     }
 
     if (debug_level == 0) {
