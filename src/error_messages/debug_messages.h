@@ -56,5 +56,7 @@
 #define VU_ENDING_UPDATE      "(5494): The update of the feeds ended successfully."
 #define VU_DOWNLOAD_FAIL      "(5495): The download can not be completed. Retrying in %d seconds."
 #define VU_INS_CPES_SEC       "(5498): Inserting CPEs section..."
+#define VU_AGENT_CPE_RECV     "(5507): The CPE '%s' from the agent %s was received from wazuh-db."
+#define VU_CPE_GENERATED      "(5509): CPE generated from vendor '%s' and product '%s': '%s'."
 
 #endif

@@ -326,6 +326,14 @@
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
 #define VU_UNCOMPRESS_ERROR         "(5497): Could not uncompress the file downloaded from '%s'."
 #define VU_CPES_INSERT_ERROR        "(5499): Could not insert the CPEs."
+#define VU_CPE_INDEX_GET_ERROR      "(5500): Could not get the lower CPE index."
+#define VU_AGENT_CPE_EXT_ERROR      "(5501): Could not extract the CPE list from the agent %s."
+#define VU_INV_WAZUHDB_RES          "(5502): Invalid response from wazuh-db: '%s'."
+#define VU_AGENT_CPE_UPD_ERROR      "(5503): Could not update the CPE list from the agent %s."
+#define VU_AGENT_CPE_GEN_ERROR      "(5504): Could not generate the CPE inventory from the agent %s."
+#define VU_AGENT_CPE_PARSE_ERROR    "(5505): Could not parse the CPE '%s' from the agent %s. It will be recomputed."
+#define VU_GEN_SEARCH_TERMS_ERROR   "(5506): Could not generate the search terms for %s:%s:%s:%s in the agent %s."
+#define VU_CPE_PARSING_ERROR        "(5508): Could not parse the '%s' term of '%s'."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
