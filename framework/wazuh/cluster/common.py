@@ -147,7 +147,7 @@ class Handler(asyncio.Protocol):
         # stores incoming string information from string commands
         self.in_str = {}
         # maximum message length to send in a single request
-        self.request_chunk = 524288
+        self.request_chunk = 5242880
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk*2)
         # object use to encrypt and decrypt requests
@@ -256,6 +256,9 @@ class Handler(asyncio.Protocol):
         self.box[msg_counter] = response
         try:
             self.push(self.msg_build(command, msg_counter, data))
+        except MemoryError:
+            self.request_chunk //= 2
+            return b"Error sending request: Memory error. Request chunk size divided by 2."
         except Exception as e:
             return "Error sending request: {}".format(e).encode()
         try:
