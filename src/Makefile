@@ -797,10 +797,14 @@ else
 ifneq (${uname_S},Linux)
 CPYTHON := src_cpython
 else
-ifneq (,$(filter ${uname_P},x86_64 amd64))
+cpu_arch := ${uname_P}
+ifneq (,$(filter ${cpu_arch},unknown Unknown))
+	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
+ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 CPYTHON := cpython_amd64
 else
-ifneq (,$(filter ${uname_P},i386 i686))
+ifneq (,$(filter ${cpu_arch},i386 i686))
 CPYTHON := cpython_i386
 else
 CPYTHON := src_cpython
