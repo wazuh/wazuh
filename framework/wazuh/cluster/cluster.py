@@ -688,7 +688,7 @@ def remove_bulk_agents(agent_ids_list):
         return  # the function doesn't make sense if there is no agents to remove
 
     logger.info("Removing files from {} agents".format(len(agent_ids_list)))
-    logger.info("Agents to remove: {}".format(', '.join(agent_ids_list)))
+    logger.debug("Agents to remove: {}".format(', '.join(agent_ids_list)))
     # the agents must be removed in groups of 997: 999 is the limit of SQL variables per query. Limit and offset are
     # always included in the SQL query, so that leaves 997 variables as limit.
     for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
