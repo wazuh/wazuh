@@ -986,7 +986,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             /* Check for duplicated IP */
 
-            if (config.flags.use_source_ip || use_client_ip) {
+            if (strcmp(srcip, "any") != 0 && (config.flags.use_source_ip || use_client_ip)) {
                 if (index = OS_IsAllowedIP(&keys, srcip), index >= 0) {
                     if (config.flags.force_insert && (antiquity = OS_AgentAntiquity(keys.keyentries[index]->name, keys.keyentries[index]->ip->ip), antiquity >= config.force_time || antiquity < 0)) {
                         id_exist = keys.keyentries[index]->id;
