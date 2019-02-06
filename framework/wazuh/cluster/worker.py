@@ -10,6 +10,7 @@ from typing import Tuple, Dict, Callable
 from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata
 from wazuh import common
+from wazuh.exception import WazuhException
 from wazuh.cluster.dapi import dapi
 
 
@@ -160,27 +161,27 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             self.logger.info("Updating files: End.")
 
     def update_master_files_in_worker(self, ko_files: Dict, zip_path: str):
-        def overwrite_or_create_files(filename, data, content=None):
-            # Cluster items information: write mode and umask
-            cluster_item_key = data['cluster_item_key']
-            w_mode = cluster_items[cluster_item_key]['write_mode']
-            umask = cluster_items[cluster_item_key]['umask']
+        def overwrite_or_create_files(filename, data):
+            full_filename_path = common.ossec_path + filename
+            if os.path.basename(filename) == 'client.keys':
+                cluster._check_removed_agents(full_filename_path)
 
-            if content is None:
-                # Full path
-                my_zip_path = "{}/{}".format(zip_path, filename)
-                # File content and time
-                with open(my_zip_path, 'rb') as f:
-                    file_data = f.read()
+            if data['merged']:  # worker nodes can only receive agent-groups files
+                if data['merge-type'] == 'agent-info':
+                    self.logger.warning("Agent status received in a worker node")
+                    raise WazuhException(3011)
+
+                for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
+                    full_unmerged_name = common.ossec_path + name
+                    with open(full_unmerged_name, 'wb') as f:
+                        f.write(content)
+                    os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
             else:
-                file_data = content
+                os.rename("{}{}".format(zip_path, filename), full_filename_path)
+                os.chown(full_filename_path, common.ossec_uid, common.ossec_gid)
+                os.chmod(full_filename_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
 
-            tmp_path = '/queue/cluster/tmp_files'
-
-            cluster._update_file(file_path=filename, new_content=file_data, umask_int=umask, w_mode=w_mode,
-                                 tmp_dir=tmp_path, whoami='worker')
-
-        cluster_items, errors = cluster.get_cluster_items()['files'], {'shared': 0, 'missing': 0, 'extra': 0}
+        errors = {'shared': 0, 'missing': 0, 'extra': 0}
         for filetype, files in ko_files.items():
             if filetype == 'shared' or filetype == 'missing':
                 self.logger.debug("Received {} {} files to update from master.".format(len(ko_files[filetype]),
@@ -188,12 +189,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for filename, data in files.items():
                     try:
                         self.logger.debug2("Processing file {}".format(filename))
-                        if data['merged']:
-                            for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path,
-                                                                               filename):
-                                overwrite_or_create_files(name, data, content)
-                        else:
-                            overwrite_or_create_files(filename, data)
+                        overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
                         self.logger.error("Error processing {} file '{}': {}".format(filetype, filename, e))
@@ -217,12 +213,12 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         continue
 
         directories_to_check = (os.path.dirname(f) for f, data in ko_files['extra'].items()
-                                if cluster_items[data['cluster_item_key']]['remove_subdirs_if_empty'])
+                                if self.cluster_items['files'][data['cluster_item_key']]['remove_subdirs_if_empty'])
         for directory in directories_to_check:
             try:
                 full_path = common.ossec_path + directory
                 dir_files = set(os.listdir(full_path))
-                if not dir_files or dir_files.issubset(set(cluster_items['excluded_files'])):
+                if not dir_files or dir_files.issubset(set(self.cluster_items['files']['excluded_files'])):
                     shutil.rmtree(full_path)
             except Exception as e:
                 errors['extra'] += 1

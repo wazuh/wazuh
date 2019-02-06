@@ -12,7 +12,7 @@ from wazuh.database import Connection
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
+from os import path, listdir, stat, chmod, chown, remove, unlink
 from subprocess import check_output, check_call, CalledProcessError
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
@@ -71,7 +71,8 @@ def get_cluster_items():
     try:
         with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
             cluster_items = json.load(f)
-        list(map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values())))
+        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
+                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
@@ -283,90 +284,6 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     return ko_files, zip_dir
 
 
-def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None,
-                 tmp_dir='/queue/cluster',whoami='master', agents=None):
-
-    dst_path = common.ossec_path + file_path
-    if path.basename(dst_path) == 'client.keys':
-        if whoami =='worker':
-            _check_removed_agents(new_content.decode().split('\n'))
-        else:
-            logger.warning("[Cluster] Client.keys file received in a master node.")
-            raise WazuhException(3007)
-
-    is_agent_info  = 'agent-info' in dst_path
-    is_agent_group = 'agent-groups' in dst_path
-    if is_agent_info or is_agent_group:
-        if whoami =='master':
-            agent_names, agent_ids = agents
-
-            if is_agent_info:
-                agent_name_re = re.match(r'(^.+)-(.+)$', path.basename(file_path))
-                agent_name = agent_name_re.group(1) if agent_name_re else path.basename(file_path)
-                if agent_name not in agent_names:
-                    raise WazuhException(3010, agent_name)
-            elif is_agent_group:
-                agent_id = path.basename(file_path)
-                if agent_id not in agent_ids:
-                    raise WazuhException(3010, agent_id)
-
-            try:
-                mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
-            except ValueError:
-                mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
-
-            if path.isfile(dst_path):
-
-                local_mtime = datetime.utcfromtimestamp(int(stat(dst_path).st_mtime))
-                # check if the date is older than the manager's date
-                if local_mtime > mtime:
-                    logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
-                    return
-        elif is_agent_info:
-            logger.warning("[Cluster] Agent-info received in a worker node.")
-            raise WazuhException(3011)
-
-    # Write
-    if w_mode == "atomic":
-        f_temp = "{}{}{}.cluster.tmp".format(common.ossec_path, tmp_dir, file_path)
-    else:
-        f_temp = '{0}'.format(dst_path)
-
-    if umask_int:
-        oldumask = umask(umask_int)
-
-    try:
-        dest_file = open(f_temp, "wb")
-    except IOError as e:
-        if e.errno == errno.ENOENT:
-            dirpath = path.dirname(f_temp)
-            mkdir_with_mode(dirpath)
-            chmod(dirpath, S_IRWXU | S_IRWXG)
-            dest_file = open(f_temp, "wb")
-        else:
-            raise e
-
-    dest_file.write(new_content)
-
-    if umask_int:
-        umask(oldumask)
-
-    dest_file.close()
-
-    if mtime:
-        mtime_epoch = timegm(mtime.timetuple())
-        utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
-
-    # Atomic
-    if w_mode == "atomic":
-        dirpath = path.dirname(dst_path)
-        if not os.path.exists(dirpath):
-            mkdir_with_mode(dirpath)
-            chmod(path.dirname(dst_path), S_IRWXU | S_IRWXG)
-        chown(f_temp, common.ossec_uid, common.ossec_gid)
-        rename(f_temp, dst_path)
-
-
 def compare_files(good_files, check_files, node_name):
     def split_on_condition(seq, condition):
         """
@@ -399,7 +316,7 @@ def compare_files(good_files, check_files, node_name):
         # agent-groups
         shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
                                            node_name=node_name, time_limit_seconds=0)[1],
-                          {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
+                          {'cluster_item_key': '/queue/agent-groups/', 'merged': True, 'merge-type': 'agent-groups'})]
 
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
     else:
@@ -471,7 +388,7 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
     return agents
 
 
-def _check_removed_agents(new_client_keys):
+def _check_removed_agents(new_client_keys_path):
     """
     Function to delete agents that have been deleted in a synchronized
     client.keys.
@@ -500,10 +417,10 @@ def _check_removed_agents(new_client_keys):
 
     with open(ck_path) as ck:
         # can't use readlines function since it leaves a \n at the end of each item of the list
-        client_keys = ck.read().split('\n')
+        client_keys_dict = parse_client_keys(ck)
 
-    new_client_keys_dict = parse_client_keys(new_client_keys)
-    client_keys_dict = parse_client_keys(client_keys)
+    with open(new_client_keys_path) as n_ck:
+        new_client_keys_dict = parse_client_keys(n_ck)
 
     # get removed agents: the ones missing in the new client keys and present in the old
     try:

@@ -4,7 +4,9 @@
 import asyncio
 import json
 import random
+import re
 import shutil
+from calendar import timegm
 from datetime import datetime
 import functools
 import operator
@@ -309,27 +311,85 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return result
 
     def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
-        def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
+        def update_file(name, data):
             # Full path
-            full_path = common.ossec_path + name
-            error_updating_file = False
+            full_path, error_updating_file, n_merged_files = common.ossec_path + name, False, 0
 
-            # Cluster items information: write mode and umask
-            w_mode = cluster_items[data['cluster_item_key']]['write_mode']
-            umask = cluster_items[data['cluster_item_key']]['umask']
-
-            if content is None:
-                zip_path = "{}/{}".format(decompressed_files_path, name)
-                with open(zip_path, 'rb') as f:
-                    content = f.read()
-
+            # Cluster items information: write mode and permissions
             lock_full_path = "{}/queue/cluster/lockdir/{}.lock".format(common.ossec_path, os.path.basename(full_path))
             lock_file = open(lock_full_path, 'a+')
             try:
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
-                cluster._update_file(file_path=name, new_content=content,
-                             umask_int=umask, mtime=file_time, w_mode=w_mode,
-                             tmp_dir=tmp_path, whoami='master', agents=agents)
+                if os.path.basename(name) == 'client.keys':
+                    self.logger.warning("Client.keys received in a master node")
+                    raise WazuhException(3007)
+                if data['merged']:
+                    is_agent_info = data['merge_type'] == 'agent-info'
+                    if is_agent_info:
+                        self.sync_agent_info_status['total_agent_info'] = len(agent_ids)
+                    else:
+                        self.sync_extra_valid_status['total_extra_valid'] = len(agent_ids)
+                    for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
+                                                                                      decompressed_files_path,
+                                                                                      data['merge_name']):
+                        try:
+                            full_unmerged_name = common.ossec_path + file_path
+                            if is_agent_info:
+                                agent_name_re = re.match(r'(^.+)-(.+)$', os.path.basename(file_path))
+                                agent_name = agent_name_re.group(1) if agent_name_re else os.path.basename(file_path)
+                                if agent_name not in agent_names:
+                                    n_errors['warnings'][data['cluster_item_key']] = 1 \
+                                        if n_errors['warnings'].get(data['cluster_item_key']) is None \
+                                        else n_errors['warnings'][data['cluster_item_key']] + 1
+
+                                    self.logger.debug2("Received status of an non-existent agent '{}'".format(agent_name))
+                                    continue
+                            else:
+                                agent_id = os.path.basename(file_path)
+                                if agent_id not in agent_ids:
+                                    n_errors['warnings'][data['cluster_item_key']] = 1 \
+                                        if n_errors['warnings'].get(data['cluster_item_key']) is None \
+                                        else n_errors['warnings'][data['cluster_item_key']] + 1
+
+                                    self.logger.debug2("Received group of an non-existent agent '{}'".format(agent_id))
+                                    continue
+
+                            try:
+                                mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S.%f')
+                            except ValueError:
+                                mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S')
+
+                            if os.path.isfile(full_unmerged_name):
+
+                                local_mtime = datetime.utcfromtimestamp(int(os.stat(full_unmerged_name).st_mtime))
+                                # check if the date is older than the manager's date
+                                if local_mtime > mtime:
+                                    logger.debug2("Receiving an old file ({})".format(file_path))
+                                    return
+
+                            with open(full_unmerged_name, 'w') as f:
+                                f.write(file_data)
+
+                            mtime_epoch = timegm(mtime.timetuple())
+                            os.utime(full_unmerged_name, (mtime_epoch, mtime_epoch))  # (atime, mtime)
+                            os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
+                            os.chmod(full_unmerged_name, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                        except Exception as e:
+                            self.logger.debug2("Error updating agent group/status: {}".format(e))
+                            if is_agent_info:
+                                self.sync_agent_info_status['total_agent_info'] -= 1
+                            else:
+                                self.sync_extra_valid_status['total_extra_valid'] -= 1
+
+                            n_errors['errors'][data['cluster_item_key']] = 1 \
+                                if n_errors['errors'].get(data['cluster_item_key']) is None \
+                                else n_errors['errors'][data['cluster_item_key']] + 1
+
+                else:
+                    zip_path = "{}{}".format(decompressed_files_path, name)
+                    os.chown(zip_path, common.ossec_uid, common.ossec_gid)
+                    os.chmod(zip_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                    os.rename(zip_path, full_path)
 
             except WazuhException as e:
                 logger.debug2("Warning updating file '{}': {}".format(name, e))
@@ -348,11 +408,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
 
-            return n_errors, error_updating_file
-
         # tmp path
         tmp_path = "/queue/cluster/{}/tmp_files".format(self.name)
-        cluster_items = cluster.get_cluster_items()['files']
         n_merged_files = 0
         n_errors = {'errors': {}, 'warnings': {}}
 
@@ -371,22 +428,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         try:
             for filename, data in files_checksums.items():
-                if data['merged']:
-                    for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
-                                                                                      decompressed_files_path,
-                                                                                      data['merge_name']):
-                        n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data,
-                                                                    (agent_names, agent_ids))
-                        if not error_updating_file:
-                            n_merged_files += 1
-
-                    if data['merge_type'] == 'agent-info':
-                        self.sync_agent_info_status['total_agent_info'] = n_merged_files
-                    else:
-                        self.sync_extra_valid_status['total_extra_valid'] = n_merged_files
-
-                else:
-                    n_errors, _ = update_file(n_errors, filename, data)
+                update_file(data=data, name=filename)
 
             shutil.rmtree(decompressed_files_path)
 
