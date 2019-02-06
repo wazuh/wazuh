@@ -243,6 +243,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        shutil.rmtree(decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
         extra_valid_logger = self.task_loggers['Extra valid']
@@ -279,6 +280,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # health check
         self.sync_integrity_status['total_files'] = counts
+        shutil.rmtree(decompressed_files_path)
 
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
@@ -298,6 +300,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 return task_name
 
             result = await self.send_file(compressed_data)
+            os.unlink(compressed_data)
             if result.startswith(b'Error'):
                 logger.error(result.decode())
                 return result
@@ -429,8 +432,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         try:
             for filename, data in files_checksums.items():
                 update_file(data=data, name=filename)
-
-            shutil.rmtree(decompressed_files_path)
 
         except Exception as e:
             self.logger.error("Error updating worker files: '{}'.".format(e))

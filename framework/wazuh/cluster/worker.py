@@ -49,6 +49,7 @@ class SyncWorker:
 
         self.logger.info("Sending compressed file to master")
         result = await self.worker.send_file(filename=compressed_data_path)
+        os.unlink(compressed_data_path)
         if result.startswith(b'Error'):
             self.logger.error("Error sending files information: {}".format(result.decode()))
             result = await self.worker.send_request(command=self.cmd+b'_e', data=task_id + b' ' + b'Error')
@@ -158,6 +159,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             self.logger.info("Worker does not meet integrity checks. Actions required.")
             self.logger.info("Updating files: Start.")
             self.update_master_files_in_worker(ko_files, zip_path)
+            shutil.rmtree(zip_path)
             self.logger.info("Updating files: End.")
 
     def update_master_files_in_worker(self, ko_files: Dict, zip_path: str):
