@@ -44,8 +44,10 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, xml_auto_ignore) == 0) {
-
-            mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_auto_ignore, xml_auto_ignore);
+            // Prevent this message from appearing more than once at startup
+            if (!strcmp(__local_name, "ossec-analysisd")) {
+                mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_auto_ignore, xml_auto_ignore);
+            }
 
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_auto_ignore = 1;
@@ -83,7 +85,10 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
             }
 
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
-            mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_alert_new_files, xml_alert_new_files);
+            // Prevent this message from appearing more than once at startup
+            if (!strcmp(__local_name, "ossec-analysisd")) {
+                mwarn("The <syscheck><%s> tag is deprecated, please use <global><fim><%s> instead.", xml_alert_new_files, xml_alert_new_files);
+            }
 
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->syscheck_alert_new = 1;
