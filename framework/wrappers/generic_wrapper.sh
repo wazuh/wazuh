@@ -3,8 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-# WPYTHON_BIN="framework/python/bin/python3.7"
-WPYTHON_BIN="python/bin/python3.7"
+WPYTHON_BIN="framework/python/bin/python3.7"
 
 SCRIPT_PATH_NAME="$0"
 
@@ -14,17 +13,24 @@ SCRIPT_NAME="$(basename ${SCRIPT_PATH_NAME})"
 case ${DIR_NAME} in
     */active-response/bin | */wodles*)
         if [ -z "${WAZUH_PATH}" ]; then
-            WAZUH_PATH="${DIR_NAME}/../.."
+            WAZUH_PATH="$(cd ${DIR_NAME}/../..; pwd)"
         fi
 
         PYTHON_SCRIPT="${DIR_NAME}/${SCRIPT_NAME}.py"
     ;;
-    */bin | */integrations)
+    */bin)
         if [ -z "${WAZUH_PATH}" ]; then
-            WAZUH_PATH="${DIR_NAME}/.."
+            WAZUH_PATH="$(cd ${DIR_NAME}/..; pwd)"
         fi
 
         PYTHON_SCRIPT="${WAZUH_PATH}/framework/scripts/${SCRIPT_NAME}.py"
+    ;;
+     */integrations)
+        if [ -z "${WAZUH_PATH}" ]; then
+            WAZUH_PATH="$(cd ${DIR_NAME}/..; pwd)"
+        fi
+
+        PYTHON_SCRIPT="${DIR_NAME}/${SCRIPT_NAME}.py"
     ;;
 esac
 
