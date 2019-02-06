@@ -407,14 +407,14 @@ int DecodeWinevt(Eventinfo *lf){
         cJSON_AddStringToObject(json_system_in, "Message", "No message");
     }
 
-    if(strcmp(join_data,"")){
-        cJSON_AddStringToObject(json_eventdata_in, "Data", join_data);
-    }
-
     if(json_system_in){
         cJSON_AddItemToObject(json_event, "System", json_system_in);
     }
+
     if (json_eventdata_in){
+        if(strcmp(join_data,"")){
+            cJSON_AddStringToObject(json_eventdata_in, "Data", join_data);
+        }
         cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
     }
     if (extra){
