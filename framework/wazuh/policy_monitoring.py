@@ -16,40 +16,40 @@ from wazuh.wdb import WazuhDBConnection
 
 
 # API field -> DB field
-fields_translation_pm = {'scan_id': 'scan_id',
+fields_translation_pm = {'id': 'pm.id',
+                         'policy_id': 'policy_id',
                          'name': 'name',
                          'description': 'description',
-                         'os_required': 'os_required',
+                         'references': '`references`',
                          'pass': 'pass',
-                         'failed': 'failed',
+                         'fail': 'fail',
                          'score': 'score',
-                         'end_scan': 'pm_end_scan',
-                         'start_scan': 'pm_start_scan'}
-fields_translation_pm_check = {'name': 'name',
-                               'id': 'id',
+                         'hash': 'hash',
+                         'end_scan': 'end_scan',
+                         'start_scan': 'start_scan'}
+fields_translation_pm_check = {'id': 'id',
                                'cis': 'cis_control',
                                'title': 'title',
                                'description': 'description',
                                'rationale': 'rationale',
                                'remediation': 'remediation',
-                               'default_value': 'default_value',
                                'file': 'file',
                                'process': 'process',
                                'directory': 'directory',
                                'registry': 'registry',
-                               'reference': 'reference',
+                               'references': '`references`',
                                'result': 'result'}
 fields_translation_pm_check_compliance = {'key': 'key',
                                           'value': 'value'}
 
-default_query_pm = 'SELECT {0} FROM pm_global pmg INNER JOIN scan_info si ON pmg.scan_id=si.pm_scan_id'
+default_query_pm = 'SELECT {0} FROM pm_policy pm INNER JOIN pm_scan_info si ON pm.id=si.policy_id'
 default_query_pm_check = 'SELECT {0} FROM pm_check INNER JOIN pm_check_compliance ON id=id_check'
 
 
 class WazuhDBQueryPM(WazuhDBQuery):
 
     def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
-                 get_data, default_sort_field='name', filters={}, fields=fields_translation_pm,
+                 get_data, default_sort_field='pm.id', filters={}, fields=fields_translation_pm,
                  default_query=default_query_pm):
         self.agent_id = agent_id
         self._default_query_str = default_query
@@ -58,11 +58,11 @@ class WazuhDBQueryPM(WazuhDBQuery):
         if not db_path:
             raise WazuhException(1600)
 
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_global', sort=sort, search=search,
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='pm_policy', sort=sort, search=search,
                               select=select, fields=fields, default_sort_field=default_sort_field,
                               default_sort_order='DESC', filters=filters, query=query, db_path=db_path[0],
                               min_select_fields=set(), count=count, get_data=get_data,
-                              date_fields={'pm_end_scan', 'pm_start_scan'})
+                              date_fields={'end_scan', 'start_scan'})
         self.conn = WazuhDBConnection()
 
     def _default_query(self):
@@ -86,7 +86,17 @@ class WazuhDBQueryPM(WazuhDBQuery):
                                        )
 
     def _format_data_into_dictionary(self):
-        return self._data
+        return {"totalItems": self.total_items, "items": self._data}
+
+    def _add_limit_to_query(self):
+        if self.limit:
+            if self.limit > common.maximum_database_limit:
+                raise WazuhException(1405, str(self.limit))
+            self.query += ' LIMIT :limit OFFSET :offset'
+            self.request['offset'] = self.offset
+            self.request['limit'] = self.limit
+        elif self.limit == 0:  # 0 is not a valid limit
+            raise WazuhException(1406)
 
     def run(self):
 
@@ -112,7 +122,7 @@ def get_pm_list(agent_id=None, q="", offset=0, limit=common.database_limit,
     return db_query.run()
 
 
-def get_pm_checks(name, agent_id=None, q="", offset=0, limit=common.database_limit,
+def get_pm_checks(id, agent_id=None, q="", offset=0, limit=common.database_limit,
                   sort=None, search=None, select=None, filters={}):
     fields_translation = {**fields_translation_pm_check,
                           **fields_translation_pm_check_compliance}
@@ -121,17 +131,22 @@ def get_pm_checks(name, agent_id=None, q="", offset=0, limit=common.database_lim
                              list(fields_translation_pm_check_compliance.keys()))
                   }
     else:
-        if 'name' not in select['fields']:
-            select['fields'].append('name')
+        if 'id' not in select['fields']:
+            select['fields'].append('id')
 
     db_query = WazuhDBQueryPM(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                               select=select, count=True, get_data=True,
-                              query=f'name={name}' if q == "" else f'name={name};{q}',
-                              filters=filters, default_query=default_query_pm_check,
+                              query=f'id={id}' if q == "" else f'id={id};{q}',
+                              filters=filters, default_query=default_query_pm_check, default_sort_field='id',
                               fields=fields_translation)
 
-    checks = db_query.run()
-    groups = groupby(checks, key=lambda row: row['name'])
+    result_dict = db_query.run()
+    if 'items' in result_dict:
+        checks = result_dict['items']
+    else:
+        raise WazuhException(2007)
+
+    groups = groupby(checks, key=lambda row: row['scan_id'])
     result = []
     # Rearrange check and compliance fields
     for _, group in groups:

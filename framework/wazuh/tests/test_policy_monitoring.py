@@ -29,6 +29,11 @@ def get_fake_pm_data(*args, **kwargs):
         conn.close()
 
 
+# Aliases and ` are lost when sqlite db answers...
+cols_returned_from_db_pm = [field.replace('`', '').replace('pm.', '') for field in fields_translation_pm.values()]
+cols_returned_from_db_pm_check = [field.replace('`', '').replace('pm.', '') for field in fields_translation_pm_check.values()]
+
+
 class TestPolicyMonitoring(TestCase):
 
     def test_wazuhdbquerypm(self):
@@ -39,7 +44,6 @@ class TestPolicyMonitoring(TestCase):
             with self.assertRaises(WazuhException):
                 WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
         with patch('wazuh.common.wdb_path', test_data_path):
-            print()
             query = WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
             assert(isinstance(query, WazuhDBQueryPM))
 
@@ -51,11 +55,12 @@ class TestPolicyMonitoring(TestCase):
         with patch('wazuh.policy_monitoring.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_pm_data
             result = get_pm_list('000')
-            assert(isinstance(result, list))
-            assert(len(result) > 0)
-            pm = result[0]
+            assert(isinstance(result, dict))
+            assert('items' in result)
+            assert(len(result['items']) > 0)
+            pm = result['items'][0]
             assert(isinstance(pm, dict))
-            assert(set(pm.keys()) == set(fields_translation_pm.values()))
+            assert(set(pm.keys()) == set(cols_returned_from_db_pm))
 
     @patch('wazuh.common.wdb_path', test_data_path)
     def test_get_pm_list_select_param(self):
@@ -64,7 +69,7 @@ class TestPolicyMonitoring(TestCase):
         """
         with patch('wazuh.policy_monitoring.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_pm_data
-            fields = {'fields': ['scan_id', 'name']}
+            fields = {'fields': ['scan_id', 'id']}
             result = get_pm_list('000', select=fields)
             assert (isinstance(result, list))
             assert (len(result) > 0)
@@ -106,4 +111,4 @@ class TestPolicyMonitoring(TestCase):
             assert(len(result) > 0)
             pm = result[0]
             assert(isinstance(pm, dict))
-            assert(set(pm.keys()) == set(fields_translation_pm_check.values()) | {'compliance'})
+            assert(set(pm.keys()) == set(cols_returned_from_db_pm_check.values()) | {'compliance'})
