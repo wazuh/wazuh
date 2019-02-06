@@ -71,7 +71,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            policy_monitoring->scan_on_start = enabled;
+            policy_monitoring->enabled = enabled;
         }
         else if (!strcmp(nodes[i]->element, XML_WEEK_DAY))
         {
