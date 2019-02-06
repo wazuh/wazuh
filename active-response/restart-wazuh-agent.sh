@@ -18,16 +18,15 @@ PWD=`pwd`
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
 
-# service updaterc ELSE ossec-control
 if [ "x${ACTION}" = "xadd" ]; then
 
     if /var/ossec/bin/ossec-logtest -t > /dev/null 2>&1; then
         if command -v systemctl > /dev/null 2>&1; then        
-            systemctl restart wazuh-manager
+            systemctl restart wazuh-agent
         elif command -v service > /dev/null 2>&1; then        
-            service restart wazuh-manager
+            service restart wazuh-agent
         elif command -v update-rc.d > /dev/null 2>&1; then        
-            update-rc.d restart wazuh-manager
+            update-rc.d restart wazuh-agent
         else
             ${PWD}/bin/ossec-control restart
         fi

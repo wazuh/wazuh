@@ -373,7 +373,9 @@ static void ExecdStart(int q)
         if(!strcmp(name, "api-restart-ossec")) {
 
             if(cmd_api[0] == NULL) {
-                os_strdup("/var/ossec/active-response/bin/restart-wazuh.sh", cmd_api[0]);
+                char script_path[PATH_MAX] = {0};
+                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "/active-response/bin/restart-wazuh.sh");
+                os_strdup(script_path, cmd_api[0]);
             }
 
             if(cmd_api[1] == NULL) {
