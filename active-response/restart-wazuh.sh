@@ -12,7 +12,6 @@ LOCAL=`dirname $0`;
 cd $LOCAL
 cd ../../
 PWD=`pwd`
-UNAME=`uname`
 
 
 # Logging the call
