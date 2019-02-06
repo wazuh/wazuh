@@ -24,7 +24,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.server.clients[self.name] = self
         self.tag = "Local " + self.name
         self.logger_filter.update_tag(self.tag)
-        self.logger.info('Connection received in local server. Client name: {}'.format(self.name))
+        self.logger.info('Connection received in local server.')
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         if command == b'get_config':

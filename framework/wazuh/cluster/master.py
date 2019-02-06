@@ -289,15 +289,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
-            logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")
+            logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             task_name = await self.send_request(command=b'sync_m_c', data=b'')
             if task_name.startswith(b'Error'):
-                logger.error(task_name)
+                logger.error(task_name.decode())
                 return task_name
 
             result = await self.send_file(compressed_data)
             if result.startswith(b'Error'):
-                logger.error(result)
+                logger.error(result.decode())
                 return result
 
             result = await self.send_request(command=b'sync_m_c_e',
@@ -305,6 +305,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
+        logger.info("Finished integrity synchronization.")
         return result
 
     def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
@@ -449,7 +450,7 @@ class Master(server.AbstractServer):
         """
         workers_info = {key: val.to_dict() for key, val in self.clients.items()
                         if filter_node is None or filter_node == {} or key in filter_node}
-        n_connected_nodes = len(workers_info) + 1  # all workers + 1 master
+        n_connected_nodes = len(workers_info)
         if filter_node is None or self.configuration['node_name'] in filter_node:
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 
