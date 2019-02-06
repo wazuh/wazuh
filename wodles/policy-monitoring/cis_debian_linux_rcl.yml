@@ -19,7 +19,13 @@ policy:
   references:
     - http://workbench.cisecurity.org/
 
-
+requirements:
+  title: "Requirements for Debian check"
+  description: "Check Debian version"
+  condition: "all required"
+  rules:
+    - 'f:/etc/debian_version;'
+    - 'f:/proc/sys/kernel/ostype -> Linux;'
 
 checks:
 # Section 1.1 - Filesystem Configuration
@@ -529,11 +535,3 @@ checks:
    condition: any
    rules:
      - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;'
-
-requirements:
-  title: "Requirements for Debian check"
-  description: "Check Debian version"
-  condition: "all required"
-  rules:
-    - 'f:/etc/debian_version;'
-    - 'f:/proc/sys/kernel/ostype -> Linux;'

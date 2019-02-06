@@ -298,9 +298,9 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         cJSON *policy = cJSON_GetObjectItem(object, "policy");
         cJSON *variables = cJSON_GetObjectItem(object, "variables");
         cJSON *profiles = cJSON_GetObjectItem(object, "checks");
-        cJSON *new = cJSON_CreateArray();
+        cJSON *requirements_array = cJSON_CreateArray();
         cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
-        cJSON_AddItemToArray(new, requirements);
+        cJSON_AddItemToArray(requirements_array, requirements);
 
         if(wm_policy_monitoring_check_policy(policy)) {
             merror("Check your 'policy' field");
@@ -311,12 +311,6 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             merror("Obtaining 'checks' from json");
             goto next;
         }
-        char *json_profile = cJSON_PrintUnformatted(profiles);
-        char *json_new = cJSON_PrintUnformatted(new);
-        merror("json profiles : %s",json_profile);
-        merror("json new: %s",json_new);
-        os_free(json_profile);
-        os_free(json_new);
 
         if(!requirements){
             merror("Could not find 'requirements' from json");
@@ -330,7 +324,7 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
         }
 
         
-        if(wm_policy_monitoring_do_scan(plist,new,vars,data,id,policy,1) == 0){
+        if(wm_policy_monitoring_do_scan(plist,requirements_array,vars,data,id,policy,1) == 0){
             /* Send scan start message */
             time_t time_start = 0;
             time_t time_end = 0;
@@ -459,6 +453,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
 
         if (name == NULL || condition == WM_POLICY_MONITORING_COND_INV) {
             merror(WM_POLICY_MONITORING_INVALID_RKCL_NAME, name );
+            ret_val = 1;
             goto clean_return;
         }
     
@@ -681,7 +676,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
 
                 while (1) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
-                        if(wm_policy_monitoring_check_hash(cis_db,"fail",profile)) {
+                        if(wm_policy_monitoring_check_hash(cis_db,"fail",profile) && !requirements_scan) {
                             wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"fail");
                         }
                     }
@@ -698,13 +693,17 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                         break;
                     }
                 }
+
+                if (requirements_scan == 1){
+                    goto clean_return;
+                }
             } else {
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
-                while (1 && !requirements_scan) {
+                while (1) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
 
-                        if(wm_policy_monitoring_check_hash(cis_db,"passed",profile)) {
+                        if(wm_policy_monitoring_check_hash(cis_db,"passed",profile) && !requirements_scan) {
                             wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"passed");
                         }
                     }
@@ -733,6 +732,9 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                     if (requirements_scan == 1){
                         ret_val = 1;
                     }
+                    goto clean_return;
+                }
+                if (requirements_scan == 1){
                     goto clean_return;
                 }
             }
