@@ -959,7 +959,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
 
             if(strncmp(++tmpstr,client_source_ip_token,3)==0)
             {
-                sscanf(tmpstr," IP:\'%15[^\']\"",client_source_ip);
+                sscanf(tmpstr," IP:\'%18[^\']\"",client_source_ip);
 
                 /* If IP: != 'src' overwrite the srcip */
                 if(strncmp(client_source_ip,"src",3) != 0)
