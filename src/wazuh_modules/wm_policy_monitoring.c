@@ -29,9 +29,9 @@ static void * wm_policy_monitoring_main(wm_policy_monitoring_t * data);   // Mod
 static void wm_policy_monitoring_destroy(wm_policy_monitoring_t * data);  // Destroy data
 static int wm_policy_monitoring_start(wm_policy_monitoring_t * data);  // Start
 static int wm_policy_monitoring_send_event_check(wm_policy_monitoring_t * data,cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result);  // Send check event
-static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id);  // Read policy monitoring files
+static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data);  // Read policy monitoring files
 static int wm_policy_monitoring_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_policy_monitoring_t * data,int id,cJSON *policy,int requirements_scan);  // Do scan
-static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy);  // Send summary
+static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time);  // Send summary
 static int wm_policy_monitoring_check_policy(cJSON *policy);
 static void wm_policy_monitoring_summary_increment_passed();
 static void wm_policy_monitoring_summary_increment_failed();
@@ -181,28 +181,8 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
 
         mtinfo(WM_POLICY_MONITORING_LOGTAG, "Starting evaluation.");
 
-        // Set unique ID for each scan
-
-#ifndef WIN32
-        int id = os_random();
-        if (id < 0)
-            id = -id;
-#else
-        unsigned int id1 = os_random();
-        unsigned int id2 = os_random();
-
-        char random_id[OS_MAXSTR];
-        snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
-
-        int id = atoi(random_id);
-        if (id < 0)
-            id = -id;
-#endif
-
-        
-
         /* Do scan for every profile file */
-        wm_policy_monitoring_read_files(data,id);
+        wm_policy_monitoring_read_files(data);
 
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
@@ -255,7 +235,7 @@ static int wm_policy_monitoring_start(wm_policy_monitoring_t * data) {
     return 0;
 }
 
-static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id) {
+static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data) {
     FILE *fp;
     int i = 0;
 
@@ -323,8 +303,25 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             goto next;
         }
 
-        
+        // Set unique ID for each scan
+#ifndef WIN32
+            int id = os_random();
+            if (id < 0)
+                id = -id;
+#else
+            unsigned int id1 = os_random();
+            unsigned int id2 = os_random();
+
+            char random_id[OS_MAXSTR];
+            snprintf(random_id, OS_MAXSTR - 1, "%u%u", id1, id2);
+
+            int id = atoi(random_id);
+            if (id < 0)
+                id = -id;
+#endif
+
         if(wm_policy_monitoring_do_scan(plist,requirements_array,vars,data,id,policy,1) == 0){
+
             /* Send scan start message */
             time_t time_start = 0;
             time_t time_end = 0;
@@ -341,12 +338,14 @@ static void wm_policy_monitoring_read_files(wm_policy_monitoring_t * data,int id
             cJSON_Delete(start_scan);
 
             wm_policy_monitoring_do_scan(plist,profiles,vars,data,id,policy,0);
-            wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy);
-            wm_policy_monitoring_reset_summary();
-
 
             /* Send scan ending message */
             time_end = time(NULL);
+
+            wm_policy_monitoring_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end);
+            wm_policy_monitoring_reset_summary();
+
+           
             cJSON *end_scan = cJSON_CreateObject();
             cJSON_AddStringToObject(end_scan, "type", "scan-ended");
             cJSON_AddStringToObject(end_scan, "message", "Policy monitoring scan finished");
@@ -381,6 +380,7 @@ static int wm_policy_monitoring_check_policy(cJSON *policy) {
     int retval;
     cJSON *id;
     cJSON *name;
+    cJSON *file;
 
     retval = 1;
 
@@ -397,6 +397,12 @@ static int wm_policy_monitoring_check_policy(cJSON *policy) {
     name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
         merror("Field 'name' not found on policy");
+        return retval;
+    }
+
+    file = cJSON_GetObjectItem(policy, "file");
+    if(!file) {
+        merror("Field 'file' not found on policy");
         return retval;
     }
 
@@ -677,7 +683,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                 while (1) {
                     if ((type == WM_POLICY_MONITORING_TYPE_DIR) || (j == 0)) {
                         if(wm_policy_monitoring_check_hash(cis_db,"fail",profile) && !requirements_scan) {
-                            wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"fail");
+                            wm_policy_monitoring_send_event_check(data,profile,policy,p_alert_msg,id,j,"failed");
                         }
                     }
 
@@ -695,6 +701,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                 }
 
                 if (requirements_scan == 1){
+                    wm_policy_monitoring_reset_summary();
                     goto clean_return;
                 }
             } else {
@@ -735,6 +742,7 @@ static int wm_policy_monitoring_do_scan(OSList *p_list,cJSON *profile_check,OSSt
                     goto clean_return;
                 }
                 if (requirements_scan == 1){
+                    wm_policy_monitoring_reset_summary();
                     goto clean_return;
                 }
             }
@@ -1516,26 +1524,39 @@ static char *wm_policy_monitoring_getrootdir(char *root_dir, int dir_size)
 }
 #endif
 
-static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy) {
+static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
     cJSON_AddNumberToObject(json_summary, "scan_id", scan_id);
 
+    /* Policy fields */
     cJSON *name = cJSON_GetObjectItem(policy,"name");
     cJSON *description = cJSON_GetObjectItem(policy,"description");
     cJSON *references = cJSON_GetObjectItem(policy,"references");
     cJSON *policy_id = cJSON_GetObjectItem(policy,"id");
+    cJSON *file= cJSON_GetObjectItem(policy,"file");
 
     cJSON_AddStringToObject(json_summary, "name", name->valuestring);
     cJSON_AddStringToObject(json_summary, "policy_id", policy_id->valuestring);
+    cJSON_AddStringToObject(json_summary, "file", file->valuestring);
 
     if(description) {
         cJSON_AddStringToObject(json_summary, "description", description->valuestring);
     }
   
     if(references) {
-        cJSON_AddStringToObject(json_summary, "references", references ? references->valuestring : NULL );
+        cJSON *reference;
+        char *ref = NULL;
+
+        cJSON_ArrayForEach(reference,references)
+        {
+            if(reference->valuestring){
+               wm_strcat(&ref,reference->valuestring,',');
+            }
+        }
+        cJSON_AddStringToObject(json_summary, "references", ref ? ref : NULL );
+        os_free(ref);
     }
    
     cJSON_AddNumberToObject(json_summary, "passed", passed);
@@ -1546,6 +1567,10 @@ static int wm_policy_monitoring_send_summary(wm_policy_monitoring_t * data, int 
     float score = ((passedf/(failedf+passedf)))* 100;
     
     cJSON_AddNumberToObject(json_summary, "score", score);
+
+    cJSON_AddNumberToObject(json_summary, "start_time", start_time);
+    cJSON_AddNumberToObject(json_summary, "end_time", end_time);
+    cJSON_AddStringToObject(json_summary, "hash", "testhash");
 
     wm_policy_monitoring_send_alert(data,json_summary);
     cJSON_Delete(json_summary);

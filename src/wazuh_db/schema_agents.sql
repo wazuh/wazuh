@@ -210,44 +210,45 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-CREATE TABLE IF NOT EXISTS pm_scan_info (
-    scan_id INTEGER PRIMARY KEY,
-    start_scan INTEGER,
-    end_scan INTEGER,
-    policy_id TEXT
+CREATE TABLE IF NOT EXISTS pm_policy (
+   name TEXT,
+   file TEXT,
+   id TEXT,
+   description TEXT,
+   `references` TEXT
 );
 
-CREATE TABLE IF NOT EXISTS pm_global (
-    scan_id INTEGER REFERENCES pm_scan_info (pm_scan_id),
-    name TEXT,
-    description TEXT,
-    `references` TEXT,
-    pass INTEGER,
-    failed INTEGER,
-    score INTEGER
+CREATE TABLE IF NOT EXISTS pm_scan_info (
+   id INTEGER PRIMARY KEY,
+   start_scan INTEGER,
+   end_scan INTEGER,
+   policy_id TEXT REFERENCES pm_policy (id),
+   pass INTEGER,
+   fail INTEGER,
+   score INTEGER,
+   hash TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_check (
-    name TEXT,
-    id INTEGER PRIMARY KEY,
-    cis_control TEXT,
-    title TEXT,
-    description TEXT,
-    rationale TEXT,
-    remediation TEXT,
-    default_value TEXT,
-    file TEXT,
-    process TEXT,
-    directory TEXT,
-    registry TEXT,
-    reference TEXT,
-    result TEXT NOT NULL
+   scan_id INTEGER REFERENCES pm_scan_info (id),
+   id INTEGER PRIMARY KEY,
+   title TEXT,
+   cis_control TEXT,
+   description TEXT,
+   rationale TEXT,
+   remediation TEXT,
+   file TEXT,
+   process TEXT,
+   directory TEXT,
+   registry TEXT,
+   `references` TEXT,
+   result TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS pm_check_compliance (
-    id_check INTEGER REFERENCES pm_check (id),
-   `key` TEXT,
-   `value` TEXT
+CREATE TABLE IF NOT EXISTS pm_compliance (
+   id_check INTEGER REFERENCES pm_check (id),
+  `key` TEXT,
+  `value` TEXT
 );
 
 PRAGMA journal_mode=WAL;

@@ -14,6 +14,7 @@
 #
 policy:
   id: "cis_debian"
+  file: "cis_debian_linux_rcl.yml"
   name: "CIS benchmark for Debian/Linux"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
   references:

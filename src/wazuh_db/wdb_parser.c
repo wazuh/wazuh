@@ -494,13 +494,12 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "insert") == 0) {
 
         int id;
-        char *name;
+        int scan_id;
         char *title;
         char *cis_control;
         char *description;
         char *rationale;
         char *remediation;
-        char *default_value;
         char *file;
         char *directory;
         char *process;
@@ -528,9 +527,12 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        name = curr;
-        *next++ = '\0';
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
 
+        *next++ = '\0';
         curr = next;
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid policy monitoring query syntax.");
@@ -594,17 +596,6 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        default_value = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
         file = curr;
         *next++ = '\0';
 
@@ -655,7 +646,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         result_check = curr;
 
-        if (result = wdb_policy_monitoring_save(wdb,id,name,title,cis_control,description,rationale,remediation,default_value,file,directory,process,registry,reference,result_check), result < 0) {
+        if (result = wdb_policy_monitoring_save(wdb,id,scan_id,title,cis_control,description,rationale,remediation,file,directory,process,registry,reference,result_check), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {
@@ -709,27 +700,36 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
-    } else if (strcmp(curr, "insert_global") == 0) {
+    } else if (strcmp(curr, "query_policy") == 0) {
 
-        int scan_id;
-        char *name;
-        char *description;
-        char *references;
-        int pass;
-        int failed;
-        int score;
+        char *policy;
+        char result_found[OS_MAXSTR + 1] = {0};
 
         curr = next;
+        policy = curr;
 
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
-            return -1;
+        result = wdb_policy_monitoring_policy_find(wdb, policy, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query policy monitoring.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy scan");
         }
 
-        scan_id = strtol(curr,NULL,10);
-        *next++ = '\0';
+        return result;
+    } else if (strcmp(curr, "insert_policy") == 0) {
+
+        char *name;
+        char *file;
+        char *id;
+        char *description;
+        char *references;
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
@@ -750,57 +750,33 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
+        file = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        id = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+        
         description = curr;
         *next++ = '\0';
 
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        references = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        if (!strncmp(curr, "NULL", 4))
-            pass = -1;
-        else
-            pass = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-       
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        if (!strncmp(curr, "NULL", 4))
-            failed = -1;
-        else
-            failed = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-        curr = next;
-
-        if (!strncmp(curr, "NULL", 4))
-            score = -1;
-        else
-            score = strtol(curr,NULL,10);
-
-        if (result = wdb_policy_monitoring_global_save(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
+        references = next;
+        if (result = wdb_policy_monitoring_policy_info_save(wdb,name,file,id,description,references), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
         } else {
@@ -953,6 +929,10 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         int pm_end_scan;
         int scan_id;
         char * policy_id;
+        int pass;
+        int fail;
+        int score;
+        char *hash;
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid policy monitoring query syntax.");
@@ -984,7 +964,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;
 
-         if (next = strchr(curr, '|'), !next) {
+        if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid policy monitoring query syntax.");
             mdebug2("Policy monitoring query: %s", curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
@@ -999,9 +979,65 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         curr = next;   
 
-        policy_id = curr;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
 
-        if (result = wdb_policy_monitoring_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id), result < 0) {
+        policy_id = curr;
+        *next++ = '\0';
+
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+
+        hash = next;
+        if (result = wdb_policy_monitoring_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,score,hash), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {
@@ -1053,8 +1089,13 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
 
         char *policy_id;
         int pm_start_scan;
-
-
+        int pm_end_scan;
+        int scan_id;
+        int pass;
+        int fail;
+        int score;
+        char *hash;
+        
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid policy monitoring query syntax.");
             mdebug2("Policy monitoring query: %s", curr);
@@ -1077,7 +1118,86 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         else
             pm_start_scan = strtol(curr,NULL,10);
 
-        if (result = wdb_policy_monitoring_scan_info_update_start(wdb, policy_id,pm_start_scan), result < 0) {
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pm_end_scan = -1;
+        else
+            pm_end_scan = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+        
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+        
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            pass = -1;
+        else
+            pass = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+        
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            fail = -1;
+        else
+            fail = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+        curr = next;
+        
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            score = -1;
+        else
+            score = strtol(curr,NULL,10);
+
+        *next++ = '\0';
+
+        hash = next;
+
+        if (result = wdb_policy_monitoring_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,score,hash), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {

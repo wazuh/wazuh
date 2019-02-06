@@ -23,29 +23,29 @@
 
   <rule id="19003" level="7">
     <if_sid>19002</if_sid>
-    <field name="pm.check.result">^fail</field>
+    <field name="pm.check.result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for profile $(pm.profile) failed</description>
+    <description>Check with id $(pm.check.id) for policy $(pm.policy) failed</description>
   </rule>
 
   <rule id="19004" level="3">
     <if_sid>19002</if_sid>
     <field name="pm.check.result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for profile $(pm.profile) passed</description>
+    <description>Check with id $(pm.check.id) for policy $(pm.policy) passed</description>
   </rule>
 
   <rule id="19005" level="3">
     <if_sid>19004</if_sid>
-    <field name="pm.check.previous_result">^fail</field>
+    <field name="pm.check.previous_result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for profile $(pm.profile) has changed to passed</description>
+    <description>Check with id $(pm.check.id) for policy $(pm.policy) has changed to passed</description>
   </rule>
 
   <rule id="19006" level="9">
     <if_sid>19003</if_sid>
     <field name="pm.check.previous_result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for profile $(pm.profile) has changed to failed</description>
+    <description>Check with id $(pm.check.id) for policy $(pm.policy) has changed to failed</description>
   </rule>
 </group>
