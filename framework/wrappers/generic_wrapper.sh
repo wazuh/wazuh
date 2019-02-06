@@ -3,28 +3,30 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-PYTHON_BIN="python/bin/python3.7"
-FRAMEWORK_PATH="framework/scripts"
+# WPYTHON_BIN="framework/python/bin/python3.7"
+WPYTHON_BIN="python/bin/python3.7"
 
 SCRIPT_PATH_NAME="$0"
-# Split the variable using / as delimiter
-# and get the last element
-SCRIPT_NAME=$(echo ${SCRIPT_PATH_NAME##*/})
 
-# If WAZUH_PATH variable is not defined
-# the script will calculate it by remoning
-# the relative path of the script in bin
-# from the WAZUH_PATH.
-#
-# Ex: /var/ossec/bin/wazuh-clusterd => /var/ossec
-if [ -z "${WAZUH_PATH}" ]; then
-    WAZUH_PATH="$( cd $(dirname ${SCRIPT_PATH_NAME}) ; pwd -P )"
-    WAZUH_PATH=${WAZUH_PATH%%/bin*}
-fi
+DIR_NAME="$(cd $(dirname ${SCRIPT_PATH_NAME}); pwd -P)"
+SCRIPT_NAME="$(basename ${SCRIPT_PATH_NAME})"
 
-# If WPYTHON_PATH variable is not defined
-if [ -z "${WPYTHON_PATH}" ]; then
-    WPYTHON_PATH="${WAZUH_PATH}/${PYTHON_BIN}"
-fi
+case ${DIR_NAME} in
+    */active-response/bin | */wodles*)
+        if [ -z "${WAZUH_PATH}" ]; then
+            WAZUH_PATH="${DIR_NAME}/../.."
+        fi
 
-${WPYTHON_PATH} ${WAZUH_PATH}/${FRAMEWORK_PATH}/${SCRIPT_NAME}.py $@
+        PYTHON_SCRIPT="${DIR_NAME}/${SCRIPT_NAME}.py"
+    ;;
+    */bin | */integrations)
+        if [ -z "${WAZUH_PATH}" ]; then
+            WAZUH_PATH="${DIR_NAME}/.."
+        fi
+
+        PYTHON_SCRIPT="${WAZUH_PATH}/framework/scripts/${SCRIPT_NAME}.py"
+    ;;
+esac
+
+
+${WAZUH_PATH}/${WPYTHON_BIN} ${PYTHON_SCRIPT} $@
