@@ -42,21 +42,21 @@ int test_success_compress_special_string() {
 int test_fail_compress_null_src() {
     char buffer[BUFFER_LENGTH];
     unsigned long int i1 = os_zlib_compress(NULL, buffer, strlen(TEST_STRING_1), BUFFER_LENGTH);
-    w_assert_uint_ne(i1, 0);
+    w_assert_uint_eq(i1, 0);
     return 1;
 }
 
 int test_fail_compress_no_dest() {
 
     unsigned long int i1 = os_zlib_compress(TEST_STRING_1, NULL, strlen(TEST_STRING_1), BUFFER_LENGTH);
-    w_assert_uint_ne(i1, 0);
+    w_assert_uint_eq(i1, 0);
     return 1;
 }
 
 int test_fail_compress_no_dest_size() {
     char buffer[BUFFER_LENGTH];
     unsigned long int i1 = os_zlib_compress(TEST_STRING_1, buffer, strlen(TEST_STRING_1), 0);
-    w_assert_uint_ne(i1, 0);
+    w_assert_uint_eq(i1, 0);
     return 1;
 }
 
@@ -67,7 +67,7 @@ int test_fail_uncompress_null_src() {
 
     char buffer2[BUFFER_LENGTH];
     unsigned long int i2 = os_zlib_uncompress(NULL, buffer2, i1, BUFFER_LENGTH);
-    w_assert_uint_ne(i2, 0);
+    w_assert_uint_eq(i2, 0);
     return 1;
 }
 
@@ -77,7 +77,7 @@ int test_fail_uncompress_null_dst() {
     w_assert_uint_ne(i1, 0);
 
     unsigned long int i2 = os_zlib_uncompress(buffer, NULL, i1, BUFFER_LENGTH);
-    w_assert_uint_ne(i2, 0);
+    w_assert_uint_eq(i2, 0);
     return 1;
 }
 
@@ -88,7 +88,7 @@ int test_fail_uncompress_no_src_size() {
 
     char buffer2[BUFFER_LENGTH];
     unsigned long int i2 = os_zlib_uncompress(buffer, buffer2, 0, BUFFER_LENGTH);
-    w_assert_uint_ne(i2, 0);
+    w_assert_uint_eq(i2, 0);
     return 1;
 }
 
@@ -99,7 +99,7 @@ int test_fail_uncompress_no_dest_size() {
 
     char buffer2[BUFFER_LENGTH];
     unsigned long int i2 = os_zlib_uncompress(buffer, buffer2, i1, 0);
-    w_assert_uint_ne(i2, 0);
+    w_assert_uint_eq(i2, 0);
     return 1;
 }
 
@@ -113,39 +113,25 @@ int main(void) {
     TAP_TEST_MSG(test_success_compress_special_string(), "Compress and uncompress a regular string with '\\n', '\\t' and '\\r' test.");
 
     // Try to compress using NULL as source
-    TODO;
     TAP_TEST_MSG(test_fail_compress_null_src(), "Try to compress using ((void *)0) as source.");
-    END_TODO;
 
     // Try to compress using NULL as destination
-    TODO;
     TAP_TEST_MSG(test_fail_compress_no_dest(), "Try to compress using ((void *)0) as destination.");
-    END_TODO;
 
     // Try to compress using 0 as destination size
-    TODO;
     TAP_TEST_MSG(test_fail_compress_no_dest_size(), "Try to compress using 0 as destination size.");
-    END_TODO;
 
     // Try to uncompress using NULL as source
-    TODO;
     TAP_TEST_MSG(test_fail_uncompress_null_src(), "Try to uncompress using ((void *)0) as source.");
-    END_TODO;
 
     // Try to uncompress using NULL as destination
-    TODO;
     TAP_TEST_MSG(test_fail_uncompress_null_dst(), "Try to uncompress using ((void *)0) as destination.");
-    END_TODO;
 
     // Try to uncompress using 0 as source size
-    TODO;
     TAP_TEST_MSG(test_fail_uncompress_no_src_size(), "Try to uncompress using 0 as source size.");
-    END_TODO;
 
     // Try to uncompress using 0 as destination size
-    TODO;
     TAP_TEST_MSG(test_fail_uncompress_no_dest_size(), "Try to uncompress using 0 as destination size.");
-    END_TODO;
 
     TAP_PLAN;
     TAP_SUMMARY;

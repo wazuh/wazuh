@@ -57,7 +57,7 @@ int test_md5_file() {
 
 int test_md5_file_fail() {
     os_md5 buffer;
-    w_assert_int_ne(OS_MD5_File("not_existing_file", buffer, OS_TEXT), -1);
+    w_assert_int_eq(OS_MD5_File("not_existing_file", buffer, OS_TEXT), -1);
     return 1;
 }
 
@@ -101,7 +101,7 @@ int test_sha1_file() {
 
 int test_sha1_file_fail() {
     os_sha1 buffer;
-    w_assert_int_ne(OS_SHA1_File("not_existing_file", buffer, OS_TEXT), -1);
+    w_assert_int_eq(OS_SHA1_File("not_existing_file", buffer, OS_TEXT), -1);
     return 1;
 }
 
@@ -155,7 +155,7 @@ int test_md5_sha1_cmd_file_fail() {
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    w_assert_int_ne(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer, OS_TEXT), -1);
+    w_assert_int_eq(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer, OS_TEXT), -1);
     return 1;
 }
 
@@ -172,9 +172,7 @@ int main(void) {
     TAP_TEST_MSG(test_md5_file(), "MD5 file reading encryption test.");
 
     // Attempts to read from a non-existing file. 
-    TODO;
     TAP_TEST_MSG(test_md5_file_fail(), "MD5 non-existing file to read from.");
-    END_TODO;
 
     // Encrypts a string using SHA1 algorithm
     TAP_TEST_MSG(test_sha1_string(), "SHA1 encryption test.");
@@ -183,9 +181,7 @@ int main(void) {
     TAP_TEST_MSG(test_sha1_file(), "SHA1 file reading encryption test.");
 
     // Attempts to read from a non-existing file. 
-    TODO;
     TAP_TEST_MSG(test_sha1_file_fail(), "SHA1 non-existing file to read from.");
-    END_TODO;
 
     // Encrypts text readed from a temporal file using SHA1 and MD5 algorithm
     TAP_TEST_MSG(test_md5_sha1_file(), "MD5+SHA1 file reading encryption test.");
@@ -194,9 +190,7 @@ int main(void) {
     TAP_TEST_MSG(test_md5_sha1_cmd_file(), "MD5+SHA1 reading from file using command encryption test.");
 
     // Attempts to read from a non-existing file. 
-    TODO;
     TAP_TEST_MSG(test_md5_sha1_cmd_file_fail(), "MD5+SHA1 non-existing file to read from using command.");
-    END_TODO;
 
     TAP_PLAN;
     TAP_SUMMARY;

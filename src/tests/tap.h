@@ -34,10 +34,6 @@ static int tap_fail;
         }                                               \
         printf(CRED "not ok %*d - ", 2 , tap_count);    \
     }                                                   \
-    else if (tap_todo == 1) {                           \
-        printf(CGREEN "    ok %*d - ", 2 , tap_count);  \
-        tap_fail++;                                     \
-    }                                                   \
     else {                                              \
         printf(CGREEN "    ok %*d - ", 2 , tap_count);  \
     }                                                   \

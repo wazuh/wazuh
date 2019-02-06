@@ -68,7 +68,7 @@ int test_fail_match() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        w_assert_int_eq(OS_Match2(tests[i][0], tests[i][1]), 1);
+        w_assert_int_ne(OS_Match2(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -176,7 +176,7 @@ int test_fail_regex() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        w_assert_int_eq(OS_Regex(tests[i][0], tests[i][1]), 1);
+        w_assert_int_ne(OS_Regex(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -218,7 +218,7 @@ int test_fail_wordmatch() {
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        w_assert_int_eq(OS_WordMatch(tests[i][0], tests[i][1]), 1);
+        w_assert_int_ne(OS_WordMatch(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -256,7 +256,7 @@ int test_fail_strisnum() {
     };
 
     for (i = 0; tests[i] != NULL ; i++) {
-        w_assert_int_eq(OS_StrIsNum(tests[i]), 1);
+        w_assert_int_ne(OS_StrIsNum(tests[i]), 1);
     }
     return 1;
 }
@@ -739,7 +739,7 @@ int test_fail_str_starts_with() {
 
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        w_assert_int_eq(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
+        w_assert_int_ne(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
     }
     return 1;
 }
@@ -751,33 +751,25 @@ int main(void) {
     TAP_TEST_MSG(test_success_match(), "Matching strings with patterns using OS_Match2 test.");
 
     // Don't match strings with patterns using OS_Match
-    TODO;
     TAP_TEST_MSG(test_fail_match(), "Not matching strings with patterns using OS_Regex test.");
-    END_TODO;
 
     // Match strings with patterns using OS_Regex
     TAP_TEST_MSG(test_success_regex(), "Matching strings with patterns using OS_Regex test.");
 
     // Don't match strings with patterns using OS_Regex
-    TODO;
     TAP_TEST_MSG(test_fail_regex(), "Not matching strings with patterns using OS_Regex test.");
-    END_TODO;
 
     // Match strings with patterns using OS_WordMatch
     TAP_TEST_MSG(test_success_wordmatch(), "Matching strings with patterns using OS_WordMatch test.");
 
     // Don't match strings with patterns using OS_WordMatch
-    TODO;
     TAP_TEST_MSG(test_fail_wordmatch(), "Not matching strings with patterns using OS_WordMatch test.");
-    END_TODO;
 
     // Match strings with patterns using OS_StrIsNum
     TAP_TEST_MSG(test_success_strisnum(), "Matching strings with patterns using OS_StrIsNum test.");
 
     // Don't match strings with patterns using OS_StrIsNum
-    TODO;
     TAP_TEST_MSG(test_fail_strisnum(), "Not matching strings with patterns using OS_StrIsNum test.");
-    END_TODO;
 
     // Match strings with patterns using OS_StrHowClosedMatch
     TAP_TEST_MSG(test_success_strhowclosedmatch(), "Matching strings with patterns using OS_StrHowClosedMatch test.");
@@ -843,9 +835,7 @@ int main(void) {
     TAP_TEST_MSG(test_success_str_starts_with(), "Validate string starts with substring test.");
 
     // Not matching substring at the beginning of string
-    TODO;
     TAP_TEST_MSG(test_fail_str_starts_with(), "Not matching substring at the beginning of string.");
-    END_TODO;
 
 
     TAP_PLAN;

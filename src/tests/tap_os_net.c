@@ -133,7 +133,7 @@ int test_tcp_invalid_sockets() {
 
     w_assert_int_eq(OS_AcceptTCP(-1, buffer, BUFFERSIZE), -1);
 
-    return 0;
+    return 1;
 }
 
 int test_udpv4() {
@@ -207,7 +207,7 @@ int test_udp_invalid_sockets() {
 
     w_assert_int_eq(OS_RecvConnUDP(-1, buffer, BUFFERSIZE), 0);
 
-    return 0;
+    return 1;
 }
 
 int test_unix() {
@@ -256,7 +256,7 @@ int test_unix_invalid_sockets() {
 
     w_assert_int_eq(OS_RecvUnix(-1, BUFFERSIZE, buffer), 0);
 
-    return 0;
+    return 1;
 }
 
 int test_gethost_success() {
@@ -271,12 +271,12 @@ int test_gethost_success() {
 }
 
 int test_gethost_null() {
-    w_assert_ptr_ne(OS_GetHost(NULL, 2), NULL);
+    w_assert_ptr_eq(OS_GetHost(NULL, 2), NULL);
     return 1;
 }
 
 int test_gethost_not_exists() {
-    w_assert_ptr_ne(OS_GetHost("this.should.not.exist", 2), NULL);
+    w_assert_ptr_eq(OS_GetHost("this.should.not.exist", 2), NULL);
     return 1;
 }
 
@@ -293,9 +293,7 @@ int main(void) {
     TAP_TEST_MSG(test_tcpv6(), "TCP IPV6 send an receive test.");
 
     // Try to use invalid TCP sockets
-    TODO;    
     TAP_TEST_MSG(test_tcp_invalid_sockets(), "TCP invalid socket test.");
-    END_TODO;
 
     // Send and receive string using UDP IPV4 socket on inet
     TAP_TEST_MSG(test_udpv4(), "UDP IPV4 send an receive test.");
@@ -304,30 +302,22 @@ int main(void) {
     TAP_TEST_MSG(test_udpv6(), "UDP IPV6 send an receive test.");
 
     // Try to use invalid UDP sockets
-    TODO;
     TAP_TEST_MSG(test_udp_invalid_sockets(), "UDP invalid socket test.");
-    END_TODO;
 
     // Send and receive string using Unix sockets
     TAP_TEST_MSG(test_unix(), "Unix sockets test.");
 
     // Try to use invalid Unix sockets
-    TODO;
     TAP_TEST_MSG(test_unix_invalid_sockets(), "Unix invalid socket test.");
-    END_TODO;
 
     // Try to get host by name
     TAP_TEST_MSG(test_gethost_success(), "Get host by name: google dns test.");
 
     // Try to get host by name with null host name
-    TODO;
     TAP_TEST_MSG(test_gethost_null(), "Get host by name: null host test.");
-    END_TODO;
 
     // Try to get host by name with non-existent host name
-    TODO;    
     TAP_TEST_MSG(test_gethost_not_exists(), "Get host by name: non-existent host test.");
-    END_TODO;
 
     TAP_PLAN;
     TAP_SUMMARY;
