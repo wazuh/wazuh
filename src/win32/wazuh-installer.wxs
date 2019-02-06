@@ -46,6 +46,10 @@
         <CustomAction Id="LaunchApplication" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="no" />
         <Binary Id="InstallerScripts" SourceFile="InstallerScripts.vbs" />
 
+        <Property Id="APPLICATIONFOLDER">
+            <RegistrySearch Id="WazuhInstallDirProperty" Type="raw" Root="HKLM" Key="Software\[Manufacturer]\[ProductName]" Name="WazuhInstallDir" />
+        </Property>
+
         <!-- This script will remove all of the files and folders from the root folder on uninstall, *except* some files indicated in RemoveAllScript.vbs. -->
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
@@ -104,6 +108,8 @@
 
         <UI>
             <UIRef Id="WixUI_Advanced" />
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
         </UI>
         <InstallExecuteSequence>
@@ -160,6 +166,9 @@
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
+                    <Component Id="REGISTRY_INSTALL_DIR" Guid="63E18998-4DBB-4C34-A1AD-09AA809A1C15" KeyPath="yes">
+                        <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
+                    </Component>
                     <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
                         <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" >
                          </File>
@@ -395,6 +404,7 @@
             </Component>
         </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
+            <ComponentRef Id="REGISTRY_INSTALL_DIR" />
             <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
