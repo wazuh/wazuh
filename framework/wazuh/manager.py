@@ -342,34 +342,11 @@ def restart():
 
     try:
         conn.send(msg.encode())
+        conn.close()
     except socket.error:
         raise WazuhException(1014)
-    finally:
-        conn.close()
 
-    try:
-        from time import sleep
-        sleep(10)
-        tmp_file = join(common.ossec_path, 'tmp/api_restart')
-        confirmation = 'KO'
-        with open(tmp_file) as f:
-            confirmation = f.readline()
-    except IOError:
-        pass
-    except Exception:
-        raise WazuhException(1000)
-
-    try:
-        remove(tmp_file)
-    except FileNotFoundError:
-        pass
-    except PermissionError:
-        raise WazuhException(1903)
-
-    if 'OK' in confirmation:
-        return "Manager was restarted successfully"
-    else:
-        return "Manager could not be restarted"
+    return "Manager is going to restart now"
 
 
 def _check_wazuh_xml(files):
