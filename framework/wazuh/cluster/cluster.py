@@ -272,18 +272,11 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
     with zipfile.ZipFile(zip_path) as zipf:
-        for name in zipf.namelist():
-            if name == ko_files_name:
-                with zipf.open(name) as file:
-                    ko_files = json.loads(file.read().decode('utf-8'))
-            else:
-                filename = "{}/{}".format(zip_dir, path.dirname(name))
-                if not path.exists(filename):
-                    mkdir_with_mode(filename)
-                with open("{}/{}".format(filename, path.basename(name)), 'wb') as cf:
-                    with zipf.open(name) as file:
-                        content = file.read()
-                    cf.write(content)
+        zipf.extractall(path=zip_dir)
+
+    if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
+        with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
+            ko_files = json.loads(ko.read())
 
     # once read all files, remove the zipfile
     remove(zip_path)
