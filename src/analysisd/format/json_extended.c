@@ -347,6 +347,11 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
     char *ip;
     char *end;
     cJSON* agent;
+    char info_file[512];
+    File *fp;
+    char line[256];
+    char *readed;
+    char *reporting_ip = NULL;
 
     if (lf->location[0] == '(') {
         string = strdup(lf->location);
@@ -355,10 +360,28 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
             if ((end = strchr(ip += 2, '-')))
                 *end = '\0';
 
-            if (strcmp(ip, "any")){
-                agent = cJSON_GetObjectItem(root, "agent");
-                cJSON_AddStringToObject(agent, "ip", ip);
+            agent = cJSON_GetObjectItem(root, "agent");
+
+            sprintf(info_file, "%s/%s-%s", AGENTINFO_DIR, lf->hostname, ip);
+            fp = fopen(info_file, "r");
+            while(fgets(line, 256, fp) != NULL){
+                if(readed = strstr(line,"reporting_ip")){
+                    reporting_ip = strchr(readed,':');
+                    ++reporting_ip;
+                    end = strchr(reporting_ip, '\n');
+                    *end = '\0';
+                    break;
+                }
             }
+
+            if(reporting_ip){
+                cJSON_AddStringToObject(agent, "ip", reporting_ip);
+            } else{
+                if (strcmp(ip, "any")){
+                    cJSON_AddStringToObject(agent, "ip", ip);
+                }
+            }
+
         }
 
         free(string);

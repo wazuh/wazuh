@@ -16,6 +16,7 @@
 static void *wm_control_main(wm_control_t control);
 static void *wm_control_destroy();
 cJSON *wm_control_dump(void);
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
@@ -55,7 +56,6 @@ char* getPrimaryIP(){
         char if_name[256] = "";
         char interface_name[256] = "";
         char string[OS_MAXSTR];
-        struct in_addr address;
         int destination, gateway, flags, ref, use, metric;
         int min_metric = 999999;
         snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_NET_DIR, "route");
@@ -108,7 +108,7 @@ void *wm_control_main(wm_control_t control){
     w_create_thread(send_ip, NULL);
 
     while(1){
-
+        w_mutex_lock(&mutex);
         if(reporting_ip){
             mtdebug2(WM_CONTROL_LOGTAG, "Refreshing IP");
             free(reporting_ip);
@@ -117,7 +117,7 @@ void *wm_control_main(wm_control_t control){
         reporting_ip = getPrimaryIP();
         mtdebug1(WM_CONTROL_LOGTAG, "Reporting IP: %s", reporting_ip);
 
-
+        w_mutex_unlock(&mutex);
         sleep(30);
 
     }
@@ -210,7 +210,9 @@ void *send_ip(){
 
         default:
             length = sizeof(reporting_ip);
+            w_mutex_lock(&mutex);
             OS_SendUnix(peer, getReportingIP(), 0);
+            w_mutex_unlock(&mutex);
             free(response);
             close(peer);
         }

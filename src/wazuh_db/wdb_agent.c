@@ -76,7 +76,12 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *regis
         sqlite3_bind_text(stmt, 3, ip, -1, NULL);
     }
     else {
-        sqlite3_bind_null(stmt, 3);
+        if(register_ip){
+            sqlite3_bind_text(stmt, 3, register_ip, -1, NULL);
+        }
+        else{
+            sqlite3_bind_null(stmt, 3);
+        }
     }
 
     if(register_ip){
