@@ -4,48 +4,48 @@
     <category>ossec</category>
     <decoded_as>policy_monitoring</decoded_as>
     <options>no_full_log</options>
-    <description>Group of policy monitoring rules.</description>
+    <description>Group of configuration assessment rules.</description>
   </rule>
 
   <rule id="19001" level="3">
     <if_sid>19000</if_sid>
-    <field name="pm.type">^summary</field>
+    <field name="configuration_assessment.type">^summary</field>
     <options>no_full_log</options>
-    <description>Policy monitoring summary: Passed checks: $(pm.passed) Failed checks: $(pm.failed) Score: $(pm.score)</description>
+    <description>Configuration assessment summary: Passed checks: $(configuration_assessment.passed) Failed checks: $(configuration_assessment.failed) Score: $(configuration_assessment.score)</description>
   </rule>
 
   <rule id="19002" level="3">
     <if_sid>19000</if_sid>
-    <field name="pm.type">^check</field>
+    <field name="configuration_assessment.type">^check</field>
     <options>no_full_log</options>
-    <description>Policy monitoring check event: Passed checks: $(pm.passed) Failed checks: $(pm.failed) Score: $(pm.score)</description>
+    <description>Configuration assessment check event: Passed checks: $(configuration_assessment.passed) Failed checks: $(configuration_assessment.failed) Score: $(configuration_assessment.score)</description>
   </rule>
 
   <rule id="19003" level="7">
     <if_sid>19002</if_sid>
-    <field name="pm.check.result">^failed</field>
+    <field name="configuration_assessment.check.result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for policy $(pm.policy) failed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) failed</description>
   </rule>
 
   <rule id="19004" level="3">
     <if_sid>19002</if_sid>
-    <field name="pm.check.result">^passed</field>
+    <field name="configuration_assessment.check.result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for policy $(pm.policy) passed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) passed</description>
   </rule>
 
   <rule id="19005" level="3">
     <if_sid>19004</if_sid>
-    <field name="pm.check.previous_result">^failed</field>
+    <field name="configuration_assessment.check.previous_result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for policy $(pm.policy) has changed to passed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to passed</description>
   </rule>
 
   <rule id="19006" level="9">
     <if_sid>19003</if_sid>
-    <field name="pm.check.previous_result">^passed</field>
+    <field name="configuration_assessment.check.previous_result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(pm.check.id) for policy $(pm.policy) has changed to failed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to failed</description>
   </rule>
 </group>

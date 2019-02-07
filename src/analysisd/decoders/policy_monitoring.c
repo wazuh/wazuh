@@ -582,7 +582,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result) {
     
-    fillData(lf, "pm.type", "check");
+    fillData(lf, "configuration_assessment.type", "check");
 
     if(scan_id) {
         char value[OS_SIZE_128];
@@ -592,11 +592,11 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         } else if (scan_id->valuedouble) {
              sprintf(value, "%lf", scan_id->valuedouble);
         } 
-        fillData(lf, "pm.scan_id", value);
+        fillData(lf, "configuration_assessment.scan_id", value);
     }
 
     if(name) {
-        fillData(lf, "pm.policy", name->valuestring);
+        fillData(lf, "configuration_assessment.policy", name->valuestring);
     }
 
     if(id) {
@@ -608,23 +608,23 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
              sprintf(value, "%lf", id->valuedouble);
         } 
 
-        fillData(lf, "pm.check.id", value);
+        fillData(lf, "configuration_assessment.check.id", value);
     }
 
     if(title) {
-        fillData(lf, "pm.check.title", title->valuestring);
+        fillData(lf, "configuration_assessment.check.title", title->valuestring);
     }
 
     if(description) {
-        fillData(lf, "pm.check.description", description->valuestring);
+        fillData(lf, "configuration_assessment.check.description", description->valuestring);
     }
 
     if(rationale) {
-        fillData(lf, "pm.check.rationale", rationale->valuestring);
+        fillData(lf, "configuration_assessment.check.rationale", rationale->valuestring);
     }
 
     if(remediation) {
-        fillData(lf, "pm.check.remediation", remediation->valuestring);
+        fillData(lf, "configuration_assessment.check.remediation", remediation->valuestring);
     }
 
     if(compliance) {
@@ -651,7 +651,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
             }
 
             char compliance_key[OS_SIZE_1024];
-            snprintf(compliance_key,OS_SIZE_1024,"pm.check.compliance.%s",key);
+            snprintf(compliance_key,OS_SIZE_1024,"configuration_assessment.check.compliance.%s",key);
             fillData(lf, compliance_key, value);
 
             if(free_value) {
@@ -661,37 +661,37 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(reference) {
-        fillData(lf, "pm.check.reference", reference->valuestring);
+        fillData(lf, "configuration_assessment.check.references", reference->valuestring);
     }
 
     if(file){
-        fillData(lf, "pm.check.file", file->valuestring);
+        fillData(lf, "configuration_assessment.check.file", file->valuestring);
     }
 
     if(directory) {
-        fillData(lf, "pm.check.directory", directory->valuestring);
+        fillData(lf, "configuration_assessment.check.directory", directory->valuestring);
     }
 
     if(registry) {
-        fillData(lf, "pm.check.registry", registry->valuestring);
+        fillData(lf, "configuration_assessment.check.registry", registry->valuestring);
     }
 
     if(process){
-        fillData(lf, "pm.check.process", process->valuestring);
+        fillData(lf, "configuration_assessment.check.process", process->valuestring);
     }
 
     if(result) {
-        fillData(lf, "pm.check.result", result->valuestring);
+        fillData(lf, "configuration_assessment.check.result", result->valuestring);
     }
 
     if(old_result) {
-        fillData(lf, "pm.check.previous_result", old_result);
+        fillData(lf, "configuration_assessment.check.previous_result", old_result);
     }
 }
 
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file) {
     
-    fillData(lf, "pm.type", "summary");
+    fillData(lf, "configuration_assessment.type", "summary");
 
     if(scan_id) {
         char value[OS_SIZE_128];
@@ -701,15 +701,15 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } else if (scan_id->valuedouble) {
             sprintf(value, "%lf", scan_id->valuedouble);
         } 
-        fillData(lf, "pm.scan_id", value);
+        fillData(lf, "configuration_assessment.scan_id", value);
     }
 
     if(name) {
-        fillData(lf, "pm.name", name->valuestring);
+        fillData(lf, "configuration_assessment.name", name->valuestring);
     }
 
     if(description) {
-        fillData(lf, "pm.description", description->valuestring);
+        fillData(lf, "configuration_assessment.description", description->valuestring);
     }
 
     if(pass) {
@@ -721,7 +721,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
              sprintf(value, "%lf", pass->valuedouble);
         } 
 
-        fillData(lf, "pm.passed", value);
+        fillData(lf, "configuration_assessment.passed", value);
     }
 
     if(failed) {
@@ -733,7 +733,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", failed->valuedouble);
         } 
 
-        fillData(lf, "pm.failed", value);
+        fillData(lf, "configuration_assessment.failed", value);
     }
 
     if(score) {
@@ -745,11 +745,11 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", score->valuedouble);
         } 
 
-        fillData(lf, "pm.score", value);
+        fillData(lf, "configuration_assessment.score", value);
     }
 
     if(file){
-        fillData(lf, "pm.file", file->valuestring);
+        fillData(lf, "configuration_assessment.file", file->valuestring);
     }
 }
 
