@@ -110,43 +110,57 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     async def sync_integrity(self):
         integrity_logger = self.setup_task_logger("Integrity")
         while True:
-            if self.connected:
-                before = time.time()
-                await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=cluster.get_files_status('master',
-                                                                                                         self.name),
-                                 logger=integrity_logger, worker=self).sync()
-                after = time.time()
-                integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
+            try:
+                if self.connected:
+                    before = time.time()
+                    await SyncWorker(cmd=b'sync_i_w_m', files_to_sync={}, checksums=cluster.get_files_status('master',
+                                                                                                             self.name),
+                                     logger=integrity_logger, worker=self).sync()
+                    after = time.time()
+                    integrity_logger.debug("Time synchronizing integrity: {} s".format(after - before))
+            except Exception as e:
+                integrity_logger.error("Error synchronizing integrity: {}".format(e))
+                res = await self.send_request(command=b'sync_i_w_m_r', data=str(e).encode())
+
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
 
     async def sync_agent_info(self):
         agent_info_logger = self.setup_task_logger("Agent info")
         while True:
-            if self.connected:
-                before = time.time()
-                agent_info_logger.info("Starting to send agent status files")
-                worker_files = cluster.get_files_status('worker', self.name, get_md5=False)
-                await SyncWorker(cmd=b'sync_a_w_m', files_to_sync=worker_files, checksums=worker_files,
-                                 logger=agent_info_logger, worker=self).sync()
-                after = time.time()
-                agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
+            try:
+                if self.connected:
+                    before = time.time()
+                    agent_info_logger.info("Starting to send agent status files")
+                    worker_files = cluster.get_files_status('worker', self.name, get_md5=False)
+                    await SyncWorker(cmd=b'sync_a_w_m', files_to_sync=worker_files, checksums=worker_files,
+                                     logger=agent_info_logger, worker=self).sync()
+                    after = time.time()
+                    agent_info_logger.debug2("Time synchronizing agent statuses: {} s".format(after - before))
+            except Exception as e:
+                agent_info_logger.error("Error synchronizing agent status files: {}".format(e))
+                res = await self.send_request(command=b'sync_a_w_m_r', data=str(e).encode())
+
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_files'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
         extra_valid_logger = self.setup_task_logger("Extra valid")
-        before = time.time()
-        self.logger.debug("Starting to send extra valid files")
-        # TODO: Add support for more extra valid file types if ever added
-        n_files, merged_file = cluster.merge_agent_info(merge_type='agent-groups', files=extra_valid.keys(),
-                                                        time_limit_seconds=0, node_name=self.name)
-        if n_files:
-            files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
-                                           'cluster_item_key': '/queue/agent-groups/'}}
-            my_worker = SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, checksums=files_to_sync,
-                                   logger=extra_valid_logger, worker=self)
-            await my_worker.sync()
-        after = time.time()
-        self.logger.debug2("Time synchronizing extra valid files: {} s".format(after - before))
+        try:
+            before = time.time()
+            self.logger.debug("Starting to send extra valid files")
+            # TODO: Add support for more extra valid file types if ever added
+            n_files, merged_file = cluster.merge_agent_info(merge_type='agent-groups', files=extra_valid.keys(),
+                                                            time_limit_seconds=0, node_name=self.name)
+            if n_files:
+                files_to_sync = {merged_file: {'merged': True, 'merge_type': 'agent-groups', 'merge_name': merged_file,
+                                               'cluster_item_key': '/queue/agent-groups/'}}
+                my_worker = SyncWorker(cmd=b'sync_e_w_m', files_to_sync=files_to_sync, checksums=files_to_sync,
+                                       logger=extra_valid_logger, worker=self)
+                await my_worker.sync()
+            after = time.time()
+            self.logger.debug2("Time synchronizing extra valid files: {} s".format(after - before))
+        except Exception as e:
+            extra_valid_logger.error("Error synchronizing extra valid files: {}".format(e))
+            res = await self.send_request(command=b'sync_e_w_m_r', data=str(e).encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
         await file_received.wait()
@@ -187,6 +201,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         f.write(content)
                     os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
             else:
+                if not os.path.exists(os.path.dirname(full_filename_path)):
+                    utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 os.rename("{}{}".format(zip_path, filename), full_filename_path)
                 os.chown(full_filename_path, common.ossec_uid, common.ossec_gid)
                 os.chmod(full_filename_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])

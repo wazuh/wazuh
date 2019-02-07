@@ -106,15 +106,15 @@ class AbstractServerHandler(c_common.Handler):
         """
         if self.name:
             if exc is None:
-                self.logger.info("Connection lost.".format(self.name))
+                self.logger.info("Disconnected.".format(self.name))
             else:
                 self.logger.error("Error during connection with '{}': {}.".format(self.name, exc))
             del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error("Error during handshake with incoming worker: {}".format(exc))
+                self.logger.error("Error during handshake with incoming connection: {}".format(exc))
             else:
-                self.logger.error("Error during handshake with incoming worker.")
+                self.logger.error("Error during handshake with incoming connection.")
 
 
 class AbstractServer:
