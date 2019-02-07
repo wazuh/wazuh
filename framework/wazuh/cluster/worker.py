@@ -201,6 +201,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         f.write(content)
                     os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
             else:
+                if not os.path.exists(os.path.dirname(full_filename_path)):
+                    utils.mkdir_with_mode(os.path.dirname(full_filename_path))
                 os.rename("{}{}".format(zip_path, filename), full_filename_path)
                 os.chown(full_filename_path, common.ossec_uid, common.ossec_gid)
                 os.chmod(full_filename_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
