@@ -380,19 +380,16 @@ static void ExecdStart(int q)
 
                 os_free(output);
                 continue;
-
-            } else if (result_code != 0) {
-                mwarn("Returned code %d.", result_code);
-                os_free(output);
-                continue;
             }
 
             int rc;
 
             /* Start api socket */
             int api_sock;
-            if ((api_sock = StartMQ("/var/ossec/queue/alerts/execa", WRITE)) < 0) {
-                merror_exit(QUEUE_ERROR, EXECQUEUEPATH, strerror(errno));
+            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
+                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+                os_free(output);
+                continue;
             }
 
             if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
@@ -400,12 +397,14 @@ static void ExecdStart(int q)
                 if (rc == OS_SOCKTERR) {
                     merror("socketerr (not available).");
                     os_free(output);
+                    close(api_sock);
                     continue;
                 }
 
                 /* Unable to send. Socket busy */
                 mdebug2("Socket busy, discarding message.");
             }
+            close(api_sock);
             os_free(output);
             continue;
         }

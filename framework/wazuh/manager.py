@@ -19,6 +19,8 @@ from os import remove
 import random
 
 
+re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(.*)$")
+
 def status():
     """
     Returns the Manager processes that are running.
@@ -184,7 +186,7 @@ def upload_file(tmp_file, path, content_type):
     :return: Confirmation message in string
     """
     try:
-        with open('{}/{}'.format(common.ossec_path, tmp_file)) as f:
+        with open(join(common.ossec_path, tmp_file)) as f:
             file_data = f.read()
     except IOError:
         raise WazuhException(1005)
@@ -209,7 +211,6 @@ def upload_xml(xml_file, path):
     :param path: Destination of the new XML file
     :return: Confirmation message
     """
-
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
@@ -334,11 +335,11 @@ def validation():
         api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         api_socket.bind(api_socket_path)
         # timeout
-        api_socket.settimeout(2)
+        #api_socket.settimeout(5)
     except socket.error:
         raise WazuhException(1903)
 
-    # initialize execq socket
+    # connect to execq socket
     if exists(execq_socket_path):
         try:
             execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
@@ -359,15 +360,27 @@ def validation():
 
     # if api_socket receives a message, configuration is OK
     try:
-        datagram = api_socket.recv(2)
+        buffer = bytearray()
+        # receive data
+        datagram = api_socket.recv(1024)
+        buffer.extend(datagram)
     except socket.timeout:
         datagram = None
     finally:
         api_socket.close()
         # remove api_socket
-        remove(api_socket_path)
+        if exists(api_socket_path):
+            remove(api_socket_path)
 
-    if datagram:
-        return "Configuration is OK"
-    else:
-        return "Configuration is KO"
+    return _extract_logstest_errors(buffer.decode('utf-8'))
+
+
+def _extract_logstest_errors(output):
+    log_lines = output.splitlines(keepends=False)
+    errors = []
+    for line in log_lines:
+        match = re_logtest.match(line)
+        if match:
+            errors.append(match.group(1))
+
+    return errors
