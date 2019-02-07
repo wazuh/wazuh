@@ -439,22 +439,6 @@ def _check_removed_agents(new_client_keys_path):
 
 
 #
-# Others
-#
-def run_logtest(synchronized=False):
-    log_msg_start = "Synchronized r" if synchronized else "R"
-    try:
-        # check synchronized rules are correct before restarting the manager
-        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-        logger.debug("[Cluster] {}ules are correct.".format(log_msg_start))
-        return True
-    except CalledProcessError as e:
-        logger.warning("[Cluster] {}ules are not correct.".format(log_msg_start, str(e)))
-        return False
-
-
-
-#
 # Agents-info
 #
 def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit_seconds=1800):
@@ -539,8 +523,6 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
             copyfileobj(f_in, f_out)
         chmod(new_rotated_file, 0o640)
         unlink(rotated_file)
-
-
 
     def computeArchivesDirectory(self, rotated_filepath):
         """
