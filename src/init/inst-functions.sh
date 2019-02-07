@@ -674,6 +674,8 @@ InstallCommon()
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
+    OSSEC_CONF_ASSESSMENT='../etc/configuration_assessment/cis_debian_linux_rcl.yml'
+
     if [ ! ${PREFIX} = ${INSTALLDIR} ]; then
         PREFIX=${INSTALLDIR}
     fi
@@ -731,6 +733,10 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/ossec
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
+
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
+  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/ruleset/configuration_assessment
+  ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_ASSESSMENT} ${PREFIX}/ruleset/configuration_assessment/cis_debian_linux_rcl.yml
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles

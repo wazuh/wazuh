@@ -215,6 +215,7 @@ static int reported_syscheck = 0;
 static int reported_syscollector = 0;
 static int reported_hostinfo = 0;
 static int reported_rootcheck = 0;
+static int reported_configuration_assessment = 0;
 static int reported_event = 0;
 static int reported_writer = 0;
 static int reported_winevt = 0;
@@ -738,8 +739,8 @@ void OS_ReadMSG_analysisd(int m_queue)
     /* Initialize windows event */
     WinevtInit();
 
-    /* Initialize policy monitoring event */
-    PolicyMonitoringInit();
+    /* Initialize configuration assessment event */
+    ConfigurationAssessmentInit();
 
     /* Initialize the Accumulator */
     if (!Accumulate_Init()) {
@@ -841,6 +842,7 @@ void OS_ReadMSG_analysisd(int m_queue)
     int num_decode_syscheck_threads = getDefine_Int("analysisd", "syscheck_threads", 0, 32);
     int num_decode_syscollector_threads = getDefine_Int("analysisd", "syscollector_threads", 0, 32);
     int num_decode_rootcheck_threads = getDefine_Int("analysisd", "rootcheck_threads", 0, 32);
+    int num_decode_configuration_assessment_threads = getDefine_Int("analysisd", "configuration_assessment_threads", 0, 32);
     int num_decode_hostinfo_threads = getDefine_Int("analysisd", "hostinfo_threads", 0, 32);
     int num_decode_winevt_threads = getDefine_Int("analysisd", "winevt_threads", 0, 32);
 
@@ -858,6 +860,10 @@ void OS_ReadMSG_analysisd(int m_queue)
 
     if(num_decode_rootcheck_threads == 0){
         num_decode_rootcheck_threads = cpu_cores;
+    }
+
+    if(num_decode_configuration_assessment_threads == 0){
+        num_decode_configuration_assessment_threads = cpu_cores;
     }
 
     if(num_decode_hostinfo_threads == 0){
@@ -914,8 +920,8 @@ void OS_ReadMSG_analysisd(int m_queue)
         w_create_thread(w_decode_rootcheck_thread,NULL);
     }
 
-    /* Create decode policy monitoring threads */
-    for(i = 0; i < num_decode_rootcheck_threads;i++){
+    /* Create decode configuration assessment threads */
+    for(i = 0; i < num_decode_configuration_assessment_threads;i++){
         w_create_thread(w_decode_policy_monitoring_thread,NULL);
     }
 
@@ -1615,9 +1621,9 @@ void * ad_input_main(void * args) {
                 os_strdup(buffer, copy);
 
                 if(queue_full(decode_queue_policy_monitoring_input)){
-                    if(!reported_rootcheck){
-                        reported_rootcheck = 1;
-                        mwarn("Policy monitoring decoder queue is full.");
+                    if(!reported_configuration_assessment){
+                        reported_configuration_assessment = 1;
+                        mwarn("Configuration assessment decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -1627,9 +1633,9 @@ void * ad_input_main(void * args) {
                 result = queue_push_ex(decode_queue_policy_monitoring_input,copy);
 
                 if(result < 0){
-                    if(!reported_rootcheck){
-                        reported_rootcheck = 1;
-                        mwarn("Policy monitoring json decoder queue is full.");
+                    if(!reported_configuration_assessment){
+                        reported_configuration_assessment = 1;
+                        mwarn("Configuration assessment json decoder queue is full.");
                     }
                     w_inc_dropped_events();
                     free(copy);
@@ -2666,7 +2672,7 @@ void w_init_queues(){
     decode_queue_rootcheck_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
 
     /* Init the decode rootcheck json queue input */
-    decode_queue_policy_monitoring_input = queue_init(getDefine_Int("analysisd", "decode_rootcheck_queue_size", 0, 2000000));
+    decode_queue_policy_monitoring_input = queue_init(getDefine_Int("analysisd", "decode_configuration_assessment_queue_size", 0, 2000000));
 
     /* Init the decode hostinfo queue input */
     decode_queue_hostinfo_input = queue_init(getDefine_Int("analysisd", "decode_hostinfo_queue_size", 0, 2000000));

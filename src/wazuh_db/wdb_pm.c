@@ -130,7 +130,7 @@ int wdb_policy_monitoring_find(wdb_t * wdb, int pm_id, char * output) {
 }
 
 /* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
-int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char *cis_control,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result) {
+int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
@@ -149,16 +149,15 @@ int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_int(stmt, 2, scan_id);
     sqlite3_bind_text(stmt, 3, title, -1, NULL);
-    sqlite3_bind_text(stmt, 4, cis_control, -1, NULL);
-    sqlite3_bind_text(stmt, 5, description, -1, NULL);
-    sqlite3_bind_text(stmt, 6, rationale, -1, NULL);
-    sqlite3_bind_text(stmt, 7, remediation, -1, NULL);
-    sqlite3_bind_text(stmt, 8, file, -1, NULL);
-    sqlite3_bind_text(stmt, 9, directory, -1, NULL);
-    sqlite3_bind_text(stmt, 10, process, -1, NULL);
-    sqlite3_bind_text(stmt, 11, registry, -1, NULL);
-    sqlite3_bind_text(stmt, 12, reference, -1, NULL);
-    sqlite3_bind_text(stmt, 13, result, -1, NULL);
+    sqlite3_bind_text(stmt, 4, description, -1, NULL);
+    sqlite3_bind_text(stmt, 5, rationale, -1, NULL);
+    sqlite3_bind_text(stmt, 6, remediation, -1, NULL);
+    sqlite3_bind_text(stmt, 7, file, -1, NULL);
+    sqlite3_bind_text(stmt, 8, directory, -1, NULL);
+    sqlite3_bind_text(stmt, 9, process, -1, NULL);
+    sqlite3_bind_text(stmt, 10, registry, -1, NULL);
+    sqlite3_bind_text(stmt, 11, reference, -1, NULL);
+    sqlite3_bind_text(stmt, 12, result, -1, NULL);
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;

@@ -438,4 +438,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define ROOTCHECKCFG_DIR   "/etc/rootcheck"
 
+#define CONFIGURATION_ASSESSMENT_DIR   "/ruleset/configuration_assessment"
+
 #endif /* __OS_HEADERS */

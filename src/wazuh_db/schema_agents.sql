@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-CREATE TABLE IF NOT EXISTS pm_policy (
+CREATE TABLE IF NOT EXISTS configuration_assessment_policy (
    name TEXT,
    file TEXT,
    id TEXT,
@@ -218,22 +218,21 @@ CREATE TABLE IF NOT EXISTS pm_policy (
    `references` TEXT
 );
 
-CREATE TABLE IF NOT EXISTS pm_scan_info (
+CREATE TABLE IF NOT EXISTS configuration_assessment_scan_info (
    id INTEGER PRIMARY KEY,
    start_scan INTEGER,
    end_scan INTEGER,
-   policy_id TEXT REFERENCES pm_policy (id),
+   policy_id TEXT REFERENCES configuration_assessment_policy (id),
    pass INTEGER,
    fail INTEGER,
    score INTEGER,
    hash TEXT
 );
 
-CREATE TABLE IF NOT EXISTS pm_check (
-   scan_id INTEGER REFERENCES pm_scan_info (id),
+CREATE TABLE IF NOT EXISTS configuration_assessment_check (
+   scan_id INTEGER REFERENCES configuration_assessment_scan_info (id),
    id INTEGER PRIMARY KEY,
    title TEXT,
-   cis_control TEXT,
    description TEXT,
    rationale TEXT,
    remediation TEXT,
@@ -245,8 +244,8 @@ CREATE TABLE IF NOT EXISTS pm_check (
    result TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS pm_compliance (
-   id_check INTEGER REFERENCES pm_check (id),
+CREATE TABLE IF NOT EXISTS configuration_assessment_check_compliance (
+   id_check INTEGER REFERENCES configuration_assessment_check (id),
   `key` TEXT,
   `value` TEXT
 );

@@ -496,7 +496,6 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         int id;
         int scan_id;
         char *title;
-        char *cis_control;
         char *description;
         char *rationale;
         char *remediation;
@@ -542,17 +541,6 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         }
 
         title = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        cis_control = curr;
         *next++ = '\0';
 
         curr = next;
@@ -646,7 +634,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         result_check = curr;
 
-        if (result = wdb_policy_monitoring_save(wdb,id,scan_id,title,cis_control,description,rationale,remediation,file,directory,process,registry,reference,result_check), result < 0) {
+        if (result = wdb_policy_monitoring_save(wdb,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result_check), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {

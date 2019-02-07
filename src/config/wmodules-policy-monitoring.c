@@ -25,14 +25,14 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
+int wm_configuration_assessment_read(xml_node **nodes, wmodule *module)
 {
     unsigned int i;
     unsigned int profiles = 0;
     int month_interval = 0;
-    wm_policy_monitoring_t *policy_monitoring;
+    wm_configuration_assessment_t *policy_monitoring;
 
-    os_calloc(1, sizeof(wm_policy_monitoring_t), policy_monitoring);
+    os_calloc(1, sizeof(wm_configuration_assessment_t), policy_monitoring);
     policy_monitoring->enabled = 1;
     policy_monitoring->scan_on_start = 1;
     policy_monitoring->scan_wday = -1;
@@ -40,7 +40,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
     policy_monitoring->scan_time = NULL;
     policy_monitoring->skip_nfs = 1;
     policy_monitoring->alert_msg = NULL;
-    module->context = &WM_POLICY_MONITORING_CONTEXT;
+    module->context = &WM_CONFIGURATION_ASSESSMENT_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = policy_monitoring;
 
@@ -67,7 +67,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
             int enabled = eval_bool(nodes[i]->content);
 
             if(enabled == OS_INVALID){
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_POLICY_MONITORING_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -106,7 +106,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
             policy_monitoring->interval = strtoul(nodes[i]->content, &endptr, 0);
 
             if (policy_monitoring->interval == 0 || policy_monitoring->interval == UINT_MAX) {
-                merror("Invalid interval at module '%s'", WM_POLICY_MONITORING_CONTEXT.name);
+                merror("Invalid interval at module '%s'", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -131,12 +131,12 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
             case '\0':
                 break;
             default:
-                merror("Invalid interval at module '%s'", WM_POLICY_MONITORING_CONTEXT.name);
+                merror("Invalid interval at module '%s'", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
 
             if (policy_monitoring->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds.", WM_POLICY_MONITORING_CONTEXT.name);
+                merror("At module '%s': Interval must be greater than 60 seconds.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
         }
@@ -146,7 +146,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
 
             if(scan_on_start == OS_INVALID)
             {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_POLICY_MONITORING_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ENABLED, WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -156,7 +156,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
         {
             
             if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Profile path is too long at module '%s'. Max path length is %d", WM_POLICY_MONITORING_CONTEXT.name,PATH_MAX);
+                merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
                 return OS_INVALID;
             }
 
@@ -170,7 +170,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
             int skip_nfs = eval_bool(nodes[i]->content);
 
             if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_NFS, WM_POLICY_MONITORING_CONTEXT.name);
+                merror("Invalid content for tag '%s' at module '%s'.", XML_SKIP_NFS, WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
 
@@ -178,18 +178,18 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
         }
         else
         {
-            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_POLICY_MONITORING_CONTEXT.name);
+            mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         }
     }
 
     // Validate scheduled scan parameters and interval value
 
     if (policy_monitoring->scan_day && (policy_monitoring->scan_wday >= 0)) {
-        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_POLICY_MONITORING_CONTEXT.name);
+        merror("At module '%s': 'day' is not compatible with 'wday'.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         return OS_INVALID;
     } else if (policy_monitoring->scan_day) {
         if (!month_interval) {
-            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_POLICY_MONITORING_CONTEXT.name);
+            mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
             policy_monitoring->interval = 60; // 1 month
         }
         if (!policy_monitoring->scan_time)
@@ -197,7 +197,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
     } else if (policy_monitoring->scan_wday >= 0) {
         if (w_validate_interval(policy_monitoring->interval, 1) != 0) {
             policy_monitoring->interval = 604800;  // 1 week
-            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_POLICY_MONITORING_CONTEXT.name);
+            mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         }
         if (policy_monitoring->interval == 0)
             policy_monitoring->interval = 604800;
@@ -206,7 +206,7 @@ int wm_policy_monitoring_read(xml_node **nodes, wmodule *module)
     } else if (policy_monitoring->scan_time) {
         if (w_validate_interval(policy_monitoring->interval, 0) != 0) {
             policy_monitoring->interval = WM_DEF_INTERVAL;  // 1 day
-            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_POLICY_MONITORING_CONTEXT.name);
+            mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         }
     }
     if (!policy_monitoring->interval)
