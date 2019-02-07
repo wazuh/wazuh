@@ -110,12 +110,10 @@ class ReceiveFileTask:
         """
         if self.name in self.wazuh_common.sync_tasks:
             del self.wazuh_common.sync_tasks[self.name]
-        try:
+        if not self.task.cancelled():
             task_exc = self.task.exception()
             if task_exc:
                 self.logger.error(task_exc)
-        except asyncio.CancelledError:
-            self.logger.debug("Could not receive file.")
 
 
 class Handler(asyncio.Protocol):
