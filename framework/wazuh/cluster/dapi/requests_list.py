@@ -6,8 +6,8 @@ import wazuh.ciscat as ciscat
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
+import wazuh.configuration_assessment as configuration_assessment
 import wazuh.manager as manager
-import wazuh.policy_monitoring as policy_monitoring
 import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
 import wazuh.syscheck as syscheck
@@ -390,14 +390,14 @@ functions = {
         'is_async': False
     },
 
-    # Policy monitoring
-    '/policy_monitoring/:agent_id': {
-        'function': policy_monitoring.get_pm_list,
+    # Configuration assessment
+    '/configuration_assessment/:agent_id': {
+        'function': configuration_assessment.get_pm_list,
         'type': 'distributed_master',
         'is_async': False
     },
-    '/policy_monitoring/:agent_id/checks': {
-        'function': policy_monitoring.get_pm_checks,
+    '/configuration_assessment/:agent_id/checks/:scan_id': {
+        'function': configuration_assessment.get_pm_checks,
         'type': 'distributed_master',
         'is_async': False
     },
