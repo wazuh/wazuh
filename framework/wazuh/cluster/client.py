@@ -78,11 +78,11 @@ class AbstractClientManager:
                 self.client = protocol
             except ConnectionRefusedError:
                 self.logger.error("Could not connect to master. Trying again in 10 seconds.")
-                await asyncio.sleep(10)
+                await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
                 continue
             except OSError as e:
                 self.logger.error("Could not connect to master: {}. Trying again in 10 seconds.".format(e))
-                await asyncio.sleep(10)
+                await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
                 continue
 
             self.tasks.extend([(on_con_lost, None), (self.client.client_echo, tuple())] + self.add_tasks())
@@ -94,7 +94,7 @@ class AbstractClientManager:
                 transport.close()
 
             self.logger.info("The connection has ben closed. Reconnecting in 10 seconds.")
-            await asyncio.sleep(10)
+            await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
 
 
 class AbstractClient(common.Handler):
