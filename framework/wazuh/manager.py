@@ -335,7 +335,7 @@ def validation():
         api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         api_socket.bind(api_socket_path)
         # timeout
-        #api_socket.settimeout(5)
+        api_socket.settimeout(5)
     except socket.error:
         raise WazuhException(1903)
 
@@ -365,7 +365,7 @@ def validation():
         datagram = api_socket.recv(4096)
         buffer.extend(datagram)
     except socket.timeout:
-        datagram = None
+        raise WazuhException(1014)
     finally:
         api_socket.close()
         # remove api_socket
