@@ -139,11 +139,17 @@ if __name__ == '__main__':
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
+
     my_wazuh = Wazuh(get_init=True)
+
+    cluster_status = cluster.get_status_json()
+    if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
+        logging.error("Cluster is not running.")
+        sys.exit(1)
+
     cluster_config = cluster.read_config()
     cluster.check_cluster_config(config=cluster_config)
-
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
     try:
         if args.filter_status and not args.list_agents:
