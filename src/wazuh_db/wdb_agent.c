@@ -21,7 +21,7 @@ static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_IP = "UPDATE agent SET ip = ? WHERE id = ?";
+static const char *SQL_UPDATE_AGENT_IP = "UPDATE agent SET ip = ? WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
@@ -37,7 +37,7 @@ static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHER
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
+static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND register_ip = ?;";
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
@@ -206,8 +206,8 @@ int wdb_update_agent_ip(int id, char *ip) {
         return -1;
     }
 
-    sqlite3_bind_int(stmt, 1 ,id);
-    sqlite3_bind_text(stmt, 2, ip, -1, NULL);
+    sqlite3_bind_text(stmt, 1, ip, -1, NULL);
+    sqlite3_bind_int(stmt, 2 , id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);

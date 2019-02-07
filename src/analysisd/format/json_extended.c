@@ -364,13 +364,15 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
 
             sprintf(info_file, "%s/%s-%s", AGENTINFO_DIR, lf->hostname, ip);
             fp = fopen(info_file, "r");
-            while(fgets(line, 256, fp) != NULL){
-                if(readed = strstr(line,"reporting_ip")){
-                    reporting_ip = strchr(readed,':');
-                    ++reporting_ip;
-                    end = strchr(reporting_ip, '\n');
-                    *end = '\0';
-                    break;
+            if(fp){
+                while(fgets(line, 256, fp) != NULL){
+                    if(readed = strstr(line,"reporting_ip"), readed){
+                        reporting_ip = strchr(readed,':');
+                        ++reporting_ip;
+                        end = strchr(reporting_ip, '\n');
+                        *end = '\0';
+                        break;
+                    }
                 }
             }
 

@@ -152,7 +152,7 @@ void run_notify()
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
-    if(label_ip){
+    if(reporting_ip){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
