@@ -370,7 +370,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     logger.debug2("Receiving an old file ({})".format(file_path))
                                     return
 
-                            with open(full_unmerged_name, 'w') as f:
+                            with open(full_unmerged_name, 'wb') as f:
                                 f.write(file_data)
 
                             mtime_epoch = timegm(mtime.timetuple())
