@@ -16,3 +16,10 @@
     <command>last -n 20</command>
     <frequency>360</frequency>
   </localfile>
+
+ <localfile>
+    <log_format>full_command</log_format>
+    <command>netstat -nputw</command>
+    <alias>netstat outbound connections</alias>
+    <frequency>360</frequency>
+  </localfile>
