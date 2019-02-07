@@ -95,6 +95,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.setup_sync_integrity(command)
         elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e' or command == b'sync_a_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
+        elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r' or command == b'sync_a_w_m_r':
+            return self.process_sync_error_from_worker(command, data)
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
@@ -226,6 +228,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             sync_function = None
 
         return super().setup_receive_file(sync_function)
+
+    def process_sync_error_from_worker(self, command: bytes, error_msg: bytes) -> Tuple[bytes, bytes]:
+        if command == b'sync_i_w_m_r':
+            sync_type, self.sync_integrity_free = "Integrity", True
+        elif command == b'sync_e_w_m_r':
+            sync_type, self.sync_extra_valid_free = "Extra valid", True
+        else:  # command == b'sync_a_w_m_r'
+            sync_type, self.sync_agent_info_free = "Agent status", True
+
+        self.logger.error("Worker reported an error synchronizing {}: {}".format(sync_type, error_msg.decode()))
+        return b'ok', b'Error received'
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)

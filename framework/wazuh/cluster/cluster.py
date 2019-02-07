@@ -246,8 +246,8 @@ def get_files_status(node_type, node_name, get_md5=True):
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                                             cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
-            except WazuhException as e:
-                logger.warning("get_files_status: {}.".format(e))
+            except Exception as e:
+                logger.warning("Error getting file status: {}.".format(e))
 
     return final_items
 
