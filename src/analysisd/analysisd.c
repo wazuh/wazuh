@@ -1896,7 +1896,7 @@ void * w_decode_syscollector_thread(__attribute__((unused)) void * args){
             /** Check the date/hour changes **/
 
             if (!DecodeSyscollector(lf,&socket)) {
-                /* We don't process syscheck events further */
+                /* We don't process syscollector events further */
                 w_free_event_info(lf);
             }
             else{

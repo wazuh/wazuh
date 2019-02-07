@@ -58,13 +58,11 @@ int Accumulate_Init()
     if (!acm_store) {
         merror(LIST_ERROR);
         return (0);
-    }    
+    }
     if (!OSHash_setSize(acm_store, 2048)) {
         merror(LIST_ERROR);
         return (0);
     }
-    
-    OSHash_SetFreeDataPointer(acm_store, (void (*)(void *))FreeACMStore);
 
     /* Default Expiry */
     gettimeofday(&tp, NULL);
@@ -201,7 +199,6 @@ Eventinfo *Accumulate(Eventinfo *lf)
     if ( do_update == 1 ) {
         /* Update the hash entry */
         if ( (result = OSHash_Update_ex(acm_store, _key, stored_data)) != 1) {
-            FreeACMStore(stored_data);
             merror("accumulator: ERROR: Update of stored data for %s failed (%d).", _key, result);
         } else {
             mdebug1("accumulator: DEBUG: Updated stored data for %s", _key);

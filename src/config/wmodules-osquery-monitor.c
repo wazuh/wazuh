@@ -97,13 +97,13 @@ int wm_osquery_monitor_read(xml_node **nodes, wmodule *module)
             osquery_monitor->packs[pack_i] = pack;
             osquery_monitor->packs[++pack_i] = NULL;
         } else if (!strcmp(nodes[i]->element, XML_ADD_LABELS)) {
-            if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+            if (osquery_monitor->add_labels = eval_bool(nodes[i]->content), osquery_monitor->add_labels == OS_INVALID) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_ADD_LABELS, WM_OSQUERYMONITOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_DAEMON)) {
-            if (osquery_monitor->run_daemon = eval_bool(nodes[i]->content), osquery_monitor->disable == OS_INVALID) {
-                merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_OSQUERYMONITOR_CONTEXT.name);
+            if (osquery_monitor->run_daemon = eval_bool(nodes[i]->content), osquery_monitor->run_daemon == OS_INVALID) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_DAEMON, WM_OSQUERYMONITOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else {

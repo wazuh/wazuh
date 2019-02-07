@@ -447,7 +447,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     os_malloc(OS_MAXSTR, filtered_msg);
     os_malloc(OS_MAXSTR, provider_name);
-    os_malloc(OS_MAXSTR, xml_event);
 
     result = EvtRender(NULL,
                        evt,

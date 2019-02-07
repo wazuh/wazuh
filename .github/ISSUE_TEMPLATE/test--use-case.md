@@ -1,6 +1,9 @@
 ---
 name: 'Test: Use case'
 about: Test suite for grouping different use cases
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
