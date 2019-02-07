@@ -190,28 +190,35 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         if entry in excluded_files or reduce(add, map(lambda x: entry[-(len(x)):] == x, excluded_extensions)):
             continue
 
-        full_path = path.join(dirname, entry)
-        if entry in files or files == ["all"]:
+        try:
+            full_path = path.join(dirname, entry)
+            if entry in files or files == ["all"]:
 
-            if not path.isdir(common.ossec_path + full_path):
-                file_mod_time = datetime.utcfromtimestamp(stat(common.ossec_path + full_path).st_mtime)
+                if not path.isdir(common.ossec_path + full_path):
+                    file_mod_time = datetime.utcfromtimestamp(stat(common.ossec_path + full_path).st_mtime)
 
-                if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
-                    continue
+                    if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                        continue
 
-                walk_files[full_path] = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
-                if '.merged' in entry:
-                    walk_files[full_path]['merged'] = True
-                    walk_files[full_path]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
-                    walk_files[full_path]['merge_name'] = dirname + '/' + entry
-                else:
-                    walk_files[full_path]['merged'] = False
+                    entry_metadata = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
+                    if '.merged' in entry:
+                        entry_metadata['merged'] = True
+                        entry_metadata['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                        entry_metadata['merge_name'] = dirname + '/' + entry
+                    else:
+                        entry_metadata['merged'] = False
 
-                if get_md5:
-                    walk_files[full_path]['md5'] = md5(common.ossec_path + full_path)
+                    if get_md5:
+                        entry_metadata['md5'] = md5(common.ossec_path + full_path)
 
-        if recursive and path.isdir(common.ossec_path + full_path):
-            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5, whoami))
+                    walk_files[full_path] = entry_metadata
+
+            if recursive and path.isdir(common.ossec_path + full_path):
+                walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions,
+                                           get_cluster_item_key, get_md5, whoami))
+
+        except Exception as e:
+            logger.error("Could not get checksum of file {}: {}".format(entry, e))
 
     return walk_files
 
@@ -240,7 +247,7 @@ def get_files_status(node_type, node_name, get_md5=True):
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                                             cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
             except WazuhException as e:
-                logger.warning("[Cluster] get_files_status: {}.".format(e))
+                logger.warning("get_files_status: {}.".format(e))
 
     return final_items
 
@@ -411,13 +418,14 @@ def _check_removed_agents(new_client_keys_path):
                 if not a_name.startswith('!')}
 
     ck_path = "{0}/etc/client.keys".format(common.ossec_path)
-    if not os.path.exists(ck_path):
-        # if the client.keys doesn't exist, it doesn't make sense to parse it
+    try:
+        with open(ck_path) as ck:
+            # can't use readlines function since it leaves a \n at the end of each item of the list
+            client_keys_dict = parse_client_keys(ck)
+    except Exception as e:
+        # if client.keys can't be read, it can't be parsed
+        logger.warning("Could not parse client.keys file: {}".format(e))
         return
-
-    with open(ck_path) as ck:
-        # can't use readlines function since it leaves a \n at the end of each item of the list
-        client_keys_dict = parse_client_keys(ck)
 
     with open(new_client_keys_path) as n_ck:
         new_client_keys_dict = parse_client_keys(n_ck)
