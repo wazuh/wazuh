@@ -1,6 +1,9 @@
 ---
 name: 'Test: Use case'
 about: Test suite for grouping different use cases
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
@@ -42,7 +45,7 @@ https://documentation.wazuh.com/current/learning-wazuh/shellshock.html
 
 # Changing Windows audit policy - Windows agent
 
-- [ ] Check the rule 18113 is triaged when modifying a Windows security policy.
+- [ ] Check the rule 18113 (< 3.8.0) or 20053 (>= 3.8.0) is triaged when modifying a Windows security policy.
 
 # FIM - Windows agent
 

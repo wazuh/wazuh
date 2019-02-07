@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -89,7 +90,11 @@ void HandleRemote(int uid)
     }
 
     /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
+    minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
+    (int)getpid(),
+    logr.port[position],
+    logr.proto[position] == TCP_PROTO ? "TCP" : "UDP",
+    logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {

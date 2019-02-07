@@ -2,7 +2,7 @@
 #
 # name: wazuh
 # purpose: Init script for Wazuh
-# 2017 Wazuh, Inc. <support@wazuh.com>
+# Copyright (C) 2015-2019, Wazuh Inc. <support@wazuh.com>
 #
 
 . /etc/ossec-init.conf

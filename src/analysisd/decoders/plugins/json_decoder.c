@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2017 Wazuh Inc.
+* Copyright (C) 2015-2019, Wazuh Inc.
 * April 18, 2017.
 *
 * This program is a free software; you can redistribute it
@@ -15,7 +15,7 @@
 #include "../../config.h"
 #include "../../external/cJSON/cJSON.h"
 
-static void fillData(Eventinfo *lf, const char *key, const char *value)
+void fillData(Eventinfo *lf, const char *key, const char *value)
 {
 
     if (!key)

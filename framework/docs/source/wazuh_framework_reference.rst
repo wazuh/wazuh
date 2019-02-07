@@ -1,3 +1,5 @@
+.. Copyright (C) 2015-2019, Wazuh Inc.
+
 .. _wazuh_framework_reference:
 
 Reference

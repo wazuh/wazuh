@@ -1,5 +1,9 @@
-<!-- OSSEC Rules for Windows Firewall - https://www.csoonline.com/article/2619761/security/what-to-monitor-to-stop-hacker-and-malware-attacks.html?page=3, https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/plan/appendix-l-events-to-monitor -->
-
+<!--
+  -  Microsoft Windows Firewall ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
 <group name="windows, ipsec,">
 
@@ -26,7 +30,7 @@
     <group>windows,</group>
   </rule>
 
-	
+
   <rule id="18654" level="8">
     <if_sid>18104</if_sid>
     <id>^4983$|^4984$</id>
@@ -34,7 +38,7 @@
     <group>windows,</group>
   </rule>
 
-  
+
   <rule id="18655" level="4">
     <if_sid>18104</if_sid>
     <id>^4960$</id>
@@ -49,7 +53,7 @@
     <description>IPsec dropped an inbound packet that failed a replay check</description>
     <group>windows,</group>
   </rule>
-	
+
 
   <rule id="18657" level="8">
     <if_sid>18104</if_sid>
@@ -85,7 +89,7 @@
 
   <rule id="18661" level="7">
     <if_sid>18104</if_sid>
-    <id>^4978$</id> 
+    <id>^4978$</id>
     <description>During Extended Mode negotiation, IPsec received an invalid negotiation packet</description>
     <group>windows,</group>
   </rule>
@@ -174,7 +178,7 @@
     <group>windows,</group>
   </rule>
 
-	
+
   <rule id="20224" level="8">
     <if_sid>20011</if_sid>
     <field name="EventChannel.System.EventID">^4983$|^4984$</field>
@@ -183,7 +187,7 @@
     <group>windows,</group>
   </rule>
 
-  
+
   <rule id="20225" level="4">
     <if_sid>20011</if_sid>
     <field name="EventChannel.System.EventID">^4960$</field>
@@ -200,7 +204,7 @@
     <options>no_full_log</options>
     <group>windows,</group>
   </rule>
-	
+
 
   <rule id="20227" level="8">
     <if_sid>20011</if_sid>
@@ -308,6 +312,5 @@
     <options>no_full_log</options>
     <group>windows,</group>
    </rule>
-	
-</group>
 
+</group>

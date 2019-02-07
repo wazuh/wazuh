@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # July 4, 2018.
 #
 # This program is a free software; you can redistribute it
@@ -6,14 +6,14 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-module wazuh 1.1;
+module wazuh 1.2;
 
 require {
 	type audisp_t;
 	type var_t;
 	type auditd_t;
 	type usr_t;
-	class sock_file { create setattr };
+	class sock_file { create setattr unlink };
 	class process { noatsecure siginh };
 	class dir { remove_name add_name read write };
 	class file { getattr open read };
@@ -32,7 +32,7 @@ allow audisp_t usr_t:file { open read };
 allow audisp_t var_t:dir { remove_name add_name read write };
 allow audisp_t var_t:file getattr;
 
-allow audisp_t var_t:sock_file { create setattr };
+allow audisp_t var_t:sock_file { create setattr unlink };
 allow audisp_t var_t:file { open read };
 
 #============= auditd_t ==============

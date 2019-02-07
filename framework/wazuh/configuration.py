@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
+import random
+import time
 from os import remove, path as os_path
 import re
 from shutil import move
@@ -487,7 +489,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
-    try:       
+    try:
 
         # Read RAW file
         if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
@@ -495,7 +497,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
                 data = xml_data.read().replace('\n', '')
                 return data
         # Parse XML to JSON
-        else: 
+        else:
             # Read XML
             xml_data = load_wazuh_xml(agent_conf)
 
@@ -644,10 +646,9 @@ def upload_group_configuration(group_id, xml_file):
         raise WazuhException(1710)
 
     # path of temporary files for parsing xml input
-    tmp_file_path = '{}/tmp/api_tmp_file_{}.xml'.format(common.ossec_path,
-                                                        datetime.strftime(datetime.utcnow(), '%Y-%m-%d-%m-%s'))
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
-    # create temporary file for parsing xml input
+    # create temporary file for parsing xml input and validate XML format
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
@@ -663,11 +664,6 @@ def upload_group_configuration(group_id, xml_file):
         raise WazuhException(1113, str(e))
 
     try:
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except Exception as e:
-            raise WazuhException(1113, str(e))
 
         # check Wazuh xml format
         try:
@@ -680,7 +676,7 @@ def upload_group_configuration(group_id, xml_file):
             # Example of desired output:
             # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output)
+                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             raise WazuhException(1114, ' '.join(output_regex))
         except Exception as e:
             raise WazuhException(1743, str(e))
@@ -702,7 +698,6 @@ def upload_group_configuration(group_id, xml_file):
 def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     """
     Updates a group file
-
     :param group_id: Group to update
     :param xml_file: File contents in string
     :param file_name: File name to update

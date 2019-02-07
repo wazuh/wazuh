@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -446,7 +447,6 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
 
     os_malloc(OS_MAXSTR, filtered_msg);
     os_malloc(OS_MAXSTR, provider_name);
-    os_malloc(OS_MAXSTR, xml_event);
 
     result = EvtRender(NULL,
                        evt,

@@ -1,5 +1,5 @@
 /* Remoted queue handling library
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * April 2, 2018.
  *
  * This program is a free software; you can redistribute it

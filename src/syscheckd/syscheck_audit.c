@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * June 13, 2018.
  *
  * This program is a free software; you can redistribute it
@@ -504,6 +504,7 @@ void audit_parse(char *buffer) {
     char *file_path = NULL;
     char *syscall = NULL;
     char *inode = NULL;
+    char *real_path = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
     char *inode_temp;
@@ -714,6 +715,15 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
+                            os_calloc(PATH_MAX + 2, sizeof(char), real_path);
+                            if (realpath(w_evt->path, real_path), !real_path) {
+                                mdebug1("Error checking realpath() of link '%s'", w_evt->path);
+                                break;
+                            }
+
+                            free(file_path);
+                            w_evt->path = real_path;
+
                             if (filterpath_audit_events(w_evt->path)) {
                                 realtime_checksumfile(w_evt->path, w_evt);
                             } else if (w_evt->inode) {
@@ -725,6 +735,40 @@ void audit_parse(char *buffer) {
                             }
                         }
                     }
+                    break;
+                case 3:
+                    // path2
+                    if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_malloc(match_size + 1, path2);
+                        snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
+                    if (cwd && path1 && path2) {
+                        if (file_path = gen_audit_path(cwd, path1, path2), file_path) {
+                            w_evt->path = file_path;
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                                (w_evt->user_name)?w_evt->user_name:"",
+                                (w_evt->audit_name)?w_evt->audit_name:"",
+                                (w_evt->effective_name)?w_evt->effective_name:"",
+                                (w_evt->group_name)?w_evt->group_name:"",
+                                w_evt->process_id,
+                                w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
+                                (w_evt->path)?w_evt->path:"",
+                                (w_evt->process_name)?w_evt->process_name:"");
+
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
+                        }
+                    }
+                    free(path2);
                     break;
                 case 4:
                     // path2
@@ -1231,12 +1275,17 @@ exit_err:
 
 int filterpath_audit_events(char *path) {
     int i = 0;
+    char *dir_path;
 
     for(i = 0; i < W_Vector_length(audit_added_dirs); i++) {
-        if (strstr(path, W_Vector_get(audit_added_dirs, i))) {
-            mdebug2("Found '%s' in '%s'", W_Vector_get(audit_added_dirs, i), path);
+        os_strdup(W_Vector_get(audit_added_dirs, i), dir_path);
+        wm_strcat(&dir_path, "/", '\0');
+        if (strstr(path, dir_path)) {
+            mdebug2("Found '%s' in '%s'", dir_path, path);
+            free(dir_path);
             return 1;
         }
+        free(dir_path);
     }
     return 0;
 }

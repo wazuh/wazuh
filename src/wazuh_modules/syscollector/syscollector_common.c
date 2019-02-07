@@ -1,6 +1,6 @@
 /*
  * Wazuh Module for System inventory
- * Copyright (C) 2017 Wazuh Inc.
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * March 9, 2017.
  *
  * This program is a free software; you can redistribute it
@@ -68,14 +68,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         // Wait for Wazuh DB start
         wm_delay(1000);
     }
-
-    #ifdef WIN32
-        if (!checkVista()){
-            mtwarn(WM_SYS_LOGTAG, "Network and opened ports scans are incompatible with versions older than Vista.");
-            sys->flags.netinfo = 0;
-            sys->flags.portsinfo = 0;
-        }
-    #endif
 
     // Main loop
 

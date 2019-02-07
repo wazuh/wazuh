@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -506,4 +507,10 @@ int wm_strcat(char **str1, const char *str2, char sep) {
         return 0;
     } else
         return -1;
+}
+
+int wstr_end(char *str, const char *str_end) {
+    size_t str_len = strlen(str);
+    size_t str_end_len = strlen(str_end);
+    return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
 }

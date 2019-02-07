@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2015-2019, Wazuh Inc.
  * Copyright (C), 2000-2004 by the monit project group.
  * All Rights Reserved.
  *

@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Author: Gianni D'Aprile
 
 GREP=`which grep`

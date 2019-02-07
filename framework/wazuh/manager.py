@@ -1,16 +1,24 @@
 #!/usr/bin/env python
 
+# Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
+from wazuh.exception import WazuhException
+from wazuh.utils import load_wazuh_xml
 from wazuh import common
 from datetime import datetime
 import time
-from os.path import exists
+from os.path import exists, join
 from glob import glob
 import re
 import hashlib
+from xml.dom.minidom import parseString
+from xml.parsers.expat import ExpatError
+from shutil import move, Error
+from os import remove
+import random
 
 
 def status():
@@ -44,7 +52,7 @@ def status():
     return data
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile("^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
+    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -58,7 +66,7 @@ def __get_ossec_log_fields(log):
             category = "ossec-rootcheck"
 
         if "(" in category:  # Remove ()
-            category = re.sub("\(\d\d\d\d\)", "", category)
+            category = re.sub(r"\(\d\d\d\d\)", "", category)
     else:
         return None
 
@@ -167,3 +175,138 @@ def ossec_log_summary(months=3):
             else:
                 continue
     return categories
+
+
+def upload_file(file, path, content_type):
+    """
+    Updates a group file
+
+    :param file: File name from origin
+    :param path: Path of destination of the new file
+    :return: Confirmation message in string
+    """
+    try:
+        with open(file) as f:
+            file_data = f.read()
+    except IOError:
+        raise WazuhException(1005)
+    except Exception:
+        raise WazuhException(1000)
+
+    if len(file_data) == 0:
+        raise WazuhException(1112)
+
+    if content_type == 'application/xml':
+        return upload_xml(file_data, path)
+    elif content_type == 'application/octet-stream':
+        return upload_list(file_data, path)
+    else:
+        raise WazuhException(1016)
+
+
+def upload_xml(xml_file, path):
+    """
+    Updates XML files (rules and decoders)
+    :param xml_file: content of the XML file
+    :param path: Destination of the new XML file
+    :return: Confirmation message
+    """
+
+    # path of temporary files for parsing xml input
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+
+    # create temporary file for parsing xml input
+    try:
+        with open(tmp_file_path, 'w') as tmp_file:
+            # beauty xml file
+            xml = parseString('<root>' +  xml_file + '</root>')
+            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            # revert xml.dom replacings
+            # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
+            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
+                                   .replace("&gt;", ">").replace('&apos', "'")
+            tmp_file.write(pretty_xml)
+    except IOError:
+        raise WazuhException(1005)
+    except ExpatError:
+        raise WazuhException(1113)
+    except Exception as e:
+        raise WazuhException(1000)
+
+    try:
+        # check xml format
+        try:
+            load_wazuh_xml(tmp_file_path)
+        except Exception as e:
+            raise WazuhException(1113, str(e))
+
+        # move temporary file to group folder
+        try:
+            new_conf_path = join(common.ossec_path, path)
+            move(tmp_file_path, new_conf_path)
+        except Error:
+            raise WazuhException(1016)
+        except Exception :
+            raise WazuhException(1000)
+
+        return 'File updated successfully'
+
+    except Exception as e:
+        # remove created temporary file if an exception happens
+        remove(tmp_file_path)
+        raise e
+
+
+def upload_list(list_file, path):
+    """
+    Updates CDB lists
+    :param list_file: content of the list
+    :param path: Destination of the new list file
+    :return: Confirmation message.
+    """
+    # path of temporary file
+    tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.txt'.format(common.ossec_path, time.time(), random.randint(0, 1000))
+
+    try:
+        # create temporary file
+        with open(tmp_file_path, 'w') as tmp_file:
+            # write json in tmp_file_path
+            for element in list_file.split('\n')[:-1]:
+                tmp_file.write(element + '\n')
+    except IOError:
+        raise WazuhException(1005)
+    except Exception:
+        raise WazuhException(1000)
+
+    # move temporary file to group folder
+    try:
+        new_conf_path = join(common.ossec_path, path)
+        move(tmp_file_path, new_conf_path)
+    except Error:
+        raise WazuhException(1016)
+    except Exception:
+        raise WazuhException(1000)
+
+    return 'File updated successfully'
+
+
+def get_file(path):
+    """
+    Returns a file as dictionary.
+    :param path: Relative path of file from origin
+    :return: file as string.
+    """
+
+    file_path = join(common.ossec_path, path)
+    output = {}
+
+    try:
+        with open(file_path) as f:
+            output = f.read()
+    except IOError:
+        raise WazuhException(1005)
+    except Exception:
+        raise WazuhException(1000)
+
+    return output

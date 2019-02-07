@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -416,8 +417,8 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
 #ifndef WIN32
 
             const char *ip_address_regex =
-                "^!?\\d{1,3}(\\.\\d{1,3}){3}"
-                "(/\\d{1,2}(\\d(\\.\\d{1,3}){3})?)?$";
+                "^!?[[:digit:]]{1,3}(\\.[[:digit:]]{1,3}){3}"
+                "(/[[:digit:]]{1,2}([[:digit:]](\\.[[:digit:]]{1,3}){3})?)?$";
 
             if (Config && OS_PRegex(node[i]->content, ip_address_regex)) {
                 white_size++;
@@ -548,7 +549,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
                     return (OS_INVALID);
                 }
-             
+
                 if(strncmp(node[i]->content,"alerts.log",10) == 0){
                     Mail->source = MAIL_SOURCE_LOGS;
                 }

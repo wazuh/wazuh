@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All right reserved.
  *
  * This program is a free software; you can redistribute it
@@ -562,17 +563,18 @@ static void c_files()
                 }
 
                 free(groups[i]->group);
+                free(groups[i]);
             }
 
             free(groups);
             groups = NULL;
         }
 
-        // Clean hash table
-        OSHash_Clean(m_hash, cleaner);
-        m_hash = OSHash_Create();
-
         if(should_clean == 1){
+            // Clean hash table
+            OSHash_Clean(m_hash, cleaner);
+            m_hash = OSHash_Create();
+
             reported_non_existing_group = 0;
 
             dp = opendir(MULTIGROUPS_DIR);
@@ -1210,7 +1212,7 @@ int purge_group(char *group){
         fp = fopen(path,"r+");
 
         if(!fp) {
-            mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+            mdebug1("At purge_group(): Could not open file '%s'",entry->d_name);
             closedir(dp);
             return -1;
         }
@@ -1220,7 +1222,7 @@ int purge_group(char *group){
                 fp = fopen(path,"w");
 
                 if(!fp){
-                    mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+                    mdebug1("At purge_group(): Could not open file '%s'",entry->d_name);
                     closedir(dp);
                     return -1;
                 }
@@ -1262,8 +1264,8 @@ void manager_init()
     w_yaml_create_groups();
     memset(pending_queue, 0, MAX_AGENTS * 9);
     pending_data = OSHash_Create();
-    
+
     if (!m_hash || !pending_data) merror_exit("At manager_init(): OSHash_Create() failed");
-    
+
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }

@@ -1,4 +1,5 @@
-/* Copyright (C) 2009 Trend Micro Inc.
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
  * All rights reserved.
  *
  * This program is a free software; you can redistribute it
@@ -154,6 +155,11 @@ int main(int argc, char **argv)
         goDaemon();
     }
 
+    /* Create pid */
+    if (CreatePID(ARGV0, getpid()) < 0) {
+        merror_exit(PID_ERROR);
+    }
+
     /* Not configured */
     if (c == 0) {
         minfo("Database not configured. Clean exit.");
@@ -239,11 +245,6 @@ int main(int argc, char **argv)
 
     /* Signal manipulation */
     StartSIG(ARGV0);
-
-    /* Create PID files */
-    if (CreatePID(ARGV0, getpid()) < 0) {
-        merror_exit(PID_ERROR);
-    }
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());

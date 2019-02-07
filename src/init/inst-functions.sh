@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Wazuh Installer Functions
-# Copyright (C) 2016 Wazuh Inc.
+# Copyright (C) 2015-2019, Wazuh Inc.
 # November 18, 2016.
 #
 # This program is a free software; you can redistribute it
@@ -653,7 +653,8 @@ WriteLocal()
     echo "</ossec_config>" >> $NEWCONFIG
 }
 
-InstallCommon(){
+InstallCommon()
+{
 
     PREFIX='/var/ossec'
     OSSEC_GROUP='ossec'
@@ -824,7 +825,8 @@ InstallCommon(){
 
 }
 
-InstallLocal(){
+InstallLocal()
+{
 
     InstallCommon
 
@@ -911,13 +913,15 @@ InstallLocal(){
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
 }
 
-TransferShared() {
+TransferShared()
+{
     rm -f ${PREFIX}/etc/shared/merged.mg
     find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${PREFIX}/backup/shared \;
     find ${PREFIX}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${PREFIX}/etc/shared/default \;
 }
 
-InstallServer(){
+InstallServer()
+{
 
     InstallLocal
 
@@ -957,7 +961,8 @@ InstallServer(){
     GenerateAuthCert
 }
 
-InstallAgent(){
+InstallAgent()
+{
 
     InstallCommon
 
@@ -971,7 +976,8 @@ InstallAgent(){
 
 }
 
-InstallWazuh(){
+InstallWazuh()
+{
     if [ "X$INSTYPE" = "Xagent" ]; then
         InstallAgent
     elif [ "X$INSTYPE" = "Xserver" ]; then

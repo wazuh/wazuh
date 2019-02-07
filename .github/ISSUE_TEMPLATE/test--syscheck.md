@@ -1,6 +1,9 @@
 ---
 name: 'Test: Syscheck'
 about: Test suite for Syscheck
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
@@ -40,7 +43,6 @@ about: Test suite for Syscheck
 - [ ] Check syscheck alert for deleting text from a file
 - [ ] Check syscheck alert with report_changes option and `last-entry` files are stored compressed.
 - [ ] Check syscheck alert for changing owner of file
-- [ ] Check syscheck alert for changing group of file
 - [ ] Check syscheck alert for changing file permissions
 - [ ] Check values diferent values for options 'check_sum', 'check_md5sum', 'check_sha1sum','check_sha256sum'
 - [ ] Check syscheck alert for deleting a file
