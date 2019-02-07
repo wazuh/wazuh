@@ -277,6 +277,10 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
         wm_strcat(&command, "--iam_role_arn", ' ');
         wm_strcat(&command, exec_bucket->iam_role_arn, ' ');
     }
+    if (exec_bucket->aws_organisation_id) {
+        wm_strcat(&command, "--aws_organisation_id", ' ');
+        wm_strcat(&command, exec_bucket->aws_organisation_id, ' ');
+    }
     if (exec_bucket->aws_account_id) {
         wm_strcat(&command, "--aws_account_id", ' ');
         wm_strcat(&command, exec_bucket->aws_account_id, ' ');
