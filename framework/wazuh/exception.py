@@ -142,6 +142,10 @@ class WazuhException(Exception):
         1801: '\'path\' parameter is wrong',
 
         # Manager:
+        1900: 'Error restarting manager',
+        1901: '\'execq\' socket has not been created',
+        1902: 'Could not connect to \'execq\' socket',
+        1903: 'Could not connect to \'execa\' socket',
 
         # Database:
         2000: 'No such database file',

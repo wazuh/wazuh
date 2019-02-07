@@ -240,6 +240,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/manager/configuration/validation': {
+        'function': manager.validation,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/manager/stats': {
         'function': stats.totals,
         'type': 'local_any',
@@ -329,6 +334,16 @@ functions = {
     },
     '/cluster/:node_id/configuration': {
         'function': configuration.get_ossec_conf,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/configuration/validation': {
+        'function': manager.validation,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/:node_id/configuration/validation': {
+        'function': manager.validation,
         'type': 'distributed_master',
         'is_async': False
     },

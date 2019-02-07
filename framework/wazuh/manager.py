@@ -14,6 +14,7 @@ import hashlib
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 from shutil import move, Error
+import socket
 from os import remove
 import random
 
@@ -292,7 +293,7 @@ def get_file(path):
     """
     Returns a file as dictionary.
     :param path: Relative path of file from origin
-    :return: file as string.
+    :return: File as string.
     """
 
     file_path = join(common.ossec_path, path)
@@ -307,3 +308,66 @@ def get_file(path):
         raise WazuhException(1000)
 
     return output
+
+
+def validation():
+    """
+    Check if Wazuh configuration is OK.
+
+    :return: Confirmation message.
+    """
+    # sockets path
+    api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+    execq_socket_path = common.EXECQ
+    # msg for checking Wazuh configuration
+    execq_msg = 'api-check-manager-configuration '
+
+    # remove api_socket if exists
+    try:
+        remove(api_socket_path)
+    except OSError:
+        if exists(api_socket_path):
+            raise WazuhException(1903)
+
+    # up API socket
+    try:
+        api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        api_socket.bind(api_socket_path)
+        # timeout
+        api_socket.settimeout(0.5)
+    except socket.error:
+        raise WazuhException(1903)
+
+    # initialize execq socket
+    if exists(execq_socket_path):
+        try:
+            execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            execq_socket.connect(execq_socket_path)
+        except socket.error:
+            raise WazuhException(1902)
+    else:
+        raise WazuhException(1901)
+
+    # send msg to execq socket
+    try:
+        execq_socket.send(execq_msg.encode())
+        execq_socket.close()
+    except socket.error:
+        raise WazuhException(1014)
+    finally:
+        execq_socket.close()
+
+    # if api_socket receives a message, configuration is OK
+    try:
+        datagram = api_socket.recv(2)
+    except socket.timeout:
+        datagram = None
+    finally:
+        api_socket.close()
+        # remove api_socket
+        remove(api_socket_path)
+
+    if datagram:
+        return "Configuration is OK"
+    else:
+        return "Configuration is KO"
