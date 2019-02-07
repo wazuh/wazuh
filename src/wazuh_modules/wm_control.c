@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#ifdef CLIENT
 #include "wm_control.h"
 #include "syscollector/syscollector.h"
 #include <ifaddrs.h>
@@ -222,3 +223,5 @@ void *send_ip(){
     close(sock);
     return NULL;
 }
+
+#endif
