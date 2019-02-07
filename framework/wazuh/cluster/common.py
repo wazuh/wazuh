@@ -108,10 +108,14 @@ class ReceiveFileTask:
         Function to call when the task is finished
         :return:
         """
-        del self.wazuh_common.sync_tasks[self.name]
-        task_exc = self.task.exception()
-        if task_exc:
-            self.logger.error(task_exc)
+        if self.name in self.wazuh_common.sync_tasks:
+            del self.wazuh_common.sync_tasks[self.name]
+        try:
+            task_exc = self.task.exception()
+            if task_exc:
+                self.logger.error(task_exc)
+        except asyncio.CancelledError:
+            self.logger.debug("Could not receive file.")
 
 
 class Handler(asyncio.Protocol):

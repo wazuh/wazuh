@@ -455,6 +455,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             return self.task_loggers[logger_tag]
 
+    def connection_lost(self, exc):
+        super().connection_lost(exc)
+        # cancel all pending tasks
+        self.logger.info("Cancelling pending tasks.")
+        for pending_task in self.sync_tasks.values():
+            pending_task.task.cancel()
+
 
 class Master(server.AbstractServer):
 
