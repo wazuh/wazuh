@@ -3,7 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-WPYTHON_BIN="framework/python/bin/python3.7"
+WPYTHON_BIN="framework/python/bin/python3"
 
 SCRIPT_PATH_NAME="$0"
 
