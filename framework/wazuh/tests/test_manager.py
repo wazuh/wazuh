@@ -9,7 +9,8 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from wazuh import WazuhException
-from wazuh.manager import upload_file, get_file
+from wazuh.manager import upload_file, get_file, validation
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -56,3 +57,10 @@ class TestManager(TestCase):
         result = get_file(os.path.join(os.getcwd(), 'tests/data/test_lists'))
         self.assertIsInstance(result, str)
 
+    @patch('socket.socket')
+    def test_validation_ok(self, mock1):
+        self.assertEqual(validation(), 'Configuration is OK')
+
+    @patch('socket.socket.recv', return_value=None)
+    def test_validation_ko(self, mock1):
+        self.assertEqual(validation(), 'Configuration is KO')

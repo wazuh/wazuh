@@ -175,16 +175,16 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(file, path, content_type):
+def upload_file(tmp_file, path, content_type):
     """
     Updates a group file
 
-    :param file: File name from origin
+    :param file: Relative path of file name from origin
     :param path: Path of destination of the new file
     :return: Confirmation message in string
     """
     try:
-        with open('{}/{}'.format(common.ossec_path, file)) as f:
+        with open('{}/{}'.format(common.ossec_path, tmp_file)) as f:
             file_data = f.read()
     except IOError:
         raise WazuhException(1005)
@@ -334,7 +334,7 @@ def validation():
         api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         api_socket.bind(api_socket_path)
         # timeout
-        api_socket.settimeout(0.5)
+        api_socket.settimeout(2)
     except socket.error:
         raise WazuhException(1903)
 
