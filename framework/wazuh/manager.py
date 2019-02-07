@@ -372,7 +372,12 @@ def validation():
         if exists(api_socket_path):
             remove(api_socket_path)
 
-    return _extract_logstest_errors(buffer.decode('utf-8'))
+    errors = _extract_logstest_errors(buffer.decode('utf-8'))
+
+    if len(errors) > 0:
+        return {'status': 'KO', 'details': errors}
+    else:
+        return {'status': 'OK'}
 
 
 def _extract_logstest_errors(output):
