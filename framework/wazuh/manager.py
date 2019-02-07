@@ -362,7 +362,7 @@ def validation():
     try:
         buffer = bytearray()
         # receive data
-        datagram = api_socket.recv(1024)
+        datagram = api_socket.recv(4096)
         buffer.extend(datagram)
     except socket.timeout:
         datagram = None
