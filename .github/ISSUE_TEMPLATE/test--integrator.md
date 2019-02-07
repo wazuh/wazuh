@@ -1,6 +1,9 @@
 ---
 name: 'Test: Integrator'
 about: Test suite for integrations.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

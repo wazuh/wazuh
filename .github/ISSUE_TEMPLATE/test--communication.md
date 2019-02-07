@@ -1,6 +1,9 @@
 ---
 name: 'Test: Communication'
 about: Test suite for host communication.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

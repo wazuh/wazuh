@@ -1,6 +1,9 @@
 ---
 name: 'Test: Logcollector'
 about: Test suite for Logcollector.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

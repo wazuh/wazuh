@@ -1,6 +1,9 @@
 ---
 name: 'Test: Maild'
 about: Test suite for Maild.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
