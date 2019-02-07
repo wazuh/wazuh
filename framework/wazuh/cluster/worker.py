@@ -9,7 +9,7 @@ import time
 from typing import Tuple, Dict, Callable
 from wazuh.cluster import client, cluster, common as c_common
 from wazuh import cluster as metadata
-from wazuh import common
+from wazuh import common, utils
 from wazuh.exception import WazuhException
 from wazuh.cluster.dapi import dapi
 
@@ -67,6 +67,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     def __init__(self, version, node_type, cluster_name, **kwargs):
         super().__init__(**kwargs, tag="Worker")
         self.client_data = "{} {} {} {}".format(self.name, cluster_name, node_type, version).encode()
+
+    def connection_result(self, future_result):
+        super().connection_result(future_result)
+        if self.connected:
+            # create directory for temporary files
+            worker_tmp_files = '{}/queue/cluster/{}'.format(common.ossec_path, self.name)
+            if not os.path.exists(worker_tmp_files):
+                utils.mkdir_with_mode(worker_tmp_files)
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         self.logger.debug("Command received: '{}'".format(command))

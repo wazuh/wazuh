@@ -118,24 +118,24 @@ class AbstractClient(common.Handler):
         self.client_data = self.name.encode()
         self.manager = manager
 
+    def connection_result(self, future_result):
+        response_msg = future_result.result()[0]
+        if response_msg.startswith(b'Error'):
+            self.logger.error("Could not connect to master: {}.".format(response_msg))
+            self.transport.close()
+        else:
+            self.logger.info("Sucessfully connected to master.")
+            self.connected = True
+
     def connection_made(self, transport):
         """
         Defines process of connecting to the server
 
         :param transport: socket to write data on
         """
-        def connection_result(future_result):
-            response_msg = future_result.result()[0]
-            if response_msg.startswith(b'Error'):
-                self.logger.error("Could not connect to master: {}.".format(response_msg))
-                self.transport.close()
-            else:
-                self.logger.info("Sucessfully connected to master.")
-                self.connected = True
-
         self.transport = transport
         future_response = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
-        future_response.add_done_callback(connection_result)
+        future_response.add_done_callback(self.connection_result)
 
     def connection_lost(self, exc):
         """
