@@ -234,7 +234,7 @@ int wdb_policy_monitoring_global_find(wdb_t * wdb, char *name, char * output) {
 }
 
 /* Look for a scan policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *module, char * output) {
+int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *policy_id, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -250,7 +250,7 @@ int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *module, char * output) {
 
     stmt = wdb->stmt[WDB_STMT_PM_FIND_SCAN];
 
-    sqlite3_bind_text(stmt, 1, module, -1, NULL);
+    sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:

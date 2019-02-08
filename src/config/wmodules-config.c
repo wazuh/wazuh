@@ -174,7 +174,7 @@ int Read_PolicyMonitoring(const OS_XML *xml, xml_node *node, void *d1)
 
     //Policy Monitoring Module
     if (!strcmp(node->element, WM_CONFIGURATION_ASSESSMENT_CONTEXT.name)) {
-        if (wm_configuration_assessment_read(children, cur_wmodule) < 0) {
+        if (wm_configuration_assessment_read(xml,children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

@@ -216,7 +216,7 @@ int wdb_policy_monitoring_compliance_save(wdb_t * wdb, int id_check, char *key, 
 int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
 
 /* Look for a scan policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *module, char * output);
+int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *policy_id, char * output);
 
 /* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
 int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int score,char * hash);

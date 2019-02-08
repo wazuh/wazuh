@@ -16,7 +16,8 @@ static const char *XML_WEEK_DAY = "wday";
 static const char *XML_TIME = "time";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START= "scan_on_start";
-static const char *XML_PROFILE = "profile";
+static const char *XML_POLICIES = "policies";
+static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
 
 static short eval_bool(const char *str)
@@ -25,7 +26,7 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_configuration_assessment_read(xml_node **nodes, wmodule *module)
+int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 {
     unsigned int i;
     unsigned int profiles = 0;
@@ -152,18 +153,37 @@ int wm_configuration_assessment_read(xml_node **nodes, wmodule *module)
 
             policy_monitoring->scan_on_start = scan_on_start;
         }
-        else if (!strcmp(nodes[i]->element, XML_PROFILE))
+        else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
-            
-            if(strlen(nodes[i]->content) >= PATH_MAX) {
-                merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
+            /* Get children */
+            xml_node **children = NULL;
+            if (children = OS_GetElementsbyNode(xml, nodes[i]), !children) {
                 return OS_INVALID;
             }
 
-            os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(char *), policy_monitoring->profile);
-            os_strdup(nodes[i]->content,policy_monitoring->profile[profiles]);
-            policy_monitoring->profile[profiles + 1] = NULL;
-            profiles++;
+            int  j;
+            for (j = 0; children[j]; j++) {
+                if (strcmp(children[j]->element, XML_POLICY) == 0) {
+
+                    if(strlen(children[j]->content) >= PATH_MAX) {
+                        merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
+                        return OS_INVALID;
+                    }
+
+                    os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(char *), policy_monitoring->profile);
+                    os_strdup(children[j]->content,policy_monitoring->profile[profiles]);
+                    policy_monitoring->profile[profiles + 1] = NULL;
+                    profiles++;
+
+                } else {
+                    merror(XML_ELEMNULL);
+                    OS_ClearNode(children);
+                    return OS_INVALID;
+                }
+            }
+            OS_ClearNode(children);
+
+          
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {

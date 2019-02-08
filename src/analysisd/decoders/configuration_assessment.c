@@ -30,7 +30,7 @@
 #define VERBOSE 5
 
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
-static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket);
+static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
@@ -156,7 +156,7 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
     return retval;
 }
 
-static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket) {
+static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response) {
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
@@ -170,6 +170,8 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket) {
     {
         if (!strncmp(response, "ok found", 8))
         {
+            char *result_hash = response + 9;
+            snprintf(wdb_response,OS_MAXSTR,"%s",result_hash);
             retval = 0;
         }
         else if (!strcmp(response, "ok not found"))
@@ -472,7 +474,10 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     int result_event = 0;
-    int result_db = FindScanInfo(lf,policy_id->valuestring,socket);
+    char *hash_scan_info = NULL;
+    os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
+
+    int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
     switch (result_db)
     {
@@ -486,7 +491,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             {
                 merror("Error updating scan policy monitoring database for agent %s", lf->agent_id);
             } else {
-                FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file);
+
+                /* Compare hash with previous hash */
+                if(strcmp(hash_scan_info,hash->valuestring)) {
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file);
+                }
             }
             break;
         case 1: // It not exists, insert
@@ -496,7 +505,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
             } else {
-                FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file);
+
+                /* Compare hash with previous hash */
+                if(strcmp(hash_scan_info,hash->valuestring)) {
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file);
+                }
             }
             
             break;
@@ -523,7 +536,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         default:
             break;
     }
-    
+
+    os_free(hash_scan_info);
 }
 
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result) {

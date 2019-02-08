@@ -55,6 +55,6 @@ typedef struct wm_configuration_assessment_t {
 extern const wm_context WM_CONFIGURATION_ASSESSMENT_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_configuration_assessment_read(xml_node **nodes, wmodule *module);
+int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule *module);
 
 #endif // WM_KEY_REQUEST_H
