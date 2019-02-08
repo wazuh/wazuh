@@ -161,4 +161,4 @@ def get_pm_checks(scan_id, agent_id=None, q="", offset=0, limit=common.database_
                                     ]
         result.append(check_dict)
 
-    return result
+    return {'totalItems': result_dict['totalItems'], 'items': result}
