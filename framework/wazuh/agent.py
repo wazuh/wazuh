@@ -19,7 +19,7 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move
+from shutil import copyfile, move, rmtree
 from platform import platform
 from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
 from time import time, sleep
@@ -489,11 +489,19 @@ class Agent:
             agent_files = [
                 '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip),
                 '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id)
+                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id),
+                '{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
+                '{}/queue/diff/{}'.format(common.ossec_path, self.name)
             ]
 
             for agent_file in filter(path.exists, agent_files):
-                remove(agent_file)
+                if path.isdir(agent_file):
+                    rmtree(agent_file)
+                else:
+                    remove(agent_file)
 
         else:
             # Create backup directory
@@ -517,7 +525,12 @@ class Agent:
             agent_files = [
                 ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip), '{0}/agent-info'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir))
+                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
+                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
+                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
