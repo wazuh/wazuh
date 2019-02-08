@@ -791,11 +791,22 @@ VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell 
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
 ifneq (${PREFIX},/var/ossec)
-CPYTHON := src_cpython
-endif
-# Download the Python sources if we are building for any other OS.
+	CPYTHON := src_cpython
+else
+	# Download the Python sources if we are building for any other OS.
 ifneq (${uname_S},Linux)
 CPYTHON := src_cpython
+else
+ifneq (,$(filter ${uname_P},x86_64 amd64))
+CPYTHON := cpython_amd64
+else
+ifneq (,$(filter ${uname_P},i386 i686))
+CPYTHON := cpython_i386
+else
+CPYTHON := src_cpython
+endif
+endif
+endif
 endif
 
 
