@@ -706,7 +706,7 @@ def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
     :param file_name: File name to update
     :return: Confirmation message in string
     """
-    tmp_file_path = common.ossec_path + tmp_file
+    tmp_file_path = os_path.join(common.ossec_path, tmp_file)
     if file_name == 'agent.conf':
         with open(tmp_file_path) as f:
             file_data = f.read()
