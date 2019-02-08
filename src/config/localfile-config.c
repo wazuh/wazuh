@@ -37,6 +37,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logreader *logf;
     logreader_config *log_config;
     size_t labels_z=0;
+    label_flags_t flags;
 
     log_config = (logreader_config *)d1;
 
@@ -128,6 +129,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             os_strdup(node[i]->content, logf[pl].out_format[n]->format);
             logf[pl].out_format[n + 1] = NULL;
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
+            flags.hidden = flags.system = 0;
             char *key_value = 0;
             int j;
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
@@ -145,7 +147,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
 
-            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, 0, 1);
+            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, flags, 1);
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {

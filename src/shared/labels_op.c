@@ -12,7 +12,7 @@
 #include "shared.h"
 
 /* Append a new label into an array of (size) labels at the moment of inserting. Returns the new pointer. */
-wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, unsigned int hidden, int overwrite) {
+wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const char *value, label_flags_t flags, int overwrite) {
     size_t i;
 
     if (overwrite) {
@@ -34,12 +34,13 @@ wlabel_t* labels_add(wlabel_t *labels, size_t * size, const char *key, const cha
     }
 
     labels[i].value = strdup(value);
-    labels[i].flags.hidden = hidden;
+    labels[i].flags.hidden = flags.hidden;
+    labels[i].flags.system = flags.system;
     return labels;
 }
 
 /* Search for a key at a label array and get the value, or NULL if no such key found. */
-const char* labels_get(const wlabel_t *labels, const char *key) {
+char* labels_get(const wlabel_t *labels, const char *key) {
     int i;
 
     if (!labels) {
@@ -75,7 +76,8 @@ int labels_format(const wlabel_t *labels, char *str, size_t size) {
     size_t z = 0;
 
     for (i = 0; labels[i].key != NULL; i++) {
-        z += (size_t)snprintf(str + z, size - z, "%s\"%s\":%s\n",
+        z += (size_t)snprintf(str + z, size - z, "%s%s\"%s\":%s\n",
+            labels[i].flags.system ? "#" : "",
             labels[i].flags.hidden ? "!" : "",
             labels[i].key,
             labels[i].value);
@@ -98,9 +100,9 @@ wlabel_t* labels_parse(const char *path) {
     char *key;
     char *value;
     char *end;
-    unsigned int hidden;
     size_t size = 0;
     wlabel_t *labels;
+    label_flags_t flags;
     FILE *fp;
 
     if (!(fp = fopen(path, "r"))) {
@@ -118,13 +120,25 @@ wlabel_t* labels_parse(const char *path) {
     /*
     "key1":value1\n
     !"key2":value2\n
+    #"key3":value3\n
     */
 
     while (fgets(buffer, OS_MAXSTR, fp)) {
         switch (*buffer) {
         case '!':
             if (buffer[1] == '\"') {
-                hidden = 1;
+                flags.hidden = 1;
+                flags.system = 0;
+                key = buffer + 2;
+            } else {
+                continue;
+            }
+
+            break;
+        case '#':   // Internal labels
+            if (buffer[1] == '\"') {
+                flags.system = 1;
+                flags.hidden = 0;
                 key = buffer + 2;
             } else {
                 continue;
@@ -132,7 +146,7 @@ wlabel_t* labels_parse(const char *path) {
 
             break;
         case '\"':
-            hidden = 0;
+            flags.hidden = flags.system = 0;
             key = buffer + 1;
             break;
         default:
@@ -151,7 +165,7 @@ wlabel_t* labels_parse(const char *path) {
         }
 
         *end = '\0';
-        labels = labels_add(labels, &size, key, value, hidden, 0);
+        labels = labels_add(labels, &size, key, value, flags, 0);
     }
 
     fclose(fp);

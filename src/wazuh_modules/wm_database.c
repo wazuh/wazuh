@@ -659,7 +659,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
         // Search for manager hostname connected to the agent and the node name of the cluster
 
-        const char * AGENT_IP = "#\"reporting_ip\":";
+        const char * AGENT_IP = "#\"agent_ip\":";
         const char * MANAGER_HOST = "#\"manager_hostname\":";
         const char * NODE_NAME = "#\"node_name\":";
 

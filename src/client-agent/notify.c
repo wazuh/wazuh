@@ -73,7 +73,7 @@ void run_notify()
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
-    char *reporting_ip;
+    char *agent_ip;
     int sock;
     char label_ip[50];
 
@@ -131,20 +131,20 @@ void run_notify()
         }
     }
 
-    os_calloc(16,sizeof(char),reporting_ip);
+    os_calloc(16,sizeof(char),agent_ip);
     if(sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128), sock  < 0) {
         merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
     }
     else{
-        if (OS_SendUnix(sock, reporting_ip, 16) < 0) {
+        if (OS_SendUnix(sock, agent_ip, 16) < 0) {
             merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
         }
         else{
-            if(OS_RecvUnix(sock, 16, reporting_ip) == 0){
+            if(OS_RecvUnix(sock, 16, agent_ip) == 0){
                 merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
             }
             else{
-                snprintf(label_ip,50,"#\"reporting_ip\":%s", reporting_ip);
+                snprintf(label_ip,50,"#\"agent_ip\":%s", agent_ip);
             }
         }
     }
@@ -152,7 +152,7 @@ void run_notify()
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
     /* Create message */
-    if(reporting_ip){
+    if(agent_ip){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
@@ -177,7 +177,7 @@ void run_notify()
     mdebug2("Sending keep alive: %s", tmp_msg);
     send_msg(tmp_msg, -1);
 
-    free(reporting_ip);
+    free(agent_ip);
     free(shared_files);
     update_keepalive(curr_time);
     return;
