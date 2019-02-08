@@ -164,16 +164,28 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
             int  j;
             for (j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, XML_POLICY) == 0) {
+                    int enabled = 1;
 
-                    if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
-                        return OS_INVALID;
+                    if(children[j]->attributes && children[j]->values) {
+
+                        if(strcmp(*children[j]->attributes,XML_ENABLED) == 0){
+                            if(strcmp(*children[j]->values,"no") == 0){
+                                enabled = 0;
+                            }
+                        }
                     }
 
-                    os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(char *), policy_monitoring->profile);
-                    os_strdup(children[j]->content,policy_monitoring->profile[profiles]);
-                    policy_monitoring->profile[profiles + 1] = NULL;
-                    profiles++;
+                    if(enabled) {
+                        if(strlen(children[j]->content) >= PATH_MAX) {
+                            merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
+                            return OS_INVALID;
+                        }
+
+                        os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(char *), policy_monitoring->profile);
+                        os_strdup(children[j]->content,policy_monitoring->profile[profiles]);
+                        policy_monitoring->profile[profiles + 1] = NULL;
+                        profiles++;
+                    }
 
                 } else {
                     merror(XML_ELEMNULL);
