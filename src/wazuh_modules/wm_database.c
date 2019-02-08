@@ -837,7 +837,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
         if (id_agent) {
             switch (wm_extract_agent(fname, name, addr, &is_registry)) {
             case 0:
-                if ((id_agent = wdb_find_agent(name, addr)) < 0) {
+                if ((id_agent = wdb_find_agent(name, NULL)) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "No such agent at database for file %s/%s", dirname, fname);
                     snprintf(del_path, PATH_MAX, "%s/%s", dirname, fname);
                     unlink(del_path);

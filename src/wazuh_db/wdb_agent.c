@@ -37,6 +37,7 @@ static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
 static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
+static const char *SQL_FIND_AGENT_NAME = "SELECT id FROM agent WHERE name = ?;";
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
@@ -423,14 +424,24 @@ int wdb_find_agent(const char *name, const char *ip) {
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_FIND_AGENT, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        wdb_close_global();
-        return -1;
+    if (ip) {
+        if (wdb_prepare(wdb_global, SQL_FIND_AGENT, -1, &stmt, NULL)) {
+            mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+            wdb_close_global();
+            return -1;
+        }
+    } else {
+        if (wdb_prepare(wdb_global, SQL_FIND_AGENT_NAME, -1, &stmt, NULL)) {
+            mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
+            wdb_close_global();
+            return -1;
+        }
     }
 
     sqlite3_bind_text(stmt, 1, name, -1, NULL);
-    sqlite3_bind_text(stmt, 2, ip, -1, NULL);
+    if (ip) {
+        sqlite3_bind_text(stmt, 2, ip, -1, NULL);
+    }
 
     result = wdb_step(stmt) == SQLITE_ROW ? sqlite3_column_int(stmt, 0) : -1;
     sqlite3_finalize(stmt);

@@ -961,8 +961,8 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             {
                 sscanf(tmpstr," IP:\'%18[^\']\"",client_source_ip);
 
-                /* If IP: != 'src' overwrite the srcip */
-                if(strncmp(client_source_ip,"src",3) != 0)
+                /* If IP: != 'src' and 'use_source_ip="no" overwrite the srcip */
+                if((strncmp(client_source_ip,"src",3) != 0) && !config.flags.use_source_ip)
                 {
                     if (!OS_IsValidIP(client_source_ip, NULL)) {
                         merror("Invalid IP: '%s'", client_source_ip);
