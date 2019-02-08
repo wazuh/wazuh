@@ -76,6 +76,7 @@ void run_notify()
     char *agent_ip;
     int sock;
     char label_ip[50];
+    int i;
 
     keep_alive_random[0] = '\0';
     curr_time = time(0);
@@ -132,21 +133,29 @@ void run_notify()
     }
 
     os_calloc(16,sizeof(char),agent_ip);
-    if(sock = OS_ConnectUnixDomain(CONTROL_SOCK, SOCK_STREAM, OS_SIZE_128), sock  < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
-    }
-    else{
-        if (OS_SendUnix(sock, agent_ip, 16) < 0) {
-            merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
-        }
-        else{
-            if(OS_RecvUnix(sock, 16, agent_ip) == 0){
-                merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+
+    for (i = SOCK_ATTEMPTS; i > 0; --i) {
+        if (sock = control_check_connection(), sock >= 0) {
+            if (OS_SendUnix(sock, agent_ip, 16) < 0) {
+                merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
             }
             else{
-                snprintf(label_ip,50,"#\"agent_ip\":%s", agent_ip);
+                if(OS_RecvUnix(sock, 16, agent_ip) == 0){
+                    merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                }
+                else{
+                    snprintf(label_ip,50,"#\"agent_ip\":%s", agent_ip);
+                }
             }
+            break;
+        } else {
+            mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
+            sleep(1);
         }
+    }
+
+    if(sock < 0) {
+        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
     }
 
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);

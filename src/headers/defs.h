@@ -142,6 +142,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "/queue/ossec/control"
 
+// Attempts to check sockets availability
+#define SOCK_ATTEMPTS   10
+
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
 #ifndef WIN32
