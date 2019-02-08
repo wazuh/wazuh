@@ -143,7 +143,7 @@ int main(int argc, char **argv)
             mdebug1("Cluster worker node: Disabling the merged.mg creation");
             logr.nocmerged = 1;
             break;
-}
+    }
 
     /* Exit if test_config is set */
     if (test_config) {
@@ -152,6 +152,7 @@ int main(int argc, char **argv)
 
     if (logr.conn == NULL) {
         /* Not configured */
+        minfo("Remoted connection is not configured... Exiting.");
         exit(0);
     }
 
@@ -199,7 +200,7 @@ int main(int argc, char **argv)
     os_random();
 
     /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
+    mdebug2(STARTUP_MSG, (int)getpid());
 
     //Start shared download
     w_init_shared_download();

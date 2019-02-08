@@ -90,7 +90,7 @@ class WazuhException(Exception):
         1653: 'Active response - Agent not available',
         1654: 'Unable to clear rootcheck database',
 
-        # Agents:
+        # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
         1701: 'Agent does not exist',
         1702: 'Unable to restart agent(s)',
@@ -135,6 +135,10 @@ class WazuhException(Exception):
         1741: 'Could not remove multigroup',
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
+
+        # CDB List: 1800 - 1899
+        1800: 'Bad format in CDB list {path}',
+        1801: '\'path\' parameter is wrong',
 
         # Manager:
 

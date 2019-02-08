@@ -35,6 +35,7 @@ void *OSSECAlert_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
 /* Plugin for JSON */
 void *JSON_Decoder_Init(void);
 void *JSON_Decoder_Exec(Eventinfo *lf, regex_matching *decoder_match);
+void fillData(Eventinfo *lf, const char *key, const char *value);
 
 /* List of plugins. All three lists must be in the same order */
 extern const char *(plugin_decoders[]);

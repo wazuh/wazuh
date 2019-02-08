@@ -698,7 +698,6 @@ def upload_group_configuration(group_id, xml_file):
 def upload_group_file(group_id, xml_file, file_name='agent.conf'):
     """
     Updates a group file
-
     :param group_id: Group to update
     :param xml_file: File contents in string
     :param file_name: File name to update
