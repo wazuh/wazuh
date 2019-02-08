@@ -235,10 +235,12 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan
 
     if (pm_send_db(msg, response, socket) == 0)
     {
+        os_free(response);
         return 0;
     }
     else
-    {
+    {   
+        os_free(response);
         return -1;
     }
 }
@@ -259,10 +261,12 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
    
     if (pm_send_db(msg, response, socket) == 0)
     {
+        os_free(response);
         return 0;
     }
     else
     {
+        os_free(response);
         return -1;
     }
 }
@@ -279,10 +283,12 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
    
     if (pm_send_db(msg, response, socket) == 0)
     {
+        os_free(response);
         return 0;
     }
     else
     {
+        os_free(response);
         return -1;
     }
 }
