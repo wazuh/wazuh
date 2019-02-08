@@ -154,21 +154,42 @@ end:
     return retval;
 }
 
+// Request a uncompressed download (.gz)
+int wurl_request_gz(const char * url, const char * dest) {
+    char compressed_file[OS_SIZE_6144 + 1];
+    int retval = OS_INVALID;
+
+    snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
+
+    if (wurl_request(url, compressed_file)) {
+        return retval;
+    } else {
+        if (w_uncompress_gzfile(compressed_file, dest)) {
+            merror("Could not uncompress the file downloaded from '%s'.", url);
+        } else {
+            retval = 0;
+        }
+    }
+
+    remove(compressed_file);
+    return retval;
+}
+
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
- 
+
   char *ptr = realloc(mem->memory, mem->size + realsize + 1);
   if(ptr == NULL) {
     return 0;
   }
- 
+
   mem->memory = ptr;
   memcpy(&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
   mem->memory[mem->size] = 0;
- 
+
   return realsize;
 }
 
@@ -179,9 +200,9 @@ int wurl_http_get(const char * url, char * data){
     char errbuf[CURL_ERROR_SIZE];
 
     struct MemoryStruct chunk;
- 
-    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */ 
-    chunk.size = 0;    /* no data at this point */ 
+
+    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    chunk.size = 0;    /* no data at this point */
 
     if (curl){
         curl_easy_setopt(curl, CURLOPT_URL, url);

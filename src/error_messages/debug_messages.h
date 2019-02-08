@@ -58,5 +58,8 @@
 #define VU_INS_CPES_SEC       "(5498): Inserting CPEs section..."
 #define VU_AGENT_CPE_RECV     "(5507): The CPE '%s' from the agent %s was received from wazuh-db."
 #define VU_CPE_GENERATED      "(5509): CPE generated from vendor '%s' and product '%s': '%s'."
+#define VU_UPDATING_NVD_YEAR  "(5512): Synchronizing the year %d vulnerability database..."
+#define VU_GEN_CPE_COUNT      "(5514): CPEs generated for agent %s: %d/%d."
+#define VU_INS_NVD_SEC        "(5516): Inserting NVD section..."
 
 #endif

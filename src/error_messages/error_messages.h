@@ -334,6 +334,11 @@
 #define VU_AGENT_CPE_PARSE_ERROR    "(5505): Could not parse the CPE '%s' from the agent %s. It will be recomputed."
 #define VU_GEN_SEARCH_TERMS_ERROR   "(5506): Could not generate the search terms for %s:%s:%s:%s in the agent %s."
 #define VU_CPE_PARSING_ERROR        "(5508): Could not parse the '%s' term of '%s'."
+#define VU_UNKNOWN_NVD_TAG          "(5510): An unexpected tag was found when processing the CVE list: '%s'."
+#define VU_UNKNOWN_NVD_CVE_TAG      "(5511): An unexpected tag was found when processing the CVE: '%s'."
+#define VU_PARSING_ERROR            "(5513): Could not decode the CPE '%s' for the agent %s."
+#define VU_WAZUH_DB_CPE_IN_ERROR    "(5515): Could not insert the CPEs from the agent %s into the database."
+#define VU_NVD_ROW_GET_ERROR        "(5517): Could not get the %s ID row."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
