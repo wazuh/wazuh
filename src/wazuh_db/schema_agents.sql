@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS sys_netproto (
     iface TEXT REFERENCES sys_netiface (name),
     type TEXT,
     gateway TEXT,
+    metric INTEGER,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
     PRIMARY KEY (scan_id, iface, type)
 );

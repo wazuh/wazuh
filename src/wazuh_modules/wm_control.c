@@ -36,9 +36,10 @@ char* getPrimaryIP(){
     struct ifaddrs *ifaddr, *ifa;
     int size;
     int i = 0;
+    int min_metric = INT_MAX;
 
     if (getifaddrs(&ifaddr) == -1) {
-        merror("getifaddrs() failed.");
+        mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
     }
     else {
         for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
@@ -50,57 +51,40 @@ char* getPrimaryIP(){
         size = getIfaceslist(ifaces_list, ifaddr);
 
         if(!ifaces_list[0]){
-            merror("No interface found. No reporting ip.");
+            mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
             free(ifaces_list);
             return agent_ip;
         }
-
-        FILE *fp;
-        char file_location[PATH_LENGTH];
-        char if_name[256] = "";
-        char interface_name[256] = "";
-        char string[OS_MAXSTR];
-        int destination, gateway, flags, ref, use, metric;
-        int min_metric = 999999;
-        snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_NET_DIR, "route");
-
-        if ((fp = fopen(file_location, "r"))){
-
-            while (fgets(string, OS_MAXSTR, fp) != NULL){
-
-                if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7){
-                    if (destination == 00000000 && metric < min_metric){
-                        strncpy(interface_name, if_name, 256);
-                        min_metric = metric;
-                    }
-                }
-
-            }
-        fclose(fp);
     }    
 
-        for (i=0; i<size; i++){
-            cJSON *object = cJSON_CreateObject();
-            getNetworkIface(object, ifaces_list[i], ifaddr);
-            cJSON *interface = cJSON_GetObjectItem(object, "iface");
-            cJSON *name = cJSON_GetObjectItem(interface,"name");
-            if(!strcmp(interface_name,name->valuestring)){
-                cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
-                cJSON *addresses = cJSON_GetObjectItem(ipv4,"address");
-                cJSON *address = cJSON_GetArrayItem(addresses,0);
+    for (i=0; i<size; i++) {
+        cJSON *object = cJSON_CreateObject();
+        getNetworkIface(object, ifaces_list[i], ifaddr);
+        cJSON *interface = cJSON_GetObjectItem(object, "iface");
+        cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
+        cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
+
+        if (gateway) {
+            cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
+            if (metric->valueint < min_metric) {
+
+                cJSON *address = cJSON_GetObjectItem(ipv4, "address");
                 os_strdup(address->valuestring, agent_ip);
                 cJSON_Delete(object);
                 break;
-            }
-            cJSON_Delete(object);
-        }
 
-        freeifaddrs(ifaddr);
-        for (i=0; ifaces_list[i]; i++){
-            free(ifaces_list[i]);
+            }
         }
-        free(ifaces_list);
+        cJSON_Delete(object);
     }
+
+    freeifaddrs(ifaddr);
+    for (i=0; ifaces_list[i]; i++){
+        free(ifaces_list[i]);
+    }
+
+    free(ifaces_list);
+
     return agent_ip;
 }
 
@@ -111,7 +95,7 @@ void *wm_control_main(){
 
     send_ip();
 
-    return;
+    return NULL;
 }
 
 void wm_control_destroy(){}
@@ -143,7 +127,7 @@ void *send_ip(){
     fd_set fdset;
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR CONTROL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+        mterror(WM_CONTROL_LOGTAG, "Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -156,7 +140,7 @@ void *send_ip(){
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At send_ip(): select(): %s", strerror(errno));
+                mterror_exit(WM_CONTROL_LOGTAG, "At send_ip(): select(): %s", strerror(errno));
             }
 
             continue;
@@ -167,7 +151,7 @@ void *send_ip(){
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At send_ip(): accept(): %s", strerror(errno));
+                mterror(WM_CONTROL_LOGTAG, "At send_ip(): accept(): %s", strerror(errno));
             }
 
             continue;
@@ -176,16 +160,16 @@ void *send_ip(){
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
         case -1:
-            merror("At send_ip(): OS_RecvUnix(): %s", strerror(errno));
+            mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
 
         case 0:
-            minfo("Empty message from local client.");
+            mtinfo(WM_CONTROL_LOGTAG, "Empty message from local client.");
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            mterror(WM_CONTROL_LOGTAG, "Received message > %i", MAX_DYN_STR);
             close(peer);
             break;
 

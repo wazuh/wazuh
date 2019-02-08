@@ -30,7 +30,7 @@ char* get_if_type(char *ifa_name);              // Get interface type
 char* get_oper_state(char *ifa_name);           // Get operational state
 char* get_mtu(char *ifa_name);                  // Get MTU
 char* check_dhcp(char *ifa_name, int family);   // Check DHCP status for network interfaces
-char* get_default_gateway(char *ifa_name);      // Get Default Gatewat for network interfaces
+char* get_default_gateway(char *ifa_name);      // Get Default Gateway for network interfaces
 
 // Get port state
 
@@ -1435,6 +1435,7 @@ char* check_dhcp(char *ifa_name, int family){
     return dhcp;
 }
 
+// Returns default gateway for an interface and its metric in the format: "192.168.1.1|1200"
 char* get_default_gateway(char *ifa_name){
 
     FILE *fp;
@@ -1443,22 +1444,22 @@ char* get_default_gateway(char *ifa_name){
     char if_name[IFNAME_LENGTH] = "";
     char string[OS_MAXSTR];
     struct in_addr address;
-    int destination, gateway;
+    int destination, gateway, flags, ref, use, metric;
     char * def_gateway;
-    os_calloc(NI_MAXHOST, sizeof(char) + 1, def_gateway);
+    os_calloc(V_LENGTH, sizeof(char) + 1, def_gateway);
 
     strncpy(interface, ifa_name, sizeof(interface) - 1);
     snprintf(file_location, PATH_LENGTH, "%s%s", WM_SYS_NET_DIR, "route");
-    snprintf(def_gateway, NI_MAXHOST, "%s", "unknown");
+    snprintf(def_gateway, V_LENGTH, "%s", "unknown");
 
     if ((fp = fopen(file_location, "r"))){
 
         while (fgets(string, OS_MAXSTR, fp) != NULL){
 
-            if (sscanf(string, "%s %8x %8x", if_name, &destination, &gateway) == 3){
+            if (sscanf(string, "%s %8x %8x %d %d %d %d", if_name, &destination, &gateway, &flags, &ref, &use, &metric) == 7){
                 if (destination == 00000000 && !strcmp(if_name, interface)){
                     address.s_addr = gateway;
-                    snprintf(def_gateway, NI_MAXHOST, "%s", inet_ntoa(*(struct in_addr *) &address));
+                    snprintf(def_gateway, V_LENGTH, "%s|%d", inet_ntoa(*(struct in_addr *) &address), metric);
                     fclose(fp);
                     return def_gateway;
                 }
@@ -1878,7 +1879,15 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
 
         /* Get Default Gateway */
         char *gateway;
+        char *metric = NULL;
+
         gateway = get_default_gateway(iface_name);
+
+        if (metric = strchr(gateway, '|'), metric) {
+            metric++;
+            cJSON_AddNumberToObject(ipv4, "metric", atoi(metric));
+        }
+
         cJSON_AddStringToObject(ipv4, "gateway", gateway);
         free(gateway);
 

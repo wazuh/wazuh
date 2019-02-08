@@ -309,6 +309,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * address = cJSON_GetObjectItem(ip, "address");
                 cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
                 cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * metric = cJSON_GetObjectItem(ip, "metric");
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
@@ -329,6 +330,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
                 // Information about an IPv4 interface
                 wm_strcat(&msg, "0", '|');
+
+                if (metric) {
+                    char _metric[OS_SIZE_128];
+                    snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
+                    fillData(lf,"netinfo.iface.ipv4.metric", _metric);
+                    wm_strcat(&msg, _metric, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
 
                 if (gateway) {
                     wm_strcat(&msg, gateway->valuestring, '|');
@@ -436,6 +446,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * address = cJSON_GetObjectItem(ip, "address");
                 cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
                 cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * metric = cJSON_GetObjectItem(ip, "metric");
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
@@ -456,6 +467,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
 
                 // Information about an IPv6 interface
                 wm_strcat(&msg, "1", '|');
+
+                if (metric) {
+                    char _metric[OS_SIZE_128];
+                    snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
+                    fillData(lf,"netinfo.iface.ipv6.metric",_metric);
+                    wm_strcat(&msg, _metric, '|');
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
 
                 if (gateway) {
                     wm_strcat(&msg, gateway->valuestring, '|');
