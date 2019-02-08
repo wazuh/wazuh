@@ -165,6 +165,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
             for (j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, XML_POLICY) == 0) {
                     int enabled = 1;
+                    int policy_found = 0;
 
                     if(children[j]->attributes && children[j]->values) {
 
@@ -175,18 +176,35 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                         }
                     }
 
-                    if(enabled) {
-                        if(strlen(children[j]->content) >= PATH_MAX) {
-                            merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
-                            return OS_INVALID;
-                        }
+                    
+                    if(strlen(children[j]->content) >= PATH_MAX) {
+                        merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
+                        return OS_INVALID;
+                    }
 
-                        os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(char *), policy_monitoring->profile);
-                        os_strdup(children[j]->content,policy_monitoring->profile[profiles]);
+                    if(policy_monitoring->profile) {
+                        int i;
+                        for(i = 0; policy_monitoring->profile[i]; i++) {
+                            if(!strcmp(policy_monitoring->profile[i]->profile,children[j]->content)) {
+                                policy_monitoring->profile[i]->enabled = enabled;
+                                policy_found = 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if(!policy_found) {
+                        os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(wm_configuration_assessment_profile_t *), policy_monitoring->profile);
+                        wm_configuration_assessment_profile_t *policy;
+                        os_calloc(1,sizeof(wm_configuration_assessment_profile_t),policy);
+
+                        policy->enabled = enabled;
+                        os_strdup(children[j]->content,policy->profile);
+                        policy_monitoring->profile[profiles] = policy;
                         policy_monitoring->profile[profiles + 1] = NULL;
                         profiles++;
                     }
-
+                   
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);

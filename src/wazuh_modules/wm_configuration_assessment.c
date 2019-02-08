@@ -262,17 +262,21 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
     /* Read every policy monitoring file */
     if(data->profile){
         for(i = 0; data->profile[i]; i++) {
+            if(!data->profile[i]->enabled){
+                continue;
+            }
+
             char path[PATH_MAX];
             OSStore *vars = NULL;
             cJSON * object = NULL;
             int cis_db_index = i;
 
 #ifdef WIN32
-            sprintf(path,"%s\\%s",CONFIGURATION_ASSESSMENT_DIR, data->profile[i]);
+            sprintf(path,"%s\\%s",CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
 #elif CLIENT
-            sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]);
+            sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
 #else
-            sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]);
+            sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
 #endif
             fp = fopen(path,"r");
 
@@ -368,8 +372,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
             w_del_plist(plist);
 
-            
-            mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Evaluation finished for policy '%s'.",data->profile[i]);
+            mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Evaluation finished for policy '%s'.",data->profile[i]->profile);
 
     next:
             if(fp){

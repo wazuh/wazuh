@@ -38,6 +38,11 @@
 HKEY wm_configuration_assessment_sub_tree;
 #endif
 
+typedef struct wm_configuration_assessment_profile_t {
+    int enabled:1;
+    char *profile;
+} wm_configuration_assessment_profile_t;
+
 typedef struct wm_configuration_assessment_t {
     int enabled:1;
     int scan_on_start:1;
@@ -47,7 +52,7 @@ typedef struct wm_configuration_assessment_t {
     int scan_wday;
     time_t next_time;               
     char* scan_time;
-    char** profile;
+    wm_configuration_assessment_profile_t** profile;
     char **alert_msg;
     int queue;
 } wm_configuration_assessment_t;
