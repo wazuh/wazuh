@@ -485,7 +485,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 goto clean;
             }
         }  else {
-            path = convert_windows_string(buffer[2].XmlVal);
+            if (path = convert_windows_string(buffer[2].XmlVal), !path) {
+                goto clean;
+            }
+            str_lowercase(path);
             if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
                 // The file has been marked as ignored
                 mdebug2("The file '%s' has been marked as ignored. It will be discarded.", path);
@@ -564,7 +567,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     goto clean;
                 }
                 // Check if it is a known file
-                str_lowercase(path);
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     // Check if it is not a directory
                     if (strchr(path, ':') && check_path_type(path) == 1) {
@@ -645,7 +647,6 @@ add_whodata_evt:
                 if (mask) {
                     if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                         w_evt->mask |= mask;
-                        str_lowercase(path);
                         // Check if it is a rename or copy event
                         if (w_evt->scan_directory && (mask & FILE_WRITE_DATA)) {
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
@@ -778,9 +779,9 @@ int whodata_audit_start() {
     if (syscheck.wdata.fd = OSHash_Create(), !syscheck.wdata.fd) {
         return 1;
     }
-    
+
     OSHash_SetFreeDataPointer(syscheck.wdata.fd, (void (*)(void *))free_win_whodata_evt);
-    
+
     memset(&syscheck.wlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
 

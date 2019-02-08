@@ -1,6 +1,9 @@
 ---
 name: 'Test: Vulnerability Detector'
 about: Test suite for Vulnerability Detector.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

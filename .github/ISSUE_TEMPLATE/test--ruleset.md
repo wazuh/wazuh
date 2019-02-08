@@ -1,6 +1,9 @@
 ---
 name: 'Test: Ruleset'
 about: Test suite for the ruleset.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
