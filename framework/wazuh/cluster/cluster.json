@@ -1,9 +1,8 @@
 {
     "files":{
         "/etc/": {
-            "umask": "0o127",
+            "permissions": "0o640",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["client.keys"],
             "recursive": false,
             "restart": false,
@@ -13,9 +12,8 @@
         },
 
         "/etc/shared/": {
-            "umask": "0o127",
+            "permissions": "0o640",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["merged.mg"],
             "recursive": true,
             "restart": false,
@@ -25,9 +23,8 @@
         },
 
         "/var/multigroups/": {
-            "umask": "0o127",
+            "permissions": "0o640",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["merged.mg"],
             "recursive": true,
             "restart": false,
@@ -37,9 +34,8 @@
         },
 
         "/etc/rules/": {
-            "umask": "0o127",
+            "permissions": "0o640",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["all"],
             "recursive": true,
             "restart": true,
@@ -49,9 +45,8 @@
         },
 
         "/etc/decoders/": {
-            "umask": "0o127",
+            "permissions": "0o640",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["all"],
             "recursive": true,
             "restart": true,
@@ -61,9 +56,8 @@
         },
 
         "/etc/lists/": {
-            "umask": "0o137",
+            "permissions": "0o660",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["all"],
             "recursive": true,
             "restart": true,
@@ -73,9 +67,8 @@
         },
 
         "/queue/agent-info/": {
-            "umask": "0o117",
+            "permissions": "0o660",
             "source": "worker",
-            "write_mode": "atomic",
             "files": [
                 "agent-info.merged"
             ],
@@ -87,9 +80,8 @@
         },
 
         "/queue/agent-groups/": {
-            "umask": "0o117",
+            "permissions": "0o660",
             "source": "master",
-            "write_mode": "atomic",
             "files": ["all"],
             "recursive": true,
             "restart": false,
@@ -117,7 +109,6 @@
             "sync_files": 60,
             "keep_alive": 60,
             "connection_retry": 10,
-            "ask_for_permission": 5,
             "max_failed_keepalive_attempts": 2
         },
 
@@ -128,14 +119,6 @@
         },
 
         "communication":{
-            "max_time_receiving_file": 30,
-            "file_transfer_receive": 0.1,
-            "file_transfer_send": 0.1,
-
-            "max_time_receiving_string": 30,
-            "string_transfer_receive": 0.1,
-            "string_transfer_send": 0.1,
-
             "timeout_cluster_request": 20,
             "timeout_api_request": 200,
             "timeout_api_exe": 10
