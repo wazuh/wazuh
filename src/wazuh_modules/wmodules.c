@@ -38,7 +38,9 @@ int wm_config() {
         return -1;
     }
 
+#ifndef WIN32
     wmodule *module;
+#endif
 
 #ifdef CLIENT
     // Read configuration: agent.conf
