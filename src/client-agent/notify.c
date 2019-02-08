@@ -158,7 +158,7 @@ void run_notify()
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
                     getuname(), md5sum, tmp_labels, shared_files, label_ip, keep_alive_random);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n%s",
                     getuname(), tmp_labels, shared_files, label_ip, keep_alive_random);
         }
     }
@@ -168,7 +168,7 @@ void run_notify()
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
                     getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
                     getuname(), tmp_labels, shared_files, keep_alive_random);
         }
     }

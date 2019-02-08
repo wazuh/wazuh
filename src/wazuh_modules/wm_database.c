@@ -290,7 +290,7 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name, NULL);
 
         free(node_name);
         free(os_major);
@@ -381,7 +381,7 @@ void wm_sync_agents() {
             *group = 0;
         }
 
-        if (!(wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL,1) || module->full_sync)) {
+        if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL,1) || module->full_sync)) {
 
             // Find files
 
@@ -529,7 +529,6 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *end_line;
     FILE *fp;
     int result;
-    int result_ip;
     clock_t clock0 = clock();
     regmatch_t match[2];
     int match_size;
@@ -692,14 +691,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         }
     }
 
-
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name);
-    if(agent_ip){
-        result_ip = wdb_update_agent_ip(id_agent, agent_ip);
-        if(result_ip < 0){
-            mtdebug2("Error updating the IP for agent %d", id_agent);
-        }
-    }
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name, agent_ip[0] != '\0' ? agent_ip : NULL);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);

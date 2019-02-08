@@ -20,8 +20,8 @@ static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register
 static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
-static const char *SQL_UPDATE_AGENT_IP = "UPDATE agent SET ip = ? WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_GROUP = "UPDATE agent SET `group` = ? WHERE id = ?;";
@@ -136,14 +136,19 @@ int wdb_update_agent_name(int id, const char *name) {
 }
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name) {
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip) {
     int result = 0;
     sqlite3_stmt *stmt;
+    const char * sql = SQL_UPDATE_AGENT_VERSION;
 
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_VERSION, -1, &stmt, NULL)) {
+    if(agent_ip) {
+        sql = SQL_UPDATE_AGENT_VERSION_IP;
+    }
+
+    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
         return -1;
     }
@@ -162,7 +167,12 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     sqlite3_bind_text(stmt, 12, merged_sum, -1, NULL);
     sqlite3_bind_text(stmt, 13, manager_host, -1, NULL);
     sqlite3_bind_text(stmt, 14, node_name, -1, NULL);
-    sqlite3_bind_int(stmt, 15, id);
+    if (agent_ip) {
+        sqlite3_bind_text(stmt, 15, agent_ip, -1, NULL);
+        sqlite3_bind_int(stmt, 16, id);
+    } else {
+        sqlite3_bind_int(stmt, 15, id);
+    }
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
@@ -185,29 +195,6 @@ int wdb_update_agent_keepalive(int id, long keepalive) {
 
     sqlite3_bind_int64(stmt, 1, keepalive);
     sqlite3_bind_int(stmt, 2, id);
-
-    result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
-    sqlite3_finalize(stmt);
-
-    return result;
-}
-
-/* Update agent's IP. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_update_agent_ip(int id, char *ip) {
-    int result = 0;
-    sqlite3_stmt *stmt;
-
-    if (wdb_open_global() < 0){
-        return -1;
-    }
-
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_IP, -1, &stmt, NULL)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
-        return -1;
-    }
-
-    sqlite3_bind_text(stmt, 1, ip, -1, NULL);
-    sqlite3_bind_int(stmt, 2 , id);
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
