@@ -303,9 +303,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
                 for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
                     full_unmerged_name = common.ossec_path + name
-                    with open(full_unmerged_name, 'wb') as f:
+                    tmp_unmerged_path = full_unmerged_name + '.tmp'
+                    with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
-                    os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
+                    os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                    os.rename(tmp_unmerged_path, full_unmerged_name)
             else:
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
