@@ -1888,7 +1888,7 @@ cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *dat
         int i;
         for (i=0;data->profile[i];i++) {
             cJSON *profile = cJSON_CreateObject();
-            cJSON_AddStringToObject(profile,"profile",data->profile[i]);
+            cJSON_AddStringToObject(profile,"profile",data->profile[i]->profile);
             cJSON_AddItemToArray(profiles, profile);
         }
         cJSON_AddItemToObject(wm_wd,"profiles",profiles);
