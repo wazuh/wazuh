@@ -8,23 +8,20 @@ from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
-from wazuh.database import Connection
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
 from os import path, listdir, stat, chmod, chown, remove, unlink
-from subprocess import check_output, check_call, CalledProcessError
+from subprocess import check_output
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
 import json
-from stat import S_IRWXG, S_IRWXU
-import errno
 import logging
 import logging.handlers
 import re
 import os
 import ast
-from calendar import timegm, month_abbr
+from calendar import month_abbr
 from random import random
 import glob
 import gzip
@@ -395,49 +392,6 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
     return agents
 
 
-def _check_removed_agents(new_client_keys_path):
-    """
-    Function to delete agents that have been deleted in a synchronized
-    client.keys.
-
-    It makes a diff of the old client keys and the new one and search for
-    deleted or changed lines (in the diff those lines start with -).
-
-    If a line starting with - matches the regex structure of a client.keys line
-    that agent is deleted.
-    """
-    def parse_client_keys(client_keys_contents):
-        """
-        Parses client.keys file into a dictionary
-        :param client_keys_contents: \n splitted contents of client.keys file
-        :return: generator of dictionaries.
-        """
-        ck_line = re.compile(r'\d+ \S+ \S+ \S+')
-        return {a_id: {'name': a_name, 'ip': a_ip, 'key': a_key} for a_id, a_name, a_ip, a_key in
-                map(lambda x: x.split(' '), filter(lambda x: ck_line.match(x) is not None, client_keys_contents))
-                if not a_name.startswith('!')}
-
-    ck_path = "{0}/etc/client.keys".format(common.ossec_path)
-    try:
-        with open(ck_path) as ck:
-            # can't use readlines function since it leaves a \n at the end of each item of the list
-            client_keys_dict = parse_client_keys(ck)
-    except Exception as e:
-        # if client.keys can't be read, it can't be parsed
-        logger.warning("Could not parse client.keys file: {}".format(e))
-        return
-
-    with open(new_client_keys_path) as n_ck:
-        new_client_keys_dict = parse_client_keys(n_ck)
-
-    # get removed agents: the ones missing in the new client keys and present in the old
-    try:
-        remove_bulk_agents(client_keys_dict.keys() - new_client_keys_dict.keys())
-    except Exception as e:
-        logger.error("Error removing agent files: {}".format(e))
-        raise e
-
-
 #
 # Agents-info
 #
@@ -569,49 +523,3 @@ class ClusterFilter(logging.Filter):
 
     def update_subtag(self, new_subtag: str):
         self.subtag = new_subtag
-
-
-def remove_bulk_agents(agent_ids_list):
-    """
-    Removes files created by agents in worker nodes. This function doesn't remove agents from client.keys since the
-    client.keys file is overwritten by the master node.
-    :param agent_ids_list: List of agents ids to remove.
-    :return: None.
-    """
-    def remove_agent_file_type(glob_args, agent_args, agent_files):
-        for filetype in agent_files:
-            for agent_file in set(glob.iglob(filetype.format(common.ossec_path, *glob_args))) & \
-                              {filetype.format(common.ossec_path, *(a[arg] for arg in agent_args)) for a in agent_info}:
-                remove(agent_file)
-
-    if not agent_ids_list:
-        return  # the function doesn't make sense if there is no agents to remove
-
-    logger.info("Removing files from {} agents".format(len(agent_ids_list)))
-    logger.debug("Agents to remove: {}".format(', '.join(agent_ids_list)))
-    # the agents must be removed in groups of 997: 999 is the limit of SQL variables per query. Limit and offset are
-    # always included in the SQL query, so that leaves 997 variables as limit.
-    for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
-        # Get info from DB
-        agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
-                                               select={'fields': ['ip', 'id', 'name']}, limit=None)['items']
-
-        # Remove agent files that need agent name and ip
-        agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
-        remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
-
-        # Remove agent files that only need agent id
-        agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}']
-        remove_agent_file_type(('*',), ('id',), agent_files)
-
-        # remove agent from groups
-        db_global = glob.glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-        agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agents_ids_sublist}
-        conn.execute('delete from belongs where {}'.format(
-            ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
-        conn.commit()
-    logger.info("Agent files removed")
