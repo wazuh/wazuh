@@ -31,7 +31,7 @@ const wm_context WM_CONTROL_CONTEXT = {
 
 char* getPrimaryIP(){
      /* Get Primary IP */
-    char * agent_ip = NULL;
+    char * agent_ip = "";
     char **ifaces_list;
     struct ifaddrs *ifaddr, *ifa;
     int size;
@@ -52,7 +52,7 @@ char* getPrimaryIP(){
         if(!ifaces_list[0]){
             merror("No interface found. No reporting ip.");
             free(ifaces_list);
-            return NULL;
+            return agent_ip;
         }
 
         FILE *fp;

@@ -44,10 +44,10 @@ int wm_config() {
     // Read configuration: agent.conf
     agent_cfg = 1;
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
-
+#ifndef WIN32
     module = wm_control_read();
     wm_add(module);
-
+#endif
 #else
 
     // The database module won't be available on agents

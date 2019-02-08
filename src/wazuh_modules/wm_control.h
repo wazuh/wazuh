@@ -8,7 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-
+#ifndef WIN32
 #ifndef WM_CONTROL
 #define WM_CONTROL
 
@@ -27,4 +27,5 @@ wmodule *wm_control_read();
 char *getPrimaryIP();
 void *send_ip();
 
+#endif
 #endif

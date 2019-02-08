@@ -19,6 +19,7 @@
 #include "os_net/os_net.h"
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
+#include "external/cJSON/cJSON.h"
 
 #ifndef ARGV0
 #define ARGV0 "ossec-agent"
@@ -518,11 +519,140 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     return (0);
 }
 
+ char *get_win_agent_ip(){
+    
+    typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
+
+    char *agent_ip = NULL;
+
+    HMODULE sys_library = NULL;
+    CallFunc _get_network_vista = NULL;
+
+
+    ULONG flags = (checkVista() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS) : 0);
+
+    PIP_ADAPTER_ADDRESSES pAddresses = NULL;
+    ULONG outBufLen = 0;
+    ULONG Iterations = 0;
+    DWORD dwRetVal = 0;
+
+    PIP_ADAPTER_ADDRESSES pCurrAddresses = NULL;
+
+    PIP_ADAPTER_INFO AdapterInfo = NULL;
+
+    /* Allocate a 15 KB buffer to start with */
+    outBufLen = WORKING_BUFFER_SIZE;
+
+    do {
+        pAddresses = (IP_ADAPTER_ADDRESSES *) win_alloc(outBufLen);
+
+        if (pAddresses == NULL) {
+            mterror_exit(WM_SYS_LOGTAG, "Memory allocation failed for IP_ADAPTER_ADDRESSES struct.");
+        }
+
+        dwRetVal = GetAdaptersAddresses(AF_UNSPEC, flags, NULL, pAddresses, &outBufLen);
+
+        if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+            win_free(pAddresses);
+            pAddresses = NULL;
+        } else {
+            break;
+        }
+
+        Iterations++;
+    } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+
+    if (dwRetVal == NO_ERROR) {
+        if (!checkVista()) {
+            /* Retrieve additional data from IPv4 interfaces using GetAdaptersInfo() (under XP) */
+            Iterations = 0;
+            outBufLen = WORKING_BUFFER_SIZE;
+
+            do {
+                AdapterInfo = (IP_ADAPTER_INFO *) win_alloc(outBufLen);
+
+                if (AdapterInfo == NULL) {
+                    mterror_exit(WM_SYS_LOGTAG, "Memory allocation failed for IP_ADAPTER_INFO struct.");
+                }
+
+                dwRetVal = GetAdaptersInfo(AdapterInfo, &outBufLen);
+
+                if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+                    win_free(AdapterInfo);
+                    AdapterInfo = NULL;
+                } else {
+                    break;
+                }
+
+                Iterations++;
+            } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
+        }
+
+        if (dwRetVal == NO_ERROR) {
+            pCurrAddresses = pAddresses;
+            while (pCurrAddresses) {
+                char *string;
+                /* Ignore Loopback interface */
+                if (pCurrAddresses->IfType == IF_TYPE_SOFTWARE_LOOPBACK) {
+                    pCurrAddresses = pCurrAddresses->Next;
+                    continue;
+                }
+
+                /* Ignore interfaces without valid IPv4 indexes */
+                if (pCurrAddresses->IfIndex == 0) {
+                    pCurrAddresses = pCurrAddresses->Next;
+                    continue;
+                }
+
+                if (checkVista()) {
+                    sys_library = LoadLibrary("syscollector_win_ext.dll");
+                    if (sys_library != NULL){
+                        _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
+                        if (!_get_network_vista){
+                            dwRetVal = GetLastError();
+                            mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
+                        }
+                    }
+                    /* Call function get_network_vista() in syscollector_win_ext.dll */
+                    string = _get_network_vista(pCurrAddresses, 0, NULL);
+                } else {
+                    /* Call function get_network_xp() */
+                    string = get_network_xp(pCurrAddresses, AdapterInfo, 0, NULL);
+                }
+
+                cJSON *object = cJSON_Parse(string);
+                cJSON *iface = cJSON_GetObjectItem(object, "iface");
+                cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
+                if(ipv4){
+                    char *end;
+                    cJSON *address = cJSON_GetObjectItem(ipv4,"address");
+                    os_strdup(cJSON_Print(address), agent_ip);
+                    agent_ip += 2;
+                    if(end = strchr(agent_ip, '"'),end){
+                    *end = *end++ = '\0';
+                    }
+                    free(string);
+                    cJSON_Delete(object);
+                    break;
+                }
+                free(string);
+                cJSON_Delete(object);
+                pCurrAddresses = pCurrAddresses->Next;
+            }
+        }
+    }
+    return agent_ip;
+}
+
 /* Send win32 info to server */
 void send_win32_info(time_t curr_time)
 {
     char tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 2];
     char tmp_labels[OS_MAXSTR - OS_HEADER_SIZE] = { '\0' };
+    char *agent_ip;
+    char label_ip[30];
+
+    agent_ip = get_win_agent_ip();
 
     tmp_msg[OS_MAXSTR - OS_HEADER_SIZE + 1] = '\0';
 
@@ -569,16 +699,33 @@ void send_win32_info(time_t curr_time)
         }
     }
 
+    snprintf(label_ip,30,"#\"agent_ip\":%s",agent_ip);
     /* Create message */
-    if (File_DateofChange(AGENTCONFIGINT) > 0) {
-        os_md5 md5sum;
-        if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
+    if(agent_ip){
+        /* In case there is an agent IP the message has a new line at the end to emulate the random string generated in Linux agents
+           to avoid the delete of the agent IP */
+        if (File_DateofChange(AGENTCONFIGINT) > 0) {
+            os_md5 md5sum;
+            if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
+            } else {
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n", __win32_uname, md5sum, tmp_labels, __win32_shared, label_ip);
+            }
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s", __win32_uname, md5sum, tmp_labels, __win32_shared);
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
         }
-    } else {
-        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
+    }
+    else{
+        if (File_DateofChange(AGENTCONFIGINT) > 0) {
+            os_md5 md5sum;
+            if (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) != 0) {
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
+            } else {
+                snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s", __win32_uname, md5sum, tmp_labels, __win32_shared);
+            }
+        } else {
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s", __win32_uname, tmp_labels, __win32_shared);
+        }
     }
 
     /* Create message */
