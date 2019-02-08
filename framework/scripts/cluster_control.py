@@ -1,4 +1,4 @@
-#!/var/ossec/python/bin/python3
+#!/usr/bin/env python
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -37,7 +37,7 @@ def __print_table(data, headers, show_header=False):
 
 async def print_agents(filter_status, filter_node):
     result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
-    headers = {'name': 'Name', 'ip': 'IP', 'id': 'ID', 'status': 'Status', 'version': 'Version',
+    headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
                'node_name': 'Node name'}
     data = map(operator.itemgetter(*headers.keys()), result['data']['items'])
     __print_table(data, list(headers.values()), True)
@@ -139,11 +139,17 @@ if __name__ == '__main__':
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
+
     my_wazuh = Wazuh(get_init=True)
+
+    cluster_status = cluster.get_status_json()
+    if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
+        logging.error("Cluster is not running.")
+        sys.exit(1)
+
     cluster_config = cluster.read_config()
     cluster.check_cluster_config(config=cluster_config)
-
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
     try:
         if args.filter_status and not args.list_agents:

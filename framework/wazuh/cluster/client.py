@@ -77,12 +77,12 @@ class AbstractClientManager:
                                     ssl=ssl_context)
                 self.client = protocol
             except ConnectionRefusedError:
-                self.logger.error("Could not connect to server. Trying again in 10 seconds.")
-                await asyncio.sleep(10)
+                self.logger.error("Could not connect to master. Trying again in 10 seconds.")
+                await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
                 continue
             except OSError as e:
-                self.logger.error("Could not connect to server: {}. Trying again in 10 seconds.".format(e))
-                await asyncio.sleep(10)
+                self.logger.error("Could not connect to master: {}. Trying again in 10 seconds.".format(e))
+                await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
                 continue
 
             self.tasks.extend([(on_con_lost, None), (self.client.client_echo, tuple())] + self.add_tasks())
@@ -94,7 +94,7 @@ class AbstractClientManager:
                 transport.close()
 
             self.logger.info("The connection has ben closed. Reconnecting in 10 seconds.")
-            await asyncio.sleep(10)
+            await asyncio.sleep(self.cluster_items['intervals']['worker']['connection_retry'])
 
 
 class AbstractClient(common.Handler):
@@ -118,24 +118,24 @@ class AbstractClient(common.Handler):
         self.client_data = self.name.encode()
         self.manager = manager
 
+    def connection_result(self, future_result):
+        response_msg = future_result.result()[0]
+        if response_msg.startswith(b'Error'):
+            self.logger.error("Could not connect to master: {}.".format(response_msg))
+            self.transport.close()
+        else:
+            self.logger.info("Sucessfully connected to master.")
+            self.connected = True
+
     def connection_made(self, transport):
         """
         Defines process of connecting to the server
 
         :param transport: socket to write data on
         """
-        def connection_result(future_result):
-            response_msg = future_result.result()[0]
-            if response_msg.startswith(b'Error'):
-                self.logger.error("Could not connect to server: {}.".format(response_msg))
-                self.transport.close()
-            else:
-                self.logger.info("Sucessfully connected to server.")
-                self.connected = True
-
         self.transport = transport
         future_response = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
-        future_response.add_done_callback(connection_result)
+        future_response.add_done_callback(self.connection_result)
 
     def connection_lost(self, exc):
         """
@@ -145,7 +145,7 @@ class AbstractClient(common.Handler):
                     was aborted or closed by this side of the connection.
         """
         if exc is None:
-            self.logger.info('The server closed the connection')
+            self.logger.info('The master closed the connection')
         else:
             self.logger.error("Connection closed due to an unhandled error: {}".format(exc))
 
@@ -197,7 +197,7 @@ class AbstractClient(common.Handler):
                         self.transport.close()
                 else:
                     n_attempts = 0  # set failed attempts to 0 when the last one was successful
-                keep_alive_logger.info(result)
+                keep_alive_logger.info(result.decode())
             await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
 
     async def performance_test_client(self, test_size):

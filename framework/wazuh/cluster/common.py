@@ -108,10 +108,12 @@ class ReceiveFileTask:
         Function to call when the task is finished
         :return:
         """
-        del self.wazuh_common.sync_tasks[self.name]
-        task_exc = self.task.exception()
-        if task_exc:
-            self.logger.error(task_exc)
+        if self.name in self.wazuh_common.sync_tasks:
+            del self.wazuh_common.sync_tasks[self.name]
+        if not self.task.cancelled():
+            task_exc = self.task.exception()
+            if task_exc:
+                self.logger.error(task_exc)
 
 
 class Handler(asyncio.Protocol):
@@ -147,7 +149,7 @@ class Handler(asyncio.Protocol):
         # stores incoming string information from string commands
         self.in_str = {}
         # maximum message length to send in a single request
-        self.request_chunk = 524288
+        self.request_chunk = 5242880
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk*2)
         # object use to encrypt and decrypt requests
@@ -256,6 +258,9 @@ class Handler(asyncio.Protocol):
         self.box[msg_counter] = response
         try:
             self.push(self.msg_build(command, msg_counter, data))
+        except MemoryError:
+            self.request_chunk //= 2
+            return b"Error sending request: Memory error. Request chunk size divided by 2."
         except Exception as e:
             return "Error sending request: {}".format(e).encode()
         try:
@@ -340,14 +345,14 @@ class Handler(asyncio.Protocol):
         client = client.decode()
         res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
         if res.startswith(b'Error'):
-            error_msg = "Error forwarding string to local client: {}".format(res)
+            error_msg = "Error forwarding string to local client: {}".format(res.decode())
             self.logger.error(error_msg)
             res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
         else:
             res = await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res, b'dapi_err')
 
             if res.startswith(b'Error'):
-                error_msg = "Error sending API response to local client: {}".format(res)
+                error_msg = "Error sending API response to local client: {}".format(res.decode())
                 self.logger.error(error_msg)
                 res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
 
