@@ -254,7 +254,7 @@ int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *policy_id, char * output)
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 1));
+            snprintf(output,OS_MAXSTR,"%s %d",sqlite3_column_text(stmt, 1),sqlite3_column_int(stmt, 2));
             return 1;
             break;
         case SQLITE_DONE:
@@ -407,6 +407,32 @@ int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_s
 
     sqlite3_bind_int(stmt, 1, end_scan);
     sqlite3_bind_text(stmt, 2, module, -1, NULL);
+
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return sqlite3_changes(wdb->db);
+    } else {
+        merror("at wdb_rootcheck_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+int wdb_policy_monitoring_check_update_scan_id(wdb_t * wdb, int scan_id_old,int scan_id_new){
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_CHECK_UPDATE_SCAN_ID) < 0) {
+        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_CHECK_UPDATE_SCAN_ID];
+
+    sqlite3_bind_int(stmt, 1, scan_id_new);
+    sqlite3_bind_int(stmt, 2, scan_id_old);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);

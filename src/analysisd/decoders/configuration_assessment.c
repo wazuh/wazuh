@@ -18,6 +18,7 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+#include "os_crypto/md5/md5_op.h"
 #include "string_op.h"
 #include <time.h>
 
@@ -36,6 +37,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references);
+static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result);
@@ -481,9 +483,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     int result_event = 0;
     char *hash_scan_info = NULL;
+    os_md5 hash_md5;
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
-
+    
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
+
+    int scan_id_old;
+    sscanf(hash_scan_info,"%s %d",hash_md5,&scan_id_old);
 
     switch (result_db)
     {
@@ -499,7 +505,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             } else {
 
                 /* Compare hash with previous hash */
-                if(strcmp(hash_scan_info,hash->valuestring)) {
+                if(strcmp(hash_md5,hash->valuestring)) {
                     FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file);
                 }
             }
@@ -513,7 +519,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             } else {
 
                 /* Compare hash with previous hash */
-                if(strcmp(hash_scan_info,hash->valuestring)) {
+                if(strcmp(hash_md5,hash->valuestring)) {
                     FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file);
                 }
             }
@@ -542,6 +548,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         default:
             break;
     }
+
+    UpdateCheckScanId(lf,socket,scan_id_old,pm_scan_id->valueint);
 
     os_free(hash_scan_info);
 }
@@ -770,6 +778,27 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
 
     if(file){
         fillData(lf, "configuration_assessment.file", file->valuestring);
+    }
+}
+
+static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new) {
+    char *msg = NULL;
+    char *response = NULL;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_check_scan %d|%d",lf->agent_id, scan_id_old,scan_id_new);
+    
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        os_free(response);
+        return 0;
+    }
+    else
+    {
+        os_free(response);
+        return -1;
     }
 }
 

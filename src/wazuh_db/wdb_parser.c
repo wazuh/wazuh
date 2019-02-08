@@ -1069,7 +1069,42 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
-    }else if (strcmp(curr, "update_scan_info_start") == 0) {
+    } else if (strcmp(curr, "update_check_scan") == 0) {
+
+        curr = next;  
+        int scan_id_old;
+        int scan_id_new;
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id_old = -1;
+        else
+            scan_id_old = strtol(curr,NULL,10);
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid policy monitoring query syntax.");
+            mdebug2("Policy monitoring query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        curr = next;
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id_new = -1;
+        else
+            scan_id_new = strtol(curr,NULL,10);
+
+       
+        if (result = wdb_policy_monitoring_check_update_scan_id(wdb,scan_id_old,scan_id_new), result < 0) {
+            mdebug1("Cannot save policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "update_scan_info_start") == 0) {
 
         char *policy_id;
         int pm_start_scan;

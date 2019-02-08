@@ -75,10 +75,11 @@ static const char *SQL_STMT[] = {
     "UPDATE configuration_assessment_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
     "SELECT name FROM configuration_assessment_global WHERE name = ?;",
     "INSERT INTO configuration_assessment_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
-    "SELECT policy_id,hash FROM configuration_assessment_scan_info WHERE policy_id = ?;",
+    "SELECT policy_id,hash,id FROM configuration_assessment_scan_info WHERE policy_id = ?;",
     "UPDATE configuration_assessment_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM configuration_assessment_policy WHERE id = ?;",
-    "INSERT INTO configuration_assessment_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);"
+    "INSERT INTO configuration_assessment_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
+    "UPDATE configuration_assessment_check SET scan_id = ? WHERE scan_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
