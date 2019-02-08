@@ -62,9 +62,9 @@ class TestManager(TestCase):
         self.assertIsInstance(result, str)
 
     @patch('socket.socket')
-    def test_validation_ok(self, mock1):
-        self.assertEqual(validation(), 'Configuration is OK')
+    def test_validation(self, mock1):
+        result = validation()
+        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result['status'], str)
 
-    @patch('socket.socket.recv', return_value=None)
-    def test_validation_ko(self, mock1):
-        self.assertEqual(validation(), 'Configuration is KO')
+

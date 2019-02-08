@@ -328,7 +328,7 @@ def validation():
         remove(api_socket_path)
     except OSError:
         if exists(api_socket_path):
-            raise WazuhException(1903)
+            raise WazuhException(1014)
 
     # up API socket
     try:
@@ -337,7 +337,7 @@ def validation():
         # timeout
         api_socket.settimeout(5)
     except socket.error:
-        raise WazuhException(1903)
+        raise WazuhException(1013)
 
     # connect to execq socket
     if exists(execq_socket_path):
@@ -345,7 +345,7 @@ def validation():
             execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             execq_socket.connect(execq_socket_path)
         except socket.error:
-            raise WazuhException(1902)
+            raise WazuhException(1013)
     else:
         raise WazuhException(1901)
 
