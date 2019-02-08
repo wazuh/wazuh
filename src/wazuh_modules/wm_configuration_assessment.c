@@ -269,6 +269,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             char path[PATH_MAX];
             OSStore *vars = NULL;
             cJSON * object = NULL;
+            cJSON *requirements_array = NULL;
             int cis_db_index = i;
 
 #ifdef WIN32
@@ -304,7 +305,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             cJSON *policy = cJSON_GetObjectItem(object, "policy");
             cJSON *variables = cJSON_GetObjectItem(object, "variables");
             cJSON *profiles = cJSON_GetObjectItem(object, "checks");
-            cJSON *requirements_array = cJSON_CreateArray();
+            requirements_array = cJSON_CreateArray();
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemToArray(requirements_array, requirements);
 
@@ -380,7 +381,11 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             }
 
             if(object) {
-                cJSON_free(object);
+                cJSON_Delete(object);
+            }
+
+            if(requirements_array){
+                cJSON_free(requirements_array);
             }
 
             if(vars) {
@@ -459,7 +464,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
         /* Get first name */
         if(c_title) {
-            name = c_title->valuestring;
+            name = strdup(c_title->valuestring);
         } else {
             name = NULL;
         }
@@ -490,6 +495,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 int negate = 0;
                 int found = 0;
                 value = NULL;
+                //nbuf2 = strdup(p_check->valuestring);
                 nbuf = p_check->valuestring;
             
                 /* Get value to look for */
@@ -1821,8 +1827,12 @@ static char *wm_configuration_assessment_hash_integrity(OSHash *cis_db_hash) {
             if(event->result){
                 wm_strcat(&str,event->result,':');
             }
+        } else {
+            os_free(i);
         }
     }
+    os_free(i);
+
 
     if(str) {
         OS_MD5_Str(str,-1,md5_hash);
