@@ -374,7 +374,7 @@ static void ExecdStart(int q)
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
-                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "/active-response/bin/restart-wazuh.sh");
+                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
                 os_strdup(script_path, cmd_api[0]);
             }
 
