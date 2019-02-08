@@ -18,15 +18,13 @@
 
 extern const wm_context WM_CONTROL_CONTEXT;
 
-char *reporting_ip;
-
 typedef struct wm_control_t {
     unsigned int enabled:1;
     unsigned int run_on_start:1;
 } wm_control_t;
 
 wmodule *wm_control_read();
-char *getReportingIP();
+char *getPrimaryIP();
 void *send_ip();
 
 #endif

@@ -10,14 +10,17 @@
  */
 
 #ifdef CLIENT
+#ifdef __linux__
 #include "wm_control.h"
 #include "syscollector/syscollector.h"
+#include "external/cJSON/cJSON.h"
+#include "file_op.h"
+#include "../os_net/os_net.h"
 #include <ifaddrs.h>
 
-static void *wm_control_main(wm_control_t control);
-static void *wm_control_destroy();
+static void *wm_control_main();
+static void wm_control_destroy();
 cJSON *wm_control_dump(void);
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 const wm_context WM_CONTROL_CONTEXT = {
     "control",
@@ -28,7 +31,7 @@ const wm_context WM_CONTROL_CONTEXT = {
 
 char* getPrimaryIP(){
      /* Get Primary IP */
-    char * reporting_ip = NULL;
+    char * agent_ip = NULL;
     char **ifaces_list;
     struct ifaddrs *ifaddr, *ifa;
     int size;
@@ -85,7 +88,7 @@ char* getPrimaryIP(){
                 cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
                 cJSON *addresses = cJSON_GetObjectItem(ipv4,"address");
                 cJSON *address = cJSON_GetArrayItem(addresses,0);
-                os_strdup(address->valuestring, reporting_ip);
+                os_strdup(address->valuestring, agent_ip);
                 cJSON_Delete(object);
                 break;
             }
@@ -98,31 +101,20 @@ char* getPrimaryIP(){
         }
         free(ifaces_list);
     }
-
-    return reporting_ip;
+    return agent_ip;
 }
 
-void *wm_control_main(wm_control_t control){
+
+void *wm_control_main(){
 
     mtinfo(WM_CONTROL_LOGTAG, "Starting control thread.");
 
-    w_create_thread(send_ip, NULL);
+    send_ip();
 
-    while(1){
-        w_mutex_lock(&mutex);
-        if(reporting_ip){
-            mtdebug2(WM_CONTROL_LOGTAG, "Refreshing IP");
-            free(reporting_ip);
-        }
-
-        reporting_ip = getPrimaryIP();
-        mtdebug1(WM_CONTROL_LOGTAG, "Reporting IP: %s", reporting_ip);
-
-        w_mutex_unlock(&mutex);
-        sleep(30);
-
-    }
+    return;
 }
+
+void wm_control_destroy(){}
 
 wmodule *wm_control_read(){
     wmodule * module;
@@ -134,24 +126,12 @@ wmodule *wm_control_read(){
     return module;
 }
 
-void *wm_control_destroy(){
-
-}
-
 cJSON *wm_control_dump(void) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
     cJSON_AddStringToObject(wm_wd,"enabled","yes");
     cJSON_AddItemToObject(root,"wazuh_control",wm_wd);
     return root;
-}
-
-char *getReportingIP(){
-    if(reporting_ip)
-        return reporting_ip;
-    else{
-        return getPrimaryIP();
-    }
 }
 
 void *send_ip(){
@@ -210,10 +190,7 @@ void *send_ip(){
             break;
 
         default:
-            length = sizeof(reporting_ip);
-            w_mutex_lock(&mutex);
-            OS_SendUnix(peer, getReportingIP(), 0);
-            w_mutex_unlock(&mutex);
+            OS_SendUnix(peer, getPrimaryIP(), 0);
             free(response);
             close(peer);
         }
@@ -223,5 +200,5 @@ void *send_ip(){
     close(sock);
     return NULL;
 }
-
+#endif
 #endif
