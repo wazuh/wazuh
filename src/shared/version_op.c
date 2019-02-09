@@ -663,13 +663,14 @@ os_info *get_unix_version()
         // Get OSX codename
         if (strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
+                char * tmp_os_version;
                 size_t len = 4;
                 len += strlen(info->os_version);
                 len += strlen(info->os_codename);
-                os_realloc(info->os_version, len, info->os_version);
-                char tmp_os_version[len];
-                strncpy(tmp_os_version, info->os_version, len);
-                snprintf(info->os_version, len, "%s (%s)", tmp_os_version, info->os_codename);
+                os_malloc(len, tmp_os_version);
+                snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                free(info->os_version);
+                info->os_version = tmp_os_version;
             }
         }
     } else {
@@ -733,7 +734,7 @@ int get_nproc() {
         }
         fclose(fp);
     }
-    
+
     if(!cpu_cores)
         cpu_cores = 1;
 
