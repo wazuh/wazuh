@@ -849,3 +849,14 @@ ssize_t os_recv_waitall(int sock, void * buf, size_t size) {
 
     return offset;
 }
+
+// Wrapper for select()
+int wnet_select(int sock, int timeout) {
+    fd_set fdset;
+    struct timeval fdtimeout = { timeout, 0 };
+
+    FD_ZERO(&fdset);
+    FD_SET(sock, &fdset);
+
+    return select(sock + 1, &fdset, NULL, NULL, &fdtimeout);
+}

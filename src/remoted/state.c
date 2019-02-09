@@ -13,7 +13,7 @@
 #include "remoted.h"
 #include <pthread.h>
 
-remoted_state_t remoted_state = {0, 0, 0, 0, 0};
+remoted_state_t remoted_state;
 static pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int rem_write_state();
 static char *refresh_time;
@@ -93,9 +93,12 @@ int rem_write_state() {
         "discarded_count='%u'\n"
         "\n"
         "# Messages sent\n"
-        "msg_sent='%u'\n",
+        "msg_sent='%u'\n"
+        "\n"
+        "# Total number of bytes received\n"
+        "recv_bytes='%lu'\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
-        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent);
+        state_cpy.evt_count, state_cpy.ctrl_msg_count, state_cpy.discarded_count, state_cpy.msg_sent, state_cpy.recv_bytes);
 
     fclose(fp);
 
@@ -143,5 +146,11 @@ void rem_inc_msg_sent() {
 void rem_inc_discarded() {
     w_mutex_lock(&state_mutex);
     remoted_state.discarded_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_add_recv(unsigned long bytes) {
+    w_mutex_lock(&state_mutex);
+    remoted_state.recv_bytes += bytes;
     w_mutex_unlock(&state_mutex);
 }
