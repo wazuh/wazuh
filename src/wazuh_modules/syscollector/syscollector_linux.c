@@ -645,7 +645,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
                 if(object){
                     cJSON_Delete(object);
                 }
-                
+
                 object = cJSON_CreateObject();
                 package = cJSON_CreateObject();
                 cJSON_AddStringToObject(object, "type", "program");
@@ -1072,15 +1072,20 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             if (fs_if_addr != NULL) {
                 char mac[MAC_LENGTH] = {'\0'};
 
-                if (fread(mac, 1, MAC_LENGTH - 1, fs_if_addr) == (MAC_LENGTH - 1)) {
+                if (fgets(mac, sizeof(mac), fs_if_addr)) {
+                    char * newline = strchr(mac, '\n');
+                    if (newline) {
+                        *newline = '\0';
+                    }
+
                     cJSON_AddStringToObject(interface, "MAC", mac);
                 } else {
-                    mterror(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\".", ifaces_list[i], addr_path);
+                    mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\": file is empty.", ifaces_list[i], addr_path);
                 }
 
                 fclose(fs_if_addr);
             } else {
-                mterror(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\".", ifaces_list[i], addr_path);
+                mtwarn(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", ifaces_list[i], addr_path, strerror(errno), errno);
             }
 
             if (ifa->ifa_addr) {
