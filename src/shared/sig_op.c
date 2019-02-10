@@ -30,7 +30,7 @@ static const char *pidfile = NULL;
 #ifdef __hpux
 char* strsignal(int sig)
 {
-    char str[12];
+    static char str[12];
     sprintf(str, "%d", sig);
     return str;
 }
