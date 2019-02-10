@@ -1059,8 +1059,28 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
             if (strcmp(ifaces_list[i], ifa->ifa_name)){
                 continue;
             }
+
             if (ifa->ifa_flags & IFF_LOOPBACK) {
                 continue;
+            }
+
+            /* Get MAC address */
+            char addr_path[PATH_LENGTH] = {'\0'};
+            snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, ifaces_list[i]);
+
+            FILE *fs_if_addr = fopen(addr_path, "r");
+            if (fs_if_addr != NULL) {
+                char MAC[MAC_LENGTH] = {'\0'};
+
+                if (fread(MAC, MAC_LENGTH - 1, 1, fs_if_addr) == (MAC_LENGTH - 1)) {
+                    cJSON_AddStringToObject(interface, "MAC", MAC);
+                } else {
+                    mterror(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\".", ifaces_list[i], addr_path);
+                }
+
+                fclose(fs_if_addr);
+            } else {
+                mterror(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\".", ifaces_list[i], addr_path);
             }
 
             if (ifa->ifa_addr) {
@@ -1172,13 +1192,8 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
                     }
 
                 } else if (family == AF_PACKET && ifa->ifa_data != NULL){
-
-                    /* Get MAC address and stats */
-                    char MAC[MAC_LENGTH];
+                    /* Get stats */
                     struct link_stats *stats = ifa->ifa_data;
-                    struct sockaddr_ll *addr = (struct sockaddr_ll*)ifa->ifa_addr;
-                    snprintf(MAC, MAC_LENGTH, "%02X:%02X:%02X:%02X:%02X:%02X", addr->sll_addr[0], addr->sll_addr[1], addr->sll_addr[2], addr->sll_addr[3], addr->sll_addr[4], addr->sll_addr[5]);
-                    cJSON_AddStringToObject(interface, "MAC", MAC);
                     cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
                     cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
                     cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);
