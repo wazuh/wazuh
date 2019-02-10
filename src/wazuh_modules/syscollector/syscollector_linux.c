@@ -1070,10 +1070,10 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
             FILE *fs_if_addr = fopen(addr_path, "r");
             if (fs_if_addr != NULL) {
-                char MAC[MAC_LENGTH] = {'\0'};
+                char mac[MAC_LENGTH] = {'\0'};
 
-                if (fread(MAC, MAC_LENGTH - 1, 1, fs_if_addr) == (MAC_LENGTH - 1)) {
-                    cJSON_AddStringToObject(interface, "MAC", MAC);
+                if (fread(mac, 1, MAC_LENGTH - 1, fs_if_addr) == (MAC_LENGTH - 1)) {
+                    cJSON_AddStringToObject(interface, "MAC", mac);
                 } else {
                     mterror(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\".", ifaces_list[i], addr_path);
                 }
