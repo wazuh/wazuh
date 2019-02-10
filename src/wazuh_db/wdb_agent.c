@@ -373,7 +373,7 @@ int* wdb_get_all_agents() {
     int *array;
     sqlite3_stmt *stmt = NULL;
 
-    if (!(array = malloc(sizeof(int)))) {
+    if (!(array = (int *)malloc(sizeof(int)))) {
         merror("wdb_get_all_agents(): memory error");
         return NULL;
     }
@@ -394,7 +394,7 @@ int* wdb_get_all_agents() {
         if (i + 1 == n) {
             int *newarray;
 
-            if (!(newarray = realloc(array, sizeof(int) * (n *= 2)))) {
+            if (!(newarray = (int *)realloc(array, sizeof(int) * (n *= 2)))) {
                 merror("wdb_get_all_agents(): memory error");
                 free(array);
                 sqlite3_finalize(stmt);

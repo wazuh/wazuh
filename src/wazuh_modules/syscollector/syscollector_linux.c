@@ -1198,7 +1198,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
 
                 } else if (family == AF_PACKET && ifa->ifa_data != NULL){
                     /* Get stats */
-                    struct link_stats *stats = ifa->ifa_data;
+                    struct link_stats *stats = (struct link_stats *)ifa->ifa_data;
                     cJSON_AddNumberToObject(interface, "tx_packets", stats->tx_packets);
                     cJSON_AddNumberToObject(interface, "rx_packets", stats->rx_packets);
                     cJSON_AddNumberToObject(interface, "tx_bytes", stats->tx_bytes);

@@ -651,7 +651,7 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
 
-    if (entry = OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
+    if (entry = (keyentry *)OSHash_Delete_ex(keys->keyhash_sock, strsock), entry) {
         entry->sock = -1;
         return 0;
     } else {

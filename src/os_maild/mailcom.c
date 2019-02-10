@@ -15,7 +15,7 @@
 
 size_t mailcom_dispatch(char * command, char ** output) {
 
-    const char *rcv_comm = command;
+    char *rcv_comm = command;
     char *rcv_args = NULL;
 
     if ((rcv_args = strchr(rcv_comm, ' '))){

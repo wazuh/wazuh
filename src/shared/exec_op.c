@@ -107,6 +107,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
 
     pid_t pid;
     int pipe_fd[2];
+    int fd;
 
     if (flags & (W_BIND_STDOUT | W_BIND_STDERR)) {
         if (pipe(pipe_fd) < 0) {
@@ -136,7 +137,7 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             _exit(127);
         }
 
-        int fd = open("/dev/null", O_RDWR, 0);
+        fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
             merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));

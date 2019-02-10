@@ -50,7 +50,8 @@ char* rk_get_title(const char *log) {
 /* Get rootcheck file from log */
 char* rk_get_file(const char *log) {
     char *c;
-    char *file, *found;
+    char *file;
+    const char *found;
     size_t size;
 
     if ((found = strstr(log, "File: "))) {

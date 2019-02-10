@@ -269,14 +269,14 @@ void wm_sync_manager() {
                 // Get os_major
                 if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    os_major = malloc(match_size +1);
+                    os_malloc(match_size +1, os_major);
                     snprintf (os_major, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
                 }
 
                 // Get os_minor
                 if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                     match_size = match[1].rm_eo - match[1].rm_so;
-                    os_minor = malloc(match_size +1);
+                    os_malloc(match_size +1, os_minor);
                     snprintf (os_minor, match_size +1, "%.*s", match_size, os_version + match[1].rm_so);
                 }
 
@@ -577,7 +577,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
             if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_major = malloc(match_size +1 );
+                os_malloc(match_size +1 , os_major);
                 snprintf (os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
             }
 
@@ -585,7 +585,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
             if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_minor = malloc(match_size +1);
+                os_malloc(match_size +1, os_minor);
                 snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
             }
 
@@ -593,7 +593,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
             if (w_regexec("^[0-9]+\\.[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                 match_size = match[1].rm_eo - match[1].rm_so;
-                os_build = malloc(match_size +1);
+                os_malloc(match_size +1, os_build);
                 snprintf(os_build, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
             }
 
@@ -618,14 +618,14 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
                     // Get os_major
                     if (w_regexec("^([0-9]+)\\.*", os_version, 2, match)) {
                         match_size = match[1].rm_eo - match[1].rm_so;
-                        os_major = malloc(match_size +1);
+                        os_malloc(match_size +1, os_major);
                         snprintf(os_major, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
                     }
 
                     // Get os_minor
                     if (w_regexec("^[0-9]+\\.([0-9]+)\\.*", os_version, 2, match)) {
                         match_size = match[1].rm_eo - match[1].rm_so;
-                        os_minor = malloc(match_size +1);
+                        os_malloc(match_size +1, os_minor);
                         snprintf(os_minor, match_size + 1, "%.*s", match_size, os_version + match[1].rm_so);
                     }
 
@@ -975,7 +975,7 @@ int wm_sync_file(const char *dirname, const char *fname) {
 long wm_fill_syscheck(sqlite3 *db, const char *path, long offset, int is_registry) {
     char buffer[OS_MAXSTR];
     char *end;
-    char *event;
+    const char *event;
     char *c_sum;
     char *timestamp;
     char *f_name;
@@ -1518,7 +1518,7 @@ char * wm_inotify_pop() {
         w_cond_wait(&cond_pending, &mutex_queue);
     }
 
-    path = queue_pop(queue);
+    path = (char *)queue_pop(queue);
 
     if (!OSHash_Delete(ptable, path)) {
         mterror(WM_DATABASE_LOGTAG, "Couldn't delete key '%s' from path table.", path);

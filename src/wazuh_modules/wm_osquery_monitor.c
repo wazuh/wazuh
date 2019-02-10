@@ -599,7 +599,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
             return NULL;
         }
 
-        if( pthread_create(&tlauncher, NULL, (void *)&Execute_Osquery, osquery) != 0){
+        if( pthread_create(&tlauncher, NULL, (void* (*)(void*))Execute_Osquery, osquery) != 0){
             merror("creating thread Execute_Osquery");
             return NULL;
         }
@@ -607,7 +607,7 @@ void *wm_osquery_monitor_main(wm_osquery_monitor_t *osquery)
         minfo("run_daemon disabled, finding detached osquery process results.");
     }
 
-    if( pthread_create(&treader, NULL, (void *)&Read_Log, osquery) != 0){
+    if( pthread_create(&treader, NULL, (void* (*)(void*))&Read_Log, osquery) != 0){
         merror("creating thread Read_Log");
         return NULL;
     }

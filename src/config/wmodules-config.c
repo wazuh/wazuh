@@ -41,7 +41,8 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         os_calloc(1, sizeof(wmodule), cur_wmodule->next);
         cur_wmodule = cur_wmodule->next;
     } else
-        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+        os_calloc(1, sizeof(wmodule), cur_wmodule);
+        *wmodules = cur_wmodule;
 
     if (!cur_wmodule) {
         merror(MEM_ERROR, errno, strerror(errno));

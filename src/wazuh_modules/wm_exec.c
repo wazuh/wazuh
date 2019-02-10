@@ -282,6 +282,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
     struct timespec timeout = { 0, 0 };
     int retval = -1;
     int status;
+    int fd;
 
     if (exitcode) {
         *exitcode = 0;
@@ -337,7 +338,7 @@ int wm_exec(char *command, char **output, int *exitcode, int secs, const char * 
 
         argv = wm_strtok(command);
 
-        int fd = open("/dev/null", O_RDWR, 0);
+        fd = open("/dev/null", O_RDWR, 0);
 
         if (fd < 0) {
             merror_exit(FOPEN_ERROR, "/dev/null", errno, strerror(errno));

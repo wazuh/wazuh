@@ -427,7 +427,7 @@ void * w_request_thread(const wm_krequest_t *data) {
     while(1){
 
         /* Receive request from queue */
-        if (msg = queue_pop_ex(request_queue), msg) {
+        if (msg = (char *)queue_pop_ex(request_queue), msg) {
             if(wm_key_request_dispatch(msg,data) < 0) {
                 mdebug1("At w_request_thread(): Error getting external key");
             }

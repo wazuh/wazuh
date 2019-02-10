@@ -1967,13 +1967,13 @@ int cldir_ex_ignore(const char * name, const char ** ignore) {
 int TempFile(File *file, const char *source, int copy) {
     FILE *fp_src;
     int fd;
-    char template[OS_FLSIZE + 1];
+    char temporary[OS_FLSIZE + 1];
     mode_t old_mask;
 
-    snprintf(template, OS_FLSIZE, "%s.XXXXXX", source);
+    snprintf(temporary, OS_FLSIZE, "%s.XXXXXX", source);
     old_mask = umask(0177);
 
-    fd = mkstemp(template);
+    fd = mkstemp(temporary);
     umask(old_mask);
 
     if (fd < 0) {
@@ -1986,7 +1986,7 @@ int TempFile(File *file, const char *source, int copy) {
     if (stat(source, &buf) == 0) {
         if (fchmod(fd, buf.st_mode) < 0) {
             close(fd);
-            unlink(template);
+            unlink(temporary);
             return -1;
         }
     } else {
@@ -1999,7 +1999,7 @@ int TempFile(File *file, const char *source, int copy) {
 
     if (!file->fp) {
         close(fd);
-        unlink(template);
+        unlink(temporary);
         return -1;
     }
 
@@ -2015,7 +2015,7 @@ int TempFile(File *file, const char *source, int copy) {
                 if (ferror(fp_src)) {
                     fclose(fp_src);
                     fclose(file->fp);
-                    unlink(template);
+                    unlink(temporary);
                     return -1;
                 }
 
@@ -2024,7 +2024,7 @@ int TempFile(File *file, const char *source, int copy) {
                 if (count_w != count_r || ferror(file->fp)) {
                     fclose(fp_src);
                     fclose(file->fp);
-                    unlink(template);
+                    unlink(temporary);
                     return -1;
                 }
             }
@@ -2033,7 +2033,7 @@ int TempFile(File *file, const char *source, int copy) {
         }
     }
 
-    file->name = strdup(template);
+    file->name = strdup(temporary);
     return 0;
 }
 
@@ -2233,7 +2233,7 @@ int mkdir_ex(const char * path) {
 
 int w_ref_parent_folder(const char * path) {
     const char * str;
-    char * ptr;
+    const char * ptr;
 
     switch (path[0]) {
     case '\0':
@@ -2397,7 +2397,7 @@ char ** wreaddir(const char * name) {
         return NULL;
     }
 
-    files = malloc(sizeof(char *));
+    os_malloc(sizeof(char *), files);
 
     while (dirent = readdir(dir), dirent) {
         // Skip "." and ".."
@@ -2405,7 +2405,7 @@ char ** wreaddir(const char * name) {
             continue;
         }
 
-        files = realloc(files, (i + 2) * sizeof(char *));
+        os_realloc(files, (i + 2) * sizeof(char *), files);
         if(!files){
            merror_exit(MEM_ERROR, errno, strerror(errno));
         }

@@ -171,12 +171,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
-  char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-  if(ptr == NULL) {
-    return 0;
-  }
-
-  mem->memory = ptr;
+  os_realloc(mem->memory, mem->size + realsize + 1, mem->memory);
   memcpy(&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
   mem->memory[mem->size] = 0;
@@ -192,7 +187,7 @@ int wurl_http_get(const char * url, char * data){
 
     struct MemoryStruct chunk;
 
-    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    os_malloc(1, chunk.memory); /* will be grown as needed by the realloc above */
     chunk.size = 0;    /* no data at this point */
 
     if (curl){

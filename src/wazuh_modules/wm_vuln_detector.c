@@ -1088,23 +1088,23 @@ int wm_vuldet_check_db() {
 }
 
 void wm_vuldet_add_rvulnerability(wm_vuldet_db *ctrl_block) {
-    rh_vulnerability *new;
-    os_calloc(1, sizeof(rh_vulnerability), new);
+    rh_vulnerability *new_vuln;
+    os_calloc(1, sizeof(rh_vulnerability), new_vuln);
 
     if (ctrl_block->rh_vulnerabilities) {
-        new->prev = ctrl_block->rh_vulnerabilities;
+        new_vuln->prev = ctrl_block->rh_vulnerabilities;
     }
-    ctrl_block->rh_vulnerabilities = new;
+    ctrl_block->rh_vulnerabilities = new_vuln;
 }
 
 void wm_vuldet_add_vulnerability_info(wm_vuldet_db *ctrl_block) {
-    info_cve *new;
-    os_calloc(1, sizeof(info_cve), new);
+    info_cve *new_cve;
+    os_calloc(1, sizeof(info_cve), new_cve);
 
     if (ctrl_block->info_cves) {
-        new->prev = ctrl_block->info_cves;
+        new_cve->prev = ctrl_block->info_cves;
     }
-    ctrl_block->info_cves = new;
+    ctrl_block->info_cves = new_cve;
 }
 
 char * wm_vuldet_xml_preparser(char *path, distribution dist) {
@@ -1706,7 +1706,7 @@ int wm_vuldet_update_feed(update_node *update) {
             goto free_mem;
         }
 
-        if (wm_vuldet_xml_parser(&xml, chld_node, &parsed_vulnerabilities, update, 0) == OS_INVALID) {
+        if (wm_vuldet_xml_parser(&xml, chld_node, &parsed_vulnerabilities, update, VU_TRUE) == OS_INVALID) {
             goto free_mem;
         }
     }
@@ -2259,7 +2259,7 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
     obj = NULL;
 
     // Check to see if the scan has already been reported
-    if (scan = OSHash_Get(agents_triag, agent->agent_id), scan) {
+    if (scan = (last_scan *)OSHash_Get(agents_triag, agent->agent_id), scan) {
             if ((scan->last_scan_time + (time_t) ignore_time) < time(NULL)) {
                 scan->last_scan_time = time(NULL);
                 request = VU_SOFTWARE_FULL_REQ;

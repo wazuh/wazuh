@@ -114,14 +114,15 @@ void wdb_delete_pm_all() {
 /* Get PCI_DSS requirement from log string */
 char* get_pci_dss(const char *string) {
     size_t length;
-    char *out = strstr(string, "{PCI_DSS: ");
+    char *out;
+    const char *pci_dss = strstr(string, "{PCI_DSS: ");
 
-    if (out) {
-        out += 10;
-        length = strcspn(out, "}");
+    if (pci_dss) {
+        pci_dss += 10;
+        length = strcspn(pci_dss, "}");
 
-        if (length < strlen(out)) {
-            out = strdup(out);
+        if (length < strlen(pci_dss)) {
+            out = strdup(pci_dss);
             out[length] = '\0';
             return out;
         }
@@ -132,14 +133,15 @@ char* get_pci_dss(const char *string) {
 /* Get CIS requirement from log string */
 char* get_cis(const char *string) {
     size_t length;
-    char *out = strstr(string, "{CIS: ");
+    char *out;
+    const char * cis = strstr(string, "{CIS: ");
 
-    if (out) {
-        out += 6;
-        length = strcspn(out, "}");
+    if (cis) {
+        cis += 6;
+        length = strcspn(cis, "}");
 
-        if (length < strlen(out)) {
-            out = strdup(out);
+        if (length < strlen(cis)) {
+            out = strdup(cis);
             out[length] = '\0';
             return out;
         }
