@@ -41,7 +41,7 @@ fields_translation_ca_check_compliance = {'key': 'key',
                                           'value': 'value'}
 
 default_query_ca = 'SELECT {0} FROM configuration_assessment_policy ca INNER JOIN configuration_assessment_scan_info si ON ca.id=si.policy_id'
-default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check INNER JOIN configuration_assessment_check_compliance ON id=policy_id'
+default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check INNER JOIN configuration_assessment_check_compliance ON id=id_check'
 
 
 class WazuhDBQueryPM(WazuhDBQuery):
@@ -134,7 +134,7 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
 
     db_query = WazuhDBQueryPM(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                               select=select, count=True, get_data=True,
-                              query=f'policy_id={policy_id}' if q == "" else f'policy_id={policy_id};{q}',
+                              query=f"policy_id='{policy_id}'" if q == "" else f"policy_id='{policy_id}';{q}",
                               filters=filters, default_query=default_query_ca_check, default_sort_field='policy_id',
                               fields=fields_translation)
 

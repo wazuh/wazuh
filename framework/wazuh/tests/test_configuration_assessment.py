@@ -76,7 +76,7 @@ class TestPolicyMonitoring(TestCase):
         """
         with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_pm_data
-            fields = {'fields': ['name', 'id']}
+            fields = {'fields': ['name', 'policy_id']}
             result = get_ca_list('000', select=fields)
             assert (isinstance(result, dict))
             assert ('totalItems' in result)
@@ -127,19 +127,27 @@ class TestPolicyMonitoring(TestCase):
         """
         with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_pm_data
-            result = get_ca_checks(1907428094, agent_id='000')
-            assert(isinstance(result, list))
-            assert(len(result) > 0)
-            pm = result[0]
-            assert(isinstance(pm, dict))
-            assert(set(pm.keys()) == set(cols_returned_from_db_pm_check) | {'compliance'})
+            result = get_ca_checks('cis_debian', agent_id='000')
+            assert(isinstance(result, dict))
+            assert ('totalItems' in result)
+            assert (isinstance(result['totalItems'], int))
+            assert ('items' in result)
+            pm = result['items']
+            assert(isinstance(pm, list))
+            assert(len(pm) > 0)
+            assert(set(pm[0].keys()) == set(cols_returned_from_db_pm_check) | {'compliance'})
 
-            compliance = pm['compliance']
+            compliance = pm[0]['compliance']
             assert(isinstance(compliance, list))
             assert(len(compliance) > 0)
             assert(set(compliance[0].keys()) == set(fields_translation_ca_check_compliance.values()))
 
             # Check 0 result
-            result = get_ca_checks(99999999999, agent_id='000')
-            assert(isinstance(result, list))
-            assert(len(result) == 0)
+            result = get_ca_checks('not_exists', agent_id='000')
+            assert(isinstance(result, dict))
+            assert ('totalItems' in result)
+            assert (isinstance(result['totalItems'], int))
+            assert ('items' in result)
+            pm = result['items']
+            assert(isinstance(pm, list))
+            assert(len(pm) == 0)

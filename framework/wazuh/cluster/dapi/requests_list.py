@@ -403,12 +403,12 @@ functions = {
     },
 
     # Configuration assessment
-    '/configuration_assessment/:agent_id': {
+    '/configuration-assessment/:agent_id': {
         'function': configuration_assessment.get_ca_list,
         'type': 'distributed_master',
         'is_async': False
     },
-    '/configuration_assessment/:agent_id/checks/:policy_id': {
+    '/configuration-assessment/:agent_id/checks/:policy_id': {
         'function': configuration_assessment.get_ca_checks,
         'type': 'distributed_master',
         'is_async': False
