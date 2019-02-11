@@ -14,6 +14,7 @@ from wazuh import exception, agent, common, utils
 import logging
 import os
 import time
+import copy
 
 
 class DistributedAPI:
@@ -109,7 +110,7 @@ class DistributedAPI:
 
             timeout = None if self.input_json['arguments']['wait_for_complete'] \
                            else self.cluster_items['intervals']['communication']['timeout_api_exe']
-            local_args = self.input_json['arguments'].copy()
+            local_args = copy.deepcopy(self.input_json['arguments'])
             del local_args['wait_for_complete']  # local requests don't use this parameter
 
             if rq.functions[self.input_json['function']]['is_async']:
@@ -317,18 +318,21 @@ class APIRequestQueue:
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
             names, request = (await self.request_queue.get()).split(' ', 1)
+            request = json.loads(request)
             names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
             node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
-            result = await DistributedAPI(input_json=json.loads(request), logger=self.logger, node=node).distribute_function()
+            self.logger.info("Receiving request: {} from {}".format(
+                request['function'], names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
+            result = await DistributedAPI(input_json=request, logger=self.logger, node=node).distribute_function()
             task_id = await node.send_string(result.encode())
             if task_id.startswith(b'Error'):
-                self.logger.error(task_id)
+                self.logger.error(task_id.decode())
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')
             else:
                 result = await node.send_request(b'dapi_res', name_2.encode() + task_id, b'dapi_err')
             if result.startswith(b'Error'):
-                self.logger.error(result)
+                self.logger.error(result.decode())
 
     def add_request(self, request: bytes):
         """
@@ -336,5 +340,5 @@ class APIRequestQueue:
 
         :param request: Request to add
         """
-        self.logger.info("Receiving request: {}".format(request))
+        self.logger.debug("Received request: {}".format(request))
         self.request_queue.put_nowait(request.decode())

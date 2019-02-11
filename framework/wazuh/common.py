@@ -79,6 +79,9 @@ def set_paths_based_on_ossec(o_path='/var/ossec'):
     global remoted_stats
     remoted_stats = "{0}/var/run/ossec-remoted.state".format(ossec_path)
 
+    global lists_path
+    lists_path = "{0}/etc/lists".format(ossec_path)
+
     # Queues
     global ARQUEUE
     ARQUEUE = "{0}/queue/alerts/ar".format(ossec_path)

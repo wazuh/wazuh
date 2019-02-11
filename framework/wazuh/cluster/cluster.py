@@ -12,19 +12,17 @@ from wazuh.database import Connection
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, rename, utime, umask, stat, chmod, chown, remove, unlink
-from subprocess import check_output, check_call, CalledProcessError
+from os import path, listdir, stat, chmod, chown, remove, unlink
+from subprocess import check_output
 from shutil import rmtree, copyfileobj
 from operator import eq, setitem, add
 import json
-from stat import S_IRWXG, S_IRWXU
-import errno
 import logging
 import logging.handlers
 import re
 import os
 import ast
-from calendar import timegm, month_abbr
+from calendar import month_abbr
 from random import random
 import glob
 import gzip
@@ -71,7 +69,8 @@ def get_cluster_items():
     try:
         with open('{0}/framework/wazuh/cluster/cluster.json'.format(common.ossec_path)) as f:
             cluster_items = json.load(f)
-        list(map(lambda x: setitem(x, 'umask', int(x['umask'], base=0)), filter(lambda x: 'umask' in x, cluster_items['files'].values())))
+        list(map(lambda x: setitem(x, 'permissions', int(x['permissions'], base=0)),
+                 filter(lambda x: 'permissions' in x, cluster_items['files'].values())))
         return cluster_items
     except Exception as e:
         raise WazuhException(3005, str(e))
@@ -189,28 +188,35 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
         if entry in excluded_files or reduce(add, map(lambda x: entry[-(len(x)):] == x, excluded_extensions)):
             continue
 
-        full_path = path.join(dirname, entry)
-        if entry in files or files == ["all"]:
+        try:
+            full_path = path.join(dirname, entry)
+            if entry in files or files == ["all"]:
 
-            if not path.isdir(common.ossec_path + full_path):
-                file_mod_time = datetime.utcfromtimestamp(stat(common.ossec_path + full_path).st_mtime)
+                if not path.isdir(common.ossec_path + full_path):
+                    file_mod_time = datetime.utcfromtimestamp(stat(common.ossec_path + full_path).st_mtime)
 
-                if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
-                    continue
+                    if whoami == 'worker' and file_mod_time < (datetime.utcnow() - timedelta(minutes=30)):
+                        continue
 
-                walk_files[full_path] = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
-                if '.merged' in entry:
-                    walk_files[full_path]['merged'] = True
-                    walk_files[full_path]['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
-                    walk_files[full_path]['merge_name'] = dirname + '/' + entry
-                else:
-                    walk_files[full_path]['merged'] = False
+                    entry_metadata = {"mod_time": str(file_mod_time), 'cluster_item_key': get_cluster_item_key}
+                    if '.merged' in entry:
+                        entry_metadata['merged'] = True
+                        entry_metadata['merge_type'] = 'agent-info' if 'agent-info' in entry else 'agent-groups'
+                        entry_metadata['merge_name'] = dirname + '/' + entry
+                    else:
+                        entry_metadata['merged'] = False
 
-                if get_md5:
-                    walk_files[full_path]['md5'] = md5(common.ossec_path + full_path)
+                    if get_md5:
+                        entry_metadata['md5'] = md5(common.ossec_path + full_path)
 
-        if recursive and path.isdir(common.ossec_path + full_path):
-            walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions, get_cluster_item_key, get_md5, whoami))
+                    walk_files[full_path] = entry_metadata
+
+            if recursive and path.isdir(common.ossec_path + full_path):
+                walk_files.update(walk_dir(full_path, recursive, files, excluded_files, excluded_extensions,
+                                           get_cluster_item_key, get_md5, whoami))
+
+        except Exception as e:
+            logger.error("Could not get checksum of file {}: {}".format(entry, e))
 
     return walk_files
 
@@ -238,8 +244,8 @@ def get_files_status(node_type, node_name, get_md5=True):
             try:
                 final_items.update(walk_dir(fullpath, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
                                             cluster_items['files']['excluded_extensions'], file_path, get_md5, node_type))
-            except WazuhException as e:
-                logger.warning("[Cluster] get_files_status: {}.".format(e))
+            except Exception as e:
+                logger.warning("Error getting file status: {}.".format(e))
 
     return final_items
 
@@ -272,106 +278,15 @@ def decompress_files(zip_path, ko_files_name="cluster_control.json"):
     zip_dir = zip_path + 'dir'
     mkdir_with_mode(zip_dir)
     with zipfile.ZipFile(zip_path) as zipf:
-        for name in zipf.namelist():
-            if name == ko_files_name:
-                with zipf.open(name) as file:
-                    ko_files = json.loads(file.read().decode('utf-8'))
-            else:
-                filename = "{}/{}".format(zip_dir, path.dirname(name))
-                if not path.exists(filename):
-                    mkdir_with_mode(filename)
-                with open("{}/{}".format(filename, path.basename(name)), 'wb') as cf:
-                    with zipf.open(name) as file:
-                        content = file.read()
-                    cf.write(content)
+        zipf.extractall(path=zip_dir)
+
+    if os.path.exists("{}/{}".format(zip_dir, ko_files_name)):
+        with open("{}/{}".format(zip_dir, ko_files_name)) as ko:
+            ko_files = json.loads(ko.read())
 
     # once read all files, remove the zipfile
     remove(zip_path)
     return ko_files, zip_dir
-
-
-def _update_file(file_path, new_content, umask_int=None, mtime=None, w_mode=None,
-                 tmp_dir='/queue/cluster',whoami='master', agents=None):
-
-    dst_path = common.ossec_path + file_path
-    if path.basename(dst_path) == 'client.keys':
-        if whoami =='worker':
-            _check_removed_agents(new_content.decode().split('\n'))
-        else:
-            logger.warning("[Cluster] Client.keys file received in a master node.")
-            raise WazuhException(3007)
-
-    is_agent_info  = 'agent-info' in dst_path
-    is_agent_group = 'agent-groups' in dst_path
-    if is_agent_info or is_agent_group:
-        if whoami =='master':
-            agent_names, agent_ids = agents
-
-            if is_agent_info:
-                agent_name_re = re.match(r'(^.+)-(.+)$', path.basename(file_path))
-                agent_name = agent_name_re.group(1) if agent_name_re else path.basename(file_path)
-                if agent_name not in agent_names:
-                    raise WazuhException(3010, agent_name)
-            elif is_agent_group:
-                agent_id = path.basename(file_path)
-                if agent_id not in agent_ids:
-                    raise WazuhException(3010, agent_id)
-
-            try:
-                mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S.%f')
-            except ValueError:
-                mtime = datetime.strptime(mtime, '%Y-%m-%d %H:%M:%S')
-
-            if path.isfile(dst_path):
-
-                local_mtime = datetime.utcfromtimestamp(int(stat(dst_path).st_mtime))
-                # check if the date is older than the manager's date
-                if local_mtime > mtime:
-                    logger.debug2("[Cluster] Receiving an old file ({})".format(dst_path))  # debug2
-                    return
-        elif is_agent_info:
-            logger.warning("[Cluster] Agent-info received in a worker node.")
-            raise WazuhException(3011)
-
-    # Write
-    if w_mode == "atomic":
-        f_temp = "{}{}{}.cluster.tmp".format(common.ossec_path, tmp_dir, file_path)
-    else:
-        f_temp = '{0}'.format(dst_path)
-
-    if umask_int:
-        oldumask = umask(umask_int)
-
-    try:
-        dest_file = open(f_temp, "wb")
-    except IOError as e:
-        if e.errno == errno.ENOENT:
-            dirpath = path.dirname(f_temp)
-            mkdir_with_mode(dirpath)
-            chmod(dirpath, S_IRWXU | S_IRWXG)
-            dest_file = open(f_temp, "wb")
-        else:
-            raise e
-
-    dest_file.write(new_content)
-
-    if umask_int:
-        umask(oldumask)
-
-    dest_file.close()
-
-    if mtime:
-        mtime_epoch = timegm(mtime.timetuple())
-        utime(f_temp, (mtime_epoch, mtime_epoch)) # (atime, mtime)
-
-    # Atomic
-    if w_mode == "atomic":
-        dirpath = path.dirname(dst_path)
-        if not os.path.exists(dirpath):
-            mkdir_with_mode(dirpath)
-            chmod(path.dirname(dst_path), S_IRWXU | S_IRWXG)
-        chown(f_temp, common.ossec_uid, common.ossec_gid)
-        rename(f_temp, dst_path)
 
 
 def compare_files(good_files, check_files, node_name):
@@ -406,7 +321,7 @@ def compare_files(good_files, check_files, node_name):
         # agent-groups
         shared_merged = [(merge_agent_info(merge_type='agent-groups', files=shared_e_v, file_type='-shared',
                                            node_name=node_name, time_limit_seconds=0)[1],
-                          {'cluster_item_key': '/queue/agent-groups/', 'merged': True})]
+                          {'cluster_item_key': '/queue/agent-groups/', 'merged': True, 'merge-type': 'agent-groups'})]
 
         shared_files = dict(itertools.chain(shared_merged, ((key, good_files[key]) for key in shared)))
     else:
@@ -476,57 +391,6 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
                                        select={'fields':['id','ip','name','status','node_name']}, limit=limit,
                                        offset=offset)
     return agents
-
-
-def _check_removed_agents(new_client_keys):
-    """
-    Function to delete agents that have been deleted in a synchronized
-    client.keys.
-
-    It makes a diff of the old client keys and the new one and search for
-    deleted or changed lines (in the diff those lines start with -).
-
-    If a line starting with - matches the regex structure of a client.keys line
-    that agent is deleted.
-    """
-    def parse_client_keys(client_keys_contents):
-        """
-        Parses client.keys file into a dictionary
-        :param client_keys_contents: \n splitted contents of client.keys file
-        :return: generator of dictionaries.
-        """
-        return {a_id: {'name': a_name, 'ip': a_ip, 'key': a_key} for a_id, a_name, a_ip, a_key in
-                map(lambda x: x.split(' '), client_keys_contents[:-1]) if not a_name.startswith('!')}
-
-    with open("{0}/etc/client.keys".format(common.ossec_path)) as ck:
-        # can't use readlines function since it leaves a \n at the end of each item of the list
-        client_keys = ck.read().split('\n')
-
-    new_client_keys_dict = parse_client_keys(new_client_keys)
-    client_keys_dict = parse_client_keys(client_keys)
-
-    # get removed agents: the ones missing in the new client keys and present in the old
-    try:
-        remove_bulk_agents(client_keys_dict.keys() - new_client_keys_dict.keys())
-    except Exception as e:
-        logger.error("Error removing agent files: {}".format(e))
-        raise e
-
-
-#
-# Others
-#
-def run_logtest(synchronized=False):
-    log_msg_start = "Synchronized r" if synchronized else "R"
-    try:
-        # check synchronized rules are correct before restarting the manager
-        check_call(['{0}/bin/ossec-logtest -t'.format(common.ossec_path)], shell=True)
-        logger.debug("[Cluster] {}ules are correct.".format(log_msg_start))
-        return True
-    except CalledProcessError as e:
-        logger.warning("[Cluster] {}ules are not correct.".format(log_msg_start, str(e)))
-        return False
-
 
 
 #
@@ -615,8 +479,6 @@ class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
         chmod(new_rotated_file, 0o640)
         unlink(rotated_file)
 
-
-
     def computeArchivesDirectory(self, rotated_filepath):
         """
         Based on the name of the rotated file, compute in which directory it should be stored.
@@ -662,48 +524,3 @@ class ClusterFilter(logging.Filter):
 
     def update_subtag(self, new_subtag: str):
         self.subtag = new_subtag
-
-
-def remove_bulk_agents(agent_ids_list):
-    """
-    Removes files created by agents in worker nodes. This function doesn't remove agents from client.keys since the
-    client.keys file is overwritten by the master node.
-    :param agent_ids_list: List of agents ids to remove.
-    :return: None.
-    """
-    def remove_agent_file_type(glob_args, agent_args, agent_files):
-        for filetype in agent_files:
-            for agent_file in set(glob.iglob(filetype.format(common.ossec_path, *glob_args))) & \
-                              {filetype.format(common.ossec_path, *(a[arg] for arg in agent_args)) for a in agent_info}:
-                remove(agent_file)
-
-    if not agent_ids_list:
-        return  # the function doesn't make sense if there is no agents to remove
-
-    logger.info("Removing agent files")
-    # the agents must be removed in groups of 997: 999 is the limit of SQL variables per query. Limit and offset are
-    # always included in the SQL query, so that leaves 997 variables as limit.
-    for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
-        # Get info from DB
-        agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
-                                               select={'fields': ['ip', 'id', 'name']}, limit=None)['items']
-
-        # Remove agent files that need agent name and ip
-        agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
-        remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
-
-        # Remove agent files that only need agent id
-        agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}']
-        remove_agent_file_type(('*',), ('id',), agent_files)
-
-        # remove agent from groups
-        db_global = glob.glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-        agent_ids_db = {'id_agent{}'.format(i): int(i) for i in agents_ids_sublist}
-        conn.execute('delete from belongs where {}'.format(
-            ' or '.join(['id_agent = :{}'.format(i) for i in agent_ids_db.keys()])), agent_ids_db)
-        conn.commit()
-    logger.info("Agent files removed")

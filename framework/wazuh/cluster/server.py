@@ -105,13 +105,16 @@ class AbstractServerHandler(c_common.Handler):
         :return:
         """
         if self.name:
-            self.logger.info("The client '{}' closed the connection".format(self.name))
+            if exc is None:
+                self.logger.info("Disconnected.".format(self.name))
+            else:
+                self.logger.error("Error during connection with '{}': {}.".format(self.name, exc))
             del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error("Error during handshake with incoming client: {}".format(exc))
+                self.logger.error("Error during handshake with incoming connection: {}".format(exc))
             else:
-                self.logger.error("Error during handshake with incoming client.")
+                self.logger.error("Error during handshake with incoming connection.")
 
 
 class AbstractServer:
@@ -188,7 +191,7 @@ class AbstractServer:
         while True:
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
-            for client_name, client in self.clients.items():
+            for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
                                             "Disconnecting".format(client_name))
@@ -199,8 +202,8 @@ class AbstractServer:
     async def echo(self):
         while True:
             for client_name, client in self.clients.items():
-                self.logger.debug("Sending echo to client {}".format(client_name))
-                self.logger.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
+                self.logger.debug("Sending echo to worker {}".format(client_name))
+                self.logger.info((await client.send_request(b'echo-m', b'keepalive ' + client_name)).decode())
             await asyncio.sleep(3)
 
     async def performance_test(self):
@@ -243,7 +246,7 @@ class AbstractServer:
                                                                 cluster_items=self.cluster_items),
                     host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
-            self.logger.error("Could not create server: {}".format(e))
+            self.logger.error("Could not start master: {}".format(e))
             raise KeyboardInterrupt
 
         self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))

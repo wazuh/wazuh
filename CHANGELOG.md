@@ -1,6 +1,19 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.9.0]
+
+### Added
+
+- Collect network and port inventory for Windows XP/Server 2003. ([#2464](https://github.com/wazuh/wazuh/pull/2464))
+- Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
+
+### Fixed
+
+- Fixed error in Syscollector for Windows older than Vista when gathering the hardware inventory. ([#2326](https://github.com/wazuh/wazuh/pull/2326))
+- Fixed an error in the OSQuery configuration validation. ([#2446](https://github.com/wazuh/wazuh/pull/2446))
+- Improved Remoted start-up logging messages. ([#2460](https://github.com/wazuh/wazuh/pull/2460))
+
 ## [v3.8.2]
 
 ### Fixed
