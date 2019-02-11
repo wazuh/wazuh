@@ -64,6 +64,7 @@ class TestPolicyMonitoring(TestCase):
             assert(isinstance(result['totalItems'], int))
             assert('items' in result)
             assert(len(result['items']) > 0)
+            assert(len(result['items'])==result['totalItems'])
             pm = result['items'][0]
             assert(isinstance(pm, dict))
             assert(set(pm.keys()) == set(cols_returned_from_db_pm))
@@ -83,6 +84,7 @@ class TestPolicyMonitoring(TestCase):
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
             assert (len(result['items']) > 0)
+            assert (len(result['items']) == result['totalItems'])
             pm = result['items'][0]
             assert (isinstance(pm, dict))
             assert (set(pm.keys()) == set(fields['fields']))
@@ -102,6 +104,7 @@ class TestPolicyMonitoring(TestCase):
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
             assert (len(result['items']) > 0)
+            assert (len(result['items']) == result['totalItems'])
 
             search = {'value': 'foo', 'negation': False}
             result = get_ca_list('000', search=search)
@@ -110,6 +113,7 @@ class TestPolicyMonitoring(TestCase):
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
             assert (len(result['items']) == 0)
+            assert (len(result['items']) == result['totalItems'])
 
             search = {'value': 'foo', 'negation': True}
             result = get_ca_list('000', search=search)
@@ -118,6 +122,7 @@ class TestPolicyMonitoring(TestCase):
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
             assert (len(result['items']) > 0)
+            assert (len(result['items']) == result['totalItems'])
 
     @patch('socket.socket')
     @patch('wazuh.common.wdb_path', test_data_path)
@@ -132,6 +137,7 @@ class TestPolicyMonitoring(TestCase):
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
+            assert (len(result['items']) == result['totalItems'])
             pm = result['items']
             assert(isinstance(pm, list))
             assert(len(pm) > 0)
@@ -148,6 +154,7 @@ class TestPolicyMonitoring(TestCase):
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
+            assert (len(result['items']) == result['totalItems'])
             pm = result['items']
             assert(isinstance(pm, list))
             assert(len(pm) == 0)

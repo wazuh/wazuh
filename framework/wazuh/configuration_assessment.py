@@ -145,7 +145,7 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
     else:
         raise WazuhException(2007)
 
-    groups = groupby(checks, key=lambda row: row['policy_id'])
+    groups = groupby(checks, key=lambda row: row['id'])
     result = []
     # Rearrange check and compliance fields
     for _, group in groups:
@@ -159,4 +159,4 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
                                     ]
         result.append(check_dict)
 
-    return {'totalItems': result_dict['totalItems'], 'items': result}
+    return {'totalItems': len(result), 'items': result}
