@@ -245,7 +245,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
     async def sync_worker_files(self, task_name: str, received_file: asyncio.Event, logger):
         logger.info("Waiting to receive zip file from worker")
-        await received_file.wait()
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         received_filename = self.sync_tasks[task_name].filename
         if received_filename == 'Error':
             logger.info("Stopping synchronization process: worker files weren't correctly received.")
@@ -278,7 +279,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
 
         logger.info("Waiting to receive zip file from worker")
-        await received_file.wait()
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         received_filename = self.sync_tasks[task_name].filename
         if received_filename == 'Error':
             logger.info("Stopping synchronization process: worker files weren't correctly received.")
@@ -315,11 +317,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             result = await self.send_file(compressed_data)
             os.unlink(compressed_data)
             if result.startswith(b'Error'):
-                logger.error(result.decode())
-                return result
+                self.logger.error("Error sending files information: {}".format(result.decode()))
+                result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
+            else:
+                result = await self.send_request(command=b'sync_m_c_e',
+                                                 data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
 
-            result = await self.send_request(command=b'sync_m_c_e',
-                                             data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
+            if result.startswith(b'Error'):
+                self.logger.error(result.decode())
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
