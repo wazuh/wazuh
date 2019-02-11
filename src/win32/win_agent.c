@@ -625,14 +625,24 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
                 cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
                 if(ipv4){
-                     cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
+                    cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
                     if (gateway) {
-                        cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-                        if (metric && metric->valueint < min_metric) {
+                        if(checkVista()){
+                            cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
+                            if (metric && metric->valueint < min_metric) {
+                                cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                                cJSON *address = cJSON_GetArrayItem(addresses,0);
+                                os_strdup(address->valuestring, agent_ip);
+                                min_metric = metric->valueint;
+                            }
+                        }
+                        else{
                             cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                             cJSON *address = cJSON_GetArrayItem(addresses,0);
                             os_strdup(address->valuestring, agent_ip);
-                            min_metric = metric->valueint;
+                            free(string);
+                            cJSON_Delete(object);
+                            break;
                         }
                     }
                 }
