@@ -24,7 +24,8 @@ fields_translation_ca = {'policy_id': 'policy_id',
                          'fail': 'fail',
                          'score': 'score',
                          'end_scan': 'end_scan',
-                         'start_scan': 'start_scan'}
+                         'start_scan': 'start_scan'
+                         }
 fields_translation_ca_check = {'policy_id': 'policy_id',
                                'id': 'id',
                                'title': 'title',
@@ -48,9 +49,10 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
     def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
                  get_data, default_sort_field='policy_id', filters={}, fields=fields_translation_ca,
-                 default_query=default_query_ca):
+                 default_query=default_query_ca, count_field='policy_id'):
         self.agent_id = agent_id
         self._default_query_str = default_query
+        self.count_field = count_field
         Agent(agent_id).get_basic_information()  # check if the agent exists
         db_path = glob('{0}/{1}.db'.format(common.wdb_path, agent_id))
         if not db_path:
@@ -72,7 +74,11 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
     def _get_total_items(self):
         self._substitute_params()
-        self.total_items = self.conn.execute(f'agent {self.agent_id} sql ' + self.query.format(self._default_count_query()))
+        self.total_items = self.conn.execute(f'agent {self.agent_id} sql ' +
+                                             self.query.format(self._default_count_query()))[0][self._default_count_query()]
+
+    def _default_count_query(self):
+        return f"COUNT(DISTINCT {self.count_field})"
 
     def _get_data(self):
         self._substitute_params()
@@ -85,6 +91,14 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
     def _format_data_into_dictionary(self):
         return {"totalItems": self.total_items, "items": self._data}
+
+    def _parse_select_filter(self, select_fields):
+        WazuhDBQuery._parse_select_filter(self, select_fields)
+        for field in select_fields:
+            if field in self.date_fields:
+                select_fields[field] = f"strftime('%Y-%m-%d %H:%M:%S', datetime({field}, 'unixepoch')) as {field}"
+
+        return select_fields
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -112,6 +126,19 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
 def get_ca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
                 sort=None, search=None, select=None, filters={}):
+    """
+    Gets a list of policies analized in the configuration assessment
+    :param agent_id: agent id to get policies from
+    :param q: Defines query to filter in DB.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
     if select is None:
         select = {'fields': list(fields_translation_ca.keys())}
 
@@ -122,6 +149,20 @@ def get_ca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
 
 def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.database_limit,
                   sort=None, search=None, select=None, filters={}):
+    """
+    Gets a list of checks analized for a policy
+    :param policy_id: policy id to get the checks from
+    :param agent_id: agent id to get the policies from
+    :param q: Defines query to filter in DB.
+    :param offset: First item to return.
+    :param limit: Maximum number of items to return.
+    :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+    :param search: Looks for items with the specified string. Format: {"fields": ["field1","field2"]}
+    :param select: Select fields to return. Format: {"fields":["field1","field2"]}.
+    :param filters: Defines field filters required by the user. Format: {"field1":"value1", "field2":["value2","value3"]}
+
+    :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
+    """
     fields_translation = {**fields_translation_ca_check,
                           **fields_translation_ca_check_compliance}
     if select is None:
@@ -136,7 +177,7 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
                               select=select, count=True, get_data=True,
                               query=f"policy_id='{policy_id}'" if q == "" else f"policy_id='{policy_id}';{q}",
                               filters=filters, default_query=default_query_ca_check, default_sort_field='policy_id',
-                              fields=fields_translation)
+                              fields=fields_translation, count_field='id')
 
     result_dict = db_query.run()
 
@@ -159,4 +200,4 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
                                     ]
         result.append(check_dict)
 
-    return {'totalItems': len(result), 'items': result}
+    return {'totalItems': result_dict['totalItems'], 'items': result}
