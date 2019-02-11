@@ -244,6 +244,7 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
 
             pGateway = pGateway->Next;
         }
+        cJSON_AddNumberToObject(ipv4, "metric", pCurrAddresses->Ipv4Metric);
     }
 
     if ((pCurrAddresses->Flags & IP_ADAPTER_DHCP_ENABLED) && (pCurrAddresses->Flags & IP_ADAPTER_IPV4_ENABLED)){

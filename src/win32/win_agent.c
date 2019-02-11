@@ -524,6 +524,7 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
     char *agent_ip = NULL;
+    int min_metric = INT_MAX;
 
     HMODULE sys_library = NULL;
     CallFunc _get_network_vista = NULL;
@@ -624,16 +625,16 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
                 cJSON *iface = cJSON_GetObjectItem(object, "iface");
                 cJSON *ipv4 = cJSON_GetObjectItem(iface, "IPv4");
                 if(ipv4){
-                    char *end;
-                    cJSON *address = cJSON_GetObjectItem(ipv4,"address");
-                    os_strdup(cJSON_Print(address), agent_ip);
-                    agent_ip += 2;
-                    if(end = strchr(agent_ip, '"'),end){
-                    *end = *end++ = '\0';
+                     cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
+                    if (gateway) {
+                        cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
+                        if (metric && metric->valueint < min_metric) {
+                            cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                            cJSON *address = cJSON_GetArrayItem(addresses,0);
+                            os_strdup(address->valuestring, agent_ip);
+                            min_metric = metric->valueint;
+                        }
                     }
-                    free(string);
-                    cJSON_Delete(object);
-                    break;
                 }
                 free(string);
                 cJSON_Delete(object);

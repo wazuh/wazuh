@@ -62,18 +62,18 @@ char* getPrimaryIP(){
         getNetworkIface(object, ifaces_list[i], ifaddr);
         cJSON *interface = cJSON_GetObjectItem(object, "iface");
         cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
-        cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
+        if(ipv4){
+            cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
+            if (gateway) {
+                cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
+                if (metric && metric->valueint < min_metric) {
 
-        if (gateway) {
-            cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-            if (metric->valueint < min_metric) {
+                    cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                    cJSON *address = cJSON_GetArrayItem(addresses,0);
+                    os_strdup(address->valuestring, agent_ip);
+                    min_metric = metric->valueint;
 
-                cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                cJSON *address = cJSON_GetArrayItem(addresses,0);
-                os_strdup(address->valuestring, agent_ip);
-                cJSON_Delete(object);
-                break;
-
+                }
             }
         }
         cJSON_Delete(object);
