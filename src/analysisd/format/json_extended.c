@@ -348,7 +348,7 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
     char *end;
     cJSON* agent;
 
-    ip = labels_get(lf->labels, "agent_ip");
+    ip = labels_get(lf->labels, "_agent_ip");
 
     if (!ip || strcmp(ip, "any") == 0) {
 

@@ -144,7 +144,7 @@ void run_notify()
                     merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
                 }
                 else{
-                    snprintf(label_ip,50,"#\"agent_ip\":%s", agent_ip);
+                    snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
             break;

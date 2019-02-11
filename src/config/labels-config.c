@@ -48,6 +48,10 @@ int Read_Labels(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], xml_key) == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
+                        if (node[i]->values[j][0] == '_'){
+                            merror("Labels starting with \"_\"  are reservated for internal use.");
+                            goto error;
+                        }
                         key = node[i]->values[j];
                     } else {
                         merror("Label with empty key.");

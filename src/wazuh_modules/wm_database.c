@@ -659,9 +659,9 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
         // Search for manager hostname connected to the agent and the node name of the cluster
 
-        const char * AGENT_IP = "#\"agent_ip\":";
-        const char * MANAGER_HOST = "#\"manager_hostname\":";
-        const char * NODE_NAME = "#\"node_name\":";
+        const char * AGENT_IP = "#\"_agent_ip\":";
+        const char * MANAGER_HOST = "#\"_manager_hostname\":";
+        const char * NODE_NAME = "#\"_node_name\":";
 
         while (fgets(file, OS_MAXSTR, fp)) {
             if (!strncmp(file, AGENT_IP, strlen(AGENT_IP))) {

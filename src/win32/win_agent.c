@@ -710,7 +710,7 @@ void send_win32_info(time_t curr_time)
         }
     }
 
-    snprintf(label_ip,30,"#\"agent_ip\":%s",agent_ip);
+    snprintf(label_ip,30,"#\"_agent_ip\":%s",agent_ip);
     /* Create message */
     if(agent_ip){
         /* In case there is an agent IP the message has a new line at the end to emulate the random string generated in Linux agents
