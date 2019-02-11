@@ -68,7 +68,8 @@ char* getPrimaryIP(){
             cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
             if (metric->valueint < min_metric) {
 
-                cJSON *address = cJSON_GetObjectItem(ipv4, "address");
+                cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                cJSON *address = cJSON_GetArrayItem(addresses,0);
                 os_strdup(address->valuestring, agent_ip);
                 cJSON_Delete(object);
                 break;

@@ -1880,12 +1880,14 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
         /* Get Default Gateway */
         char *gateway;
         char *metric = NULL;
+        char *end = NULL;
 
         gateway = get_default_gateway(iface_name);
 
-        if (metric = strchr(gateway, '|'), metric) {
+        if (metric = end = strchr(gateway, '|'), metric) {
             metric++;
             cJSON_AddNumberToObject(ipv4, "metric", atoi(metric));
+            *end = '\0';
         }
 
         cJSON_AddStringToObject(ipv4, "gateway", gateway);
