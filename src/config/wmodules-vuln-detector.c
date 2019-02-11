@@ -324,6 +324,10 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     if (!strcmp(chld_node[j]->content, "yes")) {
                         free_update_node(updates[os_index]);
                         updates[os_index] = NULL;
+                        if (os_index == CVE_NVD) {
+                            free_update_node(updates[CPE_NVD]);
+                            updates[CPE_NVD] = NULL;
+                        }
                         break;
                     } else if (!strcmp(chld_node[j]->content, "no")) {
                         if (!strcmp(updates[os_index]->dist, vu_feed_tag[FEED_REDHAT])) {
