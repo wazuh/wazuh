@@ -17,7 +17,7 @@ require {
 	class sock_file { create setattr unlink };
 	class process { noatsecure siginh rlimitinh };
 	class dir { remove_name add_name read write };
-	class file { getattr open read map };
+	class file { getattr open read };
 	class capability { dac_override dac_read_search };
 	class lnk_file { read };
 }
@@ -43,7 +43,7 @@ allow auditd_t audisp_t:process { noatsecure siginh };
 
 allow auditd_t auditd_etc_t:lnk_file { read };
 allow auditd_t self:capability { dac_override dac_read_search };
-allow auditd_t var_t:file { getattr map open read };
+allow auditd_t var_t:file { getattr open read };
 allow auditd_t var_t:dir { remove_name add_name read write };
 allow auditd_t var_t:sock_file { create setattr unlink };
 
