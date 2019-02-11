@@ -6,7 +6,7 @@
 
     <content type="xccdf" path="ssg-rhel-7-ds.xml">
       <profile>xccdf_org.ssgproject.content_profile_pci-dss</profile>
-      <profile>xccdf_org.ssgproject.content_profile_common</profile>
+      <profile>xccdf_org.ssgproject.content_profile_standard</profile>
     </content>
-    <content type="xccdf" path="cve-redhat-7-ds.xml"/>
+    <content type="oval" path="cve-redhat-7-oval.xml"/>
   </wodle>

@@ -6,6 +6,6 @@
 
     <content type="xccdf" path="ssg-centos-7-ds.xml">
       <profile>xccdf_org.ssgproject.content_profile_pci-dss</profile>
-      <profile>xccdf_org.ssgproject.content_profile_common</profile>
+      <profile>xccdf_org.ssgproject.content_profile_standard</profile>
     </content>
   </wodle>
