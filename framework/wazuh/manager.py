@@ -329,7 +329,7 @@ def restart():
     # execq socket path
     socket_path = common.EXECQ
     # msg for restarting Wazuh manager
-    msg = 'api-restart-ossec '
+    msg = 'restart-wazuh '
     # initialize socket
     if exists(socket_path):
         try:

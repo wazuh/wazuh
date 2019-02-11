@@ -370,7 +370,7 @@ static void ExecdStart(int q)
         }
 
         /* Get the command to execute (valid name) */
-        if(!strcmp(name, "api-restart-ossec")) {
+        if(!strcmp(name, "restart-wazuh")) {
 
             if(cmd_api[0] == NULL) {
                 char script_path[PATH_MAX] = {0};
@@ -379,7 +379,11 @@ static void ExecdStart(int q)
             }
 
             if(cmd_api[1] == NULL) {
-                os_strdup("add", cmd_api[1]);
+                #ifdef CLIENT
+                    os_strdup("agent", cmd_api[1]);
+                #else
+                    os_strdup("manager", cmd_api[1]);
+                #endif
             }
 
             ExecCmd(cmd_api);
