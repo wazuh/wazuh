@@ -1,6 +1,9 @@
 ---
 name: 'Test: Registration'
 about: Test suite for agent registration.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
