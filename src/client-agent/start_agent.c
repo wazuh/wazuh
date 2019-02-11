@@ -178,7 +178,19 @@ void start_agent(int is_startup)
         /* Read until our reply comes back */
         while (attempts <= 5) {
             if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
-                recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
+
+                switch (wnet_select(agt->sock, timeout)) {
+                case -1:
+                    merror(SELECT_ERROR, errno, strerror(errno));
+                    break;
+
+                case 0:
+                    // Timeout
+                    break;
+
+                default:
+                    recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
+                }
             } else {
                 recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
             }
@@ -209,8 +221,12 @@ void start_agent(int is_startup)
                         if (!connect_server(agt->rip_id)) {
                             continue;
                         }
+                    } else {
+                        send_msg(msg, -1);
                     }
+                }
 
+                if (agt->server[agt->rip_id].protocol == TCP_PROTO) {
                     send_msg(msg, -1);
                 }
 

@@ -24,4 +24,7 @@ int w_download_status(int status,const char *url,const char *dest);
 int wurl_request(const char * url, const char * dest);
 int wurl_http_get(const char * url, char * data);
 
+/* Check download module availability */
+int wurl_check_connection();
+
 #endif /* CUSTOM_OUTPUT_SEARCH_H_ */

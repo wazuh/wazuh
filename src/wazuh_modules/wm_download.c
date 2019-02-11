@@ -91,7 +91,7 @@ void * wm_download_main(wm_download_t * data) {
             break;
 
         case 0:
-            mdebug1("Client disconnected.");
+            mdebug1("Client disconnected. This may be a healthcheck.");
             break;
 
         default:
