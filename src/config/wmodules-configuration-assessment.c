@@ -199,6 +199,8 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                         os_calloc(1,sizeof(wm_configuration_assessment_profile_t),policy);
 
                         policy->enabled = enabled;
+                        policy->policy_id= NULL;
+                        
                         os_strdup(children[j]->content,policy->profile);
                         policy_monitoring->profile[profiles] = policy;
                         policy_monitoring->profile[profiles + 1] = NULL;

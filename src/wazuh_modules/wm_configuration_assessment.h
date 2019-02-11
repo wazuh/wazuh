@@ -33,6 +33,7 @@
 #define WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_NON       0x008
 #define WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_INV       0x016
 #define WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP          "configuration-assessment"
+#define WM_CONFIGURATION_ASSESSMENT_DB_DUMP                   "configuration-assessment-dump"
 
 #ifdef WIN32
 HKEY wm_configuration_assessment_sub_tree;
@@ -41,6 +42,7 @@ HKEY wm_configuration_assessment_sub_tree;
 typedef struct wm_configuration_assessment_profile_t {
     int enabled:1;
     char *profile;
+    char *policy_id;
 } wm_configuration_assessment_profile_t;
 
 typedef struct wm_configuration_assessment_t {
@@ -50,6 +52,7 @@ typedef struct wm_configuration_assessment_t {
     unsigned int interval;          
     int scan_day;                   
     int scan_wday;
+    int msg_delay;
     time_t next_time;               
     char* scan_time;
     wm_configuration_assessment_profile_t** profile;

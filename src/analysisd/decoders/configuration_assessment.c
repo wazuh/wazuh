@@ -33,6 +33,7 @@
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
+static int FindCheckResults(Eventinfo *lf, int scan_id, int *socket,char *wdb_response);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
@@ -134,7 +135,7 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring query %d", lf->agent_id, pm_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query %d", lf->agent_id, pm_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -166,7 +167,7 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring query_scan %s", lf->agent_id, policy_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_scan %s", lf->agent_id, policy_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -190,6 +191,40 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
     return retval;
 }
 
+static int FindCheckResults(Eventinfo *lf, int scan_id, int *socket,char *wdb_response) {
+
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_results %d", lf->agent_id, scan_id);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        if (!strncmp(response, "ok found", 8))
+        {
+            char *result_checks = response + 9;
+            snprintf(wdb_response,OS_MAXSTR,"%s",result_checks);
+            retval = 0;
+        }
+        else if (!strcmp(response, "ok not found"))
+        {
+            retval = 1;
+        }
+        else
+        {
+            retval = -1;
+        }
+    }
+
+    free(response);
+    return retval;
+
+}
+
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
 
     char *msg = NULL;
@@ -199,7 +234,7 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring query_policy %s", lf->agent_id, policy);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_policy %s", lf->agent_id, policy);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -231,9 +266,9 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if (exists)
-        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update %d|%s", lf->agent_id, id, result);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update %d|%s", lf->agent_id, id, result);
     else
-        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert %d|%d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", lf->agent_id,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert %d|%d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", lf->agent_id,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -256,9 +291,9 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if(!update) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_scan_info %d|%d|%d|%s|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,score,hash);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert_scan_info %d|%d|%d|%s|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,score,hash);
     } else {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,score,hash );
+        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,score,hash );
     }
    
     if (pm_send_db(msg, response, socket) == 0)
@@ -281,7 +316,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_policy %s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert_policy %s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references);
    
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -302,7 +337,7 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring insert_compliance %d|%s|%s",lf->agent_id, id_check,key,value );
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert_compliance %d|%s|%s",lf->agent_id, id_check,key,value );
    
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -550,8 +585,58 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     UpdateCheckScanId(lf,socket,scan_id_old,pm_scan_id->valueint);
-
     os_free(hash_scan_info);
+
+    char *wdb_response = NULL;
+    os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
+
+    result_db = FindCheckResults(lf,pm_scan_id->valueint,socket,wdb_response);
+
+    int cfga_socket;
+    int rc;
+    char request_db[OS_SIZE_4096 + 1] = {0};
+
+    switch (result_db)
+    {
+        case -1:
+            merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+            break;
+        case 0: 
+            
+            /* Integrity check */
+            if(strcmp(wdb_response,hash->valuestring)) {
+
+#ifndef CLIENT
+                
+                snprintf(request_db,OS_SIZE_4096,"configuration-assessment-dump:%s",policy_id->valuestring);
+
+                if ((cfga_socket = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE)) < 0) {
+                    merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+                    goto end;
+                } 
+
+                if ((rc = OS_SendUnix(cfga_socket, request_db, 0)) < 0) {
+                    /* Error on the socket */
+                    if (rc == OS_SOCKTERR) {
+                        merror("socketerr (not available).");
+                        close(cfga_socket);
+                    }
+
+                    /* Unable to send. Socket busy */
+                    mdebug2("Socket busy, discarding message.");
+                } else {
+                    close(cfga_socket);
+                }
+#endif
+            }
+
+            break;
+        default:
+            break;
+    }
+
+end:
+    os_free(wdb_response);
 }
 
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result) {
@@ -788,7 +873,7 @@ static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s policy-monitoring update_check_scan %d|%d",lf->agent_id, scan_id_old,scan_id_new);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update_check_scan %d|%d",lf->agent_id, scan_id_old,scan_id_new);
     
     if (pm_send_db(msg, response, socket) == 0)
     {

@@ -146,7 +146,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
-int Read_PolicyMonitoring(const OS_XML *xml, xml_node *node, void *d1)
+int Read_ConfigurationAssessment(const OS_XML *xml, xml_node *node, void *d1)
 {
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
