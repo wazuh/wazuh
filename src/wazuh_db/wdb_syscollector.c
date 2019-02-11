@@ -129,7 +129,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 }
 
 // Save IPv4/IPv6 protocol info into DB.
-int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, int metric, const char * gateway, const char * dhcp) {
+int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netproto_save(): cannot begin transaction");
@@ -140,9 +140,9 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
         scan_id,
         iface,
         type,
-        metric,
         gateway,
-        dhcp) < 0) {
+        dhcp,
+        metric) < 0) {
 
         return -1;
     }
@@ -151,7 +151,7 @@ int wdb_netproto_save(wdb_t * wdb, const char * scan_id, const char * iface, int
 }
 
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
-int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, int metric, const char * gateway, const char * dhcp) {
+int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, int type, const char * gateway, const char * dhcp, int metric) {
 
     sqlite3_stmt *stmt = NULL;
 
@@ -170,27 +170,28 @@ int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface, i
     else
         sqlite3_bind_text(stmt, 3, "ipv6", -1, NULL);
 
+    sqlite3_bind_text(stmt, 4, gateway, -1, NULL);
+    sqlite3_bind_text(stmt, 5, dhcp, -1, NULL);
+
     if (metric >= 0) {
-        sqlite3_bind_int64(stmt, 4, metric);
+        sqlite3_bind_int64(stmt, 6, metric);
     } else {
-        sqlite3_bind_null(stmt, 4);
+        sqlite3_bind_null(stmt, 6);
     }
-    sqlite3_bind_text(stmt, 5, gateway, -1, NULL);
-    sqlite3_bind_text(stmt, 6, dhcp, -1, NULL);
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_DONE:
             return 0;
         case SQLITE_CONSTRAINT:
             if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-                mdebug1("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                mdebug1("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
                 return 0;
             } else {
-                merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
                 return -1;
             }
         default:
-            merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            merror("at wdb_netproto_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
     }
 }
