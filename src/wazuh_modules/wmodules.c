@@ -205,7 +205,12 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
         return -1;
     }
 
-    nmemb = (op == WM_IO_WRITE) ? fwrite(state, size, 1, file) : fread(state, size, 1, file);
+    if (op == WM_IO_WRITE) {
+        nmemb = fwrite(state, size, 1, file);
+    } else {
+        nmemb = fread(state, size, 1, file);
+    }
+
     fclose(file);
 
     return nmemb - 1;

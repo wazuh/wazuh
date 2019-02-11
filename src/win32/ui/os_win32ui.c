@@ -212,7 +212,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                             /* If IP isn't set, it is because we have an invalid
                              * auth key.
                              */
-                            if (!ip) {
+                            if (!(ip && id && name)) {
                                 MessageBox(hwnd, "Unable to import "
                                            "authentication key because it was invalid.",
                                            "Error -- Failure Saving Auth Key", MB_OK);

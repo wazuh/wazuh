@@ -61,7 +61,7 @@ int rem_write_state() {
     snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (!(fp = fopen(path_temp, "w"))) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }

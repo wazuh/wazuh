@@ -221,7 +221,7 @@ static int check_diff_file(const char *host, const char *script)
 
     snprintf(diff_location, sizeof(diff_location), DIFF_DIR_PATH "/%s->%s/diff.%d", host, script, (int)date_of_change);
 
-    if (fp = fopen(diff_location, "wb"), !fp) {
+    if (!(fp = fopen(diff_location, "wb"))) {
         merror("Unable to open diff file '%s': %s (%d)", diff_location, strerror(errno), errno);
         wpclose(wfd);
         return 0;

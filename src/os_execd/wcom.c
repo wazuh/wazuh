@@ -376,7 +376,7 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (ftarget = fopen(final_target, "wb"), !ftarget) {
+    if (!(ftarget = fopen(final_target, "wb"))) {
         gzclose(fsource);
         merror("At WCOM uncompress: Unable to open '%s'", final_target);
         os_strdup("err Unable to open target", *output);
@@ -802,7 +802,7 @@ int _uncompress(const char * source, const char *package, char dest[PATH_MAX + 1
         return -1;
     }
 
-    if (ftarget = fopen(dest, "wb"), !ftarget) {
+    if (!(ftarget = fopen(dest, "wb"))) {
         gzclose(fsource);
         merror("At uncompress(): Unable to open '%s'", dest);
         return -1;

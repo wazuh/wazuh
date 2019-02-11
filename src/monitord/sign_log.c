@@ -22,13 +22,13 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     int i;
     size_t n;
 
-    os_md5 mf_sum;
+    os_md5 mf_sum = "";
     os_md5 mf_sum_old;
 
-    os_sha1 sf_sum;
+    os_sha1 sf_sum = "";
     os_sha1 sf_sum_old;
 
-    os_sha256 sf256_sum;
+    os_sha256 sf256_sum = "";
     os_sha256 sf256_sum_old;
 
     SHA_CTX sha1_ctx;

@@ -21,7 +21,7 @@ unsigned int s_events_decoded = 0;
 unsigned int s_events_processed = 0;
 unsigned int s_events_dropped = 0 ;
 volatile unsigned int s_events_received = 0;
-unsigned int s_alerts_written  = 0; 
+unsigned int s_alerts_written  = 0;
 unsigned int s_firewall_written = 0;
 unsigned int s_fts_written = 0;
 
@@ -98,7 +98,7 @@ int w_analysisd_write_state(){
     snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (!(fp = fopen(path_temp, "w"))) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }
@@ -220,7 +220,7 @@ int w_analysisd_write_state(){
         "# Archives log queue size\n"
         "archives_queue_size='%u'\n"
         "\n",
-        __local_name, 
+        __local_name,
         s_events_decoded + s_events_syscheck_decoded + s_events_syscollector_decoded + s_events_rootcheck_decoded + s_events_hostinfo_decoded + s_events_winevt_decoded ,
         s_events_syscheck_decoded,
         s_events_syscheck_decoded / interval ,
@@ -390,6 +390,3 @@ void w_reset_stats(){
 
     s_events_received = 0;
 }
-
-
-

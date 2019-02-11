@@ -69,7 +69,7 @@ int write_state() {
 #ifdef WIN32
     snprintf(path, sizeof(path), "%s.state", __local_name);
 
-    if (fp = fopen(path, "w"), !fp) {
+    if (!(fp = fopen(path, "w"))) {
         merror(FOPEN_ERROR, path, errno, strerror(errno));
         w_mutex_unlock(&state_mutex);
         return -1;
@@ -79,7 +79,7 @@ int write_state() {
     snprintf(path, sizeof(path), "%s" OS_PIDFILE "/%s.state", isChroot() ? "" : DEFAULTDIR, __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (!(fp = fopen(path_temp, "w"))) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         w_mutex_unlock(&state_mutex);
         return -1;
