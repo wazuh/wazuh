@@ -16,6 +16,6 @@ setup(name='wazuh',
       author='Wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
-      packages=find_packages(),
+      packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
       install_requires=[],
       zip_safe=False)

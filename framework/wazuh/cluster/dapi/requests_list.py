@@ -392,12 +392,12 @@ functions = {
 
     # Configuration assessment
     '/configuration_assessment/:agent_id': {
-        'function': configuration_assessment.get_pm_list,
+        'function': configuration_assessment.get_ca_list,
         'type': 'distributed_master',
         'is_async': False
     },
-    '/configuration_assessment/:agent_id/checks/:scan_id': {
-        'function': configuration_assessment.get_pm_checks,
+    '/configuration_assessment/:agent_id/checks/:policy_id': {
+        'function': configuration_assessment.get_ca_checks,
         'type': 'distributed_master',
         'is_async': False
     },

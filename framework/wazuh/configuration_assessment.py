@@ -16,18 +16,16 @@ from wazuh.wdb import WazuhDBConnection
 
 
 # API field -> DB field
-fields_translation_ca = {'id': 'si.id',
-                         'policy_id': 'policy_id',
+fields_translation_ca = {'policy_id': 'policy_id',
                          'name': 'name',
                          'description': 'description',
                          'references': '`references`',
                          'pass': 'pass',
                          'fail': 'fail',
                          'score': 'score',
-                         'hash': 'hash',
                          'end_scan': 'end_scan',
                          'start_scan': 'start_scan'}
-fields_translation_ca_check = {'scan_id': 'scan_id',
+fields_translation_ca_check = {'policy_id': 'policy_id',
                                'id': 'id',
                                'title': 'title',
                                'description': 'description',
@@ -43,13 +41,13 @@ fields_translation_ca_check_compliance = {'key': 'key',
                                           'value': 'value'}
 
 default_query_ca = 'SELECT {0} FROM configuration_assessment_policy ca INNER JOIN configuration_assessment_scan_info si ON ca.id=si.policy_id'
-default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check INNER JOIN configuration_assessment_check_compliance ON id=id_check'
+default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check INNER JOIN configuration_assessment_check_compliance ON id=policy_id'
 
 
 class WazuhDBQueryPM(WazuhDBQuery):
 
     def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
-                 get_data, default_sort_field='ca.id', filters={}, fields=fields_translation_ca,
+                 get_data, default_sort_field='policy_id', filters={}, fields=fields_translation_ca,
                  default_query=default_query_ca):
         self.agent_id = agent_id
         self._default_query_str = default_query
@@ -112,7 +110,7 @@ class WazuhDBQueryPM(WazuhDBQuery):
             return self._format_data_into_dictionary()
 
 
-def get_pm_list(agent_id=None, q="", offset=0, limit=common.database_limit,
+def get_ca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
                 sort=None, search=None, select=None, filters={}):
     if select is None:
         select = {'fields': list(fields_translation_ca.keys())}
@@ -122,7 +120,7 @@ def get_pm_list(agent_id=None, q="", offset=0, limit=common.database_limit,
     return db_query.run()
 
 
-def get_pm_checks(scan_id, agent_id=None, q="", offset=0, limit=common.database_limit,
+def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.database_limit,
                   sort=None, search=None, select=None, filters={}):
     fields_translation = {**fields_translation_ca_check,
                           **fields_translation_ca_check_compliance}
@@ -131,13 +129,13 @@ def get_pm_checks(scan_id, agent_id=None, q="", offset=0, limit=common.database_
                              list(fields_translation_ca_check_compliance.keys()))
                   }
     else:
-        if 'scan_id' not in select['fields']:
-            select['fields'].append('scan_id')
+        if 'policy_id' not in select['fields']:
+            select['fields'].append('policy_id')
 
     db_query = WazuhDBQueryPM(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                               select=select, count=True, get_data=True,
-                              query=f'scan_id={scan_id}' if q == "" else f'scan_id={scan_id};{q}',
-                              filters=filters, default_query=default_query_ca_check, default_sort_field='scan_id',
+                              query=f'policy_id={policy_id}' if q == "" else f'policy_id={policy_id};{q}',
+                              filters=filters, default_query=default_query_ca_check, default_sort_field='policy_id',
                               fields=fields_translation)
 
     result_dict = db_query.run()
@@ -147,7 +145,7 @@ def get_pm_checks(scan_id, agent_id=None, q="", offset=0, limit=common.database_
     else:
         raise WazuhException(2007)
 
-    groups = groupby(checks, key=lambda row: row['scan_id'])
+    groups = groupby(checks, key=lambda row: row['policy_id'])
     result = []
     # Rearrange check and compliance fields
     for _, group in groups:
