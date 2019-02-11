@@ -1590,7 +1590,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
 
 clean-internals:
 	rm -f $(BUILD_SERVER)
