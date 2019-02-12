@@ -1,3 +1,5 @@
+# Configuration assessment
+# CIS Checks for Debian/Ubuntu
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -5,13 +7,9 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation
 #
-# Policy monitoring - CIS Checks for Debian/Ubuntu
-#
 # Based on:
-# Center for Internet Security Benchmark for Debian Linux 9 v1.0.0 - 12-21-2018
-# Center for Internet Security Benchmark for Debian Linux 8 v2.0.0 - 12-28-2018
-# Center for Internet Security Benchmark for Debian Linux 7 v1.0.0 - 12-31-2015
-#
+# Center for Internet Security Debian Linux 9 Benchmark v1.0.0  12-21-2018
+
 policy:
   id: "cis_debian"
   file: "cis_debian_linux_rcl.yml"
@@ -21,8 +19,8 @@ policy:
     - https://workbench.cisecurity.org/
 
 requirements:
-  title: "Requirements for Debian check"
-  description: "Check Debian version"
+  title: "Check Debian version"
+  description: "Requirements for running the Configuration Assessment scan against Debian/Ubuntu."
   condition: "all required"
   rules:
     - 'f:/etc/debian_version;'
