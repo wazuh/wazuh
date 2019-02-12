@@ -65,4 +65,8 @@ extern const wm_context WM_CONFIGURATION_ASSESSMENT_CONTEXT;
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule *module);
 
+#ifdef WIN32
+void wm_configuration_assessment_push_request_win(char *msg);
+#endif
+
 #endif // WM_KEY_REQUEST_H

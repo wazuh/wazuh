@@ -53,7 +53,10 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
 static char *wm_configuration_assessment_hash_integrity(int policy_index);
 static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event);
 static void * wm_configuration_assessment_dump_db_thread(wm_configuration_assessment_t * data);
+
+#ifndef WIN32
 static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data);
+#endif
 
 /* Extra functions */
 static int wm_configuration_assessment_get_vars(cJSON *variables,OSStore *vars);
@@ -91,6 +94,7 @@ char **last_md5;
 cis_db_hash_info_t *cis_db_for_hash;
 
 static w_queue_t * request_queue;
+static wm_configuration_assessment_t * data_win;
 
 // Module main function. It won't return
 void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
@@ -103,6 +107,7 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
     }
 
     data->msg_delay = 1000000 / wm_max_eps;
+    data_win = data;
 
     /* Create Hash for each policy file */
     int i;
@@ -147,6 +152,15 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
 #ifndef WIN32
     w_create_thread(wm_configuration_assessment_request_thread, data);
     w_create_thread(wm_configuration_assessment_dump_db_thread, data);
+#else 
+    if (CreateThread(NULL,
+                    0,
+                    (LPTHREAD_START_ROUTINE)wm_configuration_assessment_dump_db_thread,
+                    data,
+                    0,
+                    NULL) == NULL) {
+                    merror(THREAD_ERROR);
+    }
 #endif
 
     wm_configuration_assessment_start(data);
@@ -308,7 +322,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             int cis_db_index = i;
 
 #ifdef WIN32
-            sprintf(path,"%s\\%s",CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
+            sprintf(path,"%s\\%s",CONFIGURATION_ASSESSMENT_DIR_WIN, data->profile[i]->profile);
 #elif CLIENT
             sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
 #else
@@ -1932,6 +1946,45 @@ static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessm
     return NULL;
 }
 
+#ifdef WIN32
+void wm_configuration_assessment_push_request_win(char * msg){
+    char *db = strchr(msg,':');
+
+    if(!strncmp(msg,WM_CONFIGURATION_ASSESSMENT_DB_DUMP,strlen(WM_CONFIGURATION_ASSESSMENT_DB_DUMP)) && db) {
+        
+        *db++ = '\0';
+
+        /* Search DB */
+        int i;
+        for(i = 0; data_win->profile[i]; i++) {
+            if(!data_win->profile[i]->enabled){
+                continue;
+            }
+
+            if(data_win->profile[i]->policy_id) {
+                char *endl;
+
+                endl = strchr(db,'\n');
+
+                if(endl){
+                    *endl = '\0';
+                }
+
+                if(strcmp(data_win->profile[i]->policy_id,db) == 0){
+                    unsigned int *policy_index;
+                    os_calloc(1, sizeof(unsigned int), policy_index);
+                    *policy_index = i;
+                    queue_push_ex(request_queue,policy_index);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+#endif
+
+#ifndef WIN32
 static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data) {
 
     /* Create request socket */
@@ -1985,7 +2038,7 @@ static void * wm_configuration_assessment_request_thread(wm_configuration_assess
 
     return NULL;
 }
-
+#endif
 static void wm_configuration_assessment_summary_increment_passed() {
     summary_passed++;
 }
@@ -2041,7 +2094,6 @@ cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *dat
         int i;
         for (i=0;data->profile[i];i++) {
             if(data->profile[i]->enabled == 1){
-                cJSON *profile = cJSON_CreateObject();
                 cJSON_AddStringToObject(profiles,"policy",data->profile[i]->profile);
             }
         }

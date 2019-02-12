@@ -14,6 +14,8 @@
 #endif
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_configuration_assessment.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -133,13 +135,18 @@ int receive_msg()
                 req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
                 continue;
             }
+
             /* Configuration assessment DB request */
             else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+#ifndef WIN32
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
                         merror("Error communicating with configuration assessment");
                     }
                 }
+#else
+                wm_configuration_assessment_push_request_win(tmp_msg);
+#endif
                 continue;
             }
 
