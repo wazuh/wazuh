@@ -584,7 +584,7 @@ if __name__ == "__main__":
     mywazuh = Wazuh(get_init=True)
     cluster_config = read_config()
 
-    if cluster_config['node_type'] != 'master' and cluster_config['disabled'] == 'no':
+    if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:
         executable_name = "update_ruleset"
         master_ip = cluster_config['nodes'][0]
         print("Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. "

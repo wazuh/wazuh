@@ -15,6 +15,8 @@
 /* Global variables */
 int sender_pool;
 
+static netbuffer_t netbuffer;
+
 // Message handler thread
 static void * rem_handler_main(__attribute__((unused)) void * args);
 
@@ -53,7 +55,6 @@ void HandleSecure()
     int n_events = 0;
     char buffer[OS_MAXSTR + 1];
     ssize_t recv_b;
-    uint32_t length;
     struct sockaddr_in peer_info;
     wnotify_t * notify = NULL;
 
@@ -158,6 +159,7 @@ void HandleSecure()
                         merror_exit(ACCEPT_ERROR);
                     }
 
+                    nb_open(&netbuffer, sock_client, &peer_info);
                     rem_inc_tcp();
                     mdebug1("New TCP connection at %s [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
 
@@ -167,63 +169,35 @@ void HandleSecure()
                     }
                 } else {
                     sock_client = fd;
-                    recv_b = recv(sock_client, (char*)&length, sizeof(length), MSG_WAITALL);
-                    length = wnet_order(length);
 
-                    if (getpeername(sock_client, (struct sockaddr *)&peer_info, &logr.peer_size) < 0) {
+                    switch (recv_b = nb_recv(&netbuffer, sock_client), recv_b) {
+                    case -2:
+                        mwarn("Too big message size from %s [%d].", inet_ntoa(peer_info.sin_addr), sock_client);
+                        _close_sock(&keys, sock_client);
+                        continue;
+
+                    case -1:
                         switch (errno) {
-                            case ENOTCONN:
-                                mdebug1("TCP peer was disconnected: cannot get peer name. [%d]", sock_client);
-                                break;
-                            default:
-                                merror("Couldn't get the remote peer information: %s [%d]", strerror(errno), errno);
-                        }
-
-                        _close_sock(&keys, sock_client);
-                        continue;
-                    }
-
-                    /* Nothing received */
-                    if (recv_b <= 0 || length > OS_MAXSTR) {
-                        switch (recv_b) {
-                        case -1:
-                            if (errno == ENOTCONN) {
-                                mdebug1("TCP peer at %s disconnected (ENOTCONN) [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
-                            } else {
-                                merror("TCP peer at %s: %s (%d)", inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
-                            }
-
+                        case ECONNRESET:
+                        case ENOTCONN:
+                            mdebug2("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                             break;
-
-                        case 0:
-                            mdebug1("TCP peer at %s disconnected [%d]", inet_ntoa(peer_info.sin_addr), sock_client);
-                            break;
-
                         default:
-                            // length > OS_MAXSTR
-                            mwarn("Too big message size from %s.", inet_ntoa(peer_info.sin_addr));
+                            merror("TCP peer [%d] at %s: %s (%d)", sock_client, inet_ntoa(peer_info.sin_addr), strerror(errno), errno);
                         }
 
+                        // Fallthrough
+
+                    case 0:
                         if (wnotify_delete(notify, sock_client) < 0) {
                             merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
                         }
 
                         _close_sock(&keys, sock_client);
                         continue;
-                    }
 
-                    recv_b = recv(sock_client, buffer, length, MSG_WAITALL);
-
-                    if (recv_b != (ssize_t)length) {
-                        mwarn("Incorrect message size from %s: expecting %u, got %zd. Agent may have disconnected [%d]", inet_ntoa(peer_info.sin_addr), length, recv_b, sock_client);
-
-                        if (wnotify_delete(notify, sock_client) < 0) {
-                            merror("wnotify_delete(%d): %s (%d)", sock_client, strerror(errno), errno);
-                        }
-
-                        _close_sock(&keys, sock_client);
-                    } else {
-                        rem_msgpush(buffer, recv_b, &peer_info, sock_client);
+                    default:
+                        rem_add_recv((unsigned long)recv_b);
                     }
                 }
             }
@@ -235,6 +209,7 @@ void HandleSecure()
                 continue;
             } else {
                 rem_msgpush(buffer, recv_b, &peer_info, -1);
+                rem_add_recv((unsigned long)recv_b);
             }
         }
     }
@@ -444,7 +419,7 @@ int _close_sock(keystore * keys, int sock) {
     retval = OS_DeleteSocket(keys, sock);
     key_unlock();
 
-    if (close(sock) == 0) {
+    if (nb_close(&netbuffer, sock) == 0) {
         rem_dec_tcp();
     }
 

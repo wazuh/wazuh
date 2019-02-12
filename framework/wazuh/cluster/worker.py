@@ -176,11 +176,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             res = await self.send_request(command=b'sync_e_w_m_r', data=str(e).encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
-        await file_received.wait()
+        await asyncio.wait_for(file_received.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+
+        received_filename = self.sync_tasks[name].filename
+        if received_filename == 'Error':
+            self.logger.info("Stopping synchronization process: worker files weren't correctly received.")
+            return
+
         logger = self.task_loggers['Integrity']
         logger.info("Analyzing received files: Start.")
 
-        ko_files, zip_path = cluster.decompress_files(self.sync_tasks[name].filename)
+        ko_files, zip_path = cluster.decompress_files(received_filename)
         logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
             len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 
@@ -212,7 +219,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for agent_file in set(glob.iglob(filetype.format(common.ossec_path, *glob_args))) & \
                                   {filetype.format(common.ossec_path, *(a[arg] for arg in agent_args)) for a in
                                    agent_info}:
-                    os.remove(agent_file)
+                    logger.debug2("Removing {}".format(agent_file))
+                    if os.path.isdir(agent_file):
+                        shutil.rmtree(agent_file)
+                    else:
+                        os.remove(agent_file)
 
         if not agent_ids_list:
             return  # the function doesn't make sense if there is no agents to remove
@@ -222,17 +233,28 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # the agents must be removed in groups of 997: 999 is the limit of SQL variables per query. Limit and offset are
         # always included in the SQL query, so that leaves 997 variables as limit.
         for agents_ids_sublist in itertools.zip_longest(*itertools.repeat(iter(agent_ids_list), 997), fillvalue='0'):
+            agents_ids_sublist = list(filter(lambda x: x != '0', agents_ids_sublist))
             # Get info from DB
             agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
                                                    select={'fields': ['ip', 'id', 'name']}, limit=None)['items']
+            logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
 
             # Remove agent files that need agent name and ip
             agent_files = ['{}/queue/agent-info/{}-{}', '{}/queue/rootcheck/({}) {}->rootcheck']
             remove_agent_file_type(('*', '*'), ('name', 'ip'), agent_files)
 
+            # remove agent files that need agent name
+            agent_files = ['{}/queue/diff/{}']
+            remove_agent_file_type(('*',), ('name',), agent_files)
+
             # Remove agent files that only need agent id
-            agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}']
+            agent_files = ['{}/queue/agent-groups/{}', '{}/queue/rids/{}', '{}/queue/db/{}.db', '{}/queue/db/{}.db-wal',
+                           '{}/queue/db/{}.db-shm']
             remove_agent_file_type(('*',), ('id',), agent_files)
+
+            # remove agent files that need agent name and id
+            agent_files = ['{}/var/db/agents/{}-{}.db']
+            remove_agent_file_type(('*', '*'), ('id', 'name'), agent_files)
 
             # remove agent from groups
             db_global = glob.glob(common.database_path_global)
@@ -303,9 +325,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
                 for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
                     full_unmerged_name = common.ossec_path + name
-                    with open(full_unmerged_name, 'wb') as f:
+                    tmp_unmerged_path = full_unmerged_name + '.tmp'
+                    with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
-                    os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
+                    os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                    os.rename(tmp_unmerged_path, full_unmerged_name)
             else:
                 if not os.path.exists(os.path.dirname(full_filename_path)):
                     utils.mkdir_with_mode(os.path.dirname(full_filename_path))
