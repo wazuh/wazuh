@@ -131,7 +131,7 @@ int wdb_policy_monitoring_find(wdb_t * wdb, int pm_id, char * output) {
 }
 
 /* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
-int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result) {
+int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
@@ -159,6 +159,7 @@ int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char
     sqlite3_bind_text(stmt, 10, registry, -1, NULL);
     sqlite3_bind_text(stmt, 11, reference, -1, NULL);
     sqlite3_bind_text(stmt, 12, result, -1, NULL);
+    sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;

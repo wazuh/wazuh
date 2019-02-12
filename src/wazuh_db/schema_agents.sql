@@ -243,6 +243,7 @@ CREATE TABLE IF NOT EXISTS configuration_assessment_scan_info (
 CREATE TABLE IF NOT EXISTS configuration_assessment_check (
    scan_id INTEGER REFERENCES configuration_assessment_scan_info (id),
    id INTEGER PRIMARY KEY,
+   policy_id TEXT REFERENCES configuration_assessment_policy (id),
    title TEXT,
    description TEXT,
    rationale TEXT,
@@ -255,10 +256,14 @@ CREATE TABLE IF NOT EXISTS configuration_assessment_check (
    result TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS policy_id_index ON configuration_assessment_check (policy_id);
+
 CREATE TABLE IF NOT EXISTS configuration_assessment_check_compliance (
    id_check INTEGER REFERENCES configuration_assessment_check (id),
   `key` TEXT,
   `value` TEXT
 );
+
+CREATE INDEX IF NOT EXISTS id_check_index ON configuration_assessment_check_compliance (id_check);
 
 PRAGMA journal_mode=WAL;

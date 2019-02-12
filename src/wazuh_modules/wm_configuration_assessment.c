@@ -157,7 +157,6 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
 static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t * data,cJSON *json_alert)
 {
     char *msg = cJSON_PrintUnformatted(json_alert);
-    merror("MSG: %s",msg);
 
     /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
     if (SendMSG(data->queue, msg, WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
@@ -1684,6 +1683,7 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
     cJSON_AddNumberToObject(json_alert, "id", id);
 
     cJSON *name = cJSON_GetObjectItem(policy,"name");
+    cJSON *policy_id = cJSON_GetObjectItem(policy,"id");
     cJSON_AddStringToObject(json_alert, "profile", name->valuestring);
     
     cJSON *check = cJSON_CreateObject();
@@ -1705,6 +1705,11 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
         cJSON_AddStringToObject(check, "title", title->valuestring);
     } else {
         merror("No 'title' field found on check '%d'",pm_id->valueint);
+        goto error;
+    }
+
+    if(!policy_id){
+        merror("No 'id' field found on policy");
         goto error;
     }
 
@@ -1780,8 +1785,9 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
     } else {
         cJSON_AddStringToObject(check, "file", "\0");
     }
-    
+
     cJSON_AddStringToObject(check, "result", result);
+    cJSON_AddStringToObject(json_alert, "policy_id", policy_id->valuestring);
     cJSON_AddItemToObject(json_alert,"check",check);
 
     return json_alert;

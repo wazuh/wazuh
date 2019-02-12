@@ -106,6 +106,7 @@ int receive_msg()
                         merror("Error communicating with execd");
                     }
                 }
+
 #else
                 /* Run on Windows */
                 if (agt->execdq >= 0) {
@@ -130,6 +131,15 @@ int receive_msg()
             // Request from manager (or request ack)
             else if (IS_REQ(tmp_msg)) {
                 req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
+                continue;
+            }
+            /* Configuration assessment DB request */
+            else if (strncmp(buffer,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+                if (agt->cfgadq >= 0) {
+                    if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
+                        merror("Error communicating with configuration assessment");
+                    }
+                }
                 continue;
             }
 

@@ -20,6 +20,7 @@
 #include "os_net/os_net.h"
 #include "os_crypto/md5/md5_op.h"
 #include "string_op.h"
+#include <../../remoted/remoted.h>
 #include <time.h>
 
 /* Logging levels */
@@ -34,19 +35,24 @@ static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_respon
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
 static int FindCheckResults(Eventinfo *lf, int scan_id, int *socket,char *wdb_response);
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result);
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references);
 static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result);
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file);
 static int pm_send_db(char *msg, char *response, int *sock);
-
+static void *RequesDBThread();
+static int ConnectToConfigurationAssessmentSocket();
 static OSDecoderInfo *rootcheck_json_dec = NULL;
+
+static int cfga_socket;
+
+static w_queue_t * request_queue;
 
 void ConfigurationAssessmentInit()
 {
@@ -57,7 +63,62 @@ void ConfigurationAssessmentInit()
     rootcheck_json_dec->name = CONFIGURATION_ASSESSMENT_MOD;
     rootcheck_json_dec->fts = 0;
 
+    request_queue = queue_init(1024);
+
+    w_create_thread(RequesDBThread,NULL);
+
     mdebug1("ConfigurationAssessmentInit completed.");
+}
+
+static void *RequesDBThread() {
+
+    while(1) {
+        char *msg;
+
+        if (msg = queue_pop_ex(request_queue), msg) {
+            int rc;
+            char *agent_id = msg;
+            char *dump_db_msg = strchr(msg,':');
+
+            if(dump_db_msg) {
+                *dump_db_msg++ = '\0';
+            }
+
+            if(strcmp(agent_id,"000") == 0){
+                if(ConnectToConfigurationAssessmentSocket() == 0){
+                    if ((rc = OS_SendUnix(cfga_socket, dump_db_msg, 0)) < 0) {
+                        /* Error on the socket */
+                        if (rc == OS_SOCKTERR) {
+                            merror("socketerr (not available).");
+                            close(cfga_socket);
+                        }
+                        /* Unable to send. Socket busy */
+                        mdebug2("Socket busy, discarding message.");
+                    } else {
+                        close(cfga_socket);
+                    }
+                }
+            } else {
+
+                /* Send to agent */
+                //send_msg(agent_id,dump_db_msg,-1);
+            }
+
+            os_free(msg);
+        }
+    }
+
+    return NULL;
+}
+
+static int ConnectToConfigurationAssessmentSocket() {
+
+    if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+        merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
+        return -1;
+    }
+
+    return 0;
 }
 
 int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
@@ -256,7 +317,7 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
     return retval;
 }
 
-static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result)
+static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id)
 {
 
     char *msg = NULL;
@@ -268,7 +329,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan
     if (exists)
         snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update %d|%s", lf->agent_id, id, result);
     else
-        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert %d|%d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", lf->agent_id,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert %d|%d|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s", lf->agent_id,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result,policy_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -366,8 +427,9 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *process;
     cJSON *registry;
     cJSON *result;
+    cJSON *policy_id;
 
-    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result)) {
+    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&policy_id)) {
        
         int result_event = 0;
         char *wdb_response = NULL;
@@ -381,7 +443,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 merror("Error querying policy monitoring database for agent %s", lf->agent_id);
                 break;
             case 0: // It exists, update
-                result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL);
+                result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL,policy_id ? policy_id->valuestring : NULL);
                
                 if(strcmp(wdb_response,result->valuestring)) {
                     FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,wdb_response);
@@ -392,7 +454,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 }
                 break;
             case 1: // It not exists, insert
-                result_event = SaveEventcheck(lf, 0, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL);
+                result_event = SaveEventcheck(lf, 0, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL,policy_id ? policy_id->valuestring : NULL);
 
                 if(strcmp(wdb_response,result->valuestring)) {
                     FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,NULL);
@@ -591,9 +653,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
     result_db = FindCheckResults(lf,pm_scan_id->valueint,socket,wdb_response);
-
-    int cfga_socket;
-    int rc;
     char request_db[OS_SIZE_4096 + 1] = {0};
 
     switch (result_db)
@@ -606,28 +665,12 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
 
-#ifndef CLIENT
-                
-                snprintf(request_db,OS_SIZE_4096,"configuration-assessment-dump:%s",policy_id->valuestring);
+                snprintf(request_db,OS_SIZE_4096,"%s:configuration-assessment-dump:%s",lf->agent_id,policy_id->valuestring);
 
-                if ((cfga_socket = StartMQ(CFGASSESSMENTQUEUEPATH, WRITE)) < 0) {
-                    merror(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
-                    goto end;
-                } 
+                char *msg = NULL;
 
-                if ((rc = OS_SendUnix(cfga_socket, request_db, 0)) < 0) {
-                    /* Error on the socket */
-                    if (rc == OS_SOCKTERR) {
-                        merror("socketerr (not available).");
-                        close(cfga_socket);
-                    }
-
-                    /* Unable to send. Socket busy */
-                    mdebug2("Socket busy, discarding message.");
-                } else {
-                    close(cfga_socket);
-                }
-#endif
+                os_strdup(request_db,msg);
+                queue_push_ex(request_queue,msg);
             }
 
             break;
@@ -635,11 +678,10 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             break;
     }
 
-end:
     os_free(wdb_response);
 }
 
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result) {
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id) {
     int retval = 1;
 
     if( *scan_id = cJSON_GetObjectItem(event, "id"), !*scan_id) {
@@ -649,6 +691,11 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 
     if( *name = cJSON_GetObjectItem(event, "profile"), !*name) {
         merror("Malformed JSON: field 'profile' not found");
+        return retval;
+    }
+
+    if( *policy_id = cJSON_GetObjectItem(event, "policy_id"), !*policy_id) {
+        merror("Malformed JSON: field 'policy_id' not found");
         return retval;
     }
 
