@@ -8,19 +8,19 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for Apache 2.2 v3.5.0 - 12-21-2018 and Apache 2.4 v1.4.0
+# Center for Internet Security Benchmark for Apache 2.2 v3.5.0 - 12-21-2018
 
 policy:
   id: "cis_apache"
   file: "cis_apache2224_rcl.yml"
   name: "CIS Apache HTTP Server 2.2 Benchmark"
-  description: "Check file for Apache HTTP Server" #############
+  description: "This document, CIS Apache 2.2 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for Apache Web Server versions 2.2 running on Linux."
   references:
     - https://workbench.cisecurity.org/
 
 requirements:
-  title: "Requirements for Apache check"
-  description: "Check Apache installed"
+  title: "Check that Apache is installed on the system"
+  description: "Requirements for running the Configuration Assessment scan against the Apache policy."
   condition: "all required"
   rules:
     - 'f:/etc/apache2/apache2.conf;'
@@ -32,10 +32,8 @@ variables:
  $mods-en: /etc/apache2/mods-enabled;
  $request-confs: /etc/httpd/conf/httpd.conf,/etc/apache2/mods-enabled/reqtimeout.conf;
  $traceen: /etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf,/etc/apache2/conf-enabled/security.conf;
-#
-#
-#2.3 Disable WebDAV Modules
 
+#2.3 Disable WebDAV Modules
 checks:
  - id: 1500
    title: "Ensure the WebDAV Modules Are Disabled"
@@ -54,8 +52,6 @@ checks:
      - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sdav;'
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sdav;'
      - 'd:$mods-en -> dav.load;'
-#
-#
 #2.4 Disable Status Module
  - id: 1501
    title: "Ensure the Status Module Is Disabled"
@@ -74,8 +70,6 @@ checks:
      - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sstatus;'
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sstatus;'
      - 'd:$mods-en -> status.load;'
-#
-#
 #2.5 Disable Autoindex Module
  - id: 1502
    title: "Ensure the Autoindex Module Is Disabled"
@@ -94,8 +88,6 @@ checks:
      - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sautoindex;'
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sautoindex;'
      - 'd:$mods-en -> autoindex.load;'
-#
-#
 #2.6 Disable Proxy Modules
  - id: 1503
    title: "Ensure the Proxy Modules Are Disabled"
@@ -114,8 +106,6 @@ checks:
      - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sproxy;'
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sproxy;'
      - 'd:$mods-en -> proxy.load;'
-#
-#
 #2.7 Disable User Directories Modules
  - id: 1504
    title: "Ensure the User Directories Module Is Disabled"
@@ -134,8 +124,6 @@ checks:
      - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\suserdir;'
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\suserdir;'
      - 'd:$mods-en -> userdir.load;'
-#
-#
 #2.8 Disable Info Module
  - id: 1505
    title: "Ensure the Info Module Is Disabled"
@@ -154,8 +142,6 @@ checks:
      - 'd:$conf-dirs -> load -> !r:^# && r:loadmodule\sinfo;'
      - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sinfo;'
      - 'd:$mods-en -> info.load;'
-#
-#
 #3.2 Give the Apache User Account an Invalid Shell
  - id: 1506
    title: "Ensure the Apache User Account Has an Invalid Shell"
@@ -168,23 +154,18 @@ checks:
    condition: any
    rules:
      - 'f:/etc/passwd -> r:/var/www && !r:\.*/bin/false$|/sbin/nologin$;'
-#
-#
 #3.3 Lock the Apache User Account
  - id: 1507
    title: "Ensure the Apache User Account Is Locked"
    description: "The user account under which Apache runs should not have a valid password, but should be locked."
    rationale: "As a defense-in-depth measure, the Apache user account should be locked to prevent logins and to prevent a user from su-ing to apache using the password."
-   remediation: "Use the passwd command to lock the apache account:
-# passwd -l apache"
+   remediation: "Use the passwd command to lock the apache account: # passwd -l apache"
    compliance:
     - cis: "3.3"
     - cis_csc: "16"
    condition: any
    rules:
      - 'f:/etc/shadow -> r:^daemon|^wwwrun|^www-data|^apache && !r:\p!\.*$;'
-#
-#
 #4.4 Restrict Override for All Directories
  - id: 1508
    title: "Ensure OverRide Is Disabled for All Directories"
@@ -204,8 +185,6 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && !r:\w+ && r:allowoverridelist;'
      - 'f:$main-conf -> !r:^# && !r:\w+ && r:allowoverride && !r:none$;'
      - 'f:$main-conf -> !r:^# && !r:\w+ && r:allowoverridelist;'
-#
-#
 #5.3 Minimize Options for Other Directories
  - id: 1509
    title: "Ensure Options for Other Directories Are Minimized"
@@ -224,8 +203,6 @@ checks:
    rules:
      - 'd:$conf-dirs -> conf -> !r:^# && r:options\sincludes;'
      - 'f:$main-conf -> !r:^# && r:options\sincludes;'
-#
-#
 #5.4.1 Remove default index.html sites
  - id: 1510
    title: "Ensure Default HTML Content Is Removed (index.html)"
@@ -239,8 +216,6 @@ checks:
    rules:
      - 'd:/var/www -> index.html;'
      - 'd:/var/www/html -> index.html;'
-#
-#
 #5.4.2 Remove the Apache user manual
  - id: 1511
    title: "Ensure Default HTML Content Is Removed (Apache user manual)"
@@ -254,8 +229,6 @@ checks:
    rules:
      - 'd:/etc/httpd/conf.d -> manual.conf;'
      - 'd:/etc/apache2/conf-enabled -> apache2-doc.conf;'
-#
-#
 #5.4.5 Verify that no Handler is enabled
  - id: 1512
    title: "Ensure Default HTML Content Is Removed (Handler)"
@@ -269,8 +242,6 @@ checks:
    rules:
      - 'd:$conf-dirs -> conf -> !r:^# && r:/wsethandler;'
      - 'f:$main-conf -> !r:^# && r:/wsethandler;'
-#
-#
 #5.5 Remove default CGI content printenv
  - id: 1513
    title: "Ensure the Default CGI Content printenv Script Is Removed"
@@ -284,8 +255,6 @@ checks:
    rules:
      - 'd:/var/www/cgi-bin -> printenv;'
      - 'd:/usr/lib/cgi-bin -> printenv;'
-#
-#
 #5.6 Remove default CGI content test-cgi
  - id: 1514
    title: "Ensure the Default CGI Content test-cgi Script Is Removed"
@@ -293,14 +262,12 @@ checks:
    rationale: "Since CGI programs are often targets of attackers, we need to make sure there are no unnecessary CGI programs that could potentially be used for malicious purposes. The test-cgi script in particular will disclose inappropriate information about the web server, including directory paths and detailed version and configuration information."
    remediation: "Locate cgi-bin files and directories enabled in the Apache configuration via Script, ScriptAlias, ScriptAliasMatch, or ScriptInterpreterSource directives. Remove the test-cgi default CGI in the cgi-bin directory if it is installed."
    compliance:
-    - cis: "Apache Configuration - 5.6"
+    - cis: "5.6"
     - cis_csc: "18.9"
    condition: any
    rules:
      - 'd:/var/www/cgi-bin -> test-cgi;'
      - 'd:/usr/lib/cgi-bin -> test-cgi;'
-#
-#
 #5.7 Limit HTTP Request Method
  - id: 1515
    title: "Ensure HTTP Request Methods Are Restricted"
@@ -317,8 +284,6 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:<limitexcept\sget\spost\soptions>;'
-#
-#
 #5.8 Disable HTTP Trace Method
  - id: 1516
    title: "Ensure the HTTP TRACE Method Is Disabled"
@@ -335,8 +300,6 @@ checks:
    condition: any
    rules:
      - 'f:$traceen -> !r:^# && r:traceenable\s+on\s*$;'
-#
-#
 #5.9 Restrict HTTP Protocol Versions
  - id: 1517
    title: "Ensure Old HTTP Versions Are Disallowed"
@@ -356,8 +319,6 @@ checks:
      - 'f:$main-conf -> !r:rewriteengine\son;'
      - 'f:$main-conf -> !r:rewritecond && !r:%{THE_REQUEST} && !r:!HTTP/1\\.1\$;'
      - 'f:$main-conf -> !r:rewriterule && !r:.* - [F];'
-#
-#
 #5.12 Deny IP Address Based Requests
  - id: 1518
    title: "Ensure IP Address Based Requests Are Disallowed"
@@ -378,8 +339,6 @@ checks:
      - 'f:$main-conf -> !r:rewritecond && !r:%{HTTP_HOST} && !r:www\\.\w+\\.\w+ [NC]$;'
      - 'f:$main-conf -> !r:rewritecond && !r:%{REQUEST_URI} && !r:/error [NC]$;'
      - 'f:$main-conf -> !r:rewriterule && !r:.\(.*\) - [L,F]$;'
-#
-#
 #5.13 Restrict Listen Directive
  - id: 1519
    title: "Ensure the IP Addresses for Listening for Requests Are Specified"
@@ -406,8 +365,6 @@ checks:
      - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s80$;'
      - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s0.0.0.0\p\d*;'
      - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
-#
-#
 #5.14 Restrict Browser Frame Options
  - id: 1520
    title: "Ensure Browser Framing Is Restricted"
@@ -425,8 +382,6 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:header\salways\sappend\sx-frame-options && !r:sameorigin|deny;'
-#
-#
 #6.1 Configure the Error Log to notice at least
  - id: 1521
    title: "Ensure the Error Log Filename and Severity Level Are Configured Correctly"
@@ -447,8 +402,6 @@ checks:
    rules:
      - 'f:$main-conf -> !r:^# && r:loglevel\snotice\score\p && r:warn|emerg|alert|crit|error|notice;'
      - 'f:$main-conf -> !r:loglevel\snotice\score\p && !r:info|debug;'
-#
-#
 #6.2 Configure a Syslog facility for Error Log
  - id: 1522
    title: "Ensure a Syslog Facility Is Configured for Error Logging"
@@ -468,8 +421,6 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:errorlog\s+\p*syslog\p\.*\p*;'
-#
-#
 #7.6 Disable SSL Insecure Renegotiation
  - id: 1523
    title: "Ensure Insecure SSL Renegotiation Is Not Enabled"
@@ -488,8 +439,6 @@ checks:
    rules:
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s+on\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s*$;'
-#
-#
 #7.7 Ensure SSL Compression is not enabled
  - id: 1524
    title: "Ensure SSL Compression is Not Enabled"
@@ -508,8 +457,6 @@ checks:
    rules:
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s+on\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s*$;'
-#
-#
 #7.8 Disable SSL TLS v1.0 Protocol
  - id: 1525
    title: "Ensure Medium Strength SSL/TLS Ciphers Are Disabled"
@@ -517,7 +464,7 @@ checks:
    rationale: "Although Triple DES was a trusted standard in the past, several vulnerabilities for it have been published over the years and it is no longer considered secure."
    remediation: "Add or modify the following line in the Apache server level configuration and every virtual host that is SSL/TLS enabled: SSLCipherSuite ALL:!EXP:!NULL:!LOW:!SSLv2:!MD5:!RC4:!aNULL:!3DES:!IDEA"
    compliance:
-    - cis: "Apache Configuration - 7.8"
+    - cis: "7.8"
     - cis_csc: "14.2"
    references:
     - https://httpd.apache.org/docs/2.2/mod/mod_ssl.html#sslciphersuite
@@ -535,11 +482,9 @@ checks:
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*tlsv1\P\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv2\P\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv3\P\s*;'
-#
-#
 #7.9 Enable OCSP Stapling
  - id: 1526
-   title: "Enable OCSP Stapling" ################### 2.4 v1.4.0
+   title: "Enable OCSP Stapling"
    description: "The OCSP (Online Certificate Status Protocol) provides the current revocation status of an X.509 certificate and allows for a certificate authority to revoke the validity of a signed certificate before its expiration date."
    rationale: "The OCSP protocol is a big improvement over CRLs (certificate revocation lists) for checking if a certificate has been revoked. The OCSP stapling improves the situation by having the SSL server 'staple' an OCSP response, signed by the OCSP server, to the certificate it presents to the client. This obviates the need for the client to ask the OCSP server for status information on the server certificate."
    remediation: "Add or modify the SSLUseStapling directive to have a value of on in the Apache server level configuration and every virtual host that is SSL enabled."
@@ -556,8 +501,6 @@ checks:
      - 'f:$ssl-confs -> !r:\t*\s*# && r:sslusestapling\s+off;'
      - 'f:$ssl-confs -> !r:\t*\s*sslusestapling\s+on;'
      - 'f:$ssl-confs -> !r:\t*\s*sslstaplingcache\s+\.+;'
-#
-#
 #7.10 Enable HTTP Strict Transport Security
  - id: 1527
    title: "Ensure HTTP Strict Transport Security Is Enabled"
@@ -581,8 +524,6 @@ checks:
      - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=3\d\d";'
      - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=4\d\d";'
      - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=5\d\d";'
-#
-#
 #8.1 Set ServerToken to Prod or ProductOnly
  - id: 1528
    title: "Ensure ServerTokens Provides Minimal Information"
@@ -590,7 +531,7 @@ checks:
    rationale: "Excessive probing and requests may cause too much 'noise' being generated and may tip off an administrator. If an attacker can accurately target exploits, the chances of successful compromise prior to detection increase dramatically."
    remediation: "Add or modify the ServerTokens directive as shown below to have the value of Prod or ProductOnly: ServerTokens Prod"
    compliance:
-    - cis: "Apache Configuration - 8.1"
+    - cis: "8.1"
     - cis_csc: "18.9"
    references:
     - https://httpd.apache.org/docs/2.2/mod/core.html#servertokens
@@ -602,8 +543,6 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+minimal;'
      - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+os;'
      - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+full;'
-#
-#
 #8.2: Set ServerSignature to Off
  - id: 1529
    title: "Ensure ServerSignature Is Not Enabled"
@@ -611,7 +550,7 @@ checks:
    rationale: "Server signatures are helpful when the server is acting as a proxy because they help the user distinguish errors from the proxy rather than the destination server. However, in this context there is no need for the additional information."
    remediation: "Add or modify the ServerSignature directive to have the value of Off: ServerSignature Off"
    compliance:
-    - cis: "Apache Configuration - 8.2"
+    - cis: "8.2"
     - cis_csc: "18"
    references:
     - https://httpd.apache.org/docs/2.2/mod/core.html#serversignature
@@ -620,8 +559,6 @@ checks:
    rules:
      - 'd:$conf-dirs -> conf -> !r:^# && r:serversignature\s+email;'
      - 'd:$conf-dirs -> conf -> !r:^# && r:serversignature\s+on;'
-#
-#
 #8.3: Prevent Information Leakage via Default Apache Content
  - id: 1530
    title: "Ensure All Default Apache Content Is Removed"
@@ -637,8 +574,6 @@ checks:
    rules:
      - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:include\s*\w*httpd-autoindex.conf;'
      - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:alias\s*/icons/\s*\.*;'
-#
-#
 #9.1:Set TimeOut to 10 or less
  - id: 1531
    title: "Ensure the TimeOut Is Set Properly"
@@ -646,7 +581,7 @@ checks:
    rationale: "One common technique for DoS is to initiate many connections to the server. By decreasing the timeout for old connections, the server can free resources more quickly and be more responsive."
    remediation: "Add or modify the Timeout directive in the Apache configuration files to have a value of 10 seconds or less."
    compliance:
-    - cis: "Apache Configuration - 9.1"
+    - cis: "9.1"
     - cis_csc: "9"
    references:
     - https://httpd.apache.org/docs/2.2/mod/core.html#timeout
@@ -672,8 +607,6 @@ checks:
      - 'f:$main-conf -> !r:^# && r:timeout\s+19;'
      - 'f:$main-conf -> !r:^timeout\s+\d\d*;'
      - 'f:$main-conf -> !r:^# && r:timeout\s+\d\d\d+;'
-#
-#
 #9.2:Set the KeepAlive directive to On
  - id: 1532
    title: "Ensure KeepAlive Is Enabled"
@@ -690,8 +623,6 @@ checks:
    rules:
      - 'f:$main-conf -> !r:^# && r:keepalive\s+off;'
      - 'f:$main-conf -> !r:keepalive\s+on;'
-#
-#
 #9.3:Set MaxKeepAliveRequests to 100 or greater
  - id: 1533
    title: "The MaxKeepAliveRequests directive limits the number of requests allowed per connection when KeepAlive is on. If it is set to 0 , unlimited requests will be allowed. It is recommended that the MaxKeepAliveRequests directive be set to 100 or greater."
@@ -707,8 +638,6 @@ checks:
    condition: any
    rules:
      - 'f:$main-conf -> !r:^maxkeepaliverequests\s+\d\d\d+;'
-#
-#
 #9.4: Set KeepAliveTimeout Low to Mitigate Denial of Service
  - id: 1534
    title: "Ensure the KeepAliveTimeout Is Set Properly"
@@ -716,7 +645,7 @@ checks:
    rationale: "Reducing the number of seconds that Apache HTTP server will keep unused resources allocated will increase the availability of resources to serve other requests. This efficiency gain may improve a server's resiliency to DoS attacks."
    remediation: "Add or modify the KeepAliveTimeout directive in the Apache configuration to have a value of 15 or less."
    compliance:
-    - cis: "Apache Configuration - 9.4"
+    - cis: "9.4"
     - cis_csc: "9"
    references:
     - https://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout
@@ -737,8 +666,6 @@ checks:
      - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+8\d;'
      - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+9\d;'
      - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+\d\d\d+;'
-#
-#
 #9.5 Set Timeout Limits for Request Headers
  - id: 1535
    title: "Ensure Timeout Limits for Request Headers Are Set Properly"
@@ -773,8 +700,6 @@ checks:
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D8\d;'
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D9\d;'
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D\d\d\d+;'
-#
-#
 #9.6 Set Timeout Limits for Request Body
  - id: 1536
    title: "Ensure Timeout Limits for the Request Body Are Set Properly"
@@ -809,8 +734,6 @@ checks:
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p8\d;'
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p9\d;'
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p\d\d\d+;'
-#
-#
 #10.1 Set the LimitRequestLine directive to 512 or less
  - id: 1537
    title: "Ensure the Maximum Request Line Length Is Set Properly"
@@ -846,8 +769,6 @@ checks:
      - 'f:$main-conf -> !r:^# && r:limitrequestline\s+8\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestline\s+9\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestline\s+\d\d\d\d+;'
-#
-#
 #10.2 Set the LimitRequestFields directive to 100 or less
  - id: 1538
    title: "Ensure the Maximum Request Headers Per Request Is Set Properly"
@@ -890,8 +811,6 @@ checks:
      - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+8\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+9\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+\d\d\d\d+;'
-#
-#
 #10.3 Set the LimitRequestFieldsize directive to 1024 or less
  - id: 1539
    title: "Ensure the Maximum Request Header Field Size Is Set Properly"
@@ -937,8 +856,6 @@ checks:
      - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+8\d\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+9\d\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+\d\d\d\d\d+;'
-#
-#
 #10.4 Set the LimitRequestBody directive to 102400 or less
  - id: 1540
    title: "Ensure the Maximum Request Body Size Is Set Properly"

@@ -1,0 +1,165 @@
+#  SSH Rootcheck
+#
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+policy:
+  id: ""
+  file: ""
+  name: ""
+  description: ""
+  references:
+    - 
+
+variables:
+ $sshd_file: /etc/ssh/sshd_config;
+# Listen PORT != 22
+# The option Port specifies on which port number ssh daemon listens for incoming connections.
+# Changing the default port you may reduce the number of successful attacks from zombie bots, an attacker or bot doing port-scanning can quickly identify your SSH port.
+
+checks:
+ - id: 16000
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 1
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^# && r:Port\.+22;'
+# Protocol 2
+# The Protocol parameter dictates which version of the SSH communication and encryption protocols are in use.
+# Version 1 of the SSH protocol has weaknesses.
+ - id: 16001
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 2
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^# && r:Protocol\.+1;'
+# PermitRootLogin no
+# The option PermitRootLogin specifies whether root can log in using ssh.
+# If you want log in as root, you should use the option "Match" and restrict it to a few IP addresses.
+ - id: 16002
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 3
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;'
+# PubkeyAuthentication yes
+# Access only by public key
+# Generally people will use weak passwords and have poor password practices. Keys are considered stronger than password.
+ - id: 16003
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 4
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PubkeyAuthentication\.+yes;'
+# PasswordAuthentication no
+# The option PasswordAuthentication specifies whether we should use password-based authentication.
+# Use public key authentication instead of passwords
+ - id: 16004
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 5
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PasswordAuthentication\.+no;'
+# PermitEmptyPasswords no
+# The option PermitEmptyPasswords specifies whether the server allows logging in to accounts with a null password
+# Accounts with null passwords are a bad practice.
+ - id: 16005
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 6
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;'
+# IgnoreRhosts yes
+# The option IgnoreRhosts specifies whether rhosts or shosts files should not be used in authentication.
+# For security reasons it is recommended to no use rhosts or shosts files for authentication.
+ - id: 16006
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 7
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*IgnoreRhosts\.+yes;'
+# LoginGraceTime 30
+# The option LoginGraceTime specifies how long in seconds after a connection request the server will wait before disconnecting if the user has not successfully logged in.
+# 30 seconds is the recommended time for avoiding open connections without authenticate
+ - id: 16007
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 8
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*LoginGraceTime\s+30\s*$;'
+# MaxAuthTries 4
+# The MaxAuthTries parameter specifices the maximum number of authentication attempts permitted per connection. Once the number of failures reaches half this value, additional failures are logged.
+# This should be set to 4.
+ - id: 16008
+   title: ""
+   description: ""
+   rationale: ""
+   remediation: ""
+   compliance:
+    - cis: ""
+    - cis_csc: ""
+   references:
+    - 9
+   condition: any
+   rules:
+     - 'f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;'
