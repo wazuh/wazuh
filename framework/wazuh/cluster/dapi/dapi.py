@@ -38,7 +38,7 @@ class DistributedAPI:
         self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
-        self.node_info = cluster.get_node()
+        self.node_info = cluster.get_node() if node is None else node.get_node()
         self.request_id = str(random.randint(0, 2**10 - 1))
 
     async def distribute_function(self) -> str:
@@ -49,7 +49,7 @@ class DistributedAPI:
         """
         try:
             request_type = rq.functions[self.input_json['function']]['type']
-            is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
+            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
 
             if 'wait_for_complete' not in self.input_json['arguments']:
                 self.input_json['arguments']['wait_for_complete'] = False
@@ -59,7 +59,8 @@ class DistributedAPI:
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or cluster.check_cluster_status() or request_type == 'local_any' or \
+            if not is_dapi_enabled or (self.node == local_client and cluster.check_cluster_status()) or \
+                    request_type == 'local_any' or \
                     (request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
