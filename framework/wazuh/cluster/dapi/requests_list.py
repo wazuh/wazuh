@@ -240,6 +240,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/manager/configuration/validation': {
+        'function': manager.validation,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/manager/stats': {
         'function': stats.totals,
         'type': 'local_any',
@@ -332,6 +337,16 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    '/cluster/configuration/validation': {
+        'function': manager.validation,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/:node_id/configuration/validation': {
+        'function': manager.validation,
+        'type': 'distributed_master',
+        'is_async': False
+    },
     '/cluster/:node_id/stats': {
         'function': stats.totals,
         'type': 'distributed_master',
@@ -364,6 +379,16 @@ functions = {
     },
     '/cluster/:node_id/logs': {
         'function': manager.ossec_log,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/:node_id/files': {
+        'function': manager.get_file,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'POST/cluster/:node_id/files': {
+        'function': manager.upload_file,
         'type': 'distributed_master',
         'is_async': False
     },

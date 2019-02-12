@@ -12,6 +12,7 @@
 #include "list_op.h"
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
 #include "execd.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
@@ -361,6 +362,51 @@ static void ExecdStart(int q)
         } else {
             *tmp_msg = '\0';
             tmp_msg++;
+        }
+
+        if(!strcmp(name,"check-manager-configuration")) {
+            char *output = NULL;
+            int result_code;
+            int timeout = 600;
+            char command_in[PATH_MAX] = {0};
+            snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, "bin/ossec-logtest","-t");
+
+            if (wm_exec(command_in, &output, &result_code, timeout, NULL) < 0) {
+                if (result_code == 0x7F) {
+                    mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+                } else {
+                    mwarn("Error executing [%s]", command_in);
+                }
+
+                os_free(output);
+                continue;
+            }
+
+            int rc;
+
+            /* Start api socket */
+            int api_sock;
+            if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
+                merror(QUEUE_ERROR, EXECQUEUEPATHAPI, strerror(errno));
+                os_free(output);
+                continue;
+            }
+
+            if ((rc = OS_SendUnix(api_sock, output, 0)) < 0) {
+                /* Error on the socket */
+                if (rc == OS_SOCKTERR) {
+                    merror("socketerr (not available).");
+                    os_free(output);
+                    close(api_sock);
+                    continue;
+                }
+
+                /* Unable to send. Socket busy */
+                mdebug2("Socket busy, discarding message.");
+            }
+            close(api_sock);
+            os_free(output);
+            continue;
         }
 
         /* Get the command to execute (valid name) */

@@ -14,9 +14,12 @@ import hashlib
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 from shutil import move, Error
+import socket
 from os import remove
 import random
 
+
+re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(.*)$")
 
 def status():
     """
@@ -174,16 +177,16 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(file, path, content_type):
+def upload_file(tmp_file, path, content_type):
     """
     Updates a group file
 
-    :param file: File name from origin
+    :param file: Relative path of file name from origin
     :param path: Path of destination of the new file
     :return: Confirmation message in string
     """
     try:
-        with open(file) as f:
+        with open(join(common.ossec_path, tmp_file)) as f:
             file_data = f.read()
     except IOError:
         raise WazuhException(1005)
@@ -208,7 +211,6 @@ def upload_xml(xml_file, path):
     :param path: Destination of the new XML file
     :return: Confirmation message
     """
-
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
@@ -292,7 +294,7 @@ def get_file(path):
     """
     Returns a file as dictionary.
     :param path: Relative path of file from origin
-    :return: file as string.
+    :return: File as string.
     """
 
     file_path = join(common.ossec_path, path)
@@ -307,3 +309,83 @@ def get_file(path):
         raise WazuhException(1000)
 
     return output
+
+
+def validation():
+    """
+    Check if Wazuh configuration is OK.
+
+    :return: Confirmation message.
+    """
+    # sockets path
+    api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+    execq_socket_path = common.EXECQ
+    # msg for checking Wazuh configuration
+    execq_msg = 'check-manager-configuration '
+
+    # remove api_socket if exists
+    try:
+        remove(api_socket_path)
+    except OSError:
+        if exists(api_socket_path):
+            raise WazuhException(1014)
+
+    # up API socket
+    try:
+        api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        api_socket.bind(api_socket_path)
+        # timeout
+        api_socket.settimeout(5)
+    except socket.error:
+        raise WazuhException(1013)
+
+    # connect to execq socket
+    if exists(execq_socket_path):
+        try:
+            execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            execq_socket.connect(execq_socket_path)
+        except socket.error:
+            raise WazuhException(1013)
+    else:
+        raise WazuhException(1901)
+
+    # send msg to execq socket
+    try:
+        execq_socket.send(execq_msg.encode())
+        execq_socket.close()
+    except socket.error:
+        raise WazuhException(1014)
+    finally:
+        execq_socket.close()
+
+    # if api_socket receives a message, configuration is OK
+    try:
+        buffer = bytearray()
+        # receive data
+        datagram = api_socket.recv(4096)
+        buffer.extend(datagram)
+    except socket.timeout:
+        raise WazuhException(1014)
+    finally:
+        api_socket.close()
+        # remove api_socket
+        if exists(api_socket_path):
+            remove(api_socket_path)
+
+    errors = _extract_logstest_errors(buffer.decode('utf-8'))
+
+    if len(errors) > 0:
+        return {'status': 'KO', 'details': errors}
+    else:
+        return {'status': 'OK'}
+
+
+def _extract_logstest_errors(output):
+    log_lines = output.splitlines(keepends=False)
+    errors = []
+    for line in log_lines:
+        match = re_logtest.match(line)
+        if match:
+            errors.append(match.group(1))
+
+    return errors
