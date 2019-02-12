@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "os_crypto/md5/md5_op.h"
 
 static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?);";
 static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = datetime(?, 'unixepoch', 'localtime') WHERE log = ?;";
@@ -268,7 +269,7 @@ int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *policy_id, char * output)
 
 int wdb_policy_monitoring_policy_find(wdb_t * wdb, char *id, char * output) {
 
-      if (!wdb->transaction && wdb_begin2(wdb) < 0){
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
         return -1;
     }
@@ -472,6 +473,55 @@ int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * policy_id, 
         merror("at wdb_rootcheck_update(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
         return -1;
     }
+}
+
+/* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_policy_monitoring_checks_get_result(wdb_t * wdb, int scan_id, char * output) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_CHECK_GET_ALL_RESULTS) < 0) {
+        mdebug1("cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_CHECK_GET_ALL_RESULTS];
+
+    sqlite3_bind_int(stmt, 1, scan_id);
+
+    char *str = NULL;
+    int has_result = 0;
+
+    while(1) {
+        switch (sqlite3_step(stmt)) {
+            case SQLITE_ROW:
+                has_result = 1;
+                wm_strcat(&str,(const char *)sqlite3_column_text(stmt, 0),':');
+                break;
+            case SQLITE_DONE:
+                goto end;
+                break;
+            default:
+                merror(" at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                os_free(str);
+                return -1;
+        }
+    }
+
+end:
+    if(has_result) {
+        os_md5 md5_hash;
+        OS_MD5_Str(str,-1,md5_hash);
+        snprintf(output,OS_MAXSTR,"%s",md5_hash);
+        os_free(str);
+        return 1;
+    }
+    return 0;
 }
 
 /* Update a policy monitoring entry. Returns affected rows on success or -1 on error (new) */

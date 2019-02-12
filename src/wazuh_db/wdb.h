@@ -100,6 +100,7 @@ typedef enum wdb_stmt {
     WDB_STMT_PM_POLICY_FIND,
     WDB_STMT_PM_POLICY_INSERT,
     WDB_STMT_PM_CHECK_UPDATE_SCAN_ID,
+    WDB_STMT_PM_CHECK_GET_ALL_RESULTS,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -227,6 +228,9 @@ int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * policy_id, 
 
 /* Look for a scan policy entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_policy_monitoring_policy_find(wdb_t * wdb, char *id, char * output);
+
+/* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_policy_monitoring_checks_get_result(wdb_t * wdb, int scan_id, char * output);
 
 /* Insert policy entry. Returns number of affected rows or -1 on error.  */
 int wdb_policy_monitoring_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references);

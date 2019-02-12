@@ -79,7 +79,8 @@ static const char *SQL_STMT[] = {
     "UPDATE configuration_assessment_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM configuration_assessment_policy WHERE id = ?;",
     "INSERT INTO configuration_assessment_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
-    "UPDATE configuration_assessment_check SET scan_id = ? WHERE scan_id = ?;"
+    "UPDATE configuration_assessment_check SET scan_id = ? WHERE scan_id = ?;",
+    "SELECT result FROM configuration_assessment_check WHERE scan_id = ? ORDER BY id;"
 };
 
 sqlite3 *wdb_global = NULL;

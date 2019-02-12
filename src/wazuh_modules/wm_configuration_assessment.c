@@ -32,6 +32,10 @@ typedef struct cis_db_info_t {
     cJSON *event;
 } cis_db_info_t;
 
+typedef struct cis_db_hash_info_t {
+    cis_db_info_t **elem;
+} cis_db_hash_info_t;
+
 static void * wm_configuration_assessment_main(wm_configuration_assessment_t * data);   // Module main function. It won't return
 static void wm_configuration_assessment_destroy(wm_configuration_assessment_t * data);  // Destroy data
 static int wm_configuration_assessment_start(wm_configuration_assessment_t * data);  // Start
@@ -45,9 +49,11 @@ static void wm_configuration_assessment_summary_increment_passed();
 static void wm_configuration_assessment_summary_increment_failed();
 static void wm_configuration_assessment_reset_summary();
 static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t * data,cJSON *json_alert); // Send alert
-static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event);
-static char *wm_configuration_assessment_hash_integrity(OSHash *cis_db_hash);
+static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
+static char *wm_configuration_assessment_hash_integrity(int policy_index);
 static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event);
+static void * wm_configuration_assessment_dump_db_thread(wm_configuration_assessment_t * data);
+static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data);
 
 /* Extra functions */
 static int wm_configuration_assessment_get_vars(cJSON *variables,OSStore *vars);
@@ -82,6 +88,9 @@ static unsigned int summary_failed = 0;
 
 OSHash **cis_db;
 char **last_md5;
+cis_db_hash_info_t *cis_db_for_hash;
+
+static w_queue_t * request_queue;
 
 // Module main function. It won't return
 void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
@@ -92,6 +101,8 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
         minfo("Module disabled. Exiting.");
         pthread_exit(NULL);
     }
+
+    data->msg_delay = 1000000 / wm_max_eps;
 
     /* Create Hash for each policy file */
     int i;
@@ -104,6 +115,17 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
                 return (0);
             }
             OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_configuration_assessment_free_hash_data);
+        
+            /* DB for calculating hash only */
+            os_realloc(cis_db_for_hash, (i + 2) * sizeof(cis_db_hash_info_t), cis_db_for_hash);
+
+            /* 1000 IDs for each policy file */
+            os_calloc(1000,sizeof(cis_db_info_t *),cis_db_for_hash[i].elem);
+
+            int j = 0;
+            for(j = 0; j < 1000;j++) {
+                cis_db_for_hash[i].elem[j] = NULL;
+            }
         }
     }
 
@@ -115,7 +137,18 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
         }
     }
 
-    sleep(3); /* Wait for daemons to settle */
+    while ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Can't connect to queue. Trying again.");
+        sleep(WM_MAX_WAIT);
+    }
+
+    request_queue = queue_init(1024);
+
+#ifndef WIN32
+    w_create_thread(wm_configuration_assessment_request_thread, data);
+    w_create_thread(wm_configuration_assessment_dump_db_thread, data);
+#endif
+
     wm_configuration_assessment_start(data);
     
     return NULL;
@@ -124,17 +157,20 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
 static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t * data,cJSON *json_alert)
 {
     char *msg = cJSON_PrintUnformatted(json_alert);
+    merror("MSG: %s",msg);
 
     /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
-    if (SendMSG(data->queue, msg, WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, POLICY_MONITORING_MQ) < 0) {
-        mterror(ARGV0, QUEUE_SEND);
+    if (SendMSG(data->queue, msg, WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
+        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, QUEUE_SEND);
+        close(data->queue);
 
-        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        while ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+            mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Can't connect to queue. Trying again.");
+            sleep(WM_MAX_WAIT);
         }
-
-        if (SendMSG(data->queue, msg, WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, POLICY_MONITORING_MQ) < 0) {
-            mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQPATH);
+        
+        if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
+            mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         }
     }
 
@@ -314,6 +350,11 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 goto next;
             }
 
+            if(!data->profile[i]->policy_id) {
+                cJSON *id = cJSON_GetObjectItem(policy, "id");
+                os_strdup(id->valuestring,data->profile[i]->policy_id);
+            }
+
             if(!profiles){
                 merror("Obtaining 'checks' from json");
                 goto next;
@@ -356,7 +397,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
 
                 wm_configuration_assessment_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index);
-                char * integrity_hash = wm_configuration_assessment_hash_integrity(cis_db[cis_db_index]);
+                char * integrity_hash = wm_configuration_assessment_hash_integrity(cis_db_index);
                 
                 /* Send scan ending message */
                 time_end = time(NULL);
@@ -369,6 +410,8 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 }
                
                 wm_configuration_assessment_reset_summary();
+            } else {
+                mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG,"Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
             }
 
             w_del_plist(plist);
@@ -413,15 +456,30 @@ static int wm_configuration_assessment_check_policy(cJSON *policy) {
         return retval;
     }
 
+    if(!id->valuestring){
+        merror("Filed 'id' must be a string");
+        return retval;
+    }
+
     name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
         merror("Field 'name' not found on policy");
         return retval;
     }
 
+    if(!name->valuestring){
+        merror("Filed 'name' must be a string");
+        return retval;
+    }
+
     file = cJSON_GetObjectItem(policy, "file");
     if(!file) {
         merror("Field 'file' not found on policy");
+        return retval;
+    }
+
+    if(!file->valuestring){
+        merror("Filed 'file' must be a string");
         return retval;
     }
 
@@ -439,6 +497,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
     char *value;
     char *name = NULL;
     int ret_val = 0;
+    int id_check_p = 0;
     cJSON *c_title = NULL;
     cJSON *c_condition = NULL;
 
@@ -451,7 +510,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
     /* Get Windows rootdir */
     wm_configuration_assessment_getrootdir(root_dir, sizeof(root_dir) - 1);
     if (root_dir[0] == '\0') {
-        mterror(ARGV0, INVALID_ROOTDIR);
+        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, INVALID_ROOTDIR);
     }
 #endif
     cJSON *profile = NULL;
@@ -490,18 +549,17 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
             cJSON_ArrayForEach(p_check,p_checks)
             {
-                mtdebug2(ARGV0, "Checking entry: '%s'.", name);
+                mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Checking entry: '%s'.", name);
 
                 int negate = 0;
                 int found = 0;
                 value = NULL;
-                //nbuf2 = strdup(p_check->valuestring);
                 nbuf = p_check->valuestring;
             
                 /* Get value to look for */
                 value = wm_configuration_assessment_get_value(nbuf, &type);
                 if (value == NULL) {
-                    mterror(ARGV0, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
+                    mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
                 }
 
@@ -523,7 +581,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            mterror(ARGV0, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                            mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                             continue;
                         }
                     }
@@ -546,9 +604,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     }
     #endif
 
-                    mtdebug2(ARGV0, "Checking file: '%s'.", f_value);
+                    mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Checking file: '%s'.", f_value);
                     if (wm_configuration_assessment_check_file(f_value, pattern,data)) {
-                        mtdebug2(ARGV0, "Found file.");
+                        mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Found file.");
                         found = 1;
                     }
                 }
@@ -567,9 +625,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                         pattern = wm_configuration_assessment_get_pattern(entry);
                     }
 
-                    mtdebug2(ARGV0, "Checking registry: '%s'.", value);
+                    mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Checking registry: '%s'.", value);
                     if (wm_configuration_assessment_is_registry(value, entry, pattern)) {
-                        mtdebug2(ARGV0, "Found registry.");
+                        mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Found registry.");
                         found = 1;
                     }
 
@@ -584,7 +642,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                     file = wm_configuration_assessment_get_pattern(value);
                     if (!file) {
-                        mterror(ARGV0, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                         continue;
                     }
 
@@ -594,7 +652,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            mterror(ARGV0, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                            mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                             continue;
                         }
                     } else {
@@ -705,7 +763,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                         cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,j,"failed");
 
                         if(event){
-                            if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"fail",profile,event) && !requirements_scan) {
+                            if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
                                 wm_configuration_assessment_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
@@ -737,7 +795,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                         cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,j,"passed");
                         
                         if(event){
-                            if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"passed",profile,event) && !requirements_scan) {
+                            if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
                                 wm_configuration_assessment_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
@@ -787,6 +845,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 name = NULL;
             }
         }
+        id_check_p++;
     }
 
 /* Clean up memory */
@@ -1314,7 +1373,7 @@ static int wm_configuration_assessment_is_registry(char *entry_name, char *reg_o
 
     rk = wm_configuration_assessment_os_winreg_getkey(entry_name);
     if (wm_configuration_assessment_sub_tree == NULL || rk == NULL) {
-        mterror(ARGV0, SK_INV_REG, entry_name);
+        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, SK_INV_REG, entry_name);
         return (0);
     }
 
@@ -1736,7 +1795,7 @@ error:
     return NULL;
 }
 
-static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event) {
+static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event, int check_index,int policy_index) {
     cis_db_info_t *hashed_result = NULL;
     char id_hashed[OS_SIZE_128];
     int ret_add = 0;
@@ -1771,6 +1830,8 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
                     merror("Unable to add cis id to db: %d", pm_id->valueint);
                     return 0;
                 }
+
+                cis_db_for_hash[policy_index].elem[check_index] = elem;
                 return 1;
             }
             return 0;
@@ -1790,6 +1851,7 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
                 merror("Unable to add cis id to db: %d", pm_id->valueint);
                 return 0;
             }
+            cis_db_for_hash[policy_index].elem[check_index] = elem;
             return 1;
         }
         return 0;
@@ -1810,36 +1872,111 @@ static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event) {
     }
 }
 
-static char *wm_configuration_assessment_hash_integrity(OSHash *cis_db_hash) {
+static char *wm_configuration_assessment_hash_integrity(int policy_index) {
     os_md5 md5_hash;
-    OSHashNode *my_node;
-    unsigned int *i;
-    os_calloc(1, sizeof(unsigned int), i);
-
     char *str = NULL;
-    //OS_MD5_Str()
-    for (my_node = OSHash_Begin(cis_db_hash, i); my_node; my_node = OSHash_Next(cis_db_hash, i, my_node)) {
+
+    int i;
+    for(i = 0; cis_db_for_hash[policy_index].elem[i]; i++) {
         cis_db_info_t *event;
+        event = cis_db_for_hash[policy_index].elem[i];
 
-        if(my_node->data){
-            event = my_node->data;
-
-            if(event->result){
-                wm_strcat(&str,event->result,':');
-            }
-        } else {
-            os_free(i);
+        if(event->result){
+            wm_strcat(&str,event->result,':');
         }
     }
-    os_free(i);
-
 
     if(str) {
         OS_MD5_Str(str,-1,md5_hash);
         os_free(str);
         return strdup(md5_hash);
     }
-       
+
+    return NULL;
+}
+
+static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessment_t * data) {
+    int i;
+
+    while(1) {
+        unsigned int *policy_index;
+
+        if (policy_index = queue_pop_ex(request_queue), policy_index) {
+            int time = os_random() % 300;
+
+            wm_delay(1000 * time);
+
+            for(i = 0; cis_db_for_hash[*policy_index].elem[i]; i++) {
+                cis_db_info_t *event;
+                event = cis_db_for_hash[*policy_index].elem[i];
+
+                if (event) {
+                    if(event->event){
+                        cJSON *db_obj;
+                        db_obj = event->event;
+                        wm_configuration_assessment_send_event_check(data,db_obj);
+                    }
+                }
+            }
+
+            os_free(policy_index);
+        }
+    }
+
+    return NULL;
+}
+
+static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data) {
+
+    /* Create request socket */
+    int cfga_queue;
+    if ((cfga_queue = StartMQ(CFGASSESSMENTQUEUEPATH, READ)) < 0) {
+        merror_exit(QUEUE_ERROR, CFGASSESSMENTQUEUEPATH, strerror(errno));
+    }
+
+    int recv = 0;
+    char *buffer = NULL;
+    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+
+    while (1) {
+        if (recv = OS_RecvUnix(cfga_queue, OS_MAXSTR, buffer),recv) {
+            buffer[recv] = '\0';
+
+            char *db = strchr(buffer,':');
+
+            if(!strncmp(buffer,WM_CONFIGURATION_ASSESSMENT_DB_DUMP,strlen(WM_CONFIGURATION_ASSESSMENT_DB_DUMP)) && db) {
+                
+                *db++ = '\0';
+
+                /* Search DB */
+                int i;
+                for(i = 0; data->profile[i]; i++) {
+                    if(!data->profile[i]->enabled){
+                        continue;
+                    }
+
+                    if(data->profile[i]->policy_id) {
+                        char *endl;
+
+                        endl = strchr(db,'\n');
+
+                        if(endl){
+                            *endl = '\0';
+                        }
+
+                        if(strcmp(data->profile[i]->policy_id,db) == 0){
+                            unsigned int *policy_index;
+                            os_calloc(1, sizeof(unsigned int), policy_index);
+                            *policy_index = i;
+                            queue_push_ex(request_queue,policy_index);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     return NULL;
 }
 
@@ -1898,10 +2035,10 @@ cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *dat
         int i;
         for (i=0;data->profile[i];i++) {
             cJSON *profile = cJSON_CreateObject();
-            cJSON_AddStringToObject(profile,"profile",data->profile[i]->profile);
+            cJSON_AddStringToObject(profile,"policy",data->profile[i]->profile);
             cJSON_AddItemToArray(profiles, profile);
         }
-        cJSON_AddItemToObject(wm_wd,"profiles",profiles);
+        cJSON_AddItemToObject(wm_wd,"policies",profiles);
     }
 
     cJSON_AddItemToObject(root,"configuration-assesment",wm_wd);

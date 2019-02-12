@@ -173,6 +173,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
 
+/* Configuration assessment queue */
+#define CFGAQUEUE       "/queue/alerts/cfgaq"
+
 /* Active Response queue */
 #define ARQUEUE         "/queue/alerts/ar"
 
@@ -359,6 +362,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
+#define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
 
 #ifdef WIN32
 #define SHAREDCFG_DIRPATH   SHAREDCFG_DIR

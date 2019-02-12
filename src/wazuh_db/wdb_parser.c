@@ -87,7 +87,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_syscheck(wdb, next, output);
             }
-        } else if (strcmp(query, "policy-monitoring") == 0) {
+        } else if (strcmp(query, "configuration-assessment") == 0) {
             if (!next) {
                 mdebug1("Invalid DB query syntax.");
                 mdebug2("DB query error near: %s", query);
@@ -651,6 +651,33 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         name = curr;
 
         result = wdb_policy_monitoring_global_find(wdb, name, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query policy monitoring.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring global");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_results") == 0) {
+
+        int scan_id;
+        char result_found[OS_MAXSTR + 1] = {0};
+
+        curr = next;
+
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        result = wdb_policy_monitoring_checks_get_result(wdb, scan_id, result_found);
 
         switch (result) {
             case 0:
