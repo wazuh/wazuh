@@ -20,7 +20,7 @@
 #include "os_net/os_net.h"
 #include "os_crypto/md5/md5_op.h"
 #include "string_op.h"
-#include <../../remoted/remoted.h>
+#include "../../remoted/remoted.h"
 #include <time.h>
 
 /* Logging levels */
@@ -48,9 +48,11 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequesDBThread();
 static int ConnectToConfigurationAssessmentSocket();
+static int ConnectToConfigurationAssessmentSocketRemoted();
 static OSDecoderInfo *rootcheck_json_dec = NULL;
 
 static int cfga_socket;
+static int cfgar_socket;
 
 static w_queue_t * request_queue;
 
@@ -79,12 +81,15 @@ static void *RequesDBThread() {
             int rc;
             char *agent_id = msg;
             char *dump_db_msg = strchr(msg,':');
+            char *dump_db_msg_original = dump_db_msg;
 
             if(dump_db_msg) {
                 *dump_db_msg++ = '\0';
+            } else {
+                goto end;
             }
 
-            if(strcmp(agent_id,"000") == 0){
+            if(strcmp(agent_id,"000") == 0) {
                 if(ConnectToConfigurationAssessmentSocket() == 0){
                     if ((rc = OS_SendUnix(cfga_socket, dump_db_msg, 0)) < 0) {
                         /* Error on the socket */
@@ -99,11 +104,25 @@ static void *RequesDBThread() {
                     }
                 }
             } else {
-
+               
                 /* Send to agent */
-                //send_msg(agent_id,dump_db_msg,-1);
-            }
+                if(!ConnectToConfigurationAssessmentSocketRemoted()) {
+                    *dump_db_msg_original = ':';
 
+                    if ((rc = OS_SendUnix(cfgar_socket, msg, 0)) < 0) {
+                        /* Error on the socket */
+                        if (rc == OS_SOCKTERR) {
+                            merror("socketerr (not available).");
+                            close(cfgar_socket);
+                        }
+                        /* Unable to send. Socket busy */
+                        mdebug2("Socket busy, discarding message.");
+                    } else {
+                        close(cfgar_socket);
+                    }
+                }
+            }
+end:
             os_free(msg);
         }
     }
@@ -115,6 +134,16 @@ static int ConnectToConfigurationAssessmentSocket() {
 
     if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE)) < 0) {
         merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
+static int ConnectToConfigurationAssessmentSocketRemoted() {
+
+    if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE)) < 0) {
+        merror(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
         return -1;
     }
 
@@ -666,7 +695,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             if(strcmp(wdb_response,hash->valuestring)) {
 
                 snprintf(request_db,OS_SIZE_4096,"%s:configuration-assessment-dump:%s",lf->agent_id,policy_id->valuestring);
-
                 char *msg = NULL;
 
                 os_strdup(request_db,msg);
