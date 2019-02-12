@@ -322,7 +322,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     unsigned int attributes = 0;
     char *sid = NULL;
     char *str_perm = NULL;
-    char *user;
+    char *user = NULL;
 #else
     char *w_inode;
     char str_owner[50], str_group[50], str_perm[50];
