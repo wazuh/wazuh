@@ -74,8 +74,8 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
     def _get_total_items(self):
         self._substitute_params()
-        self.total_items = self.conn.execute(f'agent {self.agent_id} sql ' +
-                                             self.query.format(self._default_count_query()))[0][self._default_count_query()]
+        total_items = self.conn.execute(f'agent {self.agent_id} sql ' + self.query.format(self._default_count_query()))
+        self.total_items = total_items if isinstance(total_items, int) else total_items[0][self._default_count_query()]
 
     def _default_count_query(self):
         return f"COUNT(DISTINCT {self.count_field})"
