@@ -73,7 +73,6 @@ void run_notify()
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
-    char *agent_ip;
     int sock;
     char label_ip[50];
     int i;
@@ -132,6 +131,10 @@ void run_notify()
         }
     }
 
+    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
+
+#ifdef __linux__
+    char *agent_ip;
     os_calloc(16,sizeof(char),agent_ip);
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
@@ -158,8 +161,6 @@ void run_notify()
         merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
     }
 
-    rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
-
     /* Create message */
     if(agent_ip){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
@@ -181,6 +182,16 @@ void run_notify()
                     getuname(), tmp_labels, shared_files, keep_alive_random);
         }
     }
+#else
+    if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
+            (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
+                getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
+    } else {
+        snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
+                getuname(), tmp_labels, shared_files, keep_alive_random);
+    }
+#endif
 
     /* Send status message */
     mdebug2("Sending keep alive: %s", tmp_msg);
