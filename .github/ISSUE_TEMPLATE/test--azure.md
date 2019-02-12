@@ -1,6 +1,9 @@
 ---
 name: 'Test: Azure-logs'
 about: Test module for Azure log collector.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

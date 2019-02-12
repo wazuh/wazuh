@@ -7,12 +7,23 @@ All notable changes to this project will be documented in this file.
 
 - Collect network and port inventory for Windows XP/Server 2003. ([#2464](https://github.com/wazuh/wazuh/pull/2464))
 - Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
+- Added an option _startup_healthcheck_ in FIM so that the the who-data health-check is optional. ([#2323](https://github.com/wazuh/wazuh/pull/2323))
+
+### Changed
+
+- Improved Remoted start-up logging messages. ([#2460](https://github.com/wazuh/wazuh/pull/2460))
+- Let _agent_auth_ warn when it receives extra input arguments. ([#2489](https://github.com/wazuh/wazuh/pull/2489))
+- Update the who-data related SELinux rules for Audit 3.0. This lets who-data work on Fedora 29. ([#2419](https://github.com/wazuh/wazuh/pull/2419))
 
 ### Fixed
 
 - Fixed error in Syscollector for Windows older than Vista when gathering the hardware inventory. ([#2326](https://github.com/wazuh/wazuh/pull/2326))
 - Fixed an error in the OSQuery configuration validation. ([#2446](https://github.com/wazuh/wazuh/pull/2446))
-- Improved Remoted start-up logging messages. ([#2460](https://github.com/wazuh/wazuh/pull/2460))
+- Prevent Integrator, Syslog Client and Mail forwarded from getting stuck while reading _alerts.json_. ([#2498](https://github.com/wazuh/wazuh/pull/2498))
+- Fixed a bug that could make an Agent running on Windows XP close unexpectedly while receiving a WPK file. ([#2486](https://github.com/wazuh/wazuh/pull/2486))
+- Fixed a compilation error when building Wazuh in static linking mode with the Audit library enabled. ([#2523](https://github.com/wazuh/wazuh/pull/2523))
+- Fixed a memory hazard in Analysisd on log pre-decoding for short logs (less than 5 bytes). ([#2391](https://github.com/wazuh/wazuh/pull/2391))
+
 
 ## [v3.8.2]
 

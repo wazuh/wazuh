@@ -245,7 +245,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
     async def sync_worker_files(self, task_name: str, received_file: asyncio.Event, logger):
         logger.info("Waiting to receive zip file from worker")
-        await received_file.wait()
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         received_filename = self.sync_tasks[task_name].filename
         if received_filename == 'Error':
             logger.info("Stopping synchronization process: worker files weren't correctly received.")
@@ -278,7 +279,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
 
         logger.info("Waiting to receive zip file from worker")
-        await received_file.wait()
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         received_filename = self.sync_tasks[task_name].filename
         if received_filename == 'Error':
             logger.info("Stopping synchronization process: worker files weren't correctly received.")
@@ -315,11 +317,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             result = await self.send_file(compressed_data)
             os.unlink(compressed_data)
             if result.startswith(b'Error'):
-                logger.error(result.decode())
-                return result
+                self.logger.error("Error sending files information: {}".format(result.decode()))
+                result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
+            else:
+                result = await self.send_request(command=b'sync_m_c_e',
+                                                 data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
 
-            result = await self.send_request(command=b'sync_m_c_e',
-                                             data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
+            if result.startswith(b'Error'):
+                self.logger.error(result.decode())
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
@@ -350,6 +355,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                                                       data['merge_name']):
                         try:
                             full_unmerged_name = common.ossec_path + file_path
+                            tmp_unmerged_path = full_unmerged_name + '.tmp'
                             if is_agent_info:
                                 agent_name_re = re.match(r'(^.+)-(.+)$', os.path.basename(file_path))
                                 agent_name = agent_name_re.group(1) if agent_name_re else os.path.basename(file_path)
@@ -383,13 +389,14 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                     logger.debug2("Receiving an old file ({})".format(file_path))
                                     return
 
-                            with open(full_unmerged_name, 'wb') as f:
+                            with open(tmp_unmerged_path, 'wb') as f:
                                 f.write(file_data)
 
                             mtime_epoch = timegm(mtime.timetuple())
-                            os.utime(full_unmerged_name, (mtime_epoch, mtime_epoch))  # (atime, mtime)
-                            os.chown(full_unmerged_name, common.ossec_uid, common.ossec_gid)
-                            os.chmod(full_unmerged_name, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                            os.utime(tmp_unmerged_path, (mtime_epoch, mtime_epoch))  # (atime, mtime)
+                            os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                            os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                            os.rename(tmp_unmerged_path, full_unmerged_name)
                         except Exception as e:
                             self.logger.debug2("Error updating agent group/status: {}".format(e))
                             if is_agent_info:
