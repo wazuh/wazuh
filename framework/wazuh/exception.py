@@ -148,7 +148,6 @@ class WazuhException(Exception):
         1902: 'Could not connect to \'execq\' socket',
         1903: 'Error deleting temporary file from API',
 
-
         # Database:
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
