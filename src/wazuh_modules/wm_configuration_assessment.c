@@ -2042,8 +2042,7 @@ cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *dat
         for (i=0;data->profile[i];i++) {
             if(data->profile[i]->enabled == 1){
                 cJSON *profile = cJSON_CreateObject();
-                cJSON_AddStringToObject(profile,"policy",data->profile[i]->profile);
-                cJSON_AddItemToArray(profiles, profile);
+                cJSON_AddStringToObject(profiles,"policy",data->profile[i]->profile);
             }
         }
         cJSON_AddItemToObject(wm_wd,"policies",profiles);
