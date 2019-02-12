@@ -134,7 +134,7 @@ int receive_msg()
                 continue;
             }
             /* Configuration assessment DB request */
-            else if (strncmp(buffer,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+            else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
                         merror("Error communicating with configuration assessment");

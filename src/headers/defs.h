@@ -173,8 +173,11 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
 
-/* Configuration assessment queue */
+/* Configuration assessment module queue */
 #define CFGAQUEUE       "/queue/alerts/cfgaq"
+
+/* Configuration assessment remoted queue */
+#define CFGARQUEUE       "/queue/alerts/cfgarq"
 
 /* Active Response queue */
 #define ARQUEUE         "/queue/alerts/ar"
