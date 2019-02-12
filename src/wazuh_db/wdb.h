@@ -128,6 +128,7 @@ extern sqlite3 *wdb_global;
 extern char *schema_global_sql;
 extern char *schema_agents_sql;
 extern char *schema_upgrade_v1_sql;
+extern char *schema_upgrade_v2_sql;
 
 extern wdb_config config;
 extern pthread_mutex_t pool_mutex;

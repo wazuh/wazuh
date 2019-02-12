@@ -40,7 +40,7 @@ HKEY wm_configuration_assessment_sub_tree;
 #endif
 
 typedef struct wm_configuration_assessment_profile_t {
-    int enabled:1;
+    unsigned int enabled:1;
     char *profile;
     char *policy_id;
 } wm_configuration_assessment_profile_t;
