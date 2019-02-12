@@ -175,6 +175,22 @@ WriteCISCAT()
 }
 
 ##########
+# WriteConfigurationAssessment()
+##########
+WriteConfigurationAssessment()
+{
+    # Adding to the config file
+    if [ "X$CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
+      CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "configuration_assessment.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      if [ "$CONFIGURATION_ASSESSMENT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "configuration_assessment.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      fi
+      cat ${CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+}
+
+##########
 # InstallOpenSCAPFiles()
 ##########
 InstallOpenSCAPFiles()
@@ -371,6 +387,9 @@ WriteAgent()
     # Syscollector configuration
     WriteSyscollector "agent"
 
+    # Configuration assessment configuration
+    WriteConfigurationAssessment "agent"
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -470,6 +489,9 @@ WriteManager()
 
     # Syscollector configuration
     WriteSyscollector "manager"
+
+    # Configuration assessment
+    WriteConfigurationAssessment "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
