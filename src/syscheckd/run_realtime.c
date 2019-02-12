@@ -161,8 +161,8 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
                         read_dir(file_name, pos, evt, depth, 1);
                         return 0;
                     } else {
-                        os_free(real_path);
                         mdebug2("A file can't be added to be monitored in realtime: '%s'", real_path);
+                        os_free(real_path);
                         return 0;
                     }
                 } else {
