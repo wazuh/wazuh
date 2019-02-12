@@ -264,24 +264,10 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #ifdef WIN32
         /* Directory links are not supported */
         if (islink_win(file_name)) {
-#ifdef EVENTCHANNEL_SUPPORT
-            if(opts & CHECK_FOLLOW) {
-                mdebug2("Directory symbolic link: %s", file_name);
-                os_free(wd_sum);
-                os_free(alert_msg);
-                return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
-            } else {
-                mdebug2("Follow symbolic links disabled: '%s'", file_name);
-                os_free(wd_sum);
-                os_free(alert_msg);
-                return (0);
-            }
-#else
-            mwarn("Links are not supported: '%s'", file_name);
+            mwarn("This is not a '.symlink' file. Only this kind of symbolic links are supported: '%s'", file_name);
             os_free(wd_sum);
             os_free(alert_msg);
             return (-1);
-#endif
         }
 #endif
         os_free(wd_sum);
