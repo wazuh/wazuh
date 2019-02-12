@@ -136,7 +136,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         if (node[i]->values[j][0] == '_'){
-                            merror("Labels starting with \"_\"  are reservated for internal use.");
+                            merror("Labels starting with \"_\"  are reserved for internal use.");
                             return (OS_INVALID);
                         }
                         key_value = node[i]->values[j];
