@@ -104,6 +104,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_dapi_res(data)
         elif command == b'dapi_cluster':
             return self.process_dapi_cluster(data)
+        elif command == b'dapi_err':
+            dapi_client, error_msg = data.split(b' ', 1)
+            asyncio.create_task(self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg,
+                                                                                                    command))
+            return b'ok', b'DAPI error forwarded to worker'
         elif command == b'get_nodes':
             cmd, res = self.get_nodes(json.loads(data))
             return cmd, json.dumps(res).encode()

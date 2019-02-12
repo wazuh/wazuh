@@ -324,8 +324,13 @@ class APIRequestQueue:
             node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
             self.logger.info("Receiving request: {} from {}".format(
                 request['function'], names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
-            result = await DistributedAPI(input_json=request, logger=self.logger, node=node).distribute_function()
-            task_id = await node.send_string(result.encode())
+            try:
+                result = await DistributedAPI(input_json=request, logger=self.logger, node=node).distribute_function()
+                task_id = await node.send_string(result.encode())
+            except Exception as e:
+                self.logger.error("Error in distributed API: {}".format(e))
+                task_id = b'Error in distributed API: ' + str(e).encode()
+
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')
