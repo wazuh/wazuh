@@ -101,7 +101,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                                                                      command))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
-            self.manager.dapi.add_request(b'None*' + data)
+            self.manager.dapi.add_request(b'master*' + data)
             return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)

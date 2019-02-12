@@ -322,7 +322,7 @@ class APIRequestQueue:
             request = json.loads(request)
             names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
-            node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             self.logger.info("Receiving request: {} from {}".format(
                 request['function'], names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
             try:
