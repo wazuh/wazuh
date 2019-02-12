@@ -364,7 +364,7 @@ static void ExecdStart(int q)
             tmp_msg++;
         }
 
-        if(!strcmp(name,"api-check-manager-configuration")) {
+        if(!strcmp(name,"check-manager-configuration")) {
             char *output = NULL;
             int result_code;
             int timeout = 600;

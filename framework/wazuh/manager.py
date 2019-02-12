@@ -321,7 +321,7 @@ def validation():
     api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
     execq_socket_path = common.EXECQ
     # msg for checking Wazuh configuration
-    execq_msg = 'api-check-manager-configuration '
+    execq_msg = 'check-manager-configuration '
 
     # remove api_socket if exists
     try:
