@@ -49,11 +49,12 @@ typedef struct wm_configuration_assessment_t {
     int enabled:1;
     int scan_on_start:1;
     int skip_nfs:1;
-    unsigned int interval;          
+    unsigned int interval;
     int scan_day;                   
     int scan_wday;
     int msg_delay;
-    time_t next_time;               
+    time_t next_time;
+    unsigned int request_db_interval;
     char* scan_time;
     wm_configuration_assessment_profile_t** profile;
     char **alert_msg;
@@ -64,5 +65,9 @@ extern const wm_context WM_CONFIGURATION_ASSESSMENT_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule *module);
+
+#ifdef WIN32
+void wm_configuration_assessment_push_request_win(char *msg);
+#endif
 
 #endif // WM_KEY_REQUEST_H

@@ -447,4 +447,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define CONFIGURATION_ASSESSMENT_DIR   "/ruleset/configuration_assessment"
 
+#define CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset/configuration_assessment"
+
 #endif /* __OS_HEADERS */

@@ -31,28 +31,28 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
     unsigned int i;
     unsigned int profiles = 0;
     int month_interval = 0;
-    wm_configuration_assessment_t *policy_monitoring;
+    wm_configuration_assessment_t *configuration_assessment;
 
-    os_calloc(1, sizeof(wm_configuration_assessment_t), policy_monitoring);
-    policy_monitoring->enabled = 1;
-    policy_monitoring->scan_on_start = 1;
-    policy_monitoring->scan_wday = -1;
-    policy_monitoring->scan_day = 0;
-    policy_monitoring->scan_time = NULL;
-    policy_monitoring->skip_nfs = 1;
-    policy_monitoring->alert_msg = NULL;
+    os_calloc(1, sizeof(wm_configuration_assessment_t), configuration_assessment);
+    configuration_assessment->enabled = 1;
+    configuration_assessment->scan_on_start = 1;
+    configuration_assessment->scan_wday = -1;
+    configuration_assessment->scan_day = 0;
+    configuration_assessment->scan_time = NULL;
+    configuration_assessment->skip_nfs = 1;
+    configuration_assessment->alert_msg = NULL;
     module->context = &WM_CONFIGURATION_ASSESSMENT_CONTEXT;
     module->tag = strdup(module->context->name);
-    module->data = policy_monitoring;
+    module->data = configuration_assessment;
 
     if (!nodes)
         return 0;
 
     /* We store up to 255 alerts in there */
-    os_calloc(256, sizeof(char *), policy_monitoring->alert_msg);
+    os_calloc(256, sizeof(char *), configuration_assessment->alert_msg);
     int c = 0;
     while (c <= 255) {
-        policy_monitoring->alert_msg[c] = NULL;
+        configuration_assessment->alert_msg[c] = NULL;
         c++;
     }
 
@@ -72,12 +72,12 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                 return OS_INVALID;
             }
 
-            policy_monitoring->enabled = enabled;
+            configuration_assessment->enabled = enabled;
         }
         else if (!strcmp(nodes[i]->element, XML_WEEK_DAY))
         {
-            policy_monitoring->scan_wday = w_validate_wday(nodes[i]->content);
-            if (policy_monitoring->scan_wday < 0 || policy_monitoring->scan_wday > 6) {
+            configuration_assessment->scan_wday = w_validate_wday(nodes[i]->content);
+            if (configuration_assessment->scan_wday < 0 || configuration_assessment->scan_wday > 6) {
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             }
@@ -87,8 +87,8 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             } else {
-                policy_monitoring->scan_day = atoi(nodes[i]->content);
-                if (policy_monitoring->scan_day < 1 || policy_monitoring->scan_day > 31) {
+                configuration_assessment->scan_day = atoi(nodes[i]->content);
+                if (configuration_assessment->scan_day < 1 || configuration_assessment->scan_day > 31) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                     return (OS_INVALID);
                 }
@@ -96,17 +96,17 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
         }
         else if (!strcmp(nodes[i]->element, XML_TIME))
         {
-            policy_monitoring->scan_time = w_validate_time(nodes[i]->content);
-            if (!policy_monitoring->scan_time) {
+            configuration_assessment->scan_time = w_validate_time(nodes[i]->content);
+            if (!configuration_assessment->scan_time) {
                 merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                 return (OS_INVALID);
             }
         }
         else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
             char *endptr;
-            policy_monitoring->interval = strtoul(nodes[i]->content, &endptr, 0);
+            configuration_assessment->interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (policy_monitoring->interval == 0 || policy_monitoring->interval == UINT_MAX) {
+            if (configuration_assessment->interval == 0 || configuration_assessment->interval == UINT_MAX) {
                 merror("Invalid interval at module '%s'", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -114,19 +114,19 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
             switch (*endptr) {
             case 'M':
                 month_interval = 1;
-                policy_monitoring->interval *= 60; // We can`t calculate seconds of a month
+                configuration_assessment->interval *= 60; // We can`t calculate seconds of a month
                 break;
             case 'w':
-                policy_monitoring->interval *= 604800;
+                configuration_assessment->interval *= 604800;
                 break;
             case 'd':
-                policy_monitoring->interval *= 86400;
+                configuration_assessment->interval *= 86400;
                 break;
             case 'h':
-                policy_monitoring->interval *= 3600;
+                configuration_assessment->interval *= 3600;
                 break;
             case 'm':
-                policy_monitoring->interval *= 60;
+                configuration_assessment->interval *= 60;
                 break;
             case 's':
             case '\0':
@@ -136,7 +136,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                 return OS_INVALID;
             }
 
-            if (policy_monitoring->interval < 60) {
+            if (configuration_assessment->interval < 60) {
                 merror("At module '%s': Interval must be greater than 60 seconds.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -151,7 +151,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                 return OS_INVALID;
             }
 
-            policy_monitoring->scan_on_start = scan_on_start;
+            configuration_assessment->scan_on_start = scan_on_start;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
@@ -182,11 +182,11 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                         return OS_INVALID;
                     }
 
-                    if(policy_monitoring->profile) {
+                    if(configuration_assessment->profile) {
                         int i;
-                        for(i = 0; policy_monitoring->profile[i]; i++) {
-                            if(!strcmp(policy_monitoring->profile[i]->profile,children[j]->content)) {
-                                policy_monitoring->profile[i]->enabled = enabled;
+                        for(i = 0; configuration_assessment->profile[i]; i++) {
+                            if(!strcmp(configuration_assessment->profile[i]->profile,children[j]->content)) {
+                                configuration_assessment->profile[i]->enabled = enabled;
                                 policy_found = 1;
                                 break;
                             }
@@ -194,7 +194,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                     }
 
                     if(!policy_found) {
-                        os_realloc(policy_monitoring->profile, (profiles + 2) * sizeof(wm_configuration_assessment_profile_t *), policy_monitoring->profile);
+                        os_realloc(configuration_assessment->profile, (profiles + 2) * sizeof(wm_configuration_assessment_profile_t *), configuration_assessment->profile);
                         wm_configuration_assessment_profile_t *policy;
                         os_calloc(1,sizeof(wm_configuration_assessment_profile_t),policy);
 
@@ -202,8 +202,8 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                         policy->policy_id= NULL;
                         
                         os_strdup(children[j]->content,policy->profile);
-                        policy_monitoring->profile[profiles] = policy;
-                        policy_monitoring->profile[profiles + 1] = NULL;
+                        configuration_assessment->profile[profiles] = policy;
+                        configuration_assessment->profile[profiles + 1] = NULL;
                         profiles++;
                     }
                    
@@ -226,7 +226,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                 return OS_INVALID;
             }
 
-            policy_monitoring->skip_nfs = skip_nfs;
+            configuration_assessment->skip_nfs = skip_nfs;
         }
         else
         {
@@ -236,33 +236,41 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
 
     // Validate scheduled scan parameters and interval value
 
-    if (policy_monitoring->scan_day && (policy_monitoring->scan_wday >= 0)) {
+    if (configuration_assessment->scan_day && (configuration_assessment->scan_wday >= 0)) {
         merror("At module '%s': 'day' is not compatible with 'wday'.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         return OS_INVALID;
-    } else if (policy_monitoring->scan_day) {
+    } else if (configuration_assessment->scan_day) {
         if (!month_interval) {
             mwarn("At module '%s': Interval must be a multiple of one month. New interval value: 1M.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
-            policy_monitoring->interval = 60; // 1 month
+            configuration_assessment->interval = 60; // 1 month
         }
-        if (!policy_monitoring->scan_time)
-            policy_monitoring->scan_time = strdup("00:00");
-    } else if (policy_monitoring->scan_wday >= 0) {
-        if (w_validate_interval(policy_monitoring->interval, 1) != 0) {
-            policy_monitoring->interval = 604800;  // 1 week
+        if (!configuration_assessment->scan_time)
+            configuration_assessment->scan_time = strdup("00:00");
+    } else if (configuration_assessment->scan_wday >= 0) {
+        if (w_validate_interval(configuration_assessment->interval, 1) != 0) {
+            configuration_assessment->interval = 604800;  // 1 week
             mwarn("At module '%s': Interval must be a multiple of one week. New interval value: 1w.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         }
-        if (policy_monitoring->interval == 0)
-            policy_monitoring->interval = 604800;
-        if (!policy_monitoring->scan_time)
-            policy_monitoring->scan_time = strdup("00:00");
-    } else if (policy_monitoring->scan_time) {
-        if (w_validate_interval(policy_monitoring->interval, 0) != 0) {
-            policy_monitoring->interval = WM_DEF_INTERVAL;  // 1 day
+        if (configuration_assessment->interval == 0)
+            configuration_assessment->interval = 604800;
+        if (!configuration_assessment->scan_time)
+            configuration_assessment->scan_time = strdup("00:00");
+    } else if (configuration_assessment->scan_time) {
+        if (w_validate_interval(configuration_assessment->interval, 0) != 0) {
+            configuration_assessment->interval = WM_DEF_INTERVAL;  // 1 day
             mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name);
         }
     }
-    if (!policy_monitoring->interval)
-        policy_monitoring->interval = WM_DEF_INTERVAL;
+
+    if (!configuration_assessment->interval)
+        configuration_assessment->interval = WM_DEF_INTERVAL;
+
+    configuration_assessment->request_db_interval = getDefine_Int("configuration_assessment","request_db_interval",5,220000);
+
+    /* Maximum request interval is the scan interval */
+    if(configuration_assessment->request_db_interval > configuration_assessment->interval) {
+       configuration_assessment->request_db_interval = configuration_assessment->interval;
+    }
 
     return 0;
 }
