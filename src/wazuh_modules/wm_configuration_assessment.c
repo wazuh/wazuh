@@ -323,11 +323,26 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             int cis_db_index = i;
 
 #ifdef WIN32
-            sprintf(path,"%s", data->profile[i]->profile);
+            if (data->profile[i]->profile[1] && data->profile[i]->profile[2]) {
+                if (data->profile[i]->profile[1] == ':') { 
+                    sprintf(path,"%s", data->profile[i]->profile);
+                } else{
+                    sprintf(path,"%s\\%s",CONFIGURATION_ASSESSMENT_DIR_WIN, data->profile[i]->profile);
+                }
+            }
+            
 #elif CLIENT
-            sprintf(path,"%s", data->profile[i]->profile);
+            if(data->profile[i]->profile[0] == '/') {
+                sprintf(path,"%s", data->profile[i]->profile);
+            } else {
+                sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
+            }
 #else
-            sprintf(path,"%s", data->profile[i]->profile);
+            if(data->profile[i]->profile[0] == '/') {
+                sprintf(path,"%s", data->profile[i]->profile);
+            } else {
+                sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
+            }
 #endif
             fp = fopen(path,"r");
 
