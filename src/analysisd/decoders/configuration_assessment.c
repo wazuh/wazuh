@@ -431,10 +431,12 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
    
     if (pm_send_db(msg, response, socket) == 0)
     {
+        os_free(response);
         return 0;
     }
     else
     {
+        os_free(response);
         return -1;
     }
 }
