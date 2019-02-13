@@ -627,6 +627,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 os_free(alert_msg);
                 os_free(alertdump);
                 os_free(wd_sum);
+                os_free(real_path);
                 return 0;
             }
 #endif
@@ -1293,7 +1294,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
             return -1;
         }
         strcat(real_path, "/");
-#else 
+#else
         if(real_path_win(dir_name, real_path) == NULL) {
             mwarn("Error checking realpath() of link '%s'", dir_name);
             free(real_path);
