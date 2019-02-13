@@ -138,6 +138,14 @@ class DistributedAPI:
                 raise
             return self.print_json(data=str(e), error=1000)
 
+    async def send_tmp_file(self, node_name=None):
+        # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
+        # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
+        res = await self.node.send_file(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']), node_name)
+        os.remove(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']))
+        if res.startswith('Error'):
+            return self.print_json(data=res.decode(), error=1000)
+
     async def execute_remote_request(self) -> str:
         """
         Executes a remote request. This function is used by worker nodes to execute master_only API requests.
@@ -145,12 +153,7 @@ class DistributedAPI:
         :return: JSON response
         """
         if 'tmp_file' in self.input_json['arguments']:
-            # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
-            # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
-            res = await self.node.send_file(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']))
-            os.remove(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']))
-            if res.startswith('Error'):
-                return self.print_json(data=res.decode(), error=1000)
+            await self.send_tmp_file()
         return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode(),
                                        wait_for_complete=self.input_json['arguments']['wait_for_complete'])
 
@@ -177,12 +180,7 @@ class DistributedAPI:
                 response = await self.distribute_function()
             else:
                 if 'tmp_file' in self.input_json['arguments']:
-                    # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
-                    # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
-                    res = await self.node.send_file(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']), node_name)
-                    os.remove(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']))
-                    if res.startswith('Error'):
-                        return self.print_json(data=res.decode(), error=1000)
+                    await self.send_tmp_file(node_name)
                 response = await self.node.execute(b'dapi_forward',
                                                    "{} {}".format(node_name, json.dumps(self.input_json)).encode(),
                                                    self.input_json['arguments']['wait_for_complete'])
