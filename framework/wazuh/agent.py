@@ -107,25 +107,21 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() else self.search['value']
 
-
     def _format_data_into_dictionary(self):
-        def format_fields(field_name, value, today, lastKeepAlive=None, version=None, registerIP=None):
+        def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
             if field_name == 'id':
                 return str(value).zfill(3)
             elif field_name == 'status':
                 return Agent.calculate_status(lastKeepAlive, version is None, today)
             elif field_name == 'group':
                 return value.split(',')
-            elif field_name == 'ip':
-                return value if value is not None else registerIP
             else:
                 return value
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        # IP must be always fetched, since it will be filled with registerIP value in case it's None.
         agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                        if field == 'ip' or value is not None} for db_tuple in self.conn]
+                        if value is not None} for db_tuple in self.conn]
 
         today = datetime.today()
 
@@ -133,20 +129,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'), item.get('registerIP'))
+        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
                         for key, value in item.items() if key in selected_fields} for item in agent_items]
 
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return {'items': agent_items, 'totalItems': self.total_items}
 
-
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
             self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
-
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
@@ -162,9 +156,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
+
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
     def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'last_keepalive','version','id','ip'}):
+                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
         WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -174,7 +169,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
     def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id', 'ip'},
+                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
                  remove_extra_fields=True):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
@@ -202,7 +197,7 @@ class Agent:
     OSSEC Agent object.
     """
 
-    fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
+    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
