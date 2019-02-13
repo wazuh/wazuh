@@ -26,7 +26,7 @@ from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 from shutil import move, Error
 import socket
-from os import remove
+from os import remove, chmod
 import random
 
 
@@ -237,6 +237,7 @@ def upload_xml(xml_file, path):
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
                                    .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
+        chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
     except ExpatError:
@@ -284,6 +285,7 @@ def upload_list(list_file, path):
             # write json in tmp_file_path
             for element in list_file.split('\n')[:-1]:
                 tmp_file.write(element + '\n')
+        chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
     except Exception:
