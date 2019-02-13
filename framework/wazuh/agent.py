@@ -56,7 +56,7 @@ def create_exception_dic(id, e):
 class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
-                 min_select_fields={'lastKeepAlive', 'version', 'id', 'ip'}, remove_extra_fields=True):
+                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -123,9 +123,9 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        # min select fields are necessary in format_fields function, so they must be always fetched.
+        # IP must be always fetched, since it will be filled with registerIP value in case it's None.
         agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                        if field in self.min_select_fields or value is not None} for db_tuple in self.conn]
+                        if field == 'ip' or value is not None} for db_tuple in self.conn]
 
         today = datetime.today()
 
@@ -133,7 +133,7 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key:format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'), item.get('registerIP'))
+        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'), item.get('registerIP'))
                         for key, value in item.items() if key in selected_fields} for item in agent_items]
 
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
