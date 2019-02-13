@@ -269,7 +269,7 @@ class Handler(asyncio.Protocol):
             return b'Error sending request: timeout expired.'
         return response_data
 
-    async def send_file(self, filename: str) -> bytes:
+    async def send_file(self, filename: str, node_name: str = None) -> bytes:
         """
         Sends a file to peer.
 
