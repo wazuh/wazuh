@@ -236,6 +236,7 @@ class Agent:
         self.group         = None
         self.manager       = None
         self.node_name     = None
+        self.registerIP    = None
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
