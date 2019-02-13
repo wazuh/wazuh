@@ -6,31 +6,6 @@
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>
-# Full re-work of AWS wodle as per #510
-# - Scalability and functional enhancements for parsing of CloudTrail
-# - Support for existing config params
-# - Upgrade to a granular object key addressing to support multiple CloudTrails in S3 bucket
-# - Support granular parsing by account id, region, prefix
-# - Support only parsing logs after a given date
-# - Support IAM credential profiles, IAM roles
-# - Only look for new logs/objects since last iteration
-# - Skip digest files altogether (only look at logs)
-# - Move from downloading object and working with file on filesystem to byte stream
-# - Inherit debug from modulesd
-# - Add bounds checks for msg against socket buffer size; truncate fields if too big (wazuh/wazuh#733)
-# - Support multiple debug levels
-# - Move connect error so not confused with general error
-# - If fail to parse log, and skip_on_error, attempt to send me msg to wazuh
-# - Support existing configurations by migrating data, inferring other required params
-# - Reparse flag to support re-parsing of log files from s3 bucket
-# - Use CloudTrail timestamp for ES timestamp
-#
-# Future
-# ToDo: Integrity check logs against digest
-# ToDo: Escape special characters in arguments?  Needed?
-#     Valid values for AWS Keys
-#     Alphanumeric characters [0-9a-zA-Z]
-#     Special characters !, -, _, ., *, ', (, and )
 #
 # Error Codes:
 #   1 - Unknown
@@ -45,6 +20,7 @@
 #   10 - Failed to execute DB cleanup
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
+#   13 - Unexpected error sending message to Wazuh
 
 import signal
 import sys
@@ -259,6 +235,9 @@ class WazuhIntegration:
             if e.errno == 111:
                 print("ERROR: Wazuh must be running.")
                 sys.exit(11)
+            elif e.errno == 90:
+                print("ERROR: Message too long to send to Wazuh.  Skipping message...")
+                debug('+++ ERROR: Message longer than buffer socket for Wazuh.  Consider increasing rmem_max  Skipping message...', 1)
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
@@ -2018,8 +1997,10 @@ def main(argv):
                 service.get_alerts()
 
     except Exception as err:
-        debug("+++ Error: {}".format(err.message), 2)
-        print("ERROR: {}".format(err.message))
+        debug("+++ Error: {}".format(err), 2)
+        if debug_level > 0:
+            raise
+        print("ERROR: {}".format(err))
         sys.exit(12)
 
 

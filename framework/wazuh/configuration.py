@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -25,8 +25,8 @@ except ImportError:
     from io import StringIO
 
 import logging
-import hashlib
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger('wazuh')
 
 # Aux functions
 
@@ -634,11 +634,11 @@ def get_internal_options_value(high_name, low_name, max, min):
     return option
 
 
-def upload_group_configuration(group_id, xml_file):
+def upload_group_configuration(group_id, file_content):
     """
     Updates group configuration
     :param group_id: Group to update
-    :param xml_file: File contents of the new configuration in string.
+    :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
     # check if the group exists
@@ -652,7 +652,7 @@ def upload_group_configuration(group_id, xml_file):
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString('<root>' + xml_file + '</root>')
+            xml = parseString('<root>' + file_content + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
@@ -677,7 +677,10 @@ def upload_group_configuration(group_id, xml_file):
             # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
+            if output_regex:
+                raise WazuhException(1114, ' '.join(output_regex))
+            else:
+                raise WazuhException(1115, e.output.decode())
         except Exception as e:
             raise WazuhException(1743, str(e))
 
@@ -695,23 +698,23 @@ def upload_group_configuration(group_id, xml_file):
         raise e
 
 
-def upload_group_file(group_id, xml_file, file_name='agent.conf'):
+def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
     """
     Updates a group file
-
     :param group_id: Group to update
-    :param xml_file: File contents in string
+    :param tmp_file: Relative path of temporary file to upload
     :param file_name: File name to update
     :return: Confirmation message in string
     """
+    tmp_file_path = os_path.join(common.ossec_path, tmp_file)
     if file_name == 'agent.conf':
-        with open(xml_file) as f:
-            xml_file_data = f.read()
+        with open(tmp_file_path) as f:
+            file_data = f.read()
 
-        remove(xml_file)
-        if len(xml_file_data) == 0:
+        remove(tmp_file_path)
+        if len(file_data) == 0:
             raise WazuhException(1112)
 
-        return upload_group_configuration(group_id, xml_file_data)
+        return upload_group_configuration(group_id, file_data)
     else:
         raise WazuhException(1111)

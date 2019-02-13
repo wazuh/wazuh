@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -99,7 +99,7 @@ def run(agent_id=None, all_agents=False):
             agent_status = "N/A"
 
         if agent_status.lower() != 'active':
-            raise WazuhException(1602, '{0} - {1}'.format(agent_id, agent_status))
+            raise WazuhException(1605, '{0} - {1}'.format(agent_id, agent_status))
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
@@ -132,9 +132,13 @@ def clear(agent_id=None, all_agents=False):
         conn.begin()
         try:
             conn.execute('DELETE FROM pm_event')
+        except WazuhException as e:
+            raise e
         except Exception as exception:
+            conn.commit()
+            conn.vacuum()
             raise WazuhException(1654, exception)
-        finally:
+        else:
             conn.commit()
             conn.vacuum()
 

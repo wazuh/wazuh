@@ -41,9 +41,6 @@ int search_audit_rule(const char *path, const char *perms, const char *key);
 // Adds rule to loaded rules list.
 void audit_rules_list_append(w_audit_rules_list *wlist, w_audit_rule *element);
 
-// Sends commands to audit kernel.
-int audit_send(int fd, int type, const void *data, unsigned int size);
-
 // Get audit loaded rules list. audit_free_list() must be called to free memory used.
 int audit_get_rule_list(int fd);
 
@@ -52,7 +49,7 @@ void audit_free_list(void);
 void audit_rules_list_free(w_audit_rules_list *wlist);
 
 // Read reply from Audit kernel.
-void get_reply(int fd);
+void kernel_get_reply(int fd);
 
 // Process audit reply of loaded rules.
 int audit_print_reply(struct audit_reply *rep);

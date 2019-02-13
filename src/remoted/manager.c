@@ -570,11 +570,11 @@ static void c_files()
             groups = NULL;
         }
 
-        // Clean hash table
-        OSHash_Clean(m_hash, cleaner);
-        m_hash = OSHash_Create();
-
         if(should_clean == 1){
+            // Clean hash table
+            OSHash_Clean(m_hash, cleaner);
+            m_hash = OSHash_Create();
+
             reported_non_existing_group = 0;
 
             dp = opendir(MULTIGROUPS_DIR);
@@ -1212,7 +1212,7 @@ int purge_group(char *group){
         fp = fopen(path,"r+");
 
         if(!fp) {
-            mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+            mdebug1("At purge_group(): Could not open file '%s'",entry->d_name);
             closedir(dp);
             return -1;
         }
@@ -1222,7 +1222,7 @@ int purge_group(char *group){
                 fp = fopen(path,"w");
 
                 if(!fp){
-                    mdebug1("At c_files(): Could not open file '%s'",entry->d_name);
+                    mdebug1("At purge_group(): Could not open file '%s'",entry->d_name);
                     closedir(dp);
                     return -1;
                 }

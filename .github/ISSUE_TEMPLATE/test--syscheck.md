@@ -1,6 +1,9 @@
 ---
 name: 'Test: Syscheck'
 about: Test suite for Syscheck
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
