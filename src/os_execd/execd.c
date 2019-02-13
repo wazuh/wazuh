@@ -239,6 +239,7 @@ static void ExecdStart(int q)
     char *name;
     char *command;
     char *cmd_args[MAX_ARGS + 2];
+    char *cmd_api[MAX_ARGS];
 
     /* Select */
     fd_set fdset;
@@ -250,6 +251,11 @@ static void ExecdStart(int q)
     /* Initialize the cmd arguments */
     for (i = 0; i <= MAX_ARGS + 1; i++) {
         cmd_args[i] = NULL;
+    }
+
+    /* Initialize the api cmd arguments */
+    for (i = 0; i < MAX_ARGS; i++) {
+        cmd_api[i] = NULL;
     }
 
     /* Create list for timeout */
@@ -410,6 +416,26 @@ static void ExecdStart(int q)
         }
 
         /* Get the command to execute (valid name) */
+        if(!strcmp(name, "restart-wazuh")) {
+
+            if(cmd_api[0] == NULL) {
+                char script_path[PATH_MAX] = {0};
+                snprintf(script_path, PATH_MAX, "%s/%s", DEFAULTDIR, "active-response/bin/restart.sh");
+                os_strdup(script_path, cmd_api[0]);
+            }
+
+            if(cmd_api[1] == NULL) {
+                #ifdef CLIENT
+                    os_strdup("agent", cmd_api[1]);
+                #else
+                    os_strdup("manager", cmd_api[1]);
+                #endif
+            }
+
+            ExecCmd(cmd_api);
+            continue;
+        }
+
         command = GetCommandbyName(name, &timeout_value);
         if (!command) {
             ReadExecConfig();

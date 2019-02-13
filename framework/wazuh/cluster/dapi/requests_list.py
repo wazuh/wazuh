@@ -290,6 +290,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    'PUT/manager/restart': {
+        'function': manager.restart,
+        'type': 'local_any',
+        'is_async': False
+    },
 
     # Cluster
     '/cluster/status': {
@@ -379,6 +384,16 @@ functions = {
     },
     '/cluster/:node_id/logs': {
         'function': manager.ossec_log,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'PUT/cluster/restart': {
+        'function': manager.restart,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'PUT/cluster/:node_id/restart': {
+        'function': manager.restart,
         'type': 'distributed_master',
         'is_async': False
     },

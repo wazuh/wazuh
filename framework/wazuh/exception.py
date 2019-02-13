@@ -145,6 +145,8 @@ class WazuhException(Exception):
         # Manager:
         1900: 'Error restarting manager',
         1901: '\'execq\' socket has not been created',
+        1902: 'Could not connect to \'execq\' socket',
+        1903: 'Error deleting temporary file from API',
 
         # Database:
         2000: 'No such database file',

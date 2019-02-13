@@ -1518,7 +1518,6 @@ class Agent:
 
         return msg
 
-
     @staticmethod
     def remove_multi_group(groups_id):
         """
