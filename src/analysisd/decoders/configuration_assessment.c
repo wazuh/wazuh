@@ -441,22 +441,22 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
 
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
-    cJSON *scan_id;
-    cJSON *id;
-    cJSON *name;
-    cJSON *title;
-    cJSON *description;
-    cJSON *rationale;
-    cJSON *remediation;
-    cJSON *check;
-    cJSON *compliance;
-    cJSON *reference;
-    cJSON *file;
-    cJSON *directory;
-    cJSON *process;
-    cJSON *registry;
-    cJSON *result;
-    cJSON *policy_id;
+    cJSON *scan_id = NULL;
+    cJSON *id = NULL;
+    cJSON *name = NULL;
+    cJSON *title = NULL;
+    cJSON *description = NULL;
+    cJSON *rationale = NULL;
+    cJSON *remediation = NULL;
+    cJSON *check = NULL;
+    cJSON *compliance = NULL;
+    cJSON *reference = NULL;
+    cJSON *file = NULL;
+    cJSON *directory = NULL;
+    cJSON *process = NULL;
+    cJSON *registry = NULL;
+    cJSON *result = NULL;
+    cJSON *policy_id = NULL;
 
     if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&policy_id)) {
        
@@ -533,18 +533,18 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
-    cJSON *pm_scan_id;
-    cJSON *pm_scan_start;
-    cJSON *pm_scan_end;
-    cJSON *policy_id;
-    cJSON *description;
-    cJSON *references;
-    cJSON *passed;
-    cJSON *failed;
-    cJSON *score;
-    cJSON *hash;
-    cJSON *file;
-    cJSON *policy;
+    cJSON *pm_scan_id = NULL;
+    cJSON *pm_scan_start = NULL;
+    cJSON *pm_scan_end = NULL;
+    cJSON *policy_id = NULL;
+    cJSON *description = NULL;
+    cJSON *references = NULL;
+    cJSON *passed = NULL;
+    cJSON *failed = NULL;
+    cJSON *score = NULL;
+    cJSON *hash = NULL;
+    cJSON *file = NULL;
+    cJSON *policy = NULL;
 
     pm_scan_id = cJSON_GetObjectItem(event, "scan_id");
     policy_id =  cJSON_GetObjectItem(event, "policy_id");
@@ -563,7 +563,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!policy_id->valuestring) {
+        merror("Malformed JSON: field 'policy_id' must be a string");
+        return;
+    }
+
     if(!pm_scan_id){
+        return;
+    }
+
+    if(!pm_scan_id->valueint) {
+        merror("Malformed JSON: field 'scan_id' must be a string");
         return;
     }
 
@@ -571,7 +581,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!description->valuestring) {
+        merror("Malformed JSON: field 'description' must be a string");
+        return;
+    }
+
     if(!references){
+        return;
+    }
+
+    if(!references->valuestring) {
+        merror("Malformed JSON: field 'references' must be a string");
         return;
     }
 
@@ -579,7 +599,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!pm_scan_start->valueint) {
+        merror("Malformed JSON: field 'start_time' must be a string");
+        return;
+    }
+
     if(!pm_scan_end) {
+        return;
+    }
+
+    if(!pm_scan_end->valueint) {
+        merror("Malformed JSON: field 'end_time' must be a string");
         return;
     }
 
@@ -587,7 +617,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!passed->valueint) {
+        merror("Malformed JSON: field 'passed' must be a string");
+        return;
+    }
+
     if(!failed){
+        return;
+    }
+
+    if(!failed->valueint) {
+        merror("Malformed JSON: field 'failed' must be a string");
         return;
     }
 
@@ -595,7 +635,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!score->valueint) {
+        merror("Malformed JSON: field 'score' must be a string");
+        return;
+    }
+
     if(!hash){
+        return;
+    }
+
+    if(!hash->valuestring) {
+        merror("Malformed JSON: field 'hash' must be a string");
         return;
     }
 
@@ -603,7 +653,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!file->valuestring) {
+        merror("Malformed JSON: field 'file' must be a string");
+        return;
+    }
+
     if(!policy){
+        return;
+    }
+
+    if(!policy->valuestring) {
+        merror("Malformed JSON: field 'policy' must be a string");
         return;
     }
 
@@ -711,9 +771,16 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id) {
     int retval = 1;
+    cJSON *obj;
 
     if( *scan_id = cJSON_GetObjectItem(event, "id"), !*scan_id) {
         merror("Malformed JSON: field 'id' not found");
+        return retval;
+    }
+
+    obj = *scan_id;
+    if( !obj->valueint ) {
+        merror("Malformed JSON: field 'id' must be a number");
         return retval;
     }
 
@@ -722,8 +789,20 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
         return retval;
     }
 
+    obj = *name;
+    if( !obj->valuestring ) {
+        merror("Malformed JSON: field 'profile' must be a string");
+        return retval;
+    }
+
     if( *policy_id = cJSON_GetObjectItem(event, "policy_id"), !*policy_id) {
         merror("Malformed JSON: field 'policy_id' not found");
+        return retval;
+    }
+
+    obj = *policy_id;
+    if( !obj->valuestring ) {
+        merror("Malformed JSON: field 'policy_id' must be a string");
         return retval;
     }
 
@@ -738,28 +817,93 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
             return retval;
         }
 
+        obj = *id;
+        if( !obj->valueint ) {
+            merror("Malformed JSON: field 'id' must be a string");
+            return retval;
+        }
+
         if( *title = cJSON_GetObjectItem(*check, "title"), !*title) {
             merror("Malformed JSON: field 'title' not found");
             return retval;
         }
 
+        obj = *title;
+        if( !obj->valuestring ) {
+            merror("Malformed JSON: field 'title' must be a string");
+            return retval;
+        }
+
         *description = cJSON_GetObjectItem(*check, "description");
+
+        obj = *description;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'description' must be a string");
+            return retval;
+        }
 
         *rationale = cJSON_GetObjectItem(*check, "rationale");
 
+        obj = *rationale;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'rationale' must be a string");
+            return retval;
+        }
+
         *remediation = cJSON_GetObjectItem(*check, "remediation");
 
+        obj = *remediation;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'remediation' must be a string");
+            return retval;
+        }
+
         *reference = cJSON_GetObjectItem(*check, "references");
+
+        obj = *reference;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'reference' must be a string");
+            return retval;
+        }
             
         *compliance = cJSON_GetObjectItem(*check, "compliance");
 
         *file = cJSON_GetObjectItem(*check, "file");
+        obj = *file;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'file' must be a string");
+            return retval;
+        }
+
         *directory = cJSON_GetObjectItem(*check, "directory");
+        obj = *directory;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'directory' must be a string");
+            return retval;
+        }
+
         *process = cJSON_GetObjectItem(*check, "process");
+        obj = *process;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'process' must be a string");
+            return retval;
+        }
+
         *registry = cJSON_GetObjectItem(*check, "registry");
+        obj = *registry;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'registry' must be a string");
+            return retval;
+        }
         
         if( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
             merror("Malformed JSON: field 'result' not found");
+            return retval;
+        }
+
+        obj = *result;
+        if(!obj->valuestring ) {
+            merror("Malformed JSON: field 'result' must be a string");
             return retval;
         }
     }
