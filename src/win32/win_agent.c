@@ -519,7 +519,7 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
     return (0);
 }
 
- char *get_win_agent_ip(){
+char *get_win_agent_ip(){
     
     typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
@@ -710,9 +710,9 @@ void send_win32_info(time_t curr_time)
         }
     }
 
-    snprintf(label_ip,30,"#\"_agent_ip\":%s",agent_ip);
     /* Create message */
     if(agent_ip){
+        snprintf(label_ip,30,"#\"_agent_ip\":%s",agent_ip);
         /* In case there is an agent IP the message has a new line at the end to emulate the random string generated in Linux agents
            to avoid the delete of the agent IP */
         if (File_DateofChange(AGENTCONFIGINT) > 0) {
