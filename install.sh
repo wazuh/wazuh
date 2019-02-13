@@ -407,6 +407,8 @@ ConfigureClient()
 
     UseSyscollector
 
+    UseConfigurationAssessment
+
     echo ""
     $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
 
@@ -539,6 +541,8 @@ ConfigureServer()
     UseOpenSCAP
 
     UseSyscollector
+
+    UseConfigurationAssessment
 
     # Active response
     catMsg "0x107-ar"

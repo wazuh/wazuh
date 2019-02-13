@@ -214,6 +214,29 @@ InstallOpenSCAPFiles()
 }
 
 ##########
+# InstallConfigurationAssessmentFiles()
+##########
+InstallConfigurationAssessmentFiles()
+{
+    cd ..
+    CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "configuration_assessment.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    cd ./src
+    if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
+        echo "Configuration assessment policies not available for this OS version  ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
+    else
+        echo "Installing configuration assessment policies..."
+        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
+        for file in $CONFIGURATION_ASSESSMENT_FILES; do
+            if [ -f "../etc/configuration_assessment/$file" ]; then
+                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/configuration_assessment/$file ${PREFIX}/ruleset/configuration_assessment
+            else
+                echo "ERROR: Configuration assessment policy not found: ./etc/configuration_assessment/$file"
+            fi
+        done
+    fi
+}
+
+##########
 # GenerateAuthCert()
 ##########
 GenerateAuthCert()
@@ -758,7 +781,6 @@ InstallCommon()
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/ruleset/configuration_assessment
-  ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} ${OSSEC_CONF_ASSESSMENT} ${PREFIX}/ruleset/configuration_assessment/cis_debian_linux_rcl.yml
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
@@ -775,6 +797,8 @@ InstallCommon()
   ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
 
   InstallOpenSCAPFiles
+
+  InstallConfigurationAssessmentFiles
 
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 
