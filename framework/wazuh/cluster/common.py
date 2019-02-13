@@ -561,6 +561,10 @@ class WazuhCommon:
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
 
+    def get_node(self):
+        return {'type': self.get_manager().configuration['node_type'], 'cluster': self.get_manager().configuration['name'],
+                'node': self.get_manager().configuration['node_name']}
+
 
 def asyncio_exception_handler(loop, context: Dict):
     """
