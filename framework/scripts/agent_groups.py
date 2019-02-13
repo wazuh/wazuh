@@ -294,7 +294,7 @@ if __name__ == "__main__":
         cluster_config = read_config()
         executable_name = "agent_groups"
         master_ip = cluster_config['nodes'][0]
-        if cluster_config['node_type'] != 'master' and cluster_config['disabled'] == 'no':
+        if cluster_config['node_type'] != 'master' and not cluster_config['disabled']:
             raise WazuhException(3019, {"EXECUTABLE_NAME": executable_name, "MASTER_IP": master_ip})
         main()
 

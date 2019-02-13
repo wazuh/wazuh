@@ -37,7 +37,7 @@ def __print_table(data, headers, show_header=False):
 
 async def print_agents(filter_status, filter_node):
     result = await control.get_agents(filter_node=filter_node, filter_status=filter_status)
-    headers = {'name': 'Name', 'ip': 'IP', 'id': 'ID', 'status': 'Status', 'version': 'Version',
+    headers = {'id': 'ID', 'name': 'Name', 'ip': 'IP', 'status': 'Status', 'version': 'Version',
                'node_name': 'Node name'}
     data = map(operator.itemgetter(*headers.keys()), result['data']['items'])
     __print_table(data, list(headers.values()), True)
@@ -73,9 +73,9 @@ async def print_health(config, more, filter_node):
 
             if not more:
                 msg1 += "    {} ({}): Integrity: {} | Agents-info: {} | Agent-groups: {} | Last keep alive: {}.\n".format(
-                    node, node_info['info']['address'], node_info['status']['last_sync_integrity']['date_end_master'],
-                    node_info['status']['last_sync_agent_info']['date_end_master'],
-                    node_info['status']['last_sync_agent_groups']['date_end_master'],
+                    node, node_info['info']['ip'], node_info['status']['last_sync_integrity']['date_end_master'],
+                    node_info['status']['last_sync_agentinfo']['date_end_master'],
+                    node_info['status']['last_sync_agentgroups']['date_end_master'],
                     node_info['status']['last_keep_alive']
                 )
 
@@ -104,22 +104,22 @@ async def print_health(config, more, filter_node):
             # Agent info
             msg2 += "            Agents-info\n"
             msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_agent_info']['date_start_master'],
-                node_info['status']['last_sync_agent_info']['date_end_master'])
+                node_info['status']['last_sync_agentinfo']['date_start_master'],
+                node_info['status']['last_sync_agentinfo']['date_end_master'])
             msg2 += "                Synchronized files: {}.\n".format(
-                str(node_info['status']['last_sync_agent_info']['total_agent_info']))
+                str(node_info['status']['last_sync_agentinfo']['total_agentinfo']))
             msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_agent_info_free']))
+                str(node_info['status']['sync_agentinfo_free']))
 
             # Agent groups
             msg2 += "            Agents-group\n"
             msg2 += "                Last synchronization: {0} - {1}.\n".format(
-                node_info['status']['last_sync_agent_groups']['date_start_master'],
-                node_info['status']['last_sync_agent_groups']['date_end_master'])
+                node_info['status']['last_sync_agentgroups']['date_start_master'],
+                node_info['status']['last_sync_agentgroups']['date_end_master'])
             msg2 += "                Synchronized files: {}.\n".format(
-                str(node_info['status']['last_sync_agent_groups']['total_extra_valid']))
+                str(node_info['status']['last_sync_agentgroups']['total_agentgroups']))
             msg2 += "                Permission to synchronize: {}.\n".format(
-                str(node_info['status']['sync_extra_valid_free']))
+                str(node_info['status']['sync_extravalid_free']))
 
     print(msg1)
 
@@ -139,11 +139,17 @@ if __name__ == '__main__':
     exclusive.add_argument('-i', '--health', action='store', nargs='?', const='health', help='Show cluster health')
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
+
     my_wazuh = Wazuh(get_init=True)
+
+    cluster_status = cluster.get_status_json()
+    if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
+        logging.error("Cluster is not running.")
+        sys.exit(1)
+
     cluster_config = cluster.read_config()
     cluster.check_cluster_config(config=cluster_config)
-
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
 
     try:
         if args.filter_status and not args.list_agents:

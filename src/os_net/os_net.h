@@ -128,4 +128,7 @@ int OS_SetSocketSize(int sock, int mode, int max_msg_size);
  */
 ssize_t os_recv_waitall(int sock, void * buf, size_t size);
 
+// Wrapper for select()
+int wnet_select(int sock, int timeout);
+
 #endif /* __OS_NET_H */

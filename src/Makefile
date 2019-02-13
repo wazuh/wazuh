@@ -619,11 +619,11 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(LIBFFI_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
+EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
@@ -791,11 +791,26 @@ VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell 
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
 CPYTHON := cpython
 ifneq (${PREFIX},/var/ossec)
-CPYTHON := src_cpython
-endif
-# Download the Python sources if we are building for any other OS.
+	CPYTHON := src_cpython
+else
+	# Download the Python sources if we are building for any other OS.
 ifneq (${uname_S},Linux)
 CPYTHON := src_cpython
+else
+cpu_arch := ${uname_P}
+ifneq (,$(filter ${cpu_arch},unknown Unknown))
+	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
+ifneq (,$(filter ${cpu_arch},x86_64 amd64))
+CPYTHON := cpython_amd64
+else
+ifneq (,$(filter ${cpu_arch},i386 i686))
+CPYTHON := cpython_i386
+else
+CPYTHON := src_cpython
+endif
+endif
+endif
 endif
 
 
@@ -1378,13 +1393,18 @@ endif
 
 ### wazuh-python ###
 
-WPYTHON_DIR := ${PREFIX}/python
+WPYTHON_DIR := ${PREFIX}/framework/python
+OPTIMIZE_CPYTHON?=no
+
+ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
+CPYTHON_FLAGS=--enable-optimizations
+endif
 
 wpython: build_python install_python install_dependencies install_framework install_api
 
 build_python:
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --enable-optimizations && ${MAKE}
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 
 install_python:
@@ -1394,7 +1414,7 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies}
+	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 
 install_framework:
@@ -1548,7 +1568,7 @@ clean-test:
 	find . -name "*.gcno" -exec rm {} \;
 	find . -name "*.gcda" -exec rm {} \;
 
-clean-external:
+clean-external: clean-wpython
 ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} $(EXTERNAL_JSON)libcjson.*
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
@@ -1562,17 +1582,18 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
 
-ifneq (${PREFIX},/var/ossec)
-	-cd ${EXTERNAL_CPYTHON} && make clean && make dist-clean
-endif
-
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
 endif
 endif
 
+clean-wpython:
+ifneq ($(wildcard external/cpython/*),)
+	cd ${EXTERNAL_CPYTHON} && make clean && make distclean
+endif
+
 clean-deps:
-	rm -rf $(EXTERNAL_DIR)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
 
 clean-internals:
 	rm -f $(BUILD_SERVER)

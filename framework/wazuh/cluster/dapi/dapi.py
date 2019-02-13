@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import functools
 import itertools
 import json
 import operator
@@ -12,7 +13,10 @@ from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh import exception, agent, common, utils
 from wazuh import Wazuh
 import logging
+import os
 import time
+import copy
+
 
 
 class DistributedAPI:
@@ -38,7 +42,7 @@ class DistributedAPI:
         self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
-        self.node_info = cluster.get_node()
+        self.node_info = cluster.get_node() if node is None else node.get_node()
         self.request_id = str(random.randint(0, 2**10 - 1))
         self.request_type = request_type
         self.wait_for_complete = wait_for_complete
@@ -52,14 +56,14 @@ class DistributedAPI:
         :return: Dictionary with API response
         """
         try:
-            is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
+            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
 
             # First case: execute the request local.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or cluster.check_cluster_status() or self.request_type == 'local_any' or \
+            if not is_dapi_enabled or (self.node == local_client and cluster.check_cluster_status()) or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 
@@ -151,6 +155,13 @@ class DistributedAPI:
 
         :return: JSON response
         """
+        if 'tmp_file' in self.f_kwargs:
+            # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
+            # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
+            res = await self.node.send_file(common.ossec_path + self.f_kwargs['tmp_file'])
+            os.remove(common.ossec_path + self.f_kwargs['tmp_file'])
+            if res.startswith('Error'):
+                return self.print_json(data=res.decode(), error=1000)
         return await self.node.execute(command=b'dapi', data=json.dumps(self.to_dict(), cls=CallableEncoder).encode(),
                                        wait_for_complete=self.wait_for_complete)
 
@@ -213,7 +224,7 @@ class DistributedAPI:
                              itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
                 # add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(self.f_kwargs['agent_id']) -
+                non_existent_ids = list(set(self.input_json['arguments']['agent_id']) -
                                         set(map(operator.itemgetter('id'), agents)))
                 if non_existent_ids:
                     if self.node_info['node'] in node_name:
@@ -298,6 +309,9 @@ class DistributedAPI:
             offset, limit = self.f_kwargs['offset'], self.f_kwargs['limit']
             final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
 
+        if 'error' in final_json and final_json['error'] > 0 and 'data' in final_json:
+            del final_json['data']
+
         return final_json
 
 
@@ -319,21 +333,28 @@ class APIRequestQueue:
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
             names, request = (await self.request_queue.get()).split(' ', 1)
+            request = json.loads(request, object_hook=as_callable)
             names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
             node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+            self.logger.info("Receiving request: {} from {}".format(
+                request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
+            try:
+                result = await DistributedAPI(**request,
+                                              logger=self.logger,
+                                              node=node).distribute_function()
+                task_id = await node.send_string(result.encode())
+            except Exception as e:
+                self.logger.error("Error in distributed API: {}".format(e))
+                task_id = b'Error in distributed API: ' + str(e).encode()
 
-            result = await DistributedAPI(**json.loads(request, object_hook=as_callable),
-                                          logger=self.logger,
-                                          node=node).distribute_function()
-            task_id = await node.send_string(json.dumps(result).encode())
             if task_id.startswith(b'Error'):
-                self.logger.error(task_id)
+                self.logger.error(task_id.decode())
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')
             else:
                 result = await node.send_request(b'dapi_res', name_2.encode() + task_id, b'dapi_err')
             if result.startswith(b'Error'):
-                self.logger.error(result)
+                self.logger.error(result.decode())
 
     def add_request(self, request: bytes):
         """
@@ -341,7 +362,7 @@ class APIRequestQueue:
 
         :param request: Request to add
         """
-        self.logger.info("Receiving request: {}".format(request))
+        self.logger.debug("Received request: {}".format(request))
         self.request_queue.put_nowait(request.decode())
 
 

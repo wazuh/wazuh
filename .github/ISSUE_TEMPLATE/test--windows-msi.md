@@ -1,6 +1,9 @@
 ---
 name: 'Test: Windows MSI'
 about: Test suite for MSI Windows installation.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

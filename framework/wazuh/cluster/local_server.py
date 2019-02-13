@@ -5,6 +5,7 @@ import uvloop
 from typing import Tuple, Union
 import json
 import random
+import functools
 from wazuh.cluster import server, common as c_common, client
 from wazuh import common, exception
 from wazuh.cluster.dapi import dapi
@@ -23,7 +24,7 @@ class LocalServerHandler(server.AbstractServerHandler):
         self.server.clients[self.name] = self
         self.tag = "Local " + self.name
         self.logger_filter.update_tag(self.tag)
-        self.logger.info('Connection received in local server. Client name: {}'.format(self.name))
+        self.logger.info('Connection received in local server.')
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
         if command == b'get_config':
@@ -87,9 +88,13 @@ class LocalServerHandlerMaster(LocalServerHandler):
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_forward':
             node_name, request = data.split(b' ', 1)
-            asyncio.create_task(self.server.node.clients[node_name.decode()].
-                                send_request(b'dapi', self.name.encode() + b' ' + request))
-            return b'ok', b'Request forwarded to worker node'
+            node_name = node_name.decode()
+            if node_name in self.server.node.clients:
+                asyncio.create_task(
+                    self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
+                return b'ok', b'Request forwarded to worker node'
+            else:
+                raise exception.WazuhException(3022, node_name)
         else:
             return super().process_request(command, data)
 
@@ -97,7 +102,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
         return b'ok', json.dumps(self.server.node.get_connected_nodes(**json.loads(arguments.decode()))).encode()
 
     def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.node.get_health(filter_nodes)).encode()
+        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
 
 
 class LocalServerMaster(LocalServer):
@@ -120,6 +125,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
                 return b'ok', b'Added request to API requests queue'
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
+        elif command == b'send_file':
+            return self.send_file_request(data.decode())
         else:
             return super().process_request(command, data)
 
@@ -130,18 +137,34 @@ class LocalServerHandlerWorker(LocalServerHandler):
         return self.send_request_to_master(b'get_health', filter_nodes)
 
     def send_request_to_master(self, command: bytes, arguments: bytes):
-        request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
-        request.add_done_callback(self.get_api_response)
-        return b'ok', b'Sent request to master node'
+        if self.server.node.client is None:
+            return b'err', b'Worker is not connected to the master node'
+        else:
+            request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
+            request.add_done_callback(functools.partial(self.get_api_response, command))
+            return b'ok', b'Sent request to master node'
 
-    def get_api_response(self, future):
+    def send_file_request(self, path):
+        def get_send_file_response(future):
+            result = future.result()
+            asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
+
+        if self.server.node.client is None:
+            return b'err', b'Worker is not connected to the master node'
+        else:
+            req = asyncio.create_task(self.server.node.client.send_file(path))
+            req.add_done_callback(get_send_file_response)
+            return b'ok', b'Forwarding file to master node'
+
+    def get_api_response(self, in_command, future):
         result = future.result()
         if result.startswith(b'Error'):
             result = json.dumps(exception.WazuhException(3000, result.decode()).to_dict()).encode()
         elif result.startswith(b'WazuhException'):
             _, code, message = result.decode().split(' ', 2)
             result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
-        asyncio.create_task(self.send_request(command=b'dapi_res', data=result))
+        asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
+                                              data=result))
 
 
 class LocalServerWorker(LocalServer):

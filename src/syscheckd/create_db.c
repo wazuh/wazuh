@@ -193,6 +193,8 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #else
     char str_owner[50], str_group[50], str_perm[50];
     char *hash_file_name;
+    char *file_inode;
+    char *inode;
 #endif
 
 
@@ -208,6 +210,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     /* Win32 does not have lstat */
     if (stat(file_name, &statbuf) < 0)
 #else
+    if (evt && evt->inode) {
+        if (file_inode = OSHash_Get_ex(syscheck.inode_hash, evt->inode), file_inode) {
+            file_name = file_inode;
+        }
+    }
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
@@ -228,6 +235,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 os_free(s_node->checksum);
                 os_free(s_node);
             }
+#ifndef WIN32
+            // Delete from inode hash table
+            if (evt && evt->inode) {
+                if (inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), inode) {
+                    os_free(inode);
+                }
+            }
+#endif
             os_free(alert_msg);
             os_free(wd_sum);
             return (0);

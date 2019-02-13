@@ -15,6 +15,7 @@
 #include "wm_vuln_detector_db.h"
 #include "external/sqlite/sqlite3.h"
 #include "addagent/manage_agents.h"
+#include "wazuh_db/wdb.h"
 #include <netinet/tcp.h>
 #include <openssl/ssl.h>
 #include <os_net/os_net.h>
@@ -50,7 +51,7 @@ static int wm_vuldet_check_update(update_node *upd, const char *dist);
 static int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext);
 static int wm_vuldet_compare(char *version_it, char *cversion_it);
 static const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vuldet_set_oval);
-static int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates);
+static int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **updates);
 static int check_timestamp(const char *OS, char *timst, char *ret_timst);
 static cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector);
 static char *wm_vuldet_build_url(char *pattern, char *value);
@@ -904,7 +905,7 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
         sqlite3_bind_text(stmt, 2, rvul_it->OS, -1, NULL);
         sqlite3_bind_text(stmt, 3, rvul_it->package_name, -1, NULL);
         sqlite3_bind_int(stmt, 4, 0);
-        sqlite3_bind_text(stmt, 5, "less than or equal", -1, NULL);
+        sqlite3_bind_text(stmt, 5, "less than", -1, NULL);
         sqlite3_bind_text(stmt, 6, rvul_it->package_version, -1, NULL);
         sqlite3_bind_text(stmt, 7, NULL, -1, NULL);
         sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
@@ -1736,7 +1737,7 @@ free_mem:
         OS_ClearNode(chld_node);
         OS_ClearXML(&xml);
     }
-    if (remove(CVE_TEMP_FILE) < 0) {
+    if (remove(CVE_TEMP_FILE) < 0 && errno != ENOENT) {
         mtdebug2(WM_VULNDETECTOR_LOGTAG, "remove(%s): %s", CVE_TEMP_FILE, strerror(errno));
     }
     if (remove(CVE_FIT_TEMP_FILE) < 0) {
@@ -2362,7 +2363,6 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
         sqlite3_exec(db, vu_queries[BEGIN_T], NULL, NULL, NULL);
         for (package_list = package_list->child; package_list; package_list = package_list->next) {
             if (sqlite3_prepare_v2(db, vu_queries[VU_INSERT_AGENTS], -1, &stmt, NULL) != SQLITE_OK) {
-                close(sock);
                 return wm_vuldet_sql_error(db, stmt);
             }
             if ((name = cJSON_GetObjectItem(package_list, "name")) &&
@@ -2375,7 +2375,6 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
                 sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
 
                 if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
-                    close(sock);
                     return wm_vuldet_sql_error(db, stmt);
                 }
             }
@@ -2474,7 +2473,7 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
         if ((vulnerability_detector->last_detection + (time_t) vulnerability_detector->detection_interval) < time(NULL)) {
             mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
 
-            if (wm_vunlnerability_detector_set_agents_info(&vulnerability_detector->agents_software, updates)) {
+            if (wm_vuldet_set_agents_info(&vulnerability_detector->agents_software, updates)) {
                 mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
             } else {
                 if (wm_vuldet_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
@@ -2533,7 +2532,7 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
 
 }
 
-int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software, update_node **updates) {
+int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **updates) {
     agent_software *agents = NULL;
     agent_software *f_agent = NULL;
     char global_db[OS_FLSIZE + 1];
@@ -2557,7 +2556,8 @@ int wm_vunlnerability_detector_set_agents_info(agent_software **agents_software,
     }
 
     // Extracts the operating system of the agents
-    if (sqlite3_prepare_v2(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL) != SQLITE_OK) {
+    if (wdb_prepare(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL)) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_ERROR);
         return wm_vuldet_sql_error(db, stmt);
     }
 

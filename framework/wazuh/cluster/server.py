@@ -31,7 +31,7 @@ class AbstractServerHandler(c_common.Handler):
         self.transport = None
 
     def to_dict(self):
-        return {'info': {'address': self.ip, 'name': self.name}}
+        return {'info': {'ip': self.ip, 'name': self.name}}
 
     def connection_made(self, transport):
         """
@@ -105,13 +105,16 @@ class AbstractServerHandler(c_common.Handler):
         :return:
         """
         if self.name:
-            self.logger.info("The client '{}' closed the connection".format(self.name))
+            if exc is None:
+                self.logger.info("Disconnected.".format(self.name))
+            else:
+                self.logger.error("Error during connection with '{}': {}.".format(self.name, exc))
             del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error("Error during handshake with incoming client: {}".format(exc))
+                self.logger.error("Error during handshake with incoming connection: {}".format(exc))
             else:
-                self.logger.error("Error during handshake with incoming client.")
+                self.logger.error("Error during handshake with incoming connection.")
 
 
 class AbstractServer:
@@ -136,7 +139,7 @@ class AbstractServer:
         self.loop = asyncio.get_running_loop()
 
     def to_dict(self):
-        return {'info': {'address': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
+        return {'info': {'ip': self.configuration['nodes'][0], 'name': self.configuration['node_name']}}
 
     def setup_task_logger(self, task_tag: str):
         task_logger = self.logger.getChild(task_tag)
@@ -150,7 +153,7 @@ class AbstractServer:
         :return: A dictionary containing data from each node
         """
         def return_node(node_info):
-            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] in filter_type)
+            return (filter_node is None or node_info['name'] in filter_node) and (filter_type == 'all' or node_info['type'] == filter_type)
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
@@ -159,6 +162,14 @@ class AbstractServer:
             if not set(select['fields']).issubset(default_fields):
                 raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
                     ', '.join(default_fields), ', '.join(set(select['fields']) - default_fields)))
+
+        if filter_type != 'all' and filter_type not in {'worker', 'master'}:
+            raise exception.WazuhException(1728, "Valid types are 'worker' and 'master'.")
+
+        if filter_node is not None:
+            filter_node = set(filter_node) if isinstance(filter_node, list) else {filter_node}
+            if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
+                raise exception.WazuhException(1730)
 
         res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
                if return_node(val.to_dict()['info'])]
@@ -169,7 +180,8 @@ class AbstractServer:
         if search is not None:
             res = utils.search_array(array=res, text=search['value'], negation=search['negation'])
 
-        return {'totalItems': len(res), 'items': [{k: v[k] for k in select['fields']} for v in res][offset:limit]}
+        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select['fields']} for v in res],
+                                                                 offset, limit)}
 
     async def check_clients_keepalive(self):
         """
@@ -179,7 +191,7 @@ class AbstractServer:
         while True:
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = time.time()
-            for client_name, client in self.clients.items():
+            for client_name, client in self.clients.copy().items():
                 if curr_timestamp - client.last_keepalive > self.cluster_items['intervals']['master']['max_allowed_time_without_keepalive']:
                     keep_alive_logger.error("No keep alives have been received from {} in the last minute. "
                                             "Disconnecting".format(client_name))
@@ -190,8 +202,8 @@ class AbstractServer:
     async def echo(self):
         while True:
             for client_name, client in self.clients.items():
-                self.logger.debug("Sending echo to client {}".format(client_name))
-                self.logger.info(await client.send_request(b'echo-m', b'keepalive ' + client_name))
+                self.logger.debug("Sending echo to worker {}".format(client_name))
+                self.logger.info((await client.send_request(b'echo-m', b'keepalive ' + client_name)).decode())
             await asyncio.sleep(3)
 
     async def performance_test(self):
@@ -234,7 +246,7 @@ class AbstractServer:
                                                                 cluster_items=self.cluster_items),
                     host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:
-            self.logger.error("Could not create server: {}".format(e))
+            self.logger.error("Could not start master: {}".format(e))
             raise KeyboardInterrupt
 
         self.logger.info('Serving on {}'.format(server.sockets[0].getsockname()))

@@ -4,7 +4,9 @@
 import asyncio
 import json
 import random
+import re
 import shutil
+from calendar import timegm
 from datetime import datetime
 import functools
 import operator
@@ -70,19 +72,19 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.sync_integrity_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
         self.sync_agent_info_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
-                                       'total_agent_info': 0}
+                                       'total_agentinfo': 0}
         self.sync_extra_valid_status = {'date_start_master': "n/a", 'date_end_master': "n/a",
-                                        'total_extra_valid': 0}
+                                        'total_agentgroups': 0}
         self.version = ""
         self.cluster_name = ""
         self.node_type = ""
         self.task_loggers = {}
 
     def to_dict(self):
-        return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'address': self.ip},
+        return {'info': {'name': self.name, 'type': self.node_type, 'version': self.version, 'ip': self.ip},
                 'status': {'sync_integrity_free': self.sync_integrity_free, 'last_sync_integrity': self.sync_integrity_status,
-                           'sync_agent_info_free': self.sync_agent_info_free, 'last_sync_agent_info': self.sync_agent_info_status,
-                           'sync_extra_valid_free': self.sync_extra_valid_free, 'last_sync_agent_groups': self.sync_extra_valid_status,
+                           'sync_agentinfo_free': self.sync_agent_info_free, 'last_sync_agentinfo': self.sync_agent_info_status,
+                           'sync_extravalid_free': self.sync_extra_valid_free, 'last_sync_agentgroups': self.sync_extra_valid_status,
                            'last_keep_alive': self.last_keepalive}}
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
@@ -93,6 +95,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.setup_sync_integrity(command)
         elif command == b'sync_i_w_m_e' or command == b'sync_e_w_m_e' or command == b'sync_a_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
+        elif command == b'sync_i_w_m_r' or command == b'sync_e_w_m_r' or command == b'sync_a_w_m_r':
+            return self.process_sync_error_from_worker(command, data)
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
@@ -100,10 +104,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_dapi_res(data)
         elif command == b'dapi_cluster':
             return self.process_dapi_cluster(data)
+        elif command == b'dapi_err':
+            dapi_client, error_msg = data.split(b' ', 1)
+            asyncio.create_task(self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg,
+                                                                                                    command))
+            return b'ok', b'DAPI error forwarded to worker'
         elif command == b'get_nodes':
-            return self.get_nodes(data)
+            cmd, res = self.get_nodes(json.loads(data))
+            return cmd, json.dumps(res).encode()
         elif command == b'get_health':
-            return self.get_health(data)
+            cmd, res = self.get_health(json.loads(data))
+            return cmd, json.dumps(res).encode()
         else:
             return super().process_request(command, data)
 
@@ -120,11 +131,15 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.server.pending_api_requests[request_id] = {'Event': asyncio.Event(), 'Response': ''}
         if command == b'dapi_forward':
             client, request = data.split(b' ', 1)
-            result = (await self.server.clients[client.decode()].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+            client = client.decode()
+            if not client in self.server.clients:
+                raise WazuhException(3022, client)
+            else:
+                result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
-            request_result = json.dumps({'error': 1000, 'message': result})
+            request_result = json.dumps({'error': 3009, 'message': result})
         else:
             if command == b'dapi' or command == b'dapi_forward':
                 try:
@@ -133,7 +148,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
                     request_result = self.server.pending_api_requests[request_id]['Response']
                 except asyncio.TimeoutError:
-                    request_result = json.dumps({'error': 1000, 'message': 'Timeout exceeded'})
+                    request_result = json.dumps({'error': 3000, 'message': 'Timeout exceeded'})
             else:
                 request_result = result
         return request_result
@@ -179,21 +194,21 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         api_call_info = json.loads(arguments.decode())
         del api_call_info['arguments']['wait_for_complete']
         if api_call_info['function'] == '/cluster/healthcheck':
-            cmd, res = self.get_health(json.dumps(api_call_info).encode())
-            res = json.loads(res.decode())
+            filter_node = None if 'filter_node' not in api_call_info['arguments'] else \
+                               [api_call_info['arguments']['filter_node']]
+            cmd, res = self.get_health(filter_node)
         else:
-            cmd, res = self.get_nodes(json.dumps(api_call_info).encode())
-            res = json.loads(res.decode())
+            cmd, res = self.get_nodes(api_call_info['arguments'])
             if api_call_info['function'] == '/cluster/nodes/:node_name':
                 res = res['items'][0] if len(res['items']) > 0 else {}
 
         return cmd, json.dumps({'error': 0, 'data': res}).encode()
 
-    def get_nodes(self, arguments: bytes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.get_connected_nodes(**json.loads(arguments.decode()))).encode()
+    def get_nodes(self, arguments: Dict) -> Tuple[bytes, Dict]:
+        return b'ok', self.server.get_connected_nodes(**arguments)
 
-    def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
-        return b'ok', json.dumps(self.server.get_health(filter_nodes)).encode()
+    def get_health(self, filter_nodes: Dict) -> Tuple[bytes, Dict]:
+        return b'ok', self.server.get_health(filter_nodes)
 
     def get_permission(self, sync_type: bytes) -> Tuple[bytes, bytes]:
         if sync_type == b'sync_i_w_m_p':
@@ -219,41 +234,62 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         return super().setup_receive_file(sync_function)
 
+    def process_sync_error_from_worker(self, command: bytes, error_msg: bytes) -> Tuple[bytes, bytes]:
+        if command == b'sync_i_w_m_r':
+            sync_type, self.sync_integrity_free = "Integrity", True
+        elif command == b'sync_e_w_m_r':
+            sync_type, self.sync_extra_valid_free = "Extra valid", True
+        else:  # command == b'sync_a_w_m_r'
+            sync_type, self.sync_agent_info_free = "Agent status", True
+
+        self.logger.error("Worker reported an error synchronizing {}: {}".format(sync_type, error_msg.decode()))
+        return b'ok', b'Error received'
+
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)
 
-    async def sync_worker_files(self, task_name: str, received_file: asyncio.Task, logger):
+    async def sync_worker_files(self, task_name: str, received_file: asyncio.Event, logger):
         logger.info("Waiting to receive zip file from worker")
-        await received_file.wait()
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         received_filename = self.sync_tasks[task_name].filename
+        if received_filename == 'Error':
+            logger.info("Stopping synchronization process: worker files weren't correctly received.")
+            return
+
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
+        shutil.rmtree(decompressed_files_path)
 
-    async def sync_extra_valid(self, task_name: str, received_file: asyncio.Task):
+    async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         extra_valid_logger = self.task_loggers['Extra valid']
         self.sync_extra_valid_status['date_start_master'] = str(datetime.now())
         await self.sync_worker_files(task_name, received_file, extra_valid_logger)
         self.sync_extra_valid_free = True
         self.sync_extra_valid_status['date_end_master'] = str(datetime.now())
 
-    async def sync_agent_info(self, task_name: str, received_file: asyncio.Task):
+    async def sync_agent_info(self, task_name: str, received_file: asyncio.Event):
         agent_info_logger = self.task_loggers['Agent info']
         self.sync_agent_info_status['date_start_master'] = str(datetime.now())
         await self.sync_worker_files(task_name, received_file, agent_info_logger)
         self.sync_agent_info_free = True
         self.sync_agent_info_status['date_end_master'] = str(datetime.now())
 
-    async def sync_integrity(self, task_name: str, received_file: asyncio.Task):
+    async def sync_integrity(self, task_name: str, received_file: asyncio.Event):
         logger = self.task_loggers['Integrity']
 
         self.sync_integrity_status['date_start_master'] = str(datetime.now())
 
         logger.info("Waiting to receive zip file from worker")
-        await received_file.wait()
+        await asyncio.wait_for(received_file.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
         received_filename = self.sync_tasks[task_name].filename
+        if received_filename == 'Error':
+            logger.info("Stopping synchronization process: worker files weren't correctly received.")
+            return
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
@@ -264,6 +300,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # health check
         self.sync_integrity_status['total_files'] = counts
+        shutil.rmtree(decompressed_files_path)
 
         if not functools.reduce(operator.add, map(len, worker_files_ko.values())):
             logger.info("Analyzing worker integrity: Files checked. There are no KO files.")
@@ -276,45 +313,111 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             master_files_paths = worker_files_ko['shared'].keys() | worker_files_ko['missing'].keys()
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
-            logger.debug("Analyzing worker integrity: Files checked. KO files compressed.")
+            logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             task_name = await self.send_request(command=b'sync_m_c', data=b'')
             if task_name.startswith(b'Error'):
-                logger.error(task_name)
+                logger.error(task_name.decode())
                 return task_name
 
             result = await self.send_file(compressed_data)
+            os.unlink(compressed_data)
             if result.startswith(b'Error'):
-                logger.error(result)
-                return result
+                self.logger.error("Error sending files information: {}".format(result.decode()))
+                result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
+            else:
+                result = await self.send_request(command=b'sync_m_c_e',
+                                                 data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
 
-            result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + compressed_data.encode())
+            if result.startswith(b'Error'):
+                self.logger.error(result.decode())
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
+        logger.info("Finished integrity synchronization.")
         return result
 
     def process_files_from_worker(self, files_checksums: Dict, decompressed_files_path: str, logger):
-        def update_file(n_errors, name, data, file_time=None, content=None, agents=None):
+        def update_file(name, data):
             # Full path
-            full_path = common.ossec_path + name
-            error_updating_file = False
+            full_path, error_updating_file, n_merged_files = common.ossec_path + name, False, 0
 
-            # Cluster items information: write mode and umask
-            w_mode = cluster_items[data['cluster_item_key']]['write_mode']
-            umask = cluster_items[data['cluster_item_key']]['umask']
-
-            if content is None:
-                zip_path = "{}/{}".format(decompressed_files_path, name)
-                with open(zip_path, 'rb') as f:
-                    content = f.read()
-
+            # Cluster items information: write mode and permissions
             lock_full_path = "{}/queue/cluster/lockdir/{}.lock".format(common.ossec_path, os.path.basename(full_path))
             lock_file = open(lock_full_path, 'a+')
             try:
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
-                cluster._update_file(file_path=name, new_content=content,
-                             umask_int=umask, mtime=file_time, w_mode=w_mode,
-                             tmp_dir=tmp_path, whoami='master', agents=agents)
+                if os.path.basename(name) == 'client.keys':
+                    self.logger.warning("Client.keys received in a master node")
+                    raise WazuhException(3007)
+                if data['merged']:
+                    is_agent_info = data['merge_type'] == 'agent-info'
+                    if is_agent_info:
+                        self.sync_agent_info_status['total_agent_info'] = len(agent_ids)
+                    else:
+                        self.sync_extra_valid_status['total_extra_valid'] = len(agent_ids)
+                    for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
+                                                                                      decompressed_files_path,
+                                                                                      data['merge_name']):
+                        try:
+                            full_unmerged_name = common.ossec_path + file_path
+                            tmp_unmerged_path = full_unmerged_name + '.tmp'
+                            if is_agent_info:
+                                agent_name_re = re.match(r'(^.+)-(.+)$', os.path.basename(file_path))
+                                agent_name = agent_name_re.group(1) if agent_name_re else os.path.basename(file_path)
+                                if agent_name not in agent_names:
+                                    n_errors['warnings'][data['cluster_item_key']] = 1 \
+                                        if n_errors['warnings'].get(data['cluster_item_key']) is None \
+                                        else n_errors['warnings'][data['cluster_item_key']] + 1
+
+                                    self.logger.debug2("Received status of an non-existent agent '{}'".format(agent_name))
+                                    continue
+                            else:
+                                agent_id = os.path.basename(file_path)
+                                if agent_id not in agent_ids:
+                                    n_errors['warnings'][data['cluster_item_key']] = 1 \
+                                        if n_errors['warnings'].get(data['cluster_item_key']) is None \
+                                        else n_errors['warnings'][data['cluster_item_key']] + 1
+
+                                    self.logger.debug2("Received group of an non-existent agent '{}'".format(agent_id))
+                                    continue
+
+                            try:
+                                mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S.%f')
+                            except ValueError:
+                                mtime = datetime.strptime(file_time, '%Y-%m-%d %H:%M:%S')
+
+                            if os.path.isfile(full_unmerged_name):
+
+                                local_mtime = datetime.utcfromtimestamp(int(os.stat(full_unmerged_name).st_mtime))
+                                # check if the date is older than the manager's date
+                                if local_mtime > mtime:
+                                    logger.debug2("Receiving an old file ({})".format(file_path))
+                                    return
+
+                            with open(tmp_unmerged_path, 'wb') as f:
+                                f.write(file_data)
+
+                            mtime_epoch = timegm(mtime.timetuple())
+                            os.utime(tmp_unmerged_path, (mtime_epoch, mtime_epoch))  # (atime, mtime)
+                            os.chown(tmp_unmerged_path, common.ossec_uid, common.ossec_gid)
+                            os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                            os.rename(tmp_unmerged_path, full_unmerged_name)
+                        except Exception as e:
+                            self.logger.debug2("Error updating agent group/status: {}".format(e))
+                            if is_agent_info:
+                                self.sync_agent_info_status['total_agent_info'] -= 1
+                            else:
+                                self.sync_extra_valid_status['total_extra_valid'] -= 1
+
+                            n_errors['errors'][data['cluster_item_key']] = 1 \
+                                if n_errors['errors'].get(data['cluster_item_key']) is None \
+                                else n_errors['errors'][data['cluster_item_key']] + 1
+
+                else:
+                    zip_path = "{}{}".format(decompressed_files_path, name)
+                    os.chown(zip_path, common.ossec_uid, common.ossec_gid)
+                    os.chmod(zip_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
+                    os.rename(zip_path, full_path)
 
             except WazuhException as e:
                 logger.debug2("Warning updating file '{}': {}".format(name, e))
@@ -333,11 +436,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             fcntl.lockf(lock_file, fcntl.LOCK_UN)
             lock_file.close()
 
-            return n_errors, error_updating_file
-
         # tmp path
         tmp_path = "/queue/cluster/{}/tmp_files".format(self.name)
-        cluster_items = cluster.get_cluster_items()['files']
         n_merged_files = 0
         n_errors = {'errors': {}, 'warnings': {}}
 
@@ -356,22 +456,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         try:
             for filename, data in files_checksums.items():
-                if data['merged']:
-                    for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
-                                                                                      decompressed_files_path,
-                                                                                      data['merge_name']):
-                        n_errors, error_updating_file = update_file(n_errors, file_path, data, file_time, file_data,
-                                                                    (agent_names, agent_ids))
-                        if not error_updating_file:
-                            n_merged_files += 1
-
-                    if data['merge_type'] == 'agent-info':
-                        self.sync_agent_info_status['total_agent_info'] = n_merged_files
-                    else:
-                        self.sync_extra_valid_status['total_extra_valid'] = n_merged_files
-
-                else:
-                    n_errors, _ = update_file(n_errors, filename, data)
+                update_file(data=data, name=filename)
 
             shutil.rmtree(decompressed_files_path)
 
@@ -397,6 +482,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             return self.task_loggers[logger_tag]
 
+    def connection_lost(self, exc):
+        super().connection_lost(exc)
+        # cancel all pending tasks
+        self.logger.info("Cancelling pending tasks.")
+        for pending_task in self.sync_tasks.values():
+            pending_task.task.cancel()
+
 
 class Master(server.AbstractServer):
 
@@ -412,7 +504,7 @@ class Master(server.AbstractServer):
 
     def to_dict(self):
         return {'info': {'name': self.configuration['node_name'], 'type': self.configuration['node_type'],
-                'version': metadata.__version__, 'address': self.configuration['nodes'][0]}}
+                'version': metadata.__version__, 'ip': self.configuration['nodes'][0]}}
 
     async def file_status_update(self):
         file_integrity_logger = self.setup_task_logger("File integrity")
@@ -433,9 +525,9 @@ class Master(server.AbstractServer):
         :param filter_node: Node to filter by
         :return: Dictionary
         """
-        filter_node = json.loads(filter_node)
-        workers_info = {key: val.to_dict() for key, val in self.clients.items() if filter_node is None or key in filter_node}
-        n_connected_nodes = len(workers_info) + 1  # all workers + 1 master
+        workers_info = {key: val.to_dict() for key, val in self.clients.items()
+                        if filter_node is None or filter_node == {} or key in filter_node}
+        n_connected_nodes = len(workers_info)
         if filter_node is None or self.configuration['node_name'] in filter_node:
             workers_info.update({self.configuration['node_name']: self.to_dict()})
 

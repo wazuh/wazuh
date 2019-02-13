@@ -19,7 +19,7 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, move
+from shutil import copyfile, move, rmtree
 from platform import platform
 from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
 from time import time, sleep
@@ -488,16 +488,20 @@ class Agent:
             # Remove agent files
             agent_files = [
                 '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip),
                 '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id)
+                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id),
+                '{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
+                '{}/queue/diff/{}'.format(common.ossec_path, self.name)
             ]
 
             for agent_file in filter(path.exists, agent_files):
-                remove(agent_file)
+                if path.isdir(agent_file):
+                    rmtree(agent_file)
+                else:
+                    remove(agent_file)
 
         else:
             # Create backup directory
@@ -520,12 +524,13 @@ class Agent:
             # Move agent file
             agent_files = [
                 ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip), '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck.cpt'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry.cpt'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir))
+                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
+                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
+                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
@@ -1510,6 +1515,7 @@ class Agent:
         except OSError as e:
             if e.errno != errno.EEXIST:
                 raise WazuhException(1005, str(e))
+        return msg
 
     @staticmethod
     def remove_multi_group(groups_id):
@@ -2088,7 +2094,7 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
@@ -2101,7 +2107,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
 
@@ -2123,7 +2129,7 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.receive().decode()
                 s.close()
-                if data != 'ok':
+                if not data.startswith('ok'):
                     raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(chunk_size)
                 if show_progress:
@@ -2143,7 +2149,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
@@ -2327,7 +2333,7 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
@@ -2340,7 +2346,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
@@ -2382,7 +2388,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare

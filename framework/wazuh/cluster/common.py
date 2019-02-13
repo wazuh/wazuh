@@ -10,7 +10,7 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict, Callable
-from wazuh import exception
+from wazuh import exception, common
 from wazuh.cluster import cluster
 
 
@@ -108,10 +108,12 @@ class ReceiveFileTask:
         Function to call when the task is finished
         :return:
         """
-        del self.wazuh_common.sync_tasks[self.name]
-        task_exc = self.task.exception()
-        if task_exc:
-            self.logger.error(task_exc)
+        if self.name in self.wazuh_common.sync_tasks:
+            del self.wazuh_common.sync_tasks[self.name]
+        if not self.task.cancelled():
+            task_exc = self.task.exception()
+            if task_exc:
+                self.logger.error(task_exc)
 
 
 class Handler(asyncio.Protocol):
@@ -147,7 +149,7 @@ class Handler(asyncio.Protocol):
         # stores incoming string information from string commands
         self.in_str = {}
         # maximum message length to send in a single request
-        self.request_chunk = 524288
+        self.request_chunk = 5242880
         # stores message to be sent
         self.out_msg = bytearray(self.header_len + self.request_chunk*2)
         # object use to encrypt and decrypt requests
@@ -188,7 +190,7 @@ class Handler(asyncio.Protocol):
         """
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
-            return b"Length of command '" + command + b"' exceeds limit."
+            raise Exception("Length of command '{}' exceeds limit ({}/{}).".format(command, cmd_len, self.cmd_len))
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
@@ -254,7 +256,13 @@ class Handler(asyncio.Protocol):
         response = Response()
         msg_counter = self.next_counter()
         self.box[msg_counter] = response
-        self.push(self.msg_build(command, msg_counter, data))
+        try:
+            self.push(self.msg_build(command, msg_counter, data))
+        except MemoryError:
+            self.request_chunk //= 2
+            return b"Error sending request: Memory error. Request chunk size divided by 2."
+        except Exception as e:
+            return "Error sending request: {}".format(e).encode()
         try:
             response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
         except asyncio.TimeoutError:
@@ -273,19 +281,20 @@ class Handler(asyncio.Protocol):
                 return "File {} not found.".format(filename).encode()
 
             filename = filename.encode()
-            response = await self.send_request(command=b'new_file', data=filename)
+            relative_path = filename.replace(common.ossec_path.encode(), b'')
+            response = await self.send_request(command=b'new_file', data=relative_path)
             if response.startswith(b"Error"):
                 return response
 
             file_hash = hashlib.sha256()
             with open(filename, 'rb') as f:
-                for chunk in iter(lambda: f.read(self.request_chunk - len(filename) - 1), b''):
-                    response = await self.send_request(command=b'file_upd', data=filename + b' ' + chunk)
+                for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
+                    response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
                     if response.startswith(b"Error"):
                         return response
                     file_hash.update(chunk)
 
-            response = await self.send_request(command=b'file_end', data=filename + b' ' + file_hash.digest())
+            response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
             if response.startswith(b"Error"):
                 return response
 
@@ -333,18 +342,19 @@ class Handler(asyncio.Protocol):
         :return: sucess/error message
         """
         client, string_id = data.split(b' ', 1)
-        res = await self.get_manager().local_server.clients[client.decode()].send_string(self.in_str[string_id].payload)
+        client = client.decode()
+        res = await self.get_manager().local_server.clients[client].send_string(self.in_str[string_id].payload)
         if res.startswith(b'Error'):
-            error_msg = "Error forwarding string to local client: {}".format(res)
+            error_msg = "Error forwarding string to local client: {}".format(res.decode())
             self.logger.error(error_msg)
-            res = await self.get_manager().send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
+            res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
         else:
-            res = await self.get_manager().local_server.clients[client.decode()].send_request(b'dapi_res', res,
-                                                                                              b'dapi_err')
+            res = await self.get_manager().local_server.clients[client].send_request(b'dapi_res', res, b'dapi_err')
+
             if res.startswith(b'Error'):
-                error_msg = "Error sending API response to local client: {}".format(res)
+                error_msg = "Error sending API response to local client: {}".format(res.decode())
                 self.logger.error(error_msg)
-                res = await self.get_manager().send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
+                res = await self.send_request(b'dapi_err', error_msg.encode(), b'dapi_err')
 
     def data_received(self, message: bytes) -> None:
         """
@@ -439,7 +449,7 @@ class Handler(asyncio.Protocol):
         :param data: File name
         :return: Message
         """
-        self.in_file[data] = {'fd': open(data, 'wb'), 'checksum': hashlib.sha256()}
+        self.in_file[data] = {'fd': open(common.ossec_path + data.decode(), 'wb'), 'checksum': hashlib.sha256()}
         return b"ok ", b"Ready to receive new file"
 
     def update_file(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -511,7 +521,8 @@ class Handler(asyncio.Protocol):
         """
         if data.startswith(b'WazuhException'):
             type_error, code, message = data.split(b' ', 2)
-            _, extra_msg = message.split(b':', 1)  # remove first part of the exception message
+            # remove first part of the exception message
+            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
             return type_error + b' ' + code + b' ' + extra_msg
         else:
             return b"Error processing request: " + data
@@ -539,10 +550,20 @@ class WazuhCommon:
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        if task_and_file_names.startswith('Error'):
+            self.get_logger(self.logger_tag).error("Error receiving task name: {}".format(task_and_file_names))
+            return b'err', b'Task name not received correctly'
         task_name, filename = task_and_file_names.split(' ', 1)
-        self.sync_tasks[task_name].filename = filename
+        if task_name not in self.sync_tasks:
+            self.get_logger(self.logger_tag).error("Received task name '{}' doesn't exist.".format(task_name))
+            return b'err', b'Task name doesnt exist'
+        self.sync_tasks[task_name].filename = common.ossec_path + filename if not filename == 'Error' else filename
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
+
+    def get_node(self):
+        return {'type': self.get_manager().configuration['node_type'], 'cluster': self.get_manager().configuration['name'],
+                'node': self.get_manager().configuration['node_name']}
 
 
 def asyncio_exception_handler(loop, context: Dict):

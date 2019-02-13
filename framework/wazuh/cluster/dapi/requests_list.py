@@ -16,6 +16,7 @@ import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 import wazuh.ciscat as ciscat
 import wazuh.active_response as active_response
+import wazuh.cdb_list as cdb_list
 
 # Requests types:
 #   * local_master       -> requests that must be executed in the master node.
@@ -239,6 +240,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/manager/configuration/validation': {
+        'function': manager.validation,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/manager/stats': {
         'function': stats.totals,
         'type': 'local_any',
@@ -271,6 +277,21 @@ functions = {
     },
     '/manager/logs': {
         'function': manager.ossec_log,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/manager/files': {
+        'function': manager.get_file,
+        'type': 'local_any',
+        'is_async': False
+    },
+    'POST/manager/files': {
+        'function': manager.upload_file,
+        'type': 'local_any',
+        'is_async': False
+    },
+    'PUT/manager/restart': {
+        'function': manager.restart,
         'type': 'local_any',
         'is_async': False
     },
@@ -321,6 +342,16 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    '/cluster/configuration/validation': {
+        'function': manager.validation,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/:node_id/configuration/validation': {
+        'function': manager.validation,
+        'type': 'distributed_master',
+        'is_async': False
+    },
     '/cluster/:node_id/stats': {
         'function': stats.totals,
         'type': 'distributed_master',
@@ -353,6 +384,26 @@ functions = {
     },
     '/cluster/:node_id/logs': {
         'function': manager.ossec_log,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'PUT/cluster/restart': {
+        'function': manager.restart,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'PUT/cluster/:node_id/restart': {
+        'function': manager.restart,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/:node_id/files': {
+        'function': manager.get_file,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'POST/cluster/:node_id/files': {
+        'function': manager.upload_file,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -545,5 +596,19 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+
+    # Lists
+    '/lists': {
+        'function': cdb_list.get_lists,
+        'type': 'local_master',
+        'is_async': False
+    },
+    '/lists/files': {
+        'function': cdb_list.get_path_lists,
+        'type': 'local_master',
+        'is_async': False
+    },
+
+
 }
 

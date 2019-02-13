@@ -25,16 +25,22 @@ class LocalClientHandler(client.AbstractClient):
 
     def process_request(self, command: bytes, data: bytes):
         self.logger.debug("Command received: {}".format(command))
-        if command == b'dapi_res':
+        if command == b'dapi_res' or command == b'send_f_res':
             if data.startswith(b'Error'):
                 return b'err', self.process_error_from_peer(data)
             elif data not in self.in_str:
                 return b'err', self.process_error_from_peer(b'Error receiving string: ID ' + data + b' not found.')
             self.response = self.in_str[data].payload
             self.response_available.set()
+            return b'ok', b'Distributed api response received'
+        elif command == b'control_res':
+            if data.startswith(b'Error'):
+                return b'err', self.process_error_from_peer(data)
+            self.response = data
+            self.response_available.set()
             return b'ok', b'Response received'
         elif command == b'dapi_err' or command == b'err':
-            self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
+            self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
             self.response_available.set()
             return b'ok', b'Response received'
         else:
@@ -45,9 +51,10 @@ class LocalClientHandler(client.AbstractClient):
             type_error, code, message = data.split(b' ', 2)
             self.response = json.dumps({'error': int(code), 'message': message.decode()}).encode()
             self.response_available.set()
-            return type_error + b' ' + code + b' ' + message.split(b':', 1)[1]
+            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
+            return type_error + b' ' + code + b' ' + extra_msg
         else:
-            self.response = json.dumps({'error': 3000, 'message': data.decode()}).encode()
+            self.response = json.dumps({'error': 3009, 'message': data.decode()}).encode()
             self.response_available.set()
             return b"Error processing request: " + data
 
@@ -62,6 +69,8 @@ class LocalClient(client.AbstractClientManager):
         self.command = command
         self.data = data
         self.wait_for_complete = wait_for_complete
+        self.protocol = None
+        self.transport = None
 
     async def start(self):
         # Get a reference to the event loop as we plan to use
@@ -70,26 +79,31 @@ class LocalClient(client.AbstractClientManager):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
-        transport, protocol = await loop.create_unix_connection(
-                            protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
-                                                                        name=self.name, logger=self.logger,
-                                                                        fernet_key='', cluster_items=self.cluster_items,
-                                                                        manager=self),
-                            path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        try:
+            self.transport, self.protocol = await loop.create_unix_connection(
+                                             protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
+                                                                                         name=self.name, logger=self.logger,
+                                                                                         fernet_key='', manager=self,
+                                                                                         cluster_items=self.cluster_items),
+                                             path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        except Exception as e:
+            raise exception.WazuhException(3009, str(e))
 
-        result = (await protocol.send_request(self.command, self.data)).decode()
+    async def send_api_request(self):
+        result = (await self.protocol.send_request(self.command, self.data)).decode()
         if result.startswith('Error'):
-            raise exception.WazuhException(3000, result)
+            raise exception.WazuhException(3009, result)
         elif result.startswith('WazuhException'):
             _, code, message = result.split(' ', 2)
             raise exception.WazuhException(int(code), message)
         else:
-            if self.command == b'dapi' or self.command == b'dapi_forward' or result == 'Sent request to master node':
+            if self.command == b'dapi' or self.command == b'dapi_forward' or self.command == b'send_file' or \
+                    result == 'Sent request to master node':
                 try:
                     timeout = None if self.wait_for_complete \
-                                   else self.cluster_items['intervals']['communication']['timeout_api_request']
-                    await asyncio.wait_for(protocol.response_available.wait(), timeout=timeout)
-                    request_result = protocol.response.decode()
+                        else self.cluster_items['intervals']['communication']['timeout_api_request']
+                    await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
+                    request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
                     raise exception.WazuhException(3020)
             else:
@@ -97,5 +111,13 @@ class LocalClient(client.AbstractClientManager):
         return request_result
 
 
-async def execute(command: bytes, data: bytes, wait_for_complete: bool):
-    return await LocalClient(command, data, wait_for_complete).start()
+async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> str:
+    lc = LocalClient(command, data, wait_for_complete)
+    await lc.start()
+    return await lc.send_api_request()
+
+
+async def send_file(path: str) -> str:
+    lc = LocalClient(b'send_file', path.encode(), False)
+    await lc.start()
+    return await lc.send_api_request()
