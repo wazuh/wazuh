@@ -348,7 +348,7 @@ def restart():
     except socket.error:
         raise WazuhException(1014)
 
-    return "Manager is going to restart now"
+    return "Restarting manager"
 
 
 def _check_wazuh_xml(files):
