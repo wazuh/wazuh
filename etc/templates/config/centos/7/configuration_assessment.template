@@ -6,7 +6,6 @@
 
     <policies>
       <policy>cis_rhel7_linux_rcl.yml</policy>
-      <policy>cis_rhel_linux_rcl.yml</policy>
       <policy>cis_apache2224_rcl.yml</policy>
       <policy>cis_mysql5-6_community_rcl.yml</policy>
       <policy>cis_mysql5-6_enterprise_rcl.yml</policy>

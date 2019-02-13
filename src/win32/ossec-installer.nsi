@@ -176,6 +176,8 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
+    CreateDirectory "$INSTDIR\ruleset\"
+    CreateDirectory "$INSTDIR\ruleset\configuration_assessment"
 
     ; install files
     File ossec-agent.exe
@@ -210,6 +212,13 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
+    File /oname=ruleset\configuration_assessment\cis_win2012r2_domainL1_rcl.yml ../../etc/configuration_assessment/windows/cis_win2012r2_domainL1_rcl.yml
+    File /oname=ruleset\configuration_assessment\cis_win2012r2_domainL2_rcl.yml ../../etc/configuration_assessment/windows/cis_win2012r2_domainL2_rcl.yml
+    File /oname=ruleset\configuration_assessment\cis_win2012r2_memberL1_rcl.yml ../../etc/configuration_assessment/windows/cis_win2012r2_memberL1_rcl.yml
+    File /oname=ruleset\configuration_assessment\cis_win2012r2_memberL2_rcl.yml ../../etc/configuration_assessment/windows/cis_win2012r2_memberL2_rcl.yml
+    File /oname=ruleset\configuration_assessment\win_applications_rcl.yml ../../etc/configuration_assessment/windows/win_applications_rcl.yml
+    File /oname=ruleset\configuration_assessment\win_audit_rcl.yml ../../etc/configuration_assessment/windows/win_audit_rcl.yml
+    File /oname=ruleset\configuration_assessment\win_malware_rcl.yml ../../etc/configuration_assessment/windows/win_malware_rcl.yml
     File VERSION
     File REVISION
 
@@ -485,6 +494,7 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
+    Delete "$INSTDIR\ruleset\configuration_assessment\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -506,6 +516,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
+    RMDir "$INSTDIR\ruleset"
     RMDir "$INSTDIR"
 SectionEnd
 

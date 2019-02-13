@@ -53,6 +53,4 @@ CREATE TABLE IF NOT EXISTS configuration_assessment_check_compliance (
 
 CREATE INDEX IF NOT EXISTS id_check_index ON configuration_assessment_check_compliance (id_check);
 
-PRAGMA journal_mode=WAL;
-
 END;
