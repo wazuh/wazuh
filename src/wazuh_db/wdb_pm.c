@@ -418,7 +418,7 @@ int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_s
     }
 }
 
-int wdb_policy_monitoring_check_update_scan_id(wdb_t * wdb, int scan_id_old,int scan_id_new){
+int wdb_policy_monitoring_check_update_scan_id(wdb_t * wdb, __attribute__((unused))int scan_id_old,int scan_id_new,char * policy_id){
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
         return -1;
@@ -434,7 +434,7 @@ int wdb_policy_monitoring_check_update_scan_id(wdb_t * wdb, int scan_id_old,int 
     stmt = wdb->stmt[WDB_STMT_PM_CHECK_UPDATE_SCAN_ID];
 
     sqlite3_bind_int(stmt, 1, scan_id_new);
-    sqlite3_bind_int(stmt, 2, scan_id_old);
+    sqlite3_bind_text(stmt, 2, policy_id,-1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
