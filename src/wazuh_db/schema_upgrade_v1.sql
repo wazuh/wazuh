@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS _sys_netaddr (
     PRIMARY KEY (scan_id, iface, proto, address)
 );
 
-INSERT INTO _sys_netaddr (scan_id, iface, proto, address, netmask, broadcast) SELECT scan_id, iface, proto, address, netmask, broadcast FROM sys_netaddr;
+INSERT INTO _sys_netaddr (scan_id, proto, address, netmask, broadcast) SELECT scan_id, proto, address, netmask, broadcast FROM sys_netaddr;
 
 PRAGMA foreign_keys = OFF;
 

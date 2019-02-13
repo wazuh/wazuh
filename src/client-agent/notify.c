@@ -182,6 +182,7 @@ void run_notify()
                     getuname(), tmp_labels, shared_files, keep_alive_random);
         }
     }
+    free(agent_ip);
 #else
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
@@ -197,7 +198,6 @@ void run_notify()
     mdebug2("Sending keep alive: %s", tmp_msg);
     send_msg(tmp_msg, -1);
 
-    free(agent_ip);
     free(shared_files);
     update_keepalive(curr_time);
     return;

@@ -10,6 +10,6 @@ BEGIN;
 
 ALTER TABLE sys_netproto ADD COLUMN metric INTEGER DEFAULT NULL;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '2');
+UPDATE metadata SET value = 2 WHERE key = 'db_version';
 
 END;

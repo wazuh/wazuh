@@ -120,7 +120,7 @@ wlabel_t* labels_parse(const char *path) {
     /*
     "key1":value1\n
     !"key2":value2\n
-    #"key3":value3\n
+    #"key3":_value3\n
     */
 
     while (fgets(buffer, OS_MAXSTR, fp)) {
