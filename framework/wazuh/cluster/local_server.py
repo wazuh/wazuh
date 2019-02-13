@@ -1,14 +1,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import uvloop
-from typing import Tuple, Union
+import functools
 import json
 import random
-import functools
-from wazuh.cluster import server, common as c_common, client
+from typing import Tuple, Union
+
+import uvloop
 from wazuh import common, exception
+from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
+from wazuh.exception import WazuhException
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -116,7 +118,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
     def send_file_request(self, path, node_name):
         if node_name not in self.server.node.clients:
-            return b'err', b'Worker is not connected to the master node'
+            raise WazuhException(3022)
         else:
             req = asyncio.create_task(self.server.node.clients[node_name].send_file(path))
             req.add_done_callback(self.get_send_file_response)
@@ -172,7 +174,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
     def send_file_request(self, path, node_name):
         if self.server.node.client is None:
-            return b'err', b'Worker is not connected to the master node'
+            raise WazuhException(3022)
         else:
             req = asyncio.create_task(self.server.node.client.send_file(path))
             req.add_done_callback(self.get_send_file_response)
