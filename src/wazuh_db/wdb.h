@@ -86,24 +86,24 @@ typedef enum wdb_stmt {
     WDB_STMT_SCAN_INFO_GET1C,
     WDB_STMT_SCAN_INFO_GET2C,
     WDB_STMT_SCAN_INFO_GET3C,
-    WDB_STMT_PM_FIND,
-    WDB_STMT_PM_UPDATE,
-    WDB_STMT_PM_INSERT,
-    WDB_STMT_PM_SCAN_INFO_INSERT,
-    WDB_STMT_PM_SCAN_INFO_UPDATE,
-    WDB_STMT_PM_GLOBAL_INSERT,
-    WDB_STMT_PM_GLOBAL_UPDATE,
-    WDB_STMT_PM_GLOBAL_FIND,
-    WDB_STMT_PM_INSERT_COMPLIANCE,
-    WDB_STMT_PM_FIND_SCAN,
-    WDB_STMT_PM_SCAN_INFO_UPDATE_START,
-    WDB_STMT_PM_POLICY_FIND,
-    WDB_STMT_PM_POLICY_INSERT,
-    WDB_STMT_PM_CHECK_UPDATE_SCAN_ID,
-    WDB_STMT_PM_CHECK_GET_ALL_RESULTS,
-    WDB_STMT_PM_POLICY_GET_ALL,
-    WDB_STMT_PM_POLICY_DELETE,
-    WDB_STMT_PM_CHECK_DELETE,
+    WDB_STMT_CA_FIND,
+    WDB_STMT_CA_UPDATE,
+    WDB_STMT_CA_INSERT,
+    WDB_STMT_CA_SCAN_INFO_INSERT,
+    WDB_STMT_CA_SCAN_INFO_UPDATE,
+    WDB_STMT_CA_GLOBAL_INSERT,
+    WDB_STMT_CA_GLOBAL_UPDATE,
+    WDB_STMT_CA_GLOBAL_FIND,
+    WDB_STMT_CA_INSERT_COMPLIANCE,
+    WDB_STMT_CA_FIND_SCAN,
+    WDB_STMT_CA_SCAN_INFO_UPDATE_START,
+    WDB_STMT_CA_POLICY_FIND,
+    WDB_STMT_CA_POLICY_INSERT,
+    WDB_STMT_CA_CHECK_UPDATE_SCAN_ID,
+    WDB_STMT_CA_CHECK_GET_ALL_RESULTS,
+    WDB_STMT_CA_POLICY_GET_ALL,
+    WDB_STMT_CA_POLICY_DELETE,
+    WDB_STMT_CA_CHECK_DELETE,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -191,62 +191,62 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum);
 
 int wdb_fim_delete(wdb_t * wdb, const char * file);
 
-/* Insert policy monitoring entry. Returns ID on success or -1 on error. */
+/* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event);
 
-/* Update policy monitoring last date. Returns number of affected rows on success or -1 on error. */
+/* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 
-/* Look for a policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_find(wdb_t * wdb, int pm_id, char * output);
+/* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_configuration_assessment_find(wdb_t * wdb, int pm_id, char * output);
 
-/* Update a policy monitoring entry. Returns ID on success or -1 on error (new) */
-int wdb_policy_monitoring_update(wdb_t * wdb, char * result, int pm_id);
+/* Update a configuration assessment entry. Returns ID on success or -1 on error (new) */
+int wdb_configuration_assessment_update(wdb_t * wdb, char * result, int pm_id);
 
-/* Insert policy monitoring entry. Returns ID on success or -1 on error (new) */
-int wdb_policy_monitoring_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
+/* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
+int wdb_configuration_assessment_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
 
-/* Insert scan info policy monitoring entry. Returns ID on success or -1 on error (new) */
-int wdb_policy_monitoring_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int score,char * hash);
+/* Insert scan info configuration assessment entry. Returns ID on success or -1 on error (new) */
+int wdb_configuration_assessment_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int score,char * hash);
 
-/* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_scan_info_update(wdb_t * wdb, char * module, int end_scan);
+/* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
+int wdb_configuration_assessment_scan_info_update(wdb_t * wdb, char * module, int end_scan);
 
-/* Look for a policy monitoring global entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_global_find(wdb_t * wdb, char *name, char * output);
+/* Look for a configuration assessment global entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_configuration_assessment_global_find(wdb_t * wdb, char *name, char * output);
 
-/* Insert global policy monitoring compliance entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
+/* Insert global configuration assessment compliance entry. Returns number of affected rows or -1 on error.  */
+int wdb_configuration_assessment_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
 
-/* Update global policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
+/* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
+int wdb_configuration_assessment_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
 
-/* Update policy monitoring check scan id. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_check_update_scan_id(wdb_t * wdb, int scan_id_old, int scan_id_new,char * policy_id);
+/* Update configuration assessment check scan id. Returns number of affected rows or -1 on error.  */
+int wdb_configuration_assessment_check_update_scan_id(wdb_t * wdb, int scan_id_old, int scan_id_new,char * policy_id);
 
-/* Look for a scan policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *policy_id, char * output);
+/* Look for a scan configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+int wdb_configuration_assessment_scan_find(wdb_t * wdb, char *policy_id, char * output);
 
-/* Update scan info policy monitoring entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int score,char * hash);
+/* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
+int wdb_configuration_assessment_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int score,char * hash);
 
 /* Look for a scan policy entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_policy_find(wdb_t * wdb, char *id, char * output);
+int wdb_configuration_assessment_policy_find(wdb_t * wdb, char *id, char * output);
 
 /* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_checks_get_result(wdb_t * wdb, int scan_id, char * output);
+int wdb_configuration_assessment_checks_get_result(wdb_t * wdb, int scan_id, char * output);
 
 /* Insert policy entry. Returns number of affected rows or -1 on error.  */
-int wdb_policy_monitoring_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references);
+int wdb_configuration_assessment_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references);
 
 /* Gets the result of all policies in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_policy_monitoring_policy_get_id(wdb_t * wdb, char * output);
+int wdb_configuration_assessment_policy_get_id(wdb_t * wdb, char * output);
 
-/* Delete a policy monitoring policy. Returns 0 on success or -1 on error (new) */
-int wdb_policy_monitoring_policy_delete(wdb_t * wdb,char * policy_id);
+/* Delete a configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_configuration_assessment_policy_delete(wdb_t * wdb,char * policy_id);
 
-/* Delete a policy monitoring check. Returns 0 on success or -1 on error (new) */
-int wdb_policy_monitoring_check_delete(wdb_t * wdb,char * policy_id);
+/* Delete a configuration assessment check. Returns 0 on success or -1 on error (new) */
+int wdb_configuration_assessment_check_delete(wdb_t * wdb,char * policy_id);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);
@@ -502,7 +502,7 @@ int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
-int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output);
+int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output);
 
 // Functions to manage scan_info table, this table contains the timestamp of every scan of syscheck ¿and syscollector?
 
