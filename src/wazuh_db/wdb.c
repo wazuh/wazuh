@@ -80,7 +80,10 @@ static const char *SQL_STMT[] = {
     "SELECT id FROM configuration_assessment_policy WHERE id = ?;",
     "INSERT INTO configuration_assessment_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
     "UPDATE configuration_assessment_check SET scan_id = ? WHERE policy_id = ?;",
-    "SELECT result FROM configuration_assessment_check WHERE scan_id = ? ORDER BY id;"
+    "SELECT result FROM configuration_assessment_check WHERE scan_id = ? ORDER BY id;",
+    "SELECT id FROM configuration_assessment_policy;",
+    "DELETE FROM configuration_assessment_policy WHERE id = ?;",
+    "DELETE FROM configuration_assessment_check WHERE policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

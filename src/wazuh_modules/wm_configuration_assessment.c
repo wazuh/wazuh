@@ -54,6 +54,7 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
 static char *wm_configuration_assessment_hash_integrity(int policy_index);
 static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event);
 static void * wm_configuration_assessment_dump_db_thread(wm_configuration_assessment_t * data);
+static void wm_configuration_assessment_send_policies_scanned(wm_configuration_assessment_t * data);
 
 #ifndef WIN32
 static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data);
@@ -193,6 +194,27 @@ static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t 
     return (0);
 }
 
+static void wm_configuration_assessment_send_policies_scanned(wm_configuration_assessment_t * data) {
+    cJSON *policies_obj = cJSON_CreateObject();
+    cJSON *policies = cJSON_CreateArray();
+
+    int i;
+    if(data->profile) {
+        for(i = 0; data->profile[i]; i++) { 
+            if(data->profile[i]->enabled) {
+                cJSON_AddStringToObject(policies,"policy",data->profile[i]->policy_id);
+            }
+        }
+    }
+
+    cJSON_AddStringToObject(policies_obj, "type", "policies");
+    cJSON_AddItemToObject(policies_obj,"policies",policies);
+
+    mdebug2("Sending policies scanned...");
+    wm_configuration_assessment_send_alert(data,policies_obj);
+    cJSON_Delete(policies_obj);
+}
+
 static int wm_configuration_assessment_start(wm_configuration_assessment_t * data) {
 
     int status = 0;
@@ -253,6 +275,9 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
 
         /* Do scan for every profile file */
         wm_configuration_assessment_read_files(data);
+
+        /* Send policies scanned for database purge on manager side */
+        wm_configuration_assessment_send_policies_scanned(data);
 
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
@@ -379,7 +404,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 goto next;
             }
 
-            if(wm_configuration_assessment_check_requirements(requirements)) {
+            if(requirements && wm_configuration_assessment_check_requirements(requirements)) {
                 merror("Check your 'requirements' field");
                 goto next;
             }
@@ -391,11 +416,6 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
             if(!profiles){
                 merror("Obtaining 'checks' from json");
-                goto next;
-            }
-
-            if(!requirements){
-                merror("Could not find 'requirements' from json");
                 goto next;
             }
 
@@ -421,19 +441,26 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 if (id < 0)
                     id = -id;
 #endif
+            int requirements_satisfied = 0;
 
-            if(wm_configuration_assessment_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
+            if(!requirements) {
+                requirements_satisfied = 1;
+            }
 
-                /* Send scan start message */
+            if(requirements && wm_configuration_assessment_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
+                requirements_satisfied = 1;
+            } else {
+                requirements_satisfied = 0;
+                mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG,"Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
+            }
+
+            if(requirements_satisfied) {
                 time_t time_start = 0;
                 time_t time_end = 0;
                 time_start = time(NULL);
 
-
                 wm_configuration_assessment_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index);
                 char * integrity_hash = wm_configuration_assessment_hash_integrity(cis_db_index);
-                
-                /* Send scan ending message */
                 time_end = time(NULL);
 
                 /* Send summary */
@@ -442,11 +469,10 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                     snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
                     os_free(integrity_hash);
                 }
-               
+                
                 wm_configuration_assessment_reset_summary();
-            } else {
-                mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG,"Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
             }
+           
 
             w_del_plist(plist);
 

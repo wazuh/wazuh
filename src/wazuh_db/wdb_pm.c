@@ -235,6 +235,103 @@ int wdb_policy_monitoring_global_find(wdb_t * wdb, char *name, char * output) {
     }
 }
 
+int wdb_policy_monitoring_policy_get_id(wdb_t * wdb, char * output) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_POLICY_GET_ALL) < 0) {
+        mdebug1("cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_POLICY_GET_ALL];
+
+    char *str = NULL;
+    int has_result = 0;
+
+    while(1) {
+        switch (sqlite3_step(stmt)) {
+            case SQLITE_ROW:
+                has_result = 1;
+                wm_strcat(&str,(const char *)sqlite3_column_text(stmt, 0),',');
+                break;
+            case SQLITE_DONE:
+                goto end;
+                break;
+            default:
+                merror(" at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+                os_free(str);
+                return -1;
+        }
+    }
+
+end:
+    if(has_result) {
+        snprintf(output,OS_MAXSTR,"%s",str);
+        os_free(str);
+        return 1;
+    }
+    return 0;
+}
+
+/* Delete a policy monitoring policy. Returns 0 on success or -1 on error (new) */
+int wdb_policy_monitoring_policy_delete(wdb_t * wdb,char * policy_id) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_policy_monitoring_policy_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_POLICY_DELETE) < 0) {
+        mdebug1("at wdb_policy_monitoring_policy_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_POLICY_DELETE];
+
+    sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+int wdb_policy_monitoring_check_delete(wdb_t * wdb,char * policy_id) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_policy_monitoring_policy_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_PM_CHECK_DELETE) < 0) {
+        mdebug1("at wdb_policy_monitoring_policy_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_PM_CHECK_DELETE];
+
+    sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 /* Look for a scan policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_policy_monitoring_scan_find(wdb_t * wdb, char *policy_id, char * output) {
 

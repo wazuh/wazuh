@@ -677,6 +677,36 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "delete_policy") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_policy_monitoring_policy_delete(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete policy monitoring information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "delete_check") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_policy_monitoring_check_delete(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete policy monitoring check information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
     } else if (strcmp(curr, "query_results") == 0) {
 
         int scan_id;
@@ -713,6 +743,27 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         policy_id = curr;
 
         result = wdb_policy_monitoring_scan_find(wdb, policy_id, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query policy monitoring.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring scan");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_policies") == 0) {
+
+        char result_found[OS_MAXSTR + 1] = {0};
+
+        curr = next;
+
+        result = wdb_policy_monitoring_policy_get_id(wdb, result_found);
 
         switch (result) {
             case 0:
