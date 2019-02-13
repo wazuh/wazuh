@@ -61,5 +61,6 @@
 #define VU_UPDATING_NVD_YEAR  "(5512): Synchronizing the year %d vulnerability database..."
 #define VU_GEN_CPE_COUNT      "(5514): CPEs generated for agent %s: %d/%d."
 #define VU_INS_NVD_SEC        "(5516): Inserting NVD section..."
+#define VU_SOCKET_RETRY       "(5518): Unable to connect to socket '%s'. Waiting %d seconds."
 
 #endif

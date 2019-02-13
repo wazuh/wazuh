@@ -339,6 +339,9 @@
 #define VU_PARSING_ERROR            "(5513): Could not decode the CPE '%s' for the agent %s."
 #define VU_WAZUH_DB_CPE_IN_ERROR    "(5515): Could not insert the CPEs from the agent %s into the database."
 #define VU_NVD_ROW_GET_ERROR        "(5517): Could not get the %s ID row."
+#define VU_SOCKET_RETRY_ERROR       "(5519): Unable to connect to socket '%s'."
+#define VU_FIND_NVD_ERROR           "(5120): No vulnerabilities could be found in the NVD for agent %s."
+#define VU_REPORT_NVD_ERROR         "(5120): Could not report vulnerabilities from the NVD for agent %s."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
