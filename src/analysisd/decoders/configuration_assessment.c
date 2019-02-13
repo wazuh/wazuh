@@ -39,7 +39,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references);
-static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new);
+static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new,char *policy_id);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id);
@@ -431,10 +431,12 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
    
     if (pm_send_db(msg, response, socket) == 0)
     {
+        os_free(response);
         return 0;
     }
     else
     {
+        os_free(response);
         return -1;
     }
 }
@@ -735,7 +737,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             break;
     }
 
-    UpdateCheckScanId(lf,socket,scan_id_old,pm_scan_id->valueint);
+    UpdateCheckScanId(lf,socket,scan_id_old,pm_scan_id->valueint,policy_id->valuestring);
     os_free(hash_scan_info);
 
     char *wdb_response = NULL;
@@ -1085,14 +1087,14 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     }
 }
 
-static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new) {
+static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new,char * policy_id) {
     char *msg = NULL;
     char *response = NULL;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update_check_scan %d|%d",lf->agent_id, scan_id_old,scan_id_new);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update_check_scan %d|%d|%s",lf->agent_id, scan_id_old,scan_id_new,policy_id);
     
     if (pm_send_db(msg, response, socket) == 0)
     {
