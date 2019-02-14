@@ -14,6 +14,7 @@
 
 policy:
   id: "cis_win2012r2_memberL1"
+  file: "cis_win2012r2_memberL1_rcl.yml"
   name: "CIS benchmark for Windows 2012 R2"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server."
   references:

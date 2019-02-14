@@ -12,10 +12,14 @@
 #include "rootcheck-config.h"
 #include "config.h"
 
-static int unix_audit_reported = 0;
+
 
 #ifdef WIN32
 static int win_audit_reported = 0;
+static int win_malware_reported = 0;
+static int win_apps_reported = 0;
+#else
+static int unix_audit_reported = 0;
 #endif
 
 static short eval_bool(const char *str)
@@ -222,7 +226,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
             if(!unix_audit_reported) {
-                mwarn("unix_audit deprecated in favour of configuration assessment");
+                mwarn("The check_unixaudit option is deprecated in favor of the Configuration Assessment module");
                 unix_audit_reported = 1;
             }
                
@@ -234,6 +238,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            if(!win_apps_reported) {
+                mwarn("The check_winapps option is deprecated in favor of the Configuration Assessment module");
+                win_apps_reported = 1;
+            }
 #endif
         } else if (strcmp(node[i]->element, xml_check_winaudit) == 0) {
 #ifdef WIN32
@@ -243,7 +251,7 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
             if(!win_audit_reported) {
-                mwarn("win_audit deprecated in favour of configuration assessment");
+                mwarn("The check_winaudit option is deprecated in favor of the Configuration Assessment module.");
                 win_audit_reported = 0;
             }
 #endif
@@ -253,6 +261,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             if (rootcheck->checks.rc_winmalware == OS_INVALID) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            }
+            if(!win_malware_reported) {
+                mwarn("The check_winmalware option is deprecated in favor of the Configuration Assessment module");
+                win_malware_reported = 1;
             }
 #endif
         } else {

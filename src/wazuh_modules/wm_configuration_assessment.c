@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for policy monitoring
+ * Wazuh Module for Configuration Assessment
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 25, 2019.
  *
@@ -146,7 +146,7 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
     }
 
     while ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Can't connect to queue. Trying again.");
+        mwarn("Can't connect to queue. Trying again.");
         sleep(WM_MAX_WAIT);
     }
 
@@ -175,19 +175,15 @@ static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t 
 {
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending: %s",msg);
-    /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
-    if (SendMSG(data->queue, msg, WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
-        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, QUEUE_SEND);
-        close(data->queue);
 
-        while ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-            mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Can't connect to queue. Trying again.");
-            sleep(WM_MAX_WAIT);
-        }
-        
+    /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
+    if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+        mwarn("Can't connect to queue. Trying again.");
+    } else {
         if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
             mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
         }
+        close(data->queue);
     }
 
     os_free(msg);
@@ -243,14 +239,14 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
         } else if (data->scan_wday >= 0) {
 
             time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
-            mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Waiting for turn to evaluate.");
+            minfo("Waiting for turn to evaluate.");
             mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
         } else if (data->scan_time) {
 
             time_sleep = get_time_to_hour(data->scan_time);
-            mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Waiting for turn to evaluate.");
+            minfo("Waiting for turn to evaluate.");
             mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
@@ -261,8 +257,8 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
                          (time_t)data->interval :
                          data->next_time - time_start;
 
-            mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Waiting for turn to evaluate.");
-            mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %ld seconds", (long)time_sleep);
+            minfo("Waiting for turn to evaluate.");
+            mdebug2("Sleeping for %ld seconds", (long)time_sleep);
             wm_delay(1000 * time_sleep);
 
         }
@@ -272,7 +268,7 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
         // Get time and execute
         time_start = time(NULL);
 
-        mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Starting evaluation.");
+        minfo("Starting evaluation.");
 
         /* Do scan for every profile file */
         wm_configuration_assessment_read_files(data);
@@ -452,7 +448,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 requirements_satisfied = 1;
             } else {
                 requirements_satisfied = 0;
-                mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG,"Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
+                mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG,"Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
             }
 
             if(requirements_satisfied) {
@@ -478,7 +474,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
             w_del_plist(plist);
 
-            mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Evaluation finished for policy '%s'.",data->profile[i]->profile);
+            minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
 
     next:
             if(fp){
@@ -1176,9 +1172,6 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
 #endif
                     /* Matched */
                     pt_result = wm_configuration_assessment_pt_matches(buf, pattern);
-                    mdebug2("Buf == \"%s\"", buf);
-                    mdebug2("Pattern == \"%s\"", pattern);
-                    mdebug2("pt_result == %d and full_negate == %d", pt_result, full_negate);
                     if ((pt_result == 1 && full_negate == 0) ) {
                         mdebug1("Alerting file %s on line %s", file, buf);
                         int i = 0;
@@ -1824,7 +1817,7 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
 
     cJSON *name = cJSON_GetObjectItem(policy,"name");
     cJSON *policy_id = cJSON_GetObjectItem(policy,"id");
-    cJSON_AddStringToObject(json_alert, "profile", name->valuestring);
+    cJSON_AddStringToObject(json_alert, "policy", name->valuestring);
     
     cJSON *check = cJSON_CreateObject();
     cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
@@ -2091,7 +2084,7 @@ static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessm
             char random_id[OS_MAXSTR];
             snprintf(random_id, OS_MAXSTR - 1, "%u%u", random1, random2);
 
-            int random = atoi(random);
+            int random = atoi(random_id);
             if (random < 0)
                 random = -random;
 #endif
@@ -2284,7 +2277,7 @@ cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *dat
         cJSON_AddItemToObject(wm_wd,"policies",profiles);
     }
 
-    cJSON_AddItemToObject(root,"configuration_assessment",wm_wd);
+    cJSON_AddItemToObject(root,"configuration-assessment",wm_wd);
 
     
     return root;

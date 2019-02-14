@@ -59,7 +59,7 @@ int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
 int DecodeWinevt(Eventinfo *lf);
-int DecodeRootcheckJSON(Eventinfo *lf,int *socket);
+int DecodeConfigurationAssessment(Eventinfo *lf,int *socket);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -2027,7 +2027,7 @@ void * w_decode_configuration_assessment_thread(__attribute__((unused)) void * a
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            if (!DecodeRootcheckJSON(lf,&socket)) {
+            if (!DecodeConfigurationAssessment(lf,&socket)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
             }
@@ -2037,7 +2037,7 @@ void * w_decode_configuration_assessment_thread(__attribute__((unused)) void * a
                 }
             }
 
-            w_inc_rootcheck_decoded_events();
+            w_inc_configuration_assessment_decoded_events();
         }
     }
 }
@@ -2620,6 +2620,7 @@ void w_get_queues_size(){
     s_syscheck_queue = ((decode_queue_syscheck_input->elements / (float)decode_queue_syscheck_input->size));
     s_syscollector_queue = ((decode_queue_syscollector_input->elements / (float)decode_queue_syscollector_input->size));
     s_rootcheck_queue = ((decode_queue_rootcheck_input->elements / (float)decode_queue_rootcheck_input->size));
+    s_configuration_assessment_queue = ((decode_queue_configuration_assessment_input->elements / (float)decode_queue_configuration_assessment_input->size));
     s_hostinfo_queue = ((decode_queue_hostinfo_input->elements / (float)decode_queue_hostinfo_input->size));
     s_winevt_queue = ((decode_queue_winevt_input->elements / (float)decode_queue_winevt_input->size));
     s_event_queue = ((decode_queue_event_input->elements / (float)decode_queue_event_input->size));
@@ -2635,6 +2636,7 @@ void w_get_initial_queues_size(){
     s_syscheck_queue_size = decode_queue_syscheck_input->size;
     s_syscollector_queue_size = decode_queue_syscollector_input->size;
     s_rootcheck_queue_size = decode_queue_rootcheck_input->size;
+    s_configuration_assessment_queue_size = decode_queue_configuration_assessment_input->size;
     s_hostinfo_queue_size = decode_queue_hostinfo_input->size;
     s_winevt_queue_size = decode_queue_winevt_input->size;
     s_event_queue_size = decode_queue_event_input->size;

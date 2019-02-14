@@ -96,7 +96,7 @@ int wdb_parse(char * input, char * output) {
             } else {
                 result = wdb_parse_configuration_assessment(wdb, next, output);
                 if (result < 0){
-                    merror("Unable to update 'pm_check' table for agent '%s'", sagent_id);
+                    merror("Unable to update 'configuration_assessment_check' table for agent '%s'", sagent_id);
                 } else {
                     result = 0;
                 }
@@ -430,7 +430,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
-    char * result_check; // Pass, failed, unknown
+    char * result_check; // Pass, failed
     int result;
 
     if (next = strchr(input, ' '), !next) {

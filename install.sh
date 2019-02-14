@@ -267,7 +267,7 @@ UseSyscollector()
 
 UseConfigurationAssessment()
 {
-    # Syscollector config predefined (is overwritten by the preload-vars file)
+    # Configuration assessment config predefined (is overwritten by the preload-vars file)
     if [ "X${USER_ENABLE_CONFIGURATION_ASSESSMENT}" = "Xn" ]; then
         CONFIGURATION_ASSESSMENT="no"
      else

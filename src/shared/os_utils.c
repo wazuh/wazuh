@@ -11,6 +11,11 @@
 #include "shared.h"
 #include "os_utils.h"
 
+#ifdef WIN32
+#include <tlhelp32.h>
+#include <psapi.h>
+#endif
+
 #ifndef WIN32
 
 char *w_os_get_runps(const char *ps, int mpid)
@@ -170,6 +175,52 @@ int w_del_plist(OSList *p_list)
 }
 
 #ifdef WIN32
+
+/* Set Debug privilege
+ * See: "How to obtain a handle to any process with SeDebugPrivilege"
+ * http://support.microsoft.com/kb/131065/en-us
+ */
+int w_os_win32_setdebugpriv(HANDLE h, int en)
+{
+    TOKEN_PRIVILEGES tp;
+    TOKEN_PRIVILEGES tpPrevious;
+    LUID luid;
+    DWORD cbPrevious = sizeof(TOKEN_PRIVILEGES);
+
+    if (!LookupPrivilegeValue(NULL, SE_DEBUG_NAME, &luid)) {
+        return (0);
+    }
+
+    tp.PrivilegeCount = 1;
+    tp.Privileges[0].Luid = luid;
+    tp.Privileges[0].Attributes = 0;
+
+    AdjustTokenPrivileges(h, FALSE, &tp, sizeof(TOKEN_PRIVILEGES),
+                          &tpPrevious, &cbPrevious);
+
+    if (GetLastError() != ERROR_SUCCESS) {
+        return (0);
+    }
+
+    tpPrevious.PrivilegeCount = 1;
+    tpPrevious.Privileges[0].Luid = luid;
+
+    /* If en is set to true, we enable the privilege */
+    if (en) {
+        tpPrevious.Privileges[0].Attributes |= (SE_PRIVILEGE_ENABLED);
+    } else {
+        tpPrevious.Privileges[0].Attributes ^= (SE_PRIVILEGE_ENABLED &
+                                                tpPrevious.Privileges[0].Attributes);
+    }
+
+    AdjustTokenPrivileges(h, FALSE, &tpPrevious, cbPrevious, NULL, NULL);
+    if (GetLastError() != ERROR_SUCCESS) {
+        return (0);
+    }
+
+    return (1);
+}
+
 /* Get list of win32 processes */
 OSList *w_os_get_process_list()
 {
@@ -201,8 +252,8 @@ OSList *w_os_get_process_list()
     }
 
     /* Enable debug privilege */
-    if (!os_win32_setdebugpriv(hpriv, 1)) {
-        mterror(ARGV0, "os_win32_setdebugpriv");
+    if (!w_os_win32_setdebugpriv(hpriv, 1)) {
+        mterror(ARGV0, "w_os_win32_setdebugpriv");
         CloseHandle(hpriv);
         return (NULL);
     }
@@ -264,7 +315,7 @@ OSList *w_os_get_process_list()
     }
 
     /* Remove debug privileges */
-    os_win32_setdebugpriv(hpriv, 0);
+    w_os_win32_setdebugpriv(hpriv, 0);
 
     CloseHandle(hsnap);
     return (p_list);

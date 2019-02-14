@@ -178,7 +178,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
 
                     
                     if(strlen(children[j]->content) >= PATH_MAX) {
-                        merror("Profile path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
+                        merror("Policy path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
                         return OS_INVALID;
                     }
 
@@ -263,13 +263,14 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
     }
 
     if (!configuration_assessment->interval)
-        configuration_assessment->interval = WM_DEF_INTERVAL;
+        configuration_assessment->interval = WM_DEF_INTERVAL / 2;
 
     configuration_assessment->request_db_interval = getDefine_Int("configuration_assessment","request_db_interval",0,60) * 60;
 
     /* Maximum request interval is the scan interval */
     if(configuration_assessment->request_db_interval > configuration_assessment->interval) {
        configuration_assessment->request_db_interval = configuration_assessment->interval;
+       minfo("The request_db_interval is higher than the interval.");
     }
 
     return 0;

@@ -8,7 +8,7 @@
 * Foundation.
 */
 
-/* Windows eventchannel decoder */
+/* Configuration assessment decoder */
 
 #include "config.h"
 #include "eventinfo.h"
@@ -22,14 +22,6 @@
 #include "string_op.h"
 #include "../../remoted/remoted.h"
 #include <time.h>
-
-/* Logging levels */
-#define AUDIT 0
-#define CRITICAL 1
-#define ERROR 2
-#define WARNING 3
-#define INFORMATION 4
-#define VERBOSE 5
 
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
@@ -51,10 +43,10 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file);
 static int pm_send_db(char *msg, char *response, int *sock);
-static void *RequesDBThread();
+static void *RequestDBThread();
 static int ConnectToConfigurationAssessmentSocket();
 static int ConnectToConfigurationAssessmentSocketRemoted();
-static OSDecoderInfo *rootcheck_json_dec = NULL;
+static OSDecoderInfo *configuration_assessment_json_dec = NULL;
 
 static int cfga_socket;
 static int cfgar_socket;
@@ -64,20 +56,20 @@ static w_queue_t * request_queue;
 void ConfigurationAssessmentInit()
 {
 
-    os_calloc(1, sizeof(OSDecoderInfo), rootcheck_json_dec);
-    rootcheck_json_dec->id = getDecoderfromlist(CONFIGURATION_ASSESSMENT_MOD);
-    rootcheck_json_dec->type = OSSEC_RL;
-    rootcheck_json_dec->name = CONFIGURATION_ASSESSMENT_MOD;
-    rootcheck_json_dec->fts = 0;
+    os_calloc(1, sizeof(OSDecoderInfo), configuration_assessment_json_dec);
+    configuration_assessment_json_dec->id = getDecoderfromlist(CONFIGURATION_ASSESSMENT_MOD);
+    configuration_assessment_json_dec->type = OSSEC_RL;
+    configuration_assessment_json_dec->name = CONFIGURATION_ASSESSMENT_MOD;
+    configuration_assessment_json_dec->fts = 0;
 
     request_queue = queue_init(1024);
 
-    w_create_thread(RequesDBThread,NULL);
+    w_create_thread(RequestDBThread,NULL);
 
     mdebug1("ConfigurationAssessmentInit completed.");
 }
 
-static void *RequesDBThread() {
+static void *RequestDBThread() {
 
     while(1) {
         char *msg;
@@ -155,16 +147,16 @@ static int ConnectToConfigurationAssessmentSocketRemoted() {
     return 0;
 }
 
-int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
+int DecodeConfigurationAssessment(Eventinfo *lf, int *socket)
 {
     int ret_val = 1;
     cJSON *json_event = NULL;
     cJSON *type = NULL;
-    lf->decoder_info = rootcheck_json_dec;
+    lf->decoder_info = configuration_assessment_json_dec;
 
     if (json_event = cJSON_Parse(lf->log), !json_event)
     {
-        merror("Malformed rootcheck JSON event");
+        merror("Malformed configuration assessment JSON event");
         return ret_val;
     }
 
@@ -173,20 +165,12 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
 
     if(type) {
 
-        if(strcmp(type->valuestring,"info") == 0){
-            cJSON *message = cJSON_GetObjectItem(json_event, "message");
 
-            if(message) {
-                cJSON_Delete(json_event);
-                ret_val = 1;
-                return ret_val;
-            }
-        }
-        else if (strcmp(type->valuestring,"check") == 0){
+        if (strcmp(type->valuestring,"check") == 0){
 
             HandleCheckEvent(lf,socket,json_event);
             
-            lf->decoder_info = rootcheck_json_dec;
+            lf->decoder_info = configuration_assessment_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -195,7 +179,7 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
         else if (strcmp(type->valuestring,"summary") == 0){
 
             HandleScanInfo(lf,socket,json_event);
-            lf->decoder_info = rootcheck_json_dec;
+            lf->decoder_info = configuration_assessment_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -204,7 +188,7 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
 
             HandlePoliciesInfo(lf,socket,json_event);
 
-            lf->decoder_info = rootcheck_json_dec;
+            lf->decoder_info = configuration_assessment_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -593,37 +577,36 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 if (result_event < 0)
                 {
                     merror("Error storing policy monitoring information for agent %s", lf->agent_id);
-                }
+                } else {
+                    // Save compliance
+                    cJSON *comp;
+                    cJSON_ArrayForEach(comp,compliance){
 
-                // Save compliance
-                cJSON *comp;
-                cJSON_ArrayForEach(comp,compliance){
+                        char *key = comp->string;
+                        char *value = NULL;
+                        int free_value = 0;
 
-                    char *key = comp->string;
-                    char *value = NULL;
-                    int free_value = 0;
-
-                    if(!comp->valuestring){
-                        if(comp->valueint) {
-                            os_calloc(OS_SIZE_1024, sizeof(char), value);
-                            sprintf(value, "%d", comp->valueint);
-                            free_value = 1;
-                        } else if(comp->valuedouble) {
-                            os_calloc(OS_SIZE_1024, sizeof(char), value);
-                            sprintf(value, "%lf", comp->valuedouble);
-                            free_value = 1;
+                        if(!comp->valuestring){
+                            if(comp->valueint) {
+                                os_calloc(OS_SIZE_1024, sizeof(char), value);
+                                sprintf(value, "%d", comp->valueint);
+                                free_value = 1;
+                            } else if(comp->valuedouble) {
+                                os_calloc(OS_SIZE_1024, sizeof(char), value);
+                                sprintf(value, "%lf", comp->valuedouble);
+                                free_value = 1;
+                            }
+                        } else {
+                            value = comp->valuestring;
                         }
-                    } else {
-                        value = comp->valuestring;
-                    }
 
-                    SaveCompliance(lf,socket,id->valueint,key,value);
+                        SaveCompliance(lf,socket,id->valueint,key,value);
 
-                    if(free_value) {
-                        os_free(value);
+                        if(free_value) {
+                            os_free(value);
+                        }
                     }
                 }
-
                 break;
             default:
                 break;
@@ -885,14 +868,14 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
         return retval;
     }
 
-    if( *name = cJSON_GetObjectItem(event, "profile"), !*name) {
+    if( *name = cJSON_GetObjectItem(event, "policy"), !*name) {
         merror("Malformed JSON: field 'profile' not found");
         return retval;
     }
 
     obj = *name;
     if( !obj->valuestring ) {
-        merror("Malformed JSON: field 'profile' must be a string");
+        merror("Malformed JSON: field 'policy' must be a string");
         return retval;
     }
 
@@ -1307,7 +1290,7 @@ int pm_send_db(char *msg, char *response, int *sock)
 
         if (*sock < 0)
         {
-            mterror(ARGV0, "at sc_send_db(): Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
+            mterror(ARGV0, "at pm_send_db(): Unable to connect to socket '%s'.", WDB_LOCAL_SOCK);
             goto end;
         }
     }
@@ -1317,12 +1300,12 @@ int pm_send_db(char *msg, char *response, int *sock)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            merror("at sc_send_db(): database socket is full");
+            merror("at pm_send_db(): database socket is full");
         }
         else if (errno == EPIPE)
         {
             // Retry to connect
-            merror("at sc_send_db(): Connection with wazuh-db lost. Reconnecting.");
+            merror("at pm_send_db(): Connection with wazuh-db lost. Reconnecting.");
             close(*sock);
 
             if (*sock = OS_ConnectUnixDomain(WDB_LOCAL_SOCK, SOCK_STREAM, OS_SIZE_128), *sock < 0)

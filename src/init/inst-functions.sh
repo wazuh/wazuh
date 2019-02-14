@@ -719,8 +719,6 @@ InstallCommon()
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
-    OSSEC_CONF_ASSESSMENT='../etc/configuration_assessment/cis_debian_linux_rcl.yml'
-
     if [ ! ${PREFIX} = ${INSTALLDIR} ]; then
         PREFIX=${INSTALLDIR}
     fi
