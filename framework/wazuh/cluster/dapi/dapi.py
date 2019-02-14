@@ -56,7 +56,10 @@ class DistributedAPI:
                 self.input_json['arguments']['wait_for_complete'] = False
 
             # if it is a cluster API request and the cluster is not enabled, raise an exception
-            if is_cluster_disabled and 'cluster' in self.input_json['function']:
+            if is_cluster_disabled and 'cluster' in self.input_json['function'] and \
+                    self.input_json['function'] != '/cluster/status' and \
+                    self.input_json['function'] != '/cluster/config' and \
+                    self.input_json['function'] != '/cluster/node':
                 raise exception.WazuhException(3013)
 
             # First case: execute the request local.
