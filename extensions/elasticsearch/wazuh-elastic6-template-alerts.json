@@ -746,6 +746,10 @@
                         "broadcast": {
                           "type": "keyword",
                           "doc_values": "true"
+                        },
+                        "metric": {
+                          "type": "long",
+                          "doc_values": "true"
                         }
                       }
                     },
@@ -768,6 +772,10 @@
                         },
                         "broadcast": {
                           "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "metric": {
+                          "type": "long",
                           "doc_values": "true"
                         }
                       }
