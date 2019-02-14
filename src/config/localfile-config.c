@@ -136,7 +136,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
                         if (node[i]->values[j][0] == '_'){
-                            mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping it.");
+                            mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
                             flags.system = 1;
                         }
                         key_value = node[i]->values[j];
