@@ -35,6 +35,9 @@ static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_respon
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
 static int FindCheckResults(Eventinfo *lf, int scan_id, int *socket,char *wdb_response);
+static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
+static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
+static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket,int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
@@ -42,7 +45,9 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
 static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_id_new,char *policy_id);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
+static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id);
+static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file);
 static int pm_send_db(char *msg, char *response, int *sock);
@@ -178,27 +183,29 @@ int DecodeRootcheckJSON(Eventinfo *lf, int *socket)
             }
         }
         else if (strcmp(type->valuestring,"check") == 0){
-            char *final_evt;
-            final_evt = cJSON_PrintUnformatted(json_event);
 
             HandleCheckEvent(lf,socket,json_event);
             
             lf->decoder_info = rootcheck_json_dec;
 
-            os_free(final_evt);
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
         } 
         else if (strcmp(type->valuestring,"summary") == 0){
-            char *final_evt;
-            final_evt = cJSON_PrintUnformatted(json_event);
 
             HandleScanInfo(lf,socket,json_event);
+            lf->decoder_info = rootcheck_json_dec;
+
+            cJSON_Delete(json_event);
+            ret_val = 1;
+            return ret_val;
+        } else if (strcmp(type->valuestring,"policies") == 0){
+
+            HandlePoliciesInfo(lf,socket,json_event);
 
             lf->decoder_info = rootcheck_json_dec;
 
-            os_free(final_evt);
             cJSON_Delete(json_event);
             ret_val = 1;
             return ret_val;
@@ -315,6 +322,38 @@ static int FindCheckResults(Eventinfo *lf, int scan_id, int *socket,char *wdb_re
 
 }
 
+static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_policies ", lf->agent_id);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        if (!strncmp(response, "ok found", 8))
+        {
+            char *result_checks = response + 9;
+            snprintf(wdb_response,OS_MAXSTR,"%s",result_checks);
+            retval = 0;
+        }
+        else if (!strcmp(response, "ok not found"))
+        {
+            retval = 1;
+        }
+        else
+        {
+            retval = -1;
+        }
+    }
+
+    free(response);
+    return retval;
+}
+
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
 
     char *msg = NULL;
@@ -333,6 +372,66 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
             retval = 0;
         }
         else if (!strcmp(response, "ok not found"))
+        {
+            retval = 1;
+        }
+        else
+        {
+            retval = -1;
+        }
+    }
+
+    free(response);
+    return retval;
+}
+
+static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment delete_policy %s", lf->agent_id, policy);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        if (!strncmp(response, "ok", 2))
+        {
+            retval = 0;
+        }
+        else if (!strncmp(response, "err",3))
+        {
+            retval = 1;
+        }
+        else
+        {
+            retval = -1;
+        }
+    }
+
+    free(response);
+    return retval;
+}
+
+static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment delete_check %s", lf->agent_id, policy);
+
+    if (pm_send_db(msg, response, socket) == 0)
+    {
+        if (!strncmp(response, "ok", 2))
+        {
+            retval = 0;
+        }
+        else if (!strncmp(response, "err",3))
         {
             retval = 1;
         }
@@ -908,6 +1007,79 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
             merror("Malformed JSON: field 'result' must be a string");
             return retval;
         }
+    }
+
+    retval = 0;
+    return retval;
+}
+
+static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
+    cJSON *policies = NULL;
+
+    if(!CheckPoliciesJSON(event,&policies)) {
+        
+        char *policies_ids = NULL;
+        char *p_id;
+        os_calloc(OS_MAXSTR, sizeof(char), policies_ids);
+
+        int result_db = FindPoliciesIds(lf,socket,policies_ids);
+        switch (result_db)
+        {
+            case -1:
+                merror("Error querying policy monitoring database for agent %s", lf->agent_id);
+                break;
+
+            default:
+                /* For each policy id, look if we have scanned it */
+               
+                p_id = strtok(policies_ids, ",");
+                
+                while( p_id != NULL ) {
+
+                    int exists = 0;
+                    cJSON *policy;
+                    cJSON_ArrayForEach(policy,policies) {
+                        if(policy->valuestring) {
+                          if(strcmp(policy->valuestring,p_id) == 0) {
+                              exists = 1;
+                              break;
+                          }
+                        }
+                    }
+
+                    /* This policy is not being scanned anymore, delete it */
+                    if(!exists) {
+                       int result_delete = DeletePolicy(lf,p_id,socket);
+
+                        switch (result_delete)
+                        {
+                            case 0:
+                                /* Delete checks */
+                                DeletePolicyCheck(lf,p_id,socket);
+                                break;
+
+                            default:
+                                mdebug1("Error deleting policy with id '%s' from database",p_id);
+                                break;
+                        }
+                    }
+                    
+                    p_id = strtok(NULL, ",");
+                }
+
+                break; 
+        }
+
+        os_free(policies_ids);
+    }
+}
+
+static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
+    int retval = 1;
+
+    if( *policies = cJSON_GetObjectItem(event, "policies"), !*policies) {
+        merror("Malformed JSON: field 'policies' not found");
+        return retval;
     }
 
     retval = 0;

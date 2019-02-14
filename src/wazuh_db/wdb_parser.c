@@ -94,7 +94,7 @@ int wdb_parse(char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
                 result = -1;
             } else {
-                result = wdb_parse_policy_monitoring(wdb, next, output);
+                result = wdb_parse_configuration_assessment(wdb, next, output);
                 if (result < 0){
                     merror("Unable to update 'pm_check' table for agent '%s'", sagent_id);
                 } else {
@@ -427,7 +427,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     }
 }
 
-int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
+int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     char * result_check; // Pass, failed, unknown
@@ -451,7 +451,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         pm_id = strtol(curr,NULL,10);
         
-        result = wdb_policy_monitoring_find(wdb, pm_id, result_found);
+        result = wdb_configuration_assessment_find(wdb, pm_id, result_found);
 
         switch (result) {
             case 0:
@@ -483,7 +483,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         result_check = next;
 
-        if (result = wdb_policy_monitoring_update(wdb, result_check, pm_id), result < 0) {
+        if (result = wdb_configuration_assessment_update(wdb, result_check, pm_id), result < 0) {
             mdebug1("Cannot update policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot update policy monitoring information.");
         } else {
@@ -646,7 +646,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         policy_id = curr;
 
-        if (result = wdb_policy_monitoring_save(wdb,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result_check,policy_id), result < 0) {
+        if (result = wdb_configuration_assessment_save(wdb,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result_check,policy_id), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {
@@ -662,7 +662,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         name = curr;
 
-        result = wdb_policy_monitoring_global_find(wdb, name, result_found);
+        result = wdb_configuration_assessment_global_find(wdb, name, result_found);
 
         switch (result) {
             case 0:
@@ -674,6 +674,36 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
             default:
                 mdebug1("Cannot query policy monitoring.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring global");
+        }
+
+        return result;
+    } else if (strcmp(curr, "delete_policy") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_configuration_assessment_policy_delete(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete policy monitoring information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+    } else if (strcmp(curr, "delete_check") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_configuration_assessment_check_delete(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete policy monitoring information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete policy monitoring check information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;
@@ -689,7 +719,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         else
             scan_id = strtol(curr,NULL,10);
 
-        result = wdb_policy_monitoring_checks_get_result(wdb, scan_id, result_found);
+        result = wdb_configuration_assessment_checks_get_result(wdb, scan_id, result_found);
 
         switch (result) {
             case 0:
@@ -712,7 +742,28 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         policy_id = curr;
 
-        result = wdb_policy_monitoring_scan_find(wdb, policy_id, result_found);
+        result = wdb_configuration_assessment_scan_find(wdb, policy_id, result_found);
+
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                break;
+            default:
+                mdebug1("Cannot query policy monitoring.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring scan");
+        }
+
+        return result;
+    } else if (strcmp(curr, "query_policies") == 0) {
+
+        char result_found[OS_MAXSTR + 1] = {0};
+
+        curr = next;
+
+        result = wdb_configuration_assessment_policy_get_id(wdb, result_found);
 
         switch (result) {
             case 0:
@@ -735,7 +786,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         curr = next;
         policy = curr;
 
-        result = wdb_policy_monitoring_policy_find(wdb, policy, result_found);
+        result = wdb_configuration_assessment_policy_find(wdb, policy, result_found);
 
         switch (result) {
             case 0:
@@ -803,7 +854,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         references = next;
-        if (result = wdb_policy_monitoring_policy_info_save(wdb,name,file,id,description,references), result < 0) {
+        if (result = wdb_configuration_assessment_policy_info_save(wdb,name,file,id,description,references), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
         } else {
@@ -902,7 +953,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         else
             score = strtol(curr,NULL,10);
 
-        if (result = wdb_policy_monitoring_global_update(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
+        if (result = wdb_configuration_assessment_global_update(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
         } else {
@@ -940,7 +991,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         value = next;
-        if (result = wdb_policy_monitoring_compliance_save(wdb,id_check,key,value), result < 0) {
+        if (result = wdb_configuration_assessment_compliance_save(wdb,id_check,key,value), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
         } else {
@@ -1062,7 +1113,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         hash = next;
-        if (result = wdb_policy_monitoring_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,score,hash), result < 0) {
+        if (result = wdb_configuration_assessment_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,score,hash), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {
@@ -1100,7 +1151,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         else
             pm_end_scan = strtol(curr,NULL,10);
 
-        if (result = wdb_policy_monitoring_scan_info_update(wdb, module,pm_end_scan), result < 0) {
+        if (result = wdb_configuration_assessment_scan_info_update(wdb, module,pm_end_scan), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {
@@ -1148,7 +1199,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
         policy_id = curr;
 
        
-        if (result = wdb_policy_monitoring_check_update_scan_id(wdb,scan_id_old,scan_id_new,policy_id), result < 0) {
+        if (result = wdb_configuration_assessment_check_update_scan_id(wdb,scan_id_old,scan_id_new,policy_id), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {
@@ -1275,7 +1326,7 @@ int wdb_parse_policy_monitoring(wdb_t * wdb, char * input, char * output) {
 
         hash = next;
 
-        if (result = wdb_policy_monitoring_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,score,hash), result < 0) {
+        if (result = wdb_configuration_assessment_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,score,hash), result < 0) {
             mdebug1("Cannot save policy monitoring information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
         } else {

@@ -2,7 +2,7 @@
 
   <rule id="19000" level="0">
     <category>ossec</category>
-    <decoded_as>policy_monitoring</decoded_as>
+    <decoded_as>configuration_assessment</decoded_as>
     <options>no_full_log</options>
     <description>Group of configuration assessment rules.</description>
   </rule>
