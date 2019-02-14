@@ -660,6 +660,434 @@
                   }
                 }
               }
+            },
+            "type": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "netinfo": {
+              "properties": {
+                "iface": {
+                  "properties": {
+                    "name": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "mac": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "adapter": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "type": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "state": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "mtu": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_bytes": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_bytes": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_errors": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_errors": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_dropped": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_dropped": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "tx_packets": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "rx_packets": {
+                      "type": "long",
+                      "doc_values": "true"
+                    },
+                    "ipv4": {
+                      "properties": {
+                        "gateway": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "dhcp": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "address": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "netmask": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "broadcast": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "metric": {
+                          "type": "long",
+                          "doc_values": "true"
+                        }
+                      }
+                    },
+                    "ipv6": {
+                      "properties": {
+                        "gateway": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "dhcp": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "address": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "netmask": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "broadcast": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "metric": {
+                          "type": "long",
+                          "doc_values": "true"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "os":{
+              "properties": {
+                "hostname": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "architecture": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "codename": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "major": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "minor": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "build": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "platform": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "sysname": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "release": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "release_version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "port": {
+              "properties": {
+                "protocol": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "local_ip": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "local_port": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "remote_ip": {
+                  "type": "ip",
+                  "doc_values": "true"
+                },
+                "remote_port": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "tx_queue": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "rx_queue": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "inode": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "state": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "pid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "process": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "hardware": {
+              "properties": {
+                "serial": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "cpu_name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "cpu_cores": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "cpu_mhz": {
+                  "type": "double",
+                  "doc_values": "true"
+                },
+                "ram_total": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "ram_free": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "ram_usage": {
+                  "type": "long",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "program": {
+              "properties": {
+                "format": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "priority": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "section": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "size": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "vendor": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "install_time": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "architecture": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "multiarch": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "source": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "description": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "location": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "process": {
+              "properties": {
+                "pid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "state": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "ppid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "utime": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "stime": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "cmd": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "args": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "euser": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "ruser": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "suser": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "egroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "sgroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "fgroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "rgroup": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "priority": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "nice": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "size": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "vm_size": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "resident": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "share": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "start_time": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "pgrp": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "session": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "nlwp": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "tgid": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "tty": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "processor": {
+                  "type": "long",
+                  "doc_values": "true"
+                }
+              }
             }
           }
         },

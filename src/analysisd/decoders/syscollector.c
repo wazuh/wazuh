@@ -986,7 +986,7 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (ram_total) {
             char total[OS_SIZE_512];
             snprintf(total, OS_SIZE_512 - 1, "%f", ram_total->valuedouble);
-            fillData(lf,"harware.ram_total",total);
+            fillData(lf,"hardware.ram_total",total);
             wm_strcat(&msg, total, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');
