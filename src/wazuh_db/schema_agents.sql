@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS sys_netproto (
     type TEXT,
     gateway TEXT,
     dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
+    metric INTEGER,
     PRIMARY KEY (scan_id, iface, type)
 );
 

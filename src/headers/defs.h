@@ -140,6 +140,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define CSYS_LOCAL_SOCK  "/queue/ossec/csyslog"
 #define MON_LOCAL_SOCK  "/queue/ossec/monitor"
 #define CLUSTER_SOCK "/queue/cluster/c-internal.sock"
+#define CONTROL_SOCK "/queue/ossec/control"
+
+// Attempts to check sockets availability
+#define SOCK_ATTEMPTS   10
 
 // Database socket
 #define WDB_LOCAL_SOCK "/queue/db/wdb"
@@ -179,11 +183,14 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Configuration assessment remoted queue */
 #define CFGARQUEUE       "/queue/alerts/cfgarq"
 
+/* Exec queue api*/
+#define EXECQUEUEA      "/queue/alerts/execa"
+
 /* Active Response queue */
 #define ARQUEUE         "/queue/alerts/ar"
 
 /* Decoder file */
-#define XML_LDECODER    "/etc/decoders/local_decoder.xml"
+#define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
 /* Agent information location */
 #define AGENTINFO_DIR    "/queue/agent-info"
@@ -366,6 +373,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
 #define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
+
+#define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
 
 #ifdef WIN32
 #define SHAREDCFG_DIRPATH   SHAREDCFG_DIR

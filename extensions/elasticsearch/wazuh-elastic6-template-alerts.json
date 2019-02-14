@@ -2,7 +2,11 @@
   "order": 0,
   "index_patterns": ["wazuh-alerts-3.x-*"],
   "settings": {
-    "index.refresh_interval": "5s"
+    "index.refresh_interval": "5s",
+    "index.number_of_shards": "3",
+    "index.number_of_replicas": "0",
+    "index.auto_expand_replicas": "0-1",
+    "index.mapping.total_fields.limit": 2000
   },
   "mappings": {
     "wazuh": {

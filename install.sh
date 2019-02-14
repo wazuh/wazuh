@@ -120,7 +120,7 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps
+        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps PREFIX=${INSTALLDIR}
 
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry

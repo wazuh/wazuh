@@ -53,4 +53,8 @@ CREATE TABLE IF NOT EXISTS configuration_assessment_check_compliance (
 
 CREATE INDEX IF NOT EXISTS id_check_index ON configuration_assessment_check_compliance (id_check);
 
+ALTER TABLE sys_netproto ADD COLUMN metric INTEGER DEFAULT NULL;
+
+UPDATE metadata SET value = 2 WHERE key = 'db_version';
+
 END;

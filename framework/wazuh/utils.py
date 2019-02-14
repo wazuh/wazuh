@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -383,7 +383,7 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def get_hash(filename, hash_algorithm='md5'):
+def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     try:
         algorithm_list = hashlib.algorithms_available
@@ -393,14 +393,25 @@ def get_hash(filename, hash_algorithm='md5'):
     if not hash_algorithm in algorithm_list:
         raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
-    hashing = hashlib.new(hash_algorithm)
+    return hashlib.new(hash_algorithm)
+
+
+def get_hash(filename, hash_algorithm='md5', return_hex=True):
+    hashing = _get_hashing_algorithm(hash_algorithm)
 
     try:
         with open(filename, 'rb') as f:
-            hashing.update(f.read())
+            for chunk in iter(lambda: f.read(65536), b""):
+                hashing.update(chunk)
     except IOError:
         return None
 
+    return hashing.hexdigest() if return_hex else hashing.digest()
+
+
+def get_hash_str(my_str, hash_algorithm='md5'):
+    hashing = _get_hashing_algorithm(hash_algorithm)
+    hashing.update(my_str.encode())
     return hashing.hexdigest()
 
 
