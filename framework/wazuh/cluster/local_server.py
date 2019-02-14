@@ -141,6 +141,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
         if command == b'dapi':
             api_call_name = json.loads(data.decode())['function']
             if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
+                if self.server.node.client is None:
+                    return b'err', b'Worker is not connected to the master node'
                 asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
                 return b'ok', b'Added request to API requests queue'
             else:
