@@ -236,11 +236,15 @@ class DistributedAPI:
             del self.input_json['arguments']['node_id']
             return {node_id: []}
 
-        else:  # agents, syscheck, rootcheck and syscollector
-            # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
-            agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                     sort={'fields': ['node_name'], 'order': 'desc'})['items']
-            node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
+        else:
+            if 'cluster' in self.input_json['function']:
+                node_name = {'fw_all_nodes': []}
+            else:
+                # agents, syscheck, rootcheck and syscollector
+                # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
+                agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
+                                                        sort={'fields': ['node_name'], 'order': 'desc'})['items']
+                node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
     def merge_results(self, responses, final_json):
@@ -258,7 +262,8 @@ class DistributedAPI:
         :return: single JSON with the final result
         """
         priorities = {
-            ("Some agents were not restarted", "All selected agents were restarted")
+            ("Some agents were not restarted", "All selected agents were restarted"),
+            ("KO", "OK")
         }
 
         for local_json in responses:
