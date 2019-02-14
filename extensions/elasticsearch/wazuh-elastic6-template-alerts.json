@@ -764,7 +764,8 @@
                           "doc_values": "true"
                         },
                         "address": {
-                          "type": "keyword"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "netmask": {
                           "type": "keyword",
@@ -903,11 +904,11 @@
                   "doc_values": "true"
                 },
                 "ram_total": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "ram_free": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "ram_usage": {
@@ -943,7 +944,7 @@
                   "doc_values": "true"
                 },
                 "install_time": {
-                  "type": "date",
+                  "type": "keyword",
                   "doc_values": "true"
                 },
                 "version": {
