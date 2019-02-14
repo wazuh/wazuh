@@ -50,17 +50,21 @@ class DistributedAPI:
         try:
             request_type = rq.functions[self.input_json['function']]['type']
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
+            is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
 
             if 'wait_for_complete' not in self.input_json['arguments']:
                 self.input_json['arguments']['wait_for_complete'] = False
+
+            # if it is a cluster API request and the cluster is not enabled, raise an exception
+            if is_cluster_disabled and 'cluster' in self.input_json['function']:
+                raise exception.WazuhException(3013)
 
             # First case: execute the request local.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or (self.node == local_client and cluster.check_cluster_status()) or \
-                    request_type == 'local_any' or \
+            if not is_dapi_enabled or is_cluster_disabled or request_type == 'local_any' or \
                     (request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
