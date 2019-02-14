@@ -286,7 +286,7 @@
                             <File Id="WIN_MALWARE_RCL.TXT" Name="win_malware_rcl.txt" Source="..\rootcheck\db\win_malware_rcl.txt" />
                         </Component>
                     </Directory>
-                    <Directory Id="RULESETFOLDER" Name="ruleset">
+                    <Directory Id="RULESET" Name="ruleset">
                       <Directory Id="CONFIGURATION_ASSESSMENT" Name="configuration_assessment">
                         <Component Id="CIS_WIN2012R2_DOMAINL1_RCL.YML" DiskId="1" Guid="5f50a98e-7890-44f9-a31a-0b71cb748040">
                           <File Id="CIS_WIN2012R2_DOMAINL1_RCL.YML" Name="cis_win2012r2_domainL1_rcl.yml" Source="..\..\etc\configuration_assessment\cis_win2012r2_domainL1_rcl.yml" />
@@ -459,6 +459,13 @@
             <ComponentRef Id="WIN_MALWARE_RCL.TXT" />
             <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="WIN32UI.EXE" />
+            <ComponentRef Id="CIS_WIN2012R2_DOMAINL1_RCL.YML" />
+            <ComponentRef Id="CIS_WIN2012R2_DOMAINL2_RCL.YML" />
+            <ComponentRef Id="CIS_WIN2012R2_MEMBERL1_RCL.YML" />
+            <ComponentRef Id="CIS_WIN2012R2_MEMBERL2_RCL.YML" />
+            <ComponentRef Id="WIN_APPLICATIONS_RCL.YML" />
+            <ComponentRef Id="WIN_AUDIT_RCL.YML" />
+            <ComponentRef Id="WIN_MALWARE_RCL.YML" />
             <ComponentRef Id="CMP_ACTIVE_RESPONSE" />
             <ComponentRef Id="CMP_TMP" />
             <ComponentRef Id="CMP_QUEUE" />
