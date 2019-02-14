@@ -122,9 +122,13 @@ Install()
         # Download external libraries if missing
         find external/* > /dev/null 2>&1 || ${MAKEBIN} deps PREFIX=${INSTALLDIR}
 
+        if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
+            CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
+        fi
+
         # Add DATABASE=pgsql or DATABASE=mysql to add support for database
         # alert entry
-        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} -j${THREADS} build
+        ${MAKEBIN} PREFIX=${INSTALLDIR} TARGET=${INSTYPE} ${SYSC_FLAG} ${AUDIT_FLAG} ${LIB_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
@@ -978,7 +982,7 @@ main()
             $ECHO "1- ${whattoinstall} "
 
             read ANSWER
-            case $ANSWER in
+            case "$ANSWER" in
 
                 ${helpm}|${help})
                     catMsg "0x102-installhelp"

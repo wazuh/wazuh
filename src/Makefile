@@ -641,6 +641,12 @@ endif
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS)
 
+ifneq (${TARGET},winagent)
+ifneq (${TARGET},agent)
+external: build_python
+endif
+endif
+
 test_external:
 ifeq ($(wildcard external/*/*),)
 	$(error No external directory found. Run "make deps" before compiling external libraries)
@@ -1408,11 +1414,15 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: build_python install_python install_dependencies install_framework
+wpython: install_dependencies install_framework
 
 build_python:
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
 	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+endif
+
+ifndef DISABLE_SHARED
+build_python: $(WAZUHEXT_LIB)
 endif
 
 install_python:
@@ -1425,7 +1435,7 @@ install_dependencies: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 
-install_framework:
+install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
 
@@ -1595,7 +1605,7 @@ endif
 
 clean-wpython:
 ifneq ($(wildcard external/cpython/*),)
-	cd ${EXTERNAL_CPYTHON} && make clean && make distclean
+	-cd ${EXTERNAL_CPYTHON} && make clean && make distclean
 endif
 
 clean-deps:
