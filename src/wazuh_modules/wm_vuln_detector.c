@@ -1251,6 +1251,7 @@ void wm_vuldet_adapt_title(char *title, char *cve) {
     // Remove unnecessary line jumps and  spaces
     size_t size;
     int offset;
+    char *title_ofs;
 
     for (size = strlen(title) - 1; size > 0 && title[size] == ' '; size -= 1) {
         title[size] = '\0';
@@ -1264,7 +1265,9 @@ void wm_vuldet_adapt_title(char *title, char *cve) {
     if(size > 1 && !strncmp(title + offset, cve, strlen(cve))) {
         offset += strlen(cve) + 1;
     }
-    strncpy(title, title + offset, strlen(title + offset));
+    os_strdup(title + offset, title_ofs);
+    strncpy(title, title_ofs, strlen(title_ofs));
+    free(title_ofs);
 }
 
 int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, update_node *update, vu_logic condition) {
