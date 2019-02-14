@@ -982,7 +982,7 @@ main()
             $ECHO "1- ${whattoinstall} "
 
             read ANSWER
-            case "$ANSWER" in
+            case $ANSWER in
 
                 ${helpm}|${help})
                     catMsg "0x102-installhelp"
