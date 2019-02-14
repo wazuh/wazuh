@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -19,22 +19,17 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, rmtree
+from shutil import copyfile, move, rmtree
 from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
 from time import time, sleep
 import socket
 import hashlib
 import fcntl
 from json import loads
 from functools import reduce
-from shutil import move
-from os import remove
-
-try:
-    from urllib2 import urlopen, URLError, HTTPError
-except ImportError:
-    from urllib.request import urlopen, URLError, HTTPError
+import errno
+import requests
 
 def create_exception_dic(id, e):
     """
@@ -498,16 +493,20 @@ class Agent:
             # Remove agent files
             agent_files = [
                 '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip),
                 '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id)
+                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id),
+                '{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
+                '{}/queue/diff/{}'.format(common.ossec_path, self.name)
             ]
 
             for agent_file in filter(path.exists, agent_files):
-                remove(agent_file)
+                if path.isdir(agent_file):
+                    rmtree(agent_file)
+                else:
+                    remove(agent_file)
 
         else:
             # Create backup directory
@@ -530,12 +529,13 @@ class Agent:
             # Move agent file
             agent_files = [
                 ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip), '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck.cpt'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry.cpt'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir))
+                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
+                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
+                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
@@ -1496,12 +1496,10 @@ class Agent:
 
         return msg
 
-
     @staticmethod
     def create_multi_group(group_id):
         """
         Creates a multi group.
-
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1518,12 +1516,12 @@ class Agent:
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
+            return msg
         except OSError as e:
-            if errno != errno.EEXIST:
+            if e.errno != errno.EEXIST:
                 raise WazuhException(1005, str(e))
 
         return msg
-
 
     @staticmethod
     def remove_multi_group(groups_id):
@@ -1952,25 +1950,15 @@ class Agent:
                 versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
-            result = urlopen(versions_url)
-        except HTTPError as e:
+            result = requests.get(versions_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1713, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
+
+        if result.ok:
+            versions = [version.split() for version in result.text.split('\n')]
+        else:
+            error = "Can't access to the versions file in {}".format(versions_url)
             raise WazuhException(1713, error)
-
-        lines = result.readlines()
-        lines = filter(None, lines)
-        versions = []
-
-        for line in lines:
-            ver_readed = line.decode().split()
-            version = ver_readed[0]
-            sha1sum = ver_readed[1] if len(ver_readed) > 1 else ''
-            versions.append([version, sha1sum])
 
         return versions
 
@@ -2051,16 +2039,16 @@ class Agent:
             print("Downloading WPK file from: {0}".format(wpk_url))
 
         try:
-            result = urlopen(wpk_url)
-            with open(wpk_file_path, "wb") as local_file:
-                local_file.write(result.read())
-        except HTTPError as e:
+            result = requests.get(wpk_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1714, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
+
+        if result.ok:
+            with open(wpk_file_path, 'wb') as fd:
+                for chunk in result.iter_content(chunk_size=128):
+                    fd.write(chunk)
+        else:
+            error = "Can't access to the WPK file in {}".format(wpk_url)
             raise WazuhException(1714, error)
 
         # Get SHA1 file sum

@@ -1706,6 +1706,26 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
     state = get_oper_state(iface_name);
     cJSON_AddStringToObject(interface, "state", state);
     free(state);
+  
+    /* Get MAC address */
+    char addr_path[PATH_LENGTH] = {'\0'};
+    snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, iface_name);
+    FILE *fs_if_addr = fopen(addr_path, "r");
+    if (fs_if_addr != NULL) {
+        char mac[MAC_LENGTH] = {'\0'};
+        if (fgets(mac, sizeof(mac), fs_if_addr)) {
+            char * newline = strchr(mac, '\n');
+            if (newline) {
+                *newline = '\0';
+            }
+            cJSON_AddStringToObject(interface, "MAC", mac);
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\": file is empty.", iface_name, addr_path);
+        }
+        fclose(fs_if_addr);
+    } else {
+        mtwarn(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
+    }
 
     cJSON *ipv4 = cJSON_CreateObject();
     cJSON *ipv4_addr = cJSON_CreateArray();
@@ -1724,26 +1744,6 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
         }
         if (ifa->ifa_flags & IFF_LOOPBACK) {
             continue;
-        }
-
-        /* Get MAC address */
-        char addr_path[PATH_LENGTH] = {'\0'};
-        snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, iface_name);
-        FILE *fs_if_addr = fopen(addr_path, "r");
-        if (fs_if_addr != NULL) {
-            char mac[MAC_LENGTH] = {'\0'};
-            if (fgets(mac, sizeof(mac), fs_if_addr)) {
-                char * newline = strchr(mac, '\n');
-                if (newline) {
-                    *newline = '\0';
-                }
-                cJSON_AddStringToObject(interface, "MAC", mac);
-            } else {
-                mtdebug1(WM_SYS_LOGTAG, "Invalid MAC address length for interface \"%s\" at \"%s\": file is empty.", iface_name, addr_path);
-            }
-            fclose(fs_if_addr);
-        } else {
-            mtwarn(WM_SYS_LOGTAG, "Unable to read MAC address for interface \"%s\" from \"%s\": %s (%d)", iface_name, addr_path, strerror(errno), errno);
         }
 
         if (ifa->ifa_addr) {

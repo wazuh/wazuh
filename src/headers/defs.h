@@ -177,6 +177,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
 
+/* Exec queue api*/
+#define EXECQUEUEA      "/queue/alerts/execa"
+
 /* Active Response queue */
 #define ARQUEUE         "/queue/alerts/ar"
 
@@ -363,6 +366,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
+#define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
 
 #ifdef WIN32
 #define SHAREDCFG_DIRPATH   SHAREDCFG_DIR
