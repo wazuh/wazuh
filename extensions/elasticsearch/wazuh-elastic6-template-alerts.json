@@ -661,11 +661,17 @@
                 }
               }
             },
+            "type": {
+              "type": "text"
+            },
             "netinfo": {
               "properties": {
                 "iface": {
                   "properties": {
                     "name": {
+                      "type": "text"
+                    },
+                    "mac": {
                       "type": "text"
                     },
                     "adapter": {
@@ -702,6 +708,14 @@
                       "doc_values": "true"
                     },
                     "rx_dropped": {
+                      "type": "double",
+                      "doc_values": "true"
+                    },
+                    "tx_packets": {
+                      "type": "double",
+                      "doc_values": "true"
+                    },
+                    "rx_packets": {
                       "type": "double",
                       "doc_values": "true"
                     },
@@ -750,7 +764,8 @@
             "os":{
               "properties": {
                 "hostname": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "architecture": {
                   "type": "text"
@@ -801,7 +816,8 @@
                   "doc_values": "true"
                 },
                 "remote_ip": {
-                  "type": "text"
+                  "type": "ip",
+                  "doc_values": "true"
                 },
                 "remote_port": {
                   "type": "double",
@@ -952,6 +968,9 @@
                   "type": "text"
                 },
                 "fgroup": {
+                  "type": "text"
+                },
+                "rgroup": {
                   "type": "text"
                 },
                 "priority": {
