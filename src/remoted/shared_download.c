@@ -632,7 +632,7 @@ int w_init_shared_download()
         /* Check download module connection */
         int i;
 
-        for (i = W_DOWNLOAD_MAX_ATTEMPTS; i > 0; --i) {
+        for (i = SOCK_ATTEMPTS; i > 0; --i) {
             if (wurl_check_connection() == 0) {
                 break;
             } else {

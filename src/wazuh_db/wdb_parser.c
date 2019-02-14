@@ -710,6 +710,7 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
     char * iface;
     int type;
     char * gateway;
+    int metric;
     char * dhcp;
     int result;
 
@@ -775,16 +776,30 @@ int wdb_parse_netproto(wdb_t * wdb, char * input, char * output) {
 
         gateway = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(gateway, "NULL"))
             gateway = NULL;
 
-        if (!strcmp(next, "NULL"))
-            dhcp = NULL;
-        else
-            dhcp = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid netproto query syntax.");
+            mdebug2("netproto query: %s", gateway);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid netproto query syntax, near '%.32s'", gateway);
+            return -1;
+        }
 
-        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp), result < 0) {
+        dhcp = curr;
+        *next++ = '\0';
+
+        if (!strcmp(dhcp, "NULL"))
+            dhcp = NULL;
+
+        if (!strncmp(next, "NULL", 4))
+            metric = -1;
+        else
+            metric = strtol(next,NULL,10);
+
+        if (result = wdb_netproto_save(wdb, scan_id, iface, type, gateway, dhcp, metric), result < 0) {
             mdebug1("Cannot save netproto information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save netproto information.");
         } else {

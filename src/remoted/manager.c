@@ -218,13 +218,13 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 if (gethostname(hostname, HOST_NAME_MAX) < 0){
                     mwarn("Unable to get hostname due to: '%s'", strerror(errno));
                 } else {
-                    fprintf(fp, "#\"manager_hostname\":%s\n", hostname);
+                    fprintf(fp, "#\"_manager_hostname\":%s\n", hostname);
                 }
 
                 /* Write Cluster's node name to the agent-info file */
                 char nodename[OS_MAXSTR];
 
-                snprintf(nodename, OS_MAXSTR - 1, "#\"node_name\":%s\n", node_name);
+                snprintf(nodename, OS_MAXSTR - 1, "#\"_node_name\":%s\n", node_name);
                 fprintf(fp, "%s", nodename);
 
                 fclose(fp);
