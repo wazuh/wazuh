@@ -137,6 +137,7 @@ class WazuhException(Exception):
         1741: 'Could not remove multigroup',
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
+        1744: 'Invalid chunk size',
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
