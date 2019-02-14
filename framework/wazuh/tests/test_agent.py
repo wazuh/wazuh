@@ -30,10 +30,11 @@ class InitAgent:
         with open(os.path.join(test_data_path, 'schema_global_test.sql')) as f:
             self.cur.executescript(f.read())
 
-        self.never_connected_fields = {'status', 'name', 'ip', 'node_name', 'dateAdd', 'id'}
+        self.never_connected_fields = {'status', 'name', 'ip', 'registerIP', 'node_name', 'dateAdd', 'id'}
         self.pending_fields = self.never_connected_fields | {'manager', 'lastKeepAlive'}
         self.manager_fields = self.pending_fields | {'version', 'os'}
         self.active_fields = self.manager_fields | {'group', 'mergedSum', 'configSum'}
+        self.manager_fields -= {'registerIP'}
 
 
 @pytest.fixture(scope='module')
@@ -78,24 +79,27 @@ def test_get_agents_overview_default(test_data):
             check_agent(test_data, agent)
 
 
-@pytest.mark.parametrize("select, status", [
-    ({'id', 'dateAdd'}, 'all'),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending'),
+@pytest.mark.parametrize("select, status, offset", [
+    ({'id', 'dateAdd'}, 'all', 0),
+    ({'id', 'ip', 'registerIP'}, 'all', 1),
+    ({'id', 'registerIP'}, 'all', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', 0),
 ])
-def test_get_agents_overview_select(test_data, select, status):
+def test_get_agents_overview_select(test_data, select, status, offset):
     """
     Test get_agents_overview function with multiple select parameters
     """
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        agents = Agent.get_agents_overview(select={'fields': select}, filters={'status': status})
+        agents = Agent.get_agents_overview(select={'fields': select}, filters={'status': status}, offset=offset)
         assert all(map(lambda x: x.keys() == select, agents['items']))
 
 
 @pytest.mark.parametrize("query", [
     "ip=172.17.0.201",
-    "ip=172.17.0.202"
+    "ip=172.17.0.202",
+    "ip=172.17.0.202;registerIP=any"
 ])
 def test_get_agents_overview_query(test_data, query):
     """
@@ -106,3 +110,21 @@ def test_get_agents_overview_query(test_data, query):
 
         agents = Agent.get_agents_overview(q=query)
         assert len(agents['items']) == 1
+
+
+@pytest.mark.parametrize("search, totalItems", [
+    ({'value': 'any', 'negation': 0}, 3),
+    ({'value': 'any', 'negation': 1}, 2),
+    ({'value': '202', 'negation': 0}, 1),
+    ({'value': '202', 'negation': 1}, 4),
+    ({'value': 'master', 'negation': 1}, 2)
+])
+def test_get_agents_overview_search(test_data, search, totalItems):
+    """
+    Test searching by IP and Register IP
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        agents = Agent.get_agents_overview(search=search)
+        assert len(agents['items']) == totalItems
