@@ -314,17 +314,18 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                         if (opts & CHECK_FOLLOW) {
                             realpath(file_name, real_path);
                             strncpy(file_name, real_path, PATH_MAX+2);
-                            os_free(real_path);
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
                             mdebug2("Follow symbolic links disabled.");
                             free(alert_msg);
                             free(wd_sum);
+                            os_free(real_path);
                             return 0;
                         } else {
                             free(alert_msg);
                             os_free(wd_sum);
+                            os_free(real_path);
                             return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
                     }
@@ -332,6 +333,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                     if (opts & CHECK_FOLLOW) {
                         mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
                     }
+                    os_free(real_path);
                     os_free(wd_sum);
                     os_free(alert_msg);
                     return -1;
@@ -794,6 +796,9 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
             os_free(alert_msg);
             os_free(alertdump);
         } else {
+#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
+            os_free(real_path);
+#endif
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
             os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
 
