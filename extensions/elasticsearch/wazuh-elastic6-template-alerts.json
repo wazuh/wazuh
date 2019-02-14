@@ -662,26 +662,32 @@
               }
             },
             "type": {
-              "type": "text"
+              "type": "keyword",
+              "doc_values": "true"
             },
             "netinfo": {
               "properties": {
                 "iface": {
                   "properties": {
                     "name": {
-                      "type": "text"
+                      "type": "keyword",
+                      "doc_values": "true"
                     },
                     "mac": {
-                      "type": "text"
+                      "type": "keyword",
+                      "doc_values": "true"
                     },
                     "adapter": {
-                      "type": "text"
+                      "type": "keyword",
+                      "doc_values": "true"
                     },
                     "type": {
-                      "type": "text"
+                      "type": "keyword",
+                      "doc_values": "true"
                     },
                     "state": {
-                      "type": "text"
+                      "type": "keyword",
+                      "doc_values": "true"
                     },
                     "mtu": {
                       "type": "double",
@@ -722,38 +728,47 @@
                     "ipv4": {
                       "properties": {
                         "gateway": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "dhcp": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "address": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "netmask": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "broadcast": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         }
                       }
                     },
                     "ipv6": {
                       "properties": {
                         "gateway": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "dhcp": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "address": {
-                          "type": "text"
+                          "type": "keyword"
                         },
                         "netmask": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         },
                         "broadcast": {
-                          "type": "text"
+                          "type": "keyword",
+                          "doc_values": "true"
                         }
                       }
                     }
@@ -768,44 +783,56 @@
                   "doc_values": "true"
                 },
                 "architecture": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "name": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "version": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "codename": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "major": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "minor": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "build": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "platform": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "sysname": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "release": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "release_version": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 }
               }
             },
             "port": {
               "properties": {
                 "protocol": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "local_ip": {
                   "type": "ip",
@@ -836,24 +863,28 @@
                   "doc_values": "true"
                 },
                 "state": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "pid": {
                   "type": "double",
                   "doc_values": "true"
                 },
                 "process": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 }
               }
             },
             "hardware": {
               "properties": {
                 "serial": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "cpu_name": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "cpu_cores": {
                   "type": "double",
@@ -880,45 +911,56 @@
             "program": {
               "properties": {
                 "format": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "name": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "priority": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "section": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "size": {
                   "type": "double",
                   "doc_values": "true"
                 },
                 "vendor": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "install_time": {
                   "type": "date",
                   "doc_values": "true"
                 },
                 "version": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "architecture": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "multiarch": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "source": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "description": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "location": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 }
               }
             },
@@ -929,10 +971,12 @@
                   "doc_values": "true"
                 },
                 "name": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "state": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "ppid": {
                   "type": "double",
@@ -947,31 +991,40 @@
                   "doc_values": "true"
                 },
                 "cmd": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "args": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "euser": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "ruser": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "suser": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "egroup": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "sgroup": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "fgroup": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "rgroup": {
-                  "type": "text"
+                  "type": "keyword",
+                  "doc_values": "true"
                 },
                 "priority": {
                   "type": "double",
