@@ -690,39 +690,39 @@
                       "doc_values": "true"
                     },
                     "mtu": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "tx_bytes": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "rx_bytes": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "tx_errors": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "rx_errors": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "tx_dropped": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "rx_dropped": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "tx_packets": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "rx_packets": {
-                      "type": "double",
+                      "type": "long",
                       "doc_values": "true"
                     },
                     "ipv4": {
@@ -839,7 +839,7 @@
                   "doc_values": "true"
                 },
                 "local_port": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "remote_ip": {
@@ -847,19 +847,19 @@
                   "doc_values": "true"
                 },
                 "remote_port": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "tx_queue": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "rx_queue": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "inode": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "state": {
@@ -867,7 +867,7 @@
                   "doc_values": "true"
                 },
                 "pid": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "process": {
@@ -887,7 +887,7 @@
                   "doc_values": "true"
                 },
                 "cpu_cores": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "cpu_mhz": {
@@ -903,7 +903,7 @@
                   "doc_values": "true"
                 },
                 "ram_usage": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 }
               }
@@ -927,7 +927,7 @@
                   "doc_values": "true"
                 },
                 "size": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "vendor": {
@@ -967,7 +967,7 @@
             "process": {
               "properties": {
                 "pid": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "name": {
@@ -979,15 +979,15 @@
                   "doc_values": "true"
                 },
                 "ppid": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "utime": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "stime": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "cmd": {
@@ -1027,55 +1027,55 @@
                   "doc_values": "true"
                 },
                 "priority": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "nice": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "size": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "vm_size": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "resident": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "share": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "start_time": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "pgrp": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "session": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "nlwp": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "tgid": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "tty": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "processor": {
-                  "type": "double",
+                  "type": "long",
                   "doc_values": "true"
                 }
               }
