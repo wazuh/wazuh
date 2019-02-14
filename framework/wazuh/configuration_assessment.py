@@ -23,8 +23,8 @@ fields_translation_ca = {'policy_id': 'policy_id',
                          'pass': 'pass',
                          'fail': 'fail',
                          'score': 'score',
-                         'end_scan': 'end_scan',
-                         'start_scan': 'start_scan'
+                         'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch')) as end_scan",
+                         'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch')) as start_scan"
                          }
 fields_translation_ca_check = {'policy_id': 'policy_id',
                                'id': 'id',
@@ -42,7 +42,7 @@ fields_translation_ca_check_compliance = {'key': 'key',
                                           'value': 'value'}
 
 default_query_ca = 'SELECT {0} FROM configuration_assessment_policy ca INNER JOIN configuration_assessment_scan_info si ON ca.id=si.policy_id'
-default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check INNER JOIN configuration_assessment_check_compliance ON id=id_check'
+default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check LEFT JOIN configuration_assessment_check_compliance ON id=id_check'
 
 
 class WazuhDBQueryPM(WazuhDBQuery):
@@ -70,7 +70,7 @@ class WazuhDBQueryPM(WazuhDBQuery):
 
     def _substitute_params(self):
         for k, v in self.request.items():
-            self.query = self.query.replace(f':{k}', str(v))
+            self.query = self.query.replace(f':{k}', f"'{v}'")
 
     def _get_total_items(self):
         self._substitute_params()
@@ -92,21 +92,11 @@ class WazuhDBQueryPM(WazuhDBQuery):
     def _format_data_into_dictionary(self):
         return {"totalItems": self.total_items, "items": self._data}
 
-    def _parse_select_filter(self, select_fields):
-        WazuhDBQuery._parse_select_filter(self, select_fields)
-        for field in select_fields:
-            if field in self.date_fields:
-                select_fields[field] = f"strftime('%Y-%m-%d %H:%M:%S', datetime({field}, 'unixepoch')) as {field}"
-
-        return select_fields
-
     def _add_limit_to_query(self):
         if self.limit:
             if self.limit > common.maximum_database_limit:
                 raise WazuhException(1405, str(self.limit))
-            self.query += ' LIMIT :limit OFFSET :offset'
-            self.request['offset'] = self.offset
-            self.request['limit'] = self.limit
+            self.query += f' LIMIT {self.limit} OFFSET {self.offset}'
         elif self.limit == 0:  # 0 is not a valid limit
             raise WazuhException(1406)
 
@@ -165,17 +155,15 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
     """
     fields_translation = {**fields_translation_ca_check,
                           **fields_translation_ca_check_compliance}
-    if select is None:
-        select = {'fields': (list(fields_translation_ca_check.keys()) +
-                             list(fields_translation_ca_check_compliance.keys()))
-                  }
-    else:
-        if 'policy_id' not in select['fields']:
-            select['fields'].append('policy_id')
+
+    full_select = {'fields': (list(fields_translation_ca_check.keys()) +
+                              list(fields_translation_ca_check_compliance.keys())
+                              )
+                   }
 
     db_query = WazuhDBQueryPM(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                              select=select, count=True, get_data=True,
-                              query=f"policy_id='{policy_id}'" if q == "" else f"policy_id='{policy_id}';{q}",
+                              select=full_select, count=True, get_data=True,
+                              query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
                               filters=filters, default_query=default_query_ca_check, default_sort_field='policy_id',
                               fields=fields_translation, count_field='id')
 
@@ -188,16 +176,23 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
 
     groups = groupby(checks, key=lambda row: row['id'])
     result = []
+    select_fields = full_select['fields'] if select is None else select['fields']
+    select_fields = set([fields_translation_ca_check[field] if field != 'compliance' else 'compliance'
+                         for field in select_fields if field in fields_translation_ca_check])
     # Rearrange check and compliance fields
     for _, group in groups:
         group_list = list(group)
         check_dict = {k: v for k, v in group_list[0].items()
-                      if k in set([col.replace('`', '') for col in fields_translation_ca_check.values()])
+                      if k in set([col.replace('`', '') for col in select_fields])
                       }
-        check_dict['compliance'] = [{k: v for k, v in elem.items()
-                                     if k in fields_translation_ca_check_compliance.values()}
-                                    for elem in group_list
-                                    ]
+        if select is None or 'compliance' in select['fields']:
+            check_dict['compliance'] = list(filter(lambda x: x != {},
+                                                   ({k: v for k, v in elem.items()
+                                                     if k in fields_translation_ca_check_compliance.values()}
+                                                    for elem in group_list
+                                                    )
+                                                   )
+                                            )
         result.append(check_dict)
 
     return {'totalItems': result_dict['totalItems'], 'items': result}

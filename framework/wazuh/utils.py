@@ -655,7 +655,7 @@ class WazuhDBQuery(object):
             r'(\()?' +                                                     # A ( character.
             r'([\w.]+)' +                                                   # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +      # Operator: looks for =, !=, <, > or ~.
-            r"([\w _\-.:/']+)" +                                             # Value: A string.
+            r"([\w _\-\.:/']+)" +                                             # Value: A string.
             r"(\))?" +                                                      # A ) character
             "([" + ''.join(self.query_separators.keys())+"])?"             # Separator: looks for ;, , or nothing.
         )
@@ -704,9 +704,9 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
-            self.query += " (" + " OR ".join(x + ' LIKE :search' for x in self.fields.values()) + ')'
+            self.query += " (" + " OR ".join(x.split(' as ')[0] + ' LIKE :search' for x in self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = "'%{0}%'".format(self.search['value'])
+            self.request['search'] = "%{0}%".format(self.search['value'])
 
 
     def _parse_select_filter(self, select_fields):
@@ -793,8 +793,8 @@ class WazuhDBQuery(object):
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
                 if q_filter['operator'] == 'LIKE':
-                    self.request[field_filter] = "'%{}%'".format(self.request[field_filter])
-                self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
+                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
+                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'], field_filter)
                 if not field_filter.isdigit():
                     # filtering without being uppercase/lowercase sensitive
                     self.query += ' COLLATE NOCASE'

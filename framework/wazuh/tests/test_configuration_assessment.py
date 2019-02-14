@@ -35,6 +35,7 @@ def get_fake_pm_data(*args, **kwargs):
 
 # Aliases and ` are lost when sqlite db answers...
 cols_returned_from_db_pm = [field.replace('`', '').replace('si.', '') for field in fields_translation_ca.values()]
+cols_returned_from_db_pm = [field.split(' as ')[1] if ' as ' in field else field for field in cols_returned_from_db_pm]
 cols_returned_from_db_pm_check = [field.replace('`', '').replace('ca.', '') for field in fields_translation_ca_check.values()]
 
 
