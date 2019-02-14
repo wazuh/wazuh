@@ -275,7 +275,6 @@ connections."
      - 'f:$mysql-cnfs -> !r:^# && r:audit_log_strategy\.+performance;'
      - 'f:$mysql-cnfs -> !r:audit_log_strategy\s*=\s* && r:semisynchronous|synchronous;'
      - 'f:$mysql-cnfs -> r:audit_log_strategy\s*$;'
- cis: "MySQL Configuration - 6.12"
  - id: 3519
    title: "Make sure the audit plugin can't be unloaded"
    description: "Set audit_log to FORCE_PLUS_PERMANENT."
