@@ -109,6 +109,7 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
     }
 
     data->msg_delay = 1000000 / wm_max_eps;
+    data->summary_delay = 3; /* Seconds to wait for summary sending */
     data_win = data;
 
     /* Create Hash for each policy file */
@@ -465,6 +466,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
                 /* Send summary */
                 if(integrity_hash) {
+                    wm_delay(1000 * data->summary_delay);
                     wm_configuration_assessment_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash);
                     snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
                     os_free(integrity_hash);
@@ -2077,8 +2079,30 @@ static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessm
         unsigned int *policy_index;
 
         if (policy_index = queue_pop_ex(request_queue), policy_index) {
-            unsigned int time = data->request_db_interval;
-            mdebug1("Dumping DB for policy index: %u",*policy_index);
+
+#ifndef WIN32
+            int random = os_random();
+            if (random < 0)
+                random = -random;
+#else
+            unsigned int random1 = os_random();
+            unsigned int random2 = os_random();
+
+            char random_id[OS_MAXSTR];
+            snprintf(random_id, OS_MAXSTR - 1, "%u%u", random1, random2);
+
+            int random = atoi(random);
+            if (random < 0)
+                random = -random;
+#endif
+            random = random % data->request_db_interval;
+
+            if(random == 0) {
+                random += 5;
+            }
+
+            unsigned int time = random;
+            mdebug1("Dumping DB for policy index: '%u' in %d seconds",*policy_index,random);
             
             wm_delay(1000 * time);
 

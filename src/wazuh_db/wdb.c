@@ -83,7 +83,10 @@ static const char *SQL_STMT[] = {
     "SELECT result FROM configuration_assessment_check WHERE scan_id = ? ORDER BY id;",
     "SELECT id FROM configuration_assessment_policy;",
     "DELETE FROM configuration_assessment_policy WHERE id = ?;",
-    "DELETE FROM configuration_assessment_check WHERE policy_id = ?;"
+    "DELETE FROM configuration_assessment_check WHERE policy_id = ?;",
+    "DELETE FROM configuration_assessment_scan_info WHERE policy_id = ?;",
+    "DELETE FROM configuration_assessment_check_compliance WHERE id_check = ?;",
+    "SELECT id FROM configuration_assessment_check WHERE policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
