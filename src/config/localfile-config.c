@@ -37,6 +37,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logreader *logf;
     logreader_config *log_config;
     size_t labels_z=0;
+    label_flags_t flags;
 
     log_config = (logreader_config *)d1;
 
@@ -128,11 +129,16 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             os_strdup(node[i]->content, logf[pl].out_format[n]->format);
             logf[pl].out_format[n + 1] = NULL;
         } else if (strcmp(node[i]->element, xml_localfile_label) == 0) {
+            flags.hidden = flags.system = 0;
             char *key_value = 0;
             int j;
             for (j = 0; node[i]->attributes && node[i]->attributes[j]; j++) {
                 if (strcmp(node[i]->attributes[j], "key") == 0) {
                     if (strlen(node[i]->values[j]) > 0) {
+                        if (node[i]->values[j][0] == '_'){
+                            mwarn("Labels starting with \"_\"  are reserved for internal use. Skipping label '%s'.", node[i]->values[j]);
+                            flags.system = 1;
+                        }
                         key_value = node[i]->values[j];
                     } else {
                         merror("Label with empty key.");
@@ -140,12 +146,17 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     }
                 }
             }
+
+            // Skip labels with "_"
+            if (flags.system == 1)
+                continue;
+
             if (!key_value) {
                 merror("Expected 'key' attribute for label.");
                 return (OS_INVALID);
             }
 
-            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, 0, 1);
+            logf[pl].labels = labels_add(logf[pl].labels, &labels_z, key_value, node[i]->content, flags, 1);
         } else if (strcmp(node[i]->element, xml_localfile_command) == 0) {
             /* We don't accept remote commands from the manager - just in case */
             if (log_config->agent_cfg == 1 && log_config->accept_remote == 0) {

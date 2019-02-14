@@ -234,11 +234,13 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
                 addr4 = (struct sockaddr_in *) pGateway->Address.lpSockaddr;
                 inet_ntop(AF_INET, &(addr4->sin_addr), host, NI_MAXHOST);
                 cJSON_AddStringToObject(ipv4, "gateway", host);
+                cJSON_AddNumberToObject(ipv4, "metric", pCurrAddresses->Ipv4Metric);
 
             } else if (pGateway->Address.lpSockaddr->sa_family == AF_INET6){
                 addr6 = (struct sockaddr_in6 *) pGateway->Address.lpSockaddr;
                 inet_ntop(AF_INET6, &(addr6->sin6_addr), host, NI_MAXHOST);
                 cJSON_AddStringToObject(ipv6, "gateway", host);
+                cJSON_AddNumberToObject(ipv6, "metric", pCurrAddresses->Ipv6Metric);
 
             }
 
