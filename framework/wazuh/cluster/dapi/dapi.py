@@ -238,7 +238,7 @@ class DistributedAPI:
 
         else:
             if 'cluster' in self.input_json['function']:
-                node_name = {'fw_all_nodes': []}
+                node_name = {'fw_all_nodes': [], self.node_info['node']: []}
             else:
                 # agents, syscheck, rootcheck and syscollector
                 # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
