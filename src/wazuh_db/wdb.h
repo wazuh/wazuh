@@ -104,6 +104,9 @@ typedef enum wdb_stmt {
     WDB_STMT_CA_POLICY_GET_ALL,
     WDB_STMT_CA_POLICY_DELETE,
     WDB_STMT_CA_CHECK_DELETE,
+    WDB_STMT_CA_SCAN_INFO_DELETE,
+    WDB_STMT_CA_CHECK_COMPLIANCE_DELETE,
+    WDB_STMT_CA_CHECK_FIND,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -247,6 +250,9 @@ int wdb_configuration_assessment_policy_delete(wdb_t * wdb,char * policy_id);
 
 /* Delete a configuration assessment check. Returns 0 on success or -1 on error (new) */
 int wdb_configuration_assessment_check_delete(wdb_t * wdb,char * policy_id);
+
+/* Delete a configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_configuration_assessment_scan_info_delete(wdb_t * wdb,char * policy_id);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date);

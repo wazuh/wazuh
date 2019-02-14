@@ -265,7 +265,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
     if (!configuration_assessment->interval)
         configuration_assessment->interval = WM_DEF_INTERVAL;
 
-    configuration_assessment->request_db_interval = getDefine_Int("configuration_assessment","request_db_interval",5,220000);
+    configuration_assessment->request_db_interval = getDefine_Int("configuration_assessment","request_db_interval",0,60) * 60;
 
     /* Maximum request interval is the scan interval */
     if(configuration_assessment->request_db_interval > configuration_assessment->interval) {

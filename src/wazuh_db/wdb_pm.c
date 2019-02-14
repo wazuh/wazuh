@@ -22,7 +22,7 @@ static char* get_pci_dss(const char *string);
 /* Get CIS requirement from log string */
 char* get_cis(const char *string);
 
-/* Insert policy monitoring entry. Returns ID on success or -1 on error. */
+/* Insert configuration assessment entry. Returns ID on success or -1 on error. */
 int wdb_insert_pm(sqlite3 *db, const rk_event_t *event) {
     sqlite3_stmt *stmt = NULL;
     int result;
@@ -50,7 +50,7 @@ int wdb_insert_pm(sqlite3 *db, const rk_event_t *event) {
     return result;
 }
 
-/* Update policy monitoring last date. Returns number of affected rows on success or -1 on error. */
+/* Update configuration assessment last date. Returns number of affected rows on success or -1 on error. */
 int wdb_update_pm(sqlite3 *db, const rk_event_t *event) {
     sqlite3_stmt *stmt = NULL;
     int result;
@@ -97,7 +97,7 @@ int wdb_delete_pm(int id) {
     return result;
 }
 
-/* Look for a policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+/* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_configuration_assessment_find(wdb_t * wdb, int pm_id, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -130,7 +130,7 @@ int wdb_configuration_assessment_find(wdb_t * wdb, int pm_id, char * output) {
     }
 }
 
-/* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
+/* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
 int wdb_configuration_assessment_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -169,7 +169,7 @@ int wdb_configuration_assessment_save(wdb_t * wdb, int id,int scan_id,char * tit
     }
 }
 
-/* Update global policy monitoring entry. Returns number of affected rows or -1 on error.  */
+/* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
 int wdb_configuration_assessment_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
@@ -202,7 +202,7 @@ int wdb_configuration_assessment_global_update(wdb_t * wdb, int scan_id, char *n
     }
 }
 
-/* Look for a policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+/* Look for a configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_configuration_assessment_global_find(wdb_t * wdb, char *name, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -279,7 +279,7 @@ end:
     return 0;
 }
 
-/* Delete a policy monitoring policy. Returns 0 on success or -1 on error (new) */
+/* Delete a configuration assessment policy. Returns 0 on success or -1 on error (new) */
 int wdb_configuration_assessment_policy_delete(wdb_t * wdb,char * policy_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -295,6 +295,34 @@ int wdb_configuration_assessment_policy_delete(wdb_t * wdb,char * policy_id) {
     }
 
     stmt = wdb->stmt[WDB_STMT_CA_POLICY_DELETE];
+
+    sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        wdb_configuration_assessment_scan_info_delete(wdb,policy_id);
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+/* Delete a configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_configuration_assessment_scan_info_delete(wdb_t * wdb,char * policy_id) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_configuration_assessment_scan_info_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_CA_SCAN_INFO_DELETE) < 0) {
+        mdebug1("at wdb_configuration_assessment_scan_info_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_CA_SCAN_INFO_DELETE];
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
     
@@ -320,7 +348,7 @@ int wdb_configuration_assessment_check_delete(wdb_t * wdb,char * policy_id) {
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_STMT_CA_POLICY_DELETE];
+    stmt = wdb->stmt[WDB_STMT_CA_CHECK_DELETE];
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
     
@@ -332,7 +360,7 @@ int wdb_configuration_assessment_check_delete(wdb_t * wdb,char * policy_id) {
     }
 }
 
-/* Look for a scan policy monitoring entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
+/* Look for a scan configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_configuration_assessment_scan_find(wdb_t * wdb, char *policy_id, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -455,7 +483,7 @@ int wdb_configuration_assessment_policy_info_save(wdb_t * wdb,char *name,char * 
     }
 }
 
-/* Insert policy monitoring entry. Returns 0 on success or -1 on error (new) */
+/* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
 int wdb_configuration_assessment_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int score,char * hash) {
 
      if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -622,7 +650,7 @@ end:
     return 0;
 }
 
-/* Update a policy monitoring entry. Returns affected rows on success or -1 on error (new) */
+/* Update a configuration assessment entry. Returns affected rows on success or -1 on error (new) */
 int wdb_configuration_assessment_update(wdb_t * wdb, char * result, int id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){

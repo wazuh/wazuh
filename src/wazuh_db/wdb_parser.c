@@ -434,9 +434,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
     int result;
 
     if (next = strchr(input, ' '), !next) {
-        mdebug1("Invalid policy monitoring query syntax.");
-        mdebug2("policy monitoring query: %s", input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", input);
+        mdebug1("Invalid configuration assessment query syntax.");
+        mdebug2("configuration assessment query: %s", input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", input);
         return -1;
     }
 
@@ -461,8 +461,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
                 snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
                 break;
             default:
-                mdebug1("Cannot query policy monitoring.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring");
+                mdebug1("Cannot query configuration assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query configuration assessment");
         }
 
         return result;
@@ -474,9 +474,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         pm_id = strtol(curr,NULL,10);
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -484,8 +484,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         result_check = next;
 
         if (result = wdb_configuration_assessment_update(wdb, result_check, pm_id), result < 0) {
-            mdebug1("Cannot update policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot update policy monitoring information.");
+            mdebug1("Cannot update configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot update configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -510,9 +510,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -521,9 +521,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -535,9 +535,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         *next++ = '\0';
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -546,9 +546,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -557,9 +557,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
        
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -568,9 +568,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -579,9 +579,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -590,9 +590,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -601,9 +601,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -612,9 +612,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -623,9 +623,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -634,9 +634,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -647,8 +647,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         policy_id = curr;
 
         if (result = wdb_configuration_assessment_save(wdb,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result_check,policy_id), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -672,8 +672,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
                 snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
                 break;
             default:
-                mdebug1("Cannot query policy monitoring.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring global");
+                mdebug1("Cannot query configuration assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query configuration assessment global");
         }
 
         return result;
@@ -685,8 +685,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         policy_id = curr;
 
         if (result = wdb_configuration_assessment_policy_delete(wdb,policy_id), result < 0) {
-            mdebug1("Cannot delete policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete policy monitoring information.");
+            mdebug1("Cannot delete configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -700,8 +700,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         policy_id = curr;
 
         if (result = wdb_configuration_assessment_check_delete(wdb,policy_id), result < 0) {
-            mdebug1("Cannot delete policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot delete policy monitoring check information.");
+            mdebug1("Cannot delete configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete configuration assessment check information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -729,8 +729,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
                 snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
                 break;
             default:
-                mdebug1("Cannot query policy monitoring.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring global");
+                mdebug1("Cannot query configuration assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query configuration assessment global");
         }
 
         return result;
@@ -752,8 +752,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
                 snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
                 break;
             default:
-                mdebug1("Cannot query policy monitoring.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring scan");
+                mdebug1("Cannot query configuration assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query configuration assessment scan");
         }
 
         return result;
@@ -773,8 +773,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
                 snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
                 break;
             default:
-                mdebug1("Cannot query policy monitoring.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy monitoring scan");
+                mdebug1("Cannot query configuration assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query configuration assessment scan");
         }
 
         return result;
@@ -796,7 +796,7 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
                 snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
                 break;
             default:
-                mdebug1("Cannot query policy monitoring.");
+                mdebug1("Cannot query configuration assessment.");
                 snprintf(output, OS_MAXSTR + 1, "err Cannot query policy scan");
         }
 
@@ -811,9 +811,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -822,9 +822,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -833,9 +833,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -844,9 +844,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
         
@@ -855,15 +855,14 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         references = next;
         if (result = wdb_configuration_assessment_policy_info_save(wdb,name,file,id,description,references), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;
     } else if (strcmp(curr, "update_global") == 0) {
-
         int scan_id;
         char *name;
         char *description;
@@ -875,9 +874,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -886,9 +885,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -897,9 +896,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -908,9 +907,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -919,9 +918,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -934,9 +933,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
        
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -954,8 +953,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
             score = strtol(curr,NULL,10);
 
         if (result = wdb_configuration_assessment_global_update(wdb,scan_id,name,description,references,pass,failed,score), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -970,9 +969,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
         
@@ -981,9 +980,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -992,8 +991,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         value = next;
         if (result = wdb_configuration_assessment_compliance_save(wdb,id_check,key,value), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring global information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -1013,9 +1012,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         char *hash;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1028,9 +1027,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1043,9 +1042,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1058,9 +1057,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;   
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1069,9 +1068,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1084,9 +1083,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1099,9 +1098,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1114,15 +1113,14 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         hash = next;
         if (result = wdb_configuration_assessment_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,score,hash), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;
     } else if (strcmp(curr, "update_scan_info") == 0) {
-
         curr = next;
 
         char *module;
@@ -1130,9 +1128,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1152,8 +1150,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
             pm_end_scan = strtol(curr,NULL,10);
 
         if (result = wdb_configuration_assessment_scan_info_update(wdb, module,pm_end_scan), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -1172,9 +1170,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
             scan_id_old = strtol(curr,NULL,10);
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1182,9 +1180,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1200,8 +1198,8 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
        
         if (result = wdb_configuration_assessment_check_update_scan_id(wdb,scan_id_old,scan_id_new,policy_id), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
@@ -1220,9 +1218,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1232,9 +1230,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
 
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1251,9 +1249,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1266,9 +1264,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
         
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1281,9 +1279,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
         
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1296,9 +1294,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
         
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1311,9 +1309,9 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         curr = next;
         
         if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid policy monitoring query syntax.");
-            mdebug2("Policy monitoring query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid policy monitoring query syntax, near '%.32s'", curr);
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
@@ -1327,15 +1325,15 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         hash = next;
 
         if (result = wdb_configuration_assessment_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,score,hash), result < 0) {
-            mdebug1("Cannot save policy monitoring information.");
-            snprintf(output, OS_MAXSTR + 1, "err Cannot save policy monitoring information.");
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         return result;
     } else {
-        mdebug1("Invalid policy monitoring query syntax.");
+        mdebug1("Invalid configuration assessment query syntax.");
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Rootcheck query syntax, near '%.32s'", curr);
         return -1;
