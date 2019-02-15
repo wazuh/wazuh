@@ -804,6 +804,17 @@ class AWSCloudTrailBucket(AWSLogsBucket):
             if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
                 event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
 
+        if 'requestParameters' in event['aws']:
+            request_parameters = event['aws']['requestParameters']
+            if 'disableApiTermination' in request_parameters:
+                disable_api_termination = request_parameters['disableApiTermination']
+                if isinstance(disable_api_termination, bool):
+                    request_parameters['disableApiTermination'] = {'value': disable_api_termination}
+                elif isinstance(disable_api_termination, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
         return event
 
 
@@ -1064,17 +1075,6 @@ class AWSConfigBucket(AWSLogsBucket):
                 if isinstance(iam_profile, unicode):
                     configuration['iamInstanceProfile'] = {'name': iam_profile}
                 elif isinstance(iam_profile, dict):
-                    pass
-                else:
-                    print("WARNING: Could not reformat event {0}".format(event))
-
-        if 'requestParameters' in event['aws']:
-            request_parameters = event['aws']['requestParameters']
-            if 'disableApiTermination' in request_parameters:
-                disable_api_termination = request_parameters['disableApiTermination']
-                if isinstance(request_parameters['disableApiTermination'], bool):
-                    request_parameters['disableApiTermination'] = {'value': disable_api_termination}
-                elif isinstance(disable_api_termination, dict):
                     pass
                 else:
                     print("WARNING: Could not reformat event {0}".format(event))
