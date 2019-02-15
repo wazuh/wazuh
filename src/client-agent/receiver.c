@@ -139,9 +139,33 @@ int receive_msg()
             /* Configuration assessment DB request */
             else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
 #ifndef WIN32
+                /* Connect to the configuration assessment queue */
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
                         merror("Error communicating with configuration assessment");
+                        close(agt->cfgadq);
+
+                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                            merror("Unable to connect to the configuration assessment "
+                                    "queue (disabled).");
+                            agt->cfgadq = -1;
+                        } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
+                            merror("Error communicating with configuration assessment");
+                            close(agt->cfgadq);
+                            agt->cfgadq = -1;
+                        }
+                    }
+                } else {
+                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                        merror("Unable to connect to the configuration assessment "
+                            "queue (disabled).");
+                        agt->cfgadq = -1;
+                    } else {
+                         if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
+                            merror("Error communicating with configuration assessment");
+                            close(agt->cfgadq);
+                            agt->cfgadq = -1;
+                        }
                     }
                 }
 #else

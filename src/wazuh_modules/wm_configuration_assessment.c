@@ -182,7 +182,7 @@ static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t 
         if(data->queue >= 0){
             close(data->queue);
         }
-        
+
         if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             mwarn("Can't connect to queue.");
         } else {

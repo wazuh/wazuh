@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "external/cJSON/cJSON.h"
 
 int wdb_parse(char * input, char * output) {
     char * actor;
@@ -30,7 +31,7 @@ int wdb_parse(char * input, char * output) {
         input++;
     }
 
-    if (!*input) {
+    if (!input) {
         mdebug1("Empty input query.");
         return -1;
     }
@@ -493,165 +494,150 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
         return result;
     } else if (strcmp(curr, "insert") == 0) {
 
-        int id;
-        int scan_id;
-        char *title;
-        char *description;
-        char *rationale;
-        char *remediation;
-        char *file;
-        char *directory;
-        char *process;
-        char *registry;
-        char *reference;
-        char *result_check;
-        char *policy_id;
-
         curr = next;
-
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
+        cJSON *event;
+        if (event = cJSON_Parse(curr), !event)
+        {
+            mdebug1("Invalid configuration assessment query syntax. JSON object not found or invalid");
             snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
-        id = strtol(curr,NULL,10);
-        *next++ = '\0';
+        cJSON *id;
+        cJSON *scan_id;
+        cJSON *title;
+        cJSON *description;
+        cJSON *rationale;
+        cJSON *remediation;
+        cJSON *file;
+        cJSON *directory;
+        cJSON *process;
+        cJSON *registry;
+        cJSON *reference;
+        cJSON *result_check;
+        cJSON *policy_id;
+        cJSON *check;
 
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
+        if( scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
+            mdebug1("Invalid configuration assessment query syntax. JSON object not found or invalid");
             snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
-        if (!strncmp(curr, "NULL", 4))
-            scan_id = -1;
-        else
-            scan_id = strtol(curr,NULL,10);
-
-        *next++ = '\0';
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
+        if( !scan_id->valueint ) {
+            mdebug1("Malformed JSON: field 'id' must be a number");
             snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
-        title = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
+        if( policy_id = cJSON_GetObjectItem(event, "policy_id"), !policy_id) {
+            mdebug1("Malformed JSON: field 'policy_id' not found");
             snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
-        description = curr;
-        *next++ = '\0';
-       
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
+        if( !policy_id->valuestring ) {
+            mdebug1("Malformed JSON: field 'policy_id' must be a string");
             snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
             return -1;
         }
 
-        rationale = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+        if( check = cJSON_GetObjectItem(event, "check"),!check) {
+            mdebug1("Malformed JSON: field 'check' not found");
             return -1;
+
+        } else {
+
+            if( id = cJSON_GetObjectItem(check, "id"), !id) {
+                mdebug1("Malformed JSON: field 'id' not found");
+                return -1;
+            }
+
+            if( !id->valueint ) {
+                mdebug1("Malformed JSON: field 'id' must be a string");
+                return -1;
+            }
+
+            if( title = cJSON_GetObjectItem(check, "title"), !title) {
+                mdebug1("Malformed JSON: field 'title' not found");
+                return -1;
+            }
+
+            if( !title->valuestring ) {
+                mdebug1("Malformed JSON: field 'title' must be a string");
+                return -1;
+            }
+
+            description = cJSON_GetObjectItem(check, "description");
+
+            if( description && !description->valuestring ) {
+                mdebug1("Malformed JSON: field 'description' must be a string");
+                return -1;
+            }
+
+            rationale = cJSON_GetObjectItem(check, "rationale");
+
+            if( rationale && !rationale->valuestring ) {
+                mdebug1("Malformed JSON: field 'rationale' must be a string");
+                return -1;
+            }
+
+            remediation = cJSON_GetObjectItem(check, "remediation");
+            if( remediation && !remediation->valuestring ) {
+                mdebug1("Malformed JSON: field 'remediation' must be a string");
+                return -1;
+            }
+
+            reference = cJSON_GetObjectItem(check, "references");
+
+            if( reference && !reference->valuestring ) {
+                mdebug1("Malformed JSON: field 'reference' must be a string");
+                return -1;
+            }
+
+            file = cJSON_GetObjectItem(check, "file");
+            if( file && !file->valuestring ) {
+                mdebug1("Malformed JSON: field 'file' must be a string");
+                return -1;
+            }
+
+            directory = cJSON_GetObjectItem(check, "directory");
+            if( directory && !directory->valuestring ) {
+                mdebug1("Malformed JSON: field 'directory' must be a string");
+                return -1;
+            }
+
+            process = cJSON_GetObjectItem(check, "process");
+            if( process && !process->valuestring ) {
+                mdebug1("Malformed JSON: field 'process' must be a string");
+                return -1;
+            }
+
+            registry = cJSON_GetObjectItem(check, "registry");
+            if( registry && !registry->valuestring ) {
+                mdebug1("Malformed JSON: field 'registry' must be a string");
+                return -1;
+            }
+            
+            if( result_check = cJSON_GetObjectItem(check, "result"), !result_check) {
+                mdebug1("Malformed JSON: field 'result' not found");
+                return -1;
+            }
+
+            if(!result_check->valuestring ) {
+                mdebug1("Malformed JSON: field 'result' must be a string");
+                return -1;
+            }
         }
 
-        remediation = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        file = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        directory = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        process = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        registry = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        reference = curr;
-        *next++ = '\0';
-
-        curr = next;
-        if (next = strchr(curr, '|'), !next) {
-            mdebug1("Invalid configuration assessment query syntax.");
-            mdebug2("configuration assessment query: %s", curr);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
-            return -1;
-        }
-
-        result_check = curr;
-        *next++ = '\0';
-
-        curr = next;
-        policy_id = curr;
-
-        if (result = wdb_configuration_assessment_save(wdb,id,scan_id,title,description,rationale,remediation,file,directory,process,registry,reference,result_check,policy_id), result < 0) {
+        if (result = wdb_configuration_assessment_save(wdb,id->valueint,scan_id->valueint,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check->valuestring ? result_check->valuestring : NULL,policy_id ? policy_id->valuestring : NULL), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
         }
+
+        cJSON_Delete(event);
 
         return result;
     } else if (strcmp(curr, "query_global") == 0) {
