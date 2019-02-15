@@ -69,7 +69,7 @@ char* getPrimaryIP(){
                 if (metric && metric->valueint < min_metric) {
                     cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                     cJSON *address = cJSON_GetArrayItem(addresses,0);
-                    if(agent_ip){
+                    if(strcmp(agent_ip,"")){
                         free(agent_ip);
                     }
                     os_strdup(address->valuestring, agent_ip);
