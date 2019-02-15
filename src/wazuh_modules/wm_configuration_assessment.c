@@ -102,7 +102,7 @@ static wm_configuration_assessment_t * data_win;
 void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
     // If module is disabled, exit
     if (data->enabled) {
-        minfo("Module started");
+        minfo("Module started.");
     } else {
         minfo("Module disabled. Exiting.");
         pthread_exit(NULL);
@@ -174,7 +174,7 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
 static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t * data,cJSON *json_alert)
 {
     char *msg = cJSON_PrintUnformatted(json_alert);
-    mdebug2("Sending: %s",msg);
+    mdebug2("Sending event: %s",msg);
 
     if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
@@ -214,7 +214,7 @@ static void wm_configuration_assessment_send_policies_scanned(wm_configuration_a
     cJSON_AddStringToObject(policies_obj, "type", "policies");
     cJSON_AddItemToObject(policies_obj,"policies",policies);
 
-    mdebug2("Sending policies scanned...");
+    mdebug2("Sending scanned policies.");
     wm_configuration_assessment_send_alert(data,policies_obj);
     cJSON_Delete(policies_obj);
 }
@@ -275,9 +275,9 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
         // Get time and execute
         time_start = time(NULL);
 
-        minfo("Starting evaluation.");
+        minfo("Starting Configuration Assessment scan.");
 
-        /* Do scan for every profile file */
+        /* Do scan for every policy file */
         wm_configuration_assessment_read_files(data);
 
         /* Send policies scanned for database purge on manager side */
@@ -286,7 +286,7 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
-        minfo("Ended policy monitoring scan.");
+        minfo("Configuration assessment scan finished. Duration: %d seconds.", (int)time_sleep);
 
         if (data->scan_day) {
             int interval = 0, i = 0;
@@ -376,7 +376,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             fp = fopen(path,"r");
 
             if(!fp) {
-                mwarn("Policy file not found '%s'",path);
+                mwarn("Policy file not found: '%s'. Skipping it.",path);
                 goto next;
             }
 
@@ -384,12 +384,12 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             yaml_document_t document;
         
             if (yaml_parse_file(path, &document)) {
-                merror("Policy file could not be parsed '%s'",path);
+                merror("Policy file could not be parsed: '%s'. Skipping it.",path);
                 goto next;
             }
 
             if (object = yaml2json(&document), !object) {
-                merror("Transforming yaml to json '%s'",path);
+                merror("Transforming yaml to json: '%s'. Skipping it.",path);
                 goto next;
             }
 
@@ -404,12 +404,12 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             cJSON_AddItemToArray(requirements_array, requirements);
 
             if(wm_configuration_assessment_check_policy(policy)) {
-                merror("Check your 'policy' field");
+                merror("Reading 'policy' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
             if(requirements && wm_configuration_assessment_check_requirements(requirements)) {
-                merror("Check your 'requirements' field");
+                merror("Reading 'requirements' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -419,13 +419,14 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             }
 
             if(!profiles){
-                merror("Obtaining 'checks' from json");
+                merror("Reading 'checks' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
             vars = OSStore_Create();
 
             if( wm_configuration_assessment_get_vars(variables,vars) != 0 ){
+                merror("Reading 'variables' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -455,7 +456,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 requirements_satisfied = 1;
             } else {
                 requirements_satisfied = 0;
-                mwarn("Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
+                mwarn("Requirements not satisfied for policy '%s'. Skipping it.", data->profile[i]->profile);
             }
 
             if(requirements_satisfied) {
@@ -463,7 +464,12 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 time_t time_end = 0;
                 time_start = time(NULL);
 
-                wm_configuration_assessment_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index);
+                minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
+
+                if (wm_configuration_assessment_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index) != 0) {
+                    merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
+                }
+                mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_configuration_assessment_hash_integrity(cis_db_index);
                 time_end = time(NULL);
 
@@ -477,7 +483,6 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 
                 wm_configuration_assessment_reset_summary();
             }
-           
 
             w_del_plist(plist);
 
@@ -518,45 +523,45 @@ static int wm_configuration_assessment_check_policy(cJSON *policy) {
 
     id = cJSON_GetObjectItem(policy, "id");
     if(!id) {
-        merror("Field 'id' not found on policy");
+        merror("Field 'id' not found on policy.");
         return retval;
     }
 
     if(!id->valuestring){
-        merror("Field 'id' must be a string");
+        merror("Field 'id' must be a string.");
         return retval;
     }
 
     name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
-        merror("Field 'name' not found on policy");
+        merror("Field 'name' not found on policy.");
         return retval;
     }
 
     if(!name->valuestring){
-        merror("Field 'name' must be a string");
+        merror("Field 'name' must be a string.");
         return retval;
     }
 
     file = cJSON_GetObjectItem(policy, "file");
     if(!file) {
-        merror("Field 'file' not found on policy");
+        merror("Field 'file' not found on policy.");
         return retval;
     }
 
     if(!file->valuestring){
-        merror("Field 'file' must be a string");
+        merror("Field 'file' must be a string.");
         return retval;
     }
 
     description = cJSON_GetObjectItem(policy, "description");
     if(!description) {
-        merror("Field 'description' not found on policy");
+        merror("Field 'description' not found on policy.");
         return retval;
     }
 
     if(!description->valuestring) {
-        merror("Field 'description' must be a string");
+        merror("Field 'description' must be a string.");
         return retval;
     }
 
@@ -578,34 +583,34 @@ static int wm_configuration_assessment_check_requirements(cJSON *requirements) {
 
     title = cJSON_GetObjectItem(requirements, "title");
     if(!title) {
-        merror("Field 'title' not found on requirements");
+        merror("Field 'title' not found on requirements.");
         return retval;
     }
 
     if(!title->valuestring){
-        merror("Field 'title' must be a string");
+        merror("Field 'title' must be a string.");
         return retval;
     }
 
     description = cJSON_GetObjectItem(requirements, "description");
     if(!description) {
-        merror("Field 'description' not found on policy");
+        merror("Field 'description' not found on policy.");
         return retval;
     }
 
     if(!description->valuestring){
-        merror("Field 'description' must be a string");
+        merror("Field 'description' must be a string.");
         return retval;
     }
 
     condition = cJSON_GetObjectItem(requirements, "condition");
     if(!condition) {
-        merror("Field 'condition' not found on policy");
+        merror("Field 'condition' not found on policy.");
         return retval;
     }
 
     if(!condition->valuestring){
-        merror("Field 'condition' must be a string");
+        merror("Field 'condition' must be a string.");
         return retval;
     }
 
@@ -650,7 +655,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
         /* Get first name */
         if(c_title) {
             if(!c_title->valuestring) {
-                merror("Field 'title' must be a string");
+                mdebug1("Field 'title' must be a string.");
                 ret_val = 1;
                 goto clean_return;
             }
@@ -662,7 +667,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
         /* Get condition */
         if(c_condition) {
             if(!c_condition->valuestring) {
-                merror("Field 'condition' must be a string");
+                mdebug1("Field 'condition' must be a string.");
                 ret_val = 1;
                 goto clean_return;
             }
@@ -692,7 +697,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 value = NULL;
 
                 if(!p_check->valuestring) {
-                    merror("Field 'rule' must be a string");
+                    mdebug1("Field 'rule' must be a string.");
                     ret_val = 1;
                     goto clean_return;
                 }
@@ -701,7 +706,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 /* Get value to look for */
                 value = wm_configuration_assessment_get_value(nbuf, &type);
                 if (value == NULL) {
-                    merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
+                    mdebug1(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
                 }
 
@@ -814,7 +819,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                         short is_nfs = IsNFS(dir);
                         if( is_nfs == 1 && data->skip_nfs ) {
-                            mdebug1("rootcheck.skip_nfs enabled and %s is flagged as NFS.", dir);
+                            mdebug2("skip_nfs enabled and %s is flagged as NFS.", dir);
                         }
                         else {
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
@@ -909,6 +914,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                                 wm_configuration_assessment_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
+                        } else {
+                            merror("Building event for check: %s. Set debug mode for more information.", name);
+                            ret_val = 1;
                         }
                     }
 
@@ -941,6 +949,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                                 wm_configuration_assessment_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
+                        } else {
+                            merror("Building event for check: %s. Set debug mode for more information.", name);
+                            ret_val = 1;
                         }
                     }
 
@@ -982,20 +993,14 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
             }
 
             /* Clean up name */
-            if (name) {
-                free(name);
-                name = NULL;
-            }
+            os_free(name);
         }
         id_check_p++;
     }
 
 /* Clean up memory */
 clean_return:
-    if (name) {
-        free(name);
-        name = NULL;
-    }
+    os_free(name);
 
     return ret_val;
 
@@ -1156,11 +1161,9 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
         } else {
             full_negate = wm_configuration_assessment_pt_check_negate(pattern);
             /* Check for content in the file */
-            mdebug2("Checking file: %s", file);
             fp = fopen(file, "r");
             if (fp) {
 
-                mdebug2("Starting new file: %s", file);
                 buf[OS_SIZE_2048] = '\0';
                 while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
                     char *nbuf;
@@ -1180,7 +1183,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
                     /* Matched */
                     pt_result = wm_configuration_assessment_pt_matches(buf, pattern);
                     if ((pt_result == 1 && full_negate == 0) ) {
-                        mdebug1("Alerting file %s on line %s", file, buf);
+                        mdebug2("Alerting file %s on line %s", file, buf);
                         int i = 0;
                         char _b_msg[OS_SIZE_1024 + 1];
 
@@ -1333,7 +1336,6 @@ static int wm_configuration_assessment_pt_matches(const char *str, char *pattern
         } else if (strncasecmp(pattern, "r:", 2) == 0) {
             pattern += 2;
             if (OS_Regex(pattern, str)) {
-                mdebug2("Pattern: %s matches %s.", pattern, str);
                 ret_code = 1;
             }
         } else if (strncasecmp(pattern, "<:", 2) == 0) {
@@ -1804,6 +1806,7 @@ static int wm_configuration_assessment_send_summary(wm_configuration_assessment_
         cJSON_AddStringToObject(json_summary, "hash", "error_calculating_hash");
     }
    
+    mdebug1("Sending summary event for file: '%s.", file->valuestring);
     wm_configuration_assessment_send_alert(data,json_summary);
     cJSON_Delete(json_summary);
 
@@ -1832,15 +1835,14 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
     cJSON *description = cJSON_GetObjectItem(profile, "description");
     cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
     cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
-    cJSON *default_value = cJSON_GetObjectItem(profile, "default_value");
 
     if(!pm_id) {
-        merror("No 'id' field found on check");
+        mdebug1("No 'id' field found on check.");
         goto error;
     }
 
     if(!pm_id->valueint) {
-        merror("Field 'id' must be a number");
+        mdebug1("Field 'id' must be a number.");
         goto error;
     }
 
@@ -1848,23 +1850,23 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
 
     if(title){
         if(!title->valuestring) {
-            merror("Field 'title' must be a string");
+            mdebug1("Field 'title' must be a string.");
             goto error;
         }
         cJSON_AddStringToObject(check, "title", title->valuestring);
     } else {
-        merror("No 'title' field found on check '%d'",pm_id->valueint);
+        mdebug1("No 'title' field found on check '%d'.",pm_id->valueint);
         goto error;
     }
 
     if(!policy_id){
-        merror("No 'id' field found on policy");
+        mdebug1("No 'id' field found on policy.");
         goto error;
     }
 
     if(description){
         if(!description->valuestring) {
-            merror("Field 'description' must be a string");
+            mdebug1("Field 'description' must be a string.");
             goto error;
         }
         cJSON_AddStringToObject(check, "description", description->valuestring);
@@ -1872,7 +1874,7 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
 
     if(rationale){
         if(!rationale->valuestring) {
-            merror("Field 'rationale' must be a string");
+            mdebug1("Field 'rationale' must be a string.");
             goto error;
         }
         cJSON_AddStringToObject(check, "rationale", rationale->valuestring);
@@ -1880,18 +1882,10 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
 
     if(remediation){
         if(!remediation->valuestring) {
-            merror("Field 'remediation' must be a string");
+            mdebug1("Field 'remediation' must be a string.");
             goto error;
         }
         cJSON_AddStringToObject(check, "remediation", remediation->valuestring);
-    }
-
-    if(default_value){
-        if(!default_value->valuestring) {
-            merror("Field 'default_value' must be a string");
-            goto error;
-        }
-        cJSON_AddStringToObject(check, "default_value", default_value->valuestring);
     }
 
     cJSON *compliances = cJSON_GetObjectItem(profile, "compliance");
@@ -1954,7 +1948,7 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
     cJSON_AddStringToObject(check, "result", result);
 
     if(!policy_id->valuestring) {
-        merror("Field 'id' must be a string");
+        mdebug1("Field 'id' must be a string");
         goto error;
     }
 
@@ -2004,7 +1998,7 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
             if(obj) {
                 elem->event = obj;
                 if (ret_add = OSHash_Update(cis_db_hash,id_hashed,elem), ret_add != 1) {
-                    merror("Unable to add cis id to db: %d", pm_id->valueint);
+                    merror("Unable to update hash table for check: %d", pm_id->valueint);
                     return 0;
                 }
 
@@ -2025,7 +2019,7 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
         if(obj) {
             elem->event = obj;
             if (ret_add = OSHash_Add(cis_db_hash,id_hashed,elem), ret_add != 2) {
-                merror("Unable to add cis id to db: %d", pm_id->valueint);
+                merror("Unable to update hash table for check: %d", pm_id->valueint);
                 return 0;
             }
             cis_db_for_hash[policy_index].elem[check_index] = elem;
