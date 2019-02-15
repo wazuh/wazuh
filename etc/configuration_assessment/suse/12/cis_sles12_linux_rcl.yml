@@ -95,7 +95,7 @@ checks:
      - 'f:/etc/fstab -> !r^# && !r:/var;'
  - id: 8505
    title: "Ensure separate partition exists for /var/log"
-   description: "The /var/log directory is used by system services to store log data"
+   description: "The /var/log directory is used by system services to store log data."
    rationale: "There are two important reasons to ensure that system logs are stored on a separate partition: protection against resource exhaustion (since logs can grow quite large) and protection of audit data."
    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
    compliance:
@@ -109,7 +109,7 @@ checks:
  - id: 8506
    title: "Ensure separate partition exists for /var/log/audit"
    description: "The auditing daemon, auditd , stores log data in the /var/log/audit directory."
-   rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog ) consume space in the same partition as auditd , it may not perform as desired."
+   rationale: "There are two important reasons to ensure that data gathered by auditd is stored on a separate partition: protection against resource exhaustion (since the audit.log file can grow quite large) and protection of audit data. The audit daemon calculates how much free space is left and performs actions based on the results. If other processes (such as syslog ) consume space in the same partition as auditd, it may not perform as desired."
    remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit.  For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
    compliance:
     - cis: "1.1.12"
@@ -135,7 +135,7 @@ checks:
    title: "Ensure nodev option set on /home partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
-   remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information.  # mount -o remount,nodev /home"
+   remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /home partition. See the fstab(5) manual page for more information.  # mount -o remount,nodev /home. Notes: The actions in this recommendation refer to the /home partition, which is the default user partition that is defined. If you have created other user partitions, it is recommended that the Remediation and Audit steps be applied to these partitions as well."
    compliance:
     - cis: "1.1.14"
     - pci_dss: "2.2.4"
@@ -146,7 +146,7 @@ checks:
    title: "Ensure nodev option set on /dev/shm partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Since the /dev/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
-   remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
+   remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nodev /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
    compliance:
     - cis: "1.1.15"
     - pci_dss: "2.2.4"
@@ -157,7 +157,7 @@ checks:
    title: "Ensure nosuid option set on /dev/shm partition"
    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
-   remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
+   remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,nosuid /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
    compliance:
     - cis: "1.1.16"
     - pci_dss: "2.2.4"
@@ -168,7 +168,7 @@ checks:
    title: "Ensure noexec option set on /dev/shm partition"
    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
-   remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,noexec /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
+   remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /dev/shm partition. See the fstab(5) manual page for more information.  Run the following command to remount /dev/shm : # mount -o remount,noexec /dev/shm    Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0. Notes: /dev/shm is not specified in /etc/fstab despite being mounted by default. The following line will implement the recommended /dev/shm mount options in /etc/fstab: tmpfs  /dev/shm  tmpfs  defaults,nodev,nosuid,noexec  0 0"
    compliance:
     - cis: "1.1.17"
     - cis_csc: "2"
@@ -565,7 +565,7 @@ checks:
    title: "Ensure IP forwarding is disabled"
    description: "The net.ipv4.ip_forward flag is used to tell the system whether it can forward packets or not."
    rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
-   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
    compliance:
     - cis: "3.1.1"
     - cis_csc: "3, 11"
@@ -578,7 +578,7 @@ checks:
    title: "Ensure packet redirect sending is disabled"
    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
-   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0 net.ipv4.conf.default.send_redirects = 0    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.send_redirects = 0    net.ipv4.conf.default.send_redirects = 0. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.send_redirects=0 # sysctl -w net.ipv4.conf.default.send_redirects=0 # sysctl -w net.ipv4.route.flush=1"
    compliance:
     - cis: "3.1.2"
     - cis_csc: "3, 11"
@@ -592,7 +592,7 @@ checks:
    title: "Ensure source routed packets are not accepted"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
    rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
-   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0 net.ipv4.conf.default.accept_source_route = 0    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_source_route = 0    net.ipv4.conf.default.accept_source_route = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_source_route=0 # sysctl -w net.ipv4.conf.default.accept_source_route=0 # sysctl -w net.ipv4.route.flush=1"
    compliance:
     - cis: "3.2.1"
     - cis_csc: "3, 11"
@@ -604,7 +604,7 @@ checks:
    title: "Ensure ICMP redirects are not accepted"
    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
-   remediation: ""
+   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.accept_redirects = 0    net.ipv4.conf.default.accept_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.accept_redirects=0 # sysctl -w net.ipv4.conf.default.accept_redirects=0 # sysctl -w net.ipv4.route.flush=1."
    compliance:
     - cis: "3.2.2"
     - cis_csc: "3, 11"
@@ -617,7 +617,7 @@ checks:
    title: "Ensure secure ICMP redirects are not accepted"
    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
-   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0 net.ipv4.conf.default.secure_redirects = 0    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.secure_redirects = 0    net.ipv4.conf.default.secure_redirects = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.secure_redirects=0 # sysctl -w net.ipv4.conf.default.secure_redirects=0 # sysctl -w net.ipv4.route.flush=1."
    compliance:
     - cis: "3.2.3"
     - cis_csc: "3, 11"
@@ -630,7 +630,7 @@ checks:
    title: "nsure suspicious packets are logged"
    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
-   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1 net.ipv4.conf.default.log_martians = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.log_martians = 1    net.ipv4.conf.default.log_martians = 1.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.log_martians=1 # sysctl -w net.ipv4.conf.default.log_martians=1 # sysctl -w net.ipv4.route.flush=1."
    compliance:
     - cis: "3.2.4"
     - cis_csc: "6"
@@ -642,7 +642,7 @@ checks:
    title: "Ensure broadcast ICMP requests are ignored"
    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
-   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_echo_ignore_broadcasts = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_echo_ignore_broadcasts=1 # sysctl -w net.ipv4.route.flush=1."
    compliance:
     - cis: "3.2.5"
     - cis_csc: "3, 11"
@@ -654,7 +654,7 @@ checks:
    title: "Ensure bogus ICMP responses are ignored"
    description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
-   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.icmp_ignore_bogus_error_responses = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 # sysctl -w net.ipv4.route.flush=1."
    compliance:
     - cis: "3.2.6"
     - cis_csc: "3, 11"
@@ -666,7 +666,7 @@ checks:
    title: "Ensure Reverse Path Filtering is enabled"
    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
    rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
-   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1 net.ipv4.conf.default.rp_filter = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameters in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.conf.all.rp_filter = 1    net.ipv4.conf.default.rp_filter = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.conf.all.rp_filter=1 # sysctl -w net.ipv4.conf.default.rp_filter=1 # sysctl -w net.ipv4.route.flush=1"
    compliance:
     - cis: "3.2.7"
     - cis_csc: "3, 11"
@@ -679,7 +679,7 @@ checks:
    title: "Ensure TCP SYN Cookies is enabled"
    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
-   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1    Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1"
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.tcp_syncookies = 1. Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.tcp_syncookies=1 # sysctl -w net.ipv4.route.flush=1"
    compliance:
     - cis: "3.2.8"
     - cis_csc: "3, 11"
@@ -730,7 +730,7 @@ checks:
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
    rationale: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
-   remediation: ""
+   remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
    compliance:
     - cis: "5.2.6"
     - cis_csc: "9"
@@ -781,7 +781,7 @@ checks:
    title: "Ensure password fields are not empty"
    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
    rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
-   remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>    Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
+   remediation: "If any accounts in the /etc/shadow file do not have a password, run the following command to lock the account until it can be determined why it does not have a password: # passwd -l <username>.  Also, check to see if the account is logged in and investigate what it is being used for to determine if it needs to be forced off."
    compliance:
     - cis: "6.2.1"
     - cis_csc: "16"
