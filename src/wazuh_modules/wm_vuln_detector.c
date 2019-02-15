@@ -212,7 +212,7 @@ int wm_vuldet_create_file(const char *path, const char *source) {
         return wm_vuldet_sql_error(db, stmt);
     }
 
-
+    sqlite3_finalize(stmt);
     sqlite3_close_v2(db);
 
     uid = Privsep_GetUser(ROOT);
