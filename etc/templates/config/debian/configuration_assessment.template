@@ -1,4 +1,4 @@
-  <configuration_assessment>
+  <configuration-assessment>
     <enabled>yes</enabled>
     <scan_on_start>yes</scan_on_start>
     <interval>12h</interval>
@@ -6,10 +6,7 @@
 
     <policies>
       <policy>cis_debian_linux_rcl.yml</policy>
-      <policy>cis_apache2224_rcl.yml</policy>
-      <policy>cis_mysql5-6_community_rcl.yml</policy>
-      <policy>cis_mysql5-6_enterprise_rcl.yml</policy>
       <policy>system_audit_rcl.yml</policy>
       <policy>system_audit_ssh.yml</policy>
     </policies>
-  </configuration_assessment>
+  </configuration-assessment>

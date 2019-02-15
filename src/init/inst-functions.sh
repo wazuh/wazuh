@@ -34,6 +34,8 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
+CONF_ASSESSMENT
+
 ##########
 # WriteSyscheck()
 ##########
@@ -218,11 +220,16 @@ InstallOpenSCAPFiles()
 ##########
 InstallConfigurationAssessmentFiles()
 {
+
     cd ..
-    CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "configuration_assessment.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "X$1" = "Xmanager" ]; then
+        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "configuration_assessment.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    else
+        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "configuration_assessment.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "Configuration assessment policies not available for this OS version  ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
+        echo "Configuration assessment policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
         echo "Installing configuration assessment policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
@@ -778,12 +785,10 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
-  ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/ruleset/configuration_assessment
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/configuration_assessment
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
-
-  InstallConfigurationAssessmentFiles
 
   ${INSTALL} -d -m 0770 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/etc
 
@@ -892,7 +897,6 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/decoders
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
 
@@ -900,6 +904,8 @@ InstallLocal()
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
+
+    InstallConfigurationAssessmentFiles "manager"
 
     # Build SQLite library for CentOS 6
     if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
@@ -1031,6 +1037,8 @@ InstallAgent()
 {
 
     InstallCommon
+
+    InstallConfigurationAssessmentFiles "agent"
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin

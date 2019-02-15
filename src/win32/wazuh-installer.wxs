@@ -288,18 +288,6 @@
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
                       <Directory Id="CONFIGURATION_ASSESSMENT" Name="configuration_assessment">
-                        <Component Id="CIS_WIN2012R2_DOMAINL1_RCL.YML" DiskId="1" Guid="5f50a98e-7890-44f9-a31a-0b71cb748040">
-                          <File Id="CIS_WIN2012R2_DOMAINL1_RCL.YML" Name="cis_win2012r2_domainL1_rcl.yml" Source="..\..\etc\configuration_assessment\windows\cis_win2012r2_domainL1_rcl.yml" />
-                        </Component>
-                        <Component Id="CIS_WIN2012R2_DOMAINL2_RCL.YML" DiskId="1" Guid="219016ba-6437-4c02-83e6-5d5a08bb89e4">
-                          <File Id="CIS_WIN2012R2_DOMAINL2_RCL.YML" Name="cis_win2012r2_domainL2_rcl.yml" Source="..\..\etc\configuration_assessment\windows\cis_win2012r2_domainL2_rcl.yml" />
-                        </Component>
-                        <Component Id="CIS_WIN2012R2_MEMBERL1_RCL.YML" DiskId="1" Guid="0a678cab-cb25-4035-bda7-56a4b43a619f">
-                          <File Id="CIS_WIN2012R2_MEMBERL1_RCL.YML" Name="cis_win2012r2_memberL1_rcl.yml" Source="..\..\etc\configuration_assessment\windows\cis_win2012r2_memberL1_rcl.yml" />
-                        </Component>
-                        <Component Id="CIS_WIN2012R2_MEMBERL2_RCL.YML" DiskId="1" Guid="b46afe07-feea-40c6-8755-02c4a90ab244">
-                          <File Id="CIS_WIN2012R2_MEMBERL2_RCL.YML" Name="cis_win2012r2_memberL2_rcl.yml" Source="..\..\etc\configuration_assessment\windows\cis_win2012r2_memberL2_rcl.yml" />
-                        </Component>
                         <Component Id="WIN_APPLICATIONS_RCL.YML" DiskId="1" Guid="549cf1c2-6bd0-4ca4-8ebf-5495f07529fc">
                           <File Id="WIN_APPLICATIONS_RCL.YML" Name="win_applications_rcl.yml" Source="..\..\etc\configuration_assessment\windows\win_applications_rcl.yml" />
                         </Component>
@@ -364,14 +352,14 @@
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="RULESET">
-            <Component Id="CMP_RULESET" Guid="0380073e-eeb0-4e82-99bd-a108949900dd" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+            <Component Id="CMP_RULESET" Guid="0380073e-eeb0-4e82-99bd-a108949900dd" KeyPath="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_ruleset" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_ruleset_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="CONFIGURATION_ASSESSMENT">
-            <Component Id="CMP_CONFIGURATION_ASSESSMENT" Guid="e99089df-d143-4911-bfe4-c10a469bc0d8" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+            <Component Id="CMP_CONFIGURATION_ASSESSMENT" Guid="e99089df-d143-4911-bfe4-c10a469bc0d8" KeyPath="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_configuration_assessment" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_configuration_assessment_dir" On="uninstall" />
