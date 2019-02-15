@@ -67,9 +67,11 @@ char* getPrimaryIP(){
             if (gateway) {
                 cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
                 if (metric && metric->valueint < min_metric) {
-
                     cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                     cJSON *address = cJSON_GetArrayItem(addresses,0);
+                    if(agent_ip){
+                        free(agent_ip);
+                    }
                     os_strdup(address->valuestring, agent_ip);
                     min_metric = metric->valueint;
 
@@ -122,6 +124,7 @@ cJSON *wm_control_dump(void) {
 void *send_ip(){
     int sock;
     int peer;
+    int ip_length = 16;
     char *buffer = NULL;
     char *response = NULL;
     ssize_t length;
@@ -158,8 +161,8 @@ void *send_ip(){
             continue;
         }
 
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
+        os_calloc(ip_length, sizeof(char), buffer);
+        switch (length = OS_RecvUnix(peer, ip_length - 1, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
