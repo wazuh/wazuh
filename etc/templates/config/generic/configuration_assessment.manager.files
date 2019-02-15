@@ -4,7 +4,6 @@ applications/cis_apache2224_rcl.yml
 applications/cis_mysql5-6_community_rcl.yml
 applications/cis_mysql5-6_enterprise_rcl.yml
 debian/cis_debian_linux_rcl.yml
-rhel/cis_rhel_linux_rcl.yml
 rhel/5/cis_rhel5_linux_rcl.yml
 rhel/6/cis_rhel6_linux_rcl.yml
 rhel/7/cis_rhel7_linux_rcl.yml
@@ -13,7 +12,6 @@ suse/12/cis_sles12_linux_rcl.yml
 windows/cis_win2012r2_domainL1_rcl.yml  
 windows/cis_win2012r2_domainL2_rcl.yml
 windows/cis_win2012r2_memberL1_rcl.yml
-windows/cis_win2012r2_memberL2_rcl.yml
 windows/win_applications_rcl.yml
 windows/win_audit_rcl.yml
 windows/win_malware_rcl.yml

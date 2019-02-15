@@ -13,11 +13,10 @@
 #define WM_CONFIGURATION_ASSESSMENT_MONITORING_H
 
 #define WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG CA_WM_NAME
-#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid configuration assessment variable: '%s'."
-#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_NAME  "(1251): Invalid configuration assessment configuration name: '%s'."
-#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE "(1252): Invalid configuration assessment configuration value: '%s'."
+#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_NAME  "(1251): Invalid configuration name: '%s'."
+#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE "(1252): Invalid configuration value: '%s'."
 #define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_ROOTDIR    "(1253): Invalid rootdir (unable to retrieve)."
-#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid configuration assessment variable: '%s'."
+#define WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR   "(1254): Invalid variable: '%s'."
 
 
 /* Types of values */
