@@ -451,10 +451,13 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 requirements_satisfied = 1;
             }
 
-            if(requirements && wm_configuration_assessment_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
-                requirements_satisfied = 1;
-            } else {
-                requirements_satisfied = 0;
+            if(requirements) {
+                if(wm_configuration_assessment_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
+                    requirements_satisfied = 1;
+                }
+            }
+
+            if(!requirements_satisfied) {
                 mwarn("Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
             }
 
