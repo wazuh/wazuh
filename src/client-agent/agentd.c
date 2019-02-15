@@ -155,15 +155,6 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
         }
     }
 
-    /* Connect to the configuration assessment queue */
-    if (agt->cfgadq == 0) {
-        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
-            merror("Unable to connect to the configuration assessment "
-                   "queue (disabled).");
-            agt->cfgadq = -1;
-        }
-    }
-
     start_agent(1);
 
     os_delwait();
