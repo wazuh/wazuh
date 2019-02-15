@@ -1,5 +1,5 @@
 # Configuration assessment
-# CIS Checks for RHEL
+# CIS Checks for RHEL 7
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security RED HAT ENTERPRISE LINUX 7 Benchmark v2.2.0  12-27-2017
+# Center for Internet Security Red Hat Enterprise Linux 7 Benchmark v2.2.0 - 12-27-2017
 
 policy:
   id: "cis_rhel7"
@@ -31,9 +31,9 @@ requirements:
      - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 7;'
 
 variables:
- $sshd_file: /etc/ssh/sshd_config;
+  $sshd_file: /etc/ssh/sshd_config;
 # RC scripts location
- $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
+  $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 checks:
 # 1.1.1 /tmp: partition

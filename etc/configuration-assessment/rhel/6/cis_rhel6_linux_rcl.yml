@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for Red Hat Enterprise Linux 6 v2.1.0 - 12-27-2018
+# Center for Internet Security Benchmark for Red Hat Enterprise Linux 6 v2.1.0 - 12-27-2017
 
 policy:
   id: "cis_rhel6"
@@ -30,7 +30,7 @@ requirements:
      - 'f:/etc/redhat-release -> r:^Better && r:release 6;' 
 
 variables:
- $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
+  $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
      
 checks:
 # 1.1.1 /tmp: partition

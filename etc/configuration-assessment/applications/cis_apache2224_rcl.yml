@@ -8,13 +8,14 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for Apache 2.2 v3.5.0 - 12-21-2018
+# Center for Internet Security Benchmark for Apache 2.2 v3.5.0 - 06-08-2018
+# Center for Internet Security Benchmark for Apache 2.4 v1.4.0 - 07-13-2018
 
 policy:
   id: "cis_apache"
   file: "cis_apache2224_rcl.yml"
-  name: "CIS Apache HTTP Server 2.2 Benchmark"
-  description: "This document, CIS Apache 2.2 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for Apache Web Server versions 2.2 running on Linux."
+  name: "CIS Apache HTTP Server 2.2/2.4 Benchmark"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apache Web Server versions 2.2 and 2.4 running on Linux."
   references:
     - https://workbench.cisecurity.org/
 
@@ -26,12 +27,12 @@ requirements:
     - 'f:/etc/apache2/apache2.conf;'
 
 variables:
- $main-conf: /etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf;
- $conf-dirs: /etc/apache2/conf-enabled,/etc/apache2/mods-enabled,/etc/apache2/sites-enabled,/etc/httpd/conf.d,/etc/httpd/modsecurity.d;
- $ssl-confs: /etc/apache2/mods-enabled/ssl.conf,/etc/httpd/conf.d/ssl.conf;
- $mods-en: /etc/apache2/mods-enabled;
- $request-confs: /etc/httpd/conf/httpd.conf,/etc/apache2/mods-enabled/reqtimeout.conf;
- $traceen: /etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf,/etc/apache2/conf-enabled/security.conf;
+  $main-conf: /etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf;
+  $conf-dirs: /etc/apache2/conf-enabled,/etc/apache2/mods-enabled,/etc/apache2/sites-enabled,/etc/httpd/conf.d,/etc/httpd/modsecurity.d;
+  $ssl-confs: /etc/apache2/mods-enabled/ssl.conf,/etc/httpd/conf.d/ssl.conf;
+  $mods-en: /etc/apache2/mods-enabled;
+  $request-confs: /etc/httpd/conf/httpd.conf,/etc/apache2/mods-enabled/reqtimeout.conf;
+  $traceen: /etc/apache2/apache2.conf,/etc/httpd/conf/httpd.conf,/etc/apache2/conf-enabled/security.conf;
 
 #2.3 Disable WebDAV Modules
 checks:

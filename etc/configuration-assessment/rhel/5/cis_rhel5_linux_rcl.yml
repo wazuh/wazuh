@@ -1,5 +1,5 @@
 # Configuration assessment
-# CIS Checks for Debian/Ubuntu
+# CIS Checks for RHEL 5
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -8,7 +8,7 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for Debian Linux 9 v1.0.0 - 12-21-2018
+# Center for Internet Security Benchmark for Red Hat Enterprise Linux 5 v2.2.0 - 03-02-2015
 
 policy:
   id: "cis_rhel5"
@@ -19,8 +19,8 @@ policy:
     - https://workbench.cisecurity.org/
 
 requirements:
-  title: "Requirements for RHEL 5 check"
-  description: "Check RHEL5 version"
+  title: "Check RHEL5 version"
+  description: "Requirements for running the Configuration Assessment scan against RHEL 5."
   condition: "any required"
   rules:
      - 'f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 5;'
@@ -30,7 +30,7 @@ requirements:
      - 'f:/etc/redhat-release -> r:^Better && r:release 5;'
 
 variables:
- $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
+  $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 checks:
 # 1.1.1 /tmp: partition
