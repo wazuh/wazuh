@@ -261,7 +261,8 @@ class WazuhIntegration:
                 sys.exit(11)
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
-                sys.exit(13)
+                #sys.exit(13)
+                s.close()
         except Exception as e:
             print("ERROR: Error sending message to wazuh: {}".format(e))
             sys.exit(13)
@@ -411,7 +412,10 @@ class AWSBucket(WazuhIntegration):
         self.legacy_db_table_name = 'log_progress'
         self.retain_db_records = 1000
         self.reparse = reparse
-        self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
+        if only_logs_after[0]=='-':
+            self.only_logs_after = datetime.strptime(datetime.today()) - timedelta(days=int(only_logs_after))
+        else:
+            self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
         self.account_alias = account_alias
         self.prefix = prefix
@@ -1886,7 +1890,10 @@ def debug(msg, msg_level):
 
 def arg_valid_date(arg_string):
     try:
-        parsed_date = datetime.strptime(arg_string, "%Y-%b-%d")
+        if arg_string[0]=="-":
+            parsed_date = datetime.today()
+        else:
+            parsed_date = datetime.strptime(arg_string, "%Y-%b-%d")
         # Return int created from date in YYYYMMDD format
         return parsed_date.strftime('%Y%m%d')
     except ValueError:
