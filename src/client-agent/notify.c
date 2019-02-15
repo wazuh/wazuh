@@ -73,9 +73,6 @@ void run_notify()
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
-    int sock;
-    char label_ip[50];
-    int i;
 
     keep_alive_random[0] = '\0';
     curr_time = time(0);
@@ -135,6 +132,9 @@ void run_notify()
 
 #ifdef __linux__
     char *agent_ip;
+    int sock;
+    char label_ip[50];
+    int i;
     int ip_length = 16;
     os_calloc(16,sizeof(char),agent_ip);
 
