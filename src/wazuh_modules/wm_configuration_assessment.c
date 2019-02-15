@@ -145,7 +145,7 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
         }
     }
 
-    while ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+    if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
         mwarn("Can't connect to queue. Trying again.");
         sleep(WM_MAX_WAIT);
     }
@@ -176,16 +176,23 @@ static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t 
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending: %s",msg);
 
-    /* When running in context of OSSEC-HIDS, send problem to the rootcheck queue */
-    if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        mwarn("Can't connect to queue. Trying again.");
-    } else {
-        if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
-            mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-        }
-        close(data->queue);
-    }
+    if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
+        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
+        if(data->queue >= 0){
+            close(data->queue);
+        }
+        
+        if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
+            mwarn("Can't connect to queue.");
+        } else {
+            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
+                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                close(data->queue);
+            }
+        }
+    }
+   
     os_free(msg);
 
     return (0);
@@ -231,7 +238,7 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
                     time_sleep = get_time_to_hour("00:00");
                 }
 
-                mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+                mdebug2("Sleeping for %d seconds", (int)time_sleep);
                 wm_delay(1000 * time_sleep);
 
             } while (status < 0);
@@ -240,14 +247,14 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
 
             time_sleep = get_time_to_day(data->scan_wday, data->scan_time);
             minfo("Waiting for turn to evaluate.");
-            mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            mdebug2("Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
         } else if (data->scan_time) {
 
             time_sleep = get_time_to_hour(data->scan_time);
             minfo("Waiting for turn to evaluate.");
-            mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            mdebug2("Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
 
         } else if (data->next_time == 0 || data->next_time > time_start) {
@@ -296,7 +303,7 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
                     time_sleep = get_time_to_hour("00:00");     // Sleep until the start of the next day
                 }
 
-                mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+                mdebug2("Sleeping for %d seconds", (int)time_sleep);
                 wm_delay(1000 * time_sleep);
 
             } while ((status < 0) && (i < interval));
@@ -315,11 +322,11 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
                 time_sleep = data->interval - time_sleep;
                 data->next_time = data->interval + time_start;
             } else {
-                mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Interval overtaken.");
+                merror("Interval overtaken.");
                 time_sleep = data->next_time = 0;
             }
 
-            mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Sleeping for %d seconds", (int)time_sleep);
+            mdebug2("Sleeping for %d seconds", (int)time_sleep);
             wm_delay(1000 * time_sleep);
         }
     }
@@ -448,7 +455,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 requirements_satisfied = 1;
             } else {
                 requirements_satisfied = 0;
-                mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG,"Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
+                mwarn("Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
             }
 
             if(requirements_satisfied) {
@@ -629,7 +636,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
     /* Get Windows rootdir */
     wm_configuration_assessment_getrootdir(root_dir, sizeof(root_dir) - 1);
     if (root_dir[0] == '\0') {
-        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, INVALID_ROOTDIR);
+        merror(INVALID_ROOTDIR);
     }
 #endif
     cJSON *profile = NULL;
@@ -678,7 +685,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
             cJSON_ArrayForEach(p_check,p_checks)
             {
-                mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Checking entry: '%s'.", name);
+                mdebug2("Checking entry: '%s'.", name);
 
                 int negate = 0;
                 int found = 0;
@@ -694,7 +701,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 /* Get value to look for */
                 value = wm_configuration_assessment_get_value(nbuf, &type);
                 if (value == NULL) {
-                    mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
+                    merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
                 }
 
@@ -716,7 +723,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                            merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                             continue;
                         }
                     }
@@ -739,9 +746,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     }
     #endif
 
-                    mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Checking file: '%s'.", f_value);
+                    mdebug2("Checking file: '%s'.", f_value);
                     if (wm_configuration_assessment_check_file(f_value, pattern,data)) {
-                        mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Found file.");
+                        mdebug2("Found file.");
                         found = 1;
                     }
                 }
@@ -760,9 +767,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                         pattern = wm_configuration_assessment_get_pattern(entry);
                     }
 
-                    mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Checking registry: '%s'.", value);
+                    mdebug2("Checking registry: '%s'.", value);
                     if (wm_configuration_assessment_is_registry(value, entry, pattern)) {
-                        mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, "Found registry.");
+                        mdebug2("Found registry.");
                         found = 1;
                     }
 
@@ -777,7 +784,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                     file = wm_configuration_assessment_get_pattern(value);
                     if (!file) {
-                        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                        merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                         continue;
                     }
 
@@ -787,7 +794,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                            merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                             continue;
                         }
                     } else {
@@ -1505,7 +1512,7 @@ static int wm_configuration_assessment_is_registry(char *entry_name, char *reg_o
 
     rk = wm_configuration_assessment_os_winreg_getkey(entry_name);
     if (wm_configuration_assessment_sub_tree == NULL || rk == NULL) {
-        mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, SK_INV_REG, entry_name);
+        merror(SK_INV_REG, entry_name);
         return (0);
     }
 
