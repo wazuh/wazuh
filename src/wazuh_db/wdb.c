@@ -85,7 +85,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM configuration_assessment_policy WHERE id = ?;",
     "DELETE FROM configuration_assessment_check WHERE policy_id = ?;",
     "DELETE FROM configuration_assessment_scan_info WHERE policy_id = ?;",
-    "DELETE FROM configuration_assessment_check_compliance WHERE id_check = ?;",
+    "DELETE FROM configuration_assessment_check_compliance WHERE id_check NOT IN ( SELECT id FROM configuration_assessment_check);",
     "SELECT id FROM configuration_assessment_check WHERE policy_id = ?;"
 };
 

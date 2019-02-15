@@ -360,6 +360,30 @@ int wdb_configuration_assessment_check_delete(wdb_t * wdb,char * policy_id) {
     }
 }
 
+int wdb_configuration_assessment_check_compliances_delete(wdb_t * wdb) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_configuration_assessment_check_compliances_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_CA_CHECK_COMPLIANCE_DELETE) < 0) {
+        mdebug1("at wdb_configuration_assessment_check_compliances_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_CA_CHECK_COMPLIANCE_DELETE];
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 /* Look for a scan configuration assessment entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_configuration_assessment_scan_find(wdb_t * wdb, char *policy_id, char * output) {
 

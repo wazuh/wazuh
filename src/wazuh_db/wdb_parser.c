@@ -690,6 +690,7 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete configuration assessment check information.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
+            wdb_configuration_assessment_check_compliances_delete(wdb);
         }
 
         return result;
