@@ -1068,6 +1068,17 @@ class AWSConfigBucket(AWSLogsBucket):
                 else:
                     print("WARNING: Could not reformat event {0}".format(event))
 
+        if 'requestParameters' in event['aws']:
+            request_parameters = event['aws']['requestParameters']
+            if 'disableApiTermination' in request_parameters:
+                disable_api_termination = request_parameters['disableApiTermination']
+                if isinstance(request_parameters['disableApiTermination'], bool):
+                    request_parameters['disableApiTermination'] = {'value': disable_api_termination}
+                elif isinstance(disable_api_termination, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
         return event
 
 
