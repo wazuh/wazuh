@@ -287,7 +287,7 @@
                         </Component>
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
-                      <Directory Id="CONFIGURATION_ASSESSMENT" Name="configuration_assessment">
+                      <Directory Id="CONFIGURATION_ASSESSMENT" Name="configuration-assessment">
                         <Component Id="WIN_APPLICATIONS_RCL.YML" DiskId="1" Guid="549cf1c2-6bd0-4ca4-8ebf-5495f07529fc">
                           <File Id="WIN_APPLICATIONS_RCL.YML" Name="win_applications_rcl.yml" Source="..\..\etc\configuration_assessment\windows\win_applications_rcl.yml" />
                         </Component>

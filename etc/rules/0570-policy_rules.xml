@@ -1,51 +1,51 @@
-<group name="ossec,">
+<group name="wazuh,configuration_assessment,gdpr_IV_35.7.d">
 
   <rule id="19000" level="0">
     <category>ossec</category>
     <decoded_as>configuration_assessment</decoded_as>
     <options>no_full_log</options>
-    <description>Group of configuration assessment rules.</description>
+    <description>Group of Configuration Assessment rules.</description>
   </rule>
 
   <rule id="19001" level="3">
     <if_sid>19000</if_sid>
     <field name="configuration_assessment.type">^summary</field>
     <options>no_full_log</options>
-    <description>Configuration assessment summary: Passed checks: $(configuration_assessment.passed) Failed checks: $(configuration_assessment.failed) Score: $(configuration_assessment.score)</description>
+    <description>Configuration Assessment summary: Passed checks: $(configuration_assessment.passed) Failed checks: $(configuration_assessment.failed) Score: $(configuration_assessment.score)</description>
   </rule>
 
-  <rule id="19002" level="3">
+  <rule id="19002" level="0">
     <if_sid>19000</if_sid>
     <field name="configuration_assessment.type">^check</field>
     <options>no_full_log</options>
-    <description>Configuration assessment check event: Passed checks: $(configuration_assessment.passed) Failed checks: $(configuration_assessment.failed) Score: $(configuration_assessment.score)</description>
+    <description>Configuration Assessment check event.</description>
   </rule>
 
   <rule id="19003" level="7">
     <if_sid>19002</if_sid>
     <field name="configuration_assessment.check.result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) failed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) failed.</description>
   </rule>
 
   <rule id="19004" level="3">
     <if_sid>19002</if_sid>
     <field name="configuration_assessment.check.result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) passed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) passed.</description>
   </rule>
 
   <rule id="19005" level="3">
     <if_sid>19004</if_sid>
     <field name="configuration_assessment.check.previous_result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to passed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to passed.</description>
   </rule>
 
   <rule id="19006" level="9">
     <if_sid>19003</if_sid>
     <field name="configuration_assessment.check.previous_result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to failed</description>
+    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to failed.</description>
   </rule>
 </group>
