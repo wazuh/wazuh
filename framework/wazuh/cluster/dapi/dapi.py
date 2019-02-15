@@ -243,7 +243,7 @@ class DistributedAPI:
                 # agents, syscheck, rootcheck and syscollector
                 # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
                 agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                        sort={'fields': ['node_name'], 'order': 'desc'})['items']
+                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
                 node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
