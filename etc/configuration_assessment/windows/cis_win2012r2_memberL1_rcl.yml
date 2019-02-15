@@ -1007,7 +1007,7 @@ checks:
  - id: 8077
    title: "Ensure 'Windows Firewall: Public: Settings: Apply local firewall rules' is set to 'No'"
    description: "This setting controls whether local administrators are allowed to create local firewall rules that apply together with firewall rules configured by Group Policy.  The recommended state for this setting is: No.  Note: When the Apply local firewall rules setting is configured to No, it's recommended to also configure the Display a notification setting to No. Otherwise, users will continue to receive messages that ask if they want to unblock a restricted inbound connection, but the user's response will be ignored."
-   rationale: "iWhen in the Public profile, there should be no special local firewall exceptions per computer. These settings should be managed by a centralized policy."
+   rationale: "When in the Public profile, there should be no special local firewall exceptions per computer. These settings should be managed by a centralized policy."
    remediation: "To establish the recommended configuration via GP, set the following UI path to No: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Firewall with Advanced Security\\Windows Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Settings Customize\\Apply local firewall rules"
    compliance:
     - cis: "9.3.5"
@@ -1202,7 +1202,7 @@ checks:
    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Apply UAC restrictions to local accounts on network logons Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft."
    compliance:
     - cis: "18.3.1"
-    - cis_csc: ""
+    - cis_csc: "5.8"
    references:
     - https://www.microsoft.com/en-us/download/details.aspx?id=36036
     - https://support.microsoft.com/en-us/help/951016/description-of-user-account-control-and-remote-restrictions-in-windows
