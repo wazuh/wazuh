@@ -850,7 +850,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     DIR *group_dir = opendir(group_path);
                     if (!group_dir) {
                         merror("Invalid group: %.255s",centralized_group);
-                        snprintf(response, 2048, "ERROR: Invalid group: %s\n\n", centralized_group);
+                        snprintf(response, 2048, "ERROR: Invalid group: %.255s\n\n", centralized_group);
                         SSL_write(ssl, response, strlen(response));
                         snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                         SSL_write(ssl, response, strlen(response));
@@ -1098,7 +1098,7 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                     merror("At set_agent_group(): file path too large for agent '%s'.", keys.keyentries[index]->id);
                     OS_RemoveAgent(keys.keyentries[index]->id);
                     merror("Unable to set agent centralized group: %s (internal error)", centralized_group);
-                    snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %s\n\n", centralized_group);
+                    snprintf(response, 2048, "ERROR: Internal manager error setting agent centralized group: %.255s\n\n", centralized_group);
                     SSL_write(ssl, response, strlen(response));
                     snprintf(response, 2048, "ERROR: Unable to add agent.\n\n");
                     SSL_write(ssl, response, strlen(response));

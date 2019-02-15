@@ -85,7 +85,7 @@ void * w_analysisd_state_main(){
 
 int w_analysisd_write_state(){
     FILE * fp;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 4];
     char path_temp[PATH_MAX + 1];
 
     if (!strcmp(__local_name, "unset")) {
