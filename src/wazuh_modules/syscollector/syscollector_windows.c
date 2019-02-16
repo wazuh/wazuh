@@ -1027,7 +1027,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             // Increase buffer length
 
             buffer_size += BYTEINCREMENT;
-            program_name = (char *)realloc(program_name, buffer_size);
+            os_realloc(program_name, buffer_size, program_name);
             cbData = buffer_size;
             ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
         }
@@ -1062,7 +1062,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
                 // Increase buffer length
 
                 buffer_size += BYTEINCREMENT;
-                version = (char *)realloc(version, buffer_size);
+                os_realloc(version, buffer_size, version);
                 cbData = buffer_size;
                 ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
             }
@@ -1084,7 +1084,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
                 // Increase buffer length
 
                 buffer_size += BYTEINCREMENT;
-                vendor = (char *)realloc(vendor, buffer_size);
+                os_realloc(vendor, buffer_size, vendor);
                 cbData = buffer_size;
                 ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
             }
@@ -1106,7 +1106,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
                 // Increase buffer length
 
                 buffer_size += BYTEINCREMENT;
-                date = (char *)realloc(date, buffer_size);
+                os_realloc(date, buffer_size, date);
                 cbData = buffer_size;
                 ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
             }
@@ -1128,7 +1128,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
                 // Increase buffer length
 
                 buffer_size += BYTEINCREMENT;
-                location = (char *)realloc(location, buffer_size);
+                os_realloc(location, buffer_size, location);
                 cbData = buffer_size;
                 ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
             }

@@ -1,9 +1,8 @@
-#!/usr/bin/env python
-
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from datetime import datetime
 from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
 from wazuh.exception import WazuhException
 from wazuh.utils import load_wazuh_xml
@@ -12,14 +11,26 @@ from datetime import datetime
 import time
 from os.path import exists, join
 from glob import glob
-import re
 import hashlib
+import re
+import socket
+import struct
+import subprocess
+from os.path import exists
+import time
+
+from wazuh import common
+from wazuh.exception import WazuhException
+from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 from shutil import move, Error
-from os import remove
+import socket
+from os import remove, chmod
 import random
 
+
+re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(.*)$")
 
 def status():
     """
@@ -177,16 +188,16 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(file, path, content_type):
+def upload_file(tmp_file, path, content_type):
     """
     Updates a group file
 
-    :param file: File name from origin
+    :param file: Relative path of file name from origin
     :param path: Path of destination of the new file
     :return: Confirmation message in string
     """
     try:
-        with open(file) as f:
+        with open(join(common.ossec_path, tmp_file)) as f:
             file_data = f.read()
     except IOError:
         raise WazuhException(1005)
@@ -211,7 +222,6 @@ def upload_xml(xml_file, path):
     :param path: Destination of the new XML file
     :return: Confirmation message
     """
-
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
@@ -227,6 +237,7 @@ def upload_xml(xml_file, path):
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
                                    .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
+        chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
     except ExpatError:
@@ -274,6 +285,7 @@ def upload_list(list_file, path):
             # write json in tmp_file_path
             for element in list_file.split('\n')[:-1]:
                 tmp_file.write(element + '\n')
+        chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
     except Exception:
@@ -295,7 +307,7 @@ def get_file(path):
     """
     Returns a file as dictionary.
     :param path: Relative path of file from origin
-    :return: file as string.
+    :return: File as string.
     """
 
     file_path = join(common.ossec_path, path)
@@ -310,3 +322,136 @@ def get_file(path):
         raise WazuhException(1000)
 
     return output
+
+
+def restart():
+    """
+    Restart Wazuh manager.
+
+    :return: Confirmation message.
+    """
+    # execq socket path
+    socket_path = common.EXECQ
+    # msg for restarting Wazuh manager
+    msg = 'restart-wazuh '
+    # initialize socket
+    if exists(socket_path):
+        try:
+            conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            conn.connect(socket_path)
+        except socket.error:
+            raise WazuhException(1902)
+    else:
+        raise WazuhException(1901)
+
+    try:
+        conn.send(msg.encode())
+        conn.close()
+    except socket.error:
+        raise WazuhException(1014)
+
+    return "Restarting manager"
+
+
+def _check_wazuh_xml(files):
+    """
+    Check Wazuh XML format from a list of files.
+
+    :param files: List of files to check.
+    :return: None
+    """
+    for f in files:
+        try:
+            subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', f],
+                                    stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError as e:
+            # extract error message from output.
+            # Example of raw output
+            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
+            # Example of desired output:
+            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
+                                                r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
+            raise WazuhException(1114, ' '.join(output_regex))
+        except Exception as e:
+            raise WazuhException(1743, str(e))
+
+
+def validation():
+    """
+    Check if Wazuh configuration is OK.
+
+    :return: Confirmation message.
+    """
+    # sockets path
+    api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+    execq_socket_path = common.EXECQ
+    # msg for checking Wazuh configuration
+    execq_msg = 'check-manager-configuration '
+
+    # remove api_socket if exists
+    try:
+        remove(api_socket_path)
+    except OSError:
+        if exists(api_socket_path):
+            raise WazuhException(1014)
+
+    # up API socket
+    try:
+        api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        api_socket.bind(api_socket_path)
+        # timeout
+        api_socket.settimeout(5)
+    except socket.error:
+        raise WazuhException(1013)
+
+    # connect to execq socket
+    if exists(execq_socket_path):
+        try:
+            execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            execq_socket.connect(execq_socket_path)
+        except socket.error:
+            raise WazuhException(1013)
+    else:
+        raise WazuhException(1901)
+
+    # send msg to execq socket
+    try:
+        execq_socket.send(execq_msg.encode())
+        execq_socket.close()
+    except socket.error:
+        raise WazuhException(1014)
+    finally:
+        execq_socket.close()
+
+    # if api_socket receives a message, configuration is OK
+    try:
+        buffer = bytearray()
+        # receive data
+        datagram = api_socket.recv(4096)
+        buffer.extend(datagram)
+    except socket.timeout:
+        raise WazuhException(1014)
+    finally:
+        api_socket.close()
+        # remove api_socket
+        if exists(api_socket_path):
+            remove(api_socket_path)
+
+    errors = _extract_logstest_errors(buffer.decode('utf-8'))
+
+    if len(errors) > 0:
+        return {'status': 'KO', 'details': errors}
+    else:
+        return {'status': 'OK'}
+
+
+def _extract_logstest_errors(output):
+    log_lines = output.splitlines(keepends=False)
+    errors = []
+    for line in log_lines:
+        match = re_logtest.match(line)
+        if match:
+            errors.append(match.group(1))
+
+    return errors
