@@ -324,6 +324,8 @@
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
+#define VU_NULL_AGENT_ID            "(5497): The agent database returned a null agent ID. Skipping agent."
+#define VU_NULL_AGENT_IP            "(5498): The agent database returned a null registration IP address. Skipping agent %s."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

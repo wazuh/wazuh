@@ -2570,6 +2570,11 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
         name = (char *) sqlite3_column_text(stmt, 2);
         id = (char *) sqlite3_column_text(stmt, 3);
 
+        if (id == NULL) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_NULL_AGENT_ID);
+            continue;
+        }
+
         if (!os_name) {
             if (name) {
                 mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_AG_NEVER_CON, name);
@@ -2648,6 +2653,12 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
         }
 
         ip = (char *) sqlite3_column_text(stmt, 4);
+
+        if (ip == NULL) {
+            mterror(WM_VULNDETECTOR_LOGTAG, VU_NULL_AGENT_IP, id);
+            continue;
+        }
+
         arch = (char *) sqlite3_column_text(stmt, 5);
 
         if (agents) {
