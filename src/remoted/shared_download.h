@@ -29,9 +29,6 @@
 #define W_PARSER_FILE_CHANGED "File '%s' changed. Reloading data"
 #define W_PARSER_GROUP_TOO_LARGE "The group name is too large. The maximum length is %d"
 
-/* Maximum connection attempts for download module avilability check */
-#define W_DOWNLOAD_MAX_ATTEMPTS 10
-
 typedef struct _file{
     char *name;
     char *url;
