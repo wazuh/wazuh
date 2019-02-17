@@ -22,7 +22,8 @@
 #define METADATA_TABLE          "METADATA"
 #define METADATADB_TABLE        "DB_METADATA"
 #define MAX_QUERY_SIZE          OS_SIZE_1024
-#define MAX_SQL_ATTEMPTS        10
+#define MAX_SQL_ATTEMPTS        1000
+#define SQL_BUSY_SLEEP_MS       1
 #define VU_MAX_PACK_REQ         40
 
 typedef enum vu_query {

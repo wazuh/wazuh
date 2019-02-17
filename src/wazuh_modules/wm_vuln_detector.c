@@ -2553,6 +2553,8 @@ int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **up
         return wm_vuldet_sql_error(db, stmt);
     }
 
+    sqlite3_busy_timeout(db, SQL_BUSY_SLEEP_MS);
+
     // Extracts the operating system of the agents
     if (wdb_prepare(db, vu_queries[VU_GLOBALDB_REQUEST], -1, &stmt, NULL)) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_ERROR);
