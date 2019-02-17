@@ -875,25 +875,25 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
 
                             if (wm_configuration_assessment_check_dir(dir, file, pattern,data)) {
-                                int i = 0;
-                                char _b_msg[OS_SIZE_1024 + 1];
-                                _b_msg[OS_SIZE_1024] = '\0';
-                                snprintf(_b_msg, OS_SIZE_1024, " Directory: %s",
-                                        dir);
-                                /* Already present */
-                                if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                                    while (data->alert_msg[i] && (i < 255)) {
-                                        i++;
-                                    }
-                                    
-                                    if (!data->alert_msg[i]) {
-                                        os_strdup(_b_msg, data->alert_msg[i]);
-                                        merror("DIR %s",dir);
-                                    }
-                                }
                                 mdebug2("Found dir.");
                                 found = 1;
                             }
+
+                            int i = 0;
+                            char _b_msg[OS_SIZE_1024 + 1];
+                            _b_msg[OS_SIZE_1024] = '\0';
+                            snprintf(_b_msg, OS_SIZE_1024, " Directory: %s",
+                                    dir);
+                            /* Already present */
+                            if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
+                                while (data->alert_msg[i] && (i < 255)) {
+                                    i++;
+                                }
+                                
+                                if (!data->alert_msg[i]) {
+                                    os_strdup(_b_msg, data->alert_msg[i]);
+                                }
+                            } 
                         }
 
                         if (f_value) {

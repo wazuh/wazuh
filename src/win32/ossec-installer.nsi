@@ -490,7 +490,7 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
-    Delete "$INSTDIR\ruleset\configuration_assessment\*"
+    Delete "$INSTDIR\ruleset\configuration-assessment\*"
 
     ; remove shortcuts
     SetShellVarContext all

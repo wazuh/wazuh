@@ -14,8 +14,8 @@
 
 policy:
   id: "cis_win2012r2_domainL2"
-  name: "CIS benchmark for Windows 2012 R2"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server."
+  name: "CIS benchmark for Windows 2012 R2 Domain Controller L2"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows Server 2012 R2."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 

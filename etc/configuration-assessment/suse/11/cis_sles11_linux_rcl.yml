@@ -30,7 +30,7 @@ requirements:
     - 'f:/etc/os-release -> r:^PRETTY_NAME="SUSE Linux Enterprise Server 11 SP4";'
 
 variables:
- $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
+  $rc_dirs: /etc/rc.d/rc2.d,/etc/rc.d/rc3.d,/etc/rc.d/rc4.d,/etc/rc.d/rc5.d;
 
 
 checks:

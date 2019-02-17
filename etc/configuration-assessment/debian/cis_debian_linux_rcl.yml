@@ -8,7 +8,9 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Debian Linux 9 Benchmark v1.0.0  12-21-2018
+# Center for Internet Security Debian Linux 9 Benchmark v1.0.0 - 12-21-2018
+# Center for Internet Security Debian Linux 8 Benchmark v2.0.0 - 12-28-2018
+# Center for Internet Security Debian Linux 7 Benchmark v1.0.0 - 12-31-2015
 
 policy:
   id: "cis_debian"
