@@ -39,7 +39,7 @@ typedef struct cis_db_hash_info_t {
 static void * wm_configuration_assessment_main(wm_configuration_assessment_t * data);   // Module main function. It won't return
 static void wm_configuration_assessment_destroy(wm_configuration_assessment_t * data);  // Destroy data
 static int wm_configuration_assessment_start(wm_configuration_assessment_t * data);  // Start
-static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result);
+static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
 static int wm_configuration_assessment_send_event_check(wm_configuration_assessment_t * data,cJSON *event);  // Send check event
 static void wm_configuration_assessment_read_files(wm_configuration_assessment_t * data);  // Read policy monitoring files
 static int wm_configuration_assessment_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_configuration_assessment_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index);  // Do scan
@@ -758,6 +758,23 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     if (wm_configuration_assessment_check_file(f_value, pattern,data)) {
                         mdebug2("Found file.");
                         found = 1;
+                    } else {
+                        int i = 0;
+                        char _b_msg[OS_SIZE_1024 + 1];
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " File: %s",
+                                f_value);
+                        /* Already present */
+                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
+                            while (data->alert_msg[i] && (i < 255)) {
+                                i++;
+                            }
+                            
+                            if (!data->alert_msg[i]) {
+                                os_strdup(_b_msg, data->alert_msg[i]);
+                            }
+                        }
+                        mdebug2("Found file.");
                     }
                 }
 
@@ -778,9 +795,39 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     mdebug2("Checking registry: '%s'.", value);
                     if (wm_configuration_assessment_is_registry(value, entry, pattern)) {
                         mdebug2("Found registry.");
+                        int i = 0;
+                        char _b_msg[OS_SIZE_1024 + 1];
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " Registry: %s",
+                                value);
+                        /* Already present */
+                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
+                            while (data->alert_msg[i] && (i < 255)) {
+                                i++;
+                            }
+                            
+                            if (!data->alert_msg[i]) {
+                                os_strdup(_b_msg, data->alert_msg[i]);
+                            }
+                        }
                         found = 1;
+                    } else {
+                        int i = 0;
+                        char _b_msg[OS_SIZE_1024 + 1];
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " Registry: %s",
+                                value);
+                        /* Already present */
+                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
+                            while (data->alert_msg[i] && (i < 255)) {
+                                i++;
+                            }
+                            
+                            if (!data->alert_msg[i]) {
+                                os_strdup(_b_msg, data->alert_msg[i]);
+                            }
+                        }
                     }
-
                 }
     #endif
                 /* Check for a directory */
@@ -828,6 +875,22 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
 
                             if (wm_configuration_assessment_check_dir(dir, file, pattern,data)) {
+                                int i = 0;
+                                char _b_msg[OS_SIZE_1024 + 1];
+                                _b_msg[OS_SIZE_1024] = '\0';
+                                snprintf(_b_msg, OS_SIZE_1024, " Directory: %s",
+                                        dir);
+                                /* Already present */
+                                if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
+                                    while (data->alert_msg[i] && (i < 255)) {
+                                        i++;
+                                    }
+                                    
+                                    if (!data->alert_msg[i]) {
+                                        os_strdup(_b_msg, data->alert_msg[i]);
+                                        merror("DIR %s",dir);
+                                    }
+                                }
                                 mdebug2("Found dir.");
                                 found = 1;
                             }
@@ -851,7 +914,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                 /* Check for a process */
                 else if (type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_PROCESS) {
-                    mdebug2("Checking process: '%s'.", value);
+                    mdebug2("Checking process: '%s'", value);
                     if (wm_configuration_assessment_is_process(value, p_list,data)) {
                         mdebug2("Found process.");
                         found = 1;
@@ -910,7 +973,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                 while (1) {
                     if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,j,"failed");
+                        cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,"failed");
 
                         if(event){
                             if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -945,7 +1008,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 char **p_alert_msg = data->alert_msg;
                 while (1) {
                     if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,j,"passed");
+                        cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,"passed");
                         
                         if(event){
                             if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -1143,7 +1206,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
                 char _b_msg[OS_SIZE_1024 + 1];
 
                 _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                snprintf(_b_msg, OS_SIZE_1024, " File: %s",
                          file);
 
                 /* Already present */
@@ -1195,7 +1258,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
 
                         /* Generate the alert itself */
                         _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                        snprintf(_b_msg, OS_SIZE_1024, " File: %s",
                                  file);
 
                         /* Already present */
@@ -1232,7 +1295,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
 
                     /* Generate the alert itself */
                     _b_msg[OS_SIZE_1024] = '\0';
-                    snprintf(_b_msg, OS_SIZE_1024, " File: %s.",
+                    snprintf(_b_msg, OS_SIZE_1024, " File: %s",
                              file);
 
                     /* Already present */
@@ -1481,7 +1544,7 @@ static int wm_configuration_assessment_is_process(char *value, OSList *p_list,wm
 
             _b_msg[OS_SIZE_1024] = '\0';
 
-            snprintf(_b_msg, OS_SIZE_1024, " Process: %s.",
+            snprintf(_b_msg, OS_SIZE_1024, " Process: %s",
                      pinfo->p_path);
 
             /* Already present */
@@ -1809,7 +1872,7 @@ static int wm_configuration_assessment_send_summary(wm_configuration_assessment_
         cJSON_AddStringToObject(json_summary, "hash", "error_calculating_hash");
     }
    
-    mdebug1("Sending summary event for file: '%s.", file->valuestring);
+    mdebug1("Sending summary event for file: '%s", file->valuestring);
     wm_configuration_assessment_send_alert(data,json_summary);
     cJSON_Delete(json_summary);
 
@@ -1823,7 +1886,7 @@ static int wm_configuration_assessment_send_event_check(wm_configuration_assessm
     return 0;
 }
 
-static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,int index,char *result) {
+static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result) {
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -1928,24 +1991,74 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
     }
 
     // Get File or Process from alert
-    if(p_alert_msg[index]) {
-        char *alert_file = strstr(p_alert_msg[index],"File:");
-        if(alert_file){
-            alert_file+= 5;
-            *alert_file = '\0';
-            alert_file++;
-            cJSON_AddStringToObject(check, "file", alert_file);
-        } else {
-            char *alert_process = strstr(p_alert_msg[index],"Process:");
-            if(alert_process){
-                alert_process+= 8;
-                *alert_process = '\0';
-                alert_process++;
-                cJSON_AddStringToObject(check, "process", alert_process);
+    int i = 0;
+    char * final_str_file = NULL;
+    char * final_str_directory = NULL;
+    char * final_str_process = NULL;
+    char * final_str_registry = NULL;
+    
+    while(i < 255) {
+
+        if(p_alert_msg[i]) {
+            char *alert_file = strstr(p_alert_msg[i],"File:");
+            char *alert_directory = strstr(p_alert_msg[i],"Directory:");
+
+            if(alert_file){
+                alert_file+= 5;
+                *alert_file = '\0';
+                alert_file++;
+                wm_strcat(&final_str_file,alert_file,',');
+            } else if (alert_directory){
+                alert_directory+= 10;
+                *alert_directory = '\0';
+                alert_directory++;
+                wm_strcat(&final_str_directory,alert_directory,',');
+            } else {
+                char *alert_process = strstr(p_alert_msg[i],"Process:");
+                if(alert_process){
+                    alert_process+= 8;
+                    *alert_process = '\0';
+                    alert_process++;
+                    wm_strcat(&final_str_process,alert_process,',');
+                } else {
+                    char *alert_registry = strstr(p_alert_msg[i],"Registry:");
+                    if(alert_registry){
+                        alert_registry+= 8;
+                        *alert_registry = '\0';
+                        alert_registry++;
+                        wm_strcat(&final_str_registry,alert_registry,',');
+                    }
+                }
             }
+        } else {
+            break;
         }
-    } else {
+        i++;
+    }
+
+    if(!final_str_file && !final_str_directory && !final_str_process && !final_str_registry) {
         cJSON_AddStringToObject(check, "file", "\0");
+    }
+
+    if(final_str_file) {
+        cJSON_AddStringToObject(check, "file", final_str_file);
+        os_free(final_str_file);
+    }
+
+    if(final_str_directory) {
+        cJSON_AddStringToObject(check, "directory", final_str_directory);
+        os_free(final_str_directory);
+    }
+
+    if(final_str_process) {
+       cJSON_AddStringToObject(check, "process", final_str_process);
+       os_free(final_str_process);
+    }
+
+
+    if(final_str_registry) {
+       cJSON_AddStringToObject(check, "registry", final_str_registry);
+       os_free(final_str_registry);
     }
 
     cJSON_AddStringToObject(check, "result", result);
@@ -2100,7 +2213,7 @@ static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessm
 
             unsigned int time = random;
             mdebug1("Dumping DB for policy index: '%u' in %d seconds.",*policy_index,random);
-            minfo("Integration checksum failed for policy: '%s'. Resending scan results in %d seconds.", data->profile[*policy_index]->profile);
+            minfo("Integration checksum failed for policy: '%s'. Resending scan results in %d seconds.", data->profile[*policy_index]->profile,random);
             
             wm_delay(1000 * time);
 
