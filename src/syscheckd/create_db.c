@@ -201,6 +201,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #endif
 #if defined (EVENTCHANNEL_SUPPORT) || !defined(WIN32)
     struct stat statbuf_lnk;
+    char *real_path = NULL;
 #endif
 
     opts = syscheck.opts[dir_position];
@@ -291,10 +292,6 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
     {
 #endif
-#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
-        char *real_path;
-        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-#endif
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -312,20 +309,24 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                             strncpy(sf256_sum, "n/a", 4);
                         }
                         if (opts & CHECK_FOLLOW) {
-                            realpath(file_name, real_path);
-                            strncpy(file_name, real_path, PATH_MAX+2);
+                            if(realpath(file_name, real_path)) {
+                                strncpy(file_name, real_path, PATH_MAX+2);
+                            } else {
+                                mwarn("Error in realpath() function: %s. Could not resolve symbolic link (%s).", strerror(errno), file_name);
+                                os_free(wd_sum);
+                                os_free(alert_msg);
+                                return -1;
+                            }
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
                             mdebug2("Follow symbolic links disabled.");
                             free(alert_msg);
                             free(wd_sum);
-                            os_free(real_path);
                             return 0;
                         } else {
                             free(alert_msg);
                             os_free(wd_sum);
-                            os_free(real_path);
                             return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
                     }
@@ -333,7 +334,6 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                     if (opts & CHECK_FOLLOW) {
                         mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
                     }
-                    os_free(real_path);
                     os_free(wd_sum);
                     os_free(alert_msg);
                     return -1;
@@ -342,6 +342,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #else
 #ifdef EVENTCHANNEL_SUPPORT
             if (islink_win(file_name)) {
+                os_calloc(PATH_MAX + 2, sizeof(char), real_path);
                 if (!real_path_win(file_name, real_path)) {
                     mdebug2("real_path_win() failed in %s", file_name);
                     os_free(real_path);
@@ -359,6 +360,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                             }
                             if (opts & CHECK_FOLLOW) {
                                 strncpy(file_name, real_path, PATH_MAX+2);
+                                os_free(real_path);
                             }
                         } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                             if (!(opts & CHECK_FOLLOW)) {
@@ -409,7 +411,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
             if (opts & CHECK_OWNER) {
 #ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
-                        user = get_user(real_path, statbuf_lnk.st_uid, &sid);
+                    user = get_user(file_name, statbuf_lnk.st_uid, &sid);
                 } else {
                     user = get_user(file_name, statbuf.st_uid, &sid);
                 }
@@ -424,8 +426,8 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 char perm_unescaped[OS_SIZE_6144 + 1];
 #ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
-                    if (error = w_get_file_permissions(real_path, perm_unescaped, OS_SIZE_6144), error) {
-                        merror("It was not possible to extract the permissions of '%s'. Error: %d.", real_path, error);
+                    if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
+                        merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
                     } else {
                         str_perm = escape_perm_sum(perm_unescaped);
                     }
@@ -629,7 +631,6 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 os_free(alert_msg);
                 os_free(alertdump);
                 os_free(wd_sum);
-                os_free(real_path);
                 return 0;
             }
 #endif
@@ -790,15 +791,9 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 send_syscheck_msg(alert_msg);
             }
 
-#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
-            os_free(real_path);
-#endif
             os_free(alert_msg);
             os_free(alertdump);
         } else {
-#if defined (EVENTCHANNEL_SUPPORT) || !defined (WIN32)
-            os_free(real_path);
-#endif
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
             os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
 
@@ -1287,10 +1282,9 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
     char *real_path;
     int opts;
 
-    os_calloc(PATH_MAX + 2, sizeof(char), real_path);
-    os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
-
     if (is_link) {
+        os_calloc(PATH_MAX + 2, sizeof(char), real_path);
+        os_calloc(PATH_MAX + 2, sizeof(char), dir_name_full);
 #ifndef WIN32
         if (realpath(dir_name, real_path) == NULL) {
             mwarn("Error checking realpath() of link '%s'", dir_name);
@@ -1307,7 +1301,6 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
             return -1;
         }
         strcat(real_path, "\\");
-
 #endif
         opts = syscheck.opts[dir_position];
         unsigned int i = 0;
@@ -1318,21 +1311,17 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 #else
             strcat(dir_name_full, "/");
 #endif
-
-                if (strstr(real_path, dir_name_full) != NULL) {
-                    free(real_path);
-                    free(dir_name_full);
-                    return 2;
+            if (strstr(real_path, dir_name_full) != NULL) {
+                free(real_path);
+                free(dir_name_full);
+                return 2;
             }
             i++;
         }
 
         real_path[strlen(real_path) - 1] = '\0';
-#ifdef WIN32
         int pos;
-#endif
         if(syscheck.filerestrict[dir_position]) {
-#ifdef WIN32
             pos = dump_syscheck_entry(&syscheck,
                                 real_path,
                                 opts,
@@ -1340,17 +1329,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
                                 syscheck.filerestrict[dir_position]->raw,
                                 max_depth, syscheck.tag[dir_position],
                                 -1);
-#else
-            dump_syscheck_entry(&syscheck,
-                                real_path,
-                                opts,
-                                0,
-                                syscheck.filerestrict[dir_position]->raw,
-                                max_depth, syscheck.tag[dir_position],
-                                -1);
-#endif
         } else {
-#ifdef WIN32
             pos = dump_syscheck_entry(&syscheck,
                                 real_path,
                                 opts,
@@ -1358,15 +1337,6 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
                                 NULL,
                                 max_depth, syscheck.tag[dir_position],
                                 -1);
-#else
-            dump_syscheck_entry(&syscheck,
-                                real_path,
-                                opts,
-                                0,
-                                NULL,
-                                max_depth, syscheck.tag[dir_position],
-                                -1);
-#endif
         }
         /* Check for real time flag */
         if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
@@ -1380,17 +1350,15 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
             mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
 #endif
         }
-
+        pos++;
         free(real_path);
         free(dir_name_full);
         return 1;
     }
-
-    free(real_path);
-    free(dir_name_full);
     return 0;
 }
 #endif
+
 // WIN32
 #ifdef WIN32
 int islink_win(const char *file_name) {
