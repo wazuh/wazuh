@@ -1051,6 +1051,7 @@ set_op:
         free(info_aux->description);
         free(info_aux->cvss);
         free(info_aux->cvss_vector);
+        free(info_aux->cvss3);
         free(info_aux->bugzilla_reference);
         free(info_aux->advisories);
         free(info_aux->cwe);
@@ -1760,13 +1761,13 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
     if (!reg) {
         os_calloc(1, sizeof(OSRegex), reg);
         if(OSRegex_Compile(package_regex, reg, OS_RETURN_SUBSTRING) == 0) {
-            goto error;
+            return NULL;
         }
     }
 
     if (retv = OSRegex_Execute(raw, reg), retv) {
         if (found = strstr(raw, *reg->d_sub_strings), !found) {
-            goto error;
+            goto end;
         }
         *found = '\0';
         w_strdup(found + 1, *package_version);
@@ -1779,12 +1780,14 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
         } else if (strstr(*package_version, ".el5")) {
             *OS = vu_dist_tag[DIS_RHEL5];
         }
-
-        return retv;
     }
 
-error:
-    return NULL;
+end:
+    if (retv) {
+        w_FreeArray(reg->d_sub_strings);
+    }
+
+    return retv;
 }
 
 int check_timestamp(const char *OS, char *timst, char *ret_timst) {
