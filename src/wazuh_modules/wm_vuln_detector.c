@@ -1767,7 +1767,7 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
 
     if (retv = OSRegex_Execute(raw, reg), retv) {
         if (found = strstr(raw, *reg->d_sub_strings), !found) {
-            goto end;
+            return NULL;
         }
         *found = '\0';
         w_strdup(found + 1, *package_version);
@@ -1780,11 +1780,6 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
         } else if (strstr(*package_version, ".el5")) {
             *OS = vu_dist_tag[DIS_RHEL5];
         }
-    }
-
-end:
-    if (retv) {
-        w_FreeArray(reg->d_sub_strings);
     }
 
     return retv;

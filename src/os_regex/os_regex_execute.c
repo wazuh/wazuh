@@ -48,17 +48,18 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
         str_sizes = &reg->d_size;
     }
 
-    if (regex_match && sub_strings) {
-        if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size) {
-            if (!*sub_strings) {
-                os_calloc(1, reg->d_size.sub_strings_size, *sub_strings);
-            } else {
-                os_realloc(*sub_strings, reg->d_size.sub_strings_size, *sub_strings);
-                memset((void*)*sub_strings + str_sizes->sub_strings_size, 0, reg->d_size.sub_strings_size - str_sizes->sub_strings_size);
+    if (sub_strings) {
+        if (regex_match) {
+            if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size) {
+                if (!*sub_strings) {
+                    os_calloc(1, reg->d_size.sub_strings_size, *sub_strings);
+                } else {
+                    os_realloc(*sub_strings, reg->d_size.sub_strings_size, *sub_strings);
+                    memset((void*)*sub_strings + str_sizes->sub_strings_size, 0, reg->d_size.sub_strings_size - str_sizes->sub_strings_size);
+                }
+                str_sizes->sub_strings_size = reg->d_size.sub_strings_size;
             }
-            str_sizes->sub_strings_size = reg->d_size.sub_strings_size;
         }
-
         w_FreeArray(*sub_strings);
     }
 
