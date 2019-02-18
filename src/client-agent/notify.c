@@ -150,6 +150,8 @@ void run_notify()
                     snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
+
+            close(sock);
             break;
         } else {
             mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
@@ -162,7 +164,7 @@ void run_notify()
     }
 
     /* Create message */
-    if(agent_ip){
+    if(*agent_ip){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
