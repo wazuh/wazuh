@@ -31,7 +31,7 @@ const wm_context WM_CONTROL_CONTEXT = {
 
 char* getPrimaryIP(){
      /* Get Primary IP */
-    char * agent_ip = "";
+    char * agent_ip = NULL;
     char **ifaces_list;
     struct ifaddrs *ifaddr, *ifa;
     int size;
@@ -55,7 +55,7 @@ char* getPrimaryIP(){
             free(ifaces_list);
             return agent_ip;
         }
-    }    
+    }
 
     for (i=0; i<size; i++) {
         cJSON *object = cJSON_CreateObject();
@@ -69,12 +69,11 @@ char* getPrimaryIP(){
                 if (metric && metric->valueint < min_metric) {
                     cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                     cJSON *address = cJSON_GetArrayItem(addresses,0);
-                    if(strcmp(agent_ip,"")){
+                    if(agent_ip != NULL){
                         free(agent_ip);
                     }
                     os_strdup(address->valuestring, agent_ip);
                     min_metric = metric->valueint;
-
                 }
             }
         }
@@ -178,7 +177,8 @@ void *send_ip(){
             break;
 
         default:
-            OS_SendUnix(peer, getPrimaryIP(), 0);
+            response = getPrimaryIP();
+            OS_SendUnix(peer, response, 0);
             free(response);
             close(peer);
         }
