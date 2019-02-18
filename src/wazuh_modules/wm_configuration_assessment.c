@@ -942,29 +942,22 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     mdebug2("Condition ANY.");
                     if (found) {
                         g_found = 1;
-                        wm_configuration_assessment_summary_increment_failed();
-                    } else {
-                        wm_configuration_assessment_summary_increment_passed();
                     }
                 } else if (condition & WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_NON) {
                     mdebug2("Condition NON.");
                     if (!found && (not_found != -1)) {
                         mdebug2("Condition NON setze not_found=1.");
                         not_found = 1;
-                        wm_configuration_assessment_summary_increment_failed();
                     } else {
                         not_found = -1;
-                        wm_configuration_assessment_summary_increment_passed();
                     }
                 } else {
                     /* Condition for ALL */
                     mdebug2("Condition ALL.");
                     if (found && (g_found != -1)) {
                         g_found = 1;
-                        wm_configuration_assessment_summary_increment_failed();
                     } else {
                         g_found = -1;
-                        wm_configuration_assessment_summary_increment_passed();
                     }
                 }
             }
@@ -978,8 +971,10 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
 
+             
                 while (1) {
                     if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                        wm_configuration_assessment_summary_increment_failed();
                         cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,"failed");
 
                         if(event){
@@ -1013,8 +1008,10 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
             } else {
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
+
                 while (1) {
                     if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                        wm_configuration_assessment_summary_increment_passed();
                         cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,"passed");
                         
                         if(event){
