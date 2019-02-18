@@ -371,11 +371,11 @@ int main(int argc, char **argv)
     /* Print information from an agent */
     if (info_agent) {
         agent_status_t agt_status = 0;
-        char final_ip[128 + 1];
-        char final_mask[128 + 1];
+        char final_ip[19 + 1];
+        char final_mask[4 + 1];
         agent_info *agt_info;
-        final_ip[128] = '\0';
-        final_mask[128] = '\0';
+        final_ip[19] = '\0';
+        final_mask[4] = '\0';
         cJSON *json_data = cJSON_CreateObject();
 
         if (!csv_output && !json_output) {
@@ -391,8 +391,8 @@ int main(int argc, char **argv)
                                       agent_id);
 
             /* Get netmask from IP */
-            getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[agt_id]->ip->ip,
+            getNetmask(keys.keyentries[agt_id]->ip->netmask, final_mask, 4);
+            snprintf(final_ip, 19, "%s%s", keys.keyentries[agt_id]->ip->ip,
                      final_mask);
 
             if (!csv_output && !json_output) {

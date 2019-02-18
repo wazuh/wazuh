@@ -303,8 +303,8 @@ int main(int argc, char **argv)
     /* Print information from an agent */
     if (info_agent) {
         int i;
-        char final_ip[128 + 1];
-        char final_mask[128 + 1];
+        char final_ip[19 + 1];
+        char final_mask[4 + 1];
         keystore keys = KEYSTORE_INITIALIZER;
         cJSON *json_events = NULL;
 
@@ -343,11 +343,11 @@ int main(int argc, char **argv)
                 }
             }
 
-            final_ip[128] = '\0';
-            final_mask[128] = '\0';
+            final_ip[19] = '\0';
+            final_mask[4] = '\0';
             getNetmask(keys.keyentries[i]->ip->netmask,
-                       final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
+                       final_mask, 4);
+            snprintf(final_ip, 19, "%s%s", keys.keyentries[i]->ip->ip,
                      final_mask);
 
             if (!(csv_output || json_output))

@@ -23,12 +23,12 @@ int Lists_OP_LoadList(char *listfile)
 {
     /* XXX Jeremy: I hate this.  I think I'm missing something dumb here */
     char *holder;
-    char a_filename[OS_MAXSTR + 4];
-    char b_filename[OS_MAXSTR];
+    char a_filename[PATH_MAX];
+    char b_filename[PATH_MAX];
     ListNode *tmp_listnode_pt = NULL;
 
-    a_filename[OS_MAXSTR - 2] = '\0';
-    b_filename[OS_MAXSTR - 2] = '\0';
+    a_filename[PATH_MAX - 2] = '\0';
+    b_filename[PATH_MAX - 2] = '\0';
 
     tmp_listnode_pt = (ListNode *)calloc(1, sizeof(ListNode));
     if (tmp_listnode_pt == NULL) {
@@ -38,15 +38,15 @@ int Lists_OP_LoadList(char *listfile)
     snprintf(a_filename, sizeof(a_filename) -1 , "%s", listfile);
     if ((strchr(a_filename, '/') == NULL)) {
         /* default to ruleset/rules/ if a path is not given */
-        snprintf(b_filename, sizeof(b_filename) - 1, "ruleset/rules/%s", a_filename);
-        snprintf(a_filename, sizeof(a_filename) - 1, "%s", b_filename);
+        snprintf(b_filename, sizeof(b_filename) - 1, "ruleset/rules/%.4080s", a_filename);
+        snprintf(a_filename, sizeof(a_filename) - 1, "%.4094s", b_filename);
     }
     if ((holder = strstr(a_filename, ".cdb"))) {
         snprintf(b_filename, (size_t)(holder - a_filename) + 1, "%s", a_filename);
-        snprintf(a_filename, sizeof(a_filename) - 1, "%s", b_filename);
+        snprintf(a_filename, sizeof(a_filename) - 1, "%.4094s", b_filename);
     }
 
-    snprintf(b_filename, sizeof(b_filename) - 1, "%s.cdb", a_filename);
+    snprintf(b_filename, sizeof(b_filename) - 1, "%4090s.cdb", a_filename);
     
     /* Check if the CDB list file is actually available */
     FILE *txt_fd = fopen(a_filename, "r");
