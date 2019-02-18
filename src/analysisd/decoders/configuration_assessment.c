@@ -1195,7 +1195,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     }
 
     if(name) {
-        fillData(lf, "configuration_assessment.name", name->valuestring);
+        fillData(lf, "configuration_assessment.policy", name->valuestring);
     }
 
     if(description) {
