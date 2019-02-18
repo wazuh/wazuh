@@ -1,5 +1,5 @@
 # Configuration assessment
-# CIS Checks for Windows applications
+# Checks for Windows applications
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
@@ -12,9 +12,7 @@ policy:
   id: "win_applications"
   file: "win_applications_rcl.yml"
   name: "Benchmark for Windows applications"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Windows systems."
-  references:
-    - https://www.cisecurity.org/cis-benchmarks/
+  description: "This document provides a checklist of application that may be dangerous for Windows hosts."
 
 checks:
  - id: 2000
@@ -83,8 +81,6 @@ checks:
    title: "P2P - UTorrent"
    compliance:
     - pci_dss: "10.6.1"
-   references:
-    -
    condition: any
    rules:
      - 'p:r:utorrent.exe;'
@@ -92,8 +88,6 @@ checks:
    title: "P2P - LimeWire"
    compliance:
     - pci_dss: "11.4"
-   references:
-    -
    condition: any
    rules:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Limewire;'
@@ -104,8 +98,6 @@ checks:
    title: "P2P/Adware - Kazaa"
    compliance:
     - pci_dss: "11.4"
-   references:
-    -
    condition: any
    rules:
      - 'f:\Program Files\kazaa;'
@@ -165,8 +157,6 @@ checks:
    title: "Spyware - Twain Tec Spyware"
    compliance:
     - pci_dss: "11.4"
-   references:
-    -
    condition: any
    rules:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Classes\TwaintecDll.TwaintecDllObj.1;'

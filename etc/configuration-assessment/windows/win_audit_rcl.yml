@@ -1,7 +1,5 @@
-# Copyright (C) 2015-2019, Wazuh Inc.
-#
 # Configuration assessment
-# CIS Checks for Windows audit
+# Checks for Windows audit
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
 # This program is a free software; you can redistribute it
