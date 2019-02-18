@@ -2030,7 +2030,7 @@ static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *poli
                 } else {
                     char *alert_registry = strstr(p_alert_msg[i],"Registry:");
                     if(alert_registry){
-                        alert_registry+= 8;
+                        alert_registry+= 9;
                         *alert_registry = '\0';
                         alert_registry++;
                         wm_strcat(&final_str_registry,alert_registry,',');
