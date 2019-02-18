@@ -235,7 +235,9 @@ extern const char *__local_name;
 #include "error_messages/debug_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
+#include "yaml2json.h"
 #include "cluster_utils.h"
 #include "auth_client.h"
+#include "os_utils.h"
 
 #endif /* __SHARED_H */

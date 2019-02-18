@@ -50,6 +50,7 @@ USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
 USE_FRAMEWORK_LIB=no
+MINGW_HOST=unknown
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -245,12 +246,15 @@ MAKEOVERRIDES=
 CC=gcc
 ifneq (,$(shell which amd64-mingw32msvc-gcc))
 	MING_BASE:=amd64-mingw32msvc-
+	MINGW_HOST="amd64-mingw32msvc"
 else
 ifneq (,$(shell which i686-pc-mingw32-gcc))
 	MING_BASE:=i686-pc-mingw32-
+	MINGW_HOST="i686-pc-mingw32"
 else
 ifneq (,$(shell which i686-w64-mingw32-gcc))
 	MING_BASE:=i686-w64-mingw32-
+	MINGW_HOST="i686-w64-mingw32"
 else
 $(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
@@ -619,11 +623,11 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB) $(LIBFFI_LIB)
+EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
@@ -729,7 +733,11 @@ ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
 
 $(EXTERNAL_LIBYAML)Makefile:
+ifeq (${TARGET},winagent)
+	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
+else
 	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
+endif
 
 #### curl ##########
 
