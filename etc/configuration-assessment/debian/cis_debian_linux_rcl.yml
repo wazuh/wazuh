@@ -30,7 +30,7 @@ requirements:
 
 checks:
 # Section 1.1 - Filesystem Configuration
- - id: 1001
+ - id: 5000
    title: "Ensure /tmp is configured"
    description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
    rationale: "Making /tmp its own file system allows an administrator to set the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
@@ -44,7 +44,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:/tmp;'
- - id: 1002
+ - id: 5001
    title: "Ensure nodev option set on /tmp partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /tmp ."
@@ -56,7 +56,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/tmp && !r:nodev;'
- - id: 1003
+ - id: 5002
    title: "Ensure separate partition exists for /opt"
    description: "The /opt directory is a world-writable directory used for temporary storage by all users and some applications."
    rationale: "Since the /opt directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
@@ -70,7 +70,7 @@ checks:
    rules:
      - 'f:/opt;'
      - 'f:/etc/fstab -> !r:/opt;'
- - id: 1004
+ - id: 5003
    title: "Ensure separate partition exists for /var"
    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
    rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
@@ -83,7 +83,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:/var;'
- - id: 1005
+ - id: 5004
    title: "Ensure separate partition exists for /var/tmp"
    description: "The /var/tmp directory is a world-writable directory used for temporary storage by all users and some applications."
    rationale: "Since the /var/tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. In addition, making /var/tmp its own file system allows an administrator to set the noexec option on the mount, making /var/tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hardlink to a system setuid program and wait for it to be updated. Once the program was updated, the hardlink would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw."
@@ -94,7 +94,7 @@ checks:
    condition: all
    rules:
      - 'f:/etc/fstab -> !r:/var/tmp;'
- - id: 1006
+ - id: 5005
    title: "Ensure nodev option set on /var/tmp partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Since the /var/tmp filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices in /var/tmp ."
@@ -106,7 +106,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/var/tmp && !r:nodev;'
- - id: 1007
+ - id: 5006
    title: "Ensure nodev option set on /home partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Since the user partitions are not intended to support devices, set this option to ensure that users cannot attempt to create block or character special devices."
@@ -118,7 +118,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/home && !r:nodev ;'
- - id: 1008
+ - id: 5007
    title: "Ensure nodev option set on /dev/shm partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Since the /run/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /dev/shm partitions."
@@ -129,7 +129,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;'
- - id: 1009
+ - id: 5008
    title: "Ensure nosuid option set on /dev/shm partition"
    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
@@ -140,7 +140,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;'
- - id: 1010
+ - id: 5009
    title: "Ensure noexec option set on /dev/shm partition"
    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
@@ -151,7 +151,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;'
- - id: 1011
+ - id: 5010
    title: "Ensure nodev option set on removable media partitions"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
    rationale: "Removable media containing character and block special devices could be used to circumvent security controls by allowing non-root users to access sensitive device files such as /dev/kmem or the raw disk partitions."
@@ -163,7 +163,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/media && !r:nodev;'
- - id: 1012
+ - id: 5011
    title: "Ensure nosuid option set on removable media partitions"
    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
@@ -176,7 +176,7 @@ checks:
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;'
 # Section 1.4 - Secure boot settings
- - id: 1013
+ - id: 5012
    title: "Ensure bootloader password is set (GRUB)"
    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters"
    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
@@ -190,7 +190,7 @@ checks:
    condition: any
    rules:
      - 'f:/boot/grub/menu.lst -> !r:^# && !r:password;'
- - id: 1014
+ - id: 5013
    title: "Ensure bootloader password is set (LILO)"
    description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters"
    rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
@@ -204,7 +204,7 @@ checks:
      - 'f:/etc/lilo.conf -> !r:^# && !r:restricted;'
      - 'f:/etc/lilo.conf -> !r:^# && !r:password=;'
 # Section 1.7 - Warning banners
- - id: 1015
+ - id: 5014
    title: "Ensure GDM login banner is configured"
    description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
@@ -217,7 +217,7 @@ checks:
    rules:
      - 'f:/etc/inittab -> !r:^# && r:id:5;'
 # Section 2 - Filesystem Configuration - Debian 7
- - id: 1016
+ - id: 5015
    title: "Add nodev Option to /run/shm Partition"
    description: "The nodev mount option specifies that the /run/shm (temporary filesystem stored in memory) cannot contain block or character special devices."
    rationale: "Since the /run/shm filesystem is not intended to support devices, set this option to ensure that users cannot attempt to create special devices in /run/shm partitions."
@@ -229,7 +229,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:ext2|ext3 && r:/run/shm && !r:nodev;'
- - id: 1017
+ - id: 5016
    title: "Add nosuid Option to /run/shm Partition"
    description: "The nosuid mount option specifies that the /run/shm (temporary filesystem stored in memory) will not execute setuid and setgid on executable programs as such, but rather execute them with the uid and gid of the user executing the program."
    rationale: "Setting this option on a file system prevents users from introducing privileged programs onto the system and allowing non-root users to execute them."
@@ -240,7 +240,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/run/shm && !r:nosuid;'
- - id: 1018
+ - id: 5017
    title: "Add noexec Option to /run/shm Partition"
    description: "Set noexec on the shared memory partition to prevent programs from executing from there."
    rationale: "Setting this option on a file system prevents users from executing programs from shared memory. This deters users from introducing potentially malicious software on the system."
@@ -252,7 +252,7 @@ checks:
    rules:
      - 'f:/etc/fstab -> !r:^# && r:/run/shm && !r:noexec;'
 # Section 2.1 - Inetd services
- - id: 1019
+ - id: 5018
    title: "Ensure inetd is not installed"
    description: "The inetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
    rationale: "If there are no inetd services required, it is recommended that the daemon be removed."
@@ -266,7 +266,7 @@ checks:
      - 'p:inetd;'
      - 'f:!/etc/inetd.conf -> !r:^# && r:wait;'
 # Section 2.2 - Special purpose services
- - id: 1020
+ - id: 5019
    title: "Ensure FTP Server is not enabled"
    description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
@@ -278,7 +278,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/inetd.conf -> !r:^# && r:/ftp;'
- - id: 1021
+ - id: 5020
    title: "Ensure FTP Server is not enabled"
    description: "The File Transfer Protocol (FTP) provides networked computers with the ability to transfer files."
    rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended sftp be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be deleted to reduce the potential attack surface."
@@ -290,7 +290,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/inetd.conf -> !r:^# && r:tftp;'
- - id: 1022
+ - id: 5021
    title: "Ensure IMAP and POP3 server is not enabled (IMAP)"
    description: "exim is an open source IMAP and POP3 server for Linux based systems."
    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
@@ -302,7 +302,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/inetd.conf -> !r:^# && r:imap;'
- - id: 1023
+ - id: 5022
    title: "Ensure IMAP and POP3 server is not enabled (POP3)"
    description: "exim is an open source IMAP and POP3 server for Linux based systems."
    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
@@ -314,7 +314,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/inetd.conf -> !r:^# && r:pop;'
- - id: 1024
+ - id: 5023
    title: "Ensure Samba is not enabled"
    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
    rationale: "If there is no need to mount directories and file systems to Windows systems, then this service can be deleted to reduce the potential attack surface."
@@ -326,7 +326,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/init.d/samba;'
- - id: 1025
+ - id: 5024
    title: "Ensure NFS and RPC are not enabled"
    description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
    rationale: "If the system does not export NFS shares or act as an NFS client, it is recommended that these services be disabled to reduce remote attack surface."
@@ -340,7 +340,7 @@ checks:
      - 'f:/etc/init.d/nfs-common;'
      - 'f:/etc/init.d/nfs-user-server;'
      - 'f:/etc/init.d/nfs-kernel-server;'
- - id: 1026
+ - id: 5025
    title: "Ensure NIS Server is not enabled"
    description: "The Network Information Service (NIS) (formally known as Yellow Pages) is a client-server directory service protocol for distributing system configuration files. The NIS server is a collection of programs that allow for the distribution of configuration files."
    rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be disabled and other, more secure services be used"
@@ -352,7 +352,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/init.d/nis;'
- - id: 1027
+ - id: 5026
    title: "Ensure HTTP server is not enabled"
    description: "HTTP or web servers provide the ability to host web site content."
    rationale: "Unless there is a need to run the system as a web server, it is recommended that the package be deleted to reduce the potential attack surface."
@@ -365,7 +365,7 @@ checks:
    rules:
      - 'f:/etc/init.d/apache;'
      - 'f:/etc/init.d/apache2;'
- - id: 1028
+ - id: 5027
    title: "Ensure DNS Server is not enabled"
    description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
    rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be deleted to reduce the potential attack surface."
@@ -377,7 +377,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/init.d/bind;'
- - id: 1029
+ - id: 5028
    title: "Ensure HTTP Proxy Server is not enabled"
    description: "Squid is a standard proxy server used in many distributions and environments."
    rationale: "If there is no need for a proxy server, it is recommended that the squid proxy be deleted to reduce the potential attack surface."
@@ -390,7 +390,7 @@ checks:
    rules:
      - 'f:/etc/init.d/squid;'
 # Section 2.3 - Service clients
- - id: 1030
+ - id: 5029
    title: "Ensure rsh client is not installed"
    description: "The rsh package contains the client commands for the rsh services."
    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh package removes the clients for rsh , rcp and rlogin ."
@@ -402,7 +402,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/inetd.conf -> !r:^# && r:shell|login;'
- - id: 1031
+ - id: 5030
    title: "Ensure telnet client is not installed"
    description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
    rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow an unauthorized user to steal credentials. The ssh package provides an encrypted session and stronger security and is included in most Linux distributions."
@@ -415,7 +415,7 @@ checks:
    rules:
      - 'f:/etc/inetd.conf -> !r:^# && r:telnet;'
 # Section 3.1 - Network Parameters (Host Only)
- - id: 1032
+ - id: 5031
    title: "Ensure IP forwarding is disabled"
    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
    rationale: "Setting the flags to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
@@ -428,7 +428,7 @@ checks:
      - 'f:/proc/sys/net/ipv4/ip_forward -> 1;'
      - 'f:/proc/sys/net/ipv6/ip_forward -> 1;'
 # Section 3.2 - Network Parameters (Host and Router)
- - id: 1033
+ - id: 5032
    title: "Ensure source routed packets are not accepted"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
    rationale: "Setting net.ipv4.conf.all.accept_source_route, net.ipv4.conf.default.accept_source_route, net.ipv6.conf.all.accept_source_route and net.ipv6.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
@@ -439,7 +439,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;'
- - id: 1034
+ - id: 5033
    title: "Ensure broadcast ICMP requests are ignored"
    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
@@ -451,7 +451,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;'
 # Section 5.2 - SSH Server Configuration
- - id: 1035
+ - id: 5034
    title: "Ensure SSH Protocol is set to 2"
    description: "Older versions of SSH support two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
    rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
@@ -463,7 +463,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+2;'
- - id: 1036
+ - id: 5035
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication ."
    rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
@@ -475,9 +475,9 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;'
- - id: 1037
+ - id: 5036
    title: "Ensure SSH HostbasedAuthentication is disabled"
-   description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2." 
+   description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
    rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
    remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: HostbasedAuthentication no"
    compliance:
@@ -487,7 +487,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;'
- - id: 1038
+ - id: 5037
    title: "Ensure SSH root login is disabled"
    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su . This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
@@ -499,7 +499,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;'
- - id: 1039
+ - id: 5038
    title: "Ensure SSH PermitEmptyPasswords is disabled"
    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
@@ -512,7 +512,7 @@ checks:
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;'
 # Section 6.2 - User and Group Settings
- - id: 1040
+ - id: 5039
    title: "Ensure password fields are not empty"
    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
    rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -524,7 +524,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/shadow -> r:^\w+::;'
- - id: 1041
+ - id: 5040
    title: "Ensure root is the only UID 0 account"
    description: "Any account with UID 0 has superuser privileges on the system."
    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."

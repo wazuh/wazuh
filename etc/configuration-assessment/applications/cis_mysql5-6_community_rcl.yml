@@ -26,7 +26,7 @@ variables:
 
 checks:
 #1 Operating System Level Configuration
- - id: 3000
+ - id: 4000
    title: "Disable MySQL Command History"
    description: "On Linux/UNIX, the MySQL client logs statements executed interactively to a history file. By default, this file is named .mysql_history in the user's home directory. Most interactive commands run in the MySQL client application are saved to a history file. The MySQL command history should be disabled."
    rationale: "Disabling the MySQL command history reduces the probability of exposing sensitive information, such as passwords and encryption keys."
@@ -34,12 +34,12 @@ checks:
    compliance:
     - cis: "1.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/mysql-logging.html 
-    - http://bugs.mysql.com/bug.php?id=72158  
+    - http://dev.mysql.com/doc/refman/5.6/en/mysql-logging.html
+    - http://bugs.mysql.com/bug.php?id=72158
    condition: any
    rules:
      - 'd:$home_dirs -> ^.mysql_history$;'
- - id: 3001
+ - id: 4001
    title: "Disable Interactive Login"
    description: "When created, the MySQL user may have interactive access to the operating system, which means that the MySQL user could login to the host as any other user would."
    rationale: "Preventing the MySQL user from logging in interactively may reduce the impact of a compromised MySQL account. There is also more accountability as accessing the operating system where the MySQL server lies will require the user's own account. Interactive access by the MySQL user is unnecessary and should be disabled."
@@ -49,7 +49,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/passwd -> r:^mysql && !r:\.*/bin/false$|/sbin/nologin$;'
- - id: 3002
+ - id: 4002
    title: "Verify That 'MYSQL_PWD' Is Not Set In Users' Profiles"
    description: "MySQL can read a default database password from an environment variable called MYSQL_PWD."
    rationale: "The use of the MYSQL_PWD environment variable implies the clear text storage of MySQL credentials. Avoiding this may increase assurance that the confidentiality of MySQL credentials is preserved."
@@ -62,7 +62,7 @@ checks:
    rules:
      - 'f:$enviroment_files -> r:\.*MYSQL_PWD\.*;'
 #4 General
- - id: 3003
+ - id: 4003
    title: "Ensure 'allow-suspicious-udfs' Is Set to 'FALSE'"
    description: "This option prevents attaching arbitrary shared library functions as user-defined functions by checking for at least one corresponding method named _init, _deinit, _reset, _clear, or _add."
    rationale: "Preventing shared libraries that do not contain user-defined functions from loading will reduce the attack surface of the server."
@@ -70,13 +70,13 @@ checks:
    compliance:
     - cis: "4.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/udf-security.html 
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs 
+    - http://dev.mysql.com/doc/refman/5.6/en/udf-security.html
+    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:allow-suspicious-udfs\.+true;'
      - 'f:$mysql-cnfs -> r:allow-suspicious-udfs\s*$;'
- - id: 3004
+ - id: 4004
    title: "Ensure 'local_infile is Disabled"
    description: "The 'local_infile' parameter dictates whether files located on the MySQL client's computer can be loaded or selected via 'LOAD DATA INFILE' or 'SELECT local_file'."
    rationale: "Disabling 'local_infile' reduces an attacker's ability to read sensitive files off the affected server via a SQL injection vulnerability."
@@ -84,13 +84,13 @@ checks:
    compliance:
     - cis: "4.4"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file 
-    - http://dev.mysql.com/doc/refman/5.6/en/load-data.html 
+    - http://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file
+    - http://dev.mysql.com/doc/refman/5.6/en/load-data.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:local-infile\s*=\s*1;'
      - 'f:$mysql-cnfs -> r:local-infile\s*$;'
- - id: 3005
+ - id: 4005
    title: "Ensure 'mysqld' Is Not Started with '--skip-grant-tables'"
    description: "This option causes mysqld to start without using the privilege system."
    rationale: "If this option is used, all clients of the affected server will have unrestricted access to all databases."
@@ -98,13 +98,13 @@ checks:
    compliance:
     - cis: "4.5"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables 
+    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:skip-grant-tables\s*=\s*true;'
      - 'f:$mysql-cnfs -> !r:skip-grant-tables\s*=\s*false;'
      - 'f:$mysql-cnfs -> r:skip-grant-tables\s*$;'
- - id: 3006
+ - id: 4006
    title: "Ensure '--skip-symbolic-links' Is Enabled"
    description: "The symbolic-links and skip-symbolic-links options for MySQL determine whether symbolic link support is available.  When use of symbolic links are enabled, they have different effects depending on the host platform.  When symbolic links are disabled, then symbolic links stored in files or entries in tables are not used by the database. "
    rationale: "Prevents sym links being used for data base files. This is especially important when MySQL is executing as root as arbitrary files may be overwritten. The symbolic-links option might allow someone to direct actions by to MySQL server to other files and/or directories."
@@ -112,14 +112,14 @@ checks:
    compliance:
     - cis: "4.6"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/symbolic-links.html 
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links 
+    - http://dev.mysql.com/doc/refman/5.6/en/symbolic-links.html
+    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:skip_symbolic_links\s*=\s*no;'
      - 'f:$mysql-cnfs -> !r:skip_symbolic_links\s*=\s*yes;'
      - 'f:$mysql-cnfs -> r:skip_symbolic_links\s*$;'
- - id: 3007
+ - id: 4007
    title: "Ensure 'secure_file_priv' is not empty"
    description: "The secure_file_priv option restricts to paths used by LOAD DATA INFILE or SELECT local_file. It is recommended that this option be set to a file system location that contains only resources expected to be loaded by MySQL."
    rationale: "Setting secure_file_priv reduces an attacker's ability to read sensitive files off the affected server via a SQL injection vulnerability. "
@@ -127,13 +127,13 @@ checks:
    compliance:
     - cis: "4.8"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv  
+    - http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
    condition: any
    rules:
      - 'f:$mysql-cnfs -> r:^# && r:secure_file_priv=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> !r:secure_file_priv=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> r:secure_file_priv\s*$;'
- - id: 3008
+ - id: 4008
    title: "Ensure 'sql_mode' Contains 'STRICT_ALL_TABLES'"
    description: "When data changing statements are made (i.e. INSERT, UPDATE), MySQL can handle invalid or missing values differently depending on whether strict SQL mode is enabled. When strict SQL mode is enabled, data may not be truncated or otherwise 'adjusted' to make the data changing statement work."
    rationale: "Without strict mode the server tries to do proceed with the action when an error might have been a more secure choice. For example, by default MySQL will truncate data if it does not fit in a field, which can lead to unknown behavior, or be leveraged by an attacker to circumvent data validation. "
@@ -144,7 +144,7 @@ checks:
    rules:
      - 'f:$mysql-cnfs -> !r:strict_all_tables\s*$;'
 #6 Auditing and Logging
- - id: 3009
+ - id: 4009
    title: "Ensure 'log_error' is not empty"
    description: "The error log contains information about events such as mysqld starting and stopping, when a table needs to be checked or repaired, and, depending on the host operating system, stack traces when mysqld fails"
    rationale: "nabling error logging may increase the ability to detect malicious attempts against MySQL, and other critical messages, such as if the error log is not enabled then connection error might go unnoticed."
@@ -158,7 +158,7 @@ checks:
      - 'f:$mysql-cnfs -> r:^# && r:log_error\s*=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> !r:log_error\s*=\s*\S+\s*;'
      - 'f:$mysql-cnfs -> r:log_error\s*$;'
- - id: 3010
+ - id: 4010
    title: "Ensure Log Files are not Stored on a non-system partition"
    description: "MySQL log files can be set in the MySQL configuration to exist anywhere on the filesystem.  It is common practice to ensure that the system filesystem is left uncluttered by application logs.  System filesystems include the root, /var, or /usr."
    rationale: "Moving the MySQL logs off the system partition will reduce the probability of denial of service via the exhaustion of available disk space to the operating system."
@@ -166,15 +166,15 @@ checks:
    compliance:
     - cis: "6.2"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/binary-log.html 
-    - http://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html 
+    - http://dev.mysql.com/doc/refman/5.6/en/binary-log.html
+    - http://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/\S*\s*;'
      - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/var/\S*\s*;'
      - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/usr/\S*\s*;'
      - 'f:$mysql-cnfs -> r:log_bin\s*$;'
- - id: 3011
+ - id: 4011
    title: "Ensure 'log_warning' is set to 2"
    description: "The log_warnings system variable, enabled by default, provides additional information to the MySQL log.  A value of 1 enables logging of warning messages, and higher integer values tend to enable more logging."
    rationale: "This might help to detect malicious behavior by logging communication errors and aborted connections."
@@ -182,14 +182,14 @@ checks:
    compliance:
     - cis: "6.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings 
+    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*0;'
      - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*1;'
      - 'f:$mysql-cnfs -> !r:log_warnings\s*=\s*\d+;'
      - 'f:$mysql-cnfs -> r:log_warnings\s*$;'
- - id: 3012
+ - id: 4012
    title: "Ensure 'log_raw' is set to 'OFF'"
    description: "The log-raw MySQL option determines whether passwords are rewritten by the server so as not to appear in log files as plain text.  If log-raw is enabled, then passwords are written to the various log files (general query log, slow query log, and binary log) in plain text. "
    rationale: "With raw logging of passwords enabled someone with access to the log files might see plain text passwords."
@@ -197,14 +197,14 @@ checks:
    compliance:
     - cis: "6.5"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/password-logging.html 
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw 
+    - http://dev.mysql.com/doc/refman/5.6/en/password-logging.html
+    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:log-raw\s*=\s*on;'
      - 'f:$mysql-cnfs -> r:log-raw\s*$;'
 #7 Authentication
- - id: 3013
+ - id: 4013
    title: "Ensure 'old_passwords' Is Not Set to '1' or 'ON'"
    description: "This variable controls the password hashing method used by the PASSWORD() function and for the IDENTIFIED BY clause of the CREATE USER and GRANT statements.  Before 5.6.6, the value can be 0 (or OFF), or 1 (or ON). As of 5.6.6, the following value can be one of the following: 0 - authenticate with the mysql_native_password plugin; 1 - authenticate with the mysql_old_password plugin; 2 - authenticate with the sha256_password plugin"
    rationale: "The mysql_old_password plugin leverages an algorithm that can be quickly brute forced using an offline dictionary attack. See CVE-2003-1480 for additional details."
@@ -212,9 +212,9 @@ checks:
    compliance:
     - cis: "7.1"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/password-hashing.html 
-    - http://dev.mysql.com/doc/refman/5.6/en/sha256-authentication-plugin.html 
-    - http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_old_passwords 
+    - http://dev.mysql.com/doc/refman/5.6/en/password-hashing.html
+    - http://dev.mysql.com/doc/refman/5.6/en/sha256-authentication-plugin.html
+    - http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_old_passwords
     - https://www.cvedetails.com/cve/CVE-2003-1480/
    condition: any
    rules:
@@ -222,7 +222,7 @@ checks:
      - 'f:$mysql-cnfs -> !r:^# && r:old_passwords\s*=\s*on;'
      - 'f:$mysql-cnfs -> !r:old_passwords\s*=\s*2;'
      - 'f:$mysql-cnfs -> r:old_passwords\s*$;'
- - id: 3014
+ - id: 4014
    title: "Ensure 'secure_auth' is set to 'ON'"
    description: "This option dictates whether the server will deny connections by clients that attempt to use accounts that have their password stored in the mysql_old_password format."
    rationale: "Enabling this option will prevent all use of passwords employing the old format (and hence insecure communication over the network)."
@@ -230,13 +230,13 @@ checks:
    compliance:
     - cis: "7.2"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth 
+    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:secure_auth\s*=\s*off;'
      - 'f:$mysql-cnfs -> !r:secure_auth\s*=\s*on;'
      - 'f:$mysql-cnfs -> r:secure_auth\s*$;'
- - id: 3015
+ - id: 4015
    title: "Ensure Passwords Are Not Stored in the Global Configuration"
    description: "The [client] section of the MySQL configuration file allows setting a user and password to be used. Verify the password option is not used in the global configuration file (my.cnf)."
    rationale: "The use of the password parameter may negatively impact the confidentiality of the user's password."
@@ -244,11 +244,11 @@ checks:
    compliance:
     - cis: "7.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html 
+    - http://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:^\s*password\.*;'
- - id: 3016
+ - id: 4016
    title: "Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'"
    description: "NO_AUTO_CREATE_USER is an option for sql_mode that prevents a GRANT statement from automatically creating a user when authentication information is not provided."
    rationale: "Blank passwords negate the benefits provided by authentication mechanisms. Without this setting an administrative user might accidentally create a user without a password."
@@ -259,7 +259,7 @@ checks:
    rules:
      - 'f:$mysql-cnfs -> !r:no_auto_create_user\s*$;'
      - 'f:$mysql-cnfs -> r:^# && r:\s*no_auto_create_user\s*$;'
- - id: 3017
+ - id: 4017
    title: "Ensure Password Policy is in Place"
    description: "Password complexity includes password characteristics such as length, case, length, and character sets."
    rationale: "Complex passwords help mitigate dictionary, brute forcing, and other password attacks. This recommendation prevents users from choosing weak passwords which can easily be guessed."
@@ -267,7 +267,7 @@ checks:
    compliance:
     - cis: "7.6"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html 
+    - http://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:plugin-load\s*=\s*validate_password.so\s*$;'
@@ -278,7 +278,7 @@ checks:
      - 'f:$mysql-cnfs -> !r:validate_password_special_char_count\s*=\s*1;'
      - 'f:$mysql-cnfs -> !r:validate_password_policy\s*=\s*medium\s*;'
 #9 Replication
- - id: 3018
+ - id: 4018
    title: "Ensure 'master_info_repositrory' is set to 'TABLE'"
    description: "The master_info_repository setting determines to where a slave logs master status and connection information.  The options are FILE or TABLE. Note also that this setting is associated with the sync_master_info setting as well."
    rationale: "The password which the client uses is stored in the master info repository, which by default is a plaintext file. The TABLE master info repository is a bit safer, but with filesystem access it's still possible to gain access to the password the slave is using."
@@ -286,7 +286,7 @@ checks:
    compliance:
     - cis: "9.2"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository 
+    - http://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:master_info_repository\s*=\s*file;'

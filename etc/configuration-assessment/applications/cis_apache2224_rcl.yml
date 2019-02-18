@@ -36,7 +36,7 @@ variables:
 
 #2.3 Disable WebDAV Modules
 checks:
- - id: 1500
+ - id: 3500
    title: "Ensure the WebDAV Modules Are Disabled"
    description: "The Apache mod_dav and mod_dav_fs modules support WebDAV functionality for Apache, which is an extension to the HTTP protocol which allows clients to create, move, and delete files and resources on the web server."
    rationale: "Disabling WebDAV modules will improve the security posture of the web server by reducing the amount of potentially vulnerable code paths exposed to the network and reducing potential for unauthorized access to files via misconfigured WebDAV access controls."
@@ -54,7 +54,7 @@ checks:
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sdav;'
      - 'd:$mods-en -> dav.load;'
 #2.4 Disable Status Module
- - id: 1501
+ - id: 3501
    title: "Ensure the Status Module Is Disabled"
    description: "The Apache mod_status module provides current server performance statistics."
    rationale: "While having server performance status information available as a web page may be convenient, it's recommended that this module be disabled. When it is enabled, its handler capability is available in all configuration files, including per-directory files."
@@ -72,7 +72,7 @@ checks:
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sstatus;'
      - 'd:$mods-en -> status.load;'
 #2.5 Disable Autoindex Module
- - id: 1502
+ - id: 3502
    title: "Ensure the Autoindex Module Is Disabled"
    description: "The Apache mod_autoindex module automatically generates a web page listing the contents of directories on the server, typically used so an index.html does not have to be generated."
    rationale: "Automated directory listings should not be enabled because they will reveal information helpful to an attacker such as naming conventions and directory paths. They may also reveal files that were not intended to be revealed."
@@ -90,7 +90,7 @@ checks:
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sautoindex;'
      - 'd:$mods-en -> autoindex.load;'
 #2.6 Disable Proxy Modules
- - id: 1503
+ - id: 3503
    title: "Ensure the Proxy Modules Are Disabled"
    description: "The Apache proxy modules allow the server to act as a proxy for HTTP and other protocols with additional proxy modules loaded. If the Apache installation is not intended to proxy requests to or from another network, the proxy module should not be loaded."
    rationale: "A web server should be primarily a web server or a proxy server but not both, for the same reasons that other multi-use servers are not recommended."
@@ -108,7 +108,7 @@ checks:
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\sproxy;'
      - 'd:$mods-en -> proxy.load;'
 #2.7 Disable User Directories Modules
- - id: 1504
+ - id: 3504
    title: "Ensure the User Directories Module Is Disabled"
    description: "The UserDir directive must be disabled so that user home directories are not accessed via the web site with a tilde (~) preceding the username. The directive also sets the path name of the directory that will be accessed."
    rationale: "The user directories should not be globally enabled since that allows anonymous access to anything users may want to share with other users on the network."
@@ -126,7 +126,7 @@ checks:
      - 'f:/etc/httpd/conf.d -> !r:^# && r:loadmodule\suserdir;'
      - 'd:$mods-en -> userdir.load;'
 #2.8 Disable Info Module
- - id: 1505
+ - id: 3505
    title: "Ensure the Info Module Is Disabled"
    description: "The Apache mod_info module provides information on the server configuration via access to a /server-info URL location."
    rationale: "Although having server configuration information available as a web page may be convenient, it's recommended that this module be disabled. Once the module is loaded into the server, its handler capability is available in per-directory .htaccess files. This can leak sensitive information from the configuration directives of other Apache modules."
@@ -144,7 +144,7 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && r:loadmodule\sinfo;'
      - 'd:$mods-en -> info.load;'
 #3.2 Give the Apache User Account an Invalid Shell
- - id: 1506
+ - id: 3506
    title: "Ensure the Apache User Account Has an Invalid Shell"
    description: "The apache account must not be used as a regular login account, so it should be assigned an invalid or nologin shell to ensure it cannot be used to log in."
    rationale: "Service accounts such as the apache account are a risk if they can be used to get a login shell to the system."
@@ -156,7 +156,7 @@ checks:
    rules:
      - 'f:/etc/passwd -> r:/var/www && !r:\.*/bin/false$|/sbin/nologin$;'
 #3.3 Lock the Apache User Account
- - id: 1507
+ - id: 3507
    title: "Ensure the Apache User Account Is Locked"
    description: "The user account under which Apache runs should not have a valid password, but should be locked."
    rationale: "As a defense-in-depth measure, the Apache user account should be locked to prevent logins and to prevent a user from su-ing to apache using the password."
@@ -168,7 +168,7 @@ checks:
    rules:
      - 'f:/etc/shadow -> r:^daemon|^wwwrun|^www-data|^apache && !r:\p!\.*$;'
 #4.4 Restrict Override for All Directories
- - id: 1508
+ - id: 3508
    title: "Ensure OverRide Is Disabled for All Directories"
    description: "When the server finds an .htaccess file (as specified by AccessFileName), it needs to know which directives declared in that file can override earlier access information. When this directive is set to None, .htaccess files are completely ignored. When this directive is set to All, any directive which has the .htaccess Context is allowed in .htaccess files."
    rationale: "While the functionality of htaccess files is sometimes convenient, usage decentralizes the access controls and increases the risk of configurations being changed or viewed inappropriately by an unintended or rogue .htaccess file. Consider also that some of the more common vulnerabilities in web servers and web applications allow the web files to be viewed or to be modified."
@@ -187,7 +187,7 @@ checks:
      - 'f:$main-conf -> !r:^# && !r:\w+ && r:allowoverride && !r:none$;'
      - 'f:$main-conf -> !r:^# && !r:\w+ && r:allowoverridelist;'
 #5.3 Minimize Options for Other Directories
- - id: 1509
+ - id: 3509
    title: "Ensure Options for Other Directories Are Minimized"
    description: "The Apache Options directive allows for specific configuration of options, including execution of CGI, following symbolic links, server side includes, and content negotiation."
    rationale: "The options for other directories and hosts should be restricted to the minimal options required. A setting of None is recommended; however, other options may be needed in some cases: Multiviews, FollowSymbolicLinks & SymLinksIfOwnerMatch, ExecCGI, Includes & IncludesNOEXEC, Indexes."
@@ -205,7 +205,7 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && r:options\sincludes;'
      - 'f:$main-conf -> !r:^# && r:options\sincludes;'
 #5.4.1 Remove default index.html sites
- - id: 1510
+ - id: 3510
    title: "Ensure Default HTML Content Is Removed (index.html)"
    description: "Apache installations have default content that is not needed or appropriate for production use. The primary function for the sample content is to provide a default web site, provide user manuals, or demonstrate special features of the web server. All content that is not needed should be removed."
    rationale: "Historically, sample content and features have been remotely exploited and can provide different levels of access to the server. Usually these routines are not written for production use and consequently little thought was given to security in their development."
@@ -218,7 +218,7 @@ checks:
      - 'd:/var/www -> index.html;'
      - 'd:/var/www/html -> index.html;'
 #5.4.2 Remove the Apache user manual
- - id: 1511
+ - id: 3511
    title: "Ensure Default HTML Content Is Removed (Apache user manual)"
    description: "Apache installations have default content that is not needed or appropriate for production use. The primary function for the sample content is to provide a default web site, provide user manuals, or demonstrate special features of the web server. All content that is not needed should be removed."
    rationale: "Historically, sample content and features have been remotely exploited and can provide different levels of access to the server. Usually these routines are not written for production use and consequently little thought was given to security in their development."
@@ -231,7 +231,7 @@ checks:
      - 'd:/etc/httpd/conf.d -> manual.conf;'
      - 'd:/etc/apache2/conf-enabled -> apache2-doc.conf;'
 #5.4.5 Verify that no Handler is enabled
- - id: 1512
+ - id: 3512
    title: "Ensure Default HTML Content Is Removed (Handler)"
    description: "Apache installations have default content that is not needed or appropriate for production use. The primary function for the sample content is to provide a default web site, provide user manuals, or demonstrate special features of the web server. All content that is not needed should be removed."
    rationale: "Historically, sample content and features have been remotely exploited and can provide different levels of access to the server. Usually these routines are not written for production use and consequently little thought was given to security in their development."
@@ -244,7 +244,7 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && r:/wsethandler;'
      - 'f:$main-conf -> !r:^# && r:/wsethandler;'
 #5.5 Remove default CGI content printenv
- - id: 1513
+ - id: 3513
    title: "Ensure the Default CGI Content printenv Script Is Removed"
    description: "Most web servers, including Apache installations, have default CGI content which is not needed or appropriate for production use. The primary function for these sample programs is to demonstrate the capabilities of the web server. One common default CGI content for apache installations is the script printenv that will print back to the requester all of the CGI environment variables, which include many server configuration details and system paths."
    rationale: "Since CGI programs are often targets of attackers, we need to make sure there are no unnecessary CGI programs that could potentially be used for malicious purposes. The printenv script in particular will disclose inappropriate information about the web server, including directory paths and detailed version and configuration information."
@@ -257,7 +257,7 @@ checks:
      - 'd:/var/www/cgi-bin -> printenv;'
      - 'd:/usr/lib/cgi-bin -> printenv;'
 #5.6 Remove default CGI content test-cgi
- - id: 1514
+ - id: 3514
    title: "Ensure the Default CGI Content test-cgi Script Is Removed"
    description: "Most web servers, including Apache installations, have default CGI content which is not needed or appropriate for production use. The primary function for these sample programs is to demonstrate the capabilities of the web server. A common default CGI content for Apache installations is the script test-cgi that will print back to the requester CGI environment variables, which includes many server configuration details."
    rationale: "Since CGI programs are often targets of attackers, we need to make sure there are no unnecessary CGI programs that could potentially be used for malicious purposes. The test-cgi script in particular will disclose inappropriate information about the web server, including directory paths and detailed version and configuration information."
@@ -270,7 +270,7 @@ checks:
      - 'd:/var/www/cgi-bin -> test-cgi;'
      - 'd:/usr/lib/cgi-bin -> test-cgi;'
 #5.7 Limit HTTP Request Method
- - id: 1515
+ - id: 3515
    title: "Ensure HTTP Request Methods Are Restricted"
    description: "Use the Apache <LimitExcept> directive to restrict unnecessary HTTP request methods of the web server so it only accepts and processes the GET, HEAD, POST and OPTIONS HTTP request methods."
    rationale: "The HTTP 1.1 protocol supports several request methods which are rarely used and potentially high risk. For normal web server operation, you will typically need to allow only the GET, HEAD and POST request methods."
@@ -286,7 +286,7 @@ checks:
    rules:
      - 'f:$main-conf -> !r:<limitexcept\sget\spost\soptions>;'
 #5.8 Disable HTTP Trace Method
- - id: 1516
+ - id: 3516
    title: "Ensure the HTTP TRACE Method Is Disabled"
    description: "Use the Apache TraceEnable directive to disable the HTTP TRACE request method."
    rationale: "The HTTP 1.1 protocol requires support for the TRACE request method, which reflects the request back as a response and was intended for diagnostics purposes. The TRACE method is not needed and is easily subjected to abuse, so it should be disabled."
@@ -302,7 +302,7 @@ checks:
    rules:
      - 'f:$traceen -> !r:^# && r:traceenable\s+on\s*$;'
 #5.9 Restrict HTTP Protocol Versions
- - id: 1517
+ - id: 3517
    title: "Ensure Old HTTP Versions Are Disallowed"
    description: "The Apache modules mod_rewrite and mod_security can be used to disallow old and invalid HTTP versions. The HTTP version 1.1 RFC is dated June 1999 and has been supported by Apache since version 1.2, so it should no longer be necessary to allow ancient versions of HTTP prior to 1.1."
    rationale: "Many malicious automated programs, vulnerability scanners, and fingerprinting tools send requests using old HTTP versions to see how the web server responds. These requests are usually part of the attacker's enumeration process."
@@ -321,7 +321,7 @@ checks:
      - 'f:$main-conf -> !r:rewritecond && !r:%{THE_REQUEST} && !r:!HTTP/1\\.1\$;'
      - 'f:$main-conf -> !r:rewriterule && !r:.* - [F];'
 #5.12 Deny IP Address Based Requests
- - id: 1518
+ - id: 3518
    title: "Ensure IP Address Based Requests Are Disallowed"
    description: "The Apache module mod_rewrite should disallow access for requests that use an IP address instead of a host name for the URL. Most normal access to the website from browsers and automated software will use a hostname, and will therefore include the hostname in the HTTP HOST header."
    rationale: "A common malware propagation and automated network scanning technique is to use IP addresses rather than hostnames for web requests, since it's simpler to automate. By denying IP-based web requests, these automated techniques will be denied access to the website."
@@ -341,7 +341,7 @@ checks:
      - 'f:$main-conf -> !r:rewritecond && !r:%{REQUEST_URI} && !r:/error [NC]$;'
      - 'f:$main-conf -> !r:rewriterule && !r:.\(.*\) - [L,F]$;'
 #5.13 Restrict Listen Directive
- - id: 1519
+ - id: 3519
    title: "Ensure the IP Addresses for Listening for Requests Are Specified"
    description: "The Apache Listen directive specifies the IP addresses and port numbers the Apache web server will listen on for requests. Rather than be unrestricted to listen on all IP addresses available to the system, the specific IP address or addresses intended should be explicitly specified. Specifically, a Listen directive with no IP address specified or with an IP address of all zeroes should not be used."
    rationale: "Having multiple interfaces on web servers is fairly common, and without explicit Listen directives, the web server is likely to be listening on an IP address or interface that was not intended for the web server."
@@ -367,7 +367,7 @@ checks:
      - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s0.0.0.0\p\d*;'
      - 'f:/etc/apache2/ports.conf -> !r:^# && r:listen\s[\p\pffff\p0.0.0.0]\p\d*;'
 #5.14 Restrict Browser Frame Options
- - id: 1520
+ - id: 3520
    title: "Ensure Browser Framing Is Restricted"
    description: "The Header directive allows server HTTP response headers to be added, replaced, or merged. Use the directive to add a server HTTP response header to tell browsers to restrict all the web pages from being framed by other web sites."
    rationale: "Using iframes and regular web frames to embed malicious content along with expected web content has been a favored attack vector for attacking web clients for a long time. This can happen when the attacker lures the victim to a malicious web site, which uses frames to include the expected content from the legitimate site."
@@ -384,7 +384,7 @@ checks:
    rules:
      - 'f:$main-conf -> !r:header\salways\sappend\sx-frame-options && !r:sameorigin|deny;'
 #6.1 Configure the Error Log to notice at least
- - id: 1521
+ - id: 3521
    title: "Ensure the Error Log Filename and Severity Level Are Configured Correctly"
    description: "The LogLevel directive is used to configure the severity level for the error logs, while the ErrorLog directive configures the error log filename. The log level values are the standard syslog levels of emerg , alert , crit , error , warn , notice , info and debug . The recommended level is notice , so that all errors from the emerg level through the notice level will be logged."
    rationale: "The server error logs are invaluable because they can be used to spot potential problems before they become serious. Most importantly, they can be used to watch for anomalous behavior such as numerous 'not found' or 'unauthorized' errors that may be an indication an attack is pending or has occurred."
@@ -404,7 +404,7 @@ checks:
      - 'f:$main-conf -> !r:^# && r:loglevel\snotice\score\p && r:warn|emerg|alert|crit|error|notice;'
      - 'f:$main-conf -> !r:loglevel\snotice\score\p && !r:info|debug;'
 #6.2 Configure a Syslog facility for Error Log
- - id: 1522
+ - id: 3522
    title: "Ensure a Syslog Facility Is Configured for Error Logging"
    description: "The ErrorLog directive should be configured to send web server error logs to a syslog facility so the logs can be processed and monitored along with the system logs."
    rationale: "It is easy for web server error logs to be overlooked in the log monitoring process, yet application-level attacks have become the most common and are extremely important for detecting attacks early, as well as detecting non-malicious problems such as a broken link or internal errors."
@@ -423,7 +423,7 @@ checks:
    rules:
      - 'f:$main-conf -> !r:errorlog\s+\p*syslog\p\.*\p*;'
 #7.6 Disable SSL Insecure Renegotiation
- - id: 1523
+ - id: 3523
    title: "Ensure Insecure SSL Renegotiation Is Not Enabled"
    description: "The SSLInsecureRenegotiation directive was added in Apache 2.2.15 for web servers linked with OpenSSL version 0.9.8m or later, to allow the insecure renegotiation to provide backward compatibility to clients with the older unpatched SSL implementations. Enabling this directive also leaves the server vulnerable to man-in-the-middle renegotiation attack, therefore, it should not be enabled."
    rationale: "The seriousness and ramification of this attack warrants that servers and clients be upgraded to support the improved SSL/TLS protocols. Therefore, the recommendation is to not enable the insecure renegotiation."
@@ -441,7 +441,7 @@ checks:
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s+on\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslinsecurerenegotiation\s*$;'
 #7.7 Ensure SSL Compression is not enabled
- - id: 1524
+ - id: 3524
    title: "Ensure SSL Compression is Not Enabled"
    description: "The SSLCompression directive controls whether SSL compression is used by Apache when serving content over HTTPS. It is recommended that the SSLCompression directive be set to off."
    rationale: "If SSL compression is enabled, HTTPS communication between the client and the server may be at increased risk to the CRIME attack. The CRIME attack increases a malicious actor's ability to derive the value of a session cookie, which commonly contains an authenticator that can be used to impersonate the account associated with the authenticator."
@@ -459,7 +459,7 @@ checks:
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s+on\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslcompression\s*$;'
 #7.8 Disable SSL TLS v1.0 Protocol
- - id: 1525
+ - id: 3525
    title: "Ensure Medium Strength SSL/TLS Ciphers Are Disabled"
    description: "The SSLCipherSuite directive specifies which ciphers are allowed in the negotiation with the client. Disable the medium strength ciphers such as Triple DES (3DES) and IDEA by adding !3DES and !IDEA in the SSLCipherSuite directive."
    rationale: "Although Triple DES was a trusted standard in the past, several vulnerabilities for it have been published over the years and it is no longer considered secure."
@@ -484,7 +484,7 @@ checks:
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv2\P\s*;'
      - 'f:$ssl-confs -> !r:^\t*\s*# && r:sslprotocol\s+\.*sslv3\P\s*;'
 #7.9 Enable OCSP Stapling
- - id: 1526
+ - id: 3526
    title: "Enable OCSP Stapling"
    description: "The OCSP (Online Certificate Status Protocol) provides the current revocation status of an X.509 certificate and allows for a certificate authority to revoke the validity of a signed certificate before its expiration date."
    rationale: "The OCSP protocol is a big improvement over CRLs (certificate revocation lists) for checking if a certificate has been revoked. The OCSP stapling improves the situation by having the SSL server 'staple' an OCSP response, signed by the OCSP server, to the certificate it presents to the client. This obviates the need for the client to ask the OCSP server for status information on the server certificate."
@@ -503,7 +503,7 @@ checks:
      - 'f:$ssl-confs -> !r:\t*\s*sslusestapling\s+on;'
      - 'f:$ssl-confs -> !r:\t*\s*sslstaplingcache\s+\.+;'
 #7.10 Enable HTTP Strict Transport Security
- - id: 1527
+ - id: 3527
    title: "Ensure HTTP Strict Transport Security Is Enabled"
    description: "HTTP Strict Transport Security (HSTS) is an optional web server security policy mechanism specified by an HTTP Server header."
    rationale: "Usage of HTTP Strict Transport Security (HSTS) helps protect HSTS-compliant browsers and other agents from HTTP downgrade attacks. Downgrade attacks include a variety of man-in-the-middle attacks which leave the web communication vulnerable to disclosure and modification by forcing the usage of HTTP rather than HTTPS communication."
@@ -526,7 +526,7 @@ checks:
      - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=4\d\d";'
      - 'f:/etc/apache2/apache2.conf -> !r:^# && r:Header\salways\sset\sStrict-Transport-Security\s"max-age=5\d\d";'
 #8.1 Set ServerToken to Prod or ProductOnly
- - id: 1528
+ - id: 3528
    title: "Ensure ServerTokens Provides Minimal Information"
    description: "Configure the Apache ServerTokens directive to provide minimal information by setting the value to Prod or ProductOnly."
    rationale: "Excessive probing and requests may cause too much 'noise' being generated and may tip off an administrator. If an attacker can accurately target exploits, the chances of successful compromise prior to detection increase dramatically."
@@ -545,7 +545,7 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+os;'
      - 'd:$conf-dirs -> conf -> !r:^# && r:servertokens\s+full;'
 #8.2: Set ServerSignature to Off
- - id: 1529
+ - id: 3529
    title: "Ensure ServerSignature Is Not Enabled"
    description: "Disable the server signatures, which is the generation of a signature line as a trailing footer at the bottom of server-generated documents such as error pages."
    rationale: "Server signatures are helpful when the server is acting as a proxy because they help the user distinguish errors from the proxy rather than the destination server. However, in this context there is no need for the additional information."
@@ -561,7 +561,7 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^# && r:serversignature\s+email;'
      - 'd:$conf-dirs -> conf -> !r:^# && r:serversignature\s+on;'
 #8.3: Prevent Information Leakage via Default Apache Content
- - id: 1530
+ - id: 3530
    title: "Ensure All Default Apache Content Is Removed"
    description: "If you want to further restrict information leakage about the web server, it is important that default content such as icons are not left on the web server."
    rationale: "To identify the type of web servers and versions software installed, it is common for attackers to scan for icons or special content specific to the server type and version. Many icons are used primarily for auto indexing, which is recommended to be disabled."
@@ -576,7 +576,7 @@ checks:
      - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:include\s*\w*httpd-autoindex.conf;'
      - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:alias\s*/icons/\s*\.*;'
 #9.1:Set TimeOut to 10 or less
- - id: 1531
+ - id: 3531
    title: "Ensure the TimeOut Is Set Properly"
    description: "The TimeOut directive controls the maximum time in seconds that Apache HTTP server will wait for an Input/Output call to complete. It is recommended that the TimeOut directive be set to 10 or less."
    rationale: "One common technique for DoS is to initiate many connections to the server. By decreasing the timeout for old connections, the server can free resources more quickly and be more responsive."
@@ -609,7 +609,7 @@ checks:
      - 'f:$main-conf -> !r:^timeout\s+\d\d*;'
      - 'f:$main-conf -> !r:^# && r:timeout\s+\d\d\d+;'
 #9.2:Set the KeepAlive directive to On
- - id: 1532
+ - id: 3532
    title: "Ensure KeepAlive Is Enabled"
    description: "The KeepAlive directive controls whether Apache will reuse the same TCP connection per client to process subsequent HTTP requests from that client. It is recommended that the KeepAlive directive be set to On."
    rationale: "Allowing per-client reuse of TCP sockets reduces the amount of system and network resources required to serve requests. This efficiency gain may improve a server's resiliency to DoS attacks."
@@ -625,7 +625,7 @@ checks:
      - 'f:$main-conf -> !r:^# && r:keepalive\s+off;'
      - 'f:$main-conf -> !r:keepalive\s+on;'
 #9.3:Set MaxKeepAliveRequests to 100 or greater
- - id: 1533
+ - id: 3533
    title: "The MaxKeepAliveRequests directive limits the number of requests allowed per connection when KeepAlive is on. If it is set to 0 , unlimited requests will be allowed. It is recommended that the MaxKeepAliveRequests directive be set to 100 or greater."
    description: "Set MaxKeepAliveRequest to 100 or greater"
    rationale: "Limiting the number of requests per connection may improve a server's resiliency to DoS attacks."
@@ -640,7 +640,7 @@ checks:
    rules:
      - 'f:$main-conf -> !r:^maxkeepaliverequests\s+\d\d\d+;'
 #9.4: Set KeepAliveTimeout Low to Mitigate Denial of Service
- - id: 1534
+ - id: 3534
    title: "Ensure the KeepAliveTimeout Is Set Properly"
    description: "The KeepAliveTimeout directive specifies the number of seconds Apache will wait for a subsequent request before closing a connection that is being kept alive."
    rationale: "Reducing the number of seconds that Apache HTTP server will keep unused resources allocated will increase the availability of resources to serve other requests. This efficiency gain may improve a server's resiliency to DoS attacks."
@@ -668,7 +668,7 @@ checks:
      - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+9\d;'
      - 'f:$main-conf -> !r:^# && r:keepalivetimeout\s+\d\d\d+;'
 #9.5 Set Timeout Limits for Request Headers
- - id: 1535
+ - id: 3535
    title: "Ensure Timeout Limits for Request Headers Are Set Properly"
    description: "The RequestReadTimeout directive allows configuration of timeout limits for client requests. The header portion of the directive provides for an initial timeout value, a maximum timeout, and a minimum rate."
    rationale: "Setting a request header timeout is vital for mitigating DoS attacks based on slow requests. The slow request attacks are particularly lethal and relative easy to perform, because they require very little bandwidth and can easily be done through anonymous proxies."
@@ -702,7 +702,7 @@ checks:
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D9\d;'
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+header\p\d\d\D\d\d\d+;'
 #9.6 Set Timeout Limits for Request Body
- - id: 1536
+ - id: 3536
    title: "Ensure Timeout Limits for the Request Body Are Set Properly"
    description: "The RequestReadTimeout directive allows setting timeout values for the body portion of a request. The directive provides for an initial timeout value, a maximum timeout, and a minimum rate."
    rationale: "It is not sufficient to timeout only on the header portion of the request, as the server will still be vulnerable to attacks."
@@ -736,7 +736,7 @@ checks:
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p9\d;'
      - 'f:$request-confs -> !r:^\t*\s*# && r:\t*\s*requestreadtimeout\.+body\p\d\d\d+;'
 #10.1 Set the LimitRequestLine directive to 512 or less
- - id: 1537
+ - id: 3537
    title: "Ensure the Maximum Request Line Length Is Set Properly"
    description: "The LimitRequestLine directive sets the maximum number of bytes that Apache will read for each line of an HTTP request. It is recommended that the LimitRequestLine be set to 512 or less."
    rationale: "Limiting request line size may reduce the exposure of a buffer-related vulnerability potentially present in a code base hosted by Apache HTTP server."
@@ -771,7 +771,7 @@ checks:
      - 'f:$main-conf -> !r:^# && r:limitrequestline\s+9\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestline\s+\d\d\d\d+;'
 #10.2 Set the LimitRequestFields directive to 100 or less
- - id: 1538
+ - id: 3538
    title: "Ensure the Maximum Request Headers Per Request Is Set Properly"
    description: "The LimitRequestFields directive sets the maximum limit on the number of HTTP request headers allowed per request. It is recommended that the LimitRequestFields directive be set to 100 or less."
    rationale: "Limiting the number of headers per request may reduce the exposure of a buffer-related vulnerability potentially present in a code base hosted by Apache HTTP server."
@@ -813,7 +813,7 @@ checks:
      - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+9\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestfields\s+\d\d\d\d+;'
 #10.3 Set the LimitRequestFieldsize directive to 1024 or less
- - id: 1539
+ - id: 3539
    title: "Ensure the Maximum Request Header Field Size Is Set Properly"
    description: "The LimitRequestFieldSize directive sets the maximum size of an HTTP request header field. It is recommended that the LimitRequestFieldSize directive be set to 1024 or less."
    rationale: "Limiting header field size may reduce the exposure of a buffer-related vulnerability potentially present in a code base hosted by Apache HTTP server."
@@ -858,7 +858,7 @@ checks:
      - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+9\d\d\d;'
      - 'f:$main-conf -> !r:^# && r:limitrequestfieldsize\s+\d\d\d\d\d+;'
 #10.4 Set the LimitRequestBody directive to 102400 or less
- - id: 1540
+ - id: 3540
    title: "Ensure the Maximum Request Body Size Is Set Properly"
    description: "The LimitRequestBody directive sets the maximum size of an HTTP request body. It is recommended that the LimitRequestBody directive be set to 102400 or less."
    rationale: "Limiting request body size may reduce the exposure of a buffer-related vulnerability potentially present in a code base hosted by Apache HTTP server."
