@@ -1147,7 +1147,12 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
 
             char compliance_key[OS_SIZE_1024];
             snprintf(compliance_key,OS_SIZE_1024,"configuration_assessment.check.compliance.%s",key);
-            fillData(lf, compliance_key, value);
+
+            if(value) {
+                fillData(lf, compliance_key, value);
+            } else {
+                mdebug1("Could not fill event compliance data, alert not generated");
+            }
 
             if(free_value) {
                 os_free(value);
@@ -1236,7 +1241,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
 
         if(score->valueint){
             sprintf(value, "%d", score->valueint);
-        } else if (failed->valuedouble) {
+        } else if (score->valuedouble) {
             sprintf(value, "%lf", score->valuedouble);
         } 
 

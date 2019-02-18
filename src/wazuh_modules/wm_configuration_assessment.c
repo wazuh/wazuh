@@ -488,6 +488,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             }
 
             w_del_plist(plist);
+            plist = NULL;
 
             minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
 
@@ -506,6 +507,10 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
             if(vars) {
                 OSStore_Free(vars);
+            }
+
+            if(plist) {
+                w_del_plist(plist);
             }
         }
     }
@@ -2089,9 +2094,10 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
     cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
 
     if(!pm_id) {
-        if(!pm_id->valueint) {
-            return 0;
-        }
+        return 0;
+    }
+
+    if(!pm_id->valueint) {
         return 0;
     }
 
@@ -2136,11 +2142,16 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
             elem->event = obj;
             if (ret_add = OSHash_Add(cis_db_hash,id_hashed,elem), ret_add != 2) {
                 merror("Unable to update hash table for check: %d", pm_id->valueint);
+                os_free(elem->result);
+                os_free(elem->event);
+                os_free(elem);
                 return 0;
             }
             cis_db_for_hash[policy_index].elem[check_index] = elem;
             return 1;
         }
+        os_free(elem->result);
+        os_free(elem);
         return 0;
     }
 }
@@ -2322,7 +2333,11 @@ static void * wm_configuration_assessment_request_thread(wm_configuration_assess
                             unsigned int *policy_index;
                             os_calloc(1, sizeof(unsigned int), policy_index);
                             *policy_index = i;
-                            queue_push_ex(request_queue,policy_index);
+
+                            if(queue_push_ex(request_queue,policy_index) < 0) {
+                                os_free(policy_index);
+                                mdebug1("Could not push policy index to queue");
+                            }
                             break;
                         }
                     }
