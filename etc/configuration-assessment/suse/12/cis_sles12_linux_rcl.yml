@@ -390,7 +390,7 @@ checks:
    title: "Ensure ntp is configured"
    description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at http://www.ntp.org. ntp can be configured to be a client and/or a server.  This recommendation only applies if ntp is in use on the system."
    rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
-   remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod limited nomodify notrap nopeer noquery    restrict -6 default kod limited nomodify notrap nopeer noquery    Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>    Add or edit the NTPD_OPTIONS in /etc/sysconfig/ntp to include '-u ntp:ntp': NTPD_OPTIONS=\"-u ntp:ntp\""
+   remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod limited nomodify notrap nopeer noquery    restrict -6 default kod limited nomodify notrap nopeer noquery    Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>    Add or edit the NTPD_OPTIONS in /etc/sysconfig/ntp to include '-u ntp:ntp': NTPD_OPTIONS='-u ntp:ntp'"
    compliance:
     - cis: "2.2.1.2"
     - cis_csc: "6.1"

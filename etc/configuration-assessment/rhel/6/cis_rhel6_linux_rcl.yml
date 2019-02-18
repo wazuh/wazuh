@@ -821,76 +821,44 @@ checks:
 # Other/Legacy Tests
  - id: 6059
    title: "Account with empty password present"
-   description: ""
-   rationale: ""
-   remediation: ""
-   compliance:
-    - cis: "X.X.X"
    condition: any
    rules:
      - 'f:/etc/shadow -> r:^\w+::;'
  - id: 6060
    title: "User-mounted removable partition allowed on the console"
-   description: ""
-   rationale: ""
-   remediation: ""
-   compliance:
-    - cis: "X.X.X"
    condition: any
    rules:
      - 'f:/etc/security/console.perms -> r:^<console>  \d+ <cdrom>;'
      - 'f:/etc/security/console.perms -> r:^<console>  \d+ <floppy>;'
  - id: 6061
    title: "Disable standard boot services - Kudzu hardware detection Enabled"
-   description: ""
-   rationale: ""
-   remediation: ""
-   compliance:
-    - cis: "X.X.X"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dkudzu$;'
  - id: 6062
    title: "Disable standard boot services - PostgreSQL server Enabled"
-   description: ""
-   rationale: ""
-   remediation: ""
    compliance:
-    - cis: "X.X.X"
     - pci_dss: "2.2.2"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dpostgresql$;'
  - id: 6063
    title: "Disable standard boot services - MySQL server Enabled"
-   description: ""
-   rationale: ""
-   remediation: ""
    compliance:
-    - cis: "X.X.X"
     - pci_dss: "2.2.2"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dmysqld$;'
  - id: 6064
    title: "Disable standard boot services - DNS server Enabled"
-   description: ""
-   rationale: ""
-   remediation: ""
    compliance:
-    - cis: "X.X.X"
     - pci_dss: "2.2.2"
    condition: any
    rules:
      - 'd:$rc_dirs -> ^S\d\dnamed$;'
  - id: 6065
    title: "Disable standard boot services - NetFS Enabled"
-   description: ""
-   rationale: ""
-   remediation: ""
    compliance:
-    - cis: "X.X.X"
-    - cis_csc: ""
     - pci_dss: "2.2.2"
    condition: any
    rules:

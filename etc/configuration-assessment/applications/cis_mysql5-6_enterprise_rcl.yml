@@ -105,7 +105,6 @@ checks:
      - 'f:$mysql-cnfs -> r:skip-grant-tables\s*$;'
  - id: 4506
    title: "Ensure '--skip-symbolic-links' Is Enabled"
-   description: ""
    description: "The symbolic-links and skip-symbolic-links options for MySQL determine whether symbolic link support is available.  When use of symbolic links are enabled, they have different effects depending on the host platform.  When symbolic links are disabled, then symbolic links stored in files or entries in tables are not used by the database. "
    rationale: "Prevents sym links being used for data base files. This is especially important when MySQL is executing as root as arbitrary files may be overwritten. The symbolic-links option might allow someone to direct actions by to MySQL server to other files and/or directories."
    remediation: "Open the MySQL configuration file (my.cnf), locate 'skip_symbolic_links' and set it to YES. If the option does not existe, create it in the 'mysqld' section."
