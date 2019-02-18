@@ -666,20 +666,12 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!description){
+        merror("Malformed JSON: field 'description' not found");
         return;
     }
 
     if(!description->valuestring) {
         merror("Malformed JSON: field 'description' must be a string");
-        return;
-    }
-
-    if(!references){
-        return;
-    }
-
-    if(!references->valuestring) {
-        merror("Malformed JSON: field 'references' must be a string");
         return;
     }
 
@@ -783,8 +775,10 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             break;
     }
 
+    char *references_db = NULL;
+    char *description_db = NULL;
     result_db = FindPolicyInfo(lf,policy_id->valuestring,socket);
-
+    
     switch (result_db)
     {
         case -1:
@@ -792,7 +786,23 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             break;
         case 1: // It not exists, insert
             
-            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description->valuestring,references->valuestring);
+            if(references) {
+                if(!references->valuestring) {
+                    merror("Malformed JSON: field 'references' must be a string");
+                    return;
+                }
+                references_db = references->valuestring;
+            }
+
+            if(description) {
+                if(!description->valuestring) {
+                    merror("Malformed JSON: field 'description' must be a string");
+                    return;
+                }
+                description_db = description->valuestring;
+            }
+
+            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db);
             if (result_event < 0)
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
