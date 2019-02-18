@@ -540,3 +540,7 @@ class Master(server.AbstractServer):
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
+
+    def get_node(self) -> Dict:
+        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
+                'node': self.configuration['node_name']}

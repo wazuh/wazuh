@@ -44,6 +44,9 @@ class LocalServerHandler(server.AbstractServerHandler):
     def get_config(self) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.configuration).encode()
 
+    def get_node(self):
+        return self.server.node.get_node()
+
     def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
         raise NotImplementedError
 
