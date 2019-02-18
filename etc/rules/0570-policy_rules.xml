@@ -10,42 +10,79 @@
   <rule id="19001" level="3">
     <if_sid>19000</if_sid>
     <field name="configuration_assessment.type">^summary</field>
-    <options>no_full_log</options>
-    <description>Configuration Assessment summary: Passed checks: $(configuration_assessment.passed) Failed checks: $(configuration_assessment.failed) Score: $(configuration_assessment.score)</description>
+    <description>Configuration Assessment summary: $(configuration_assessment.name): Score: $(configuration_assessment.score)</description>
   </rule>
 
-  <rule id="19002" level="0">
+  <rule id="19002" level="4">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^8\d</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.name): Score less than 90% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19003" level="5">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^7\d|^6\d|^5\d</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.name): Score less than 80% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19004" level="7">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^4\d|^3\d</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.name): Score less than 50% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19005" level="9">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^2\d|^1\d|^\d$</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.name): Score less than 30% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19006" level="0">
     <if_sid>19000</if_sid>
     <field name="configuration_assessment.type">^check</field>
     <options>no_full_log</options>
     <description>Configuration Assessment check event.</description>
   </rule>
 
-  <rule id="19003" level="7">
-    <if_sid>19002</if_sid>
+  <rule id="19007" level="7">
+    <if_sid>19006</if_sid>
     <field name="configuration_assessment.check.result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) failed.</description>
+    <description>$(configuration_assessment.name): $(configuration_assessment.check.title): Failed result.</description>
   </rule>
 
-  <rule id="19004" level="3">
-    <if_sid>19002</if_sid>
+  <rule id="19008" level="3">
+    <if_sid>19006</if_sid>
     <field name="configuration_assessment.check.result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) passed.</description>
+    <description>$(configuration_assessment.name): $(configuration_assessment.check.title): Passed result.</description>
   </rule>
 
-  <rule id="19005" level="3">
-    <if_sid>19004</if_sid>
+  <rule id="19009" level="3">
+    <if_sid>19008</if_sid>
     <field name="configuration_assessment.check.previous_result">^failed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to passed.</description>
+    <description>$(configuration_assessment.name): $(configuration_assessment.check.title): Result changed from failed to passed.</description>
   </rule>
 
-  <rule id="19006" level="9">
-    <if_sid>19003</if_sid>
+  <rule id="19010" level="9">
+    <if_sid>19007</if_sid>
     <field name="configuration_assessment.check.previous_result">^passed</field>
     <options>no_full_log</options>
-    <description>Check with id $(configuration_assessment.check.id) for policy $(configuration_assessment.policy) has changed to failed.</description>
+    <description>$(configuration_assessment.name): $(configuration_assessment.check.title): Result changed from passed to failed.</description>
+  </rule>
+
+  <rule id="19011" level="7">
+    <if_sid>19007</if_sid>
+    <field name="configuration_assessment.policy_id">^win_applications</field>
+    <options>no_full_log</options>
+    <description>$(configuration_assessment.name): Suspicious application found: $(configuration_assessment.check.title).</description>
+  </rule>
+
+  <rule id="19012" level="9">
+    <if_sid>19007</if_sid>
+    <field name="configuration_assessment.policy_id">^win_malware</field>
+    <options>no_full_log</options>
+    <description>$(configuration_assessment.name): Malware found: $(configuration_assessment.check.title).</description>
   </rule>
 </group>
