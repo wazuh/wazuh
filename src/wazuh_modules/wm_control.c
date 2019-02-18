@@ -123,7 +123,6 @@ cJSON *wm_control_dump(void) {
 void *send_ip(){
     int sock;
     int peer;
-    int ip_length = 16;
     char *buffer = NULL;
     char *response = NULL;
     ssize_t length;
@@ -160,8 +159,8 @@ void *send_ip(){
             continue;
         }
 
-        os_calloc(ip_length, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, ip_length - 1, buffer), length) {
+        os_calloc(IPSIZE, sizeof(char), buffer);
+        switch (length = OS_RecvUnix(peer, IPSIZE - 1, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
