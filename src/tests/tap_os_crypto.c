@@ -160,7 +160,7 @@ int test_md5_sha1_cmd_file_fail() {
 }
 
 int main(void) {
-    printf(CYELLOW"\n\n   STARTING TEST - OS_CRYPTO   \n\n" CEND);
+    printf("\n\n   STARTING TEST - OS_CRYPTO   \n\n");
 
     // Encrypts and decrypts a string using blowfish algorithm
     TAP_TEST_MSG(test_blowfish(), "Blowfish encryption test.");
@@ -171,7 +171,7 @@ int main(void) {
     // Encrypts text readed from a temporal file using MD5 algorithm
     TAP_TEST_MSG(test_md5_file(), "MD5 file reading encryption test.");
 
-    // Attempts to read from a non-existing file. 
+    // Attempts to read from a non-existing file.
     TAP_TEST_MSG(test_md5_file_fail(), "MD5 non-existing file to read from.");
 
     // Encrypts a string using SHA1 algorithm
@@ -180,7 +180,7 @@ int main(void) {
     // Encrypts text readed from a temporal file using SHA1 algorithm
     TAP_TEST_MSG(test_sha1_file(), "SHA1 file reading encryption test.");
 
-    // Attempts to read from a non-existing file. 
+    // Attempts to read from a non-existing file.
     TAP_TEST_MSG(test_sha1_file_fail(), "SHA1 non-existing file to read from.");
 
     // Encrypts text readed from a temporal file using SHA1 and MD5 algorithm
@@ -189,11 +189,11 @@ int main(void) {
     // Encrypts text readed executing a command using SHA1 and MD5 algorithm
     TAP_TEST_MSG(test_md5_sha1_cmd_file(), "MD5+SHA1 reading from file using command encryption test.");
 
-    // Attempts to read from a non-existing file. 
+    // Attempts to read from a non-existing file.
     TAP_TEST_MSG(test_md5_sha1_cmd_file_fail(), "MD5+SHA1 non-existing file to read from using command.");
 
     TAP_PLAN;
     TAP_SUMMARY;
-    printf(CYELLOW "\n    ENDING TEST  - OS_CRYPTO   \n\n" CEND);
+    printf("\n    ENDING TEST  - OS_CRYPTO   \n\n");
     return 0;
 }

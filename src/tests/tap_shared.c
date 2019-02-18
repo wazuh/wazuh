@@ -33,13 +33,13 @@ int test_search_and_replace(){
 }
 
 int main(void) {
-    printf(CYELLOW"\n\n   STARTING TEST - OS_SHARED   \n\n" CEND);
+    printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
     // Search and replace strings test
     TAP_TEST_MSG(test_search_and_replace(), "Search and replace strings test.");
 
     TAP_PLAN;
     TAP_SUMMARY;
-    printf(CYELLOW "\n   ENDING TEST  - OS_SHARED   \n\n" CEND);
+    printf("\n   ENDING TEST  - OS_SHARED   \n\n");
     return 0;
 }

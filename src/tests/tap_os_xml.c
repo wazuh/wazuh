@@ -168,7 +168,7 @@ int test_multiple_content() {
         "value1"
         "<child/>"
         "</root>",
-        "<root><child></child></root>") 
+        "<root><child></child></root>")
         &&
     assert_os_xml_eq(
         "<root>"
@@ -874,7 +874,7 @@ int test_node_attribute_value_overflow() {
 
 int main(void) {
 
-    printf(CYELLOW"\n\n   STARTING TEST - OS_XML   \n\n" CEND);
+    printf("\n\n   STARTING TEST - OS_XML   \n\n");
 
     // Simple XML node test
     TAP_TEST_MSG(test_simple_nodes(), "Simple XML node test.");
@@ -1007,6 +1007,6 @@ int main(void) {
 
     TAP_PLAN;
     TAP_SUMMARY;
-    printf(CYELLOW "\n   ENDING TEST  - OS_XML   \n\n" CEND);
+    printf("\n   ENDING TEST  - OS_XML   \n\n");
     return 0;
 }

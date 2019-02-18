@@ -266,7 +266,7 @@ int test_gethost_success() {
     w_assert_str_eq(ret, "8.8.8.8");
 
     free(ret);
-    
+
     return 1;
 }
 
@@ -281,7 +281,7 @@ int test_gethost_not_exists() {
 }
 
 int main(void) {
-    printf(CYELLOW"\n\n    STARTING TEST - OS_NET   \n\n" CEND);
+    printf("\n\n    STARTING TEST - OS_NET   \n\n");
 
     // Send and receive string using TCP IPV4 socket on localhost
     TAP_TEST_MSG(test_tcpv4_local(), "TCP IPV4 send an receive: localhost test.");
@@ -321,6 +321,6 @@ int main(void) {
 
     TAP_PLAN;
     TAP_SUMMARY;
-    printf(CYELLOW "\n    ENDING TEST  - OS_NET   \n\n" CEND);
+    printf("\n    ENDING TEST  - OS_NET   \n\n");
     return 0;
 }

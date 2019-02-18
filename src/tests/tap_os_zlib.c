@@ -104,7 +104,7 @@ int test_fail_uncompress_no_dest_size() {
 }
 
 int main(void) {
-    printf(CYELLOW"\n\n   STARTING TEST - OS_ZLIB   \n\n" CEND);
+    printf("\n\n   STARTING TEST - OS_ZLIB   \n\n");
 
     // Compress and uncompress a regular string test
     TAP_TEST_MSG(test_success_compress_string(), "Compress and uncompress a regular string test.");
@@ -135,6 +135,6 @@ int main(void) {
 
     TAP_PLAN;
     TAP_SUMMARY;
-    printf(CYELLOW "\n   ENDING TEST  - OS_ZLIB   \n\n" CEND);
+    printf("\n   ENDING TEST  - OS_ZLIB   \n\n");
     return 0;
 }

@@ -365,7 +365,7 @@ int test_regex_extraction() {
 }
 
 int test_hostname_map() {
-    
+
     unsigned char test = 0;
 
     while (1) {
@@ -450,7 +450,7 @@ int test_regexmap_word() {
 }
 
 int test_regexmap_space() {
-    
+
     unsigned char test = 0;
 
     while (1) {
@@ -596,7 +596,7 @@ int test_regexmap_nonword() {
 
 
 int test_regexmap_nonspace() {
-    
+
     unsigned char test = 0;
 
     while (1) {
@@ -745,7 +745,7 @@ int test_fail_str_starts_with() {
 }
 
 int main(void) {
-    printf(CYELLOW"\n\n    STARTING TEST - OS_REGEX   \n\n" CEND);
+    printf("\n\n    STARTING TEST - OS_REGEX   \n\n");
 
     // Match strings with patterns using OS_Match
     TAP_TEST_MSG(test_success_match(), "Matching strings with patterns using OS_Match2 test.");
@@ -840,6 +840,6 @@ int main(void) {
 
     TAP_PLAN;
     TAP_SUMMARY;
-    printf(CYELLOW "\n    ENDING TEST  - OS_REGEX   \n\n" CEND);
+    printf("\n    ENDING TEST  - OS_REGEX   \n\n");
     return 0;
 }
