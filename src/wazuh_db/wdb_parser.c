@@ -25,15 +25,14 @@ int wdb_parse(char * input, char * output) {
     char * out;
     int result = 0;
 
-    // Clean string
-
-    while (*input == ' ' || *input == '\n') {
-        input++;
-    }
-
     if (!input) {
         mdebug1("Empty input query.");
         return -1;
+    }
+
+    // Clean string
+    while (*input == ' ' || *input == '\n') {
+        input++;
     }
 
     if (next = wstr_chr(input, ' '), !next) {
@@ -630,7 +629,7 @@ int wdb_parse_configuration_assessment(wdb_t * wdb, char * input, char * output)
             }
         }
 
-        if (result = wdb_configuration_assessment_save(wdb,id->valueint,scan_id->valueint,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check->valuestring ? result_check->valuestring : NULL,policy_id ? policy_id->valuestring : NULL), result < 0) {
+        if (result = wdb_configuration_assessment_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check->valuestring ? result_check->valuestring : NULL,policy_id->valuestring), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {

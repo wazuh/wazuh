@@ -1,4 +1,12 @@
-// August 4, 2018
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * August 4, 2018
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +26,7 @@ int yaml_parse_stdin(yaml_document_t * document) {
     if (yaml_parser_load(&parser, document)) {
         error = 0;
     } else {
-        mwarn("Failed to load YAML document at line %lu", parser.problem_mark.line);
+        mwarn("Failed to load YAML document at line %u", parser.problem_mark.line);
     }
 
     yaml_parser_delete(&parser);
@@ -38,7 +46,7 @@ int yaml_parse_file(const char * path, yaml_document_t * document) {
         if (yaml_parser_load(&parser, document)) {
             error = 0;
         } else {
-            mwarn("Failed to load YAML document in %s:%lu", path, parser.problem_mark.line);
+            mwarn("Failed to load YAML document in %s:%u", path, parser.problem_mark.line);
         }
 
         yaml_parser_delete(&parser);
@@ -99,7 +107,7 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node) {
             value = yaml_document_get_node(document, pair_i->value);
 
             if (key->type != YAML_SCALAR_NODE) {
-                mwarn("Mapping key is not scalar (line %lu).", key->start_mark.line);
+                mwarn("Mapping key is not scalar (line %u).", key->start_mark.line);
                 continue;
             }
 
@@ -109,7 +117,7 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node) {
         break;
 
     default:
-        mwarn("Unknown node type (line %lu).", node->start_mark.line);
+        mwarn("Unknown node type (line %u).", node->start_mark.line);
         object = NULL;
     }
 

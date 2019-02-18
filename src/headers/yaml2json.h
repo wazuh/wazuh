@@ -1,4 +1,12 @@
-// August 4, 2018
+/* Copyright (C) 2015-2019, Wazuh Inc.
+ * August 4, 2018
+ * All rights reserved.
+ *
+ * This program is a free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
 
 #ifndef YAML2JSON_H
 #define YAML2JSON_H

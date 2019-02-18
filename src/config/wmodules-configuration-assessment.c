@@ -179,6 +179,7 @@ int wm_configuration_assessment_read(const OS_XML *xml,xml_node **nodes, wmodule
                     
                     if(strlen(children[j]->content) >= PATH_MAX) {
                         merror("Policy path is too long at module '%s'. Max path length is %d", WM_CONFIGURATION_ASSESSMENT_CONTEXT.name,PATH_MAX);
+                        OS_ClearNode(children);
                         return OS_INVALID;
                     }
 

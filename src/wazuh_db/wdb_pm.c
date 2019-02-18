@@ -665,10 +665,12 @@ int wdb_configuration_assessment_checks_get_result(wdb_t * wdb, int scan_id, cha
 
 end:
     if(has_result) {
-        os_md5 md5_hash;
-        OS_MD5_Str(str,-1,md5_hash);
-        snprintf(output,OS_MAXSTR,"%s",md5_hash);
-        os_free(str);
+        if(str) {
+            os_md5 md5_hash;
+            OS_MD5_Str(str,-1,md5_hash);
+            snprintf(output,OS_MAXSTR,"%s",md5_hash);
+            os_free(str);
+        }
         return 1;
     }
     return 0;
