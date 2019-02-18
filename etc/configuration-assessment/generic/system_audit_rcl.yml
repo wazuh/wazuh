@@ -83,14 +83,14 @@ checks:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
-     - "d:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = '4.4.2';"
+     - 'd:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = ''4.4.2''';'
  - id: 9510
    title: "Web vulnerability - Outdated Joomla installation"
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
-     - "d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'3.4.8';"
+     - 'd:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:''3.4.8''';'
  - id: 9511
    title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
    compliance:

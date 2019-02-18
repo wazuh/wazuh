@@ -684,47 +684,27 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!pm_scan_start) {
-        return;
-    }
-
-    if(!pm_scan_start->valueint) {
-        merror("Malformed JSON: field 'start_time' must be a string");
+        merror("Malformed JSON: field 'start_time' not found");
         return;
     }
 
     if(!pm_scan_end) {
-        return;
-    }
-
-    if(!pm_scan_end->valueint) {
-        merror("Malformed JSON: field 'end_time' must be a string");
+        merror("Malformed JSON: field 'end_time' not found");
         return;
     }
 
     if(!passed){
-        return;
-    }
-
-    if(!passed->valueint) {
-        merror("Malformed JSON: field 'passed' must be a string");
+        merror("Malformed JSON: field 'passed' not found");
         return;
     }
 
     if(!failed){
-        return;
-    }
-
-    if(!failed->valueint) {
-        merror("Malformed JSON: field 'failed' must be a string");
+        merror("Malformed JSON: field 'failed' not found");
         return;
     }
 
     if(!score){
-        return;
-    }
-
-    if(!score->valueint) {
-        merror("Malformed JSON: field 'score' must be a string");
+        merror("Malformed JSON: field 'score' not found");
         return;
     }
 
