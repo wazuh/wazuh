@@ -13,6 +13,13 @@ policy:
   name: "System audit for SSH hardening"
   description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
 
+requirements:
+  title: "Check that the SSH service is installed on the system"
+  description: "Requirements for running the Configuration Assessment scan against the SSH policy."
+  condition: "all required"
+  rules:
+    - 'f:/etc/ssh/sshd_config;'
+
 variables:
  $sshd_file: /etc/ssh/sshd_config;
 
