@@ -216,6 +216,7 @@ int wdb_remove_agent(int id) {
     sqlite3_bind_int(stmt, 1, id);
     result = wdb_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
+    wdb_delete_agent_belongs(id);
 
     result = result && name ? wdb_remove_agent_db(id, name) : -1;
 
