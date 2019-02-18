@@ -704,7 +704,7 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
-            self.query += " (" + " OR ".join(x + ' LIKE :search' for x in self.fields.values()) + ')'
+            self.query += " (" + " OR ".join(f'({x.split(" as ")} LIKE :search AND {x.split(" as ")} IS NOT NULL)' for x in self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
             self.request['search'] = '%{0}%'.format(self.search['value'])
 

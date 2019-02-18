@@ -52,20 +52,25 @@ int receive_msg()
 
             // Manager disconnected or error
 
-            switch (recv_b) {
-            case OS_SOCKTERR:
-                merror("Corrupt payload (exceeding size) received.");
-                return -1;
-            case -1:
-                if (errno == ENOTCONN) {
-                    mdebug1("Manager disconnected (ENOTCONN).");
-                } else {
-                    merror("Connection socket: %s (%d)", strerror(errno), errno);
-                }
-                return -1;
+            if (recv_b <= 0) {
+                switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
 
-            case 0:
-                mdebug1("Manager disconnected.");
+                case -1:
+                    if (errno == ENOTCONN) {
+                        mdebug1("Manager disconnected (ENOTCONN).");
+                    } else {
+                        merror("Connection socket: %s (%d)", strerror(errno), errno);
+                    }
+                    break;
+
+                case 0:
+                    mdebug1("Manager disconnected.");
+                }
+
+                // -1 means that the agent must reconnect
                 return -1;
             }
         } else {

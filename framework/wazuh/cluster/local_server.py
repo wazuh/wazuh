@@ -101,7 +101,11 @@ class LocalServerHandlerMaster(LocalServerHandler):
         elif command == b'dapi_forward':
             node_name, request = data.split(b' ', 1)
             node_name = node_name.decode()
-            if node_name in self.server.node.clients:
+            if node_name == 'fw_all_nodes':
+                for node_name, node in self.server.node.clients.items():
+                    asyncio.create_task(node.send_request(b'dapi', self.name.encode() + b' ' + request))
+                return b'ok', b'Request forwarded to all worker nodes'
+            elif node_name in self.server.node.clients:
                 asyncio.create_task(
                     self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
                 return b'ok', b'Request forwarded to worker node'
@@ -141,6 +145,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
         if command == b'dapi':
             api_call_name = json.loads(data.decode())['function']
             if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
+                if self.server.node.client is None:
+                    return b'err', b'Worker is not connected to the master node'
                 asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
                 return b'ok', b'Added request to API requests queue'
             else:

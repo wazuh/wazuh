@@ -52,6 +52,7 @@ void SyscollectorInit(){
 int DecodeSyscollector(Eventinfo *lf,int *socket)
 {
     cJSON *logJSON;
+    cJSON *json_type;
     char *msg_type = NULL;
 
     lf->decoder_info = sysc_decoder;
@@ -81,8 +82,8 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Detect message type
-    msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-    if (!msg_type) {
+    json_type = cJSON_GetObjectItem(logJSON, "type");
+    if (!(json_type && (msg_type = json_type->valuestring))) {
         mdebug1("Invalid message. Type not found.");
         cJSON_Delete (logJSON);
         return (0);
@@ -986,7 +987,7 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (ram_total) {
             char total[OS_SIZE_512];
             snprintf(total, OS_SIZE_512 - 1, "%f", ram_total->valuedouble);
-            fillData(lf,"harware.ram_total",total);
+            fillData(lf,"hardware.ram_total",total);
             wm_strcat(&msg, total, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');

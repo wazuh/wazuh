@@ -86,6 +86,8 @@ class LocalClient(client.AbstractClientManager):
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
                                              path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        except ConnectionRefusedError:
+            raise exception.WazuhException(3012)
         except Exception as e:
             raise exception.WazuhException(3009, str(e))
 
