@@ -1,3 +1,10 @@
+<!--
+  -  Configuration assessment ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
 <group name="wazuh,configuration_assessment,gdpr_IV_35.7.d">
 
   <rule id="19000" level="0">
