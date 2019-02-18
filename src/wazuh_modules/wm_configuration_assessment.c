@@ -348,6 +348,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             char path[PATH_MAX];
             OSStore *vars = NULL;
             cJSON * object = NULL;
+            OSList *plist = NULL;
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
 
@@ -395,7 +396,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
             yaml_document_delete(&document);
 
-            OSList *plist = w_os_get_process_list();
+            plist = w_os_get_process_list();
             cJSON *policy = cJSON_GetObjectItem(object, "policy");
             cJSON *variables = cJSON_GetObjectItem(object, "variables");
             cJSON *profiles = cJSON_GetObjectItem(object, "checks");
@@ -710,6 +711,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     goto clean_return;
                 }
                 nbuf = p_check->valuestring;
+                mdebug2("Rule is: %s",nbuf);
             
                 /* Get value to look for */
                 value = wm_configuration_assessment_get_value(nbuf, &type);

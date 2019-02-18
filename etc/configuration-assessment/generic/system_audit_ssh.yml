@@ -23,6 +23,7 @@ checks:
    description: "The ssh daemon should not be listening on port 22 (the default value) for incoming connections."
    rationale: "Changing the default port you may reduce the number of successful attacks from zombie bots, an attacker or bot doing port-scanning can quickly identify your SSH port."
    remediation: "Change the Port option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -32,6 +33,7 @@ checks:
    description: "The SSH protocol should not be 1."
    rationale: "The Protocol parameter dictates which version of the SSH communication and encryption protocols are in use. Version 1 of the SSH protocol has weaknesses."
    remediation: "Change the Protocol option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -49,6 +51,7 @@ checks:
    description: "The option PubkeyAuthentication should be set yes."
    rationale: "Access only by public key. Generally people will use weak passwords and have poor password practices. Keys are considered stronger than password."
    remediation: "Change the PubkeyAuthentication option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -58,6 +61,7 @@ checks:
    description: "The option PasswordAuthentication should be set to no."
    rationale: "The option PasswordAuthentication specifies whether we should use password-based authentication. Use public key authentication instead of passwords."
    remediation: "Change the PasswordAuthentication option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -67,6 +71,7 @@ checks:
    description: "The option PermitEmptyPasswords should be set to no."
    rationale: "The option PermitEmptyPasswords specifies whether the server allows logging in to accounts with a null password. Accounts with null passwords are a bad practice."
    remediation: "Change the PermitEmptyPasswords option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -76,6 +81,7 @@ checks:
    description: "The option IgnoreRhosts should be set to yes."
    rationale: "The option IgnoreRhosts specifies whether rhosts or shosts files should not be used in authentication. For security reasons it is recommended to no use rhosts or shosts files for authentication."
    remediation: "Change the IgnoreRhosts option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -85,6 +91,7 @@ checks:
    description: "The option LoginGraceTime should be set to 30."
    rationale: "The option LoginGraceTime specifies how long in seconds after a connection request the server will wait before disconnecting if the user has not successfully logged in. 30 seconds is the recommended time for avoiding open connections without authenticate."
    remediation: "Change the LoginGraceTime option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
@@ -94,6 +101,7 @@ checks:
    description: "The option MaxAuthTries should be set to 4."
    rationale: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. Once the number of failures reaches half this value, additional failures are logged. This should be set to 4."
    remediation: "Change the MaxAuthTries option value in the sshd_config file."
+   compliance:
     - pci_dss: "2.2.4"
    condition: any
    rules:
