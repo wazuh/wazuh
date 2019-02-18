@@ -1205,10 +1205,10 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     if(pass) {
         char value[OS_SIZE_128];
 
-        if(pass->valueint){
+        if(pass->valueint >= 0){
             sprintf(value, "%d", pass->valueint);
-        } else if (pass->valuedouble) {
-             sprintf(value, "%lf", pass->valuedouble);
+        } else if (pass->valuedouble >= 0) {
+            sprintf(value, "%lf", pass->valuedouble);
         } 
 
         fillData(lf, "configuration_assessment.passed", value);
@@ -1217,9 +1217,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     if(failed) {
         char value[OS_SIZE_128];
 
-        if(failed->valueint){
+        if(failed->valueint >= 0){
             sprintf(value, "%d", failed->valueint);
-        } else if (failed->valuedouble) {
+        } else if (failed->valuedouble >= 0) {
             sprintf(value, "%lf", failed->valuedouble);
         } 
 
@@ -1229,9 +1229,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     if(score) {
         char value[OS_SIZE_128];
 
-        if(score->valueint){
+        if(score->valueint >= 0){
             sprintf(value, "%d", score->valueint);
-        } else if (score->valuedouble) {
+        } else if (score->valuedouble >= 0) {
             sprintf(value, "%lf", score->valuedouble);
         } 
 
