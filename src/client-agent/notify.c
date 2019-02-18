@@ -150,6 +150,8 @@ void run_notify()
                     snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
+
+            close(sock);
             break;
         } else {
             mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
