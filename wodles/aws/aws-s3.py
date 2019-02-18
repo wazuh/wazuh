@@ -804,6 +804,17 @@ class AWSCloudTrailBucket(AWSLogsBucket):
             if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
                 event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
 
+        if 'requestParameters' in event['aws']:
+            request_parameters = event['aws']['requestParameters']
+            if 'disableApiTermination' in request_parameters:
+                disable_api_termination = request_parameters['disableApiTermination']
+                if isinstance(disable_api_termination, bool):
+                    request_parameters['disableApiTermination'] = {'value': disable_api_termination}
+                elif isinstance(disable_api_termination, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
+
         return event
 
 
@@ -1997,8 +2008,10 @@ def main(argv):
                 service.get_alerts()
 
     except Exception as err:
-        debug("+++ Error: {}".format(err.message), 2)
-        print("ERROR: {}".format(err.message))
+        debug("+++ Error: {}".format(err), 2)
+        if debug_level > 0:
+            raise
+        print("ERROR: {}".format(err))
         sys.exit(12)
 
 
