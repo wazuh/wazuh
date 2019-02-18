@@ -48,7 +48,8 @@ CREATE INDEX IF NOT EXISTS policy_id_index ON configuration_assessment_check (po
 CREATE TABLE IF NOT EXISTS configuration_assessment_check_compliance (
    id_check INTEGER REFERENCES configuration_assessment_check (id),
   `key` TEXT,
-  `value` TEXT
+  `value` TEXT,
+   PRIMARY KEY (id_check, `key`, `value`)
 );
 
 CREATE INDEX IF NOT EXISTS id_check_index ON configuration_assessment_check_compliance (id_check);
