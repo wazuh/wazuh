@@ -283,7 +283,7 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, delete_file, aws_organisation_id):
+                 prefix, delete_file, aws_organization_id):
         """
         AWS Bucket constructor.
 
@@ -298,7 +298,7 @@ class AWSBucket(WazuhIntegration):
         :param account_alias: Alias of the AWS account where the bucket is.
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
-        :param aws_organisation_id: The AWS Organisation ID
+        :param aws_organization_id: The AWS organization ID
         """
 
         # common SQL queries
@@ -396,7 +396,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix = prefix
         self.delete_file = delete_file
         self.bucket_path = self.bucket + '/' + self.prefix
-        self.aws_organisation_id = aws_organisation_id
+        self.aws_organization_id = aws_organization_id
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -713,10 +713,10 @@ class AWSLogsBucket(AWSBucket):
 
     def get_base_prefix(self):
         base_prefix = '{}AWSLogs/'.format(self.prefix)
-        if self.aws_organisation_id:
-            base_prefix = '{base_prefix}{aws_organisation_id}/'.format(
+        if self.aws_organization_id:
+            base_prefix = '{base_prefix}{aws_organization_id}/'.format(
                 base_prefix=base_prefix,
-                aws_organisation_id=self.aws_organisation_id)
+                aws_organization_id=self.aws_organization_id)
 
         return base_prefix
 
@@ -1932,8 +1932,8 @@ def get_script_arguments():
                         action='store')
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                         action='store')
-    parser.add_argument('-O', '--aws_organisation_id', dest='aws_organisation_id',
-                        help='AWS Organisation ID for logs', required=False)
+    parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
+                        help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
@@ -1999,7 +1999,7 @@ def main(argv):
                            only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
                            account_alias=options.aws_account_alias,
                            prefix=options.trail_prefix, delete_file=options.deleteFile,
-                           aws_organisation_id=options.aws_organisation_id)
+                           aws_organization_id=options.aws_organization_id)
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
