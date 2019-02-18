@@ -447,10 +447,6 @@
             <ComponentRef Id="WIN_MALWARE_RCL.TXT" />
             <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="WIN32UI.EXE" />
-            <ComponentRef Id="CIS_WIN2012R2_DOMAINL1_RCL.YML" />
-            <ComponentRef Id="CIS_WIN2012R2_DOMAINL2_RCL.YML" />
-            <ComponentRef Id="CIS_WIN2012R2_MEMBERL1_RCL.YML" />
-            <ComponentRef Id="CIS_WIN2012R2_MEMBERL2_RCL.YML" />
             <ComponentRef Id="WIN_APPLICATIONS_RCL.YML" />
             <ComponentRef Id="WIN_AUDIT_RCL.YML" />
             <ComponentRef Id="WIN_MALWARE_RCL.YML" />
