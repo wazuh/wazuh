@@ -43,30 +43,35 @@ checks:
 # WEB checks
  - id: 9504
    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^.yop$;'
  - id: 9505
    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^id$;'
  - id: 9506
    title: "Web exploits (uncommon file name inside htdocs)"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^.ssh$;'
  - id: 9507
    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> ^...$;'
  - id: 9508
    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
@@ -74,18 +79,21 @@ checks:
 # Outdated Web applications
  - id: 9509
    title: "Web vulnerability - Outdated WordPress installation"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - "d:$web_dirs -> ^version.php$ -> r:^\.wp_version && >:$wp_version = '4.4.2';"
  - id: 9510
    title: "Web vulnerability - Outdated Joomla installation"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - "d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'3.4.8';"
  - id: 9511
    title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
@@ -93,18 +101,21 @@ checks:
 # Known backdoors
  - id: 9512
    title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;'
  - id: 9513
    title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST "
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    condition: any
    rules:
      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST;'
  - id: 9514
    title: "Web vulnerability - .htaccess file compromised"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    references:
     - http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
@@ -113,6 +124,7 @@ checks:
      - 'd:$web_dirs -> ^.htaccess$ -> r:RewriteCond \S+HTTP_REFERERS \S+google;'
  - id: 9515
    title: "Web vulnerability - .htaccess file compromised - auto append"
+   compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    references:
     - http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
