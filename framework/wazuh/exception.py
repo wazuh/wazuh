@@ -83,8 +83,9 @@ class WazuhException(Exception):
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: 'There is no database for selected agent',  # Also, agent
         1601: 'Unable to restart syscheck/rootcheck',
-        1602: 'Impossible to run syscheck/run due to agent is not active',
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
+        1604: 'Impossible to run FIM scan due to agent is not active',
+        1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Bad arguments',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
@@ -136,12 +137,17 @@ class WazuhException(Exception):
         1741: 'Could not remove multigroup',
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
+        1744: 'Invalid chunk size',
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
         1801: '\'path\' parameter is wrong',
 
         # Manager:
+        1900: 'Error restarting manager',
+        1901: '\'execq\' socket has not been created',
+        1902: 'Could not connect to \'execq\' socket',
+        1903: 'Error deleting temporary file from API',
 
         # Database:
         2000: 'No such database file',

@@ -38,7 +38,7 @@ class DistributedAPI:
         self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
         self.pretty = pretty
-        self.node_info = cluster.get_node()
+        self.node_info = cluster.get_node() if node is None else node.get_node()
         self.request_id = str(random.randint(0, 2**10 - 1))
 
     async def distribute_function(self) -> str:
@@ -49,17 +49,25 @@ class DistributedAPI:
         """
         try:
             request_type = rq.functions[self.input_json['function']]['type']
-            is_dapi_enabled = cluster.get_cluster_items()['distributed_api']['enabled']
+            is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
+            is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
 
             if 'wait_for_complete' not in self.input_json['arguments']:
                 self.input_json['arguments']['wait_for_complete'] = False
+
+            # if it is a cluster API request and the cluster is not enabled, raise an exception
+            if is_cluster_disabled and 'cluster' in self.input_json['function'] and \
+                    self.input_json['function'] != '/cluster/status' and \
+                    self.input_json['function'] != '/cluster/config' and \
+                    self.input_json['function'] != '/cluster/node':
+                raise exception.WazuhException(3013)
 
             # First case: execute the request local.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or cluster.check_cluster_status() or request_type == 'local_any' or \
+            if not is_dapi_enabled or is_cluster_disabled or request_type == 'local_any' or \
                     (request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (request_type == 'distributed_master' and self.input_json['from_cluster']):
 
@@ -137,19 +145,22 @@ class DistributedAPI:
                 raise
             return self.print_json(data=str(e), error=1000)
 
+    async def send_tmp_file(self, node_name=None):
+        # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
+        # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
+        res = await self.node.send_file(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']), node_name)
+        os.remove(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']))
+        if res.startswith('Error'):
+            return self.print_json(data=res.decode(), error=1000)
+
     async def execute_remote_request(self) -> str:
         """
         Executes a remote request. This function is used by worker nodes to execute master_only API requests.
 
         :return: JSON response
         """
-        if 'xml_file' in self.input_json['arguments']:
-            # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
-            # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
-            res = await self.node.send_file(common.ossec_path + self.input_json['arguments']['xml_file'])
-            os.remove(common.ossec_path + self.input_json['arguments']['xml_file'])
-            if res.startswith('Error'):
-                return self.print_json(data=res.decode(), error=1000)
+        if 'tmp_file' in self.input_json['arguments']:
+            await self.send_tmp_file()
         return await self.node.execute(command=b'dapi', data=json.dumps(self.input_json).encode(),
                                        wait_for_complete=self.input_json['arguments']['wait_for_complete'])
 
@@ -175,6 +186,8 @@ class DistributedAPI:
                 # itself
                 response = await self.distribute_function()
             else:
+                if 'tmp_file' in self.input_json['arguments']:
+                    await self.send_tmp_file(node_name)
                 response = await self.node.execute(b'dapi_forward',
                                                    "{} {}".format(node_name, json.dumps(self.input_json)).encode(),
                                                    self.input_json['arguments']['wait_for_complete'])
@@ -230,11 +243,15 @@ class DistributedAPI:
             del self.input_json['arguments']['node_id']
             return {node_id: []}
 
-        else:  # agents, syscheck, rootcheck and syscollector
-            # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
-            agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                     sort={'fields': ['node_name'], 'order': 'desc'})['items']
-            node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
+        else:
+            if 'cluster' in self.input_json['function']:
+                node_name = {'fw_all_nodes': [], self.node_info['node']: []}
+            else:
+                # agents, syscheck, rootcheck and syscollector
+                # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
+                agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
+                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
+                node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
     def merge_results(self, responses, final_json):
@@ -252,7 +269,8 @@ class DistributedAPI:
         :return: single JSON with the final result
         """
         priorities = {
-            ("Some agents were not restarted", "All selected agents were restarted")
+            ("Some agents were not restarted", "All selected agents were restarted"),
+            ("KO", "OK")
         }
 
         for local_json in responses:
@@ -321,11 +339,16 @@ class APIRequestQueue:
             request = json.loads(request)
             names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
-            node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             self.logger.info("Receiving request: {} from {}".format(
                 request['function'], names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
-            result = await DistributedAPI(input_json=request, logger=self.logger, node=node).distribute_function()
-            task_id = await node.send_string(result.encode())
+            try:
+                result = await DistributedAPI(input_json=request, logger=self.logger, node=node).distribute_function()
+                task_id = await node.send_string(result.encode())
+            except Exception as e:
+                self.logger.error("Error in distributed API: {}".format(e))
+                task_id = b'Error in distributed API: ' + str(e).encode()
+
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
                 result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')

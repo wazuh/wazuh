@@ -154,34 +154,46 @@ end:
     return retval;
 }
 
+/* Check download module availability */
+int wurl_check_connection() {
+    int sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return -1;
+    } else {
+        close(sock);
+        return 0;
+    }
+}
+
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;
   struct MemoryStruct *mem = (struct MemoryStruct *)userp;
- 
+
   char *ptr = realloc(mem->memory, mem->size + realsize + 1);
   if(ptr == NULL) {
     return 0;
   }
- 
+
   mem->memory = ptr;
   memcpy(&(mem->memory[mem->size]), contents, realsize);
   mem->size += realsize;
   mem->memory[mem->size] = 0;
- 
+
   return realsize;
 }
 
-int wurl_http_get(const char * url, char * data){
+char * wurl_http_get(const char * url) {
     CURL *curl;
     CURLcode res;
     curl = curl_easy_init();
     char errbuf[CURL_ERROR_SIZE];
 
     struct MemoryStruct chunk;
- 
-    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */ 
-    chunk.size = 0;    /* no data at this point */ 
+
+    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    chunk.size = 0;    /* no data at this point */
 
     if (curl){
         curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -202,11 +214,10 @@ int wurl_http_get(const char * url, char * data){
             mwarn("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
-            return OS_CONNERR;
+            return NULL;
         }
         curl_easy_cleanup(curl);
     }
-    os_strdup(chunk.memory,data);
-    free(chunk.memory);
-    return 0;
+
+    return chunk.memory;
 }

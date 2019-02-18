@@ -814,6 +814,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
+    const char *xml_audit_hc = "startup_healthcheck";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -1236,6 +1237,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
+            // To be deprecated. This field is now readed inside the <whodata> block.
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
             else if(strcmp(node[i]->content, "no") == 0)
@@ -1271,6 +1273,28 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             key = strtok(NULL, &delim);
                             keyit++;
                         }
+                    }
+                } else if (strcmp(children[j]->element, xml_audit_hc) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->audit_healthcheck = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->audit_healthcheck = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
+                    }
+                } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->restart_audit = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->restart_audit = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
                     }
                 } else {
                     merror(XML_ELEMNULL);

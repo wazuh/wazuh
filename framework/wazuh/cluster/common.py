@@ -269,7 +269,7 @@ class Handler(asyncio.Protocol):
             return b'Error sending request: timeout expired.'
         return response_data
 
-    async def send_file(self, filename: str) -> bytes:
+    async def send_file(self, filename: str, node_name: str = None) -> bytes:
         """
         Sends a file to peer.
 
@@ -550,10 +550,20 @@ class WazuhCommon:
         return b'ok', str(my_task).encode()
 
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
+        if task_and_file_names.startswith('Error'):
+            self.get_logger(self.logger_tag).error("Error receiving task name: {}".format(task_and_file_names))
+            return b'err', b'Task name not received correctly'
         task_name, filename = task_and_file_names.split(' ', 1)
-        self.sync_tasks[task_name].filename = common.ossec_path + filename
+        if task_name not in self.sync_tasks:
+            self.get_logger(self.logger_tag).error("Received task name '{}' doesn't exist.".format(task_name))
+            return b'err', b'Task name doesnt exist'
+        self.sync_tasks[task_name].filename = common.ossec_path + filename if not filename == 'Error' else filename
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
+
+    def get_node(self):
+        return {'type': self.get_manager().configuration['node_type'], 'cluster': self.get_manager().configuration['name'],
+                'node': self.get_manager().configuration['node_name']}
 
 
 def asyncio_exception_handler(loop, context: Dict):

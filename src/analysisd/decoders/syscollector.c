@@ -52,6 +52,7 @@ void SyscollectorInit(){
 int DecodeSyscollector(Eventinfo *lf,int *socket)
 {
     cJSON *logJSON;
+    cJSON *json_type;
     char *msg_type = NULL;
 
     lf->decoder_info = sysc_decoder;
@@ -81,8 +82,8 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Detect message type
-    msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-    if (!msg_type) {
+    json_type = cJSON_GetObjectItem(logJSON, "type");
+    if (!(json_type && (msg_type = json_type->valuestring))) {
         mdebug1("Invalid message. Type not found.");
         cJSON_Delete (logJSON);
         return (0);
@@ -311,6 +312,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
+                cJSON * metric = cJSON_GetObjectItem(ip, "metric");
 
                 os_calloc(OS_SIZE_6144, sizeof(char), msg);
                 snprintf(msg, OS_SIZE_6144 - 1, "agent %s netproto save", lf->agent_id);
@@ -340,6 +342,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 if (dhcp) {
                     wm_strcat(&msg, dhcp->valuestring, '|');
                     fillData(lf,"netinfo.iface.ipv4.dhcp",dhcp->valuestring);
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (metric) {
+                    char _metric[OS_SIZE_128];
+                    snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
+                    fillData(lf,"netinfo.iface.ipv4.metric", _metric);
+                    wm_strcat(&msg, _metric, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
@@ -436,6 +447,7 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 cJSON * address = cJSON_GetObjectItem(ip, "address");
                 cJSON * netmask = cJSON_GetObjectItem(ip, "netmask");
                 cJSON * broadcast = cJSON_GetObjectItem(ip, "broadcast");
+                cJSON * metric = cJSON_GetObjectItem(ip, "metric");
                 cJSON * gateway = cJSON_GetObjectItem(ip, "gateway");
                 cJSON * dhcp = cJSON_GetObjectItem(ip, "dhcp");
 
@@ -467,6 +479,15 @@ int decode_netinfo( Eventinfo *lf, cJSON * logJSON,int *socket) {
                 if (dhcp) {
                     wm_strcat(&msg, dhcp->valuestring, '|');
                     fillData(lf, "netinfo.iface.ipv6.dhcp",dhcp->valuestring);
+                } else {
+                    wm_strcat(&msg, "NULL", '|');
+                }
+
+                if (metric) {
+                    char _metric[OS_SIZE_128];
+                    snprintf(_metric, OS_SIZE_128 - 1, "%d", metric->valueint);
+                    fillData(lf,"netinfo.iface.ipv6.metric",_metric);
+                    wm_strcat(&msg, _metric, '|');
                 } else {
                     wm_strcat(&msg, "NULL", '|');
                 }
@@ -966,7 +987,7 @@ int decode_hardware( Eventinfo *lf, cJSON * logJSON,int *socket) {
         if (ram_total) {
             char total[OS_SIZE_512];
             snprintf(total, OS_SIZE_512 - 1, "%f", ram_total->valuedouble);
-            fillData(lf,"harware.ram_total",total);
+            fillData(lf,"hardware.ram_total",total);
             wm_strcat(&msg, total, '|');
         } else {
             wm_strcat(&msg, "NULL", '|');

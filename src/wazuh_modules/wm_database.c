@@ -290,7 +290,7 @@ void wm_sync_manager() {
             }
         }
 
-        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name);
+        wdb_update_agent_version(0, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os_uname, os_arch, __ossec_name " " __ossec_version, NULL, NULL, hostname, node_name, NULL);
 
         free(node_name);
         free(os_major);
@@ -381,7 +381,7 @@ void wm_sync_agents() {
             *group = 0;
         }
 
-        if (!(wdb_insert_agent(id, entry->name, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL,1) || module->full_sync)) {
+        if (!(wdb_insert_agent(id, entry->name, NULL, OS_CIDRtoStr(entry->ip, cidr, 20) ? entry->ip->ip : cidr, entry->key, *group ? group : NULL,1) || module->full_sync)) {
 
             // Find files
 
@@ -521,9 +521,11 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
     char *merged_sum = NULL;
     char manager_host[512] = "";
     char node_name[512] = "";
+    char agent_ip[16] = "";
     char *end;
     char *end_manager;
     char *end_node;
+    char *end_ip;
     char *end_line;
     FILE *fp;
     int result;
@@ -657,10 +659,19 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
 
         // Search for manager hostname connected to the agent and the node name of the cluster
 
-        const char * MANAGER_HOST = "#\"manager_hostname\":";
-        const char * NODE_NAME = "#\"node_name\":";
+        const char * AGENT_IP = "#\"_agent_ip\":";
+        const char * MANAGER_HOST = "#\"_manager_hostname\":";
+        const char * NODE_NAME = "#\"_node_name\":";
 
         while (fgets(file, OS_MAXSTR, fp)) {
+            if (!strncmp(file, AGENT_IP, strlen(AGENT_IP))) {
+                strncpy(agent_ip, file + strlen(AGENT_IP), sizeof(agent_ip) - 1);
+                agent_ip[sizeof(agent_ip) - 1] = '\0';
+
+                if (end_ip = strchr(agent_ip, '\n'), end_ip){
+                    *end_ip = '\0';
+                }
+            }
             if (!strncmp(file, MANAGER_HOST, strlen(MANAGER_HOST))) {
                 strncpy(manager_host, file + strlen(MANAGER_HOST), sizeof(manager_host) - 1);
                 manager_host[sizeof(manager_host) - 1] = '\0';
@@ -680,8 +691,7 @@ int wm_sync_agentinfo(int id_agent, const char *path) {
         }
     }
 
-
-    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name);
+    result = wdb_update_agent_version(id_agent, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_build, os, os_arch, version, config_sum, merged_sum, manager_host, node_name, agent_ip[0] != '\0' ? agent_ip : NULL);
     mtdebug2(WM_DATABASE_LOGTAG, "wm_sync_agentinfo(%d): %.3f ms.", id_agent, (double)(clock() - clock0) / CLOCKS_PER_SEC * 1000);
 
     free(os_major);

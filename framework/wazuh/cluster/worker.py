@@ -101,7 +101,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                                                                                                      command))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
-            self.manager.dapi.add_request(b'None*' + data)
+            self.manager.dapi.add_request(b'master*' + data)
             return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
@@ -176,11 +176,18 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             res = await self.send_request(command=b'sync_e_w_m_r', data=str(e).encode())
 
     async def process_files_from_master(self, name: str, file_received: asyncio.Event):
-        await file_received.wait()
+        await asyncio.wait_for(file_received.wait(),
+                               timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+
+        received_filename = self.sync_tasks[name].filename
+        if received_filename == 'Error':
+            self.logger.info("Stopping synchronization process: worker files weren't correctly received.")
+            return
+
         logger = self.task_loggers['Integrity']
         logger.info("Analyzing received files: Start.")
 
-        ko_files, zip_path = cluster.decompress_files(self.sync_tasks[name].filename)
+        ko_files, zip_path = cluster.decompress_files(received_filename)
         logger.info("Analyzing received files: Missing: {}. Shared: {}. Extra: {}. ExtraValid: {}".format(
             len(ko_files['missing']), len(ko_files['shared']), len(ko_files['extra']), len(ko_files['extra_valid'])))
 

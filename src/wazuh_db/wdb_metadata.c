@@ -27,7 +27,7 @@ static const char *SQL_METADATA_STMT[] = {
 int wdb_metadata_initialize (wdb_t *wdb) {
     int result = 0;
 
-    if (wdb_metadata_insert_entry(wdb, "db_version", "1") < 0) {
+    if (wdb_metadata_insert_entry(wdb, "db_version", "2") < 0) {
         merror("Couldn't fill metadata into database '%s'", wdb->agent_id);
         result = -1;
     }

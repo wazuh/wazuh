@@ -29,16 +29,24 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         mdebug2("Updating database for agent %s to version 1", wdb->agent_id);
         if(result = wdb_sql_exec(wdb, schema_upgrade_v1_sql), result == -1) {
             new_wdb = wdb_backup(wdb, version);
+            wdb = new_wdb ? new_wdb : wdb;
         }
         /* Fallthrough */
     case 1:
+        mdebug2("Updating database for agent %s to version 2", wdb->agent_id);
+        if(result = wdb_sql_exec(wdb, schema_upgrade_v2_sql), result == -1) {
+            new_wdb = wdb_backup(wdb, version);
+            wdb = new_wdb ? new_wdb : wdb;
+        }
+        /* Fallthrough */
+    case 2:
         //Updated to last version
         break;
     default:
         merror("Incorrect database version %d", version);
     }
 
-    return new_wdb;
+    return wdb;
 }
 
 // Create backup and generate an emtpy DB
