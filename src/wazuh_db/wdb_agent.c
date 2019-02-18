@@ -369,16 +369,16 @@ int wdb_create_agent_db(int id, const char *name) {
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_remove_agent_db(int id, const char * name) {
     char path[OS_FLSIZE + 1];
-    char path_aux[OS_FLSIZE + 1];
+    char path_aux[OS_FLSIZE + 6];
 
     snprintf(path, OS_FLSIZE, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
 
     if (!remove(path)) {
-        snprintf(path_aux, OS_FLSIZE, "%s-shm", path);
+        snprintf(path_aux, OS_FLSIZE + 5, "%s-shm", path);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
-        snprintf(path_aux, OS_FLSIZE, "%s-wal", path);
+        snprintf(path_aux, OS_FLSIZE + 5, "%s-wal", path);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }

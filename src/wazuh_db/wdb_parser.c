@@ -275,7 +275,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     char * checksum;
-    char buffer[OS_MAXSTR + 1];
+    char buffer[OS_MAXSTR - 2];
     int ftype;
     int result;
     long ts;

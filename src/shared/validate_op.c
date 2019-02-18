@@ -605,16 +605,16 @@ char *OS_IsValidTime(const char *time_str)
         return (NULL);
     }
 
-    os_calloc(13, sizeof(char), ret);
+    os_calloc(15, sizeof(char), ret);
 
     /* Fix dump hours */
     if (strcmp(first_hour, second_hour) > 0) {
-        snprintf(ret, 12, "!%s%s", second_hour, first_hour);
+        snprintf(ret, 14, "!%s%s", second_hour, first_hour);
         return (ret);
     }
 
     /* For the normal times */
-    snprintf(ret, 12, "%c%s%s", ng == 0 ? '.' : '!', first_hour, second_hour);
+    snprintf(ret, 14, "%c%s%s", ng == 0 ? '.' : '!', first_hour, second_hour);
 
     return (ret);
 }

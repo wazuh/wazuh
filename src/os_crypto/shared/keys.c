@@ -123,7 +123,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
         OS_MD5_Str(key, -1, filesum2);
 
         /* Generate final key */
-        snprintf(_finalstr, 49, "%s%s", filesum2, filesum1);
+        snprintf(_finalstr, 49, "%s%.16s", filesum2, filesum1);
 
         /* Final key is 48 * 4 = 192bits */
         os_strdup(_finalstr, keys->keyentries[keys->keysize]->key);

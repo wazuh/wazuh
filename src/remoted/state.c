@@ -47,7 +47,7 @@ void * rem_state_main() {
 
 int rem_write_state() {
     FILE * fp;
-    char path[PATH_MAX + 1];
+    char path[PATH_MAX - 4];
     char path_temp[PATH_MAX + 1];
     remoted_state_t state_cpy;
 
