@@ -132,10 +132,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if command == b'dapi_forward':
             client, request = data.split(b' ', 1)
             client = client.decode()
-            if not client in self.server.clients:
-                raise WazuhException(3022, client)
-            else:
+            if client == 'fw_all_nodes':
+                for worker in self.server.clients.values():
+                    result = (await worker.send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+            elif client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+            else:
+                raise WazuhException(3022, client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
@@ -538,3 +541,7 @@ class Master(server.AbstractServer):
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
+
+    def get_node(self) -> Dict:
+        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
+                'node': self.configuration['node_name']}

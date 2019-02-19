@@ -514,3 +514,15 @@ int wstr_end(char *str, const char *str_end) {
     size_t str_end_len = strlen(str_end);
     return str_end_len <= str_len && !strcmp(str + str_len - str_end_len, str_end);
 }
+
+/* Check if the specified string is already in the array */
+int w_is_str_in_array(char *const *ar, const char *str)
+{
+    while (*ar) {
+        if (strcmp(*ar, str) == 0) {
+            return (1);
+        }
+        ar++;
+    }
+    return (0);
+}

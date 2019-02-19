@@ -152,7 +152,6 @@
 
   <rule id="20221" level="8">
     <if_sid>20011</if_sid>
-    <id>^4646$</id>
     <field name="EventChannel.System.EventID">^4646$</field>
     <description>IKE DoS-prevention mode started</description>
     <options>no_full_log</options>

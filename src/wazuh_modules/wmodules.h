@@ -36,6 +36,7 @@
 #define VU_WM_NAME "vulnerability-detector"
 #define AZ_WM_NAME "azure-logs"
 #define KEY_WM_NAME "agent-key-polling"
+#define CA_WM_NAME "configuration-assessment"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)
@@ -87,6 +88,7 @@ typedef enum crypto_type {
 #include "wm_azure.h"
 #include "wm_docker.h"
 #include "wm_keyrequest.h"
+#include "wm_configuration_assessment.h"
 #include "wm_control.h"
 
 extern wmodule *wmodules;       // Loaded modules.

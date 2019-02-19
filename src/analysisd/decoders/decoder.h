@@ -77,7 +77,7 @@ void SyscollectorInit(void);
 void CiscatInit(void);
 void WinevtInit(void);
 int sc_send_db(char * msg,int *sock);
-
+void ConfigurationAssessmentInit(void);
 int ReadDecodeXML(const char *file);
 
 #endif

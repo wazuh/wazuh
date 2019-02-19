@@ -86,4 +86,7 @@ int wm_strcat(char **str1, const char *str2, char sep);
 // Check if str ends in str_end
 int wstr_end(char *str, const char *str_end);
 
+/* Prototypes */
+int w_is_str_in_array(char *const *ar, const char *str);
+
 #endif

@@ -181,7 +181,8 @@ class WazuhException(Exception):
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
         3020: 'Timeout sending request',
         3021: 'Timeout executing API request',
-        3022: 'Unknown node ID'
+        3022: 'Unknown node ID',
+        3023: 'Worker node is not connected to master'
 
         # > 9000: Authd
     }
