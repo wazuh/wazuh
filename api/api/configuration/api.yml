@@ -21,7 +21,7 @@ https:
 
 # Logging configuration
 logs:
-  # Values for API log level: disabled, info, warning, error, debug (each level includes the previous level).
+  # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
   level: "info"
   # log path
   path: "logs/api.log"
