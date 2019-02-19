@@ -441,7 +441,6 @@
             <ComponentRef Id="WIN_MALWARE_RCL.TXT" />
             <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="WIN32UI.EXE" />
-            <ComponentRef Id="WIN_MALWARE_RCL.YML" />
             <ComponentRef Id="CMP_ACTIVE_RESPONSE" />
             <ComponentRef Id="CMP_TMP" />
             <ComponentRef Id="CMP_QUEUE" />
