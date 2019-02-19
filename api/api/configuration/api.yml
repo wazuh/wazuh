@@ -12,10 +12,10 @@ https:
   # Values: yes, no
   enabled: no
   # HTTPS Certificates
-  key: "configuration/ssl/server.key"
-  cert: "configuration/ssl/server.crt"
+  key: "api/configuration/ssl/server.key"
+  cert: "api/configuration/ssl/server.crt"
   use_ca: no
-  ca: "configuration/ssl/ca.crt"
+  ca: "api/configuration/ssl/ca.crt"
 
 # Advanced configuration
 
@@ -44,7 +44,3 @@ drop_privileges: yes
 # Enable features under development
 experimental_features: no
 
-# SSL options
-ssl:
-  # SSL protocol to use.
-  protocol: "TLSv1.2"

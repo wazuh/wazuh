@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import yaml
+import ssl
 
 import connexion
 from flask_cors import CORS
@@ -85,14 +86,14 @@ def read_config():
     return configuration
 
 
-def main(configuration):
+def main(cors, port, host, ssl_context):
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
-    if configuration['cors']:
+    if cors:
         # add CORS support
         CORS(app.app)
-    app.run(port=configuration['port'], host=configuration['host'])
+    app.run(port=port, host=host, ssl_context=ssl_context)
 
 
 #
@@ -101,7 +102,6 @@ def main(configuration):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     ####################################################################################################################
-    parser.add_argument('--ssl', help="Enable communication over SSL", action='store_true', dest='ssl', default=False)
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
@@ -124,6 +124,12 @@ if __name__ == '__main__':
         os.chown('{0}/logs/api.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
         os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
+    if configuration['https']['enabled']:
+        ssl_context = ssl.SSLContext()
+        ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
+    else:
+        ssl_context = None
+
     # Drop privileges to ossec
     if not args.root:
         os.setgid(common.ossec_gid)
@@ -134,6 +140,6 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main(configuration)
+        main(configuration['cors'], configuration['port'], configuration['host'], ssl_context)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
