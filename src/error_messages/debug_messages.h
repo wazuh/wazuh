@@ -62,5 +62,6 @@
 #define VU_GEN_CPE_COUNT      "(5514): CPEs generated for agent %s: %d/%d."
 #define VU_INS_NVD_SEC        "(5516): Inserting NVD section..."
 #define VU_SOCKET_RETRY       "(5518): Unable to connect to socket '%s'. Waiting %d seconds."
+#define VU_INS_CPES_DIC       "(5523): Inserting Wazuh's CPE dictonary..."
 
 #endif
