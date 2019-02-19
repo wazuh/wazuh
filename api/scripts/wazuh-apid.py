@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 import sys
+import yaml
 
 import connexion
 
@@ -65,6 +66,11 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
+def read_config():
+    with open(common.api_config_path) as f:
+        return yaml.safe_load(f)
+
+
 def main():
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
@@ -87,6 +93,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     my_wazuh = Wazuh(get_init=True)
+
+    configuration = read_config()
 
     if args.version:
         print_version()
