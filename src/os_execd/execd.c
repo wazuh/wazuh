@@ -13,6 +13,7 @@
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
+#include "../external/cJSON/cJSON.h"
 #include "execd.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
@@ -373,14 +374,29 @@ static void ExecdStart(int q)
 
         if(!strcmp(name,"check-manager-configuration")) {
             char *output = NULL;
+            cJSON *result_obj = cJSON_CreateObject();
 
             if(CheckManagerConfiguration(&output)) {
+                char error_msg[OS_SIZE_4096 - 27] = {0};
+                snprintf(error_msg,OS_SIZE_4096 - 27,"%s",output);
+
+                cJSON_AddNumberToObject(result_obj,"error",1);
+                cJSON_AddStringToObject(result_obj,"message",error_msg);
                 os_free(output);
-                continue;
+                output = cJSON_PrintUnformatted(result_obj);
+              
+            } else {
+             
+                cJSON_AddNumberToObject(result_obj,"error",0);
+                cJSON_AddStringToObject(result_obj,"message","ok");
+                os_free(output);
+                output = cJSON_PrintUnformatted(result_obj);
             }
 
-            int rc;
+            cJSON_Delete(result_obj);
+            mdebug1("Sending configuration check: %s",output);
 
+            int rc;
             /* Start api socket */
             int api_sock;
             if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
@@ -663,6 +679,7 @@ static int CheckManagerConfiguration(char ** output) {
         *output = output_msg;
 
         if(result_code) {
+            ret_val = result_code;
             break;
         }
     }
