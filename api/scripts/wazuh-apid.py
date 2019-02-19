@@ -84,11 +84,12 @@ def read_config():
     return configuration
 
 
-def main():
+def main(configuration):
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
     app.run(port=8080)
+    app.run(port=configuration['port'], host=configuration['host'])
 
 
 #
@@ -130,6 +131,6 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main()
+        main(configuration)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
