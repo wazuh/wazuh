@@ -9,6 +9,7 @@ import sys
 import yaml
 
 import connexion
+from flask_cors import CORS
 
 from api import encoder
 from wazuh import common, pyDaemonModule, Wazuh
@@ -88,7 +89,9 @@ def main(configuration):
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
-    app.run(port=8080)
+    if configuration['cors']:
+        # add CORS support
+        CORS(app.app)
     app.run(port=configuration['port'], host=configuration['host'])
 
 
