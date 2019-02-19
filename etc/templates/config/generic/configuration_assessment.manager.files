@@ -12,6 +12,4 @@ suse/12/cis_sles12_linux_rcl.yml
 windows/cis_win2012r2_domainL1_rcl.yml  
 windows/cis_win2012r2_domainL2_rcl.yml
 windows/cis_win2012r2_memberL1_rcl.yml
-windows/win_applications_rcl.yml
 windows/win_audit_rcl.yml
-windows/win_malware_rcl.yml

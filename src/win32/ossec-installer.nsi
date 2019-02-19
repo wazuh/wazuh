@@ -212,9 +212,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\configuration-assessment\win_applications_rcl.yml ../../etc/configuration-assessment/windows/win_applications_rcl.yml
     File /oname=ruleset\configuration-assessment\win_audit_rcl.yml ../../etc/configuration-assessment/windows/win_audit_rcl.yml
-    File /oname=ruleset\configuration-assessment\win_malware_rcl.yml ../../etc/configuration-assessment/windows/win_malware_rcl.yml
     File VERSION
     File REVISION
 

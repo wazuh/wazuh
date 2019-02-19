@@ -78,18 +78,4 @@
     <options>no_full_log</options>
     <description>$(configuration_assessment.policy): $(configuration_assessment.check.title): Status changed from passed to failed</description>
   </rule>
-
-  <rule id="19011" level="7">
-    <if_sid>19007</if_sid>
-    <field name="configuration_assessment.policy_id">^win_applications</field>
-    <options>no_full_log</options>
-    <description>$(configuration_assessment.policy): Suspicious application found: $(configuration_assessment.check.title)</description>
-  </rule>
-
-  <rule id="19012" level="9">
-    <if_sid>19007</if_sid>
-    <field name="configuration_assessment.policy_id">^win_malware</field>
-    <options>no_full_log</options>
-    <description>$(configuration_assessment.policy): Malware found: $(configuration_assessment.check.title)</description>
-  </rule>
 </group>
