@@ -24,6 +24,7 @@ time_t pending_upg = 0;
 static void help_execd(void) __attribute__((noreturn));
 static void execd_shutdown(int sig) __attribute__((noreturn));
 static void ExecdStart(int q) __attribute__((noreturn));
+static int CheckManagerConfiguration(char ** output);
 
 /* Global variables */
 static OSList *timeout_list;
@@ -372,18 +373,8 @@ static void ExecdStart(int q)
 
         if(!strcmp(name,"check-manager-configuration")) {
             char *output = NULL;
-            int result_code;
-            int timeout = 600;
-            char command_in[PATH_MAX] = {0};
-            snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, "bin/ossec-logtest","-t");
 
-            if (wm_exec(command_in, &output, &result_code, timeout, NULL) < 0) {
-                if (result_code == 0x7F) {
-                    mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
-                } else {
-                    mwarn("Error executing [%s]", command_in);
-                }
-
+            if(CheckManagerConfiguration(&output)) {
                 os_free(output);
                 continue;
             }
@@ -637,6 +628,51 @@ static void ExecdStart(int q)
             i--;
         }
     }
+}
+
+static int CheckManagerConfiguration(char ** output) {
+    int ret_val;
+    int result_code;
+    int timeout = 2000;
+    char command_in[PATH_MAX] = {0};
+    char *output_msg = NULL;
+    char *daemons[7] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd" };
+    int i;
+    ret_val = 0;
+
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
+    for (i = 0; daemons[i]; i++) {
+        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i],"-t");
+      
+        if (wm_exec(command_in, output, &result_code, timeout, NULL) < 0) {
+            if (result_code == 0x7F) {
+                mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+            } else {
+                mwarn("Error executing [%s]", command_in);
+            }
+
+            os_free(*output);
+            goto error;
+        }
+    
+        wm_strcat(&output_msg,*output,' ');
+        os_free(*output);
+        *output = output_msg;
+    }
+
+    gettimeofday(&end, NULL);
+
+    double elapsed = (end.tv_usec - start.tv_usec) / 1000;
+    mdebug1("Elapsed configuration check time: %0.3f milliseconds",elapsed);
+
+    return ret_val;
+
+error:
+
+    ret_val = 1;
+    return ret_val;
 }
 
 #endif /* !WIN32 */
