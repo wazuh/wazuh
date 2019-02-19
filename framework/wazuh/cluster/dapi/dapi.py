@@ -2,21 +2,19 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import functools
 import itertools
 import json
+import logging
 import operator
+import os
 import random
+import time
 from importlib import import_module
 from typing import Callable, Dict, Union, Tuple
-from wazuh.cluster import local_client, cluster, common as c_common
-from wazuh import exception, agent, common, utils
-from wazuh import Wazuh
-import logging
-import os
-import time
-import copy
 
+from wazuh import Wazuh
+from wazuh import exception, agent, common, utils
+from wazuh.cluster import local_client, cluster, common as c_common
 
 
 class DistributedAPI:
@@ -57,13 +55,22 @@ class DistributedAPI:
         """
         try:
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
+            is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
+
+            # if it is a cluster API request and the cluster is not enabled, raise an exception
+            if is_cluster_disabled and 'cluster' in self.f.__name__ and \
+                    self.f.__name__ != '/cluster/status' and \
+                    self.f.__name__ != '/cluster/config' and \
+                    self.f.__name__ != '/cluster/node':
+                raise exception.WazuhException(3013)
 
             # First case: execute the request local.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or (self.node == local_client and cluster.check_cluster_status()) or self.request_type == 'local_any' or \
+
+            if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 
@@ -149,6 +156,14 @@ class DistributedAPI:
                 "is_async": self.is_async
                 }
 
+    async def send_tmp_file(self, node_name=None):
+        # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
+        # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
+        res = await self.node.send_file(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']), node_name)
+        os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
+        if res.startswith(b'Error'):
+            return self.print_json(data=res.decode(), error=1000)
+
     async def execute_remote_request(self) -> str:
         """
         Executes a remote request. This function is used by worker nodes to execute master_only API requests.
@@ -156,12 +171,7 @@ class DistributedAPI:
         :return: JSON response
         """
         if 'tmp_file' in self.f_kwargs:
-            # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
-            # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
-            res = await self.node.send_file(common.ossec_path + self.f_kwargs['tmp_file'])
-            os.remove(common.ossec_path + self.f_kwargs['tmp_file'])
-            if res.startswith('Error'):
-                return self.print_json(data=res.decode(), error=1000)
+            await self.send_tmp_file()
         return await self.node.execute(command=b'dapi', data=json.dumps(self.to_dict(), cls=CallableEncoder).encode(),
                                        wait_for_complete=self.wait_for_complete)
 
@@ -187,12 +197,14 @@ class DistributedAPI:
                 # itself
                 response = await self.distribute_function()
             else:
-                response = json.loads(await self.node.execute(b'dapi_forward',
-                                                              "{} {}".format(node_name,
-                                                                             json.dumps(self.to_dict(),
-                                                                                        cls=CallableEncoder)
-                                                                             ).encode(),
-                                                              self.wait_for_complete))
+                if 'tmp_file' in self.f_kwargs:
+                    await self.send_tmp_file(node_name)
+                response = await self.node.execute(b'dapi_forward',
+                                                   "{} {}".format(node_name,
+                                                                  json.dumps(self.to_dict(),
+                                                                             cls=CallableEncoder)
+                                                                  ).encode(),
+                                                   self.wait_for_complete)
             return response
 
         # get the node(s) who has all available information to answer the request.
@@ -245,11 +257,15 @@ class DistributedAPI:
             del self.f_kwargs['node_id']
             return {node_id: []}
 
-        else:  # agents, syscheck, rootcheck and syscollector
-            # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
-            agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
-                                                     sort={'fields': ['node_name'], 'order': 'desc'})['items']
-            node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
+        else:
+            if 'cluster' in self.input_json['function']:
+                node_name = {'fw_all_nodes': [], self.node_info['node']: []}
+            else:
+                # agents, syscheck, rootcheck and syscollector
+                # API calls that affect all agents. For example, PUT/agents/restart, DELETE/rootcheck, etc...
+                agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
+                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
+                node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
     def merge_results(self, responses, final_json):
@@ -267,7 +283,8 @@ class DistributedAPI:
         :return: single JSON with the final result
         """
         priorities = {
-            ("Some agents were not restarted", "All selected agents were restarted")
+            ("Some agents were not restarted", "All selected agents were restarted"),
+            ("KO", "OK")
         }
 
         for local_json in responses:

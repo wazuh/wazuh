@@ -86,6 +86,8 @@ class LocalClient(client.AbstractClientManager):
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
                                              path='{}/queue/cluster/c-internal.sock'.format(common.ossec_path))
+        except ConnectionRefusedError:
+            raise exception.WazuhException(3012)
         except Exception as e:
             raise exception.WazuhException(3009, str(e))
 
@@ -117,7 +119,8 @@ async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> str:
     return await lc.send_api_request()
 
 
-async def send_file(path: str) -> str:
-    lc = LocalClient(b'send_file', path.encode(), False)
+async def send_file(path: str, node_name: str = None) -> str:
+    lc = LocalClient(b'send_file', "{} {}".format(path, node_name).encode(), False)
     await lc.start()
-    return await lc.send_api_request()
+    return (await lc.send_api_request()).encode()
+

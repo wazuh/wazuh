@@ -8,6 +8,7 @@ from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
+from wazuh.database import Connection
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time

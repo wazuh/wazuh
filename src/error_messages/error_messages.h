@@ -324,6 +324,8 @@
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
+#define VU_API_REQ_INV_NEW          "(5497): There was no valid response to '%s' after %d attempts. Trying the next page..."
+#define VU_UNC_SEVERITY             "(5498): Uncontrolled severity has been found: '%s'."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

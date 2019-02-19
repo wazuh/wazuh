@@ -269,7 +269,7 @@ class Handler(asyncio.Protocol):
             return b'Error sending request: timeout expired.'
         return response_data
 
-    async def send_file(self, filename: str) -> bytes:
+    async def send_file(self, filename: str, node_name: str = None) -> bytes:
         """
         Sends a file to peer.
 
@@ -562,8 +562,7 @@ class WazuhCommon:
         return b'ok', b'File correctly received'
 
     def get_node(self):
-        return {'type': self.get_manager().configuration['node_type'], 'cluster': self.get_manager().configuration['name'],
-                'node': self.get_manager().configuration['node_name']}
+        return self.get_manager().get_node()
 
 
 def asyncio_exception_handler(loop, context: Dict):

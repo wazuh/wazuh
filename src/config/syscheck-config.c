@@ -1282,6 +1282,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     else
                     {
                         merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
                         return(OS_INVALID);
                     }
                 } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
@@ -1292,6 +1293,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     else
                     {
                         merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
                         return(OS_INVALID);
                     }
                 } else {

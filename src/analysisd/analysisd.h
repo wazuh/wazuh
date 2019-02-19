@@ -72,5 +72,6 @@ extern int num_rule_matching_threads;
 
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5
+#define PM_MAX_WAZUH_DB_ATTEMPS 5
 
 #endif /* _LOGAUDIT__H */

@@ -1,14 +1,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
-import uvloop
-from typing import Tuple, Union
+import functools
 import json
 import random
-import functools
-from wazuh.cluster import server, common as c_common, client
+from typing import Tuple, Union
+
+import uvloop
 from wazuh import common, exception
+from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
+from wazuh.exception import WazuhException
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -33,17 +35,30 @@ class LocalServerHandler(server.AbstractServerHandler):
             return self.get_nodes(data)
         elif command == b'get_health':
             return self.get_health(data)
+        elif command == b'send_file':
+            path, node_name = data.decode().split(' ')
+            return self.send_file_request(path, node_name)
         else:
             return super().process_request(command, data)
 
     def get_config(self) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.configuration).encode()
 
+    def get_node(self):
+        return self.server.node.get_node()
+
     def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
         raise NotImplementedError
 
     def get_health(self, filter_nodes) -> Tuple[bytes, bytes]:
         raise NotImplementedError
+
+    def send_file_request(self, path, node_name):
+        raise NotImplementedError
+
+    def get_send_file_response(self, future):
+        result = future.result()
+        asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
 
 
 class LocalServer(server.AbstractServer):
@@ -89,7 +104,11 @@ class LocalServerHandlerMaster(LocalServerHandler):
         elif command == b'dapi_forward':
             node_name, request = data.split(b' ', 1)
             node_name = node_name.decode()
-            if node_name in self.server.node.clients:
+            if node_name == 'fw_all_nodes':
+                for node_name, node in self.server.node.clients.items():
+                    asyncio.create_task(node.send_request(b'dapi', self.name.encode() + b' ' + request))
+                return b'ok', b'Request forwarded to all worker nodes'
+            elif node_name in self.server.node.clients:
                 asyncio.create_task(
                     self.server.node.clients[node_name].send_request(b'dapi', self.name.encode() + b' ' + request))
                 return b'ok', b'Request forwarded to worker node'
@@ -103,6 +122,14 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
     def get_health(self, filter_nodes: bytes) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
+
+    def send_file_request(self, path, node_name):
+        if node_name not in self.server.node.clients:
+            raise WazuhException(3022)
+        else:
+            req = asyncio.create_task(self.server.node.clients[node_name].send_file(path))
+            req.add_done_callback(self.get_send_file_response)
+            return b'ok', b'Forwarding file to master node'
 
 
 class LocalServerMaster(LocalServer):
@@ -121,12 +148,12 @@ class LocalServerHandlerWorker(LocalServerHandler):
         if command == b'dapi':
             api_call_name = json.loads(data.decode())['function']
             if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
+                if self.server.node.client is None:
+                    raise WazuhException(3023)
                 asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
                 return b'ok', b'Added request to API requests queue'
             else:
                 return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
-        elif command == b'send_file':
-            return self.send_file_request(data.decode())
         else:
             return super().process_request(command, data)
 
@@ -138,23 +165,11 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
     def send_request_to_master(self, command: bytes, arguments: bytes):
         if self.server.node.client is None:
-            return b'err', b'Worker is not connected to the master node'
+            raise WazuhException(3023)
         else:
             request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
             request.add_done_callback(functools.partial(self.get_api_response, command))
             return b'ok', b'Sent request to master node'
-
-    def send_file_request(self, path):
-        def get_send_file_response(future):
-            result = future.result()
-            asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
-
-        if self.server.node.client is None:
-            return b'err', b'Worker is not connected to the master node'
-        else:
-            req = asyncio.create_task(self.server.node.client.send_file(path))
-            req.add_done_callback(get_send_file_response)
-            return b'ok', b'Forwarding file to master node'
 
     def get_api_response(self, in_command, future):
         result = future.result()
@@ -165,6 +180,14 @@ class LocalServerHandlerWorker(LocalServerHandler):
             result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
         asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
                                               data=result))
+
+    def send_file_request(self, path, node_name):
+        if self.server.node.client is None:
+            raise WazuhException(3023)
+        else:
+            req = asyncio.create_task(self.server.node.client.send_file(path))
+            req.add_done_callback(self.get_send_file_response)
+            return b'ok', b'Forwarding file to master node'
 
 
 class LocalServerWorker(LocalServer):

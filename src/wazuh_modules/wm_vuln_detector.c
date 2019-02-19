@@ -48,7 +48,7 @@ static int wm_vuldet_step(sqlite3_stmt *stmt);
 static int wm_vuldet_create_file(const char *path, const char *source);
 static int wm_vuldet_check_update_period(update_node *upd);
 static int wm_vuldet_check_update(update_node *upd, const char *dist);
-static int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext);
+static int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext, char *success_upd);
 static int wm_vuldet_compare(char *version_it, char *cversion_it);
 static const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *wm_vuldet_set_oval);
 static int wm_vuldet_set_agents_info(agent_software **agents_software, update_node **updates);
@@ -57,6 +57,8 @@ static cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector);
 static char *wm_vuldet_build_url(char *pattern, char *value);
 static void wm_vuldet_adapt_title(char *title, char *cve);
 static char *vu_get_version();
+static int wm_vuldet_db_empty();
+static const char *wm_vuldet_get_unified_severity(char *severity);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -130,7 +132,16 @@ const char *vu_dist_ext[] = {
     "Unknown OS"
 };
 
-const char *unknown_value = "Unknown";
+const char *vu_severities[] = {
+    "Low",
+    "Medium",
+    "Moderate",
+    "Unknown",
+    "High",
+    "Important",
+    "Critical",
+    "None"
+};
 
 const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
     const char *retval = NULL;
@@ -660,7 +671,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
                 cJSON_AddItemToObject(alert, "vulnerability", alert_cve);
                 cJSON_AddStringToObject(alert_cve, "cve", cve);
                 cJSON_AddStringToObject(alert_cve, "title", title && *title ? title : rationale);
-                cJSON_AddStringToObject(alert_cve, "severity", (severity) ? severity : unknown_value);
+                cJSON_AddStringToObject(alert_cve, "severity", wm_vuldet_get_unified_severity(severity));
                 cJSON_AddStringToObject(alert_cve, "published", published);
                 if (updated) cJSON_AddStringToObject(alert_cve, "updated", updated);
                 if (*state) cJSON_AddStringToObject(alert_cve, "state", state);
@@ -1023,7 +1034,7 @@ set_op:
 
         sqlite3_bind_text(stmt, 1, info_it->cveid, -1, NULL);
         sqlite3_bind_text(stmt, 2, info_it->title, -1, NULL);
-        sqlite3_bind_text(stmt, 3, (info_it->severity) ? info_it->severity : unknown_value, -1, NULL);
+        sqlite3_bind_text(stmt, 3, (info_it->severity) ? info_it->severity : vu_severities[VU_UNKNOWN], -1, NULL);
         sqlite3_bind_text(stmt, 4, info_it->published, -1, NULL);
         sqlite3_bind_text(stmt, 5, info_it->updated, -1, NULL);
         sqlite3_bind_text(stmt, 6, info_it->reference, -1, NULL);
@@ -1240,6 +1251,7 @@ void wm_vuldet_adapt_title(char *title, char *cve) {
     // Remove unnecessary line jumps and  spaces
     size_t size;
     int offset;
+    char *title_ofs;
 
     for (size = strlen(title) - 1; size > 0 && title[size] == ' '; size -= 1) {
         title[size] = '\0';
@@ -1253,7 +1265,9 @@ void wm_vuldet_adapt_title(char *title, char *cve) {
     if(size > 1 && !strncmp(title + offset, cve, strlen(cve))) {
         offset += strlen(cve) + 1;
     }
-    strncpy(title, title + offset, strlen(title + offset));
+    os_strdup(title + offset, title_ofs);
+    strncpy(title, title_ofs, strlen(title_ofs));
+    free(title_ofs);
 }
 
 int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, update_node *update, vu_logic condition) {
@@ -1603,13 +1617,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
             os_strdup(node[i]->content, parsed_oval->metadata.schema_version);
         } else if (!strcmp(node[i]->element, XML_SEVERITY)) {
             if (*node[i]->content != '\0') {
-                if (!strcmp(node[i]->content, VU_MODERATE)) {
-                    os_strdup(VU_MEDIUM, parsed_oval->info_cves->severity);
-                } else if (!strcmp(node[i]->content, VU_IMPORTANT)) {
-                    os_strdup(VU_HIGH, parsed_oval->info_cves->severity);
-                } else {
-                    os_strdup(node[i]->content, parsed_oval->info_cves->severity);
-                }
+                os_strdup(node[i]->content, parsed_oval->info_cves->severity);
             } else {
                 parsed_oval->info_cves->severity = NULL;
             }
@@ -1881,6 +1889,7 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
         int page = 1;
         int attempt = 0;
         char first_line;
+        char first_page = 0;
 
         if (*repo != '\0') {
             if (wurl_request(repo, CVE_FIT_TEMP_FILE)) {
@@ -1897,12 +1906,14 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
                 if (!attempt) {
                     snprintf(repo, OS_SIZE_2048, RED_HAT_REPO, update->update_from_year, RED_HAT_REPO_REQ_SIZE, page);
                 } else if (attempt == RED_HAT_REPO_MAX_ATTEMPTS) {
-                    mterror(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, RED_HAT_REPO_MAX_ATTEMPTS);
-                    goto end;
+                    mtwarn(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV_NEW, repo, RED_HAT_REPO_MAX_ATTEMPTS);
+                    attempt = 0;
+                    page++;
+                    continue;
                 }
                 if (wurl_request(repo, CVE_TEMP_FILE)) {
                     attempt++;
-                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, attempt * 5);
+                    mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_API_REQ_INV, repo, attempt);
                     sleep(attempt * 5);
                     continue;
                 }
@@ -1923,10 +1934,11 @@ int wm_vuldet_fetch_feed(update_node *update, const char *OS, int *need_update) 
                             break;
                         }
                         first_line = 0;
-                        if (page > 1) {
+                        if (first_page) {
                             *buffer = ',';
                             found = buffer;
                         } else {
+                            first_page = 1;
                             found = buffer + sizeof(char);
                         }
                     } else {
@@ -2003,7 +2015,7 @@ end:
     }
 }
 
-int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext) {
+int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dist_ext, char *success_upd) {
     if (wm_vuldet_check_update_period(upd)) {
         mtinfo(WM_VULNDETECTOR_LOGTAG, VU_STARTING_UPDATE, dist_ext);
         if (wm_vuldet_check_update(upd, dist_tag)) {
@@ -2020,6 +2032,7 @@ int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dis
         } else {
             mtdebug1(WM_VULNDETECTOR_LOGTAG, VU_OVA_UPDATED, dist_ext);
             upd->last_update = time(NULL);
+            *success_upd = 1;
         }
     }
     return 0;
@@ -2027,25 +2040,28 @@ int wm_vuldet_run_update(update_node *upd, const char *dist_tag, const char *dis
 
 
 int wm_vuldet_updatedb(update_node **updates) {
+    char success_upd = 0;
     if (wm_vuldet_check_db()) {
         mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
         return OS_INVALID;
     }
         // Ubuntu
-    if (wm_vuldet_run_update(updates[CVE_BIONIC],   vu_dist_tag[DIS_BIONIC],   vu_dist_ext[DIS_BIONIC])   ||
-        wm_vuldet_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL])   ||
-        wm_vuldet_run_update(updates[CVE_TRUSTY],   vu_dist_tag[DIS_TRUSTY],   vu_dist_ext[DIS_TRUSTY])   ||
-        wm_vuldet_run_update(updates[CVE_PRECISE],   vu_dist_tag[DIS_PRECISE],  vu_dist_ext[DIS_PRECISE]) ||
+    if (wm_vuldet_run_update(updates[CVE_BIONIC],   vu_dist_tag[DIS_BIONIC],   vu_dist_ext[DIS_BIONIC], &success_upd)   ||
+        wm_vuldet_run_update(updates[CVE_XENIAL],   vu_dist_tag[DIS_XENIAL],   vu_dist_ext[DIS_XENIAL], &success_upd)   ||
+        wm_vuldet_run_update(updates[CVE_TRUSTY],   vu_dist_tag[DIS_TRUSTY],   vu_dist_ext[DIS_TRUSTY], &success_upd)   ||
+        wm_vuldet_run_update(updates[CVE_PRECISE],   vu_dist_tag[DIS_PRECISE],  vu_dist_ext[DIS_PRECISE], &success_upd) ||
         // Debian
-        wm_vuldet_run_update(updates[CVE_STRETCH],  vu_dist_tag[DIS_STRETCH],  vu_dist_ext[DIS_STRETCH])  ||
-        wm_vuldet_run_update(updates[CVE_JESSIE],   vu_dist_tag[DIS_JESSIE],   vu_dist_ext[DIS_JESSIE])   ||
-        wm_vuldet_run_update(updates[CVE_WHEEZY],   vu_dist_tag[DIS_WHEEZY],   vu_dist_ext[DIS_WHEEZY])   ||
+        wm_vuldet_run_update(updates[CVE_STRETCH],  vu_dist_tag[DIS_STRETCH],  vu_dist_ext[DIS_STRETCH], &success_upd)  ||
+        wm_vuldet_run_update(updates[CVE_JESSIE],   vu_dist_tag[DIS_JESSIE],   vu_dist_ext[DIS_JESSIE], &success_upd)   ||
+        wm_vuldet_run_update(updates[CVE_WHEEZY],   vu_dist_tag[DIS_WHEEZY],   vu_dist_ext[DIS_WHEEZY], &success_upd)   ||
         // RedHat
-        wm_vuldet_run_update(updates[CVE_REDHAT],    vu_dist_tag[DIS_REDHAT],    vu_dist_ext[DIS_REDHAT])) {
+        wm_vuldet_run_update(updates[CVE_REDHAT],    vu_dist_tag[DIS_REDHAT],    vu_dist_ext[DIS_REDHAT], &success_upd)) {
         return OS_INVALID;
     }
 
-    mtinfo(WM_VULNDETECTOR_LOGTAG, VU_ENDING_UPDATE);
+    if (success_upd) {
+        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_ENDING_UPDATE);
+    }
     return 0;
 }
 
@@ -2471,33 +2487,35 @@ void * wm_vuldet_main(wm_vuldet_t * vulnerability_detector) {
         }
 
         if ((vulnerability_detector->last_detection + (time_t) vulnerability_detector->detection_interval) < time(NULL)) {
-            mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
+            if (wm_vuldet_db_empty() == (int) VU_FALSE) {
+                mtinfo(WM_VULNDETECTOR_LOGTAG, VU_START_SCAN);
 
-            if (wm_vuldet_set_agents_info(&vulnerability_detector->agents_software, updates)) {
-                mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
-            } else {
-                if (wm_vuldet_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
-                    mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
+                if (wm_vuldet_set_agents_info(&vulnerability_detector->agents_software, updates)) {
+                    mterror(WM_VULNDETECTOR_LOGTAG, VU_NO_AGENT_ERROR);
                 } else {
-                    mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
-                }
-                agent_software *agent;
-                for (agent = vulnerability_detector->agents_software; agent;) {
-                    agent_software *agent_aux = agent->next;
-                    free(agent->agent_id);
-                    free(agent->agent_name);
-                    free(agent->agent_OS);
-                    free(agent->arch);
-                    free(agent->agent_ip);
-                    free(agent);
-
-                    if (agent_aux) {
-                        agent = agent_aux;
+                    if (wm_vuldet_check_agent_vulnerabilities(vulnerability_detector->agents_software, vulnerability_detector->agents_triag, vulnerability_detector->ignore_time)) {
+                        mterror(WM_VULNDETECTOR_LOGTAG, VU_AG_CHECK_ERR);
                     } else {
-                        break;
+                        mtinfo(WM_VULNDETECTOR_LOGTAG, VU_END_SCAN);
                     }
+                    agent_software *agent;
+                    for (agent = vulnerability_detector->agents_software; agent;) {
+                        agent_software *agent_aux = agent->next;
+                        free(agent->agent_id);
+                        free(agent->agent_name);
+                        free(agent->agent_OS);
+                        free(agent->arch);
+                        free(agent->agent_ip);
+                        free(agent);
+
+                        if (agent_aux) {
+                            agent = agent_aux;
+                        } else {
+                            break;
+                        }
+                    }
+                    vulnerability_detector->agents_software = NULL;
                 }
-                vulnerability_detector->agents_software = NULL;
             }
 
             vulnerability_detector->last_detection = time(NULL);
@@ -2770,6 +2788,66 @@ char *vu_get_version() {
     }
 
     return version;
+}
+
+int wm_vuldet_db_empty() {
+    sqlite3 *db;
+    sqlite3_stmt *stmt = NULL;
+    int result;
+
+    if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_OPEN_ERROR);
+        return wm_vuldet_sql_error(db, NULL);
+    }
+
+    if (sqlite3_prepare_v2(db, vu_queries[VU_CHECK_UPDATES], -1, &stmt, NULL) != SQLITE_OK) {
+        return wm_vuldet_sql_error(db, stmt);
+    }
+
+    if (result = wm_vuldet_step(stmt), result == SQLITE_DONE ||
+        (result == SQLITE_ROW && !sqlite3_column_int(stmt, 0))) {
+        result = (int) VU_TRUE;
+    } else {
+        result = (int) VU_FALSE;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close_v2(db);
+
+    return result;
+}
+
+const char *wm_vuldet_get_unified_severity(char *severity) {
+    if (!severity || strcasestr(severity, vu_severities[VU_UNKNOWN])) {
+        return vu_severities[VU_UNKNOWN];
+    } else if (strcasestr(severity, vu_severities[VU_LOW])) {
+        return vu_severities[VU_LOW];
+    } else if (strcasestr(severity, vu_severities[VU_MEDIUM]) || strcasestr(severity, vu_severities[VU_MODERATE])) {
+        return vu_severities[VU_MEDIUM];
+    } else if (strcasestr(severity, vu_severities[VU_HIGH]) || strcasestr(severity, vu_severities[VU_IMPORTANT])) {
+        return vu_severities[VU_HIGH];
+    } else if (strcasestr(severity, vu_severities[VU_CRITICAL])) {
+        return vu_severities[VU_CRITICAL];
+    } else if (strcasestr(severity, vu_severities[VU_NONE])) {
+        return vu_severities[VU_NONE];
+    } else {
+        static OSHash *unc_severities = NULL;
+        static int sev_count = 0;
+
+        if (!unc_severities) {
+            if (unc_severities = OSHash_Create(), !unc_severities) {
+                mterror(WM_VULNDETECTOR_LOGTAG, VU_CREATE_HASH_ERRO);
+                pthread_exit(NULL);
+            }
+        }
+
+        // In case the feed has been corrupted, we will not insert more than 20 severities
+        if (sev_count < 20 && OSHash_Add(unc_severities, severity, NULL) == 2) {
+            mtwarn(WM_VULNDETECTOR_LOGTAG, VU_UNC_SEVERITY, severity);
+            sev_count++;
+        }
+    }
+    return vu_severities[VU_UNKNOWN];
 }
 
 #endif

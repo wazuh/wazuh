@@ -17,6 +17,8 @@ regex_t * regexCompiled;
 
 void W_ParseJSON(cJSON* root, const Eventinfo* lf)
 {
+    int i;
+
     // Parse hostname & Parse AGENTIP
     if(lf->full_log && lf->hostname) {
         W_JSON_ParseHostname(root, lf);
@@ -37,7 +39,12 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
     }
     // Parse labels
     if (lf->labels && lf->labels[0].key) {
-        W_JSON_ParseLabels(root, lf);
+        for (i = 0; lf->labels[i].key != NULL; i++) {
+            if (!lf->labels[i].flags.system) {
+                W_JSON_ParseLabels(root, lf);
+                break;
+            }
+        }
     }
 }
 
@@ -343,26 +350,32 @@ void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
 // ** TODO ** Regex instead str_cut
 void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
 {
-    char *string;
+    char *string = NULL;
     char *ip;
     char *end;
     cJSON* agent;
 
-    if (lf->location[0] == '(') {
-        string = strdup(lf->location);
+    ip = labels_get(lf->labels, "_agent_ip");
 
-        if ((ip = strchr(string, ')'))) {
-            if ((end = strchr(ip += 2, '-')))
-                *end = '\0';
+    if (!ip) {
 
-            if (strcmp(ip, "any")){
-                agent = cJSON_GetObjectItem(root, "agent");
-                cJSON_AddStringToObject(agent, "ip", ip);
+        if (lf->location[0] == '(') {
+            string = strdup(lf->location);
+
+            if ((ip = strchr(string, ')'))) {
+                if ((end = strchr(ip += 2, '-')))
+                    *end = '\0';
             }
         }
-
-        free(string);
     }
+
+    if (ip && strcmp(ip, "any")){
+        agent = cJSON_GetObjectItem(root, "agent");
+        cJSON_AddStringToObject(agent, "ip", ip);
+    }
+
+    os_free(string);
+    
 }
 
 // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the
@@ -540,7 +553,7 @@ void W_JSON_ParseLabels(cJSON *root, const Eventinfo *lf) {
     cJSON_AddItemToObject(agent, "labels", labels);
 
     for (i = 0; lf->labels[i].key != NULL; i++) {
-        if (!lf->labels[i].flags.hidden || Config.show_hidden_labels) {
+        if (!lf->labels[i].flags.system && (!lf->labels[i].flags.hidden || Config.show_hidden_labels)) {
             W_JSON_AddField(labels, lf->labels[i].key, lf->labels[i].value);
         }
     }

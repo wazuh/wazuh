@@ -16,10 +16,11 @@
 #define chown(x, y, z) 0
 #endif
 
-static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
-static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?);";
+static const char *SQL_INSERT_AGENT = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, datetime(CURRENT_TIMESTAMP, 'localtime'), ?);";
+static const char *SQL_INSERT_AGENT_KEEP_DATE = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?, ?, ?, ?, ?, ?, ?);";
 static const char *SQL_UPDATE_AGENT_NAME = "UPDATE agent SET name = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_VERSION = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? WHERE id = ?;";
+static const char *SQL_UPDATE_AGENT_VERSION_IP = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ? , ip = ? WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_KEEPALIVE = "UPDATE agent SET last_keepalive = datetime(?, 'unixepoch', 'localtime') WHERE id = ?;";
 static const char *SQL_SELECT_AGENT_STATUS = "SELECT status FROM agent WHERE id = ?;";
 static const char *SQL_UPDATE_AGENT_STATUS = "UPDATE agent SET status = ? WHERE id = ?;";
@@ -36,13 +37,13 @@ static const char *SQL_UPDATE_REG_OFFSET = "UPDATE agent SET reg_offset = ? WHER
 static const char *SQL_DELETE_AGENT = "DELETE FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENT = "SELECT name FROM agent WHERE id = ?;";
 static const char *SQL_SELECT_AGENTS = "SELECT id FROM agent WHERE id != 0;";
-static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND ip = ?;";
+static const char *SQL_FIND_AGENT = "SELECT id FROM agent WHERE name = ? AND register_ip = ?;";
 static const char *SQL_FIND_GROUP = "SELECT id FROM `group` WHERE name = ?;";
 static const char *SQL_SELECT_GROUPS = "SELECT name FROM `group`;";
 static const char *SQL_DELETE_GROUP = "DELETE FROM `group` WHERE name = ?;";
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
-int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, const char *group, int keep_date) {
+int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date) {
     int result = 0;
     sqlite3_stmt *stmt;
     const char * sql = SQL_INSERT_AGENT;
@@ -71,20 +72,30 @@ int wdb_insert_agent(int id, const char *name, const char *ip, const char *key, 
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_text(stmt, 2, name, -1, NULL);
 
-    if (ip)
+    if (ip){
         sqlite3_bind_text(stmt, 3, ip, -1, NULL);
-    else
+    }
+    else {
         sqlite3_bind_null(stmt, 3);
-    if (key)
-        sqlite3_bind_text(stmt, 4, key, -1, NULL);
-    else
+    }
+
+    if(register_ip){
+        sqlite3_bind_text(stmt, 4, register_ip, -1, NULL);
+    }
+    else{
         sqlite3_bind_null(stmt, 4);
+    }
+
+    if (key)
+        sqlite3_bind_text(stmt, 5, key, -1, NULL);
+    else
+        sqlite3_bind_null(stmt, 5);
 
     if(date) {
-        sqlite3_bind_text(stmt, 5, date, -1, NULL);
-        sqlite3_bind_text(stmt, 6, group, -1, NULL);
+        sqlite3_bind_text(stmt, 6, date, -1, NULL);
+        sqlite3_bind_text(stmt, 7, group, -1, NULL);
     } else {
-        sqlite3_bind_text(stmt, 5, group, -1, NULL);
+        sqlite3_bind_text(stmt, 6, group, -1, NULL);
     }
 
     result = wdb_step(stmt) == SQLITE_DONE ? wdb_create_agent_db(id, name) : -1;
@@ -120,14 +131,19 @@ int wdb_update_agent_name(int id, const char *name) {
 }
 
 /* Update agent version. It opens and closes the DB. Returns number of affected rows or -1 on error. */
-int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name) {
+int wdb_update_agent_version(int id, const char *os_name, const char *os_version, const char *os_major, const char *os_minor, const char *os_codename, const char *os_platform, const char *os_build, const char *os_uname, const char *os_arch, const char *version, const char *config_sum, const char *merged_sum, const char *manager_host, const char *node_name, const char *agent_ip) {
     int result = 0;
     sqlite3_stmt *stmt;
+    const char * sql = SQL_UPDATE_AGENT_VERSION;
 
     if (wdb_open_global() < 0)
         return -1;
 
-    if (wdb_prepare(wdb_global, SQL_UPDATE_AGENT_VERSION, -1, &stmt, NULL)) {
+    if(agent_ip) {
+        sql = SQL_UPDATE_AGENT_VERSION_IP;
+    }
+
+    if (wdb_prepare(wdb_global, sql, -1, &stmt, NULL)) {
         mdebug1("SQLite: %s", sqlite3_errmsg(wdb_global));
         return -1;
     }
@@ -146,7 +162,12 @@ int wdb_update_agent_version(int id, const char *os_name, const char *os_version
     sqlite3_bind_text(stmt, 12, merged_sum, -1, NULL);
     sqlite3_bind_text(stmt, 13, manager_host, -1, NULL);
     sqlite3_bind_text(stmt, 14, node_name, -1, NULL);
-    sqlite3_bind_int(stmt, 15, id);
+    if (agent_ip) {
+        sqlite3_bind_text(stmt, 15, agent_ip, -1, NULL);
+        sqlite3_bind_int(stmt, 16, id);
+    } else {
+        sqlite3_bind_int(stmt, 15, id);
+    }
 
     result = wdb_step(stmt) == SQLITE_DONE ? (int)sqlite3_changes(wdb_global) : -1;
     sqlite3_finalize(stmt);
@@ -195,6 +216,7 @@ int wdb_remove_agent(int id) {
     sqlite3_bind_int(stmt, 1, id);
     result = wdb_step(stmt) == SQLITE_DONE;
     sqlite3_finalize(stmt);
+    wdb_delete_agent_belongs(id);
 
     result = result && name ? wdb_remove_agent_db(id, name) : -1;
 
