@@ -299,7 +299,7 @@
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
-#define VU_DB_TIMESTAMP_OVAL_ERROR  "(5417): Stored timestamp could not be compared. %s OVAL will continue updating."
+#define VU_DB_TIMESTAMP_FEED_ERROR  "(5417): Stored timestamp could not be compared. %s feed will continue updating."
 #define VU_SSL_LIBRARY_ERROR        "(5418): Could not initialize the OpenSSL library."
 #define VU_SSL_CREATE_ERROR         "(5419): The SSL structure could not be created."
 #define VU_SSL_CONTEXT_ERROR        "(5420): Unable to create a new SSL context."
@@ -341,7 +341,8 @@
 #define VU_NVD_ROW_GET_ERROR        "(5517): Could not get the %s ID row."
 #define VU_SOCKET_RETRY_ERROR       "(5519): Unable to connect to socket '%s'."
 #define VU_FIND_NVD_ERROR           "(5120): No vulnerabilities could be found in the NVD for agent %s."
-#define VU_REPORT_NVD_ERROR         "(5120): Could not report vulnerabilities from the NVD for agent %s."
+#define VU_REPORT_NVD_ERROR         "(5121): Could not report vulnerabilities from the NVD for agent %s."
+#define VU_INVALID_DIC_TAG          "(5122): Invalid tag found when parsing the CPE dictionary: '%s'."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

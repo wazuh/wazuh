@@ -106,7 +106,6 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
 
     os_calloc(1, sizeof(update_node), upd);
     upd->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
-    upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
 
     if (!strcmp(feed, vu_feed_tag[FEED_UBUNTU])) {
         if (!strcmp(version, "12") || strcasestr(version, vu_feed_tag[FEED_PRECISE])) {
@@ -164,17 +163,28 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         os_index = CVE_REDHAT;
         upd->dist_tag = vu_feed_tag[FEED_REDHAT];
         upd->dist_ext = vu_feed_ext[FEED_REDHAT];
+        upd->update_from_year = RED_HAT_REPO_DEFAULT_MIN_YEAR;
         upd->dist_ref = FEED_REDHAT;
+        upd->json_format = 1;
     } else if (!strcmp(feed, vu_feed_tag[FEED_NVD])) {
         os_index = CVE_NVD;
         upd->dist_tag = vu_feed_tag[FEED_NVD];
         upd->dist_ext = vu_feed_ext[FEED_NVD];
         upd->dist_ref = FEED_NVD;
-        os_calloc(1, sizeof(update_node), upd_list[CPE_NVD]);
-        upd_list[CPE_NVD]->dist_tag = vu_feed_tag[FEED_CPED];
-        upd_list[CPE_NVD]->interval = WM_VULNDETECTOR_DEFAULT_CPE_UPDATE_INTERVAL;
-        upd_list[CPE_NVD]->dist_ext = vu_feed_ext[FEED_CPED];
-        upd_list[CPE_NVD]->dist_ref = FEED_CPED;
+        upd->json_format = 1;
+        // Set the CPE feed (from NVD)
+        os_calloc(1, sizeof(update_node), upd_list[CPE_NDIC]);
+        upd_list[CPE_NDIC]->dist_tag = vu_feed_tag[FEED_CPED];
+        upd_list[CPE_NDIC]->interval = WM_VULNDETECTOR_DEFAULT_CPE_UPDATE_INTERVAL;
+        upd_list[CPE_NDIC]->dist_ext = vu_feed_ext[FEED_CPED];
+        upd_list[CPE_NDIC]->dist_ref = FEED_CPED;
+        // Set the CPE dictionary (from NVD)
+        os_calloc(1, sizeof(update_node), upd_list[CPE_WDIC]);
+        upd_list[CPE_WDIC]->dist_tag = vu_feed_tag[FEED_CPEW];
+        upd_list[CPE_WDIC]->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
+        upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
+        upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
+        upd_list[CPE_WDIC]->json_format = 1;
     } else {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
@@ -326,8 +336,8 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         free_update_node(updates[os_index]);
                         updates[os_index] = NULL;
                         if (os_index == CVE_NVD) {
-                            free_update_node(updates[CPE_NVD]);
-                            updates[CPE_NVD] = NULL;
+                            free_update_node(updates[CPE_NDIC]);
+                            updates[CPE_NDIC] = NULL;
                         }
                         break;
                     } else if (!strcmp(chld_node[j]->content, "no")) {
@@ -353,7 +363,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     }
                 } else if (!strcmp(chld_node[j]->element, XML_UPDATE_CPE_INTERVAL)) {
                     if (updates[os_index]->dist_ref == FEED_NVD) {
-                        if (get_interval(chld_node[j]->content, &updates[CPE_NVD]->interval)) {
+                        if (get_interval(chld_node[j]->content, &updates[CPE_NDIC]->interval)) {
                             merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_CPE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                             OS_ClearNode(chld_node);
                             return OS_INVALID;
