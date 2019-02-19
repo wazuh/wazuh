@@ -48,7 +48,7 @@ const char *OSRegex_Execute_ex(const char *str, OSRegex *reg, regex_matching *re
         str_sizes = &reg->d_size;
     }
 
-    if (sub_strings) {
+    if (*sub_string) {
         if (regex_match) {
             if (str_sizes->sub_strings_size < reg->d_size.sub_strings_size) {
                 if (!*sub_strings) {
