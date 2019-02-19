@@ -647,6 +647,7 @@ static int CheckManagerConfiguration(char ** output) {
         snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i],"-t");
       
         if (wm_exec(command_in, output, &result_code, timeout, NULL) < 0) {
+       
             if (result_code == 0x7F) {
                 mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
             } else {
@@ -656,10 +657,14 @@ static int CheckManagerConfiguration(char ** output) {
             os_free(*output);
             goto error;
         }
-    
+
         wm_strcat(&output_msg,*output,' ');
         os_free(*output);
         *output = output_msg;
+
+        if(result_code) {
+            break;
+        }
     }
 
     gettimeofday(&end, NULL);
