@@ -44,10 +44,8 @@ fi
 # Restart Wazuh
 if command -v systemctl > /dev/null 2>&1; then        
     systemctl restart wazuh-$TYPE
-elif command -v service > /dev/null 2>&1; then        
+elif command -v service > /dev/null 2>&1; then
     service wazuh-$TYPE restart
-elif command -v update-rc.d > /dev/null 2>&1; then        
-    update-rc.d wazuh-$TYPE restart
 else
     ${PWD}/bin/ossec-control restart
 fi
