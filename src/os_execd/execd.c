@@ -372,29 +372,27 @@ static void ExecdStart(int q)
             tmp_msg++;
         }
 
-        if(!strcmp(name,"check-manager-configuration")) {
+        if(!strcmp(name, "check-manager-configuration")) {
             char *output = NULL;
             cJSON *result_obj = cJSON_CreateObject();
 
             if(CheckManagerConfiguration(&output)) {
                 char error_msg[OS_SIZE_4096 - 27] = {0};
-                snprintf(error_msg,OS_SIZE_4096 - 27,"%s",output);
+                snprintf(error_msg, OS_SIZE_4096 - 27, "%s", output);
 
-                cJSON_AddNumberToObject(result_obj,"error",1);
-                cJSON_AddStringToObject(result_obj,"message",error_msg);
+                cJSON_AddNumberToObject(result_obj, "error", 1);
+                cJSON_AddStringToObject(result_obj, "message", error_msg);
                 os_free(output);
                 output = cJSON_PrintUnformatted(result_obj);
-
             } else {
-
-                cJSON_AddNumberToObject(result_obj,"error",0);
-                cJSON_AddStringToObject(result_obj,"message","ok");
+                cJSON_AddNumberToObject(result_obj, "error", 0);
+                cJSON_AddStringToObject(result_obj, "message", "ok");
                 os_free(output);
                 output = cJSON_PrintUnformatted(result_obj);
             }
 
             cJSON_Delete(result_obj);
-            mdebug1("Sending configuration check: %s",output);
+            mdebug1("Sending configuration check: %s", output);
 
             int rc;
             /* Start api socket */
@@ -661,10 +659,9 @@ static int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         output_msg = NULL;
-        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i],"-t");
+        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
 
         if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
-
             if (result_code == 0x7F) {
                 mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
             } else {
@@ -694,7 +691,7 @@ static int CheckManagerConfiguration(char ** output) {
     gettimeofday(&end, NULL);
 
     double elapsed = (end.tv_usec - start.tv_usec) / 1000;
-    mdebug1("Elapsed configuration check time: %0.3f milliseconds",elapsed);
+    mdebug1("Elapsed configuration check time: %0.3f milliseconds", elapsed);
 
     return ret_val;
 
