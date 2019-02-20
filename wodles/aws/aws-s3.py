@@ -406,7 +406,7 @@ class AWSBucket(WazuhIntegration):
                                     ROWID DESC
                                     LIMIT {retain_db_records})"""
 
-        self.db_name = 's3_cloudtrail'
+        self.db_name = ''.join(['s3_cloudtrail_',bucket])
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
         self.legacy_db_table_name = 'log_progress'
