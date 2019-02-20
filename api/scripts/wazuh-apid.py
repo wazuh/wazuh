@@ -104,7 +104,6 @@ if __name__ == '__main__':
     ####################################################################################################################
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
-    parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
     args = parser.parse_args()
 
     my_wazuh = Wazuh(get_init=True)
@@ -131,7 +130,7 @@ if __name__ == '__main__':
         ssl_context = None
 
     # Drop privileges to ossec
-    if not args.root:
+    if configuration['drop_privileges']:
         os.setgid(common.ossec_gid)
         os.setuid(common.ossec_uid)
 
