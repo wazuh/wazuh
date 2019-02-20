@@ -45,7 +45,7 @@ fi
 if command -v systemctl > /dev/null 2>&1; then        
     systemctl restart wazuh-$TYPE
 elif command -v service > /dev/null 2>&1; then        
-    service restart wazuh-$TYPE
+    service wazuh-$TYPE restart
 elif command -v update-rc.d > /dev/null 2>&1; then        
     update-rc.d wazuh-$TYPE restart
 else
