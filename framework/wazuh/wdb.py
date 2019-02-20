@@ -142,7 +142,7 @@ class WazuhDBConnection:
                 lim  = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
-            regex = re.compile(r"\w+ \d+? sql select ([a-z0-9,*_ ]+) from")
+            regex = re.compile(r"\w+ \d+? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
             total = list(self.__send(countq)[0].values())[0]
@@ -164,4 +164,4 @@ class WazuhDBConnection:
             else:
                 return response
         else:
-            return self.__send(query_lower)[0].values()[0]
+            return list(self.__send(query_lower)[0].values())[0]

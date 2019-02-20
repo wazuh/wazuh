@@ -46,10 +46,6 @@
 #define VU_AGENT_REQUEST_LIMIT   0
 #define VU_ALERT_HEADER "[%03d] (%s) %s"
 #define VU_ALERT_JSON "1:" VU_WM_NAME ":%s"
-#define VU_MODERATE   "Moderate"
-#define VU_MEDIUM     "Medium"
-#define VU_HIGH       "High"
-#define VU_IMPORTANT  "Important"
 // Patterns for building references
 #define VUL_BUILD_REF_MAX 100
 #define VU_BUILD_REF_CVE_RH "https://access.redhat.com/security/cve/%s"
@@ -59,6 +55,17 @@
 extern const wm_context WM_VULNDETECTOR_CONTEXT;
 extern const char *vu_dist_tag[];
 extern const char *vu_dist_ext[];
+
+typedef enum vu_severity {
+    VU_LOW,
+    VU_MEDIUM,
+    VU_MODERATE,
+    VU_UNKNOWN,
+    VU_HIGH,
+    VU_IMPORTANT,
+    VU_CRITICAL,
+    VU_NONE
+} vu_severity;
 
 typedef enum vu_logic {
     VU_TRUE,

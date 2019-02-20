@@ -1,0 +1,81 @@
+<!--
+  -  Configuration assessment ruleset
+  -  Created by Wazuh, Inc.
+  -  Copyright (C) 2015-2019, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<group name="wazuh,configuration_assessment,gdpr_IV_35.7.d">
+
+  <rule id="19000" level="0">
+    <category>ossec</category>
+    <decoded_as>configuration_assessment</decoded_as>
+    <options>no_full_log</options>
+    <description>Group of Configuration Assessment rules</description>
+  </rule>
+
+  <rule id="19001" level="3">
+    <if_sid>19000</if_sid>
+    <field name="configuration_assessment.type">^summary</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.policy): Score: $(configuration_assessment.score)</description>
+  </rule>
+
+  <rule id="19002" level="4">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^8\d</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.policy): Score less than 90% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19003" level="5">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^7\d|^6\d|^5\d</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.policy): Score less than 80% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19004" level="7">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^4\d|^3\d</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.policy): Score less than 50% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19005" level="9">
+    <if_sid>19001</if_sid>
+    <field name="configuration_assessment.score">^2\d|^1\d$|^\d$</field>
+    <description>Configuration Assessment summary: $(configuration_assessment.policy): Score less than 30% ($(configuration_assessment.score))</description>
+  </rule>
+
+  <rule id="19006" level="0">
+    <if_sid>19000</if_sid>
+    <field name="configuration_assessment.type">^check</field>
+    <options>no_full_log</options>
+    <description>Configuration Assessment: check event</description>
+  </rule>
+
+  <rule id="19007" level="7">
+    <if_sid>19006</if_sid>
+    <field name="configuration_assessment.check.result">^failed</field>
+    <options>no_full_log</options>
+    <description>$(configuration_assessment.policy): $(configuration_assessment.check.title)</description>
+  </rule>
+
+  <rule id="19008" level="3">
+    <if_sid>19006</if_sid>
+    <field name="configuration_assessment.check.result">^passed</field>
+    <options>no_full_log</options>
+    <description>$(configuration_assessment.policy): $(configuration_assessment.check.title)</description>
+  </rule>
+
+  <rule id="19009" level="3">
+    <if_sid>19008</if_sid>
+    <field name="configuration_assessment.check.previous_result">^failed</field>
+    <options>no_full_log</options>
+    <description>$(configuration_assessment.policy): $(configuration_assessment.check.title): Status changed from failed to passed</description>
+  </rule>
+
+  <rule id="19010" level="9">
+    <if_sid>19007</if_sid>
+    <field name="configuration_assessment.check.previous_result">^passed</field>
+    <options>no_full_log</options>
+    <description>$(configuration_assessment.policy): $(configuration_assessment.check.title): Status changed from passed to failed</description>
+  </rule>
+</group>

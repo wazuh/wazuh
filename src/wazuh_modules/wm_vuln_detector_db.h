@@ -29,6 +29,7 @@
 typedef enum vu_query {
     SELECT_QUERY,
     DELETE_QUERY,
+    VU_CHECK_UPDATES,
     TIMESTAMP_QUERY,
     VU_INSERT_QUERY,
     VU_INSERT_CVE,
@@ -58,6 +59,7 @@ typedef enum vu_query {
 static const char *vu_queries[] = {
     "SELECT %s FROM %s WHERE %s;",
     "DELETE FROM %s WHERE %s;",
+    "SELECT COUNT(*) FROM METADATA;",
     "SELECT TIMESTAMP FROM " METADATA_TABLE " WHERE OS = ?;",
     "INSERT INTO ",
     "INSERT INTO " CVE_TABLE " VALUES(?,?,?,?,?,?,?,?);",

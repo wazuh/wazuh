@@ -177,6 +177,12 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
 
+/* Configuration assessment module queue */
+#define CFGAQUEUE       "/queue/alerts/cfgaq"
+
+/* Configuration assessment remoted queue */
+#define CFGARQUEUE       "/queue/alerts/cfgarq"
+
 /* Exec queue api*/
 #define EXECQUEUEA      "/queue/alerts/execa"
 
@@ -366,6 +372,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESS_ENTRYDIRPATH  AGENTLESS_ENTRYDIR
 #endif
 #define EXECQUEUEPATH           DEFAULTDIR EXECQUEUE
+#define CFGASSESSMENTQUEUEPATH  DEFAULTDIR CFGAQUEUE
+
 #define EXECQUEUEPATHAPI        DEFAULTDIR EXECQUEUEA
 
 #ifdef WIN32
@@ -443,5 +451,9 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 #define CLOCK_LENGTH 256
+
+#define CONFIGURATION_ASSESSMENT_DIR   "/ruleset/configuration-assessment"
+
+#define CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset/configuration-assessment"
 
 #endif /* __OS_HEADERS */

@@ -13,6 +13,13 @@
 #include "config.h"
 
 
+
+#ifdef WIN32
+static int win_audit_reported = 0;
+#else
+static int unix_audit_reported = 0;
+#endif
+
 static short eval_bool(const char *str)
 {
     if (str == NULL) {
@@ -216,6 +223,11 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            if(!unix_audit_reported) {
+                mwarn("The check_unixaudit option is deprecated in favor of the Configuration Assessment module");
+                unix_audit_reported = 1;
+            }
+               
 #endif
         } else if (strcmp(node[i]->element, xml_check_winapps) == 0) {
 #ifdef WIN32
@@ -231,6 +243,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             if (rootcheck->checks.rc_winaudit == OS_INVALID) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
+            }
+            if(!win_audit_reported) {
+                mwarn("The check_winaudit option is deprecated in favor of the Configuration Assessment module.");
+                win_audit_reported = 0;
             }
 #endif
         } else if (strcmp(node[i]->element, xml_check_winmalware) == 0) {

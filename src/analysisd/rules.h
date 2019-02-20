@@ -250,7 +250,7 @@ int _setlevels(RuleNode *node, int nnode);
 #define SYSCOLLECTOR_MOD    "syscollector"
 #define CISCAT_MOD          "ciscat"
 #define WINEVT_MOD          "windows_eventchannel"
-
+#define CONFIGURATION_ASSESSMENT_MOD "configuration_assessment"
 /* Global variables */
 extern int _max_freq;
 extern int default_timeframe;
