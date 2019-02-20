@@ -736,7 +736,7 @@ $(EXTERNAL_LIBYAML)Makefile:
 ifeq (${TARGET},winagent)
 	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
 else
-	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
+	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
 endif
 
 #### curl ##########
