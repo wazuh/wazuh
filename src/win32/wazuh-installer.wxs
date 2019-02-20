@@ -447,6 +447,7 @@
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_CONFIGURATION_ASSESSMENT" />
+            <ComponentRef Id="WIN_AUDIT_RCL.YML" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />
