@@ -78,7 +78,7 @@ def read_config():
         configuration = yaml.safe_load(f)
 
     # append ossec_path to all paths in configuration
-    for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
+    for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert')]:
         configuration[section][subsection] = os.path.join(common.ossec_path, configuration[section][subsection])
 
     # ToDo: Lowercase all sections text
