@@ -384,9 +384,9 @@ static void ExecdStart(int q)
                 cJSON_AddStringToObject(result_obj,"message",error_msg);
                 os_free(output);
                 output = cJSON_PrintUnformatted(result_obj);
-              
+
             } else {
-             
+
                 cJSON_AddNumberToObject(result_obj,"error",0);
                 cJSON_AddStringToObject(result_obj,"message","ok");
                 os_free(output);
@@ -652,7 +652,7 @@ static int CheckManagerConfiguration(char ** output) {
     int timeout = 2000;
     char command_in[PATH_MAX] = {0};
     char *output_msg = NULL;
-    char *daemons[7] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd" };
+    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", NULL };
     int i;
     ret_val = 0;
 
@@ -661,9 +661,9 @@ static int CheckManagerConfiguration(char ** output) {
 
     for (i = 0; daemons[i]; i++) {
         snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i],"-t");
-      
+
         if (wm_exec(command_in, output, &result_code, timeout, NULL) < 0) {
-       
+
             if (result_code == 0x7F) {
                 mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
             } else {
