@@ -1,0 +1,46 @@
+# Copyright (C) 2015-2019, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+from wazuh.wlogging import WazuhLogger
+import logging
+from flask import request
+
+
+class APIFilter(logging.Filter):
+    """
+    Adds cluster related information into cluster logs.
+    """
+    def __init__(self, user: str = '', name: str = ''):
+        """
+        Class constructor
+
+        :param user: API user doing the request
+        :param name: If name is specified, it names a logger which, together with its children, will have its events
+                     allowed through the filter. If name is the empty string, allows every event.
+        """
+        super().__init__(name=name)
+        self.user = user
+
+    def filter(self, record):
+        record.user = self.user
+        return True
+
+    def update_user(self, new_user: str):
+        self.user = new_user
+
+
+class APILogger(WazuhLogger):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filter = APIFilter()
+
+    def setup_logger(self):
+        super().setup_logger()
+        self.logger.addFilter(self.filter)
+        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
+                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
+
+        self.logger.setLevel(debug_level)
+
+

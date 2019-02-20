@@ -9,66 +9,30 @@ import sys
 
 import connexion
 
-from api import encoder
+from api import alogging, encoder
 from wazuh import common, pyDaemonModule, Wazuh
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__
+from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
 
 #
 # Aux functions
 #
 def set_logging(foreground_mode=False, debug_mode=0):
-    logger = logging.getLogger('api')
-    logger.propagate = False
-    # configure logger
-    fh = cluster.CustomFileRotatingHandler(filename="{}/logs/api.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    if foreground_mode:
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-
-    logger.addFilter(cluster.ClusterFilter(tag='API', subtag='Main'))
-
-    # add a new debug level
-    logging.DEBUG2 = 5
-
-    def debug2(self, message, *args, **kws):
-        if self.isEnabledFor(logging.DEBUG2):
-            self._log(logging.DEBUG2, message, args, **kws)
-
-    def error(self, msg, *args, **kws):
-        if self.isEnabledFor(logging.ERROR):
-            kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
-            self._log(logging.ERROR, msg, args, **kws)
-
-    logging.addLevelName(logging.DEBUG2, "DEBUG2")
-
-    logging.Logger.debug2 = debug2
-    logging.Logger.error = error
-
-    if debug_mode == 2:
-        debug_level = logging.DEBUG2
-    elif debug_mode == 1:
-        debug_level = logging.DEBUG
-    else:
-        debug_level = logging.INFO
-
-    logger.setLevel(debug_level)
-    return logger
+    api_logger = alogging.APILogger(foreground_mode=foreground_mode, log_path='logs/api.log', debug_level=debug_mode,
+                                    tag='%(asctime)s %(levelname)-8s: %(user) %(message)s')
+    api_logger.setup_logger()
+    return api_logger
 
 
 def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
-def main():
+def main(main_logger):
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
+    app.app.logger = main_logger
     app.run(port=8080)
 
 
@@ -114,6 +78,6 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main()
+        main(main_logger)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")

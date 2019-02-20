@@ -8,26 +8,21 @@ from wazuh.agent import Agent
 from wazuh.manager import status
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
-from wazuh.database import Connection
 from wazuh import common
 from datetime import datetime, timedelta
 from time import time
-from os import path, listdir, stat, chmod, chown, remove, unlink
+from os import path, listdir, stat, remove
 from subprocess import check_output
-from shutil import rmtree, copyfileobj
+from shutil import rmtree
 from operator import eq, setitem, add
 import json
-import logging
-import logging.handlers
-import re
 import os
 import ast
-from calendar import month_abbr
 from random import random
-import glob
-import gzip
 from functools import reduce
 import zipfile
+import logging
+from wazuh.wlogging import WazuhLogger
 
 logger = logging.getLogger('wazuh')
 
@@ -453,50 +448,6 @@ def unmerge_agent_info(merge_type, path_file, filename):
             yield dst_agent_info_path + '/' + name, data, st_mtime
 
 
-class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
-    """
-    Wazuh cluster log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
-    Also, rotated logs are stored in /logs/ossec
-    """
-
-    def doRollover(self):
-        """
-        Override base class method to make the set the appropiate permissions to the new log file
-        """
-        # Rotate the file first
-        logging.handlers.TimedRotatingFileHandler.doRollover(self)
-
-        # Set appropiate permissions
-        chown(self.baseFilename, common.ossec_uid, common.ossec_gid)
-        chmod(self.baseFilename, 0o660)
-
-        # Save rotated file in /logs/ossec directory
-        rotated_file = glob.glob("{}.*".format(self.baseFilename))[0]
-
-        new_rotated_file = self.computeArchivesDirectory(rotated_file)
-        with open(rotated_file, 'rb') as f_in, gzip.open(new_rotated_file, 'wb') as f_out:
-            copyfileobj(f_in, f_out)
-        chmod(new_rotated_file, 0o640)
-        unlink(rotated_file)
-
-    def computeArchivesDirectory(self, rotated_filepath):
-        """
-        Based on the name of the rotated file, compute in which directory it should be stored.
-
-        :param rotated_filepath: Filepath of the rotated log
-        :return: New directory path
-        """
-        rotated_file = path.basename(rotated_filepath)
-        year, month, day = re.match(r'[\w\.]+\.(\d+)-(\d+)-(\d+)', rotated_file).groups()
-        month = month_abbr[int(month)]
-
-        log_path = '{}/logs/cluster/{}/{}'.format(common.ossec_path, year, month)
-        if not path.exists(log_path):
-            mkdir_with_mode(log_path, 0o750)
-
-        return '{}/cluster-{}.log.gz'.format(log_path, day)
-
-
 class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.
@@ -524,3 +475,14 @@ class ClusterFilter(logging.Filter):
 
     def update_subtag(self, new_subtag: str):
         self.subtag = new_subtag
+
+
+class ClusterLogger(WazuhLogger):
+
+    def setup_logger(self):
+        super().setup_logger()
+        self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
+        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
+                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
+
+        self.logger.setLevel(debug_level)

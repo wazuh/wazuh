@@ -16,43 +16,11 @@ from wazuh import common, configuration, pyDaemonModule, Wazuh
 # Aux functions
 #
 def set_logging(foreground_mode=False, debug_mode=0):
-    logger = logging.getLogger('wazuh')
-    logger.propagate = False
-    # configure logger
-    fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    if foreground_mode:
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-
-    logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='Main'))
-
-    # add a new debug level
-    logging.DEBUG2 = 5
-
-    def debug2(self, message, *args, **kws):
-        if self.isEnabledFor(logging.DEBUG2):
-            self._log(logging.DEBUG2, message, args, **kws)
-
-    def error(self, msg, *args, **kws):
-        if self.isEnabledFor(logging.ERROR):
-            kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
-            self._log(logging.ERROR, msg, args, **kws)
-
-    logging.addLevelName(logging.DEBUG2, "DEBUG2")
-
-    logging.Logger.debug2 = debug2
-    logging.Logger.error = error
-
-    debug_level = logging.DEBUG2 if debug_mode == 2 else logging.DEBUG if \
-                  debug_mode == 1 else logging.INFO
-
-    logger.setLevel(debug_level)
-    return logger
+    cluster_logger = cluster.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
+                                           debug_level=debug_mode,
+                                           tag='%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
+    cluster_logger.setup_logger()
+    return cluster_logger
 
 
 def print_version():
