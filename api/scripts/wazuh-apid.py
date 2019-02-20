@@ -33,6 +33,7 @@ def main(main_logger):
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
     app.app.logger = main_logger
+    app.app.before_request(alogging.set_request_user_logs)
     app.run(port=8080)
 
 

@@ -44,3 +44,10 @@ class APILogger(WazuhLogger):
         self.logger.setLevel(debug_level)
 
 
+def set_request_user_logs():
+    """
+    sets authenticated user in logs
+    """
+    if request.path == '/login':
+        wazuh_logger = logging.getLogger('wazuh')
+        wazuh_logger.filters[0].update_user(request.authorization['username'])
