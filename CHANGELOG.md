@@ -40,6 +40,7 @@ All notable changes to this project will be documented in this file.
 - Let _Remoted_ wait for download module availability. ([#2517](https://github.com/wazuh/wazuh/pull/2517))
 - Fix duplicated field names at some events for Windows eventchannel. ([#2500](https://github.com/wazuh/wazuh/pull/2500))
 - Delete empty fields from Windows eventchannel alerts. ([#2492](https://github.com/wazuh/wazuh/pull/2492))
+- Fixed memory leak and crash in Vulnerability Detector. ([#2620](https://github.com/wazuh/wazuh/pull/2620))
 - Prevent Analysisd from crashing when receiving an invalid Syscollector event. ([#2621](https://github.com/wazuh/wazuh/pull/2621))
 
 ## [v3.8.2]
