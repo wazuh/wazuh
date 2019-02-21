@@ -65,8 +65,12 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
-def main():
+def main(logger):
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
+    for h in logger.handlers:
+        app.app.logger.addHandler(h)
+    for f in logger.filters:
+        app.app.logger.addFilter(f)
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
     app.run(port=8080)
@@ -114,6 +118,6 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main()
+        main(main_logger)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
