@@ -189,7 +189,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending event: %s",msg);
 
-    if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
+    if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_SCA_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if(data->queue >= 0){
