@@ -41,6 +41,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     security_configuration_assessment->scan_time = NULL;
     security_configuration_assessment->skip_nfs = 1;
     security_configuration_assessment->alert_msg = NULL;
+    security_configuration_assessment->queue = -1;
     module->context = &WM_SECURITY_CONFIGURATION_ASSESSMENT_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = security_configuration_assessment;

@@ -1067,7 +1067,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
 
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result) {
     
-    fillData(lf, "configuration_assessment.type", "check");
+    fillData(lf, "sca.type", "check");
 
     if(scan_id) {
         char value[OS_SIZE_128];

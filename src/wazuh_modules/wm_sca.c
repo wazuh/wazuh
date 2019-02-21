@@ -145,9 +145,11 @@ void * wm_sca_main(wm_sca_t * data) {
         }
     }
 
-    if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        mwarn("Can't connect to queue. Trying again.");
-        sleep(WM_MAX_WAIT);
+    for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
+        wm_delay(1000 * WM_MAX_WAIT);
+
+    if (i == WM_MAX_ATTEMPTS) {
+        merror("Can't connect to queue.");
     }
 
     request_queue = queue_init(1024);
