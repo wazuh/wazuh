@@ -59,7 +59,7 @@ class TestPolicyMonitoring(TestCase):
         """
         Checks data are properly loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_sca_data
             result = get_sca_list('000')
             assert(isinstance(result, dict))
@@ -77,7 +77,7 @@ class TestPolicyMonitoring(TestCase):
         """
         Checks only selected fields are loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_sca_data
             fields = {'fields': ['name', 'policy_id']}
             result = get_sca_list('000', select=fields)
@@ -96,7 +96,7 @@ class TestPolicyMonitoring(TestCase):
         """
         Checks only selected fields are loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_sca_data
             search = {'value': 'debian', 'negation': False}
             result = get_sca_list('000', search=search)
@@ -128,7 +128,7 @@ class TestPolicyMonitoring(TestCase):
         """
         Checks sca checks data are properly loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_sca_data
             result = get_sca_checks('cis_debian', agent_id='000')
             assert(isinstance(result, dict))
