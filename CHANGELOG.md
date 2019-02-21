@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Introduced a network buffer in Remoted to cache incomplete messages from agents. This improves the performance by preventing Remoted from waiting for complete messages. ([#2528](https://github.com/wazuh/wazuh/pull/2528))
+- Improved alerts about disconnected agents: they will contain the data about the disconnected agent, although the alert is actually produced by the manager. ([#2379](https://github.com/wazuh/wazuh/pull/2379))
 - Improved Remoted start-up logging messages. ([#2460](https://github.com/wazuh/wazuh/pull/2460))
 - Let _agent_auth_ warn when it receives extra input arguments. ([#2489](https://github.com/wazuh/wazuh/pull/2489))
 - Update the who-data related SELinux rules for Audit 3.0. This lets who-data work on Fedora 29. ([#2419](https://github.com/wazuh/wazuh/pull/2419))
@@ -33,15 +35,17 @@ All notable changes to this project will be documented in this file.
 - Fixed defects reported by Cppcheck. ([#2521](https://github.com/wazuh/wazuh/pull/2521))
   - Double free in GeoIP data handling with IPv6.
   - Buffer overlay when getting OS information.
-  - Check for successfully memory allocation in Syscollector.
+  - Check for successful memory allocation in Syscollector.
 - Fix out-of-memory error in Remoted when upgrading an agent with a big data chunk. ([#2594](https://github.com/wazuh/wazuh/pull/2594))
 - Re-registered agent are reassigned to correct groups when the multigroup is empty. ([#2440](https://github.com/wazuh/wazuh/pull/2440))
 - Wazuh manager starts regardless of the contents of _local_decoder.xml_. ([#2465](https://github.com/wazuh/wazuh/pull/2465))
 - Let _Remoted_ wait for download module availability. ([#2517](https://github.com/wazuh/wazuh/pull/2517))
-- Fix duplicated field names at some events for Windows eventchannel. ([#2500](https://github.com/wazuh/wazuh/pull/2500))
-- Delete empty fields from Windows eventchannel alerts. ([#2492](https://github.com/wazuh/wazuh/pull/2492))
+- Fix duplicate field names at some events for Windows eventchannel. ([#2500](https://github.com/wazuh/wazuh/pull/2500))
+- Delete empty fields from Windows Eventchannel alerts. ([#2492](https://github.com/wazuh/wazuh/pull/2492))
 - Fixed memory leak and crash in Vulnerability Detector. ([#2620](https://github.com/wazuh/wazuh/pull/2620))
 - Prevent Analysisd from crashing when receiving an invalid Syscollector event. ([#2621](https://github.com/wazuh/wazuh/pull/2621))
+- Fix a bug in the database synchronization module that left broken references of removed agents to groups. ([#2628](https://github.com/wazuh/wazuh/pull/2628))
+
 
 ## [v3.8.2]
 
