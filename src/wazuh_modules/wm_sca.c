@@ -21,11 +21,11 @@
 #undef mdebug1
 #undef mdebug2
 
-#define minfo(msg, ...) _mtinfo(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mwarn(msg, ...) _mtwarn(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define merror(msg, ...) _mterror(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug1(msg, ...) _mtdebug1(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug2(msg, ...) _mtdebug2(WM_CONFIGURATION_ASSESSMENT_MONITORING_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define minfo(msg, ...) _mtinfo(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...) _mtwarn(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...) _mterror(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 typedef struct cis_db_info_t {
     char *result;
@@ -178,7 +178,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending event: %s",msg);
 
-    if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
+    if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if(data->queue >= 0){
@@ -188,7 +188,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
         if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
-            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
+            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 close(data->queue);
             }
@@ -688,8 +688,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
             wm_sca_set_condition("invalid",&condition);
         }
 
-        if (name == NULL || condition == WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_INV) {
-            merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_NAME, name );
+        if (name == NULL || condition == WM_SCA_COND_INV) {
+            merror(WM_SCA_INVALID_RKCL_NAME, name );
             ret_val = 1;
             goto clean_return;
         }
@@ -719,7 +719,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 /* Get value to look for */
                 value = wm_sca_get_value(nbuf, &type);
                 if (value == NULL) {
-                    mdebug1(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
+                    mdebug1(WM_SCA_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
                 }
 
@@ -730,7 +730,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
 
                 /* Check for a file */
-                if (type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_FILE) {
+                if (type == WM_SCA_TYPE_FILE) {
                     char *pattern = NULL;
                     char *f_value = NULL;
 
@@ -741,7 +741,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                            merror(WM_SCA_INVALID_RKCL_VAR, value);
                             continue;
                         }
                     }
@@ -790,7 +790,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
     #ifdef WIN32
                 /* Check for a registry entry */
-                else if (type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_REGISTRY) {
+                else if (type == WM_SCA_TYPE_REGISTRY) {
                     char *entry = NULL;
                     char *pattern = NULL;
 
@@ -841,7 +841,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
     #endif
                 /* Check for a directory */
-                else if (type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) {
+                else if (type == WM_SCA_TYPE_DIR) {
                     char *file = NULL;
                     char *pattern = NULL;
                     char *f_value = NULL;
@@ -849,7 +849,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                     file = wm_sca_get_pattern(value);
                     if (!file) {
-                        merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                        merror(WM_SCA_INVALID_RKCL_VAR, value);
                         continue;
                     }
 
@@ -859,7 +859,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     if (value[0] == '$') {
                         f_value = (char *) OSStore_Get(vars, value);
                         if (!f_value) {
-                            merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
+                            merror(WM_SCA_INVALID_RKCL_VAR, value);
                             continue;
                         }
                     } else {
@@ -923,7 +923,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
 
                 /* Check for a process */
-                else if (type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_PROCESS) {
+                else if (type == WM_SCA_TYPE_PROCESS) {
                     mdebug2("Checking process: '%s'", value);
                     if (wm_sca_is_process(value, p_list,data)) {
                         mdebug2("Found process.");
@@ -941,12 +941,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
 
                 /* Check the conditions */
-                if (condition & WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_ANY) {
+                if (condition & WM_SCA_COND_ANY) {
                     mdebug2("Condition ANY.");
                     if (found) {
                         g_found = 1;
                     }
-                } else if (condition & WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_NON) {
+                } else if (condition & WM_SCA_COND_NON) {
                     mdebug2("Condition NON.");
                     if (!found && (not_found != -1)) {
                         mdebug2("Condition NON setze not_found=1.");
@@ -965,7 +965,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
             }
 
-            if (condition & WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_NON) {
+            if (condition & WM_SCA_COND_NON) {
                 if (not_found == -1){ g_found = 0;} else {g_found = 1;}
             }
 
@@ -976,7 +976,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
 
                 while (1) {
-                    if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_failed();
                         cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
 
@@ -1013,7 +1013,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 char **p_alert_msg = data->alert_msg;
 
                 while (1) {
-                    if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_passed();
                         cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
 
@@ -1048,7 +1048,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
 
                 /* Check if this entry is required for the rest of the file */
-                if (condition & WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_REQ) {
+                if (condition & WM_SCA_COND_REQ) {
                     if (requirements_scan == 1){
                         ret_val = 1;
                     }
@@ -1082,19 +1082,19 @@ clean_return:
 static void wm_sca_set_condition(char *c_cond, int *condition) {
     /* Get condition */
     if (strcmp(c_cond, "all") == 0) {
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_ALL;
+        *condition |= WM_SCA_COND_ALL;
     } else if (strcmp(c_cond, "any") == 0) {
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_ANY;
+        *condition |= WM_SCA_COND_ANY;
     } else if (strcmp(c_cond, "none") == 0) {
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_NON;
+        *condition |= WM_SCA_COND_NON;
     } else if (strcmp(c_cond, "any required") == 0) {
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_ANY;
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_REQ;
+        *condition |= WM_SCA_COND_ANY;
+        *condition |= WM_SCA_COND_REQ;
     } else if (strcmp(c_cond, "all required") == 0) {
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_ALL;
-        *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_REQ;
+        *condition |= WM_SCA_COND_ALL;
+        *condition |= WM_SCA_COND_REQ;
     } else {
-        *condition = WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_INV;
+        *condition = WM_SCA_COND_INV;
     }
 }
 
@@ -1105,7 +1105,7 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars) {
 
         /* If not a variable, return 0 */
         if (*variable->string != '$') {
-            merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, variable->string);
+            merror(WM_SCA_INVALID_RKCL_VAR, variable->string);
             return (0);
         }
 
@@ -1155,13 +1155,13 @@ static char *wm_sca_get_value(char *buf, int *type)
     }
 
     if (strcmp(buf, "f") == 0) {
-        *type = WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_FILE;
+        *type = WM_SCA_TYPE_FILE;
     } else if (strcmp(buf, "r") == 0) {
-        *type = WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_REGISTRY;
+        *type = WM_SCA_TYPE_REGISTRY;
     } else if (strcmp(buf, "p") == 0) {
-        *type = WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_PROCESS;
+        *type = WM_SCA_TYPE_PROCESS;
     } else if (strcmp(buf, "d") == 0) {
-        *type = WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR;
+        *type = WM_SCA_TYPE_DIR;
     } else {
         return (NULL);
     }

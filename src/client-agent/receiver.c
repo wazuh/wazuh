@@ -174,7 +174,7 @@ int receive_msg()
                     }
                 }
 #else
-                wm_configuration_assessment_push_request_win(tmp_msg);
+                wm_sca_push_request_win(tmp_msg);
 #endif
                 continue;
             }

@@ -265,13 +265,13 @@ UseSyscollector()
      fi
 }
 
-UseConfigurationAssessment()
+UseSecurityConfigurationAssessment()
 {
     # Configuration assessment config predefined (is overwritten by the preload-vars file)
-    if [ "X${USER_ENABLE_CONFIGURATION_ASSESSMENT}" = "Xn" ]; then
-        CONFIGURATION_ASSESSMENT="no"
+    if [ "X${USER_ENABLE_SECURITY_CONFIGURATION_ASSESSMENT}" = "Xn" ]; then
+        SECURITY_CONFIGURATION_ASSESSMENT="no"
      else
-        CONFIGURATION_ASSESSMENT="yes"
+        SECURITY_CONFIGURATION_ASSESSMENT="yes"
      fi
 }
 
@@ -407,7 +407,7 @@ ConfigureClient()
 
     UseSyscollector
 
-    UseConfigurationAssessment
+    UseSecurityConfigurationAssessment
 
     echo ""
     $ECHO "  3.5 - ${enable_ar} ($yes/$no) [$yes]: "
@@ -542,7 +542,7 @@ ConfigureServer()
 
     UseSyscollector
 
-    UseConfigurationAssessment
+    UseSecurityConfigurationAssessment
 
     # Active response
     catMsg "0x107-ar"
@@ -1149,7 +1149,7 @@ if [ "x$HYBID" = "xgo" ]; then
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
-    echo 'USER_ENABLE_CONFIGURATION_ASSESSMENT="n"' >> ./etc/preloaded-vars.conf
+    echo 'USER_ENABLE_SECURITY_CONFIGURATION_ASSESSMENT="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf
     echo 'USER_CREATE_SSL_CERT="n"' >> ./etc/preloaded-vars.conf
     echo "" >> ./etc/preloaded-vars.conf

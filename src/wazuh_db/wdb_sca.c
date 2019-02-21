@@ -172,14 +172,14 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
 /* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
-        mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
+        mdebug1("at wdb_sca_global_update(): cannot begin transaction");
         return -1;
     }
 
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_GLOBAL_UPDATE) < 0) {
-        mdebug1("at wdb_rootcheck_save(): cannot cache statement");
+        mdebug1("at wdb_sca_global_update(): cannot cache statement");
         return -1;
     }
 

@@ -51,7 +51,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
-    const char *osconfiguration_assessment = "sca"; /* Wodle - Security Configuration Assessment  */
+    const char *osconfiguration_assessment = "sca";     /* Security Configuration Assessment */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;

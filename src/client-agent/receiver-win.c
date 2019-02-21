@@ -164,7 +164,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
 
                 else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
               
-                    wm_configuration_assessment_push_request_win(tmp_msg);
+                    wm_sca_push_request_win(tmp_msg);
                     continue;
                 }
 
