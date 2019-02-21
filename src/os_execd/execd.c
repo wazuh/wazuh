@@ -690,7 +690,7 @@ static int CheckManagerConfiguration(char ** output) {
 
     gettimeofday(&end, NULL);
 
-    double elapsed = (end.tv_usec - start.tv_usec) / 1000;
+    double elapsed = (end.tv_usec - start.tv_usec) / 1000.0;
     mdebug1("Elapsed configuration check time: %0.3f milliseconds", elapsed);
 
     return ret_val;
