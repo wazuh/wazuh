@@ -5,7 +5,7 @@ import itertools
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.manager import status
+from wazuh.manager import status, restart
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh.database import Connection
@@ -366,6 +366,16 @@ def clean_up(node_name=""):
         logger.debug("[Cluster] Removed '{}'.".format(rm_path))
     except Exception as e:
         logger.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
+
+
+def restart_all_nodes():
+    """
+    Restart all cluster nodes.
+
+    :return: Confirmation message.
+    """
+    restart()
+    return "Restarting cluster"
 
 
 #
