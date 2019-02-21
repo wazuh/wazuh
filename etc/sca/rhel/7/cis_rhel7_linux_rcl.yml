@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # CIS Checks for RHEL 7
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -16,11 +16,11 @@ policy:
   name: "CIS Benchmark for Red Hat Enterprise Linux 7"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 7 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 7.4."
   references:
-    - https://workbench.cisecurity.org/
+    - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check Red Hat version"
-  description: "Requirements for running the Configuration Assessment scan against RHEL 7."
+  title: "Check RHEL7 version"
+  description: "Requirements for running the SCA scan against RHEL 7."
   condition: "any required"
   rules:
      - 'f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 7;'
@@ -45,7 +45,7 @@ checks:
    compliance:
     - cis: "1.1.2"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:/tmp;'
@@ -95,7 +95,7 @@ checks:
    compliance:
     - cis: "1.1.6"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r^# && !r:/var;'
@@ -120,7 +120,7 @@ checks:
     - cis: "1.1.11"
     - cis_csc: "6.3"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && !r:/var/log;'
@@ -134,7 +134,7 @@ checks:
     - cis: "1.1.12"
     - cis_csc: "6.3"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && !r:/var/log/audit;'
@@ -147,7 +147,7 @@ checks:
    compliance:
     - cis: "1.1.13"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:^# && !r:/home;'
@@ -589,7 +589,7 @@ checks:
     - cis: "2.2.5"
     - cis_csc: "9.1"
    references:
-    - More detailed documentation on DHCP is available at http://www.isc.org/software/dhcp.
+    - More detailed documentation on DHCP is available at https://www.isc.org
    condition: any
    rules:
      - 'f:/usr/lib/systemd/system/dhcpd.service -> r:Exec;'

@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # CIS Checks for SUSE SLES 11
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -19,8 +19,8 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check Suse version"
-  description: "Requirements for running the Configuration Assessment scan against SUSE Linux Enterprise Server 11"
+  title: "Check Suse 11 version"
+  description: "Requirements for running the SCA scan against SUSE Linux Enterprise Server 11"
   condition: "any required"
   rules:
     - 'f:/etc/os-release -> r:^PRETTY_NAME="SUSE Linux Enterprise Server 11";'
@@ -43,7 +43,7 @@ checks:
    compliance:
     - cis: "1.1.2"
    references:
-    - http://tldp.org/HOWTO/LVM-HOWTO/
+    - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r:/tmp;'
@@ -89,7 +89,7 @@ checks:
    compliance:
     - cis: "1.1.6"
    references:
-    - http://tldp.org/HOWTO/LVM-HOWTO/
+    - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> !r^# && !r:/var;'
@@ -102,7 +102,7 @@ checks:
     - cis: "1.1.11"
     - cis_csc: "6.3"
    references:
-    - http://tldp.org/HOWTO/LVM-HOWTO/
+    - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> ^# && !r:/var/log;'
@@ -115,7 +115,7 @@ checks:
     - cis: "1.1.12"
     - cis_csc: "6.3"
    references:
-    - http://tldp.org/HOWTO/LVM-HOWTO/
+    - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> ^# && !r:/var/log/audit;'
@@ -127,7 +127,7 @@ checks:
    compliance:
     - cis: "1.1.13"
    references:
-    - http://tldp.org/HOWTO/LVM-HOWTO/
+    - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
      - 'f:/etc/fstab -> ^# && !r:/home;'
@@ -371,7 +371,7 @@ checks:
 # Section 2.2 - Special Purpose Services
  - id: 7028
    title: "Ensure ntp is configured"
-   description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at http://www.ntp.org. ntp can be configured to be a client and/or a server.  This recommendation only applies if ntp is in use on the system."
+   description: "ntp is a daemon which implements the Network Time Protocol (NTP). It is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on NTP can be found at https://tools.ietf.org/html/rfc958. ntp can be configured to be a client and/or a server.  This recommendation only applies if ntp is in use on the system."
    rationale: "If ntp is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
    remediation: "Add or edit restrict lines in /etc/ntp.conf to match the following: restrict -4 default kod limited nomodify notrap nopeer noquery restrict -6 default kod limited nomodify notrap nopeer noquery    Add or edit server or pool lines to /etc/ntp.conf as appropriate: server <remote-server>    Add or edit the NTPD_OPTIONS in /etc/sysconfig/ntp to include '-u ntp:ntp': NTPD_OPTIONS='-u ntp:ntp'"
    compliance:

@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # Checks for auditing Linux systems
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -118,7 +118,7 @@ checks:
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    references:
-    - http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+    - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
    condition: any
    rules:
      - 'd:$web_dirs -> ^.htaccess$ -> r:RewriteCond \S+HTTP_REFERERS \S+google;'
@@ -127,7 +127,7 @@ checks:
    compliance:
     - pci_dss: "6.5, 6.6, 11.4"
    references:
-    - http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
+    - https://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html
    condition: any
    rules:
      - 'd:$web_dirs -> ^.htaccess$ -> r:php_value auto_append_file;'

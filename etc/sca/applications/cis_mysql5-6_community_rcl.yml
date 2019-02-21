@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # CIS Checks for Oracle MySQL Community Edition 5.6
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -16,13 +16,19 @@ policy:
   name: "CIS benchmark for Oracle MySQL Community Server 5.6"
   description: "This document, CIS Oracle MySQL Community Server 5.6 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for MySQL Community Server 5.6. This guide was tested against MySQL Community Server 5.6 running on Ubuntu Linux 14.04, but applies to other linux distributions as well."
   references:
-    - http://benchmarks.cisecurity.org
+    - https://www.cisecurity.org/cis-benchmarks/
+
+requirements:
+  title: "Check that MySQL is installed on the system"
+  description: "Requirements for running the SCA scan against the MySQL policy."
+  condition: "all required"
+  rules:
+    - 'd:/etc/mysql;'
 
 variables:
   $home_dirs: /usr2/home/*,/home/*,/home,/*/home/*,/*/home,/;
   $enviroment_files: /*/home/*/\.bashrc,/*/home/*/\.profile,/*/home/*/\.bash_profile,/home/*/\.bashrc,/home/*/\.profile,/home/*/\.bash_profile;
   $mysql-cnfs: /etc/mysql/my.cnf,/etc/mysql/mariadb.cnf,/etc/mysql/conf.d/*.cnf,/etc/mysql/mariadb.conf.d/*.cnf,~/.my.cnf;
-
 
 checks:
 #1 Operating System Level Configuration
@@ -34,8 +40,8 @@ checks:
    compliance:
     - cis: "1.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/mysql-logging.html
-    - http://bugs.mysql.com/bug.php?id=72158
+    - https://dev.mysql.com/doc/refman/5.6/en/mysql-logging.html
+    - https://bugs.mysql.com/bug.php?id=72158
    condition: any
    rules:
      - 'd:$home_dirs -> ^.mysql_history$;'
@@ -57,7 +63,7 @@ checks:
    compliance:
     - cis: "1.6"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/environment-variables.html
+    - https://dev.mysql.com/doc/refman/5.6/en/environment-variables.html
    condition: any
    rules:
      - 'f:$enviroment_files -> r:\.*MYSQL_PWD\.*;'
@@ -70,8 +76,8 @@ checks:
    compliance:
     - cis: "4.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/udf-security.html
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
+    - https://dev.mysql.com/doc/refman/5.6/en/udf-security.html
+    - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_allow-suspicious-udfs
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:allow-suspicious-udfs\.+true;'
@@ -84,8 +90,8 @@ checks:
    compliance:
     - cis: "4.4"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file
-    - http://dev.mysql.com/doc/refman/5.6/en/load-data.html
+    - https://dev.mysql.com/doc/refman/5.6/en/string-functions.html#function_load-file
+    - https://dev.mysql.com/doc/refman/5.6/en/load-data.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:local-infile\s*=\s*1;'
@@ -98,7 +104,7 @@ checks:
    compliance:
     - cis: "4.5"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
+    - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_skip-grant-tables
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:skip-grant-tables\s*=\s*true;'
@@ -112,8 +118,8 @@ checks:
    compliance:
     - cis: "4.6"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/symbolic-links.html
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
+    - https://dev.mysql.com/doc/refman/5.6/en/symbolic-links.html
+    - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_symbolic-links
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:skip_symbolic_links\s*=\s*no;'
@@ -127,7 +133,7 @@ checks:
    compliance:
     - cis: "4.8"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
+    - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
    condition: any
    rules:
      - 'f:$mysql-cnfs -> r:^# && r:secure_file_priv=\s*\S+\s*;'
@@ -152,7 +158,7 @@ checks:
    compliance:
     - cis: "6.1"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/error-log.html
+    - https://dev.mysql.com/doc/refman/5.6/en/error-log.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> r:^# && r:log_error\s*=\s*\S+\s*;'
@@ -166,8 +172,8 @@ checks:
    compliance:
     - cis: "6.2"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/binary-log.html
-    - http://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
+    - https://dev.mysql.com/doc/refman/5.6/en/binary-log.html
+    - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:log_bin= && !r:\s*/\S*\s*;'
@@ -182,7 +188,7 @@ checks:
    compliance:
     - cis: "6.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
+    - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-warnings
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:log_warnings\s*=\s*0;'
@@ -197,8 +203,8 @@ checks:
    compliance:
     - cis: "6.5"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/password-logging.html
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
+    - https://dev.mysql.com/doc/refman/5.6/en/password-logging.html
+    - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_log-raw
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:log-raw\s*=\s*on;'
@@ -212,9 +218,9 @@ checks:
    compliance:
     - cis: "7.1"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/password-hashing.html
-    - http://dev.mysql.com/doc/refman/5.6/en/sha256-authentication-plugin.html
-    - http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_old_passwords
+    - https://dev.mysql.com/doc/refman/5.6/en/password-hashing.html
+    - https://dev.mysql.com/doc/refman/5.6/en/sha256-authentication-plugin.html
+    - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_old_passwords
     - https://www.cvedetails.com/cve/CVE-2003-1480/
    condition: any
    rules:
@@ -230,7 +236,7 @@ checks:
    compliance:
     - cis: "7.2"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
+    - https://dev.mysql.com/doc/refman/5.6/en/server-options.html#option_mysqld_secure-auth
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:secure_auth\s*=\s*off;'
@@ -244,7 +250,7 @@ checks:
    compliance:
     - cis: "7.3"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
+    - https://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:^\s*password\.*;'
@@ -267,7 +273,7 @@ checks:
    compliance:
     - cis: "7.6"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html
+    - https://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:plugin-load\s*=\s*validate_password.so\s*$;'
@@ -286,7 +292,7 @@ checks:
    compliance:
     - cis: "9.2"
    references:
-    - http://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
+    - https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_master_info_repository
    condition: any
    rules:
      - 'f:$mysql-cnfs -> !r:^# && r:master_info_repository\s*=\s*file;'

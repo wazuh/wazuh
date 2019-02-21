@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # CIS Checks for Apache
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -17,11 +17,11 @@ policy:
   name: "CIS Apache HTTP Server 2.2/2.4 Benchmark"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Apache Web Server versions 2.2 and 2.4 running on Linux."
   references:
-    - https://workbench.cisecurity.org/
+    - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
   title: "Check that Apache is installed on the system"
-  description: "Requirements for running the Configuration Assessment scan against the Apache policy."
+  description: "Requirements for running the SCA scan against the Apache policy."
   condition: "all required"
   rules:
     - 'f:/etc/apache2/apache2.conf;'
@@ -196,8 +196,8 @@ checks:
     - cis: "5.3"
     - cis_csc: "18"
    references:
-    - http://httpd.apache.org/docs/2.2/mod/mod_include.html
-    - http://httpd.apache.org/docs/2.2/mod/core.html#options
+    - https://httpd.apache.org/docs/2.2/mod/mod_include.html
+    - https://httpd.apache.org/docs/2.2/mod/core.html#options
     - https://httpd.apache.org/docs/2.4/mod/core.html#options
     - https://httpd.apache.org/docs/2.4/mod/mod_include.html
    condition: any
@@ -376,10 +376,10 @@ checks:
     - cis: "5.14"
     - cis_csc: "18"
    references:
-    - http://httpd.apache.org/docs/2.2/mod/mod_headers.html#header
+    - https://httpd.apache.org/docs/2.2/mod/mod_headers.html#header
     - https://httpd.apache.org/docs/2.4/mod/mod_headers.html#header
     - https://developer.mozilla.org/en/The_X-FRAME-OPTIONS_response_header
-    - http://blogs.msdn.com/b/ie/archive/2009/01/27/ie8-security-part-vii-clickjacking-defenses.aspx
+    - https://blogs.msdn.com/b/ie/archive/2009/01/27/ie8-security-part-vii-clickjacking-defenses.aspx
    condition: any
    rules:
      - 'f:$main-conf -> !r:header\salways\sappend\sx-frame-options && !r:sameorigin|deny;'
@@ -569,8 +569,6 @@ checks:
    compliance:
     - cis: "8.4"
     - cis_csc: "18.9"
-   references:
-    - http://example.com/icons/apache_pb2.png
    condition: any
    rules:
      - 'd:$conf-dirs -> conf -> !r:^\t*\s*# && r:include\s*\w*httpd-autoindex.conf;'
@@ -677,7 +675,7 @@ checks:
     - cis: "9.5"
     - cis_csc: "9"
    references:
-    - http://ha.ckers.org/slowloris/
+    - https://ha.ckers.org/slowloris/
     - https://www.owasp.org/index.php/H.....t.....t....p.......p....o....s....t
     - https://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html
     - https://httpd.apache.org/docs/2.4/mod/mod_reqtimeout.html

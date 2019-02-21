@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # CIS Checks for RHEL 5
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -16,11 +16,11 @@ policy:
   name: "CIS Benchmark for Red Hat Enterprise Linux 5"
   description: "This document, Security Configuration Benchmark for Red Hat Enterprise Linux 5 provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux (RHEL) versions 5.0 - 5.11 running on x86 platforms."
   references:
-    - https://workbench.cisecurity.org/
+    - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
   title: "Check RHEL5 version"
-  description: "Requirements for running the Configuration Assessment scan against RHEL 5."
+  description: "Requirements for running the SCA scan against RHEL 5."
   condition: "any required"
   rules:
      - 'f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 5;'
@@ -42,7 +42,7 @@ checks:
    compliance:
     - cis: "1.1.1"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     - CCE-14161-4
    condition: any
    rules:
@@ -98,7 +98,7 @@ checks:
    compliance:
     - cis: "1.1.5"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     - CCE-14777-7
    condition: any
    rules:
@@ -125,7 +125,7 @@ checks:
    compliance:
     - cis: "1.1.7"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     - CCE-14011-1
    condition: any
    rules:
@@ -139,7 +139,7 @@ checks:
    compliance:
     - cis: "1.1.8"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     - CCE-14171-3
    condition: any
    rules:
@@ -153,7 +153,7 @@ checks:
    compliance:
     - cis: "1.1.9"
    references:
-    - AJ Lewis, "LVM HOWTO", http://tldp.org/HOWTO/LVM-HOWTO/
+    - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     - CCE-14559-9
    condition: any
    rules:
@@ -852,7 +852,7 @@ checks:
     - pci_dss: "4.1"
    references:
     - CCE-4245-7
-    - http://www.ssh.com/company/newsroom/article/210/
+    - https://www.ssh.com/ssh/
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;'

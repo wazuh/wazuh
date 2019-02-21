@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # Checks for Windows audit
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -13,8 +13,6 @@ policy:
   file: "win_audit_rcl.yml"
   name: "Benchmark for Windows audit"
   description: "This document provides a way of ensuring the security of the Windows systems."
-  references:
-    - https://www.cisecurity.org/cis-benchmarks/
 
 checks:
  - id: 2500
@@ -25,14 +23,13 @@ checks:
    rules:
      - 'r:HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableRegistryTools -> 1;'
      - 'r:HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableRegistryTools -> 1;'
-# http://support.microsoft.com/kb/825750
  - id: 2501
    title: "DCOM disabled"
    description: "The Distributed Component Object Model (DCOM) is a protocol that enables software components to communicate directly over a network."
    compliance:
     - pci_dss: "10.6.1"
    references:
-    - http://support.microsoft.com/kb/825750
+    - https://support.microsoft.com/es-es/help/825750/how-to-disable-dcom-support-in-windows
    condition: any
    rules:
      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\OLE -> EnableDCOM -> N;'
@@ -44,15 +41,12 @@ checks:
    rules:
      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> 0;'
      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\LSA -> LMCompatibilityLevel -> 1;'
-# http://research.eeye.com/html/alerts/AL20060813.html
 # Disabled by some Malwares (sometimes by McAfee and Symantec
 # security center too).
  - id: 2503
    title: "Firewall/Anti Virus notification disabled"
    compliance:
     - pci_dss: "10.6.1"
-   references:
-    - http://research.eeye.com/html/alerts/AL20060813.html
    condition: any
    rules:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Security Center -> FirewallDisableNotify -> !0;'
@@ -80,7 +74,7 @@ checks:
    compliance:
     - pci_dss: "10.6.1"
    references:
-    - http://windowsir.blogspot.com/2007/04/something-new-to-look-for.html
+    - https://windowsir.blogspot.com/2007/04/something-new-to-look-for.html
    condition: any
    rules:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> DoReport -> 0;'
@@ -89,13 +83,10 @@ checks:
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> IncludeWindowsApps -> 0;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> IncludeShutdownErrs -> 0;'
      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\PCHealth\ErrorReporting -> ShowUI -> 0;'
-# http://support.microsoft.com/default.aspx?scid=315231
  - id: 2507
    title: "Automatic Logon enabled"
    compliance:
     - pci_dss: "10.6.1"
-   references:
-    - http://support.microsoft.com/default.aspx?scid=315231
    condition: any
    rules:
      - 'r:HKLM\SOFTWARE\Microsoft\WindowsNT\CurrentVersion\Winlogon -> DefaultPassword;'

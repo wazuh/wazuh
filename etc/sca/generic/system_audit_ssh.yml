@@ -1,4 +1,4 @@
-# Configuration assessment
+# Security Configuration assessment
 # Checks for SSH hardening
 # Copyright (C) 2015-2019, Wazuh Inc.
 #
@@ -12,10 +12,12 @@ policy:
   file: "system_audit_ssh.yml"
   name: "System audit for SSH hardening"
   description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
+  references:
+    - https://www.ssh.com/ssh/
 
 requirements:
   title: "Check that the SSH service is installed on the system"
-  description: "Requirements for running the Configuration Assessment scan against the SSH policy."
+  description: "Requirements for running the SCA scan against the SSH policy."
   condition: "all required"
   rules:
     - 'f:/etc/ssh/sshd_config;'
