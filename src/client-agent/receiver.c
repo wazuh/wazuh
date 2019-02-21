@@ -15,7 +15,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_configuration_assessment.h"
+#include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -141,33 +141,33 @@ int receive_msg()
                 continue;
             }
 
-            /* Configuration assessment DB request */
+            /* Security configuration assessment DB request */
             else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
 #ifndef WIN32
-                /* Connect to the configuration assessment queue */
+                /* Connect to the Security configuration assessment queue */
                 if (agt->cfgadq >= 0) {
                     if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                        merror("Error communicating with configuration assessment");
+                        merror("Error communicating with Security configuration assessment");
                         close(agt->cfgadq);
 
                         if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
-                            merror("Unable to connect to the configuration assessment "
+                            merror("Unable to connect to the Security configuration assessment "
                                     "queue (disabled).");
                             agt->cfgadq = -1;
                         } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            merror("Error communicating with configuration assessment");
+                            merror("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }
                     }
                 } else {
                     if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
-                        merror("Unable to connect to the configuration assessment "
+                        merror("Unable to connect to the Security configuration assessment "
                             "queue (disabled).");
                         agt->cfgadq = -1;
                     } else {
                          if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            merror("Error communicating with configuration assessment");
+                            merror("Error communicating with Security configuration assessment");
                             close(agt->cfgadq);
                             agt->cfgadq = -1;
                         }

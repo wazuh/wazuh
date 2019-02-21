@@ -177,10 +177,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Exec queue */
 #define EXECQUEUE       "/queue/alerts/execq"
 
-/* Configuration assessment module queue */
+/* Security configuration assessment module queue */
 #define CFGAQUEUE       "/queue/alerts/cfgaq"
 
-/* Configuration assessment remoted queue */
+/* Security configuration assessment remoted queue */
 #define CFGARQUEUE       "/queue/alerts/cfgarq"
 
 /* Exec queue api*/
@@ -452,8 +452,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define CLOCK_LENGTH 256
 
-#define CONFIGURATION_ASSESSMENT_DIR   "/ruleset/configuration-assessment"
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR   "/ruleset/sca"
 
-#define CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset/configuration-assessment"
+#define SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN   "ruleset/sca"
 
 #endif /* __OS_HEADERS */

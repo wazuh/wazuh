@@ -1,4 +1,4 @@
-  <configuration-assessment>
+  <sca>
     <enabled>yes</enabled>
     <scan_on_start>yes</scan_on_start>
     <interval>12h</interval>
@@ -8,5 +8,5 @@
       <policy>system_audit_rcl.yml</policy>
       <policy>system_audit_ssh.yml</policy>
     </policies>
-  </configuration-assessment>
+  </sca>
   

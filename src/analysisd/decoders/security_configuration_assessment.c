@@ -8,7 +8,7 @@
 * Foundation.
 */
 
-/* Configuration assessment decoder */
+/* Security configuration assessment decoder */
 
 #include "config.h"
 #include "eventinfo.h"
@@ -44,29 +44,29 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequestDBThread();
-static int ConnectToConfigurationAssessmentSocket();
-static int ConnectToConfigurationAssessmentSocketRemoted();
-static OSDecoderInfo *configuration_assessment_json_dec = NULL;
+static int ConnectToSecurityConfigurationAssessmentSocket();
+static int ConnectToSecurityConfigurationAssessmentSocketRemoted();
+static OSDecoderInfo *sca_json_dec = NULL;
 
 static int cfga_socket;
 static int cfgar_socket;
 
 static w_queue_t * request_queue;
 
-void ConfigurationAssessmentInit()
+void SecurityConfigurationAssessmentInit()
 {
 
-    os_calloc(1, sizeof(OSDecoderInfo), configuration_assessment_json_dec);
-    configuration_assessment_json_dec->id = getDecoderfromlist(CONFIGURATION_ASSESSMENT_MOD);
-    configuration_assessment_json_dec->type = OSSEC_RL;
-    configuration_assessment_json_dec->name = CONFIGURATION_ASSESSMENT_MOD;
-    configuration_assessment_json_dec->fts = 0;
+    os_calloc(1, sizeof(OSDecoderInfo), sca_json_dec);
+    sca_json_dec->id = getDecoderfromlist(SECURITY_CONFIGURATION_ASSESSMENT_MOD);
+    sca_json_dec->type = OSSEC_RL;
+    sca_json_dec->name = SECURITY_CONFIGURATION_ASSESSMENT_MOD;
+    sca_json_dec->fts = 0;
 
     request_queue = queue_init(1024);
 
     w_create_thread(RequestDBThread,NULL);
 
-    mdebug1("ConfigurationAssessmentInit completed.");
+    mdebug1("SecurityConfigurationAssessmentInit completed.");
 }
 
 static void *RequestDBThread() {
@@ -87,7 +87,7 @@ static void *RequestDBThread() {
             }
 
             if(strcmp(agent_id,"000") == 0) {
-                if(ConnectToConfigurationAssessmentSocket() == 0){
+                if(ConnectToSecurityConfigurationAssessmentSocket() == 0){
                     if ((rc = OS_SendUnix(cfga_socket, dump_db_msg, 0)) < 0) {
                         /* Error on the socket */
                         if (rc == OS_SOCKTERR) {
@@ -103,7 +103,7 @@ static void *RequestDBThread() {
             } else {
                
                 /* Send to agent */
-                if(!ConnectToConfigurationAssessmentSocketRemoted()) {
+                if(!ConnectToSecurityConfigurationAssessmentSocketRemoted()) {
                     *dump_db_msg_original = ':';
 
                     if ((rc = OS_SendUnix(cfgar_socket, msg, 0)) < 0) {
@@ -127,7 +127,7 @@ end:
     return NULL;
 }
 
-static int ConnectToConfigurationAssessmentSocket() {
+static int ConnectToSecurityConfigurationAssessmentSocket() {
 
     if ((cfga_socket = StartMQ(CFGAQUEUE, WRITE)) < 0) {
         merror(QUEUE_ERROR, CFGAQUEUE, strerror(errno));
@@ -137,7 +137,7 @@ static int ConnectToConfigurationAssessmentSocket() {
     return 0;
 }
 
-static int ConnectToConfigurationAssessmentSocketRemoted() {
+static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
 
     if ((cfgar_socket = StartMQ(CFGARQUEUE, WRITE)) < 0) {
         merror(QUEUE_ERROR, CFGARQUEUE, strerror(errno));
@@ -147,12 +147,12 @@ static int ConnectToConfigurationAssessmentSocketRemoted() {
     return 0;
 }
 
-int DecodeConfigurationAssessment(Eventinfo *lf, int *socket)
+int DecodeSecurityConfigurationAssessment(Eventinfo *lf, int *socket)
 {
     int ret_val = 1;
     cJSON *json_event = NULL;
     cJSON *type = NULL;
-    lf->decoder_info = configuration_assessment_json_dec;
+    lf->decoder_info = sca_json_dec;
 
     if (json_event = cJSON_Parse(lf->log), !json_event)
     {
@@ -169,7 +169,7 @@ int DecodeConfigurationAssessment(Eventinfo *lf, int *socket)
 
             HandleCheckEvent(lf,socket,json_event);
             
-            lf->decoder_info = configuration_assessment_json_dec;
+            lf->decoder_info = sca_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -178,7 +178,7 @@ int DecodeConfigurationAssessment(Eventinfo *lf, int *socket)
         else if (strcmp(type->valuestring,"summary") == 0){
 
             HandleScanInfo(lf,socket,json_event);
-            lf->decoder_info = configuration_assessment_json_dec;
+            lf->decoder_info = sca_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -187,7 +187,7 @@ int DecodeConfigurationAssessment(Eventinfo *lf, int *socket)
 
             HandlePoliciesInfo(lf,socket,json_event);
 
-            lf->decoder_info = configuration_assessment_json_dec;
+            lf->decoder_info = sca_json_dec;
 
             cJSON_Delete(json_event);
             ret_val = 1;
@@ -215,7 +215,7 @@ int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response)
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query %d", lf->agent_id, pm_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query %d", lf->agent_id, pm_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -247,7 +247,7 @@ static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_re
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_scan %s", lf->agent_id, policy_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_scan %s", lf->agent_id, policy_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -280,7 +280,7 @@ static int FindCheckResults(Eventinfo *lf, int scan_id, int *socket,char *wdb_re
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_results %d", lf->agent_id, scan_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_results %d", lf->agent_id, scan_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -313,7 +313,7 @@ static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_policies ", lf->agent_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policies ", lf->agent_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -346,7 +346,7 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment query_policy %s", lf->agent_id, policy);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy %s", lf->agent_id, policy);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -376,7 +376,7 @@ static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment delete_policy %s", lf->agent_id, policy);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_policy %s", lf->agent_id, policy);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -406,7 +406,7 @@ static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment delete_check %s", lf->agent_id, policy);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check %s", lf->agent_id, policy);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -438,11 +438,11 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if (exists) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update %d|%s", lf->agent_id, id, result);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s", lf->agent_id, id, result);
     }
     else {
         char *json_event = cJSON_PrintUnformatted(event);
-        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert %s", lf->agent_id,json_event);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert %s", lf->agent_id,json_event);
         os_free(json_event);
     }
        
@@ -468,9 +468,9 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if(!update) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert_scan_info %d|%d|%d|%s|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,score,hash);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_scan_info %d|%d|%d|%s|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,score,hash);
     } else {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,score,hash );
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,score,hash );
     }
    
     if (pm_send_db(msg, response, socket) == 0)
@@ -493,7 +493,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert_policy %s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references);
    
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -514,7 +514,7 @@ static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, ch
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment insert_compliance %d|%s|%s",lf->agent_id, id_check,key,value );
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_compliance %d|%s|%s",lf->agent_id, id_check,key,value );
    
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -834,7 +834,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash->valuestring);
                 mdebug2("Requesting DB dump");
-                snprintf(request_db,OS_SIZE_4096,"%s:configuration-assessment-dump:%s",lf->agent_id,policy_id->valuestring);
+                snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s",lf->agent_id,policy_id->valuestring);
                 char *msg = NULL;
 
                 os_strdup(request_db,msg);
@@ -1077,11 +1077,11 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         } else if (scan_id->valuedouble) {
              sprintf(value, "%lf", scan_id->valuedouble);
         } 
-        fillData(lf, "configuration_assessment.scan_id", value);
+        fillData(lf, "sca.scan_id", value);
     }
 
     if(name) {
-        fillData(lf, "configuration_assessment.policy", name->valuestring);
+        fillData(lf, "sca.policy", name->valuestring);
     }
 
     if(id) {
@@ -1093,23 +1093,23 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
              sprintf(value, "%lf", id->valuedouble);
         } 
 
-        fillData(lf, "configuration_assessment.check.id", value);
+        fillData(lf, "sca.check.id", value);
     }
 
     if(title) {
-        fillData(lf, "configuration_assessment.check.title", title->valuestring);
+        fillData(lf, "sca.check.title", title->valuestring);
     }
 
     if(description) {
-        fillData(lf, "configuration_assessment.check.description", description->valuestring);
+        fillData(lf, "sca.check.description", description->valuestring);
     }
 
     if(rationale) {
-        fillData(lf, "configuration_assessment.check.rationale", rationale->valuestring);
+        fillData(lf, "sca.check.rationale", rationale->valuestring);
     }
 
     if(remediation) {
-        fillData(lf, "configuration_assessment.check.remediation", remediation->valuestring);
+        fillData(lf, "sca.check.remediation", remediation->valuestring);
     }
 
     if(compliance) {
@@ -1136,7 +1136,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
             }
 
             char compliance_key[OS_SIZE_1024];
-            snprintf(compliance_key,OS_SIZE_1024,"configuration_assessment.check.compliance.%s",key);
+            snprintf(compliance_key,OS_SIZE_1024,"sca.check.compliance.%s",key);
 
             if(value) {
                 fillData(lf, compliance_key, value);
@@ -1151,37 +1151,37 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 
     if(reference) {
-        fillData(lf, "configuration_assessment.check.references", reference->valuestring);
+        fillData(lf, "sca.check.references", reference->valuestring);
     }
 
     if(file){
-        fillData(lf, "configuration_assessment.check.file", file->valuestring);
+        fillData(lf, "sca.check.file", file->valuestring);
     }
 
     if(directory) {
-        fillData(lf, "configuration_assessment.check.directory", directory->valuestring);
+        fillData(lf, "sca.check.directory", directory->valuestring);
     }
 
     if(registry) {
-        fillData(lf, "configuration_assessment.check.registry", registry->valuestring);
+        fillData(lf, "sca.check.registry", registry->valuestring);
     }
 
     if(process){
-        fillData(lf, "configuration_assessment.check.process", process->valuestring);
+        fillData(lf, "sca.check.process", process->valuestring);
     }
 
     if(result) {
-        fillData(lf, "configuration_assessment.check.result", result->valuestring);
+        fillData(lf, "sca.check.result", result->valuestring);
     }
 
     if(old_result) {
-        fillData(lf, "configuration_assessment.check.previous_result", old_result);
+        fillData(lf, "sca.check.previous_result", old_result);
     }
 }
 
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id) {
     
-    fillData(lf, "configuration_assessment.type", "summary");
+    fillData(lf, "sca.type", "summary");
 
     if(scan_id) {
         char value[OS_SIZE_128];
@@ -1191,19 +1191,19 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } else if (scan_id->valuedouble) {
             sprintf(value, "%lf", scan_id->valuedouble);
         } 
-        fillData(lf, "configuration_assessment.scan_id", value);
+        fillData(lf, "sca.scan_id", value);
     }
 
     if(name) {
-        fillData(lf, "configuration_assessment.policy", name->valuestring);
+        fillData(lf, "sca.policy", name->valuestring);
     }
 
     if(description) {
-        fillData(lf, "configuration_assessment.description", description->valuestring);
+        fillData(lf, "sca.description", description->valuestring);
     }
 
     if(policy_id) {
-        fillData(lf, "configuration_assessment.policy_id", policy_id->valuestring);
+        fillData(lf, "sca.policy_id", policy_id->valuestring);
     }
 
     if(pass) {
@@ -1215,7 +1215,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", pass->valuedouble);
         } 
 
-        fillData(lf, "configuration_assessment.passed", value);
+        fillData(lf, "sca.passed", value);
     }
 
     if(failed) {
@@ -1227,7 +1227,7 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", failed->valuedouble);
         } 
 
-        fillData(lf, "configuration_assessment.failed", value);
+        fillData(lf, "sca.failed", value);
     }
 
     if(score) {
@@ -1239,11 +1239,11 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
             sprintf(value, "%lf", score->valuedouble);
         } 
 
-        fillData(lf, "configuration_assessment.score", value);
+        fillData(lf, "sca.score", value);
     }
 
     if(file){
-        fillData(lf, "configuration_assessment.file", file->valuestring);
+        fillData(lf, "sca.file", file->valuestring);
     }
 }
 
@@ -1254,7 +1254,7 @@ static int UpdateCheckScanId(Eventinfo *lf,int *socket,int scan_id_old,int scan_
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s configuration-assessment update_check_scan %d|%d|%s",lf->agent_id, scan_id_old,scan_id_new,policy_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_check_scan %d|%d|%s",lf->agent_id, scan_id_old,scan_id_new,policy_id);
     
     if (pm_send_db(msg, response, socket) == 0)
     {

@@ -234,10 +234,10 @@ InstallConfigurationAssessmentFiles()
         echo "Installing configuration assessment policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for file in $CONFIGURATION_ASSESSMENT_FILES; do
-            if [ -f "../etc/configuration-assessment/$file" ]; then
-                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/configuration-assessment/$file ${PREFIX}/ruleset/configuration-assessment
+            if [ -f "../etc/sca/$file" ]; then
+                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
             else
-                echo "ERROR: Configuration assessment policy not found: ./etc/configuration-assessment/$file"
+                echo "ERROR: Configuration assessment policy not found: ./etc/sca/$file"
             fi
         done
     fi
@@ -785,7 +785,7 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/configuration-assessment
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/sca
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles

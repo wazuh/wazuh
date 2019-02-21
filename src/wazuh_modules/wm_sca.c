@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Configuration Assessment
+ * Wazuh Module for Security Configuration Assessment
  * Copyright (C) 2015-2019, Wazuh Inc.
  * January 25, 2019.
  *
@@ -36,56 +36,56 @@ typedef struct cis_db_hash_info_t {
     cis_db_info_t **elem;
 } cis_db_hash_info_t;
 
-static void * wm_configuration_assessment_main(wm_configuration_assessment_t * data);   // Module main function. It won't return
-static void wm_configuration_assessment_destroy(wm_configuration_assessment_t * data);  // Destroy data
-static int wm_configuration_assessment_start(wm_configuration_assessment_t * data);  // Start
-static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
-static int wm_configuration_assessment_send_event_check(wm_configuration_assessment_t * data,cJSON *event);  // Send check event
-static void wm_configuration_assessment_read_files(wm_configuration_assessment_t * data);  // Read policy monitoring files
-static int wm_configuration_assessment_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_configuration_assessment_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index);  // Do scan
-static int wm_configuration_assessment_send_summary(wm_configuration_assessment_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
-static int wm_configuration_assessment_check_policy(cJSON *policy);
-static int wm_configuration_assessment_check_requirements(cJSON *requirements);
-static void wm_configuration_assessment_summary_increment_passed();
-static void wm_configuration_assessment_summary_increment_failed();
-static void wm_configuration_assessment_reset_summary();
-static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t * data,cJSON *json_alert); // Send alert
-static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
-static char *wm_configuration_assessment_hash_integrity(int policy_index);
-static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event);
-static void * wm_configuration_assessment_dump_db_thread(wm_configuration_assessment_t * data);
-static void wm_configuration_assessment_send_policies_scanned(wm_configuration_assessment_t * data);
+static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
+static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
+static int wm_sca_start(wm_sca_t * data);  // Start
+static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
+static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
+static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
+static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index);  // Do scan
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
+static int wm_sca_check_policy(cJSON *policy);
+static int wm_sca_check_requirements(cJSON *requirements);
+static void wm_sca_summary_increment_passed();
+static void wm_sca_summary_increment_failed();
+static void wm_sca_reset_summary();
+static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
+static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
+static char *wm_sca_hash_integrity(int policy_index);
+static void wm_sca_free_hash_data(cis_db_info_t *event);
+static void * wm_sca_dump_db_thread(wm_sca_t * data);
+static void wm_sca_send_policies_scanned(wm_sca_t * data);
 
 #ifndef WIN32
-static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data);
+static void * wm_sca_request_thread(wm_sca_t * data);
 #endif
 
 /* Extra functions */
-static int wm_configuration_assessment_get_vars(cJSON *variables,OSStore *vars);
-static void wm_configuration_assessment_set_condition(char *c_cond, int *condition); // Set condition
-static char * wm_configuration_assessment_get_value(char *buf, int *type); // Get value
-static char * wm_configuration_assessment_get_pattern(char *value); // Get pattern
-static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_configuration_assessment_t * data); // Check file
-static int wm_configuration_assessment_pt_check_negate(const char *pattern); // Check pattern negate
-static int wm_configuration_assessment_pt_matches(const char *str, char *pattern); // Check pattern match
-static int wm_configuration_assessment_check_dir(const char *dir, const char *file, char *pattern,wm_configuration_assessment_t * data); // Check dir
-static int wm_configuration_assessment_is_process(char *value, OSList *p_list,wm_configuration_assessment_t * data); // Check is a process
+static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
+static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
+static char * wm_sca_get_value(char *buf, int *type); // Get value
+static char * wm_sca_get_pattern(char *value); // Get pattern
+static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data); // Check file
+static int wm_sca_pt_check_negate(const char *pattern); // Check pattern negate
+static int wm_sca_pt_matches(const char *str, char *pattern); // Check pattern match
+static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_sca_t * data); // Check dir
+static int wm_sca_is_process(char *value, OSList *p_list,wm_sca_t * data); // Check is a process
 
 #ifdef WIN32
-static int wm_configuration_assessment_is_registry(char *entry_name, char *reg_option, char *reg_value);
-static char *wm_configuration_assessment_os_winreg_getkey(char *reg_entry);
-static int wm_configuration_assessment_open_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value);
-static int wm_configuration_assessment_winreg_querykey(HKEY hKey,__attribute__((unused))char *p_key,__attribute__((unused)) char *full_key_name,char *reg_option, char *reg_value);
-static char *wm_configuration_assessment_getrootdir(char *root_dir, int dir_size);
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value);
+static char *wm_sca_os_winreg_getkey(char *reg_entry);
+static int wm_sca_open_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value);
+static int wm_sca_winreg_querykey(HKEY hKey,__attribute__((unused))char *p_key,__attribute__((unused)) char *full_key_name,char *reg_option, char *reg_value);
+static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
 
-cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t * data);     // Read config
+cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
-const wm_context WM_CONFIGURATION_ASSESSMENT_CONTEXT = {
-    CA_WM_NAME,
-    (wm_routine)wm_configuration_assessment_main,
-    (wm_routine)wm_configuration_assessment_destroy,
-    (cJSON * (*)(const void *))wm_configuration_assessment_dump
+const wm_context WM_SECURITY_CONFIGURATION_ASSESSMENT_CONTEXT = {
+    SCA_WM_NAME,
+    (wm_routine)wm_sca_main,
+    (wm_routine)wm_sca_destroy,
+    (cJSON * (*)(const void *))wm_sca_dump
 };
 
 static unsigned int summary_passed = 0;
@@ -96,10 +96,10 @@ char **last_md5;
 cis_db_hash_info_t *cis_db_for_hash;
 
 static w_queue_t * request_queue;
-static wm_configuration_assessment_t * data_win;
+static wm_sca_t * data_win;
 
 // Module main function. It won't return
-void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
+void * wm_sca_main(wm_sca_t * data) {
     // If module is disabled, exit
     if (data->enabled) {
         minfo("Module started.");
@@ -122,7 +122,7 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
                 merror(LIST_ERROR);
                 return (0);
             }
-            OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_configuration_assessment_free_hash_data);
+            OSHash_SetFreeDataPointer(cis_db[i], (void (*)(void *))wm_sca_free_hash_data);
 
             /* DB for calculating hash only */
             os_realloc(cis_db_for_hash, (i + 2) * sizeof(cis_db_hash_info_t), cis_db_for_hash);
@@ -153,12 +153,12 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
     request_queue = queue_init(1024);
 
 #ifndef WIN32
-    w_create_thread(wm_configuration_assessment_request_thread, data);
-    w_create_thread(wm_configuration_assessment_dump_db_thread, data);
+    w_create_thread(wm_sca_request_thread, data);
+    w_create_thread(wm_sca_dump_db_thread, data);
 #else
     if (CreateThread(NULL,
                     0,
-                    (LPTHREAD_START_ROUTINE)wm_configuration_assessment_dump_db_thread,
+                    (LPTHREAD_START_ROUTINE)wm_sca_dump_db_thread,
                     data,
                     0,
                     NULL) == NULL) {
@@ -166,17 +166,17 @@ void * wm_configuration_assessment_main(wm_configuration_assessment_t * data) {
     }
 #endif
 
-    wm_configuration_assessment_start(data);
+    wm_sca_start(data);
 
     return NULL;
 }
 
-static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t * data,cJSON *json_alert)
+static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
 {
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending event: %s",msg);
 
-    if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
+    if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if(data->queue >= 0){
@@ -186,7 +186,7 @@ static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t 
         if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
-            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, CONFIGURATION_ASSESSMENT_MQ) < 0) {
+            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 close(data->queue);
             }
@@ -198,7 +198,7 @@ static int wm_configuration_assessment_send_alert(wm_configuration_assessment_t 
     return (0);
 }
 
-static void wm_configuration_assessment_send_policies_scanned(wm_configuration_assessment_t * data) {
+static void wm_sca_send_policies_scanned(wm_sca_t * data) {
     cJSON *policies_obj = cJSON_CreateObject();
     cJSON *policies = cJSON_CreateArray();
 
@@ -215,11 +215,11 @@ static void wm_configuration_assessment_send_policies_scanned(wm_configuration_a
     cJSON_AddItemToObject(policies_obj,"policies",policies);
 
     mdebug2("Sending scanned policies.");
-    wm_configuration_assessment_send_alert(data,policies_obj);
+    wm_sca_send_alert(data,policies_obj);
     cJSON_Delete(policies_obj);
 }
 
-static int wm_configuration_assessment_start(wm_configuration_assessment_t * data) {
+static int wm_sca_start(wm_sca_t * data) {
 
     int status = 0;
     time_t time_start = 0;
@@ -275,18 +275,18 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
         // Get time and execute
         time_start = time(NULL);
 
-        minfo("Starting Configuration Assessment scan.");
+        minfo("Starting Security Configuration Assessment scan.");
 
         /* Do scan for every policy file */
-        wm_configuration_assessment_read_files(data);
+        wm_sca_read_files(data);
 
         /* Send policies scanned for database purge on manager side */
-        wm_configuration_assessment_send_policies_scanned(data);
+        wm_sca_send_policies_scanned(data);
 
         wm_delay(1000); // Avoid infinite loop when execution fails
         time_sleep = time(NULL) - time_start;
 
-        minfo("Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
+        minfo("Security Configuration Assessment scan finished. Duration: %d seconds.", (int)time_sleep);
 
         if (data->scan_day) {
             int interval = 0, i = 0;
@@ -334,7 +334,7 @@ static int wm_configuration_assessment_start(wm_configuration_assessment_t * dat
     return 0;
 }
 
-static void wm_configuration_assessment_read_files(wm_configuration_assessment_t * data) {
+static void wm_sca_read_files(wm_sca_t * data) {
     FILE *fp;
     int i = 0;
 
@@ -357,7 +357,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
                 if (data->profile[i]->profile[1] == ':') {
                     sprintf(path,"%s", data->profile[i]->profile);
                 } else{
-                    sprintf(path,"%s\\%s",CONFIGURATION_ASSESSMENT_DIR_WIN, data->profile[i]->profile);
+                    sprintf(path,"%s\\%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, data->profile[i]->profile);
                 }
             }
 
@@ -365,13 +365,13 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             if(data->profile[i]->profile[0] == '/') {
                 sprintf(path,"%s", data->profile[i]->profile);
             } else {
-                sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
+                sprintf(path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
             }
 #else
             if(data->profile[i]->profile[0] == '/') {
                 sprintf(path,"%s", data->profile[i]->profile);
             } else {
-                sprintf(path,"%s/%s",DEFAULTDIR CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
+                sprintf(path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
             }
 #endif
             fp = fopen(path,"r");
@@ -404,12 +404,12 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemToArray(requirements_array, requirements);
 
-            if(wm_configuration_assessment_check_policy(policy)) {
+            if(wm_sca_check_policy(policy)) {
                 merror("Reading 'policy' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
-            if(requirements && wm_configuration_assessment_check_requirements(requirements)) {
+            if(requirements && wm_sca_check_requirements(requirements)) {
                 merror("Reading 'requirements' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
@@ -426,7 +426,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
             vars = OSStore_Create();
 
-            if( wm_configuration_assessment_get_vars(variables,vars) != 0 ){
+            if( wm_sca_get_vars(variables,vars) != 0 ){
                 merror("Reading 'variables' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
@@ -454,13 +454,14 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
             }
 
             if(requirements) {
-                if(wm_configuration_assessment_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
+                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
                     requirements_satisfied = 1;
                 }
             }
 
             if(!requirements_satisfied) {
-                mwarn("Requirements not satisfied for policy '%s'.",data->profile[i]->profile);
+                cJSON *title = cJSON_GetObjectItem(requirements,"title");
+                minfo("Skipping policy '%s': '%s'.",data->profile[i]->profile,title->valuestring);
             }
 
             if(requirements_satisfied) {
@@ -470,22 +471,22 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
 
                 minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
 
-                if (wm_configuration_assessment_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index) != 0) {
+                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
-                char * integrity_hash = wm_configuration_assessment_hash_integrity(cis_db_index);
+                char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
                 time_end = time(NULL);
 
                 /* Send summary */
                 if(integrity_hash) {
                     wm_delay(1000 * data->summary_delay);
-                    wm_configuration_assessment_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash);
+                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash);
                     snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
                     os_free(integrity_hash);
                 }
 
-                wm_configuration_assessment_reset_summary();
+                wm_sca_reset_summary();
             }
 
             w_del_plist(plist);
@@ -517,7 +518,7 @@ static void wm_configuration_assessment_read_files(wm_configuration_assessment_t
     }
 }
 
-static int wm_configuration_assessment_check_policy(cJSON *policy) {
+static int wm_sca_check_policy(cJSON *policy) {
     int retval;
     cJSON *id;
     cJSON *name;
@@ -578,7 +579,7 @@ static int wm_configuration_assessment_check_policy(cJSON *policy) {
     return retval;
 }
 
-static int wm_configuration_assessment_check_requirements(cJSON *requirements) {
+static int wm_sca_check_requirements(cJSON *requirements) {
     int retval;
     cJSON *title;
     cJSON *description;
@@ -627,7 +628,7 @@ static int wm_configuration_assessment_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_configuration_assessment_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index) {
+static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index) {
 
     int type = 0, condition = 0;
     char *nbuf;
@@ -648,7 +649,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
 #ifdef WIN32
     /* Get Windows rootdir */
-    wm_configuration_assessment_getrootdir(root_dir, sizeof(root_dir) - 1);
+    wm_sca_getrootdir(root_dir, sizeof(root_dir) - 1);
     if (root_dir[0] == '\0') {
         merror(INVALID_ROOTDIR);
     }
@@ -680,9 +681,9 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 ret_val = 1;
                 goto clean_return;
             }
-            wm_configuration_assessment_set_condition(c_condition->valuestring,&condition);
+            wm_sca_set_condition(c_condition->valuestring,&condition);
         } else {
-            wm_configuration_assessment_set_condition("invalid",&condition);
+            wm_sca_set_condition("invalid",&condition);
         }
 
         if (name == NULL || condition == WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_INV) {
@@ -714,7 +715,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 mdebug2("Rule is: %s",nbuf);
 
                 /* Get value to look for */
-                value = wm_configuration_assessment_get_value(nbuf, &type);
+                value = wm_sca_get_value(nbuf, &type);
                 if (value == NULL) {
                     mdebug1(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
@@ -731,7 +732,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     char *pattern = NULL;
                     char *f_value = NULL;
 
-                    pattern = wm_configuration_assessment_get_pattern(value);
+                    pattern = wm_sca_get_pattern(value);
                     f_value = value;
 
                     /* Get any variable */
@@ -762,7 +763,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
     #endif
 
                     mdebug2("Checking file: '%s'.", f_value);
-                    if (wm_configuration_assessment_check_file(f_value, pattern,data)) {
+                    if (wm_sca_check_file(f_value, pattern,data)) {
                         mdebug2("Found file.");
                         found = 1;
                     } else {
@@ -794,13 +795,13 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     /* Look for additional entries in the registry
                     * and a pattern to match.
                     */
-                    entry = wm_configuration_assessment_get_pattern(value);
+                    entry = wm_sca_get_pattern(value);
                     if (entry) {
-                        pattern = wm_configuration_assessment_get_pattern(entry);
+                        pattern = wm_sca_get_pattern(entry);
                     }
 
                     mdebug2("Checking registry: '%s'.", value);
-                    if (wm_configuration_assessment_is_registry(value, entry, pattern)) {
+                    if (wm_sca_is_registry(value, entry, pattern)) {
                         mdebug2("Found registry.");
                         int i = 0;
                         char _b_msg[OS_SIZE_1024 + 1];
@@ -844,13 +845,13 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     char *f_value = NULL;
                     char *dir = NULL;
 
-                    file = wm_configuration_assessment_get_pattern(value);
+                    file = wm_sca_get_pattern(value);
                     if (!file) {
                         merror(WM_CONFIGURATION_ASSESSMENT_MONITORING_INVALID_RKCL_VAR, value);
                         continue;
                     }
 
-                    pattern = wm_configuration_assessment_get_pattern(file);
+                    pattern = wm_sca_get_pattern(file);
 
                     /* Get any variable */
                     if (value[0] == '$') {
@@ -881,7 +882,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                         else {
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
 
-                            if (wm_configuration_assessment_check_dir(dir, file, pattern,data)) {
+                            if (wm_sca_check_dir(dir, file, pattern,data)) {
                                 mdebug2("Found dir.");
                                 found = 1;
                             }
@@ -922,7 +923,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 /* Check for a process */
                 else if (type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_PROCESS) {
                     mdebug2("Checking process: '%s'", value);
-                    if (wm_configuration_assessment_is_process(value, p_list,data)) {
+                    if (wm_sca_is_process(value, p_list,data)) {
                         mdebug2("Found process.");
                         found = 1;
                     }
@@ -974,12 +975,12 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                 while (1) {
                     if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_configuration_assessment_summary_increment_failed();
-                        cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,"failed");
+                        wm_sca_summary_increment_failed();
+                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
 
                         if(event){
-                            if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
-                                wm_configuration_assessment_send_event_check(data,event);
+                            if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                                wm_sca_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
                         } else {
@@ -1002,7 +1003,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                 }
 
                 if (requirements_scan == 1){
-                    wm_configuration_assessment_reset_summary();
+                    wm_sca_reset_summary();
                     goto clean_return;
                 }
             } else {
@@ -1011,12 +1012,12 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
 
                 while (1) {
                     if (((type == WM_CONFIGURATION_ASSESSMENT_MONITORING_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_configuration_assessment_summary_increment_passed();
-                        cJSON *event = wm_configuration_assessment_build_event(profile,policy,p_alert_msg,id,"passed");
+                        wm_sca_summary_increment_passed();
+                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
 
                         if(event){
-                            if(wm_configuration_assessment_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
-                                wm_configuration_assessment_send_event_check(data,event);
+                            if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                                wm_sca_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
                         } else {
@@ -1052,7 +1053,7 @@ static int wm_configuration_assessment_do_scan(OSList *p_list,cJSON *profile_che
                     goto clean_return;
                 }
                 if (requirements_scan == 1){
-                    wm_configuration_assessment_reset_summary();
+                    wm_sca_reset_summary();
                     goto clean_return;
                 }
             }
@@ -1076,7 +1077,7 @@ clean_return:
 
 }
 
-static void wm_configuration_assessment_set_condition(char *c_cond, int *condition) {
+static void wm_sca_set_condition(char *c_cond, int *condition) {
     /* Get condition */
     if (strcmp(c_cond, "all") == 0) {
         *condition |= WM_CONFIGURATION_ASSESSMENT_MONITORING_COND_ALL;
@@ -1095,7 +1096,7 @@ static void wm_configuration_assessment_set_condition(char *c_cond, int *conditi
     }
 }
 
-static int wm_configuration_assessment_get_vars(cJSON *variables,OSStore *vars) {
+static int wm_sca_get_vars(cJSON *variables,OSStore *vars) {
 
     cJSON *variable;
     cJSON_ArrayForEach(variable,variables){
@@ -1122,7 +1123,7 @@ static int wm_configuration_assessment_get_vars(cJSON *variables,OSStore *vars) 
     return 0;
 }
 
-static char *wm_configuration_assessment_get_value(char *buf, int *type)
+static char *wm_sca_get_value(char *buf, int *type)
 {
     char *tmp_str;
     char *value;
@@ -1166,7 +1167,7 @@ static char *wm_configuration_assessment_get_value(char *buf, int *type)
     return (value);
 }
 
-static char *wm_configuration_assessment_get_pattern(char *value)
+static char *wm_sca_get_pattern(char *value)
 {
     while (*value != '\0') {
         if ((*value == ' ') && (value[1] == '-') &&
@@ -1182,7 +1183,7 @@ static char *wm_configuration_assessment_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_configuration_assessment_t * data)
+static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
 {
     char *split_file;
     int full_negate = 0;
@@ -1229,7 +1230,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
                 return (1);
             }
         } else {
-            full_negate = wm_configuration_assessment_pt_check_negate(pattern);
+            full_negate = wm_sca_pt_check_negate(pattern);
             /* Check for content in the file */
             fp = fopen(file, "r");
             if (fp) {
@@ -1251,7 +1252,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
                     }
 #endif
                     /* Matched */
-                    pt_result = wm_configuration_assessment_pt_matches(buf, pattern);
+                    pt_result = wm_sca_pt_matches(buf, pattern);
                     if ((pt_result == 1 && full_negate == 0) ) {
                         mdebug2("Alerting file %s on line %s", file, buf);
                         int i = 0;
@@ -1335,7 +1336,7 @@ static int wm_configuration_assessment_check_file(char *file, char *pattern,wm_c
 }
 
 /* Check if the pattern is all negate values */
-static int wm_configuration_assessment_pt_check_negate(const char *pattern)
+static int wm_sca_pt_check_negate(const char *pattern)
 {
     char *mypattern = NULL;
     os_strdup(pattern, mypattern);
@@ -1365,7 +1366,7 @@ static int wm_configuration_assessment_pt_check_negate(const char *pattern)
     return (1);
 }
 
-static int wm_configuration_assessment_pt_matches(const char *str, char *pattern)
+static int wm_sca_pt_matches(const char *str, char *pattern)
 {
     int neg = 0;
     int ret_code = 0;
@@ -1468,7 +1469,7 @@ static int wm_configuration_assessment_pt_matches(const char *str, char *pattern
     return (ret_code);
 }
 
-static int wm_configuration_assessment_check_dir(const char *dir, const char *file, char *pattern,wm_configuration_assessment_t * data)
+static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_sca_t * data)
 {
     int ret_code = 0;
     char f_name[PATH_MAX + 2];
@@ -1496,14 +1497,14 @@ static int wm_configuration_assessment_check_dir(const char *dir, const char *fi
         /* Check if the read entry matches the provided file name */
         if (strncasecmp(file, "r:", 2) == 0) {
             if (OS_Regex(file + 2, entry->d_name)) {
-                if (wm_configuration_assessment_check_file(f_name, pattern,data)) {
+                if (wm_sca_check_file(f_name, pattern,data)) {
                     ret_code = 1;
                 }
             }
         } else {
             /* ... otherwise try without regex */
             if (OS_Match2(file, entry->d_name)) {
-                if (wm_configuration_assessment_check_file(f_name, pattern,data)) {
+                if (wm_sca_check_file(f_name, pattern,data)) {
                     ret_code = 1;
                 }
             }
@@ -1512,7 +1513,7 @@ static int wm_configuration_assessment_check_dir(const char *dir, const char *fi
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
             if (S_ISDIR(statbuf_local.st_mode)) {
-                if (wm_configuration_assessment_check_dir(f_name, file, pattern,data)) {
+                if (wm_sca_check_dir(f_name, file, pattern,data)) {
                     ret_code = 1;
                 }
             }
@@ -1525,7 +1526,7 @@ static int wm_configuration_assessment_check_dir(const char *dir, const char *fi
 }
 
 /* Check if a process is running */
-static int wm_configuration_assessment_is_process(char *value, OSList *p_list,wm_configuration_assessment_t * data)
+static int wm_sca_is_process(char *value, OSList *p_list,wm_sca_t * data)
 {
     OSListNode *l_node;
     if (p_list == NULL) {
@@ -1542,7 +1543,7 @@ static int wm_configuration_assessment_is_process(char *value, OSList *p_list,wm
         pinfo = (W_Proc_Info *)l_node->data;
 
         /* Check if value matches */
-        if (wm_configuration_assessment_pt_matches(pinfo->p_path, value)) {
+        if (wm_sca_pt_matches(pinfo->p_path, value)) {
             int i = 0;
             char _b_msg[OS_SIZE_1024 + 1];
 
@@ -1574,23 +1575,23 @@ static int wm_configuration_assessment_is_process(char *value, OSList *p_list,wm
 }
 
 // Destroy data
-void wm_configuration_assessment_destroy(wm_configuration_assessment_t * data) {
+void wm_sca_destroy(wm_sca_t * data) {
     os_free(data);
 }
 
 #ifdef WIN32
-static int wm_configuration_assessment_is_registry(char *entry_name, char *reg_option, char *reg_value) {
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value) {
     char *rk;
 
-    rk = wm_configuration_assessment_os_winreg_getkey(entry_name);
-    if (wm_configuration_assessment_sub_tree == NULL || rk == NULL) {
+    rk = wm_sca_os_winreg_getkey(entry_name);
+    if (wm_sca_sub_tree == NULL || rk == NULL) {
         merror(SK_INV_REG, entry_name);
         return (0);
     }
 
-    return wm_configuration_assessment_open_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value) || wm_configuration_assessment_open_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value);
+    return wm_sca_open_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value) || wm_sca_open_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value);
 }
-static char *wm_configuration_assessment_os_winreg_getkey(char *reg_entry)
+static char *wm_sca_os_winreg_getkey(char *reg_entry)
 {
     char *ret = NULL;
     char *tmp_str;
@@ -1605,19 +1606,19 @@ static char *wm_configuration_assessment_os_winreg_getkey(char *reg_entry)
     /* Set sub tree */
     if ((strcmp(reg_entry, "HKEY_LOCAL_MACHINE") == 0) ||
             (strcmp(reg_entry, "HKLM") == 0)) {
-        wm_configuration_assessment_sub_tree = HKEY_LOCAL_MACHINE;
+        wm_sca_sub_tree = HKEY_LOCAL_MACHINE;
     } else if (strcmp(reg_entry, "HKEY_CLASSES_ROOT") == 0) {
-        wm_configuration_assessment_sub_tree = HKEY_CLASSES_ROOT;
+        wm_sca_sub_tree = HKEY_CLASSES_ROOT;
     } else if (strcmp(reg_entry, "HKEY_CURRENT_CONFIG") == 0) {
-        wm_configuration_assessment_sub_tree = HKEY_CURRENT_CONFIG;
+        wm_sca_sub_tree = HKEY_CURRENT_CONFIG;
     } else if (strcmp(reg_entry, "HKEY_USERS") == 0) {
-        wm_configuration_assessment_sub_tree = HKEY_USERS;
+        wm_sca_sub_tree = HKEY_USERS;
     } else if ((strcmp(reg_entry, "HKCU") == 0) ||
                (strcmp(reg_entry, "HKEY_CURRENT_USER") == 0)) {
-        wm_configuration_assessment_sub_tree = HKEY_CURRENT_USER;
+        wm_sca_sub_tree = HKEY_CURRENT_USER;
     } else {
         /* Set sub tree to null */
-        wm_configuration_assessment_sub_tree = NULL;
+        wm_sca_sub_tree = NULL;
 
         /* Return tmp_str to the previous value */
         if (tmp_str && (*tmp_str == '\0')) {
@@ -1639,19 +1640,19 @@ static char *wm_configuration_assessment_os_winreg_getkey(char *reg_entry)
     return (ret);
 }
 
-static int wm_configuration_assessment_open_key(char *subkey, char *full_key_name, unsigned long arch,
+static int wm_sca_open_key(char *subkey, char *full_key_name, unsigned long arch,
                          char *reg_option, char *reg_value)
 {
     int ret = 1;
     HKEY oshkey;
 
-    if (RegOpenKeyEx(wm_configuration_assessment_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
+    if (RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
         return (0);
     }
 
     /* If option is set, return the value of query key */
     if (reg_option) {
-        ret = wm_configuration_assessment_winreg_querykey(oshkey, subkey, full_key_name,
+        ret = wm_sca_winreg_querykey(oshkey, subkey, full_key_name,
                                    reg_option, reg_value);
     }
 
@@ -1659,7 +1660,7 @@ static int wm_configuration_assessment_open_key(char *subkey, char *full_key_nam
     return (ret);
 }
 
-static int wm_configuration_assessment_winreg_querykey(HKEY hKey,
+static int wm_sca_winreg_querykey(HKEY hKey,
         __attribute__((unused))char *p_key,
         __attribute__((unused)) char *full_key_name,
                          char *reg_option, char *reg_value)
@@ -1791,7 +1792,7 @@ static int wm_configuration_assessment_winreg_querykey(HKEY hKey,
             }
 
             /* Check if value matches */
-            if (wm_configuration_assessment_pt_matches(var_storage, reg_value)) {
+            if (wm_sca_pt_matches(var_storage, reg_value)) {
                 return (1);
             }
 
@@ -1802,7 +1803,7 @@ static int wm_configuration_assessment_winreg_querykey(HKEY hKey,
     return (0);
 }
 
-static char *wm_configuration_assessment_getrootdir(char *root_dir, int dir_size)
+static char *wm_sca_getrootdir(char *root_dir, int dir_size)
 {
     char final_file[2048 + 1];
     char *tmp;
@@ -1823,7 +1824,7 @@ static char *wm_configuration_assessment_getrootdir(char *root_dir, int dir_size
 }
 #endif
 
-static int wm_configuration_assessment_send_summary(wm_configuration_assessment_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash) {
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
@@ -1877,20 +1878,20 @@ static int wm_configuration_assessment_send_summary(wm_configuration_assessment_
     }
 
     mdebug1("Sending summary event for file: '%s", file->valuestring);
-    wm_configuration_assessment_send_alert(data,json_summary);
+    wm_sca_send_alert(data,json_summary);
     cJSON_Delete(json_summary);
 
     return 0;
 }
 
-static int wm_configuration_assessment_send_event_check(wm_configuration_assessment_t * data,cJSON *event) {
+static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event) {
 
-    wm_configuration_assessment_send_alert(data,event);
+    wm_sca_send_alert(data,event);
 
     return 0;
 }
 
-static cJSON *wm_configuration_assessment_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result) {
+static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result) {
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -2086,7 +2087,7 @@ error:
     return NULL;
 }
 
-static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event, int check_index,int policy_index) {
+static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event, int check_index,int policy_index) {
     cis_db_info_t *hashed_result = NULL;
     char id_hashed[OS_SIZE_128];
     int ret_add = 0;
@@ -2161,7 +2162,7 @@ static int wm_configuration_assessment_check_hash(OSHash *cis_db_hash,char *resu
     }
 }
 
-static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event) {
+static void wm_sca_free_hash_data(cis_db_info_t *event) {
 
     if(event) {
         if(event->result){
@@ -2175,7 +2176,7 @@ static void wm_configuration_assessment_free_hash_data(cis_db_info_t *event) {
     }
 }
 
-static char *wm_configuration_assessment_hash_integrity(int policy_index) {
+static char *wm_sca_hash_integrity(int policy_index) {
     os_md5 md5_hash;
     char *str = NULL;
 
@@ -2198,7 +2199,7 @@ static char *wm_configuration_assessment_hash_integrity(int policy_index) {
     return NULL;
 }
 
-static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessment_t * data) {
+static void *wm_sca_dump_db_thread(wm_sca_t * data) {
     int i;
 
     while(1) {
@@ -2241,7 +2242,7 @@ static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessm
                     if(event->event){
                         cJSON *db_obj;
                         db_obj = event->event;
-                        wm_configuration_assessment_send_event_check(data,db_obj);
+                        wm_sca_send_event_check(data,db_obj);
                     }
                 }
             }
@@ -2255,7 +2256,7 @@ static void *wm_configuration_assessment_dump_db_thread(wm_configuration_assessm
 }
 
 #ifdef WIN32
-void wm_configuration_assessment_push_request_win(char * msg){
+void wm_sca_push_request_win(char * msg){
     char *db = strchr(msg,':');
 
     if(!strncmp(msg,WM_CONFIGURATION_ASSESSMENT_DB_DUMP,strlen(WM_CONFIGURATION_ASSESSMENT_DB_DUMP)) && db) {
@@ -2296,7 +2297,7 @@ void wm_configuration_assessment_push_request_win(char * msg){
 #endif
 
 #ifndef WIN32
-static void * wm_configuration_assessment_request_thread(wm_configuration_assessment_t * data) {
+static void * wm_sca_request_thread(wm_sca_t * data) {
 
     /* Create request socket */
     int cfga_queue;
@@ -2354,20 +2355,20 @@ static void * wm_configuration_assessment_request_thread(wm_configuration_assess
     return NULL;
 }
 #endif
-static void wm_configuration_assessment_summary_increment_passed() {
+static void wm_sca_summary_increment_passed() {
     summary_passed++;
 }
 
-static void wm_configuration_assessment_summary_increment_failed() {
+static void wm_sca_summary_increment_failed() {
     summary_failed++;
 }
 
-static void wm_configuration_assessment_reset_summary() {
+static void wm_sca_reset_summary() {
     summary_failed = 0;
     summary_passed = 0;
 }
 
-cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *data) {
+cJSON *wm_sca_dump(const wm_sca_t *data) {
     cJSON *root = cJSON_CreateObject();
     cJSON *wm_wd = cJSON_CreateObject();
 
@@ -2415,7 +2416,7 @@ cJSON *wm_configuration_assessment_dump(const wm_configuration_assessment_t *dat
         cJSON_AddItemToObject(wm_wd,"policies",profiles);
     }
 
-    cJSON_AddItemToObject(root,"configuration-assessment",wm_wd);
+    cJSON_AddItemToObject(root,"sca",wm_wd);
 
 
     return root;

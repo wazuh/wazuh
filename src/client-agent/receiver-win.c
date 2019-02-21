@@ -15,7 +15,7 @@
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_configuration_assessment.h"
+#include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
