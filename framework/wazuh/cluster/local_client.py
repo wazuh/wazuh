@@ -122,4 +122,5 @@ async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> str:
 async def send_file(path: str, node_name: str = None) -> str:
     lc = LocalClient(b'send_file', "{} {}".format(path, node_name).encode(), False)
     await lc.start()
-    return await lc.send_api_request()
+    return (await lc.send_api_request()).encode()
+

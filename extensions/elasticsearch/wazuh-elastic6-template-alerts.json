@@ -1,6 +1,8 @@
 {
   "order": 0,
-  "index_patterns": ["wazuh-alerts-3.x-*"],
+  "index_patterns": [
+    "wazuh-alerts-3.x-*"
+  ],
   "settings": {
     "index.refresh_interval": "5s",
     "index.number_of_shards": "3",
@@ -652,8 +654,8 @@
                           "doc_values": "true"
                         },
                         "geoLocation": {
-                            "type": "geo_point",
-                            "doc_values": "true"
+                          "type": "geo_point",
+                          "doc_values": "true"
                         }
                       }
                     }
@@ -785,7 +787,7 @@
                 }
               }
             },
-            "os":{
+            "os": {
               "properties": {
                 "hostname": {
                   "type": "keyword",
@@ -1086,6 +1088,114 @@
                 "processor": {
                   "type": "long",
                   "doc_values": "true"
+                }
+              }
+            },
+            "configuration_assessment": {
+              "properties": {
+                "type": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan_id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "policy": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "file": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "description": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "passed": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "failed": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "score": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "check": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "title": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "description": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "rationale": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "remediation": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "compliance": {
+                      "properties": {
+                        "cis": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "cis_csc": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "pci_dss": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        }
+                      }
+                    },
+                    "references": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "file": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "directory": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "registry": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "process": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "previous_result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
                 }
               }
             }

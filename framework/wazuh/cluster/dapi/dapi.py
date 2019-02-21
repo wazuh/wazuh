@@ -150,7 +150,7 @@ class DistributedAPI:
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
         res = await self.node.send_file(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']), node_name)
         os.remove(os.path.join(common.ossec_path, self.input_json['arguments']['tmp_file']))
-        if res.startswith('Error'):
+        if res.startswith(b'Error'):
             return self.print_json(data=res.decode(), error=1000)
 
     async def execute_remote_request(self) -> str:

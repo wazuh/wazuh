@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "3.9.0"
-!define REVISION "3901"
+!define REVISION "3904"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -176,6 +176,8 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
+    CreateDirectory "$INSTDIR\ruleset\"
+    CreateDirectory "$INSTDIR\ruleset\configuration-assessment"
 
     ; install files
     File ossec-agent.exe
@@ -210,6 +212,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
+    File /oname=ruleset\configuration-assessment\win_audit_rcl.yml ../../etc/configuration-assessment/windows/win_audit_rcl.yml
     File VERSION
     File REVISION
 
@@ -485,6 +488,7 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
+    Delete "$INSTDIR\ruleset\configuration-assessment\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -506,6 +510,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
+    RMDir "$INSTDIR\ruleset"
     RMDir "$INSTDIR"
 SectionEnd
 

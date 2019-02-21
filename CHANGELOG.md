@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- New module to perform **Configuration Assessment** scans. ([#2598](https://github.com/wazuh/wazuh/pull/2598))
 - Collect network and port inventory for Windows XP/Server 2003. ([#2464](https://github.com/wazuh/wazuh/pull/2464))
 - Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
 - Added an option _startup_healthcheck_ in FIM so that the the who-data health-check is optional. ([#2323](https://github.com/wazuh/wazuh/pull/2323))
+- The real agent IP is reported by the agent and shown in alerts and the App interface. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
+- Added support for organizations in AWS wodle ([#2627](https://github.com/wazuh/wazuh/pull/2627))
 
 ### Changed
 
@@ -15,6 +18,9 @@ All notable changes to this project will be documented in this file.
 - Let _agent_auth_ warn when it receives extra input arguments. ([#2489](https://github.com/wazuh/wazuh/pull/2489))
 - Update the who-data related SELinux rules for Audit 3.0. This lets who-data work on Fedora 29. ([#2419](https://github.com/wazuh/wazuh/pull/2419))
 - Changed data source for network interface's MAC address in Syscollector so that it will be able to get bonded interfaces' MAC. ([#2550](https://github.com/wazuh/wazuh/pull/2550))
+- Now labels starting with `_` are reserved for internal use. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
+- Now AWS wodle fetches aws.requestParameters.disableApiTermination with an unified format ([#2614](https://github.com/wazuh/wazuh/pull/2614))
+- Improved overall performance in cluster ([#2575](https://github.com/wazuh/wazuh/pull/2575))
 
 ### Fixed
 
@@ -29,7 +35,13 @@ All notable changes to this project will be documented in this file.
   - Buffer overlay when getting OS information.
   - Check for successfully memory allocation in Syscollector.
 - Fix out-of-memory error in Remoted when upgrading an agent with a big data chunk. ([#2594](https://github.com/wazuh/wazuh/pull/2594))
-
+- Re-registered agent are reassigned to correct groups when the multigroup is empty. ([#2440](https://github.com/wazuh/wazuh/pull/2440))
+- Wazuh manager starts regardless of the contents of _local_decoder.xml_. ([#2465](https://github.com/wazuh/wazuh/pull/2465))
+- Let _Remoted_ wait for download module availability. ([#2517](https://github.com/wazuh/wazuh/pull/2517))
+- Fix duplicated field names at some events for Windows eventchannel. ([#2500](https://github.com/wazuh/wazuh/pull/2500))
+- Delete empty fields from Windows eventchannel alerts. ([#2492](https://github.com/wazuh/wazuh/pull/2492))
+- Fixed memory leak and crash in Vulnerability Detector. ([#2620](https://github.com/wazuh/wazuh/pull/2620))
+- Prevent Analysisd from crashing when receiving an invalid Syscollector event. ([#2621](https://github.com/wazuh/wazuh/pull/2621))
 
 ## [v3.8.2]
 

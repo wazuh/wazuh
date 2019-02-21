@@ -286,6 +286,13 @@
                             <File Id="WIN_MALWARE_RCL.TXT" Name="win_malware_rcl.txt" Source="..\rootcheck\db\win_malware_rcl.txt" />
                         </Component>
                     </Directory>
+                    <Directory Id="RULESET" Name="ruleset">
+                      <Directory Id="CONFIGURATION_ASSESSMENT" Name="configuration-assessment">
+                        <Component Id="WIN_AUDIT_RCL.YML" DiskId="1" Guid="1164b8aa-1968-48d3-baeb-68e6e0bfdbd8">
+                          <File Id="WIN_AUDIT_RCL.YML" Name="win_audit_rcl.yml" Source="..\..\etc\configuration-assessment\windows\win_audit_rcl.yml" />
+                        </Component>
+                      </Directory>
+                    </Directory>
                     <Directory Id="TMP" Name="tmp" />
                     <Directory Id="QUEUE" Name="queue">
                         <Directory Id="DIFF" Name="diff" />
@@ -336,6 +343,20 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_diff" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_diff_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="RULESET">
+            <Component Id="CMP_RULESET" Guid="0380073e-eeb0-4e82-99bd-a108949900dd" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_ruleset" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_ruleset_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="CONFIGURATION_ASSESSMENT">
+            <Component Id="CMP_CONFIGURATION_ASSESSMENT" Guid="e99089df-d143-4911-bfe4-c10a469bc0d8" KeyPath="yes">
+                <CreateFolder />
+                <RemoveFile Id="purgue_configuration_assessment" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_configuration_assessment_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="BOOKMARKS">
@@ -424,6 +445,9 @@
             <ComponentRef Id="CMP_TMP" />
             <ComponentRef Id="CMP_QUEUE" />
             <ComponentRef Id="CMP_DIFF" />
+            <ComponentRef Id="CMP_RULESET" />
+            <ComponentRef Id="CMP_CONFIGURATION_ASSESSMENT" />
+            <ComponentRef Id="WIN_AUDIT_RCL.YML" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
             <ComponentRef Id="CMP_WODLES" />

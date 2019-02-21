@@ -44,6 +44,9 @@ class LocalServerHandler(server.AbstractServerHandler):
     def get_config(self) -> Tuple[bytes, bytes]:
         return b'ok', json.dumps(self.server.configuration).encode()
 
+    def get_node(self):
+        return self.server.node.get_node()
+
     def get_nodes(self, filter_nodes) -> Tuple[bytes, bytes]:
         raise NotImplementedError
 
@@ -146,7 +149,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
             api_call_name = json.loads(data.decode())['function']
             if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
                 if self.server.node.client is None:
-                    return b'err', b'Worker is not connected to the master node'
+                    raise WazuhException(3023)
                 asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
                 return b'ok', b'Added request to API requests queue'
             else:
@@ -162,7 +165,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
     def send_request_to_master(self, command: bytes, arguments: bytes):
         if self.server.node.client is None:
-            return b'err', b'Worker is not connected to the master node'
+            raise WazuhException(3023)
         else:
             request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
             request.add_done_callback(functools.partial(self.get_api_response, command))
@@ -180,7 +183,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
     def send_file_request(self, path, node_name):
         if self.server.node.client is None:
-            raise WazuhException(3022)
+            raise WazuhException(3023)
         else:
             req = asyncio.create_task(self.server.node.client.send_file(path))
             req.add_done_callback(self.get_send_file_response)
