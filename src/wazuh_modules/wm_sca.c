@@ -145,12 +145,16 @@ void * wm_sca_main(wm_sca_t * data) {
         }
     }
 
+#ifndef WIN32
+
     for (i = 0; (data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0 && i < WM_MAX_ATTEMPTS; i++)
         wm_delay(1000 * WM_MAX_WAIT);
 
     if (i == WM_MAX_ATTEMPTS) {
         merror("Can't connect to queue.");
     }
+
+#endif
 
     request_queue = queue_init(1024);
 
@@ -175,10 +179,17 @@ void * wm_sca_main(wm_sca_t * data) {
 
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
 {
+
+#ifdef WIN32
+    int queue_fd = 0;
+#else
+    int queue_fd = data->queue;
+#endif
+
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending event: %s",msg);
 
-    if (wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
+    if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_CONFIGURATION_ASSESSMENT_MONITORING_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if(data->queue >= 0){
