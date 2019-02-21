@@ -16,40 +16,40 @@ from wazuh.wdb import WazuhDBConnection
 
 
 # API field -> DB field
-fields_translation_ca = {'policy_id': 'policy_id',
-                         'name': 'name',
-                         'description': 'description',
-                         'references': '`references`',
-                         'pass': 'pass',
-                         'fail': 'fail',
-                         'score': 'score',
-                         'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch')) as end_scan",
-                         'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch')) as start_scan"
-                         }
-fields_translation_ca_check = {'policy_id': 'policy_id',
-                               'id': 'id',
-                               'title': 'title',
-                               'description': 'description',
-                               'rationale': 'rationale',
-                               'remediation': 'remediation',
-                               'file': 'file',
-                               'process': 'process',
-                               'directory': 'directory',
-                               'registry': 'registry',
-                               'references': '`references`',
-                               'result': 'result'}
-fields_translation_ca_check_compliance = {'key': 'key',
-                                          'value': 'value'}
+fields_translation_sca = {'policy_id': 'policy_id',
+                          'name': 'name',
+                          'description': 'description',
+                          'references': '`references`',
+                          'pass': 'pass',
+                          'fail': 'fail',
+                          'score': 'score',
+                          'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch')) as end_scan",
+                          'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch')) as start_scan"
+                          }
+fields_translation_sca_check = {'policy_id': 'policy_id',
+                                'id': 'id',
+                                'title': 'title',
+                                'description': 'description',
+                                'rationale': 'rationale',
+                                'remediation': 'remediation',
+                                'file': 'file',
+                                'process': 'process',
+                                'directory': 'directory',
+                                'registry': 'registry',
+                                'references': '`references`',
+                                'result': 'result'}
+fields_translation_sca_check_compliance = {'key': 'key',
+                                           'value': 'value'}
 
-default_query_ca = 'SELECT {0} FROM configuration_assessment_policy ca INNER JOIN configuration_assessment_scan_info si ON ca.id=si.policy_id'
-default_query_ca_check = 'SELECT {0} FROM configuration_assessment_check LEFT JOIN configuration_assessment_check_compliance ON id=id_check'
+default_query_sca = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
+default_query_sca_check = 'SELECT {0} FROM sca_check LEFT JOIN sca_check_compliance ON id=id_check'
 
 
-class WazuhDBQueryPM(WazuhDBQuery):
+class WazuhDBQuerySCA(WazuhDBQuery):
 
     def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
-                 get_data, default_sort_field='policy_id', filters={}, fields=fields_translation_ca,
-                 default_query=default_query_ca, count_field='policy_id'):
+                 get_data, default_sort_field='policy_id', filters={}, fields=fields_translation_sca,
+                 default_query=default_query_sca, count_field='policy_id'):
         self.agent_id = agent_id
         self._default_query_str = default_query
         self.count_field = count_field
@@ -58,7 +58,7 @@ class WazuhDBQueryPM(WazuhDBQuery):
         if not db_path:
             raise WazuhException(1600)
 
-        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='configuration_assessment_policy', sort=sort,
+        WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
                               search=search, select=select, fields=fields, default_sort_field=default_sort_field,
                               default_sort_order='DESC', filters=filters, query=query, db_path=db_path[0],
                               min_select_fields=set(), count=count, get_data=get_data,
@@ -114,8 +114,8 @@ class WazuhDBQueryPM(WazuhDBQuery):
             return self._format_data_into_dictionary()
 
 
-def get_ca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
-                sort=None, search=None, select=None, filters={}):
+def get_sca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
+                 sort=None, search=None, select=None, filters={}):
     """
     Gets a list of policies analized in the configuration assessment
     :param agent_id: agent id to get policies from
@@ -130,15 +130,15 @@ def get_ca_list(agent_id=None, q="", offset=0, limit=common.database_limit,
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     if select is None:
-        select = {'fields': list(fields_translation_ca.keys())}
+        select = {'fields': list(fields_translation_sca.keys())}
 
-    db_query = WazuhDBQueryPM(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                              select=select, count=True, get_data=True, query=q, filters=filters)
+    db_query = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
+                               select=select, count=True, get_data=True, query=q, filters=filters)
     return db_query.run()
 
 
-def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.database_limit,
-                  sort=None, search=None, select=None, filters={}):
+def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.database_limit,
+                   sort=None, search=None, select=None, filters={}):
     """
     Gets a list of checks analized for a policy
     :param policy_id: policy id to get the checks from
@@ -153,19 +153,19 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
 
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    fields_translation = {**fields_translation_ca_check,
-                          **fields_translation_ca_check_compliance}
+    fields_translation = {**fields_translation_sca_check,
+                          **fields_translation_sca_check_compliance}
 
-    full_select = {'fields': (list(fields_translation_ca_check.keys()) +
-                              list(fields_translation_ca_check_compliance.keys())
+    full_select = {'fields': (list(fields_translation_sca_check.keys()) +
+                              list(fields_translation_sca_check_compliance.keys())
                               )
                    }
 
-    db_query = WazuhDBQueryPM(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
-                              select=full_select, count=True, get_data=True,
-                              query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
-                              filters=filters, default_query=default_query_ca_check, default_sort_field='policy_id',
-                              fields=fields_translation, count_field='id')
+    db_query = WazuhDBQuerySCA(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
+                               select=full_select, count=True, get_data=True,
+                               query=f"policy_id={policy_id}" if q == "" else f"policy_id={policy_id};{q}",
+                               filters=filters, default_query=default_query_sca_check, default_sort_field='policy_id',
+                               fields=fields_translation, count_field='id')
 
     result_dict = db_query.run()
 
@@ -177,8 +177,8 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
     groups = groupby(checks, key=lambda row: row['id'])
     result = []
     select_fields = full_select['fields'] if select is None else select['fields']
-    select_fields = set([fields_translation_ca_check[field] if field != 'compliance' else 'compliance'
-                         for field in select_fields if field in fields_translation_ca_check])
+    select_fields = set([fields_translation_sca_check[field] if field != 'compliance' else 'compliance'
+                         for field in select_fields if field in fields_translation_sca_check])
     # Rearrange check and compliance fields
     for _, group in groups:
         group_list = list(group)
@@ -188,7 +188,7 @@ def get_ca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databas
         if select is None or 'compliance' in select['fields']:
             check_dict['compliance'] = list(filter(lambda x: x != {},
                                                    ({k: v for k, v in elem.items()
-                                                     if k in fields_translation_ca_check_compliance.values()}
+                                                     if k in fields_translation_sca_check_compliance.values()}
                                                     for elem in group_list
                                                     )
                                                    )

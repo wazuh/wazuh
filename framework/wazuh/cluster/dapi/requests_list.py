@@ -9,7 +9,7 @@ from wazuh.decoder import Decoder
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
-import wazuh.configuration_assessment as configuration_assessment
+import wazuh.security_configuration_assessment as sca
 import wazuh.manager as manager
 import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
@@ -442,14 +442,14 @@ functions = {
         'is_async': False
     },
 
-    # Configuration assessment
-    '/configuration-assessment/:agent_id': {
-        'function': configuration_assessment.get_ca_list,
+    # Security configuration assessment
+    '/sca/:agent_id': {
+        'function': sca.get_sca_list,
         'type': 'distributed_master',
         'is_async': False
     },
-    '/configuration-assessment/:agent_id/checks/:policy_id': {
-        'function': configuration_assessment.get_ca_checks,
+    '/sca/:agent_id/checks/:policy_id': {
+        'function': sca.get_sca_checks,
         'type': 'distributed_master',
         'is_async': False
     },
