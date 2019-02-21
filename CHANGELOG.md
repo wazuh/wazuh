@@ -10,7 +10,8 @@ All notable changes to this project will be documented in this file.
 - Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
 - Added an option _startup_healthcheck_ in FIM so that the the who-data health-check is optional. ([#2323](https://github.com/wazuh/wazuh/pull/2323))
 - The real agent IP is reported by the agent and shown in alerts and the App interface. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
-- Added support for organizations in AWS wodle ([#2627](https://github.com/wazuh/wazuh/pull/2627))
+- Added support for organizations in AWS wodle. ([#2627](https://github.com/wazuh/wazuh/pull/2627))
+- Added support for hot added symbolic links in _Whodata_. ([#2466](https://github.com/wazuh/wazuh/pull/2466))
 
 ### Changed
 
@@ -23,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Now labels starting with `_` are reserved for internal use. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
 - Now AWS wodle fetches aws.requestParameters.disableApiTermination with an unified format ([#2614](https://github.com/wazuh/wazuh/pull/2614))
 - Improved overall performance in cluster ([#2575](https://github.com/wazuh/wazuh/pull/2575))
+- Some improvements has been made in the _vulnerability-detector_ module. ([#2603](https://github.com/wazuh/wazuh/pull/2603))
 
 ### Fixed
 
@@ -30,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an error in the OSQuery configuration validation. ([#2446](https://github.com/wazuh/wazuh/pull/2446))
 - Prevent Integrator, Syslog Client and Mail forwarded from getting stuck while reading _alerts.json_. ([#2498](https://github.com/wazuh/wazuh/pull/2498))
 - Fixed a bug that could make an Agent running on Windows XP close unexpectedly while receiving a WPK file. ([#2486](https://github.com/wazuh/wazuh/pull/2486))
+- Fixed _ossec-control_ script in Solaris. ([#2495](https://github.com/wazuh/wazuh/pull/2495))
 - Fixed a compilation error when building Wazuh in static linking mode with the Audit library enabled. ([#2523](https://github.com/wazuh/wazuh/pull/2523))
 - Fixed a memory hazard in Analysisd on log pre-decoding for short logs (less than 5 bytes). ([#2391](https://github.com/wazuh/wazuh/pull/2391))
 - Fixed defects reported by Cppcheck. ([#2521](https://github.com/wazuh/wazuh/pull/2521))
