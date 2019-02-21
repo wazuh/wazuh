@@ -390,7 +390,7 @@ functions = {
         'is_async': False
     },
     'PUT/cluster/restart': {
-        'function': manager.restart,
+        'function': cluster.restart_all_nodes,
         'type': 'distributed_master',
         'is_async': False
     },
