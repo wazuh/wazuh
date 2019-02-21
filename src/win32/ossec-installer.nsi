@@ -489,6 +489,7 @@ Section "Uninstall"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
     Delete "$INSTDIR\ruleset\sca\*"
+    Delete "$INSTDIR\ruleset\"
 
     ; remove shortcuts
     SetShellVarContext all
