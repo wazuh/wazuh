@@ -450,4 +450,7 @@ wdb_t * wdb_backup(wdb_t *wdb, int version);
 /* Create backup for agent. Returns 0 on success or -1 on error. */
 int wdb_create_backup(const char * agent_id, int version);
 
+// Finalize a statement securely
+#define wdb_finalize(x) { if (x) { sqlite3_finalize(x); x = NULL; } }
+
 #endif

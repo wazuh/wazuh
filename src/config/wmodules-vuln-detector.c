@@ -173,15 +173,17 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         upd->dist_ref = FEED_NVD;
         upd->json_format = 1;
         // Set the CPE feed (from NVD)
+        /*
         os_calloc(1, sizeof(update_node), upd_list[CPE_NDIC]);
         upd_list[CPE_NDIC]->dist_tag = vu_feed_tag[FEED_CPED];
         upd_list[CPE_NDIC]->interval = WM_VULNDETECTOR_DEFAULT_CPE_UPDATE_INTERVAL;
         upd_list[CPE_NDIC]->dist_ext = vu_feed_ext[FEED_CPED];
         upd_list[CPE_NDIC]->dist_ref = FEED_CPED;
-        // Set the CPE dictionary (from NVD)
+        */
+        // Set the Wazuh CPE dictionary
         os_calloc(1, sizeof(update_node), upd_list[CPE_WDIC]);
         upd_list[CPE_WDIC]->dist_tag = vu_feed_tag[FEED_CPEW];
-        upd_list[CPE_WDIC]->interval = WM_VULNDETECTOR_DEFAULT_UPDATE_INTERVAL;
+        upd_list[CPE_WDIC]->interval = UINT_MAX - 1;
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
