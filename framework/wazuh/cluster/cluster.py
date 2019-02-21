@@ -374,7 +374,7 @@ def restart_all_nodes():
 
     :return: Confirmation message.
     """
-    return restart()
+    restart()
     return "Restarting cluster"
 
 
