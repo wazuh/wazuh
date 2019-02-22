@@ -11,13 +11,13 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from wazuh import WazuhException
-from wazuh.configuration_assessment import WazuhDBQueryPM, get_ca_list, fields_translation_ca,\
-    get_ca_checks, fields_translation_ca_check, fields_translation_ca_check_compliance
+from wazuh.security_configuration_assessment import WazuhDBQuerySCA, get_sca_list, fields_translation_sca,\
+    get_sca_checks, fields_translation_sca_check, fields_translation_sca_check_compliance
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-def get_fake_pm_data(*args, **kwargs):
+def get_fake_sca_data(*args, **kwargs):
     assert(isinstance(args[0], str))
     query = re.search(r'^agent \d{3} sql (.+)$', args[0]).group(1)
     try:
@@ -34,72 +34,72 @@ def get_fake_pm_data(*args, **kwargs):
 
 
 # Aliases and ` are lost when sqlite db answers...
-cols_returned_from_db_pm = [field.replace('`', '').replace('si.', '') for field in fields_translation_ca.values()]
-cols_returned_from_db_pm = [field.split(' as ')[1] if ' as ' in field else field for field in cols_returned_from_db_pm]
-cols_returned_from_db_pm_check = [field.replace('`', '').replace('ca.', '') for field in fields_translation_ca_check.values()]
+cols_returned_from_db_sca = [field.replace('`', '').replace('si.', '') for field in fields_translation_sca.values()]
+cols_returned_from_db_sca = [field.split(' as ')[1] if ' as ' in field else field for field in cols_returned_from_db_sca]
+cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '') for field in fields_translation_sca_check.values()]
 
 
 class TestPolicyMonitoring(TestCase):
 
     @patch('socket.socket')
-    def test_wazuhdbquerypm(self, mock):
+    def test_wazuhdbquerysca(self, mock):
         """
         Checks exception is raised when db not found
         """
         with patch('wazuh.common.wdb_path', '/do/not/exists'):
             with self.assertRaises(WazuhException):
-                WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
+                WazuhDBQuerySCA('000', 0, 500, None, None, None, '', True, True)
         with patch('wazuh.common.wdb_path', test_data_path):
-            query = WazuhDBQueryPM('000', 0, 500, None, None, None, '', True, True)
-            assert(isinstance(query, WazuhDBQueryPM))
+            query = WazuhDBQuerySCA('000', 0, 500, None, None, None, '', True, True)
+            assert(isinstance(query, WazuhDBQuerySCA))
 
     @patch('socket.socket')
     @patch('wazuh.common.wdb_path', test_data_path)
-    def test_get_pm_list(self, mock):
+    def test_get_sca_list(self, mock):
         """
         Checks data are properly loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
-            mock_wdb.return_value.execute.side_effect = get_fake_pm_data
-            result = get_ca_list('000')
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+            result = get_sca_list('000')
             assert(isinstance(result, dict))
             assert('totalItems' in result)
             assert(isinstance(result['totalItems'], int))
             assert('items' in result)
             assert(len(result['items']) > 0)
-            pm = result['items'][0]
-            assert(isinstance(pm, dict))
-            assert(set(pm.keys()) == set(cols_returned_from_db_pm))
+            sca = result['items'][0]
+            assert(isinstance(sca, dict))
+            assert(set(sca.keys()) == set(cols_returned_from_db_sca))
 
     @patch('socket.socket')
     @patch('wazuh.common.wdb_path', test_data_path)
-    def test_get_pm_list_select_param(self, mock):
+    def test_get_sca_list_select_param(self, mock):
         """
         Checks only selected fields are loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
-            mock_wdb.return_value.execute.side_effect = get_fake_pm_data
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
             fields = {'fields': ['name', 'policy_id']}
-            result = get_ca_list('000', select=fields)
+            result = get_sca_list('000', select=fields)
             assert (isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
             assert (len(result['items']) > 0)
-            pm = result['items'][0]
-            assert (isinstance(pm, dict))
-            assert (set(pm.keys()) == set(fields['fields']))
+            sca = result['items'][0]
+            assert (isinstance(sca, dict))
+            assert (set(sca.keys()) == set(fields['fields']))
 
     @patch('socket.socket')
     @patch('wazuh.common.wdb_path', test_data_path)
-    def test_get_pm_list_search_param(self, mock):
+    def test_get_sca_list_search_param(self, mock):
         """
         Checks only selected fields are loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
-            mock_wdb.return_value.execute.side_effect = get_fake_pm_data
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
             search = {'value': 'debian', 'negation': False}
-            result = get_ca_list('000', search=search)
+            result = get_sca_list('000', search=search)
             assert (isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
@@ -107,7 +107,7 @@ class TestPolicyMonitoring(TestCase):
             assert (len(result['items']) > 0)
 
             search = {'value': 'foo', 'negation': False}
-            result = get_ca_list('000', search=search)
+            result = get_sca_list('000', search=search)
             assert (isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
@@ -115,7 +115,7 @@ class TestPolicyMonitoring(TestCase):
             assert (len(result['items']) == 0)
 
             search = {'value': 'foo', 'negation': True}
-            result = get_ca_list('000', search=search)
+            result = get_sca_list('000', search=search)
             assert (isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
@@ -124,33 +124,33 @@ class TestPolicyMonitoring(TestCase):
 
     @patch('socket.socket')
     @patch('wazuh.common.wdb_path', test_data_path)
-    def test_get_pm_checks(self, mock):
+    def test_get_sca_checks(self, mock):
         """
-        Checks pm checks data are properly loaded from database
+        Checks sca checks data are properly loaded from database
         """
-        with patch('wazuh.configuration_assessment.WazuhDBConnection') as mock_wdb:
-            mock_wdb.return_value.execute.side_effect = get_fake_pm_data
-            result = get_ca_checks('cis_debian', agent_id='000')
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+            result = get_sca_checks('cis_debian', agent_id='000')
             assert(isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
-            pm = result['items']
-            assert(isinstance(pm, list))
-            assert(len(pm) > 0)
-            assert(set(pm[0].keys()) == set(cols_returned_from_db_pm_check) | {'compliance'})
+            sca = result['items']
+            assert(isinstance(sca, list))
+            assert(len(sca) > 0)
+            assert(set(sca[0].keys()) == set(cols_returned_from_db_sca_check) | {'compliance'})
 
-            compliance = pm[0]['compliance']
+            compliance = sca[0]['compliance']
             assert(isinstance(compliance, list))
             assert(len(compliance) > 0)
-            assert(set(compliance[0].keys()) == set(fields_translation_ca_check_compliance.values()))
+            assert(set(compliance[0].keys()) == set(fields_translation_sca_check_compliance.values()))
 
             # Check 0 result
-            result = get_ca_checks('not_exists', agent_id='000')
+            result = get_sca_checks('not_exists', agent_id='000')
             assert(isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
             assert ('items' in result)
-            pm = result['items']
-            assert(isinstance(pm, list))
-            assert(len(pm) == 0)
+            sca = result['items']
+            assert(isinstance(sca, list))
+            assert(len(sca) == 0)
