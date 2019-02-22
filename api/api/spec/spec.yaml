@@ -8,7 +8,7 @@ info:
     \ the Wazuh infrastructure via the Wazuh Kibana app. Use the API to easily perform\
     \ everyday actions like adding an agent, restarting the manager(s) or agent(s)\
     \ or looking up syscheck details.\n"
-  version: "3.8.0"
+  version: "4.0.0"
   title: "Wazuh API"
   license:
     name: "GPL 2.0"
