@@ -21,7 +21,7 @@
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 #define EVENT_MQ        '10'
-#define CONFIGURATION_ASSESSMENT_MQ 'p'
+#define SCA_MQ          'p'
 
 
 /* Queues for additional log types */

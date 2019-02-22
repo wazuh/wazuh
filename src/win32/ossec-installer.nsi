@@ -177,7 +177,7 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
     CreateDirectory "$INSTDIR\ruleset\"
-    CreateDirectory "$INSTDIR\ruleset\configuration-assessment"
+    CreateDirectory "$INSTDIR\ruleset\sca"
 
     ; install files
     File ossec-agent.exe
@@ -212,7 +212,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
-    File /oname=ruleset\configuration-assessment\win_audit_rcl.yml ../../etc/configuration-assessment/windows/win_audit_rcl.yml
+    File /oname=ruleset\sca\win_audit_rcl.yml ../../etc/sca/windows/win_audit_rcl.yml
     File VERSION
     File REVISION
 
@@ -488,7 +488,8 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
-    Delete "$INSTDIR\ruleset\configuration-assessment\*"
+    Delete "$INSTDIR\ruleset\sca\*"
+    Delete "$INSTDIR\ruleset\"
 
     ; remove shortcuts
     SetShellVarContext all

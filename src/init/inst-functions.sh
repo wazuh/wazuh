@@ -34,7 +34,7 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
-CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/configuration_assessment_generic.template"
+SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca_generic.template"
 
 ##########
 # WriteSyscheck()
@@ -182,12 +182,12 @@ WriteCISCAT()
 WriteConfigurationAssessment()
 {
     # Adding to the config file
-    if [ "X$CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
-      CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "configuration_assessment.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-      if [ "$CONFIGURATION_ASSESSMENT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "configuration_assessment_generic.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
+      SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      if [ "$SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca_generic.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
       fi
-      cat ${CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
+      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
 }
@@ -216,28 +216,28 @@ InstallOpenSCAPFiles()
 }
 
 ##########
-# InstallConfigurationAssessmentFiles()
+# InstallSecurityConfigurationAssessmentFiles()
 ##########
-InstallConfigurationAssessmentFiles()
+InstallSecurityConfigurationAssessmentFiles()
 {
 
     cd ..
     if [ "X$1" = "Xmanager" ]; then
-        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "configuration_assessment.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     else
-        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "configuration_assessment.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
     fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
-        echo "Configuration assessment policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
+        echo "SCA policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
     else
-        echo "Installing configuration assessment policies..."
+        echo "Installing SCA policies..."
         CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
         for file in $CONFIGURATION_ASSESSMENT_FILES; do
-            if [ -f "../etc/configuration-assessment/$file" ]; then
-                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/configuration-assessment/$file ${PREFIX}/ruleset/configuration-assessment
+            if [ -f "../etc/sca/$file" ]; then
+                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
             else
-                echo "ERROR: Configuration assessment policy not found: ./etc/configuration-assessment/$file"
+                echo "ERROR: SCA policy not found: ./etc/sca/$file"
             fi
         done
     fi
@@ -785,7 +785,7 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
-  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/configuration-assessment
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/sca
 
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
@@ -905,7 +905,7 @@ InstallLocal()
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
 
-    InstallConfigurationAssessmentFiles "manager"
+    InstallSecurityConfigurationAssessmentFiles "manager"
 
     # Build SQLite library for CentOS 6
     if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
@@ -1038,7 +1038,7 @@ InstallAgent()
 
     InstallCommon
 
-    InstallConfigurationAssessmentFiles "agent"
+    InstallSecurityConfigurationAssessmentFiles "agent"
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin

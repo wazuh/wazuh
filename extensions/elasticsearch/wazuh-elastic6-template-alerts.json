@@ -1091,7 +1091,7 @@
                 }
               }
             },
-            "configuration_assessment": {
+            "sca": {
               "properties": {
                 "type": {
                   "type": "keyword",
