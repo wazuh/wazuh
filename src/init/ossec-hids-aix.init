@@ -9,13 +9,13 @@
 case "$1" in
 start)
     if [ -f /var/ossec/bin/ossec-control ]; then
-        echo "Starting OSSEC"
+        echo "Starting Wazuh"
         /var/ossec/bin/ossec-control start
     fi
     ;;
 stop)
     if [ -f /var/ossec/bin/ossec-control ]; then
-        echo "Stopping OSSEC"
+        echo "Stopping Wazuh"
         /var/ossec/bin/ossec-control stop
     fi
     ;;
@@ -25,8 +25,9 @@ status)
     fi
     ;;
 restart)
-    stop
-    start
+    if [ -f /var/ossec/bin/ossec-control ]; then
+        /var/ossec/bin/ossec-control restart
+    fi
     ;;
 *)
     echo "Usage: $0 (start | stop |restart | status)"

@@ -29,8 +29,9 @@ status)
     fi
     ;;
 restart)
-    stop
-    start
+    if [ -f ${DIRECTORY}/bin/ossec-control ]; then
+        ${DIRECTORY}/bin/ossec-control restart
+    fi
     ;;    
 *)
     echo "Usage: $0 (start | stop | restart | status)"
