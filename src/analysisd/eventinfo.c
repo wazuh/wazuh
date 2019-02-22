@@ -34,6 +34,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     Eventinfo *first_lf;
     OSListNode *lf_node;
     int frequency_count = 0;
+    int i, j;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -91,6 +92,48 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
                 continue;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0)
+                continue;
+
+            for (i = 0; i < my_lf->nfields; i++) {
+                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
+                    if (lf->nfields == 0)
+                        continue;
+
+                    for (j = 0; j < lf->nfields; j++) {
+                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
+                            if (strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Check for repetitions from not same dynamic fields */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0)
+                continue;
+
+            for (i = 0; i < my_lf->nfields; i++) {
+                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
+                    if (lf->nfields == 0)
+                        continue;
+
+                    for (j = 0; j < lf->nfields; j++) {
+                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
+                            if (!strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
+                                continue;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -203,6 +246,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     OSListNode *lf_node;
     Eventinfo *first_lf;
     int frequency_count = 0;
+    int i, j;
     OSList *list = rule->group_search;
 
     //w_mutex_lock(&rule->mutex);
@@ -264,6 +308,48 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
                 continue;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0)
+                continue;
+
+            for (i = 0; i < my_lf->nfields; i++) {
+                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
+                    if (lf->nfields == 0)
+                        continue;
+
+                    for (j = 0; j < lf->nfields; j++) {
+                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
+                            if (strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Check for repetitions from not same dynamic fields */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0)
+                continue;
+
+            for (i = 0; i < my_lf->nfields; i++) {
+                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
+                    if (lf->nfields == 0)
+                        continue;
+
+                    for (j = 0; j < lf->nfields; j++) {
+                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
+                            if (!strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
+                                continue;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -377,6 +463,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     EventNode *first_pt;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
+    int i, j;
 
     w_mutex_lock(&rule->mutex);
 
@@ -448,6 +535,48 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
                 goto next_it;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0)
+                goto next_it;
+
+            for (i = 0; i < my_lf->nfields; i++) {
+                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
+                    if (lf->nfields == 0)
+                        goto next_it;
+
+                    for (j = 0; j < lf->nfields; j++) {
+                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
+                            if (strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
+                                goto next_it;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /* Check for repetitions from not same dynamic fields */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0)
+                goto next_it;
+
+            for (i = 0; i < my_lf->nfields; i++) {
+                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
+                    if (lf->nfields == 0)
+                        goto next_it;
+
+                    for (j = 0; j < lf->nfields; j++) {
+                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
+                            if (!strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
+                                goto next_it;
+                            }
+                        }
+                    }
+                }
             }
         }
 

@@ -91,6 +91,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_same_location = "same_location";
     const char *xml_same_id = "same_id";
     const char *xml_dodiff = "check_diff";
+    const char *xml_same_field = "same_field";
 
     const char *xml_different_url = "different_url";
 
@@ -98,6 +99,7 @@ int OS_ReadXMLRules(const char *rulefile,
     const char *xml_notsame_user = "not_same_user";
     const char *xml_notsame_agent = "not_same_agent";
     const char *xml_notsame_id = "not_same_id";
+    const char *xml_notsame_field = "not_same_field";
 
     const char *xml_options = "options";
 
@@ -546,6 +548,18 @@ int OS_ReadXMLRules(const char *rulefile,
                                       xml_notsame_agent) == 0) {
                     config_ruleinfo->context_opts &= NOT_SAME_AGENT;
                 } else if (strcasecmp(rule_opt[k]->element,
+                                      xml_same_field) == 0) {
+
+                    config_ruleinfo->context_opts |= SAME_FIELD;
+                    os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields);
+
+                } else if (strcasecmp(rule_opt[k]->element,
+                                        xml_notsame_field) == 0) {
+
+                    config_ruleinfo->context_opts |= NOT_SAME_FIELD;
+                    os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields);
+
+                } else if (strcasecmp(rule_opt[k]->element,
                                       xml_options) == 0) {
                     if (strcmp("alert_by_email",
                                rule_opt[k]->content) == 0) {
@@ -976,6 +990,9 @@ static RuleInfo *_OS_AllocateRule()
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
 
+    ruleinfo_pt->same_fields = NULL;
+    ruleinfo_pt->not_same_fields = NULL;
+
     /* Zero the list of previous matches */
     ruleinfo_pt->sid_prev_matched = NULL;
     ruleinfo_pt->group_prev_matched = NULL;
@@ -1141,6 +1158,14 @@ void _OS_FreeRule(RuleInfo *ruleinfo) {
     free(ruleinfo->if_sid);
     free(ruleinfo->if_level);
     free(ruleinfo->if_group);
+
+    if (ruleinfo->same_fields) {
+        free(ruleinfo->same_fields);
+    }
+
+    if (ruleinfo->not_same_fields) {
+        free(ruleinfo->not_same_fields);
+    }
 
     free(ruleinfo);
 }
