@@ -31,7 +31,7 @@ static const char *XML_PATH = "path";
 static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
-static const char *XML_UPDATE_CPE_INTERVAL = "update_cpe_interval";
+//static const char *XML_UPDATE_CPE_INTERVAL = "update_cpe_interval";
 // Deprecated
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
@@ -363,7 +363,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         OS_ClearNode(chld_node);
                         return OS_INVALID;
                     }
-                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_CPE_INTERVAL)) {
+                } /*else if (!strcmp(chld_node[j]->element, XML_UPDATE_CPE_INTERVAL)) {
                     if (updates[os_index]->dist_ref == FEED_NVD) {
                         if (get_interval(chld_node[j]->content, &updates[CPE_NDIC]->interval)) {
                             merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_CPE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
@@ -373,7 +373,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                     } else {
                         mwarn("'%s' only can be used with %s feed.", XML_UPDATE_CPE_INTERVAL, updates[os_index]->dist_tag);
                     }
-                } else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
+                }*/ else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
                     if (!is_valid_year(chld_node[j]->content, &updates[os_index]->update_from_year)) {
                         merror("Invalid content for '%s' option at module '%s'", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                         OS_ClearNode(chld_node);
