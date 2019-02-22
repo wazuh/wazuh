@@ -28,7 +28,11 @@ status)
         ${DIRECTORY}/bin/ossec-control status
     fi
     ;;
+restart)
+    stop
+    start
+    ;;    
 *)
-    echo "Usage: $0 (start | stop | status)"
+    echo "Usage: $0 (start | stop | restart | status)"
     exit 1
 esac
