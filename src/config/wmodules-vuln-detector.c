@@ -183,7 +183,7 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         // Set the Wazuh CPE dictionary
         os_calloc(1, sizeof(update_node), upd_list[CPE_WDIC]);
         upd_list[CPE_WDIC]->dist_tag = vu_feed_tag[FEED_CPEW];
-        upd_list[CPE_WDIC]->interval = UINT_MAX - 1;
+        upd_list[CPE_WDIC]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
