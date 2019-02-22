@@ -59,7 +59,7 @@ int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
 int DecodeCiscat(Eventinfo *lf);
 int DecodeWinevt(Eventinfo *lf);
-int DecodeSecurityConfigurationAssessment(Eventinfo *lf,int *socket);
+int DecodeSCA(Eventinfo *lf,int *socket);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -1617,7 +1617,7 @@ void * ad_input_main(void * args) {
 
                 /* Increment number of events received */
                 hourly_events++;
-            } else if(msg[0] == SECURITY_CONFIGURATION_ASSESSMENT_MQ){
+            } else if(msg[0] == SCA_MQ){
                 os_strdup(buffer, copy);
 
                 if(queue_full(decode_queue_sca_input)){
@@ -2027,7 +2027,7 @@ void * w_decode_sca_thread(__attribute__((unused)) void * args){
             /* Msg cleaned */
             DEBUG_MSG("%s: DEBUG: Msg cleanup: %s ", ARGV0, lf->log);
 
-            if (!DecodeSecurityConfigurationAssessment(lf,&socket)) {
+            if (!DecodeSCA(lf,&socket)) {
                 /* We don't process rootcheck events further */
                 w_free_event_info(lf);
             }

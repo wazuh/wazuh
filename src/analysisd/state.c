@@ -57,7 +57,7 @@ unsigned int s_writer_statistical_queue_size = 0;
 pthread_mutex_t s_syscheck_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_syscollector_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_rootcheck_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t s_security_configuration_assessment_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t s_sca_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_hostinfo_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_winevt_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t s_event_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -314,9 +314,9 @@ void w_inc_rootcheck_decoded_events(){
 }
 
 void w_inc_sca_decoded_events(){
-    w_mutex_lock(&s_security_configuration_assessment_mutex);
+    w_mutex_lock(&s_sca_mutex);
     s_events_sca_decoded++;
-    w_mutex_unlock(&s_security_configuration_assessment_mutex);
+    w_mutex_unlock(&s_sca_mutex);
 }
 
 void w_inc_hostinfo_decoded_events(){
@@ -380,9 +380,9 @@ void w_reset_stats(){
     s_events_rootcheck_decoded = 0;
     w_mutex_unlock(&s_rootcheck_mutex);
 
-    w_mutex_lock(&s_security_configuration_assessment_mutex);
+    w_mutex_lock(&s_sca_mutex);
     s_events_sca_decoded = 0;
-    w_mutex_unlock(&s_security_configuration_assessment_mutex);
+    w_mutex_unlock(&s_sca_mutex);
 
     w_mutex_lock(&s_hostinfo_mutex);
     s_events_hostinfo_decoded = 0;

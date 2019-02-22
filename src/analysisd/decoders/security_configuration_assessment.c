@@ -57,9 +57,9 @@ void SecurityConfigurationAssessmentInit()
 {
 
     os_calloc(1, sizeof(OSDecoderInfo), sca_json_dec);
-    sca_json_dec->id = getDecoderfromlist(SECURITY_CONFIGURATION_ASSESSMENT_MOD);
+    sca_json_dec->id = getDecoderfromlist(SCA_MOD);
     sca_json_dec->type = OSSEC_RL;
-    sca_json_dec->name = SECURITY_CONFIGURATION_ASSESSMENT_MOD;
+    sca_json_dec->name = SCA_MOD;
     sca_json_dec->fts = 0;
 
     request_queue = queue_init(1024);
@@ -147,7 +147,7 @@ static int ConnectToSecurityConfigurationAssessmentSocketRemoted() {
     return 0;
 }
 
-int DecodeSecurityConfigurationAssessment(Eventinfo *lf, int *socket)
+int DecodeSCA(Eventinfo *lf, int *socket)
 {
     int ret_val = 1;
     cJSON *json_event = NULL;

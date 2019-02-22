@@ -60,7 +60,7 @@ typedef struct wm_sca_t {
     int queue;
 } wm_sca_t;
 
-extern const wm_context WM_SECURITY_CONFIGURATION_ASSESSMENT_CONTEXT;
+extern const wm_context WM_SCA_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module);

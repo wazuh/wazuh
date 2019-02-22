@@ -81,7 +81,7 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
-const wm_context WM_SECURITY_CONFIGURATION_ASSESSMENT_CONTEXT = {
+const wm_context WM_SCA_CONTEXT = {
     SCA_WM_NAME,
     (wm_routine)wm_sca_main,
     (wm_routine)wm_sca_destroy,
@@ -189,7 +189,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
     char *msg = cJSON_PrintUnformatted(json_alert);
     mdebug2("Sending event: %s",msg);
 
-    if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_SCA_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
+    if (wm_sendmsg(data->msg_delay, queue_fd, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
         merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
 
         if(data->queue >= 0){
@@ -199,7 +199,7 @@ static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert)
         if ((data->queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             mwarn("Can't connect to queue.");
         } else {
-            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SECURITY_CONFIGURATION_ASSESSMENT_MQ) < 0) {
+            if(wm_sendmsg(data->msg_delay, data->queue, msg,WM_SCA_STAMP, SCA_MQ) < 0) {
                 merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
                 close(data->queue);
             }
