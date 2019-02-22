@@ -7,6 +7,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+import argparse
 import json
 import sys
 import time
@@ -36,12 +37,27 @@ now = time.strftime("%a %b %d %H:%M:%S %Z %Y")
 # Set paths
 log_file = '{0}/logs/integrations.log'.format(pwd)
 
+def get_args():
+    """
+    Gets input parameters.
+    """
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument('-a', '--alert-file', dest='alert_file_location', help='Input log file', required=True,
+                        action='store', default=None)
+    parser.add_argument('-k', '--api-key', dest='api_key', help='API key',
+                        action='store_false', default=None)
+    parser.add_argument('-d', '--debug', dest='debug', help='Debug',
+                        action='store_true', default=None)
+    parser.add_argument('-u', '--hook-url', dest='hook_url', help='Webhook URL', required=True,
+                        action='store', default=None)
+
+    return parser.parse_args()
+
 def main(args):
     debug("# Starting")
 
-    # Read args
-    alert_file_location = args[1]
-    webhook = args[3]
+    alert_file_location = args.alert_file_location
+    webhook = args.hook_url
 
     debug("# Webhook")
     debug(webhook)
@@ -75,12 +91,12 @@ def generate_msg(alert):
 
     level = alert['rule']['level']
 
-    if ( level <= 4 ):
-        color = "good";
-    elif ( level >= 5 and level <= 7 ):
-        color= "warning";
+    if (level <= 4):
+        color = "good"
+    elif (level >= 5 and level <= 7):
+        color= "warning"
     else:
-        color= "danger";
+        color= "danger"
 
     msg = {}
     msg['color'] = color
@@ -107,10 +123,13 @@ def send_msg(msg,url):
 if __name__ == "__main__":
     try:
         # Read arguments
+        args = get_args()
+
         bad_arguments = False
         if len(sys.argv) >= 4:
             msg = '{0} {1} {2} {3} {4}'.format(now, sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else '')
-            debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
+            #debug_enabled = (len(sys.argv) > 4 and sys.argv[4] == 'debug')
+            debug_enabled = True if args.debug is True else False
         else:
             msg = '{0} Wrong arguments'.format(now)
             bad_arguments = True
@@ -125,7 +144,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
         # Main function
-        main(sys.argv)
+        main(args)
 
     except Exception as e:
         debug(str(e))

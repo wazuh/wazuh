@@ -11,9 +11,9 @@
 # Author: Daniel B. Cid
 # Last modified: Jan 19, 2015
 
-ALERTFILE=$1
-APIKEY=$2
-WEBHOOK=$3
+ALERTFILE=$2
+APIKEY=$4
+WEBHOOK=$6
 
 LOCAL=`dirname $0`;
 SERVER=`hostname`
@@ -23,7 +23,7 @@ PWD=`pwd`
 
 
 # Logging the call
-echo "`date` $0 $1 $2 $3" >> ${PWD}/logs/integrations.log
+echo "`date` $0 $2 $4 $6" >> ${PWD}/logs/integrations.log
 
 
 # IP Address must be provided
