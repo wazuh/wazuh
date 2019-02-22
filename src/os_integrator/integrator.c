@@ -382,23 +382,38 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
             if(temp_file_created == 1)
             {
+                char api_key_param[] = "--api-key";
+                char hook_url_param[] = "--hook-url";
+                char alert_file_param[] = "--alert-file";
+                char debug_param[] = "--debug";
+
                 int dbg_lvl = isDebug();
-                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", integrator_config[s]->path, exec_tmp_file, integrator_config[s]->apikey == NULL?"":integrator_config[s]->apikey, integrator_config[s]->hookurl==NULL?"":integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
+
+                snprintf(exec_full_cmd, 4095, "%s %s %s %s %s %s %s %s",
+                        integrator_config[s]->path,
+                        alert_file_param,
+                        exec_tmp_file,
+                        api_key_param,
+                        integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey,
+                        hook_url_param,
+                        integrator_config[s]->hookurl==NULL ? "" : integrator_config[s]->hookurl,
+                        dbg_lvl <= 0 ? "" : debug_param);
+
                 if (dbg_lvl <= 0) strncat(exec_full_cmd, " > /dev/null 2>&1", 17);
-				
+
                 mdebug1("Running: %s", exec_full_cmd);
 
                 char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
 
                 if(cmd) {
                     wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
-                
+
                     if(wfd){
                         char buffer[4096];
                         while (fgets(buffer, sizeof(buffer), wfd->file)) {
                             mdebug2("integratord: %s", buffer);
                         }
-                        
+
                         int wp_closefd = wpclose(wfd);
                         int wstatus = WEXITSTATUS(wp_closefd);
 
@@ -417,7 +432,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         merror("Could not launch command %s (%d)", strerror(errno), errno);
                         integrator_config[s]->enabled = 0;
                     }
-                    
+
                     free_strarray(cmd);
                 }
             }
