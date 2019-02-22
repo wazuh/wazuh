@@ -274,6 +274,9 @@ class Agent:
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
+        if self.ip is None:
+            self.ip = self.registerIP
+
 
     def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
         """
