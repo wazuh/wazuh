@@ -5,28 +5,32 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Aug. 07 2008 Chris Cuevas
 #
+. /etc/ossec-init.conf
+if [ "X${DIRECTORY}" = "X" ]; then
+    DIRECTORY="/var/ossec"
+fi
 
 case "$1" in
 start)
-    if [ -f /var/ossec/bin/ossec-control ]; then
+    if [ -f ${DIRECTORY}/ossec-control ]; then
         echo "Starting Wazuh"
-        /var/ossec/bin/ossec-control start
+        ${DIRECTORY}/ossec-control start
     fi
     ;;
 stop)
-    if [ -f /var/ossec/bin/ossec-control ]; then
+    if [ -f ${DIRECTORY}/ossec-control ]; then
         echo "Stopping Wazuh"
-        /var/ossec/bin/ossec-control stop
+        ${DIRECTORY}/ossec-control stop
     fi
     ;;
 status)
-    if [ -f /var/ossec/bin/ossec-control ]; then
-        /var/ossec/bin/ossec-control status
+    if [ -f ${DIRECTORY}/ossec-control ]; then
+        ${DIRECTORY}/ossec-control status
     fi
     ;;
 restart)
-    if [ -f /var/ossec/bin/ossec-control ]; then
-        /var/ossec/bin/ossec-control restart
+    if [ -f ${DIRECTORY}/ossec-control ]; then
+        ${DIRECTORY}/ossec-control restart
     fi
     ;;
 *)

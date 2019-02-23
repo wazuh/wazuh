@@ -55,7 +55,7 @@ restart() {
         eerror "Wazuh is not running! Please start it before trying to reload it."
     else
         checkconfig || return 1
-        ebegin "Reloading ossec"
+        ebegin "Reloading Wazuh"
         svc_stop ${OSSEC_CONTROL}
         svc_start ${OSSEC_CONTROL}
         eend $?
