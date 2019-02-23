@@ -994,15 +994,14 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
 // Get values about a single program from the registry
 void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
+    DWORD ret;
     HKEY primary_key;
     HKEY program_key;
-    DWORD cbData, ret;
-    DWORD buffer_size = TOTALBYTES;
     char * program_name;
-    char * version;
-    char * vendor;
-    char * date;
-    char * location;
+    char * version = NULL;
+    char * vendor = NULL;
+    char * date = NULL;
+    char * location = NULL;
 
     if (root_key == LM_KEY)
         primary_key = HKEY_LOCAL_MACHINE;
@@ -1014,26 +1013,10 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
     else
         ret = RegOpenKeyEx(primary_key, sec_key, 0, KEY_READ | (arch == ARCH32 ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &program_key);
 
-    if( ret == ERROR_SUCCESS) {
-
+    if (ret == ERROR_SUCCESS) {
         // Get name of program
-
-        program_name = (char *)malloc(TOTALBYTES);
-        cbData = buffer_size;
-
-        ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
-        while (ret == ERROR_MORE_DATA) {
-
-            // Increase buffer length
-
-            buffer_size += BYTEINCREMENT;
-            os_realloc(program_name, buffer_size, program_name);
-            cbData = buffer_size;
-            ret = RegQueryValueEx(program_key, "DisplayName", NULL, NULL, (LPBYTE)program_name, &cbData);
-        }
-
-        if (ret == ERROR_SUCCESS && program_name[0] != '\0') {
-
+        program_name = w_reg_query_value(program_key, L"DisplayName");
+        if (program_name && *program_name) {
             cJSON *object = cJSON_CreateObject();
             cJSON *package = cJSON_CreateObject();
             cJSON_AddStringToObject(object, "type", "program");
@@ -1042,7 +1025,6 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
             cJSON_AddItemToObject(object, "program", package);
             cJSON_AddStringToObject(package, "format", "win");
             cJSON_AddStringToObject(package, "name", program_name);
-            free(program_name);
 
             if (arch == ARCH32)
                 cJSON_AddStringToObject(package, "architecture", "i686");
@@ -1052,108 +1034,38 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
                 cJSON_AddStringToObject(package, "architecture", "unknown");
 
             // Get version
-
-            version = (char *)malloc(TOTALBYTES);
-            cbData = buffer_size;
-
-            ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
-            while (ret == ERROR_MORE_DATA) {
-
-                // Increase buffer length
-
-                buffer_size += BYTEINCREMENT;
-                os_realloc(version, buffer_size, version);
-                cbData = buffer_size;
-                ret = RegQueryValueEx(program_key, "DisplayVersion", NULL, NULL, (LPBYTE)version, &cbData);
-            }
-
-            if (ret == ERROR_SUCCESS && version[0] != '\0') {
-                cJSON_AddStringToObject(package, "version", version);
-            }
-
-            free(version);
+            version = w_reg_query_value(program_key, L"DisplayVersion");
+            if (version && *version) cJSON_AddStringToObject(package, "version", version);
 
             // Get vendor
-
-            vendor = (char *)malloc(TOTALBYTES);
-            cbData = buffer_size;
-
-            ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
-            while (ret == ERROR_MORE_DATA) {
-
-                // Increase buffer length
-
-                buffer_size += BYTEINCREMENT;
-                os_realloc(vendor, buffer_size, vendor);
-                cbData = buffer_size;
-                ret = RegQueryValueEx(program_key, "Publisher", NULL, NULL, (LPBYTE)vendor, &cbData);
-            }
-
-            if (ret == ERROR_SUCCESS && vendor[0] != '\0') {
-                cJSON_AddStringToObject(package, "vendor", vendor);
-            }
-
-            free(vendor);
+            vendor = w_reg_query_value(program_key, L"Publisher");
+            if (vendor && *vendor) cJSON_AddStringToObject(package, "vendor", vendor);
 
             // Get install date
-
-            date = (char *)malloc(TOTALBYTES);
-            cbData = buffer_size;
-
-            ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
-            while (ret == ERROR_MORE_DATA) {
-
-                // Increase buffer length
-
-                buffer_size += BYTEINCREMENT;
-                os_realloc(date, buffer_size, date);
-                cbData = buffer_size;
-                ret = RegQueryValueEx(program_key, "InstallDate", NULL, NULL, (LPBYTE)date, &cbData);
-            }
-
-            if (ret == ERROR_SUCCESS && date[0] != '\0') {
-                cJSON_AddStringToObject(package, "install_time", date);
-            }
-
-            free(date);
+            date = w_reg_query_value(program_key, L"InstallDate");
+            if (date && *date) cJSON_AddStringToObject(package, "install_time", date);
 
             // Get install location
+            location = w_reg_query_value(program_key, L"InstallLocation");
+            if (location && *location) cJSON_AddStringToObject(package, "location", location);
 
-            location = (char *)malloc(TOTALBYTES);
-            cbData = buffer_size;
-
-            ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
-            while (ret == ERROR_MORE_DATA) {
-
-                // Increase buffer length
-
-                buffer_size += BYTEINCREMENT;
-                os_realloc(location, buffer_size, location);
-                cbData = buffer_size;
-                ret = RegQueryValueEx(program_key, "InstallLocation", NULL, NULL, (LPBYTE)location, &cbData);
-            }
-
-            if (ret == ERROR_SUCCESS && location[0] != '\0') {
-                cJSON_AddStringToObject(package, "location", location);
-            }
-
-            free(location);
-
-            char *string;
-            string = cJSON_PrintUnformatted(object);
+            char *string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
             wm_sendmsg(usec, 0, string, LOCATION, SYSCOLLECTOR_MQ);
             cJSON_Delete(object);
             free(string);
+        }
 
-        } else
-            free(program_name);
-
+        if (program_name) free(program_name);
+        if (version) free(version);
+        if (vendor) free(vendor);
+        if (date) free(date);
+        if (location) free(location);
+        
+        RegCloseKey(program_key);
     } else {
         mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: (Error code %lu)", ret);
     }
-
-    RegCloseKey(program_key);
 }
 
 void sys_hw_windows(const char* LOCATION){
