@@ -333,6 +333,45 @@ char *convert_windows_string(LPCWSTR string)
     return (dest);
 }
 
+#define TOTALBYTES      8192
+#define BYTEINCREMENT   4096
+
+char *w_reg_query_value(HKEY program_key, wchar_t *value_name)
+{
+    if (!program_key || !value_name || !*value_name) return (NULL);
+    
+    DWORD cbData, ret;
+    wchar_t *reg_value = NULL;
+    DWORD buffer_size = TOTALBYTES;
+
+    // Allocate buffer
+    os_calloc(TOTALBYTES, sizeof(wchar_t), reg_value);
+    cbData = buffer_size;
+
+    // Request data from the registry and keep it in UTF-16LE
+    ret = RegQueryValueExW(program_key, value_name, NULL, NULL, (LPBYTE)reg_value, &cbData);
+    while(ret == ERROR_MORE_DATA) {
+        // Increase buffer length
+        buffer_size += BYTEINCREMENT;
+        os_realloc(reg_value, buffer_size, reg_value);
+        cbData = buffer_size;
+        ret = RegQueryValueExW(program_key, value_name, NULL, NULL, (LPBYTE)reg_value, &cbData);
+    }
+
+    if (ret != ERROR_SUCCESS || !*reg_value) {
+        mferror("Could not retrieve register value through RegQueryValueExW() (%lu)", GetLastError());
+        free(reg_value);
+        return (NULL);
+    }
+
+    // Convert UTF-16LE data to UTF-8
+    char *reg_value_utf8 = convert_windows_string(reg_value);
+
+    free(reg_value);
+
+    return (reg_value_utf8);
+}
+
 #endif
 
 // Free string array
