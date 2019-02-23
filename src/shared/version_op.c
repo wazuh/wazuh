@@ -23,14 +23,14 @@ os_info *get_win_version()
     os_info *info;
     unsigned int i;
     char temp[1024];
-    DWORD dwRet;
+    DWORD dwRet = 0;
     HKEY RegistryKey;
     char * subkey;
     const DWORD vsize = 1024;
-    TCHAR value[vsize];
+    char *value = NULL;
     DWORD dwCount = vsize;
-    char arch[64] = "";
-    char nodename[1024] = "";
+    char *arch = NULL;
+    char *nodename = NULL;
     char version[64] = "";
     const DWORD size = 30;
 
@@ -73,25 +73,26 @@ os_info *get_win_version()
             info->os_name = strdup("Microsoft Windows undefined version");
         }
         else {
-            dwRet = RegQueryValueEx(RegistryKey, TEXT("ProductName"), NULL, NULL, (LPBYTE)value, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'ProductName' from Windows registry. (Error %u)",(unsigned int)dwRet);
-                info->os_name = strdup("Microsoft Windows undefined version");
-            }
-            else {
+            value = w_reg_query_value(RegistryKey, L"ProductName");
+            if (value) {
                 memset(temp, '\0', sizeof(temp));
                 strcpy(temp, "Microsoft ");
-                strncat(temp, value, 1022);
+                strncat(temp, value, 1013);
                 info->os_name = strdup(temp);
+                free(value);
+            } else {
+                merror("Error reading 'ProductName' from Windows registry.");
+                info->os_name = strdup("Microsoft Windows undefined version");
             }
+
             RegCloseKey(RegistryKey);
         }
 
         // Read Windows Version number from registry
         char vn_temp[64];
         memset(vn_temp, '\0', 64);
-        TCHAR winver[size];
-        TCHAR wincomp[size];
+        char *winver = NULL;
+        char *wincomp = NULL;
         DWORD winMajor = 0;
         DWORD winMinor = 0;
         dwCount = size;
@@ -114,42 +115,44 @@ os_info *get_win_version()
                 info->os_major = strdup(vn_temp);
                 snprintf(vn_temp, 63, "%d", (unsigned int)winMinor);
                 info->os_minor = strdup(vn_temp);
-                dwCount = size;
-                dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
-                if (dwRet != ERROR_SUCCESS) {
-                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
-                }
-                else {
+                
+                wincomp = w_reg_query_value(RegistryKey, L"CurrentBuildNumber");
+                if (wincomp) {
                     snprintf(vn_temp, 63, "%s", wincomp);
                     info->os_build = strdup(vn_temp);
+                    free(wincomp);
+                } else {
+                    merror("Error reading 'CurrentBuildNumber' from Windows registry.");
                 }
             }
             RegCloseKey(RegistryKey);
         }
         // Windows 6.2 or 6.3
         else {
-            dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentVersion"), NULL, NULL, (LPBYTE)winver, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'Current Version' from Windows registry. (Error %u)",(unsigned int)dwRet);
-            }
-            else {
+            winver = w_reg_query_value(RegistryKey, L"CurrentVersion");
+            if (winver) {
                 char ** parts = OS_StrBreak('.', winver, 2);
                 info->os_major = strdup(parts[0]);
                 info->os_minor = strdup(parts[1]);
+                
                 for (i = 0; parts[i]; i++){
                     free(parts[i]);
                 }
                 free(parts);
-                dwCount = size;
-                dwRet = RegQueryValueEx(RegistryKey, TEXT("CurrentBuildNumber"), NULL, NULL, (LPBYTE)wincomp, &dwCount);
-                if (dwRet != ERROR_SUCCESS) {
-                    merror("Error reading 'CurrentBuildNumber' from Windows registry. (Error %u)",(unsigned int)dwRet);
-                }
-                else {
+                
+                free(winver);
+                
+                wincomp = w_reg_query_value(RegistryKey, L"CurrentBuildNumber");
+                if (wincomp) {
                     snprintf(vn_temp, 63, "%s", wincomp);
                     info->os_build = strdup(vn_temp);
+                    free(wincomp);
+                } else {
+                    merror("Error reading 'CurrentBuildNumber' from Windows registry.");
                 }
                 RegCloseKey(RegistryKey);
+            } else {
+                merror("Error reading 'Current Version' from Windows registry. (Error %u)",(unsigned int)dwRet);
             }
         }
 
@@ -227,14 +230,8 @@ os_info *get_win_version()
         merror(SK_REG_OPEN, subkey);
         info->machine = strdup("unknown");
     } else {
-        dwCount = vsize;
-        dwRet = RegQueryValueEx(RegistryKey, TEXT("PROCESSOR_ARCHITECTURE"), NULL, NULL, (LPBYTE)&arch, &dwCount);
-
-        if (dwRet != ERROR_SUCCESS) {
-            merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
-            info->machine = strdup("unknown");
-        } else {
-
+        arch = w_reg_query_value(RegistryKey, L"PROCESSOR_ARCHITECTURE");
+        if (arch) {
             if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4)) {
                 info->machine = strdup("x86_64");
             } else if (!strncmp(arch, "x86", 3)) {
@@ -242,7 +239,10 @@ os_info *get_win_version()
             } else {
                 info->machine = strdup("unknown");
             }
-
+            free(arch);
+        } else {
+            merror("Error reading 'Architecture' from Windows registry. (Error %u)",(unsigned int)dwRet);
+            info->machine = strdup("unknown");
         }
         RegCloseKey(RegistryKey);
     }
@@ -255,14 +255,12 @@ os_info *get_win_version()
         merror(SK_REG_OPEN, subkey);
         info->nodename = strdup("unknown");
     } else {
-        dwCount = size;
-        dwRet = RegQueryValueEx(RegistryKey, TEXT("ComputerName"), NULL, NULL, (LPBYTE)&nodename, &dwCount);
-
-        if (dwRet != ERROR_SUCCESS) {
-            merror("Error reading 'hostname' from Windows registry. (Error %u)",(unsigned int)dwRet);
-            info->nodename = strdup("unknown");
+        nodename = w_reg_query_value(RegistryKey, L"ComputerName");
+        if (nodename) {
+            info->nodename = nodename;
         } else {
-            info->nodename = strdup(nodename);
+            merror("Error reading 'hostname' from Windows registry.");
+            info->nodename = strdup("unknown");
         }
         RegCloseKey(RegistryKey);
     }

@@ -27,6 +27,7 @@
 
 char* length_to_ipv6_mask(int mask_length);
 char* get_broadcast_addr(char* ip, char* netmask);
+char *utf16_to_utf8(LPCWSTR string);
 
 __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
 
@@ -60,14 +61,18 @@ __declspec( dllexport ) char* get_network_vista(PIP_ADAPTER_ADDRESSES pCurrAddre
     cJSON_AddItemToObject(object, "iface", iface_info);
 
     /* Iface Name */
-    char iface_name[MAXSTR];
-    snprintf(iface_name, MAXSTR, "%S", pCurrAddresses->FriendlyName);
-    cJSON_AddStringToObject(iface_info, "name", iface_name);
+    char *iface_name = utf16_to_utf8(pCurrAddresses->FriendlyName);
+    if (iface_name) {
+        if (*iface_name) cJSON_AddStringToObject(iface_info, "name", iface_name);
+        free(iface_name);
+    }
 
     /* Iface adapter */
-    char description[MAXSTR];
-    snprintf(description, MAXSTR, "%S", pCurrAddresses->Description);
-    cJSON_AddStringToObject(iface_info, "adapter", description);
+    char *description = utf16_to_utf8(pCurrAddresses->Description);
+    if (description) {
+        if (*description) cJSON_AddStringToObject(iface_info, "adapter", description);
+        free(description);
+    }
 
     /* Type of interface */
     switch (pCurrAddresses->IfType){
@@ -373,6 +378,31 @@ char* get_broadcast_addr(char* ip, char* netmask){
     }
 
     return broadcast_addr;
+}
+
+char *utf16_to_utf8(LPCWSTR string)
+{
+    char *dest = NULL;
+    size_t size = 0;
+    int result = 0;
+
+    if (!string || !*string) return (NULL);
+
+    /* Determine size required */
+    size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, string, -1, NULL, 0, NULL, NULL);
+
+    if (size == 0) return (NULL);
+
+    if ((dest = calloc(size, sizeof(char))) == NULL) return (NULL);
+
+    result = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, string, -1, dest, size, NULL, NULL);
+
+    if (result == 0) {
+        free(dest);
+        return (NULL);
+    }
+
+    return (dest);
 }
 
 typedef struct RawSMBIOSData

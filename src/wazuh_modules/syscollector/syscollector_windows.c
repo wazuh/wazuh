@@ -34,9 +34,10 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
 /* From process ID get its name */
 char* get_process_name(DWORD pid){
-    char read_buff[OS_MAXSTR];
-    char *string = NULL, *ptr = NULL;
-    
+    wchar_t read_buff[OS_MAXSTR] = {'\0'};
+    wchar_t *ptr = NULL;
+    char *string = NULL;
+
     /* Check if we are dealing with a system process */
     if (pid == 0 || pid == 4)
     {
@@ -55,19 +56,19 @@ char* get_process_name(DWORD pid){
     if (hProcess != NULL)
     {
         /* Get full Windows kernel path for the process */
-        if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+        if (GetProcessImageFileNameW(hProcess, read_buff, OS_MAXSTR))
         {
             /* Get only the process name from the string */
-            ptr = strrchr(read_buff, '\\');
+            ptr = wcsrchr(read_buff, L'\\');
             if (ptr)
             {
-                int len = (strlen(read_buff) - (ptr - read_buff + 1));
-                memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len);
+                size_t len = (wcslen(read_buff) - (ptr - read_buff + 1));
+                memcpy(read_buff, &(read_buff[ptr - read_buff + 1]), len * sizeof(wchar_t));
                 read_buff[len] = '\0';
             }
             
-            /* Duplicate string */
-            string = strdup(read_buff);
+            /* Convert string to UTF-8 */
+            string = convert_windows_string(read_buff);
         } else {
             mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve name for process with PID %lu (%lu).", pid, GetLastError());
         }
@@ -134,27 +135,7 @@ char* get_process_name(DWORD pid){
                         }
                     }
                     
-                    if (NT_SUCCESS(Status))
-                    {
-                        int size_needed = WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, NULL, 0, NULL, NULL);
-                        if (!size_needed)
-                        {
-                            mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%lu).", GetLastError());
-                        } else {
-                            string = (char*)malloc(size_needed + 1);
-                            if (string == NULL)
-                            {
-                                mterror(WM_SYS_LOGTAG, "At get_process_name(): Unable to allocate memory for UTF-16 -> UTF-8 conversion.");
-                            } else {
-                                if (WideCharToMultiByte(CP_UTF8, 0, procInfo.ImageName.Buffer, procInfo.ImageName.Length / 2, string, size_needed, NULL, NULL) != size_needed)
-                                {
-                                    mterror(WM_SYS_LOGTAG, "At get_process_name(): 'WideCharToMultiByte' failed (%lu).", GetLastError());
-                                    free(string);
-                                    string = NULL;
-                                }
-                            }
-                        }
-                    }
+                    if (NT_SUCCESS(Status)) string = convert_windows_string(procInfo.ImageName.Buffer);
                     
                     if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
                 }
@@ -848,25 +829,25 @@ void sys_programs_windows(const char* LOCATION){
 }
 
 // List installed programs from the registry
-void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void list_programs(HKEY hKey, int arch, const wchar_t * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
-    TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
-    DWORD    cbName;                   // size of name string
-    TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name
-    DWORD    cchClassName = MAX_PATH;  // size of class string
-    DWORD    cSubKeys=0;               // number of subkeys
-    DWORD    cbMaxSubKey;              // longest subkey size
-    DWORD    cchMaxClass;              // longest class string
-    DWORD    cValues;              // number of values for key
-    DWORD    cchMaxValue;          // longest value name
-    DWORD    cbMaxValueData;       // longest value data
-    DWORD    cbSecurityDescriptor; // size of security descriptor
-    FILETIME ftLastWriteTime;      // last write time
+    wchar_t  achKey[KEY_LENGTH] = {'\0'};   // buffer for subkey name
+    DWORD    cbName;                        // size of name string
+    wchar_t  achClass[MAX_PATH] = {'\0'};   // buffer for class name
+    DWORD    cchClassName = MAX_PATH;       // size of class string
+    DWORD    cSubKeys=0;                    // number of subkeys
+    DWORD    cbMaxSubKey;                   // longest subkey size
+    DWORD    cchMaxClass;                   // longest class string
+    DWORD    cValues;                       // number of values for key
+    DWORD    cchMaxValue;                   // longest value name
+    DWORD    cbMaxValueData;                // longest value data
+    DWORD    cbSecurityDescriptor;          // size of security descriptor
+    FILETIME ftLastWriteTime;               // last write time
 
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    retCode = RegQueryInfoKeyW(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
@@ -886,7 +867,7 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
         for (i=0; i<cSubKeys; i++) {
 
             cbName = KEY_LENGTH;
-            retCode = RegEnumKeyEx(hKey, i,
+            retCode = RegEnumKeyExW(hKey, i,
                      achKey,
                      &cbName,
                      NULL,
@@ -895,20 +876,20 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
                      &ftLastWriteTime);
             if (retCode == ERROR_SUCCESS) {
 
-                char * full_key;
-                os_calloc(KEY_LENGTH, sizeof(char), full_key);
+                wchar_t *full_key;
+                os_calloc(KEY_LENGTH, sizeof(wchar_t), full_key);
 
                 if (root_key) {
-                    snprintf(full_key, KEY_LENGTH - 1, "%s\\%s", root_key, achKey);
+                    swprintf(full_key, KEY_LENGTH - 1, L"%ls\\%ls", root_key, achKey);
                     read_win_program(full_key, arch, U_KEY, usec, timestamp, ID, LOCATION);
                 } else {
-                    snprintf(full_key, KEY_LENGTH - 1, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\%s", achKey);
+                    swprintf(full_key, KEY_LENGTH - 1, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\%ls", achKey);
                     read_win_program(full_key, arch, LM_KEY, usec, timestamp, ID, LOCATION);
                 }
 
                 free(full_key);
             } else {
-                mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, retCode);
+                mterror(WM_SYS_LOGTAG, "Error reading key '%S'. Error code: %lu", achKey, retCode);
             }
         }
     }
@@ -917,24 +898,24 @@ void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const c
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
-    TCHAR    achKey[KEY_LENGTH];   // buffer for subkey name
-    DWORD    cbName;                   // size of name string
-    TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name
-    DWORD    cchClassName = MAX_PATH;  // size of class string
-    DWORD    cSubKeys=0;               // number of subkeys
-    DWORD    cbMaxSubKey;              // longest subkey size
-    DWORD    cchMaxClass;              // longest class string
-    DWORD    cValues;              // number of values for key
-    DWORD    cchMaxValue;          // longest value name
-    DWORD    cbMaxValueData;       // longest value data
-    DWORD    cbSecurityDescriptor; // size of security descriptor
-    FILETIME ftLastWriteTime;      // last write time
+    wchar_t  achKey[KEY_LENGTH] = {'\0'};   // buffer for subkey name
+    DWORD    cbName;                        // size of name string
+    wchar_t  achClass[MAX_PATH] = {'\0'};   // buffer for class name
+    DWORD    cchClassName = MAX_PATH;       // size of class string
+    DWORD    cSubKeys=0;                    // number of subkeys
+    DWORD    cbMaxSubKey;                   // longest subkey size
+    DWORD    cchMaxClass;                   // longest class string
+    DWORD    cValues;                       // number of values for key
+    DWORD    cchMaxValue;                   // longest value name
+    DWORD    cbMaxValueData;                // longest value data
+    DWORD    cbSecurityDescriptor;          // size of security descriptor
+    FILETIME ftLastWriteTime;               // last write time
 
     int arch = NOARCH;
     DWORD i, retCode;
 
     // Get the class name and the value count
-    retCode = RegQueryInfoKey(
+    retCode = RegQueryInfoKeyW(
         hKey,                    // key handle
         achClass,                // buffer for class name
         &cchClassName,           // size of class string
@@ -956,7 +937,7 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
             // Get subkey name
 
             cbName = KEY_LENGTH;
-            retCode = RegEnumKeyEx(hKey, i,
+            retCode = RegEnumKeyExW(hKey, i,
                      achKey,
                      &cbName,
                      NULL,
@@ -968,11 +949,11 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
                 // For each user list its registered programs
 
                 HKEY uKey;
-                char * user_key;
-                os_calloc(KEY_LENGTH, sizeof(char), user_key);
-                snprintf(user_key, KEY_LENGTH - 1, "%s\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall", achKey);
+                wchar_t * user_key;
+                os_calloc(KEY_LENGTH, sizeof(wchar_t), user_key);
+                swprintf(user_key, KEY_LENGTH - 1, L"%ls\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall", achKey);
 
-                if( RegOpenKeyEx( HKEY_USERS,
+                if( RegOpenKeyExW( HKEY_USERS,
                      user_key,
                      0,
                      KEY_READ,
@@ -985,14 +966,14 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
                 free(user_key);
 
             } else {
-                mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, retCode);
+                mterror(WM_SYS_LOGTAG, "Error reading key '%S'. Error code: %lu", achKey, retCode);
             }
         }
     }
 }
 
 // Get values about a single program from the registry
-void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
+void read_win_program(const wchar_t * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
     DWORD ret;
     HKEY primary_key;
@@ -1009,9 +990,9 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
         primary_key = HKEY_USERS;
 
     if (arch == NOARCH)
-        ret = RegOpenKeyEx(primary_key, sec_key, 0, KEY_READ, &program_key);
+        ret = RegOpenKeyExW(primary_key, sec_key, 0, KEY_READ, &program_key);
     else
-        ret = RegOpenKeyEx(primary_key, sec_key, 0, KEY_READ | (arch == ARCH32 ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &program_key);
+        ret = RegOpenKeyExW(primary_key, sec_key, 0, KEY_READ | (arch == ARCH32 ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &program_key);
 
     if (ret == ERROR_SUCCESS) {
         // Get name of program
@@ -1064,7 +1045,7 @@ void read_win_program(const char * sec_key, int arch, int root_key, int usec, co
         
         RegCloseKey(program_key);
     } else {
-        mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: (Error code %lu)", ret);
+        mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: '%S' (Error code %lu)", sec_key, ret);
     }
 }
 
@@ -1343,14 +1324,18 @@ char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO Adap
     cJSON_AddItemToObject(object, "iface", iface_info);
 
     /* Iface Name */
-    char iface_name[MAXSTR];
-    snprintf(iface_name, MAXSTR, "%S", pCurrAddresses->FriendlyName);
-    cJSON_AddStringToObject(iface_info, "name", iface_name);
+    char *iface_name = convert_windows_string(pCurrAddresses->FriendlyName);
+    if (iface_name) {
+        if (*iface_name) cJSON_AddStringToObject(iface_info, "name", iface_name);
+        free(iface_name);
+    }
 
     /* Iface adapter */
-    char description[MAXSTR];
-    snprintf(description, MAXSTR, "%S", pCurrAddresses->Description);
-    cJSON_AddStringToObject(iface_info, "adapter", description);
+    char *description = convert_windows_string(pCurrAddresses->Description);
+    if (description) {
+        if (*description) cJSON_AddStringToObject(iface_info, "adapter", description);
+        free(description);
+    }
 
     /* Type of interface */
     switch (pCurrAddresses->IfType){
@@ -1850,7 +1835,7 @@ hw_info *get_system_windows(){
     DWORD retVal;
     HKEY RegistryKey;
     char subkey[KEY_LENGTH];
-    TCHAR name[MAX_VALUE_NAME];
+    char *name = NULL;
     DWORD frequency = 0;
     DWORD dwCount = MAX_VALUE_NAME;
 
@@ -1864,19 +1849,21 @@ hw_info *get_system_windows(){
         info->cpu_name = strdup("unknown");
         mterror(WM_SYS_LOGTAG, SK_REG_OPEN, subkey);
     } else {
-        retVal = RegQueryValueEx(RegistryKey, TEXT("ProcessorNameString"), NULL, NULL, (LPBYTE)&name, &dwCount);
-        if (retVal != ERROR_SUCCESS) {
-            info->cpu_name = strdup("unknown");
-            mterror(WM_SYS_LOGTAG, "Error reading 'CPU name' from Windows registry. (Error %u)",(unsigned int)retVal);
+        name = w_reg_query_value(RegistryKey, L"ProcessorNameString");
+        if (name) {
+            info->cpu_name = name;
         } else {
-            info->cpu_name = strdup(name);
+            info->cpu_name = strdup("unknown");
+            mterror(WM_SYS_LOGTAG, "Error reading 'CPU name' from Windows registry.");
         }
+
         retVal = RegQueryValueEx(RegistryKey, TEXT("~MHz"), NULL, NULL, (LPBYTE)&frequency, &dwCount);
         if (retVal != ERROR_SUCCESS) {
             mterror(WM_SYS_LOGTAG, "Error reading 'CPU frequency' from Windows registry. (Error %u)",(unsigned int)retVal);
         } else {
             info->cpu_MHz = (unsigned int)frequency;
         }
+
         RegCloseKey(RegistryKey);
     }
 
@@ -1976,7 +1963,7 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 }
 
 void sys_proc_windows(const char* LOCATION) {
-    char read_buff[OS_MAXSTR];
+    wchar_t read_buff[OS_MAXSTR] = {'\0'};
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -2021,7 +2008,7 @@ void sys_proc_windows(const char* LOCATION) {
 	PROCESS_MEMORY_COUNTERS ppsmemCounters;
 	
 	LONG priority;
-	char *exec_path, *name;
+	char *exec_path = NULL, *exec_path_conv = NULL, *name = NULL;
 	ULARGE_INTEGER kernel_mode_time, user_mode_time;
 	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
 	
@@ -2079,17 +2066,23 @@ void sys_proc_windows(const char* LOCATION) {
 					if (hProcess != NULL)
 					{
 						/* Get full Windows kernel path for the process */
-						if (GetProcessImageFileName(hProcess, read_buff, OS_MAXSTR))
+						if (GetProcessImageFileNameW(hProcess, read_buff, OS_MAXSTR))
 						{
-							/* Convert Windows kernel path to a valid Win32 filepath */
-							/* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
-                            /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
-							if (!checkVista() || !ntpath_to_win32path(read_buff, &exec_path))
-							{
-								/* If there were any errors, the read_buff array will remain intact */
-								/* In that case, let's just use the Windows kernel path. It's better than nothing */
-								exec_path = strdup(read_buff);
-							}
+						    /* Convert string to UTF-8 */
+                            exec_path_conv = convert_windows_string(read_buff);
+                            if (exec_path_conv) {
+                                /* Convert Windows kernel path to a valid Win32 filepath */
+                                /* E.g.: "\Device\HarddiskVolume1\Windows\system32\notepad.exe" -> "C:\Windows\system32\notepad.exe" */
+                                /* This requires hotfix KB931305 in order to work under XP/Server 2003, so the conversion will be skipped if we're not running under Vista or greater */
+                                if (!checkVista() || !ntpath_to_win32path(exec_path_conv, &exec_path))
+                                {
+                                    /* If there were any errors, the exec_path_conv variable will remain intact */
+                                    /* In that case, let's just use the Windows kernel path. It's better than nothing */
+                                    exec_path = exec_path_conv;
+                                }
+                            } else {
+                                exec_path = strdup("unknown");
+                            }
 						} else {
 							mtwarn(WM_SYS_LOGTAG, "At sys_proc_windows(): Unable to retrieve executable path from process with PID %lu (%lu).", pid, GetLastError());
 							exec_path = strdup("unknown");

@@ -162,10 +162,10 @@ void sys_programs_windows(const char* LOCATION);
 char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp);
 
 // Get values about a single program from the registry
-void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+void read_win_program(const wchar_t * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
 // List installed programs from the registry
-void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+void list_programs(HKEY hKey, int arch, const wchar_t * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);

@@ -359,7 +359,6 @@ char *w_reg_query_value(HKEY program_key, wchar_t *value_name)
     }
 
     if (ret != ERROR_SUCCESS || !*reg_value) {
-        mferror("Could not retrieve register value through RegQueryValueExW() (%lu)", GetLastError());
         free(reg_value);
         return (NULL);
     }
