@@ -48,13 +48,13 @@ def get_args():
     """
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-a', '--alert-file', dest='alert_file_location', help='Input log file',
-                        require=True, action='store', default=None)
+                        required=True, action='store', default=None)
     parser.add_argument('-k', '--api-key', dest='api_key', help='API key', required=True,
                         action='store', default=None)
     parser.add_argument('-d', '--debug', dest='debug', help='Debug',
-                        action='store_true', default=None)
+                        action='store_true', default=False)
     parser.add_argument('-u', '--hook-url', dest='hook_url', help='Webhook URL',
-                        action='store_false', default=None)
+                        action='store_false', default=False)
 
     return parser.parse_args()
 
