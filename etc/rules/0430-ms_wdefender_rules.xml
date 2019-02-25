@@ -37,7 +37,7 @@
 
     <rule id="20215" level="0">
         <if_sid>20000</if_sid>
-        <field name="EventChannel.System.ProviderName">^Microsoft-Windows-Windows Defender/Operational</field>
+        <field name="system.providerName">^Microsoft-Windows-Windows Defender/Operational</field>
         <description>Windows Defender messages grouped</description>
         <options>no_full_log</options>
     </rule>
@@ -47,7 +47,7 @@
     -->
     <rule id="20216" level="12">
         <if_sid>20215</if_sid>
-        <field name="EventChannel.System.EventID">^1116$</field>
+        <field name="system.eventID">^1116$</field>
         <description>Windows Defender: detected potentially unwanted software $(EventChannel.EventData.ProcessName)</description>
         <options>no_full_log</options>
         <group>gdpr_IV_35.7.d,</group>
@@ -58,7 +58,7 @@
     -->
     <rule id="20217" level="7">
         <if_sid>20215</if_sid>
-        <field name="EventChannel.System.EventID">^1117$</field>
+        <field name="system.eventID">^1117$</field>
         <description>Windows Defender: error when taking action on potentially unwanted software $(EventChannel.EventData.ProcessName)</description>
         <options>no_full_log</options>
         <group>gdpr_IV_35.7.d,</group>
