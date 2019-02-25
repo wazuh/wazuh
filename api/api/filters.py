@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+import json
 from xml.etree import ElementTree as ET
 import re
 
@@ -29,6 +30,23 @@ regex_dict = {'numbers': r'^\d+$',
               'type_format': r'^xml$|^json$',
               'relative_paths': r'((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$'
              }
+
+
+def check_params(parameters, filters):
+    """
+    Function to check multiple parameters
+    :param parameters: Dictionary with parameters to be checked
+    :param filters: Dictionary with filters for checking parameters
+    :return: True if parameters are OK, False otherwise
+    """
+    query_aux = json.loads(parameters)
+
+    for key, value in filters.items():
+        if key in query_aux:
+            if not check_exp(filters[key], filters[value]):
+                return False
+
+    return True
 
 
 def check_exp(exp, regex_type):
