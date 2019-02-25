@@ -287,9 +287,9 @@
                         </Component>
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
-                      <Directory Id="CONFIGURATION_ASSESSMENT" Name="configuration-assessment">
+                      <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
                         <Component Id="WIN_AUDIT_RCL.YML" DiskId="1" Guid="1164b8aa-1968-48d3-baeb-68e6e0bfdbd8">
-                          <File Id="WIN_AUDIT_RCL.YML" Name="win_audit_rcl.yml" Source="..\..\etc\configuration-assessment\windows\win_audit_rcl.yml" />
+                          <File Id="WIN_AUDIT_RCL.YML" Name="win_audit_rcl.yml" Source="..\..\etc\sca\windows\win_audit_rcl.yml" />
                         </Component>
                       </Directory>
                     </Directory>
@@ -352,8 +352,8 @@
                 <RemoveFolder Id="purgue_ruleset_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
-        <DirectoryRef Id="CONFIGURATION_ASSESSMENT">
-            <Component Id="CMP_CONFIGURATION_ASSESSMENT" Guid="e99089df-d143-4911-bfe4-c10a469bc0d8" KeyPath="yes">
+        <DirectoryRef Id="SECURITY_CONFIGURATION_ASSESSMENT">
+            <Component Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" Guid="e99089df-d143-4911-bfe4-c10a469bc0d8" KeyPath="yes">
                 <CreateFolder />
                 <RemoveFile Id="purgue_configuration_assessment" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_configuration_assessment_dir" On="uninstall" />
@@ -446,7 +446,7 @@
             <ComponentRef Id="CMP_QUEUE" />
             <ComponentRef Id="CMP_DIFF" />
             <ComponentRef Id="CMP_RULESET" />
-            <ComponentRef Id="CMP_CONFIGURATION_ASSESSMENT" />
+            <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
             <ComponentRef Id="WIN_AUDIT_RCL.YML" />
             <ComponentRef Id="CMP_BOOKMARKS" />
             <ComponentRef Id="CMP_LOGS" />
