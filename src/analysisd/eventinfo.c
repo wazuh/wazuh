@@ -34,7 +34,10 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     Eventinfo *first_lf;
     OSListNode *lf_node;
     int frequency_count = 0;
-    int i, j, k, found;
+    int i;
+    int found;
+    const char * my_field;
+    const char * field;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -103,17 +106,11 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             found = 1;
             for (i = 0; rule->same_fields[i] && found; ++i) {
                 found = 0;
-                for (j = 0; j < my_lf->nfields; j++) {
-                    if (!strcmp(rule->same_fields[i], my_lf->fields[j].key)) {
-                        for (k = 0; k < lf->nfields; k++) {
-                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
-                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
-                                    found = 1;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
                     }
                 }
             }
@@ -130,17 +127,11 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
             found = 0;
             for (i = 0; rule->not_same_fields[i] && !found; ++i) {
-                for (j = 0; j < my_lf->nfields; j++) {
-                    if (!strcmp(rule->not_same_fields[i], my_lf->fields[j].key)) {
-                        for (k = 0; k < lf->nfields; k++) {
-                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
-                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
-                                    found = 1;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
                     }
                 }
             }
@@ -259,8 +250,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     OSListNode *lf_node;
     Eventinfo *first_lf;
     int frequency_count = 0;
-    int i, j, k, found;
+    int i;
+    int found;
     OSList *list = rule->group_search;
+    const char * my_field;
+    const char * field;
 
     //w_mutex_lock(&rule->mutex);
 
@@ -333,17 +327,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             found = 1;
             for (i = 0; rule->same_fields[i] && found; ++i) {
                 found = 0;
-                for (j = 0; j < my_lf->nfields; j++) {
-                    if (!strcmp(rule->same_fields[i], my_lf->fields[j].key)) {
-                        for (k = 0; k < lf->nfields; k++) {
-                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
-                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
-                                    found = 1;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
                     }
                 }
             }
@@ -361,17 +349,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
             found = 0;
             for (i = 0; rule->not_same_fields[i] && !found; ++i) {
-                for (j = 0; j < my_lf->nfields; j++) {
-                    if (!strcmp(rule->not_same_fields[i], my_lf->fields[j].key)) {
-                        for (k = 0; k < lf->nfields; k++) {
-                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
-                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
-                                    found = 1;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
                     }
                 }
             }
@@ -491,7 +473,10 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     EventNode *first_pt;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
-    int i, j, k, found;
+    int i;
+    int found;
+    const char * my_field;
+    const char * field;
 
     w_mutex_lock(&rule->mutex);
 
@@ -574,17 +559,11 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             found = 1;
             for (i = 0; rule->same_fields[i] && found; ++i) {
                 found = 0;
-                for (j = 0; j < my_lf->nfields; j++) {
-                    if (!strcmp(rule->same_fields[i], my_lf->fields[j].key)) {
-                        for (k = 0; k < lf->nfields; k++) {
-                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
-                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
-                                    found = 1;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
                     }
                 }
             }
@@ -601,17 +580,11 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
             found = 0;
             for (i = 0; rule->not_same_fields[i] && !found; ++i) {
-                for (j = 0; j < my_lf->nfields; j++) {
-                    if (!strcmp(rule->not_same_fields[i], my_lf->fields[j].key)) {
-                        for (k = 0; k < lf->nfields; k++) {
-                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
-                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
-                                    found = 1;
-                                }
-                                break;
-                            }
-                        }
-                        break;
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
                     }
                 }
             }
