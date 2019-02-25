@@ -76,8 +76,8 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            if (docker->interval < 5) {
-                merror("At module '%s': Interval must be greater than 5 seconds.", WM_DOCKER_CONTEXT.name);
+            if (docker->interval < 1) {
+                merror("At module '%s': Interval must be a positive number.", WM_DOCKER_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_ATTEMPTS)) {
