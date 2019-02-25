@@ -135,7 +135,9 @@ char* get_process_name(DWORD pid){
                         }
                     }
                     
-                    if (NT_SUCCESS(Status)) string = convert_windows_string(procInfo.ImageName.Buffer);
+                    if (NT_SUCCESS(Status)) {
+                        string = convert_windows_string(procInfo.ImageName.Buffer);
+                    }
                     
                     if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
                 }
@@ -984,15 +986,17 @@ void read_win_program(const wchar_t * sec_key, int arch, int root_key, int usec,
     char * date = NULL;
     char * location = NULL;
 
-    if (root_key == LM_KEY)
+    if (root_key == LM_KEY) {
         primary_key = HKEY_LOCAL_MACHINE;
-    else
+    } else {
         primary_key = HKEY_USERS;
+    }
 
-    if (arch == NOARCH)
+    if (arch == NOARCH) {
         ret = RegOpenKeyExW(primary_key, sec_key, 0, KEY_READ, &program_key);
-    else
+    } else {
         ret = RegOpenKeyExW(primary_key, sec_key, 0, KEY_READ | (arch == ARCH32 ? KEY_WOW64_32KEY : KEY_WOW64_64KEY), &program_key);
+    }
 
     if (ret == ERROR_SUCCESS) {
         // Get name of program
@@ -1007,28 +1011,38 @@ void read_win_program(const wchar_t * sec_key, int arch, int root_key, int usec,
             cJSON_AddStringToObject(package, "format", "win");
             cJSON_AddStringToObject(package, "name", program_name);
 
-            if (arch == ARCH32)
+            if (arch == ARCH32) {
                 cJSON_AddStringToObject(package, "architecture", "i686");
-            else if (arch == ARCH64)
+            } else
+            if (arch == ARCH64) {
                 cJSON_AddStringToObject(package, "architecture", "x86_64");
-            else
+            } else {
                 cJSON_AddStringToObject(package, "architecture", "unknown");
+            }
 
             // Get version
             version = w_reg_query_value(program_key, L"DisplayVersion");
-            if (version && *version) cJSON_AddStringToObject(package, "version", version);
+            if (version && *version) {
+                cJSON_AddStringToObject(package, "version", version);
+            }
 
             // Get vendor
             vendor = w_reg_query_value(program_key, L"Publisher");
-            if (vendor && *vendor) cJSON_AddStringToObject(package, "vendor", vendor);
+            if (vendor && *vendor) {
+                cJSON_AddStringToObject(package, "vendor", vendor);
+            }
 
             // Get install date
             date = w_reg_query_value(program_key, L"InstallDate");
-            if (date && *date) cJSON_AddStringToObject(package, "install_time", date);
+            if (date && *date) {
+                cJSON_AddStringToObject(package, "install_time", date);
+            }
 
             // Get install location
             location = w_reg_query_value(program_key, L"InstallLocation");
-            if (location && *location) cJSON_AddStringToObject(package, "location", location);
+            if (location && *location) {
+                cJSON_AddStringToObject(package, "location", location);
+            }
 
             char *string = cJSON_PrintUnformatted(object);
             mtdebug2(WM_SYS_LOGTAG, "sys_programs_windows() sending '%s'", string);
@@ -1037,11 +1051,25 @@ void read_win_program(const wchar_t * sec_key, int arch, int root_key, int usec,
             free(string);
         }
 
-        if (program_name) free(program_name);
-        if (version) free(version);
-        if (vendor) free(vendor);
-        if (date) free(date);
-        if (location) free(location);
+        if (program_name) {
+            free(program_name);
+        }
+        
+        if (version) {
+            free(version);
+        }
+        
+        if (vendor) {
+            free(vendor);
+        }
+        
+        if (date) {
+            free(date);
+        }
+        
+        if (location) {
+            free(location);
+        }
         
         RegCloseKey(program_key);
     } else {
@@ -2008,7 +2036,9 @@ void sys_proc_windows(const char* LOCATION) {
 	PROCESS_MEMORY_COUNTERS ppsmemCounters;
 	
 	LONG priority;
-	char *exec_path = NULL, *exec_path_conv = NULL, *name = NULL;
+	char *exec_path = NULL;
+    char *exec_path_conv = NULL;
+    char *name = NULL;
 	ULARGE_INTEGER kernel_mode_time, user_mode_time;
 	DWORD pid, parent_pid, session_id, thread_count, page_file_usage, virtual_size;
 	

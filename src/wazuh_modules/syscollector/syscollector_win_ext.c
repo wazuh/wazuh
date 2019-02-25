@@ -386,14 +386,20 @@ char *utf16_to_utf8(LPCWSTR string)
     size_t size = 0;
     int result = 0;
 
-    if (!string || !*string) return (NULL);
+    if (!string || !*string) {
+        return (NULL);
+    }
 
     /* Determine size required */
     size = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, string, -1, NULL, 0, NULL, NULL);
 
-    if (size == 0) return (NULL);
+    if (size == 0) {
+        return (NULL);
+    }
 
-    if ((dest = calloc(size, sizeof(char))) == NULL) return (NULL);
+    if ((dest = calloc(size, sizeof(char))) == NULL) {
+        return (NULL);
+    }
 
     result = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, string, -1, dest, size, NULL, NULL);
 
