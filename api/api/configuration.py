@@ -18,6 +18,8 @@ def fill_dict(default, config):
             config[value_name] = fill_dict(default[value_name], config[value_name])
         elif value_name not in config:
             config[value_name] = default[value_name]
+        elif type(config[value_name]) == str:
+            config[value_name] = config[value_name].lower()
     return config
 
 
@@ -56,7 +58,5 @@ def read_config():
     # append ossec_path to all paths in configuration
     for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert')]:
         configuration[section][subsection] = os.path.join(common.ossec_path, configuration[section][subsection])
-
-    # ToDo: Lowercase all sections text
 
     return configuration
