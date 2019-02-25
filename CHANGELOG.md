@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - The real agent IP is reported by the agent and shown in alerts and the App interface. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
 - Added support for organizations in AWS wodle. ([#2627](https://github.com/wazuh/wazuh/pull/2627))
 - Added support for hot added symbolic links in _Whodata_. ([#2466](https://github.com/wazuh/wazuh/pull/2466))
+- Added `-t` option to `wazuh-clusterd` binary ([#2691](https://github.com/wazuh/wazuh/pull/2691)).
 
 ### Changed
 
