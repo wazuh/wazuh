@@ -53,8 +53,6 @@ def get_args():
                         action='store', default='')
     parser.add_argument('-d', '--debug', dest='debug', help='Debug',
                         action='store_true', default=False)
-    parser.add_argument('-u', '--hook-url', dest='hook_url', help='Webhook URL',
-                        action='store_false', default=False)
 
     return parser.parse_args()
 
