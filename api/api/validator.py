@@ -39,11 +39,11 @@ def check_params(parameters, filters):
     :param filters: Dictionary with filters for checking parameters
     :return: True if parameters are OK, False otherwise
     """
-    query_aux = json.loads(parameters)
-
-    for key, value in filters.items():
-        if key in query_aux:
-            if not check_exp(filters[key], filters[value]):
+    for key in parameters.keys():
+        if key not in filters.keys():
+            return False
+        else:
+            if not check_exp(parameters[key], filters[key]):
                 return False
 
     return True
@@ -105,3 +105,12 @@ def check_cdb_list(cdb_list):
         line += 1
     
     return True
+
+
+def allowed_fields(filters):
+    """
+    Returns a list with allowed fields
+    :param filters: Dictionary with valid filters
+    :return: List with allowed filters
+    """
+    return [field for field in filters.keys()]
