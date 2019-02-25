@@ -1,44 +1,44 @@
 # The host to bind the API to
-host: "0.0.0.0"
+# host: "0.0.0.0"
 # TCP port used by the API
-port: 55000
+# port: 55000
 # Use HTTP authentication
-basic_auth: yes
+# basic_auth: yes
 # Set this option to "yes" in case the API is running behind a proxy server. Values: yes, no
-behind_proxy_server: no
+# behind_proxy_server: no
 
 # Use HTTP protocol over TLS/SSL.
-https:
+# https:
   # Values: yes, no
-  enabled: no
+  # enabled: no
   # HTTPS Certificates
-  key: "api/configuration/ssl/server.key"
-  cert: "api/configuration/ssl/server.crt"
+  # key: "api/configuration/ssl/server.key"
+  # cert: "api/configuration/ssl/server.crt"
 
 # Advanced configuration
 
 # Logging configuration
-logs:
+# logs:
   # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
-  level: "info"
+  # level: "info"
   # log path
-  path: "logs/api.log"
+  # path: "logs/api.log"
 
 # Cross-origin resource sharing. Values: yes, no.
-cors: yes
+# cors: yes
 
 # Cache (time in milliseconds)
-cache:
-  enabled: yes
-  debug: no
-  time: 750
+# cache:
+  # enabled: yes
+  # debug: no
+  # time: 750
 
 # Force the use of authd when adding and removing agents. Values: yes, no
-use_only_authd: no
+# use_only_authd: no
 
 # Drop privileges (Run as ossec user)
-drop_privileges: yes
+# drop_privileges: yes
 
 # Enable features under development
-experimental_features: no
+# experimental_features: no
 

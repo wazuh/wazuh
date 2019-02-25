@@ -12,7 +12,7 @@ import ssl
 import connexion
 from flask_cors import CORS
 
-from api import encoder
+from api import encoder, configuration
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__
 
@@ -62,7 +62,7 @@ def set_logging(configuration, foreground_mode=False):
         debug_level = logging.ERROR
     elif configuration['logs']['level'] == 'warning':
         debug_level = logging.WARNING
-    else: # configuration['logs']['level'] == 'info'
+    else:  # configuration['logs']['level'] == 'info'
         debug_level = logging.INFO
 
     logger.setLevel(debug_level)
@@ -71,19 +71,6 @@ def set_logging(configuration, foreground_mode=False):
 
 def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
-
-
-def read_config():
-    with open(common.api_config_path) as f:
-        configuration = yaml.safe_load(f)
-
-    # append ossec_path to all paths in configuration
-    for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert')]:
-        configuration[section][subsection] = os.path.join(common.ossec_path, configuration[section][subsection])
-
-    # ToDo: Lowercase all sections text
-
-    return configuration
 
 
 def main(cors, port, host, ssl_context):
@@ -108,7 +95,7 @@ if __name__ == '__main__':
 
     my_wazuh = Wazuh(get_init=True)
 
-    configuration = read_config()
+    configuration = configuration.read_config()
 
     if args.version:
         print_version()
