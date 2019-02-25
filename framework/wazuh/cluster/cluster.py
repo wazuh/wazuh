@@ -61,9 +61,6 @@ def check_cluster_config(config):
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
 
-    if not isinstance(config['port'], int):
-        raise WazuhException(3004, "Cluster port must be an integer.")
-
 
 def get_cluster_items():
     try:
@@ -116,6 +113,9 @@ def read_config():
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
+
+    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
+        raise WazuhException(3004, "Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
     if config_cluster['disabled'] == 'no':
