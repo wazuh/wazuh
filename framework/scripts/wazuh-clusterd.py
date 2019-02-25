@@ -120,6 +120,7 @@ if __name__ == '__main__':
                         dest='debug_level')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
+    parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
     args = parser.parse_args()
 
     my_wazuh = Wazuh(get_init=True)
@@ -143,14 +144,6 @@ if __name__ == '__main__':
         os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
         os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
-    # clean
-    cluster.clean_up()
-
-    # Drop privileges to ossec
-    if not args.root:
-        os.setgid(common.ossec_gid)
-        os.setuid(common.ossec_uid)
-
     main_logger = set_logging(args.foreground, debug_mode)
 
     cluster_configuration = cluster.read_config()
@@ -159,7 +152,18 @@ if __name__ == '__main__':
         cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
         main_logger.error(e)
+        sys.exit(1)
+
+    if args.test_config:
         sys.exit(0)
+
+    # clean
+    cluster.clean_up()
+
+    # Drop privileges to ossec
+    if not args.root:
+        os.setgid(common.ossec_gid)
+        os.setuid(common.ossec_uid)
 
     if cluster_configuration['disabled']:
         main_logger.info("Cluster disabled. Exiting.")
