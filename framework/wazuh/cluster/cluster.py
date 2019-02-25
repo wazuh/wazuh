@@ -122,7 +122,7 @@ def read_config():
         config_cluster['disabled'] = False
     elif config_cluster['disabled'] == 'yes':
         config_cluster['disabled'] = True
-    else:
+    elif not isinstance(config_cluster['disabled'], bool):
         raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
             config_cluster['disabled']))
 
