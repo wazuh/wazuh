@@ -27,13 +27,13 @@
 #define DIFFERENT_SRCGEOIP  0x400
 #define SAME_SRCPORT        0x020
 #define SAME_DSTPORT        0x040
-#define SAME_FIELD          0x080
 #define SAME_DODIFF         0x100
+#define SAME_FIELD          0x200
+#define NOT_SAME_FIELD      0x400
 #define NOT_SAME_USER       0xffe /* 0xfff - 0x001  */
 #define NOT_SAME_SRCIP      0xffd /* 0xfff - 0x002  */
 #define NOT_SAME_ID         0xffb /* 0xfff - 0x004  */
 #define NOT_SAME_AGENT      0xff7 /* 0xfff - 0x008 */
-#define NOT_SAME_FIELD      0xf7f /* 0xfff - 0x080 */
 
 /* Alert options  - store on a uint16 */
 #define DO_FTS          0x0001
@@ -180,8 +180,8 @@ typedef struct _RuleInfo {
     void *prev_rule;
 
     /* Dynamic fields to compare between events */
-    char *same_fields;
-    char *not_same_fields;
+    char ** same_fields;
+    char ** not_same_fields;
 } RuleInfo;
 
 

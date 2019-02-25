@@ -34,7 +34,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     Eventinfo *first_lf;
     OSListNode *lf_node;
     int frequency_count = 0;
-    int i, j;
+    int i, j, k, found;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -97,43 +97,53 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
 
         /* Check for repetitions from same dynamic fields */
         if (rule->context_opts & SAME_FIELD) {
-            if (my_lf->nfields == 0)
+            if (my_lf->nfields == 0 || lf->nfields == 0)
                 goto next_it;
 
-            for (i = 0; i < my_lf->nfields; i++) {
-                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
-                    if (lf->nfields == 0)
-                        goto next_it;
-
-                    for (j = 0; j < lf->nfields; j++) {
-                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
-                            if (strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
-                                goto next_it;
+            i = 0;
+            while (rule->same_fields[i]) {
+                found = 0;
+                for (j = 0; j < my_lf->nfields; j++) {
+                    if (!strcmp(rule->same_fields[i], my_lf->fields[j].key)) {
+                        for (k = 0; k < lf->nfields; k++) {
+                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
+                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
+                                    found = 1;
+                                }
                             }
                         }
                     }
                 }
+                if (!found) {
+                    goto next_it;
+                }
+                i++;
             }
         }
 
-        /* Check for repetitions from not same dynamic fields */
+        /* Check for differences from dynamic fields values (not_same_field) */
         if (rule->context_opts & NOT_SAME_FIELD) {
-            if (my_lf->nfields == 0)
+            if (my_lf->nfields == 0 && lf->nfields == 0)
                 goto next_it;
 
-            for (i = 0; i < my_lf->nfields; i++) {
-                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
-                    if (lf->nfields == 0)
-                        goto next_it;
-
-                    for (j = 0; j < lf->nfields; j++) {
-                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
-                            if (!strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
-                                goto next_it;
+            i = 0;
+            while (rule->not_same_fields[i]) {
+                found = 0;
+                for (j = 0; j < my_lf->nfields; j++) {
+                    if (!strcmp(rule->not_same_fields[i], my_lf->fields[j].key)) {
+                        for (k = 0; k < lf->nfields; k++) {
+                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
+                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
+                                    found = 1;
+                                }
                             }
                         }
                     }
                 }
+                if (found) {
+                    goto next_it;
+                }
+                i++;
             }
         }
 
@@ -248,7 +258,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     OSListNode *lf_node;
     Eventinfo *first_lf;
     int frequency_count = 0;
-    int i, j;
+    int i, j, k, found;
     OSList *list = rule->group_search;
 
     //w_mutex_lock(&rule->mutex);
@@ -315,43 +325,53 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
 
         /* Check for repetitions from same dynamic fields */
         if (rule->context_opts & SAME_FIELD) {
-            if (my_lf->nfields == 0)
+            if (my_lf->nfields == 0 || lf->nfields == 0)
                 goto next_it;
 
-            for (i = 0; i < my_lf->nfields; i++) {
-                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
-                    if (lf->nfields == 0)
-                        goto next_it;
-
-                    for (j = 0; j < lf->nfields; j++) {
-                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
-                            if (strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
-                                goto next_it;
+            i = 0;
+            while (rule->same_fields[i]) {
+                found = 0;
+                for (j = 0; j < my_lf->nfields; j++) {
+                    if (!strcmp(rule->same_fields[i], my_lf->fields[j].key)) {
+                        for (k = 0; k < lf->nfields; k++) {
+                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
+                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
+                                    found = 1;
+                                }
                             }
                         }
                     }
                 }
+                if (!found) {
+                    goto next_it;
+                }
+                i++;
             }
         }
 
-        /* Check for repetitions from not same dynamic fields */
+        /* Check for differences from dynamic fields values (not_same_field) */
         if (rule->context_opts & NOT_SAME_FIELD) {
-            if (my_lf->nfields == 0)
+            if (my_lf->nfields == 0 && lf->nfields == 0)
                 goto next_it;
 
-            for (i = 0; i < my_lf->nfields; i++) {
-                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
-                    if (lf->nfields == 0)
-                        goto next_it;
-
-                    for (j = 0; j < lf->nfields; j++) {
-                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
-                            if (!strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
-                                goto next_it;
+            i = 0;
+            while (rule->not_same_fields[i]) {
+                found = 0;
+                for (j = 0; j < my_lf->nfields; j++) {
+                    if (!strcmp(rule->not_same_fields[i], my_lf->fields[j].key)) {
+                        for (k = 0; k < lf->nfields; k++) {
+                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
+                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
+                                    found = 1;
+                                }
                             }
                         }
                     }
                 }
+                if (found) {
+                    goto next_it;
+                }
+                i++;
             }
         }
 
@@ -467,7 +487,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     EventNode *first_pt;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
-    int i, j;
+    int i, j, k, found;
 
     w_mutex_lock(&rule->mutex);
 
@@ -544,43 +564,53 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
 
         /* Check for repetitions from same dynamic fields */
         if (rule->context_opts & SAME_FIELD) {
-            if (my_lf->nfields == 0)
+            if (my_lf->nfields == 0 || lf->nfields == 0)
                 goto next_it;
 
-            for (i = 0; i < my_lf->nfields; i++) {
-                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
-                    if (lf->nfields == 0)
-                        goto next_it;
-
-                    for (j = 0; j < lf->nfields; j++) {
-                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
-                            if (strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
-                                goto next_it;
+            i = 0;
+            while (rule->same_fields[i]) {
+                found = 0;
+                for (j = 0; j < my_lf->nfields; j++) {
+                    if (!strcmp(rule->same_fields[i], my_lf->fields[j].key)) {
+                        for (k = 0; k < lf->nfields; k++) {
+                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
+                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
+                                    found = 1;
+                                }
                             }
                         }
                     }
                 }
+                if (!found) {
+                    goto next_it;
+                }
+                i++;
             }
         }
 
-        /* Check for repetitions from not same dynamic fields */
+        /* Check for differences from dynamic fields values (not_same_field) */
         if (rule->context_opts & NOT_SAME_FIELD) {
-            if (my_lf->nfields == 0)
+            if (my_lf->nfields == 0 && lf->nfields == 0)
                 goto next_it;
 
-            for (i = 0; i < my_lf->nfields; i++) {
-                if (!strcmp(rule->same_fields, my_lf->fields[i].key)) {
-                    if (lf->nfields == 0)
-                        goto next_it;
-
-                    for (j = 0; j < lf->nfields; j++) {
-                        if (!strcmp(my_lf->fields[i].key, lf->fields[j].key)) {
-                            if (!strcmp(my_lf->fields[i].value, lf->fields[j].value)) {
-                                goto next_it;
+            i = 0;
+            while (rule->not_same_fields[i]) {
+                found = 0;
+                for (j = 0; j < my_lf->nfields; j++) {
+                    if (!strcmp(rule->not_same_fields[i], my_lf->fields[j].key)) {
+                        for (k = 0; k < lf->nfields; k++) {
+                            if (!strcmp(my_lf->fields[j].key, lf->fields[k].key)) {
+                                if (!strcmp(my_lf->fields[j].value, lf->fields[k].value)) {
+                                    found = 1;
+                                }
                             }
                         }
                     }
                 }
+                if (found) {
+                    goto next_it;
+                }
+                i++;
             }
         }
 

@@ -926,14 +926,44 @@ int Rules_OP_ReadRules(const char *rulefile)
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_same_field) == 0) {
 
-                        config_ruleinfo->context_opts |= SAME_FIELD;
-                        os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields);
+                        if (config_ruleinfo->context_opts & SAME_FIELD) {
+
+                            int size;
+                            for (size = 0; config_ruleinfo->same_fields[size] != NULL; size++);
+
+                            os_realloc(config_ruleinfo->same_fields, (size + 2) * sizeof(char *), config_ruleinfo->same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[size]);
+                            config_ruleinfo->same_fields[size + 1] = NULL;
+
+                        } else {
+
+                            config_ruleinfo->context_opts |= SAME_FIELD;
+                            os_calloc(2, sizeof(char *), config_ruleinfo->same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->same_fields[0]);
+                            config_ruleinfo->same_fields[1] = NULL;
+
+                        }
 
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_notsame_field) == 0) {
 
-                        config_ruleinfo->context_opts |= NOT_SAME_FIELD;
-                        os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields);
+                        if (config_ruleinfo->context_opts & NOT_SAME_FIELD) {
+                            
+                            int size;
+                            for (size = 0; config_ruleinfo->not_same_fields[size] != NULL; size++);
+
+                            os_realloc(config_ruleinfo->not_same_fields, (size + 2) * sizeof(char *), config_ruleinfo->not_same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[size]);
+                            config_ruleinfo->not_same_fields[size + 1] = NULL;
+
+                        } else {
+
+                            config_ruleinfo->context_opts |= NOT_SAME_FIELD;
+                            os_calloc(2, sizeof(char *), config_ruleinfo->not_same_fields);
+                            os_strdup(rule_opt[k]->content, config_ruleinfo->not_same_fields[0]);
+                            config_ruleinfo->not_same_fields[1] = NULL;
+
+                        }
 
                     } else if (strcasecmp(rule_opt[k]->element,
                                           xml_options) == 0) {
