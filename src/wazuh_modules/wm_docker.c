@@ -76,8 +76,13 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
+                free(command);
+                free(output);
                 pthread_exit(NULL);
         }
+
+        os_free(output);
+        free(command);
 
         if (attempts > docker_conf->attempts) {
             mtinfo(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
