@@ -393,9 +393,9 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                         integrator_config[s]->path,
                         alert_file_param,
                         exec_tmp_file,
-                        api_key_param,
+                        integrator_config[s]->apikey == NULL ? "" : api_key_param,
                         integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey,
-                        hook_url_param,
+                        integrator_config[s]->hookurl==NULL ? "" : hook_url_param,
                         integrator_config[s]->hookurl==NULL ? "" : integrator_config[s]->hookurl,
                         dbg_lvl <= 0 ? "" : debug_param);
 
