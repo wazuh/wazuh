@@ -1010,7 +1010,7 @@
     <group>gpg13_4.12,</group>
   </rule>
 
-  <!--{"EventChannel":{"System":{"ProviderName":"NetBT","EventID":"4321","Level":"2","Task":"0","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:40.107861400Z","EventRecordID":"1701","Channel":"System","Computer":"qnu","SeverityValue":"ERROR","Message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"EventData":{"Data":"","Data":"WORKGROUP      :1d","Data":"10.0.2.15","Data":"10.0.2.2","Binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}}-->
+  <!--{"System":{"ProviderName":"NetBT","EventID":"4321","Level":"2","Task":"0","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:40.107861400Z","EventRecordID":"1701","Channel":"System","Computer":"qnu","SeverityValue":"ERROR","Message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"EventData":{"Data":"","Data":"WORKGROUP      :1d","Data":"10.0.2.15","Data":"10.0.2.2","Binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}-->
   <rule id="20003" level="5">
     <if_sid>20000</if_sid>
     <field name="system.severityValue">^ERROR</field>
@@ -1042,7 +1042,7 @@
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <!--{"EventChannel":{"System":{"ProviderName":"Microsoft-Windows-Security-Auditing","ProviderGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","EventID":"4624","Version":"1","Level":"0","Task":"12544","Opcode":"0","Keywords":"0x802000000000000","SystemTime":"2018-12-18T10:55:48.073081500Z","EventRecordID":"7017","ProcessID":"548","ThreadID":"3212","Channel":"Security","Computer":"qnu","SeverityValue":"AUDIT_SUCCESS","Message":"L’ouverture de session d’un compte s’est correctement déroulée."},"EventData":{"SubjectUserSid":"S-1-5-18","SubjectUserName":"QNU$","SubjectDomainName":"WORKGROUP","SubjectLogonId":"0x3e7","TargetUserSid":"S-1-5-18","TargetUserName":"Système","TargetDomainName":"AUTORITE NT","TargetLogonId":"0x3e7","LogonType":"5","LogonProcessName":"Advapi  ","AuthenticationPackageName":"Negotiate","WorkstationName":"-","LogonGuid":"{00000000-0000-0000-0000-000000000000}","TransmittedServices":"-","LmPackageName":"-","KeyLength":"0","ProcessId":"0x21c","ProcessName":"C:\\\\Windows\\\\System32\\\\services.exe","IpAddress":"-","IpPort":"-","ImpersonationLevel":"%%1833"}}}-->
+  <!--{"System":{"ProviderName":"Microsoft-Windows-Security-Auditing","ProviderGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","EventID":"4624","Version":"1","Level":"0","Task":"12544","Opcode":"0","Keywords":"0x802000000000000","SystemTime":"2018-12-18T10:55:48.073081500Z","EventRecordID":"7017","ProcessID":"548","ThreadID":"3212","Channel":"Security","Computer":"qnu","SeverityValue":"AUDIT_SUCCESS","Message":"L’ouverture de session d’un compte s’est correctement déroulée."},"EventData":{"SubjectUserSid":"S-1-5-18","SubjectUserName":"QNU$","SubjectDomainName":"WORKGROUP","SubjectLogonId":"0x3e7","TargetUserSid":"S-1-5-18","TargetUserName":"Système","TargetDomainName":"AUTORITE NT","TargetLogonId":"0x3e7","LogonType":"5","LogonProcessName":"Advapi  ","AuthenticationPackageName":"Negotiate","WorkstationName":"-","LogonGuid":"{00000000-0000-0000-0000-000000000000}","TransmittedServices":"-","LmPackageName":"-","KeyLength":"0","ProcessId":"0x21c","ProcessName":"C:\\\\Windows\\\\System32\\\\services.exe","IpAddress":"-","IpPort":"-","ImpersonationLevel":"%%1833"}}-->
   <rule id="20007" level="3">
     <if_sid>20004</if_sid>
     <field name="system.eventID">^528$|^540$|^673$|^4624$|^4769$</field>
@@ -2008,7 +2008,7 @@
       <group>gdpr_IV_32.2,</group>
   </rule>
 
-  <!--{"EventChannel":{"System":{"ProviderName":"chromoting","EventID":"5","Level":"4","Task":"1","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:48.000000000Z","EventRecordID":"1801","Channel":"Application","Computer":"qnu","SeverityValue":"INFORMATION","Message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"EventData":{"Data":"user@gmail.com"}}}-->
+  <!--{"System":{"ProviderName":"chromoting","EventID":"5","Level":"4","Task":"1","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:48.000000000Z","EventRecordID":"1801","Channel":"Application","Computer":"qnu","SeverityValue":"INFORMATION","Message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"EventData":{"Data":"user@gmail.com"}}-->
   <rule id="20095" level="5">
       <if_sid>20001</if_sid>
       <field name="system.providerName">chromoting</field>
