@@ -36,7 +36,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^# && r:Port\.+22;'
+     - 'c:sshd -T -> !r:^# && r:port\.+22;'
  - id: 1501
    title: "SSH Hardening - 2: Protocol 1"
    description: "The SSH protocol should not be 1."
@@ -46,7 +46,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^# && r:Protocol\.+1;'
+     - 'c:sshd -T -> !r:^# && r:protocol\.+1;'
  - id: 1502
    title: "SSH Hardening - 3: Root can log in"
    description: "The option PermitRootLogin should be set to no."
@@ -54,7 +54,7 @@ checks:
    remediation: "Change the PermitRootLogin option value in the sshd_config file."
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;'
+     - 'c:sshd -T -> !r:^\s*permitrootlogin\.+no;'
  - id: 1503
    title: "SSH Hardening - 4: No Public Key authentication"
    description: "The option PubkeyAuthentication should be set yes."
@@ -64,7 +64,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*PubkeyAuthentication\.+yes;'
+     - 'c:sshd -T -> !r:^\s*pubkeyauthentication\.+yes;'
  - id: 1504
    title: "SSH Hardening - 5: Password Authentication"
    description: "The option PasswordAuthentication should be set to no."
@@ -74,7 +74,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*PasswordAuthentication\.+no;'
+     - 'c:sshd -T -> !r:^\s*passwordauthentication\.+no;'
  - id: 1505
    title: "SSH Hardening - 6: Empty passwords allowed"
    description: "The option PermitEmptyPasswords should be set to no."
@@ -84,7 +84,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;'
+     - 'c:sshd -T -> !r:^\s*permitemptypasswords\.+no;'
  - id: 1506
    title: "SSH Hardening - 7: Rhost or shost used for authentication"
    description: "The option IgnoreRhosts should be set to yes."
@@ -94,7 +94,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*IgnoreRhosts\.+yes;'
+     - 'c:sshd -T -> !r:^\s*ignorerhosts\.+yes;'
  - id: 1507
    title: "SSH Hardening - 8: Wrong Grace Time."
    description: "The option LoginGraceTime should be set to 30."
@@ -104,7 +104,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*LoginGraceTime\s+30\s*$;'
+     - 'c:sshd -T -> !r:^\s*logingracetime\s+30\s*$;'
  - id: 1508
    title: "SSH Hardening - 9: Wrong Maximum number of authentication attempts"
    description: "The option MaxAuthTries should be set to 4."
@@ -114,4 +114,4 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;'
+     - 'c:sshd -T -> !r:^\s*maxauthtries\s+4\s*$;'
