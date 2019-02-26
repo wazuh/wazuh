@@ -120,6 +120,9 @@ if __name__ == '__main__':
                         dest='debug_level')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
     parser.add_argument('-r', help="Run as root", action='store_true', dest='root')
+    parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
+    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
+                        default=common.ossec_conf)
     args = parser.parse_args()
 
     my_wazuh = Wazuh(get_init=True)
@@ -127,10 +130,6 @@ if __name__ == '__main__':
     if args.version:
         print_version()
         sys.exit(0)
-
-    # Foreground/Daemon
-    if not args.foreground:
-        pyDaemonModule.pyDaemon()
 
     # Set logger
     try:
@@ -143,23 +142,30 @@ if __name__ == '__main__':
         os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
         os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
-    # clean
-    cluster.clean_up()
-
-    # Drop privileges to ossec
-    if not args.root:
-        os.setgid(common.ossec_gid)
-        os.setuid(common.ossec_uid)
-
     main_logger = set_logging(args.foreground, debug_mode)
 
-    cluster_configuration = cluster.read_config()
+    cluster_configuration = cluster.read_config(config_file=args.config_file)
     cluster_items = cluster.get_cluster_items()
     try:
         cluster.check_cluster_config(cluster_configuration)
     except Exception as e:
         main_logger.error(e)
+        sys.exit(1)
+
+    if args.test_config:
         sys.exit(0)
+
+    # clean
+    cluster.clean_up()
+
+    # Foreground/Daemon
+    if not args.foreground:
+        pyDaemonModule.pyDaemon()
+
+    # Drop privileges to ossec
+    if not args.root:
+        os.setgid(common.ossec_gid)
+        os.setuid(common.ossec_uid)
 
     if cluster_configuration['disabled']:
         main_logger.info("Cluster disabled. Exiting.")
