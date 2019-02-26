@@ -28,7 +28,7 @@ regex_dict = {'numbers': r'^\d+$',
               'boolean': r'^true$|^false$',
               'query_param': r'[\w ]+$',
               'type_format': r'^xml$|^json$',
-              'relative_paths': r'((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$'
+              'relative_paths': r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$'
              }
 
 
@@ -40,24 +40,20 @@ def check_params(parameters, filters):
     :return: True if parameters are OK, False otherwise
     """
     for key in parameters.keys():
-        if key not in filters.keys():
+        if key not in filters.keys() or not check_exp(parameters[key], filters[key]):
             return False
-        else:
-            if not check_exp(parameters[key], filters[key]):
-                return False
 
     return True
 
 
-def check_exp(exp, regex_type):
+def check_exp(exp, regex_name):
     """
     Function to check if an expression matches a regex
     :param exp: Expression to check
-    :param regex_type: Regular expression to do the matching
+    :param regex_name: Name of regular expression to do the matching
     :return: True if expression is matched, False otherwise
     """
-    regex = re.compile(regex_dict[regex_type])
-    return True if regex.match(exp) else False
+    return True if re.match(regex_dict[regex_name], exp) else False
 
 
 def check_xml(xml_string):
@@ -82,11 +78,8 @@ def check_path(relative_path):
     """
     if './' in relative_path or '../' in relative_path:
         return False
-    
-    if relative_path == 'etc/ossec.conf':
-        return True
-    
-    check_exp(relative_path, 'relative_paths')
+
+    return check_exp(relative_path, 'relative_paths')
 
 
 def check_cdb_list(cdb_list):
