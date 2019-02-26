@@ -71,7 +71,7 @@ def main():
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
-    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.ip)
+    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
     if not os.path.isfile(agent_info):
         raise WazuhException(1720)
 
