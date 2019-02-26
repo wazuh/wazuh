@@ -56,6 +56,18 @@ def check_exp(exp, regex_name):
     return True if re.match(regex_dict[regex_name], exp) else False
 
 
+def check_path(relative_path):
+    """
+    Function to check if a relative path is allowed (for uploading files)
+    :param relative_path: XML string to check
+    :return: True if XML is OK, False otherwise
+    """
+    if './' in relative_path or '../' in relative_path:
+        return False
+
+    return check_exp(relative_path, 'relative_paths')
+
+
 def check_xml(xml_string):
     """
     Function to check if a XML string is right
@@ -68,18 +80,6 @@ def check_xml(xml_string):
         return False
     
     return True
-
-
-def check_path(relative_path):
-    """
-    Function to check if a relative path is allowed (for uploading files)
-    :param relative_path: XML string to check
-    :return: True if XML is OK, False otherwise
-    """
-    if './' in relative_path or '../' in relative_path:
-        return False
-
-    return check_exp(relative_path, 'relative_paths')
 
 
 def check_cdb_list(cdb_list):

@@ -105,13 +105,13 @@ def test_validation_paths_ko(relative_path):
 
 @pytest.mark.parametrize('parameters, filters', [
     ({'path': 'etc/rules/rule.xml', 'offset': '32', 'format': 'xml'},
-    {'path': 'paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
+     {'path': 'paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
     ({'offset': '2', 'limit': '3', 'sort': '-agent_id'},
-    {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
+     {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
     ({'ip': '192.168.122.15', 'os.name': 'CentOS Linux', 'os.version': '7.1'},
-    {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
+     {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
     ({'use_http': 'true', 'force': '1', 'agent_id': '004'},
-    {'use_http': 'boolean', 'force': 'numbers', 'agent_id': 'numbers'})
+     {'use_http': 'boolean', 'force': 'numbers', 'agent_id': 'numbers'})
 ])
 def test_validation_check_parms_ok(parameters, filters):
     assert validator.check_params(parameters, filters) is True
@@ -119,14 +119,54 @@ def test_validation_check_parms_ok(parameters, filters):
 
 @pytest.mark.parametrize('parameters, filters', [
     ({'path': 'etc/internal_options', 'offset': '32', 'format': 'xml'},
-    {'path': 'relative_paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
+     {'path': 'relative_paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
     ({'offset': '2', 'limit': '3', 'sort': '-agent_id', 'path': 'etc/rules/local_rules.xml'},
-    {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
+     {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
     ({'ip': '192.168.122.345', 'os.name': 'CentOS Linux', 'os.version': '7.1'},
-    {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
+     {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
     ({'use_http': 'true', 'force': '1', 'agent_id': '004'},
-    {'use_http': 'boolean', 'force': 'numbers'})
+     {'use_http': 'boolean', 'force': 'numbers'})
 ])
 def test_validation_check_parms_ko(parameters, filters):
     assert validator.check_params(parameters, filters) is False
+
+
+@pytest.mark.parametrize('cdb_list', [
+    ('audit-wazuh-w:write \n audit-wazuh-r:read \n audit-wazuh-a:attribute \n'
+     'audit-wazuh-x:execute \n audit-wazuh-c:command')
+])
+def test_validation_cdb_list_ok(cdb_list):
+    assert validator.check_cdb_list(cdb_list) is True
+
+
+@pytest.mark.parametrize('cdb_list', [
+    (':write \n audit-wazuh-r:read \n audit-wazuh-a:attribute'),
+    ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute')
+])
+def test_validation_cdb_list_ko(cdb_list):
+    assert validator.check_cdb_list(cdb_list) is False
+
+
+@pytest.mark.parametrize('xml_string', [
+    ('<!--  Wazuh - Manager - Default configuration for centos 7  More info at: '
+     'https://documentation.wazuh.com  Mailing list: https://groups.google.com/forum/#!forum/wazuh--><ossec_config>  <global>   '
+     '<jsonout_output>yes</jsonout_output>    <alerts_log>yes</alerts_log>    <logall>no</logall>    <logall_json>no</logall_json>'
+     '<email_notification>no</email_notification>    <smtp_server>smtp.example.wazuh.com</smtp_server> '
+     '<email_from>ossecm@example.wazuh.com</email_from>    <email_to>recipient@example.wazuh.com</email_to>'
+     '<email_maxperhour>12</email_maxperhour>    <email_log_source>alerts.log</email_log_source></global></ossec_config>'),
+    ('<?xml version="1.0" encoding="UTF-8"?><note><to>wazuh</to></note>')
+])
+def test_validation_xml_ok(xml_string):
+    assert validator.check_xml(xml_string) is True
+
+
+@pytest.mark.parametrize('xml_string', [
+    ('<!--  Wazuh - Manager - Default configuration for centos 7  More info at: '
+     'https://documentation.wazuh.com  Mailing list: https://groups.google.com/forum/#!forum/wazuh--><ossec_config>  <global>   '
+     '<jsonout_output>yes</jsonout_output>    <alerts_log>yes</alerts_log>    <logall>no</logall>    <logall_json>no</logall_json>'
+     '<email_notification>&no</email_notification><email_log_source>alerts.log</email_log_source></global></ossec_config>'),
+    ('<?xml version="1.0" encoding="UTF-8"?><note><to>wazuh</to><note>')
+])
+def test_validation_xml_ko(xml_string):
+    assert validator.check_xml(xml_string) is False
 
