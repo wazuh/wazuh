@@ -231,6 +231,186 @@
             }
           }
         },
+        "win": {
+          "properties": {
+            "system": {
+              "properties": {
+                "providerName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "providerGuid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "eventID": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "version": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "level": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "task": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "opcode": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "keywords": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "systemTime": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "eventRecordID": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "processID": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "threadID": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "channel": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "computer": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "severityValue": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "message": {
+                  "type": "text",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "eventdata": {
+              "properties": {
+                "subjectUserSid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "subjectUserName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "subjectDomainName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "subjectLogonId": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "targetUserSid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "targetUserName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "targetDomainName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "targetLogonId": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "logonType": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "logonProcessName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "authenticationPackageName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "LogonGuid": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "keyLength": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "impersonationLevel": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "transactionId": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "newState": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "resourceManager": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "processId": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "processName": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "data": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "image": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "binary": {
+                  "type": "long",
+                  "doc_values": "true"
+                },
+                "parentImage": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            },
+            "rmSessionEvent" :{
+              "properties": {
+                "rmSessionId": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "uTCStartTime": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                }
+              }
+            }
+          }
+        },
         "location": {
           "type": "keyword",
           "doc_values": "true"

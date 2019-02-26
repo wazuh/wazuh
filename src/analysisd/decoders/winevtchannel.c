@@ -425,6 +425,7 @@ int DecodeWinevt(Eventinfo *lf){
         cJSON_AddItemToObject(json_event, "eventData", json_eventdata_in);
     }
     if (extra){
+        *extra = tolower(*extra);
         cJSON_AddItemToObject(json_event, extra, json_extra_in);
     } else {
         cJSON_Delete(json_extra_in);
