@@ -3,7 +3,7 @@ import logging
 import connexion
 from flask_testing import TestCase
 
-from swagger_server.encoder import JSONEncoder
+from api.encoder import JSONEncoder
 
 
 class BaseTestCase(TestCase):
