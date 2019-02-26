@@ -2,28 +2,58 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import common
+from api.APIException import APIException
 import os
 import yaml
+from typing import Dict, List, Tuple
 
 
-def fill_dict(default, config):
+def dict_to_lowercase(mydict: Dict):
+    """
+    Turns all str values to lowercase. Supports nested dictionaries.
+    :param mydict: Dictionary to lowercase
+    :return: None (the dictionary's reference is modified)
+    """
+    for k, val in filter(lambda x: isinstance(x[1], str) or isinstance(x[1], dict), mydict.items()):
+        if isinstance(val, dict):
+            dict_to_lowercase(mydict[k])
+        else:
+            mydict[k] = val.lower()
+
+
+def append_ossec_path(dictionary: Dict, path_fields: List[Tuple[str, str]]):
+    """
+    Appends ossec path to all path fields in a dictionary
+    :param dictionary: dictionary to append ossec path
+    :param path_fields: List of tuples containing path fields
+    :return: None (the dictionary's reference is modified)
+    """
+    for section, subsection in path_fields:
+        dictionary[section][subsection] = os.path.join(common.ossec_path, dictionary[section][subsection])
+
+
+def fill_dict(default: Dict, config: Dict) -> Dict:
     """
     Fills a dictionary's missing values using default ones.
     :param default: Dictionary with default values
     :param config: Dictionary to fill
     :return: Filled dictionary
     """
-    for value_name in default.keys():
-        if type(default[value_name]) == dict and value_name in config:
-            config[value_name] = fill_dict(default[value_name], config[value_name])
-        elif value_name not in config:
-            config[value_name] = default[value_name]
-        elif type(config[value_name]) == str:
-            config[value_name] = config[value_name].lower()
-    return config
+    # check there aren't extra configuration values in user's configuration:
+    if config.keys() - default.keys() != set():
+        raise APIException(2000, ', '.join(config.keys() - default.keys()))
+
+    for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
+        config[k] = {**default[k], **config[k]}
+
+    return {**default, **config}
 
 
-def read_config():
+def read_config() -> Dict:
+    """
+    Reads user API configuration and merges it with the default one
+    :return: API configuration
+    """
     default_configuration = {
         "host": "0.0.0.0",
         "port": 55000,
@@ -53,10 +83,13 @@ def read_config():
         configuration = yaml.safe_load(f)
 
     # if any value is missing from user's cluster configuration, add the default one:
-    configuration = default_configuration if configuration is None else fill_dict(default_configuration, configuration)
+    if configuration is None:
+        configuration = default_configuration
+    else:
+        dict_to_lowercase(configuration)
+        configuration = fill_dict(default_configuration, configuration)
 
     # append ossec_path to all paths in configuration
-    for section, subsection in [('logs', 'path'), ('https', 'key'), ('https', 'cert')]:
-        configuration[section][subsection] = os.path.join(common.ossec_path, configuration[section][subsection])
+    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert')])
 
     return configuration
