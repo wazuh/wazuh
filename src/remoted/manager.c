@@ -340,7 +340,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
         // Merge ar.conf always
 
         if (!logr.nocmerged) {
-            snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
+            snprintf(merged_tmp, PATH_MAX + 1, "%.4092s.tmp", merged);
             // First call, truncate merged file
             MergeAppendFile(merged_tmp, NULL, group, -1);
         }

@@ -165,20 +165,20 @@ void run_notify()
     if(agent_ip){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%.62000s%s%s\n%s",
                     getuname(), md5sum, tmp_labels, shared_files, label_ip, keep_alive_random);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%.62000s%s%s\n%s",
                     getuname(), tmp_labels, shared_files, label_ip, keep_alive_random);
         }
     }
     else{
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%.62000s%s\n%s",
                     getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
         } else {
-            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%.62000s%s\n%s",
                     getuname(), tmp_labels, shared_files, keep_alive_random);
         }
     }

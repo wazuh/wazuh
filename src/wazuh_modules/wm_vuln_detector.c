@@ -62,7 +62,7 @@ int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
     "vulnerability-detector",
     (wm_routine)wm_vuldet_main,
-    (wm_routine)wm_vuldet_destroy,
+    (wm_routine)(void *)wm_vuldet_destroy,
     (cJSON * (*)(const void *))wm_vuldet_dump
 };
 

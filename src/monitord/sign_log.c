@@ -35,7 +35,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     MD5_CTX md5_ctx;
     SHA256_CTX sha256_ctx;
 
-    char logfilesum[OS_FLSIZE + 1];
+    char logfilesum[OS_FLSIZE + 6];
     char logfilesum_old[OS_FLSIZE + 1];
     char logfile_r[OS_FLSIZE + 1];
     char buffer[4096];
@@ -47,7 +47,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
     unsigned char md256[SHA256_DIGEST_LENGTH];
 
     /* Clear the memory */
-    memset(logfilesum, '\0', OS_FLSIZE + 1);
+    memset(logfilesum, '\0', OS_FLSIZE + 6);
     memset(logfilesum_old, '\0', OS_FLSIZE + 1);
 
     /* Set umask */
@@ -55,7 +55,7 @@ void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext)
 
     /* Create the checksum file names */
     snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
-    snprintf(logfilesum, OS_FLSIZE, "%s.sum", logfile_r);
+    snprintf(logfilesum, OS_FLSIZE + 5, "%s.sum", logfile_r);
     snprintf(logfilesum_old, OS_FLSIZE, "%s.%s.sum", logfile_old, ext);
 
     MD5_Init(&md5_ctx);

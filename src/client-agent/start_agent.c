@@ -253,7 +253,7 @@ void start_agent(int is_startup)
                         snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
                                  keys.keyentries[0]->name,
                                  keys.keyentries[0]->ip->ip);
-                        snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ,
+                        snprintf(fmsg, OS_MAXSTR, "%c:%s:%.65500s", LOCALFILE_MQ,
                                  "ossec", msg);
                         send_msg(fmsg, -1);
                     }

@@ -46,7 +46,7 @@ int Lists_OP_LoadList(char *listfile)
         snprintf(a_filename, sizeof(a_filename) - 1, "%.4094s", b_filename);
     }
 
-    snprintf(b_filename, sizeof(b_filename) - 1, "%4090s.cdb", a_filename);
+    snprintf(b_filename, sizeof(b_filename) - 1, "%.4090s.cdb", a_filename);
     
     /* Check if the CDB list file is actually available */
     FILE *txt_fd = fopen(a_filename, "r");

@@ -921,7 +921,7 @@ void audit_reload_rules(void) {
 }
 
 
-void *audit_reload_thread(void) {
+void *audit_reload_thread() {
 
     sleep(RELOAD_RULES_INTERVAL);
     while (audit_thread_active) {

@@ -107,7 +107,7 @@ static int wm_extract_agent(const char *fname, char *name, char *addr, int *regi
 const wm_context WM_DATABASE_CONTEXT = {
     "database",
     (wm_routine)wm_database_main,
-    (wm_routine)wm_database_destroy,
+    (wm_routine)(void *)wm_database_destroy,
     (cJSON * (*)(const void *))wm_database_dump
 };
 

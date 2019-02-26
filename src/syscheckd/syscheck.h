@@ -100,7 +100,7 @@ int init_auditd_socket(void);
 int audit_add_rule(const char *path, const char *key);
 int audit_delete_rule(const char *path, const char *key);
 void *audit_main(int *audit_sock);
-void *audit_reload_thread(void);
+void *audit_reload_thread();
 void *audit_healthcheck_thread(int *audit_sock);
 void audit_reload_rules(void);
 int audit_health_check(int audit_socket);

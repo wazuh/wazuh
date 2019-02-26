@@ -30,7 +30,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config);
 const wm_context WM_AWS_CONTEXT = {
     "aws-s3",
     (wm_routine)wm_aws_main,
-    (wm_routine)wm_aws_destroy,
+    (wm_routine)(void *)wm_aws_destroy,
     (cJSON * (*)(const void *))wm_aws_dump
 };
 

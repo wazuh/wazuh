@@ -85,14 +85,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[SK_DB_REPORT_CHANG] == '+') {
                 fullalert = seechanges_addfile(file_name);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%.58000s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%.58000s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%.58000s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
             }
 
             send_syscheck_msg(alert_msg);

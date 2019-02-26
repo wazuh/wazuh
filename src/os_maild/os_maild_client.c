@@ -20,8 +20,8 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
 {
     int i = 0, sms_set = 0, donotgroup = 0;
     size_t body_size = OS_MAXSTR - 3, log_size;
-    char logs[OS_MAXSTR + 1];
-    char extra_data[OS_MAXSTR + 1];
+    char logs[OS_SIZE_4096 + 1];
+    char extra_data[OS_MAXSTR - OS_SIZE_6144 + 1];
     char log_string[OS_MAXSTR / 4 + 1];
     char *subject_host;
 #ifdef LIBGEOIP_ENABLED
@@ -65,54 +65,54 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     }
 
     if (al_data->old_md5) {
-        log_size = strlen(al_data->old_md5) + 16 + 4;
+        log_size = strlen(al_data->old_md5) + 17 + 4;
         if (body_size > log_size) {
-            strncat(logs, "Old md5sum was: ", 16);
+            strncat(logs, "Old md5sum was: ", 17);
             strncat(logs, al_data->old_md5, body_size);
             strncat(logs, "\r\n", 4);
             body_size -= log_size;
         }
     }
     if (al_data->new_md5) {
-        log_size = strlen(al_data->new_md5) + 16 + 4;
+        log_size = strlen(al_data->new_md5) + 17 + 4;
         if (body_size > log_size) {
-            strncat(logs, "New md5sum is : ", 16);
+            strncat(logs, "New md5sum is : ", 17);
             strncat(logs, al_data->new_md5, body_size);
             strncat(logs, "\r\n", 4);
             body_size -= log_size;
         }
     }
     if (al_data->old_sha1) {
-        log_size = strlen(al_data->old_sha1) + 17 + 4;
+        log_size = strlen(al_data->old_sha1) + 18 + 4;
         if (body_size > log_size) {
-            strncat(logs, "Old sha1sum was: ", 17);
+            strncat(logs, "Old sha1sum was: ", 18);
             strncat(logs, al_data->old_sha1, body_size);
             strncat(logs, "\r\n", 4);
             body_size -= log_size;
         }
     }
     if (al_data->new_sha1) {
-        log_size = strlen(al_data->new_sha1) + 17 + 4;
+        log_size = strlen(al_data->new_sha1) + 18 + 4;
         if (body_size > log_size) {
-            strncat(logs, "New sha1sum is : ", 17);
+            strncat(logs, "New sha1sum is : ", 18);
             strncat(logs, al_data->new_sha1, body_size);
             strncat(logs, "\r\n", 4);
             body_size -= log_size;
         }
     }
     if (al_data->old_sha256) {
-        log_size = strlen(al_data->old_sha256) + 19 + 4;
+        log_size = strlen(al_data->old_sha256) + 20 + 4;
         if (body_size > log_size) {
-            strncat(logs, "Old sha256sum was: ", 19);
+            strncat(logs, "Old sha256sum was: ", 20);
             strncat(logs, al_data->old_sha256, body_size);
             strncat(logs, "\r\n", 4);
             body_size -= log_size;
         }
     }
     if (al_data->new_sha256) {
-        log_size = strlen(al_data->new_sha256) + 19 + 4;
+        log_size = strlen(al_data->new_sha256) + 20 + 4;
         if (body_size > log_size) {
-            strncat(logs, "New sha256sum is : ", 1256);
+            strncat(logs, "New sha256sum is : ", 20);
             strncat(logs, al_data->new_sha256, body_size);
             strncat(logs, "\r\n", 4);
             body_size -= log_size;
@@ -412,7 +412,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         if (json_field) {
             log_size = strlen(json_field->valuestring) + 16 + 4;
             if (body_size > log_size) {
-                strncat(logs, "Old md5sum was: ", 16);
+                strncat(logs, "Old md5sum was: ", 17);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
                 body_size -= log_size;
@@ -423,7 +423,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         if (json_field) {
             log_size = strlen(json_field->valuestring) + 15 + 4;
             if (body_size > log_size) {
-                strncat(logs, "New md5sum is: ", 15);
+                strncat(logs, "New md5sum is: ", 16);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
                 body_size -= log_size;
@@ -434,7 +434,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         if (json_field) {
             log_size = strlen(json_field->valuestring) + 16 + 4;
             if (body_size > log_size) {
-                strncat(logs, "Old sh1sum was: ", 16);
+                strncat(logs, "Old sh1sum was: ", 17);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
                 body_size -= log_size;
@@ -445,7 +445,7 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
         if (json_field) {
             log_size = strlen(json_field->valuestring) + 15 + 4;
             if (body_size > log_size) {
-                strncat(logs, "New sh1sum is: ", 15);
+                strncat(logs, "New sh1sum is: ", 16);
                 strncat(logs, json_field->valuestring, body_size);
                 strncat(logs, "\r\n", 4);
                 body_size -= log_size;

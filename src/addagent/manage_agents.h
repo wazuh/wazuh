@@ -78,7 +78,7 @@ extern char shost[];
 /* Internal defines */
 #define USER_SIZE       514
 #define FILE_SIZE       257
-#define STR_SIZE        66
+#define STR_SIZE        590
 
 /* Internal strings */
 #define QUIT                "\\q"

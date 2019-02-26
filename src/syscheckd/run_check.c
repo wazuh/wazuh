@@ -342,7 +342,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[OS_SIZE_6144 + 1];
+        char alert_msg[OS_SIZE_6144 + 6];
         char wd_sum[OS_SIZE_6144 + 1];
 
         alert_msg[sizeof(alert_msg) - 1] = '\0';

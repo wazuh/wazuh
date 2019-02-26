@@ -45,7 +45,7 @@ void manage_files(int cday, int cmon, int cyear)
 void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct tm * pp_old, const char * tag, const char * ext) {
     int i;
     char logfile[OS_FLSIZE + 1];
-    char logfile_r[OS_FLSIZE + 1];
+    char logfile_r[OS_FLSIZE + 6];
     char logfile_old[OS_FLSIZE + 1];
 
     snprintf(logfile, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d", logdir, cyear, months[cmon], tag, cday);
@@ -54,10 +54,10 @@ void manage_log(const char * logdir, int cday, int cmon, int cyear, const struct
     OS_SignLog(logfile, logfile_old, ext);
 
     if (mond.compress) {
-        snprintf(logfile_r, OS_FLSIZE + 1, "%s.%s", logfile, ext);
+        snprintf(logfile_r, OS_FLSIZE + 6, "%s.%s", logfile, ext);
         OS_CompressLog(logfile_r);
 
-        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 1, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
+        for (i = 1; snprintf(logfile_r, OS_FLSIZE + 6, "%s-%.3d.%s", logfile, i, ext), !IsFile(logfile_r) && FileSize(logfile_r) > 0; i++) {
             OS_CompressLog(logfile_r);
         }
     }

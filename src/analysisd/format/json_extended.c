@@ -332,7 +332,7 @@ void W_JSON_ParseHostname(cJSON* root,const Eventinfo* lf)
 // Parse timestamp
 void W_JSON_AddTimestamp(cJSON* root, const Eventinfo* lf)
 {
-    char timestamp[64];
+    char timestamp[150];
     char datetime[64];
     char timezone[64];
     struct tm tm;
