@@ -98,3 +98,31 @@ def test_validation_paths_ok(relative_path):
 ])
 def test_validation_paths_ko(relative_path):
     assert validator.check_path(relative_path) is False
+
+@pytest.mark.parametrize('parameters, filters', [
+    ({'path': 'etc/rules/rule.xml', 'offset': '32', 'format': 'xml'},
+    {'path': 'paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
+    ({'offset': '2', 'limit': '3', 'sort': '-agent_id'},
+    {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
+    ({'ip': '192.168.122.15', 'os.name': 'CentOS Linux', 'os.version': '7.1'},
+    {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
+    ({'use_http': 'true', 'force': '1', 'agent_id': '004'},
+    {'use_http': 'boolean', 'force': 'numbers', 'agent_id': 'numbers'})
+])
+def test_validation_check_parms_ok(parameters, filters):
+    assert validator.check_params(parameters, filters) is True
+
+
+@pytest.mark.parametrize('parameters, filters', [
+    ({'path': 'etc/internal_options', 'offset': '32', 'format': 'xml'},
+    {'path': 'relative_paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
+    ({'offset': '2', 'limit': '3', 'sort': '-agent_id', 'path': 'etc/rules/local_rules.xml'},
+    {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
+    ({'ip': '192.168.122.345', 'os.name': 'CentOS Linux', 'os.version': '7.1'},
+    {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
+    ({'use_http': 'true', 'force': '1', 'agent_id': '004'},
+    {'use_http': 'boolean', 'force': 'numbers'})
+])
+def test_validation_check_parms_ko(parameters, filters):
+    assert validator.check_params(parameters, filters) is False
+

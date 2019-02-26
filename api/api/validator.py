@@ -107,3 +107,4 @@ def allowed_fields(filters):
     :return: List with allowed filters
     """
     return [field for field in filters.keys()]
+
