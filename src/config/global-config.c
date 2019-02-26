@@ -172,6 +172,10 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
     Config = (_Config *)configp;
     Mail = (MailConfig *)mailp;
 
+    // Temporary copies for the contents of xml_smtpserver and xml_heloserver
+    char * tmp_smtpserver = NULL;
+    char * tmp_heloserver = NULL;
+
     /* Get right white_size */
     if (Config && Config->white_list) {
         os_ip **ww;
@@ -225,6 +229,31 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
                 if (Mail) {
                     Mail->mn = 1;
+
+                    // This XML tag has been read after xml_smtpserver,
+                    // set the value for this server now that we know we need it.
+                    if (tmp_smtpserver) {
+                        if (tmp_smtpserver[0] == '/') {
+                            os_strdup(tmp_smtpserver, Mail->smtpserver);
+                        } else {
+                            Mail->smtpserver = OS_GetHost(tmp_smtpserver, 5);
+                            if (!Mail->smtpserver) {
+                                merror(INVALID_SMTP, tmp_smtpserver);
+                                return (OS_INVALID);
+                            }
+                        }
+                        os_free(tmp_smtpserver);
+                        tmp_smtpserver = NULL;
+                    }
+
+                    // This XML tag has been read after xml_heloserver,
+                    // set the value for this server now that weknow we need it.
+                    if (tmp_heloserver) {
+                        os_strdup(tmp_heloserver, Mail->heloserver);
+                        os_free(tmp_heloserver);
+                        tmp_heloserver = NULL;
+                    }
+
                 }
             } else if (strcmp(node[i]->content, "no") == 0) {
                 if (Config) {
@@ -232,6 +261,17 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
                 if (Mail) {
                     Mail->mn = 0;
+
+                    // This temporary values are not needed, after all.
+                    if (tmp_smtpserver) {
+                        os_free(tmp_smtpserver);
+                        tmp_smtpserver = NULL;
+                    }
+                    if (tmp_heloserver) {
+                        os_free(tmp_heloserver);
+                        tmp_heloserver = NULL;
+                    }
+
                 }
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -514,6 +554,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
+            if (Mail && !Mail->mn) {
+                // It might happen that Mail->mn is set to 1 later, due to the order of the XML tags in ossec.conf.
+                // Keep a temporary copy of the contents of this XML tag, in case it is needed later.
+                os_strdup(node[i]->content, tmp_smtpserver);
+            }
+
             if (Mail && (Mail->mn)) {
                 if (node[i]->content[0] == '/') {
                     os_strdup(node[i]->content, Mail->smtpserver);
@@ -527,6 +573,10 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
 #endif
         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
+            if (Mail && !Mail->mn) {
+                // Keep a temporary copy of the contents of this XML tag, in case it is needed later.
+                os_strdup(node[i]->content, tmp_heloserver);
+            }
             if (Mail && (Mail->mn)) {
                 os_strdup(node[i]->content, Mail->heloserver);
             }
