@@ -85,7 +85,7 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
-def read_config():
+def read_config(config_file=common.ossec_conf):
     cluster_default_configuration = {
         'disabled': False,
         'node_type': 'master',
@@ -99,7 +99,7 @@ def read_config():
     }
 
     try:
-        config_cluster = get_ossec_conf('cluster')
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)
     except WazuhException as e:
         if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
