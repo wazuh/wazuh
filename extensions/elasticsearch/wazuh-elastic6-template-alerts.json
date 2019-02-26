@@ -1219,7 +1219,7 @@
                       "type": "keyword",
                       "doc_values": "true"
                     },
-                    "UserID": {
+                    "userID": {
                       "type": "keyword",
                       "doc_values": "true"
                     },

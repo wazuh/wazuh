@@ -339,7 +339,6 @@
     <if_sid>18104</if_sid>
     <id>^4608$</id>
     <description>Windows is starting up.</description>
-    <group></group>
   </rule>
 
   <rule id="18149" level="3">
@@ -1010,7 +1009,7 @@
     <group>gpg13_4.12,</group>
   </rule>
 
-   <!--{"win":{"system":{"providerName":"NetBT","eventID":"4321","level":"2","task":"0","keywords":"0x80000000000000","systemTime":"2018-12-18T10:55:40.107861400Z","eventRecordID":"1701","channel":"System","computer":"qnu","severityValue":"ERROR","message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"eventData":{"data":"","data":"WORKGROUP      :1d","data":"10.0.2.15","data":"10.0.2.2","binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}}-->
+   <!--{"win":{"system":{"providerName":"NetBT","eventID":"4321","level":"2","task":"0","keywords":"0x80000000000000","systemTime":"2018-12-18T10:55:40.107861400Z","eventRecordID":"1701","channel":"System","computer":"qnu","severityValue":"ERROR","message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"eventdata":{"data":"","data":"WORKGROUP      :1d","data":"10.0.2.15","data":"10.0.2.2","binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}}-->
   <rule id="20003" level="5">
     <if_sid>20000</if_sid>
     <field name="win.system.severityValue">^ERROR</field>
@@ -1346,7 +1345,6 @@
     <field name="win.system.eventID">^4608$</field>
     <description>Windows is starting up</description>
     <options>no_full_log</options>
-    <group></group>
   </rule>
 
   <rule id="20049" level="3">
