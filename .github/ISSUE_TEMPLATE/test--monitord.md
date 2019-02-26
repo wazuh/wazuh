@@ -1,6 +1,9 @@
 ---
 name: 'Test: Monitord'
 about: Test suite for Monitord.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

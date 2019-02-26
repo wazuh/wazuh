@@ -1,6 +1,9 @@
 ---
 name: 'Test: osquery'
 about: Test suite for the integration with osquery.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

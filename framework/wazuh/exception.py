@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -46,6 +46,7 @@ class WazuhException(Exception):
         1112: "Empty files aren't supported",
         1113: "XML syntax error",
         1114: "Wazuh syntax error",
+        1115: "Error executing verify-agent-conf",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -82,15 +83,16 @@ class WazuhException(Exception):
         # Syscheck/Rootcheck/AR: 1600 - 1699
         1600: 'There is no database for selected agent',  # Also, agent
         1601: 'Unable to restart syscheck/rootcheck',
-        1602: 'Impossible to run syscheck/run due to agent is not active',
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
+        1604: 'Impossible to run FIM scan due to agent is not active',
+        1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Bad arguments',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent not available',
         1654: 'Unable to clear rootcheck database',
 
-        # Agents:
+        # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
         1701: 'Agent does not exist',
         1702: 'Unable to restart agent(s)',
@@ -135,8 +137,18 @@ class WazuhException(Exception):
         1741: 'Could not remove multigroup',
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
+        1744: 'Invalid chunk size',
+
+        # CDB List: 1800 - 1899
+        1800: 'Bad format in CDB list {path}',
+        1801: '\'path\' parameter is wrong',
 
         # Manager:
+        1900: 'Error restarting manager',
+        1901: '\'execq\' socket has not been created',
+        1902: 'Could not connect to \'execq\' socket',
+        1903: 'Error deleting temporary file from API',
+        1904: 'Bad data from \'execq\'',
 
         # Database:
         2000: 'No such database file',
@@ -158,7 +170,7 @@ class WazuhException(Exception):
         3006: 'Error reading cluster configuration',
         3007: 'Client.keys file received in master node',
         3008: 'Received invalid agent status',
-        3009: 'Error executing request to internal socket',
+        3009: 'Error executing distributed API request',
         3010: 'Received the status/group of an unexisting agent',
         3011: 'Agent info file received in a worker node',
         3012: 'Cluster is not running',
@@ -168,6 +180,10 @@ class WazuhException(Exception):
         3017: 'The agent is not reporting to any manager',
         3018: 'Error sending request',
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
+        3020: 'Timeout sending request',
+        3021: 'Timeout executing API request',
+        3022: 'Unknown node ID',
+        3023: 'Worker node is not connected to master'
 
         # > 9000: Authd
     }
@@ -194,3 +210,6 @@ class WazuhException(Exception):
 
     def __str__(self):
         return "Error {0} - {1}".format(self.code, self.message)
+
+    def to_dict(self):
+        return {'error': self.code, 'message': self.message}

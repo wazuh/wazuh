@@ -1,6 +1,9 @@
 ---
 name: 'Test: Active response'
 about: Test suite for Active response
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

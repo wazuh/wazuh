@@ -114,7 +114,7 @@
 
     <rule id="20485" level="0">
         <if_sid>20001</if_sid>
-        <field name="EventChannel.System.ProviderName">^Microsoft-Windows-Sysmon/Operational</field>
+        <field name="EventChannel.System.Channel">^Microsoft-Windows-Sysmon/Operational</field>
         <description>Sysmon - Group of events</description>
         <options>no_full_log</options>
     </rule>
@@ -238,7 +238,6 @@
         <options>no_full_log</options>
         <group>sysmon_event_15,</group>
     </rule>
-
 </group>
 
 <!--
@@ -417,4 +416,172 @@
         <field name="sysmon.parentImage">userinit.exe</field>
         <description>Sysmon - Legitimate Parent Image - explorer.exe</description>
     </rule>
+
+        <rule id="20350" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">svchost.exe</field>
+        <description>Sysmon - Suspicious Process - svchost.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20351" level="0">
+        <if_sid>20350</if_sid>
+        <field name="EventChannel.EventData.ParentImage">\\services.exe</field>
+        <description>Sysmon - Legitimate Parent Image - svchost.exe</description>
+    </rule>
+
+
+    <rule id="20352" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">lsm.exe</field>
+        <description>Sysmon - Suspicious Process - lsm.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20353" level="0">
+        <if_sid>20352</if_sid>
+        <field name="EventChannel.EventData.ParentImage">wininit.exe</field>
+        <description>Sysmon - Legitimate Parent Image - lsm.exe</description>
+    </rule>
+
+    <rule id="20354" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.ParentImage">lsm.exe</field>
+        <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+
+    <rule id="20355" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">csrss.exe</field>
+        <description>Sysmon - Suspicious Process - csrss.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20356" level="0">
+        <if_sid>20355</if_sid>
+        <field name="EventChannel.EventData.ParentImage">smss.exe</field>
+        <description>Sysmon - Legitimate Parent Image - csrss.exe</description>
+    </rule>
+
+
+    <rule id="20357" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">lsass.exe</field>
+        <description>Sysmon - Suspicious Process - lsass</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20358" level="0">
+        <if_sid>20357</if_sid>
+        <field name="EventChannel.EventData.ParentImage">wininit.exe</field>
+        <description>Sysmon - Legitimate Parent Image - lsass.exe</description>
+    </rule>
+
+    <rule id="20359" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.ParentImage">lsass.exe</field>
+        <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+
+    <rule id="20360" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">winlogon.exe</field>
+        <description>Sysmon - Suspicious Process - winlogon.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20361" level="0">
+        <if_sid>20360</if_sid>
+        <field name="EventChannel.EventData.ParentImage">smss.exe</field>
+        <description>Sysmon - Legitimate Parent Image - winlogon.exe</description>
+    </rule>
+
+
+    <rule id="20362" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">wininit.exe</field>
+        <description>Sysmon - Suspicious Process - wininit</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20363" level="0">
+        <if_sid>20362</if_sid>
+        <field name="EventChannel.EventData.ParentImage">smss.exe</field>
+        <description>Sysmon - Legitimate Parent Image - wininit.exe</description>
+    </rule>
+
+
+    <rule id="20364" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">smss.exe</field>
+        <description>Sysmon - Suspicious Process - smss.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20365" level="0">
+        <if_sid>20364</if_sid>
+        <field name="EventChannel.EventData.ParentImage">system</field>
+        <description>Sysmon - Legitimate Parent Image - smss.exe</description>
+    </rule>
+
+
+    <rule id="20366" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">taskhost.exe</field>
+        <description>Sysmon - Suspicious Process - taskhost.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20367" level="0">
+        <if_sid>20366</if_sid>
+        <field name="EventChannel.EventData.ParentImage">services.exe|svchost.exe</field>
+        <description>Sysmon - Legitimate Parent Image - taskhost.exe</description>
+    </rule>
+
+
+    <rule id="20368" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">/services.exe</field>
+        <description>Sysmon - Suspicious Process - services.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20369" level="0">
+        <if_sid>20368</if_sid>
+        <field name="EventChannel.EventData.ParentImage">wininit.exe</field>
+        <description>Sysmon - Legitimate Parent Image - services.exe</description>
+    </rule>
+
+
+    <rule id="20370" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">dllhost.exe</field>
+        <description>Sysmon - Suspicious Process - dllhost.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20371" level="0">
+        <if_sid>20370</if_sid>
+        <field name="EventChannel.EventData.ParentImage">svchost.exe|services.exe</field>
+        <description>Sysmon - Legitimate Parent Image - dllhost.exe</description>
+    </rule>
+
+
+    <rule id="20372" level="12">
+        <if_group>sysmon_event1</if_group>
+        <field name="EventChannel.EventData.Image">\\explorer.exe</field>
+        <description>Sysmon - Suspicious Process - explorer.exe</description>
+        <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
+    </rule>
+
+    <rule id="20373" level="0">
+        <if_sid>20372</if_sid>
+        <field name="EventChannel.EventData.ParentImage">userinit.exe</field>
+        <description>Sysmon - Legitimate Parent Image - explorer.exe</description>
+    </rule>
+    
 </group>

@@ -34,6 +34,7 @@ all: build
 
 install:
 	$(INSTALL_DIR) $(PREFIX)/framework
+	$(INSTALL_DIR) $(PREFIX)/framework/scripts
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh
 ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
 	$(INSTALL_DIR) $(PREFIX)/framework/lib
@@ -41,6 +42,7 @@ endif
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster
 	$(INSTALL_DIR) $(PREFIX)/framework/wazuh/cluster/dapi
 
+	$(INSTALL_FILE) scripts/*.py ${PREFIX}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${PREFIX}/framework/wazuh
 	$(INSTALL_FILE) wazuh/cluster/*.json ${PREFIX}/framework/wazuh/cluster
 	$(INSTALL_FILE) wazuh/cluster/*.py ${PREFIX}/framework/wazuh/cluster
@@ -50,7 +52,7 @@ ifneq (,$(filter ${USE_FRAMEWORK_LIB},yes y Y 1))
 endif
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
-	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
 
 examples: install
 	$(INSTALL_DIR) $(PREFIX)/framework/examples

@@ -340,9 +340,13 @@
 #define VU_WAZUH_DB_CPE_IN_ERROR    "(5515): Could not insert the CPEs from the agent %s into the database."
 #define VU_NVD_ROW_GET_ERROR        "(5517): Could not get the %s ID row."
 #define VU_SOCKET_RETRY_ERROR       "(5519): Unable to connect to socket '%s'."
-#define VU_FIND_NVD_ERROR           "(5120): No vulnerabilities could be found in the NVD for agent %s."
-#define VU_REPORT_NVD_ERROR         "(5121): Could not report vulnerabilities from the NVD for agent %s."
-#define VU_INVALID_DIC_TAG          "(5122): Invalid tag found when parsing the CPE dictionary: '%s'."
+#define VU_FIND_NVD_ERROR           "(5520): No vulnerabilities could be found in the NVD for agent %s."
+#define VU_REPORT_NVD_ERROR         "(5521): Could not report vulnerabilities from the NVD for agent %s."
+#define VU_INVALID_DIC_TAG          "(5522): Invalid tag found when parsing the CPE dictionary: '%s'."
+#define VU_NULL_AGENT_ID            "(5524): The agent database returned a null agent ID. Skipping agent."
+#define VU_NULL_AGENT_IP            "(5525): The agent database returned a null registration IP address. Skipping agent %s."
+#define VU_API_REQ_INV_NEW          "(5526): There was no valid response to '%s' after %d attempts. Trying the next page..."
+#define VU_UNC_SEVERITY             "(5527): Uncontrolled severity has been found: '%s'."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

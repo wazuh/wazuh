@@ -205,7 +205,7 @@ static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, voi
   return realsize;
 }
 
-int wurl_http_get(const char * url, char * data){
+char * wurl_http_get(const char * url) {
     CURL *curl;
     CURLcode res;
     curl = curl_easy_init();
@@ -235,11 +235,10 @@ int wurl_http_get(const char * url, char * data){
             mwarn("CURL ERROR %s",errbuf);
             curl_easy_cleanup(curl);
             free(chunk.memory);
-            return OS_CONNERR;
+            return NULL;
         }
         curl_easy_cleanup(curl);
     }
-    os_strdup(chunk.memory,data);
-    free(chunk.memory);
-    return 0;
+
+    return chunk.memory;
 }

@@ -1,6 +1,9 @@
 ---
 name: 'Test: Syslog'
 about: Test suite for Syslog.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

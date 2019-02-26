@@ -158,6 +158,9 @@ char * sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
+// Network inventory for Windows XP
+char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp);
+
 // Get values about a single program from the registry
 void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
@@ -209,6 +212,13 @@ int four_bytes_to_int32(u_int8_t* bytes);
 
 // Read index entry from a RPM header
 int read_entry(u_int8_t* bytes, rpm_data *info);
+
+// Get the inventory for a network interface in the object passed as parameter
+struct ifaddrs;
+void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
+
+// Create the interface list
+int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 
 #endif
 #endif

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/var/ossec/python/bin/python3
 
  ###
  # Integration of Wazuh agent with Microsoft Azure
@@ -26,6 +26,8 @@ import uuid
 import datetime
 import argparse
 import hashlib
+from wazuh import Wazuh, common
+my_wazuh = Wazuh(get_init=True)
 try:
 	import requests
 except Exception as e:
@@ -45,7 +47,7 @@ except Exception as e:
 	print("Azure Storage SDK for Python is missing: '{}', try 'pip install azure-storage-blob'.".format(e))
 	sys.exit(1)
 
-ADDR = '/var/ossec/queue/ossec/queue'
+ADDR = '{}/queue/ossec/queue'.format(common.ossec_path)
 BLEN = 212992
 
 utc = pytz.UTC
@@ -102,23 +104,6 @@ if args.blobs:
 	blobs_format = args.blobs.replace('"','')
 
 ################################################################################################
-# Gets the path to write logs.
-################################################################################################
-
-def get_log_path():
-
-	path_result = ""
-	ossec_init = open ('/etc/ossec-init.conf')
-	for line in ossec_init:
-		if "DIRECTORY=" in line:
-			ossec_path = line.replace('DIRECTORY=','')
-			half_path= ossec_path.replace('"','')
-			path_result = half_path.replace('\n','')
-	path_result = path_result + "/logs/azure_logs.log"
-	return path_result
-
-
-################################################################################################
 # Configure the log settings.
 ################################################################################################
 
@@ -126,20 +111,20 @@ def set_logger():
 
 	if args.verbose:
 		logging.basicConfig(level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
-	else: 
-		log_path = get_log_path()
+	else:
+		log_path = "{}/logs/azure_logs.log".format(common.ossec_path)
 		logging.basicConfig(filename=log_path, level = logging.DEBUG, format = '%(asctime)s %(levelname)s: AZURE %(message)s', datefmt = '%m/%d/%Y %I:%M:%S %p')
 
 
 ################################################################################################
-# Checks if is the first time the script has been run. 
+# Checks if is the first time the script has been run.
 ################################################################################################
 
 def check_first_run():
 
-	current_path = dirname(abspath(__file__)) 
+	current_path = dirname(abspath(__file__))
 	date_file = "/last_dates.json"
-	path=current_path + date_file 
+	path=current_path + date_file
 
 	if os.path.exists(current_path + date_file):
 		return False
@@ -197,7 +182,7 @@ def read_auth_path(auth_path):
 				field_auth['key'] = fields[lenght_field].replace("\n","")
 			field_iterator += 1
 
-		return field_auth;
+		return field_auth
 
 	except Exception as e:
 		logging.error("Error: The configuration file could not be opened: '{}'".format(e))
@@ -208,7 +193,7 @@ def read_auth_path(auth_path):
 # https://dev.loganalytics.io/documentation/1-Tutorials/Direct-API
 ################################################################################################
 
-def start_log_analytics(first_run):	
+def start_log_analytics(first_run):
 
 	logging.info("Azure Log Analytics starting.")
 	url_log_analytics = 'https://api.loganalytics.io/v1'
@@ -245,7 +230,7 @@ def start_log_analytics(first_run):
 			logging.error("Error: The file of the last dates could not be uploaded: '{}.".format(e))
 
 	except Exception as e:
-		logging.error("Log Analytics: Couldn't get the token for authentication: '{}'.".format(e))	
+		logging.error("Log Analytics: Couldn't get the token for authentication: '{}'.".format(e))
 
 	logging.info("Azure Log Analytics ending.")
 
@@ -255,11 +240,11 @@ def start_log_analytics(first_run):
 
 def get_analytic(date, last_time_list, url, log_headers):
 
-	analytics_url = "{}/workspaces/{}/query".format(url, args.workspace)	
-	logging.info("Log Analytics: Sending a request to the Log Analytics API.")	
+	analytics_url = "{}/workspaces/{}/query".format(url, args.workspace)
+	logging.info("Log Analytics: Sending a request to the Log Analytics API.")
 
 	try:
-		query_md5 = hashlib.md5(la_format_query).hexdigest()
+		query_md5 = hashlib.md5(la_format_query.encode()).hexdigest()
 		# Differentiates the first execution of the script from the rest of the executions.
 		if date != "0":
 			date_search = date
@@ -292,8 +277,8 @@ def get_time_list(request_received, last_timegen, no_results, md5):
 			# Searches for the position of the TimeGenerated field
 			if time_position == -1:
 				logging.error("Error: Couldn't get TimeGenerated position")
-			else:	
-				last_row = len(request_received.json()['tables'][0]['rows']) - 1		
+			else:
+				last_row = len(request_received.json()['tables'][0]['rows']) - 1
 				# Checks for new results
 				if last_row < 0:
 					logging.info("Log Analytics: There are no new results")
@@ -301,8 +286,6 @@ def get_time_list(request_received, last_timegen, no_results, md5):
 				else:
 					last_timegen['log_analytics'][md5] = request_received.json()['tables'][0]['rows'][last_row][time_position]
 					file_json = request_received.json()
-					if args.verbose:
-						show_content(file_json)
 					get_log_analytics_event(columns, rows)
 		else:
 			if args.verbose == True:
@@ -319,7 +302,7 @@ def get_time_list(request_received, last_timegen, no_results, md5):
 def get_TimeGenerated_position(columns):
 
 	position=0
-	found = "false";
+	found = "false"
 	for column in columns:
 		if column['name'] == 'TimeGenerated':
 			found = "true"
@@ -391,7 +374,7 @@ def start_graph():
 		graph_headers = {
 			'Authorization': 'Bearer ' + graph_token
 		}
-		logging.info("Graph: Getting data.") 
+		logging.info("Graph: Getting data.")
 
 		try:
 			all_dates = json.load(open(path))
@@ -399,7 +382,7 @@ def start_graph():
 			logging.error("Error: The file of the last dates could not be updated: '{}.".format(e))
 
 		try:
-			graph_md5 = hashlib.md5(graph_format_query).hexdigest()
+			graph_md5 = hashlib.md5(graph_format_query.encode()).hexdigest()
 			# first time for this query
 			if graph_md5 not in all_dates['graph']:
 				range_time = format_date(args.graph_time_offset)
@@ -460,11 +443,9 @@ def graph_pagination(url, api, graph_headers, md5, all_dates, first_date):
 
 		else:
 			logging.info("Graph: There are no new results")
-		if args.verbose == True:
-			show_content(pag_json)
-		try: 
+		try:
 			next_url = pag_json['@odata.nextLink']
-			graph_pagination(next_url, api, g_headers, md5, all_dates, False)
+			graph_pagination(next_url, api, graph_headers, md5, all_dates, False)
 		except Exception as e:
 			logging.info("Graph: No @odata.nextLink field: '{}'.".format(e))
 	else:
@@ -485,7 +466,7 @@ def start_storage(first_run):
 
 	storage_time = format_date(args.storage_time_offset)
 	time_format = str(storage_time)
-	length_time_format = len(time_format)-7 
+	length_time_format = len(time_format)-7
 	time_format = time_format[:length_time_format]
 	time_format_storage = datetime.datetime.strptime(time_format, '%Y-%m-%d %H:%M:%S')
 
@@ -544,16 +525,16 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 		else:
 			name = container_format
 
-		container_md5 = hashlib.md5(name).hexdigest()
+		container_md5 = hashlib.md5(name.encode()).hexdigest()
 		next_marker = None
 
 		while True:
 			try:
 				# Extraction of blobs from containers
 				logging.info("Storage: Getting blobs.")
-				blobs = block_blob_service.list_blobs(name, marker = next_marker)						
+				blobs = block_blob_service.list_blobs(name, marker = next_marker)
 			except Exception as e:
-				logging.error("Error getting blobs: '{}'.".format(e))	
+				logging.error("Error getting blobs: '{}'.".format(e))
 
 			if blobs_format == '*':
 				search = "."
@@ -563,7 +544,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 
 			max_blob = utc.localize(time_format_storage)
 
-			for blob in blobs: 
+			for blob in blobs:
 				try:
 					# Access to the desired blobs
 					if search in blob.name:
@@ -572,8 +553,8 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 
 						if first_run == False:
 							if container_md5 not in all_dates["storage"]:
-								last_blob = time_format_storage			
-							else: 
+								last_blob = time_format_storage
+							else:
 								blob_date_format = all_dates["storage"][container_md5]
 								blob_date_length = len(blob_date_format) - 6
 								blob_date_format = blob_date_format[:blob_date_length]
@@ -587,8 +568,6 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 						if last_modified > last_blob:
 							if last_modified > max_blob:
 								max_blob = last_modified
-							if args.verbose == True:
-								show_blob(name, blob.name)														
 							socket_data = str(data.content)
 							socket_data = os.linesep.join([s for s in socket_data.splitlines() if s])
 							split_data = socket_data.splitlines()
@@ -609,9 +588,9 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 									log_json = json.dumps(log_record)
 									send_socket(log_json)
 									storage_counter += 1
-							else:								
+							else:
 								for line in split_data:
-									if args.json_inline:   
+									if args.json_inline:
 										size = len(line)
 										sub_data = line[1:size]
 										if args.storage_tag:
@@ -622,7 +601,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 										if args.storage_tag:
 											send_data = "azure_tag: azure-storage. azure_storage_tag: {}. {}".format(args.storage_tag, line)
 										else:
-											send_data = "azure_tag: azure-storage. {}".format(section, line)
+											send_data = "azure_tag: azure-storage. {}".format(line)
 
 									if send_data != "":
 										if storage_counter == 30:
@@ -654,7 +633,7 @@ def get_blobs(containers, block_blob_service, time_format_storage, first_run, al
 					else:
 						write_time = max_blob
 				else:
-					write_time = max_blob 
+					write_time = max_blob
 
 			all_dates['storage'][container_md5] = str(write_time)
 			with open(os.path.join(path), 'w') as jsonFile:
@@ -694,7 +673,7 @@ def get_token(ID, KEY, resource, domain):
 ################################################################################################
 
 def send_socket(log):
-	
+
 	send_id = 1
 	send_location = "Azure"
 
@@ -716,7 +695,7 @@ def send_socket(log):
 
 ################################################################################################
 # Date management.
-################################################################################################	
+################################################################################################
 
 def format_date(conf_date):
 

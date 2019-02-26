@@ -1,6 +1,9 @@
 ---
 name: 'Test: Command'
 about: Test suite for the wodle command.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

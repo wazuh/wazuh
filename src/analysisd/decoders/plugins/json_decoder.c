@@ -15,7 +15,7 @@
 #include "../../config.h"
 #include "../../external/cJSON/cJSON.h"
 
-static void fillData(Eventinfo *lf, const char *key, const char *value)
+void fillData(Eventinfo *lf, const char *key, const char *value)
 {
 
     if (!key)

@@ -1,6 +1,9 @@
 ---
 name: 'Test: Elastic Stack'
 about: Test suite for Elastic Stack.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

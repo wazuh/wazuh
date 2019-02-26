@@ -103,6 +103,10 @@ int wstr_end(char *str, const char *str_end);
  *  - occurrences: Words by division
  *  - replace_delim: (Optional) Replace the delimiter with a new one
 */
+
 void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, char ***splitted_str);
+
+// Check if the specified string is already in the array
+int w_is_str_in_array(char *const *ar, const char *str);
 
 #endif

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -19,7 +19,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '3.8.3'
+__version__ = '3.9.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."

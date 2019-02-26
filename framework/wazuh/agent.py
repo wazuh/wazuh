@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -19,22 +19,17 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, rmtree
+from shutil import copyfile, move, rmtree
 from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
 from time import time, sleep
 import socket
 import hashlib
 import fcntl
 from json import loads
 from functools import reduce
-from shutil import move
-from os import remove
-
-try:
-    from urllib2 import urlopen, URLError, HTTPError
-except ImportError:
-    from urllib.request import urlopen, URLError, HTTPError
+import errno
+import requests
 
 def create_exception_dic(id, e):
     """
@@ -55,11 +50,12 @@ def create_exception_dic(id, e):
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
+    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
+                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields = {'internal_key'})
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
@@ -106,7 +102,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() else self.search['value']
 
-
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
             if field_name == 'id':
@@ -120,28 +115,27 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple) if value is not None} for
-                       db_tuple in self.conn]
+        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+                        if value is not None} for db_tuple in self.conn]
 
         today = datetime.today()
 
-        # compute 'status' field, format id with zero padding and remove non-user-requested fields. Also remove, internal key
+        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
+        # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key:format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
                         for key, value in item.items() if key in selected_fields} for item in agent_items]
 
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return {'items': agent_items, 'totalItems': self.total_items}
 
-
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
             self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
-
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
@@ -157,8 +151,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
+
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
+    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
+                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
         WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -167,7 +163,9 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
+    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
+                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
+                 remove_extra_fields=True):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
         WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
@@ -194,13 +192,14 @@ class Agent:
     OSSEC Agent object.
     """
 
-    fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
+    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key'}
+              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key',
+              'registerIP': 'register_ip'}
 
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
@@ -227,6 +226,7 @@ class Agent:
         self.group         = None
         self.manager       = None
         self.node_name     = None
+        self.registerIP    = None
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -273,6 +273,8 @@ class Agent:
             raise WazuhException(1701, self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
+
+        self.ip = self.ip if self.ip is not None else self.registerIP
 
 
     def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
@@ -493,16 +495,20 @@ class Agent:
             # Remove agent files
             agent_files = [
                 '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip),
                 '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id)
+                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id),
+                '{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
+                '{}/queue/diff/{}'.format(common.ossec_path, self.name)
             ]
 
             for agent_file in filter(path.exists, agent_files):
-                remove(agent_file)
+                if path.isdir(agent_file):
+                    rmtree(agent_file)
+                else:
+                    remove(agent_file)
 
         else:
             # Create backup directory
@@ -525,12 +531,13 @@ class Agent:
             # Move agent file
             agent_files = [
                 ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip), '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck.cpt'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry.cpt'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir))
+                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
+                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
+                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
@@ -1491,12 +1498,10 @@ class Agent:
 
         return msg
 
-
     @staticmethod
     def create_multi_group(group_id):
         """
         Creates a multi group.
-
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1513,12 +1518,12 @@ class Agent:
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
+            return msg
         except OSError as e:
-            if errno != errno.EEXIST:
+            if e.errno != errno.EEXIST:
                 raise WazuhException(1005, str(e))
 
         return msg
-
 
     @staticmethod
     def remove_multi_group(groups_id):
@@ -1947,25 +1952,15 @@ class Agent:
                 versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
-            result = urlopen(versions_url)
-        except HTTPError as e:
+            result = requests.get(versions_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1713, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
+
+        if result.ok:
+            versions = [version.split() for version in result.text.split('\n')]
+        else:
+            error = "Can't access to the versions file in {}".format(versions_url)
             raise WazuhException(1713, error)
-
-        lines = result.readlines()
-        lines = filter(None, lines)
-        versions = []
-
-        for line in lines:
-            ver_readed = line.decode().split()
-            version = ver_readed[0]
-            sha1sum = ver_readed[1] if len(ver_readed) > 1 else ''
-            versions.append([version, sha1sum])
 
         return versions
 
@@ -2046,16 +2041,16 @@ class Agent:
             print("Downloading WPK file from: {0}".format(wpk_url))
 
         try:
-            result = urlopen(wpk_url)
-            with open(wpk_file_path, "wb") as local_file:
-                local_file.write(result.read())
-        except HTTPError as e:
+            result = requests.get(wpk_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1714, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
+
+        if result.ok:
+            with open(wpk_file_path, 'wb') as fd:
+                for chunk in result.iter_content(chunk_size=128):
+                    fd.write(chunk)
+        else:
+            error = "Can't access to the WPK file in {}".format(wpk_url)
             raise WazuhException(1714, error)
 
         # Get SHA1 file sum

@@ -766,7 +766,7 @@ void config_free(_Config *config) {
         free(config->geoip_db_path);
     }
     if (config->geoip6_db_path) {
-        free(config->geoip_db_path);
+        free(config->geoip6_db_path);
     }
 #endif
 

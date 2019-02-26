@@ -356,15 +356,6 @@ int audit_init(void) {
         return (-1);
     }
 
-    // Add Audit rules
-    audit_added_rules = W_Vector_init(10);
-    audit_added_dirs = W_Vector_init(20);
-    int rules_added = add_audit_rules_syscheck();
-    if (rules_added < 1){
-        mdebug1("No rules added. Audit events reader thread will not start.");
-        return (-1);
-    }
-
     // Initialize Audit socket
     static int audit_socket;
     audit_socket = init_auditd_socket();
@@ -378,13 +369,23 @@ int audit_init(void) {
     }
 
     // Perform Audit healthcheck
-    if(audit_health_check(audit_socket)) {
-        merror("Audit health check couldn't be completed correctly.");
-        return -1;
+    if (syscheck.audit_healthcheck) {
+        if(audit_health_check(audit_socket)) {
+            merror("Audit health check couldn't be completed correctly.");
+            return -1;
+        }
+    } else {
+        minfo("Audit health check is disabled. Whodata could not work correctly.");
     }
 
-    // Start reading thread
-    mdebug1("Starting Auditd events reader thread...");
+    // Add Audit rules
+    audit_added_rules = W_Vector_init(10);
+    audit_added_dirs = W_Vector_init(20);
+    int rules_added = add_audit_rules_syscheck();
+    if (rules_added < 1){
+        mdebug1("No rules added. Audit events reader thread will not start.");
+        return (-1);
+    }
 
     atexit(clean_rules);
     auid_err_reported = 0;
@@ -504,6 +505,7 @@ void audit_parse(char *buffer) {
     char *file_path = NULL;
     char *syscall = NULL;
     char *inode = NULL;
+    char *real_path = NULL;
     whodata_evt *w_evt;
     unsigned int items = 0;
     char *inode_temp;
@@ -714,6 +716,15 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
+                            os_calloc(PATH_MAX + 2, sizeof(char), real_path);
+                            if (realpath(w_evt->path, real_path), !real_path) {
+                                mdebug1("Error checking realpath() of link '%s'", w_evt->path);
+                                break;
+                            }
+
+                            free(file_path);
+                            w_evt->path = real_path;
+
                             if (filterpath_audit_events(w_evt->path)) {
                                 realtime_checksumfile(w_evt->path, w_evt);
                             } else if (w_evt->inode) {
@@ -725,6 +736,40 @@ void audit_parse(char *buffer) {
                             }
                         }
                     }
+                    break;
+                case 3:
+                    // path2
+                    if(regexec(&regexCompiled_path2, buffer, 2, match, 0) == 0) {
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        os_malloc(match_size + 1, path2);
+                        snprintf (path2, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
+                    }
+                    if (cwd && path1 && path2) {
+                        if (file_path = gen_audit_path(cwd, path1, path2), file_path) {
+                            w_evt->path = file_path;
+                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                                (w_evt->user_name)?w_evt->user_name:"",
+                                (w_evt->audit_name)?w_evt->audit_name:"",
+                                (w_evt->effective_name)?w_evt->effective_name:"",
+                                (w_evt->group_name)?w_evt->group_name:"",
+                                w_evt->process_id,
+                                w_evt->ppid,
+                                (w_evt->inode)?w_evt->inode:"",
+                                (w_evt->path)?w_evt->path:"",
+                                (w_evt->process_name)?w_evt->process_name:"");
+
+                            if (filterpath_audit_events(w_evt->path)) {
+                                realtime_checksumfile(w_evt->path, w_evt);
+                            } else if (w_evt->inode) {
+                                if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
+                                    realtime_checksumfile(inode_temp, w_evt);
+                                } else {
+                                    realtime_checksumfile(w_evt->path, w_evt);
+                                }
+                            }
+                        }
+                    }
+                    free(path2);
                     break;
                 case 4:
                     // path2
@@ -1097,6 +1142,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
     }
 
+    free(cache_id);
     free(cache);
     free(buffer);
 }
@@ -1231,12 +1277,17 @@ exit_err:
 
 int filterpath_audit_events(char *path) {
     int i = 0;
+    char *dir_path;
 
     for(i = 0; i < W_Vector_length(audit_added_dirs); i++) {
-        if (strstr(path, W_Vector_get(audit_added_dirs, i))) {
-            mdebug2("Found '%s' in '%s'", W_Vector_get(audit_added_dirs, i), path);
+        os_strdup(W_Vector_get(audit_added_dirs, i), dir_path);
+        wm_strcat(&dir_path, "/", '\0');
+        if (strstr(path, dir_path)) {
+            mdebug2("Found '%s' in '%s'", dir_path, path);
+            free(dir_path);
             return 1;
         }
+        free(dir_path);
     }
     return 0;
 }

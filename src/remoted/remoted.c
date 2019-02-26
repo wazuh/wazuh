@@ -90,7 +90,11 @@ void HandleRemote(int uid)
     }
 
     /* Start up message */
-    minfo(STARTUP_MSG, (int)getpid());
+    minfo(STARTUP_MSG " Listening on port %d/%s (%s).",
+    (int)getpid(),
+    logr.port[position],
+    logr.proto[position] == TCP_PROTO ? "TCP" : "UDP",
+    logr.conn[position] == SECURE_CONN ? "secure" : "syslog");
 
     /* If secure connection, deal with it */
     if (logr.conn[position] == SECURE_CONN) {

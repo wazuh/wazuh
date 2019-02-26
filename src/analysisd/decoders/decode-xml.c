@@ -17,11 +17,6 @@
 #include "plugin_decoders.h"
 #include "config.h"
 
-#ifdef TESTRULE
-#undef XML_LDECODER
-#define XML_LDECODER "etc/local_decoder.xml"
-#endif
-
 /* Internal functions */
 static char *_loadmemory(char *at, char *str);
 static int addDecoder2list(const char *name);
@@ -205,8 +200,10 @@ int ReadDecodeXML(const char *file)
 
     /* Check if the file is empty */
     if(FileSize(file) == 0){
-        retval = 0;
-        goto cleanup;
+        if (strcmp(file, XML_LDECODER) != 0) {
+            retval = 0;
+            goto cleanup;
+        }
     }
 
     /* Get the root elements */
@@ -782,6 +779,7 @@ int SetDecodeXML()
     addDecoder2list(SYSCOLLECTOR_MOD);
     addDecoder2list(CISCAT_MOD);
     addDecoder2list(WINEVT_MOD);
+    addDecoder2list(SCA_MOD);
 
     /* Set ids - for our two lists */
     if (!os_setdecoderids(NULL)) {

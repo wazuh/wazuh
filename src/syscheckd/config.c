@@ -40,6 +40,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     syscheck.restart_audit  = 1;
     syscheck.enable_whodata = 0;
     syscheck.realtime       = NULL;
+    syscheck.audit_healthcheck = 1;
 #ifdef WIN_WHODATA
     syscheck.wdata.interval_scan = 0;
     syscheck.wdata.fd      = NULL;
@@ -152,7 +153,6 @@ cJSON *getSyscheckConfig(void) {
     if (syscheck.disabled) cJSON_AddStringToObject(syscfg,"disabled","yes"); else cJSON_AddStringToObject(syscfg,"disabled","no");
     cJSON_AddNumberToObject(syscfg,"frequency",syscheck.time);
     if (syscheck.skip_nfs) cJSON_AddStringToObject(syscfg,"skip_nfs","yes"); else cJSON_AddStringToObject(syscfg,"skip_nfs","no");
-    if (syscheck.restart_audit) cJSON_AddStringToObject(syscfg,"restart_audit","yes"); else cJSON_AddStringToObject(syscfg,"restart_audit","no");
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
@@ -204,7 +204,13 @@ cJSON *getSyscheckConfig(void) {
         }
         cJSON_AddItemToObject(syscfg,"ignore",igns);
     }
+#ifndef WIN32
     cJSON *whodata = cJSON_CreateObject();
+    if (syscheck.restart_audit) {
+        cJSON_AddStringToObject(whodata,"restart_audit","yes");
+    } else {
+        cJSON_AddStringToObject(whodata,"restart_audit","no");
+    }
     if (syscheck.audit_key) {
         cJSON *audkey = cJSON_CreateArray();
         for (i=0;syscheck.audit_key[i];i++) {
@@ -212,9 +218,15 @@ cJSON *getSyscheckConfig(void) {
         }
         if (cJSON_GetArraySize(audkey) > 0) {
             cJSON_AddItemToObject(whodata,"audit_key",audkey);
-            cJSON_AddItemToObject(syscfg,"whodata",whodata);
         }
     }
+    if (syscheck.audit_healthcheck) {
+        cJSON_AddStringToObject(whodata,"startup_healthcheck","yes");
+    } else {
+        cJSON_AddStringToObject(whodata,"startup_healthcheck","no");
+    }
+    cJSON_AddItemToObject(syscfg,"whodata",whodata);
+#endif
 #ifdef WIN32
     cJSON_AddNumberToObject(syscfg,"windows_audit_interval",syscheck.wdata.interval_scan);
     if (syscheck.registry) {

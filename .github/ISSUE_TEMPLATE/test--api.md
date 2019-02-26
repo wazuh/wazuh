@@ -1,6 +1,9 @@
 ---
 name: 'Test: API'
 about: Test suite for the API.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

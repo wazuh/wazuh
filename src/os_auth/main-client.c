@@ -213,6 +213,10 @@ int main(int argc, char **argv)
                 break;
         }
     }
+	
+    if (optind < argc) {
+        mwarn("Extra arguments detected. They will be ignored.");
+    }
 
     if (debug_level == 0) {
         /* Get debug level */

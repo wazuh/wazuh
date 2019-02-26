@@ -14,6 +14,8 @@
 #endif
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
 
 /* Global variables */
@@ -50,20 +52,25 @@ int receive_msg()
 
             // Manager disconnected or error
 
-            switch (recv_b) {
-            case OS_SOCKTERR:
-                merror("Corrupt payload (exceeding size) received.");
-                return -1;
-            case -1:
-                if (errno == ENOTCONN) {
-                    mdebug1("Manager disconnected (ENOTCONN).");
-                } else {
-                    merror("Connection socket: %s (%d)", strerror(errno), errno);
-                }
-                return -1;
+            if (recv_b <= 0) {
+                switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
 
-            case 0:
-                mdebug1("Manager disconnected.");
+                case -1:
+                    if (errno == ENOTCONN) {
+                        mdebug1("Manager disconnected (ENOTCONN).");
+                    } else {
+                        merror("Connection socket: %s (%d)", strerror(errno), errno);
+                    }
+                    break;
+
+                case 0:
+                    mdebug1("Manager disconnected.");
+                }
+
+                // -1 means that the agent must reconnect
                 return -1;
             }
         } else {
@@ -106,6 +113,7 @@ int receive_msg()
                         merror("Error communicating with execd");
                     }
                 }
+
 #else
                 /* Run on Windows */
                 if (agt->execdq >= 0) {
@@ -130,6 +138,44 @@ int receive_msg()
             // Request from manager (or request ack)
             else if (IS_REQ(tmp_msg)) {
                 req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
+                continue;
+            }
+
+            /* Security configuration assessment DB request */
+            else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+#ifndef WIN32
+                /* Connect to the Security configuration assessment queue */
+                if (agt->cfgadq >= 0) {
+                    if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
+                        merror("Error communicating with Security configuration assessment");
+                        close(agt->cfgadq);
+
+                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                            merror("Unable to connect to the Security configuration assessment "
+                                    "queue (disabled).");
+                            agt->cfgadq = -1;
+                        } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
+                            merror("Error communicating with Security configuration assessment");
+                            close(agt->cfgadq);
+                            agt->cfgadq = -1;
+                        }
+                    }
+                } else {
+                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE)) < 0) {
+                        merror("Unable to connect to the Security configuration assessment "
+                            "queue (disabled).");
+                        agt->cfgadq = -1;
+                    } else {
+                         if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
+                            merror("Error communicating with Security configuration assessment");
+                            close(agt->cfgadq);
+                            agt->cfgadq = -1;
+                        }
+                    }
+                }
+#else
+                wm_sca_push_request_win(tmp_msg);
+#endif
                 continue;
             }
 

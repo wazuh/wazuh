@@ -1,6 +1,9 @@
 ---
 name: 'Test: Cluster'
 about: Test suite for cluster.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

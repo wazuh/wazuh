@@ -29,6 +29,8 @@ int INTERVAL;
 rlim_t nofile;
 int guess_agent_group;
 int group_data_flush;
+unsigned receive_chunk;
+int buffer_relax;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -43,6 +45,9 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->denyips = NULL;
     cfg->nocmerged = 0;
     cfg->queue_size = 131072;
+
+    receive_chunk = (unsigned)getDefine_Int("remoted", "receive_chunk", 1024, 16384);
+    buffer_relax = getDefine_Int("remoted", "buffer_relax", 0, 2);
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0) {
         return (OS_INVALID);
@@ -144,6 +149,8 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"merge_shared",logr.nocmerged);
     cJSON_AddNumberToObject(remoted,"guess_agent_group",guess_agent_group);
     cJSON_AddNumberToObject(remoted,"group_data_flush",group_data_flush);
+    cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
+    cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
