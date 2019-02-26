@@ -112,7 +112,7 @@ int wm_check() {
         for (j = prev = wmodules; j != i; j = next) {
             next = j->next;
 
-            if (!strcmp(i->tag, j->tag)) {
+            if (i->tag && j->tag && !strcmp(i->tag, j->tag)) {
 
                 mdebug1("Deleting repeated module '%s'.", j->tag);
 

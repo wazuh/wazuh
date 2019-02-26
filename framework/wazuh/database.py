@@ -9,6 +9,10 @@ from wazuh.exception import WazuhException
 from os.path import isfile
 from distutils.version import LooseVersion
 import sqlite3
+import sys
+# Python 2/3 compatibility
+if sys.version_info[0] == 3:
+    unicode = str
 
 # Check SQL compatibility: >= 3.7.0.0
 if LooseVersion(sqlite3.sqlite_version) < LooseVersion('3.7.0.0'):
@@ -35,6 +39,7 @@ class Connection:
         self.max_attempts = max_attempts
 
         self.__conn = sqlite3.connect(database = db_path, timeout = busy_sleep)
+        self.__conn.text_factory = lambda x: unicode(x, "utf-8", "ignore")
         self.__cur = self.__conn.cursor()
 
     def __iter__(self):

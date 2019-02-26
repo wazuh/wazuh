@@ -1516,7 +1516,7 @@ class Agent:
         except OSError as e:
             if errno != errno.EEXIST:
                 raise WazuhException(1005, str(e))
-                
+
         return msg
 
 
@@ -2107,7 +2107,7 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
@@ -2120,7 +2120,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
 
@@ -2142,7 +2142,7 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.receive().decode()
                 s.close()
-                if data != 'ok':
+                if not data.startswith('ok'):
                     raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(chunk_size)
                 if show_progress:
@@ -2162,7 +2162,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
@@ -2346,7 +2346,7 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
@@ -2359,7 +2359,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
@@ -2401,7 +2401,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare

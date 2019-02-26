@@ -571,6 +571,11 @@ void w_create_group(char *group){
     }
 }
 
+/* Parse files.yml file
+ * Return 1 on parse success.
+ * Return 0 if no parse was performed (missing file).
+ * Return -1 on parse error.
+*/
 int w_prepare_parsing()
 {
 
@@ -599,13 +604,16 @@ int w_prepare_parsing()
                     OSHash_Add(ptable, agents_group[i].name, &agents_group[i]);
                 }
             }
+
+            return 1;
+        } else {
+            return -1;
         }
     } else {
         mdebug1("Shared configuration file not found.");
         w_free_groups();
+        return 0;
     }
-
-    return 0;
 }
 
 int w_init_shared_download()
@@ -619,7 +627,24 @@ int w_init_shared_download()
     }
 
     snprintf(yaml_file, OS_SIZE_1024, "%s%s/%s", isChroot() ? "" : DEFAULTDIR, SHAREDCFG_DIR, W_SHARED_YAML_FILE);
-    w_prepare_parsing();
+
+    if (w_prepare_parsing() == 1) {
+        /* Check download module connection */
+        int i;
+
+        for (i = W_DOWNLOAD_MAX_ATTEMPTS; i > 0; --i) {
+            if (wurl_check_connection() == 0) {
+                break;
+            } else {
+                mdebug2("Download module not yet available. Remaining attempts: %d", i - 1);
+                sleep(1);
+            }
+        }
+
+        if (i == 0) {
+            merror("Cannot connect to the download module socket. External shared file download is not available.");
+        }
+    }
 
     return 0;
 }

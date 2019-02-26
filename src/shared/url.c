@@ -175,6 +175,18 @@ int wurl_request_gz(const char * url, const char * dest) {
     return retval;
 }
 
+/* Check download module availability */
+int wurl_check_connection() {
+    int sock = OS_ConnectUnixDomain(isChroot() ? WM_DOWNLOAD_SOCK : WM_DOWNLOAD_SOCK_PATH, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock < 0) {
+        return -1;
+    } else {
+        close(sock);
+        return 0;
+    }
+}
+
 static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 {
   size_t realsize = size * nmemb;

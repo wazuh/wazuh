@@ -112,121 +112,128 @@
         <group>sysmon_event_15,</group>
     </rule>
 
-    <rule id="20185" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">1</field>
+    <rule id="20485" level="0">
+        <if_sid>20001</if_sid>
+        <field name="EventChannel.System.ProviderName">^Microsoft-Windows-Sysmon/Operational</field>
+        <description>Sysmon - Group of events</description>
+        <options>no_full_log</options>
+    </rule>
+
+    <rule id="20486" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^1$</field>
         <description>Sysmon - Event 1: Process creation $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event1,</group>
     </rule>
 
-    <rule id="20186" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">2</field>
+    <rule id="20487" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^2$</field>
         <description>Sysmon - Event 2: A process changed a file creation time $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event2,</group>
     </rule>
 
-    <rule id="20187" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">3</field>
+    <rule id="20488" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^3$</field>
         <description>Sysmon - Event 3: Network connection $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event3,</group>
     </rule>
 
-    <rule id="20188" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">4</field>
+    <rule id="20489" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^4$</field>
         <description>Sysmon - Event 4: Sysmon service state changed $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event4,</group>
     </rule>
 
-    <rule id="20189" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">5</field>
+    <rule id="20490" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^5$</field>
         <description>Sysmon - Event 5: Process terminated $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event5,</group>
     </rule>
 
-    <rule id="20190" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">6</field>
+    <rule id="20491" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^6$</field>
         <description>Sysmon - Event 6: Driver loaded $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event6,</group>
     </rule>
 
-    <rule id="20191" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">7</field>
+    <rule id="20492" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^7$</field>
         <description>Sysmon - Event 7: Image loaded $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event7,</group>
     </rule>
 
-    <rule id="20192" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">8</field>
+    <rule id="20493" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^8$</field>
         <description>Sysmon - Event 8: CreateRemoteThread $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event8,</group>
     </rule>
 
-    <rule id="20193" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">9</field>
+    <rule id="20494" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^9$</field>
         <description>Sysmon - Event 9: RawAccessRead $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event9,</group>
     </rule>
 
-    <rule id="20194" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">10</field>
+    <rule id="20495" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^10$</field>
         <description>Sysmon - Event 10: ProcessAccess $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_10,</group>
     </rule>
 
-    <rule id="20195" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">11</field>
+    <rule id="20496" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^11$</field>
         <description>Sysmon - Event 11: FileCreate $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_11,</group>
     </rule>
 
-    <rule id="20196" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">12</field>
+    <rule id="20497" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^12$</field>
         <description>Sysmon - Event 12: RegistryEvent (Object create and delete) $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_12,</group>
     </rule>
 
-    <rule id="20197" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">13</field>
+    <rule id="20498" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^13$</field>
         <description>Sysmon - Event 13: RegistryEvent (Value Set) $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_13,</group>
     </rule>
 
-    <rule id="20198" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">14</field>
+    <rule id="20499" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^14$</field>
         <description>Sysmon - Event 14: RegistryEvent (Key and Value Rename) $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_14,</group>
     </rule>
 
-    <rule id="20199" level="0">
-        <if_sid>20019</if_sid>
-        <field name="EventChannel.System.EventID">15</field>
+    <rule id="20500" level="0">
+        <if_sid>20485</if_sid>
+        <field name="EventChannel.System.EventID">^15$</field>
         <description>Sysmon - Event 15: FileCreateStreamHash $(EventChannel.EventData.Description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_15,</group>
