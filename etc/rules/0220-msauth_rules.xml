@@ -1010,7 +1010,7 @@
     <group>gpg13_4.12,</group>
   </rule>
 
-  <!--{"System":{"ProviderName":"NetBT","EventID":"4321","Level":"2","Task":"0","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:40.107861400Z","EventRecordID":"1701","Channel":"System","Computer":"qnu","SeverityValue":"ERROR","Message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"EventData":{"Data":"","Data":"WORKGROUP      :1d","Data":"10.0.2.15","Data":"10.0.2.2","Binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}-->
+   <!--{"win":{"system":{"providerName":"NetBT","eventID":"4321","level":"2","task":"0","keywords":"0x80000000000000","systemTime":"2018-12-18T10:55:40.107861400Z","eventRecordID":"1701","channel":"System","computer":"qnu","severityValue":"ERROR","message":"Le nom \\\"WORKGROUP      :1d\\\" n’a pas pu être enregistré sur l’interface avec l’adresse IP 10.0.2.15. L’ordinateur avec l’adresse IP 10.0.2.2 n’a pas permis que le nom soit réclamé par cet ordinateur."},"eventData":{"data":"","data":"WORKGROUP      :1d","data":"10.0.2.15","data":"10.0.2.2","binary":"00000000040032000000000E11000C001010000010000C029000000000000000000000000000000"}}}-->
   <rule id="20003" level="5">
     <if_sid>20000</if_sid>
     <field name="win.system.severityValue">^ERROR</field>
@@ -1042,7 +1042,7 @@
     <group>win_authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.1,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
 
-  <!--{"System":{"ProviderName":"Microsoft-Windows-Security-Auditing","ProviderGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","EventID":"4624","Version":"1","Level":"0","Task":"12544","Opcode":"0","Keywords":"0x802000000000000","SystemTime":"2018-12-18T10:55:48.073081500Z","EventRecordID":"7017","ProcessID":"548","ThreadID":"3212","Channel":"Security","Computer":"qnu","SeverityValue":"AUDIT_SUCCESS","Message":"L’ouverture de session d’un compte s’est correctement déroulée."},"EventData":{"SubjectUserSid":"S-1-5-18","SubjectUserName":"QNU$","SubjectDomainName":"WORKGROUP","SubjectLogonId":"0x3e7","TargetUserSid":"S-1-5-18","TargetUserName":"Système","TargetDomainName":"AUTORITE NT","TargetLogonId":"0x3e7","LogonType":"5","LogonProcessName":"Advapi  ","AuthenticationPackageName":"Negotiate","WorkstationName":"-","LogonGuid":"{00000000-0000-0000-0000-000000000000}","TransmittedServices":"-","LmPackageName":"-","KeyLength":"0","ProcessId":"0x21c","ProcessName":"C:\\\\Windows\\\\System32\\\\services.exe","IpAddress":"-","IpPort":"-","ImpersonationLevel":"%%1833"}}-->
+   <!--{"win":{"system":{"providerName":"Microsoft-Windows-Security-Auditing","providerGuid":"{54849625-5478-4994-A5BA-3E3B0328C30D}","eventID":"4624","version":"1","level":"0","task":"12544","opcode":"0","keywords":"0x802000000000000","systemTime":"2018-12-18T10:55:48.073081500Z","eventRecordID":"7017","processID":"548","threadID":"3212","channel":"Security","computer":"qnu","severityValue":"AUDIT_SUCCESS","message":"L’ouverture de session d’un compte s’est correctement déroulée."},"eventdata":{"subjectUserSid":"S-1-5-18","subjectUserName":"QNU$","subjectDomainName":"WORKGROUP","subjectLogonId":"0x3e7","targetUserSid":"S-1-5-18","targetUserName":"Système","targetDomainName":"AUTORITE NT","targetLogonId":"0x3e7","logonType":"5","logonProcessName":"Advapi  ","authenticationPackageName":"Negotiate","workstationName":"-","logonGuid":"{00000000-0000-0000-0000-000000000000}","transmittedServices":"-","lmPackageName":"-","keyLength":"0","processId":"0x21c","processName":"C:\\\\Windows\\\\System32\\\\services.exe","ipAddress":"-","ipPort":"-","impersonationLevel":"%%1833"}}}-->
   <rule id="20007" level="3">
     <if_sid>20004</if_sid>
     <field name="win.system.eventID">^528$|^540$|^673$|^4624$|^4769$</field>
@@ -1329,7 +1329,7 @@
     <if_sid>20001</if_sid>
     <field name="win.system.eventID">^11724$</field>
     <options>alert_by_email</options>
-    <description>Windows: Application Uninstalled $(eventData.data)</description>
+    <description>Windows: Application Uninstalled $(win.eventdata.data)</description>
     <options>no_full_log</options>
   </rule>
 
@@ -1337,7 +1337,7 @@
     <if_sid>20001</if_sid>
     <field name="win.system.eventID">^11707$</field>
     <options>alert_by_email</options>
-    <description>Windows: Application Installed $(eventData.data)</description>
+    <description>Windows: Application Installed $(win.eventdata.data)</description>
     <options>no_full_log</options>
   </rule>
 
@@ -1388,7 +1388,7 @@
   <rule id="20254" level="5">
     <if_sid>20014</if_sid>
     <field name="win.system.eventID">^632$|^4728$</field>
-    <description>Windows: Security Enabled Global Group Member Added $(eventData.memberSid)</description>
+    <description>Windows: Security Enabled Global Group Member Added $(win.eventdata.memberSid)</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1396,7 +1396,7 @@
   <rule id="20255" level="5">
     <if_sid>20014</if_sid>
     <field name="win.system.eventID">^633$|^4729$</field>
-    <description>Windows: Security Enabled Global Group Member Removed $(eventData.memberSid)</description>
+    <description>Windows: Security Enabled Global Group Member Removed $(win.eventdata.memberSid)</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1404,7 +1404,7 @@
   <rule id="20256" level="5">
     <if_sid>20001</if_sid>
     <field name="win.system.eventID">^634$|^4730$</field>
-    <description>Windows: Security Enabled Global Group Deleted $(eventData.memberSid)</description>
+    <description>Windows: Security Enabled Global Group Deleted $(win.eventdata.memberSid)</description>
     <options>no_full_log</options>
     <group>group_deleted,win_group_deleted,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1412,7 +1412,7 @@
   <rule id="20257" level="5">
     <if_sid>20251</if_sid>
     <field name="win.system.eventID">^635$|^4731$</field>
-    <description>Windows: Security Enabled Local Group Created $(eventData.memberSid)</description>
+    <description>Windows: Security Enabled Local Group Created $(win.eventdata.memberSid)</description>
     <options>no_full_log</options>
     <group>group_created,win_group_created,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1420,7 +1420,7 @@
   <rule id="20258" level="5">
     <if_sid>20014</if_sid>
     <field name="win.system.eventID">^636$|^4732$</field>
-    <description>Windows: Security Enabled Local Group Member Added $(eventData.memberSid)</description>
+    <description>Windows: Security Enabled Local Group Member Added $(win.eventdata.memberSid)</description>
     <options>no_full_log</options>
    <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1428,7 +1428,7 @@
   <rule id="20259" level="5">
     <if_sid>20014</if_sid>
     <field name="win.system.eventID">^637$|^4733$</field>
-    <description>Windows: Security Enabled Local Group Member Removed $(eventData.memberSid)</description>
+    <description>Windows: Security Enabled Local Group Member Removed $(win.eventdata.memberSid)</description>
     <options>no_full_log</options>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1985,7 +1985,7 @@
       <if_sid>20003</if_sid>
       <field name="win.system.providerName">chromoting</field>
       <field name="win.system.message">\.*Access denied for client</field>
-      <description>Chrome Remote Desktop attempt - access denied $(eventData.data)</description>
+      <description>Chrome Remote Desktop attempt - access denied $(win.eventdata.data)</description>
       <options>no_full_log</options>
       <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
   </rule>
@@ -1994,7 +1994,7 @@
       <if_sid>20001</if_sid>
       <field name="win.system.providerName">chromoting</field>
       <field name="win.system.eventID">^1$</field>
-      <description>Chrome Remote Desktop attempt - Client connected $(eventData.data)</description>
+      <description>Chrome Remote Desktop attempt - Client connected $(win.eventdata.data)</description>
       <options>no_full_log</options>
       <group>gdpr_IV_32.2,</group>
   </rule>
@@ -2003,17 +2003,16 @@
       <if_sid>20001</if_sid>
       <field name="win.system.providerName">chromoting</field>
       <field name="win.system.eventID">^2$</field>
-      <description>Chrome Remote Desktop attempt - disconnected ($(eventData.data))</description>
+      <description>Chrome Remote Desktop attempt - disconnected ($(win.eventdata.data))</description>
       <options>no_full_log</options>
       <group>gdpr_IV_32.2,</group>
   </rule>
 
-  <!--{"System":{"ProviderName":"chromoting","EventID":"5","Level":"4","Task":"1","Keywords":"0x80000000000000","SystemTime":"2018-12-18T10:55:48.000000000Z","EventRecordID":"1801","Channel":"Application","Computer":"qnu","SeverityValue":"INFORMATION","Message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"EventData":{"Data":"user@gmail.com"}}-->
-  <rule id="20095" level="5">
+   <!--{"win":{"system":{"providerName":"chromoting","eventID":"5","level":"4","task":"1","keywords":"0x80000000000000","systemTime":"2018-12-18T10:55:48.000000000Z","eventRecordID":"1801","channel":"Application","computer":"qnu","severityValue":"INFORMATION","message":"Hôte démarré pour l'utilisateur \\\"tinamay299@gmail.com\\\""},"eventdata":{"data":"user@gmail.com"}}}-->  <rule id="20095" level="5">
       <if_sid>20001</if_sid>
       <field name="win.system.providerName">chromoting</field>
       <field name="win.system.eventID">^5$</field>
-      <description>Chrome Remote Desktop attempt - started connection from $(eventData.data)</description>
+      <description>Chrome Remote Desktop attempt - started connection from $(win.eventdata.data)</description>
       <options>no_full_log</options>
       <group>gdpr_IV_32.2,</group>
   </rule>
