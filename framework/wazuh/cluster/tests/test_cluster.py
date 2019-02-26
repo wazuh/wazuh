@@ -74,14 +74,16 @@ def test_read_configuration(read_config):
 
 @pytest.mark.parametrize('read_config', [
     {'disabled': 'yay'},
-    {'key': ''},
-    {'key': 'a'*15},
-    {'port': 'string'},
-    {'node_type': 'random'},
-    {'nodes': ['NODE_IP']},
-    {'nodes': ['localhost']},
-    {'nodes': ['0.0.0.0']},
-    {'nodes': ['172.0.1.1']}
+    {'key': '', 'nodes': ['192.158.35.13']},
+    {'key': 'a'*15, 'nodes': ['192.158.35.13']},
+    {'port': 'string', 'key': 'a'*32, 'nodes': ['192.158.35.13']},
+    {'port': 90, 'key': 'a'*32, 'nodes': ['192.158.35.13']},
+    {'port': 70000, 'key': 'a'*32, 'nodes': ['192.158.35.13']},
+    {'node_type': 'random', 'key': 'a'*32, 'nodes': ['192.158.35.13']},
+    {'nodes': ['NODE_IP'], 'key': 'a'*32},
+    {'nodes': ['localhost'], 'key': 'a'*32},
+    {'nodes': ['0.0.0.0'], 'key': 'a'*32},
+    {'nodes': ['127.0.1.1'], 'key': 'a'*32}
 ])
 def test_checking_configuration(read_config):
     """
@@ -89,6 +91,6 @@ def test_checking_configuration(read_config):
     """
     with patch('wazuh.cluster.cluster.get_ossec_conf') as m:
         m.return_value = read_config.copy()
-        with pytest.raises(WazuhException, match=r'3004'):
+        with pytest.raises(WazuhException, match=r'.* 3004 .*'):
             configuration = cluster.read_config()
             cluster.check_cluster_config(configuration)

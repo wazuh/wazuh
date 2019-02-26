@@ -51,6 +51,9 @@ def check_cluster_config(config):
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(
             config['node_type']))
 
+    elif not 1024 < config['port'] < 65535:
+        raise WazuhException(3004, "Port must be higher than 1024 and lower than 65535.")
+
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
