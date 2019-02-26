@@ -15,7 +15,7 @@ from wazuh import common, configuration, pyDaemonModule, Wazuh
 #
 # Aux functions
 #
-def set_logging(foreground_mode=False, debug_mode=0):
+def set_logging(debug_mode=0):
     logger = logging.getLogger('wazuh')
     logger.propagate = False
     # configure logger
@@ -24,10 +24,9 @@ def set_logging(foreground_mode=False, debug_mode=0):
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
-    if foreground_mode:
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
     logger.addFilter(cluster.ClusterFilter(tag='Cluster', subtag='Main'))
 
@@ -142,9 +141,12 @@ if __name__ == '__main__':
         os.chown('{0}/logs/cluster.log'.format(common.ossec_path), common.ossec_uid, common.ossec_gid)
         os.chmod('{0}/logs/cluster.log'.format(common.ossec_path), 0o660)
 
-    main_logger = set_logging(args.foreground, debug_mode)
+    main_logger = set_logging(debug_mode)
 
     cluster_configuration = cluster.read_config(config_file=args.config_file)
+    if cluster_configuration['disabled']:
+        main_logger.info("Cluster disabled. Exiting.")
+        sys.exit(0)
     cluster_items = cluster.get_cluster_items()
     try:
         cluster.check_cluster_config(cluster_configuration)
@@ -166,10 +168,6 @@ if __name__ == '__main__':
     if not args.root:
         os.setgid(common.ossec_gid)
         os.setuid(common.ossec_uid)
-
-    if cluster_configuration['disabled']:
-        main_logger.info("Cluster disabled. Exiting.")
-        sys.exit(0)
 
     pyDaemonModule.create_pid('wazuh-clusterd', os.getpid())
 
