@@ -24,6 +24,7 @@
 #define WM_SCA_TYPE_REGISTRY  2
 #define WM_SCA_TYPE_PROCESS   3
 #define WM_SCA_TYPE_DIR       4
+#define WM_SCA_TYPE_COMMAND   5
 
 #define WM_SCA_COND_ALL       0x001
 #define WM_SCA_COND_ANY       0x002

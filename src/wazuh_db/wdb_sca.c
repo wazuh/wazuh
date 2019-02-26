@@ -131,7 +131,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 }
 
 /* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
-int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id) {
+int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id,char * command) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
@@ -160,6 +160,7 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
     sqlite3_bind_text(stmt, 11, reference, -1, NULL);
     sqlite3_bind_text(stmt, 12, result, -1, NULL);
     sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
+    sqlite3_bind_text(stmt, 14, command, -1, NULL);
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
