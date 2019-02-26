@@ -99,6 +99,7 @@ def test_validation_paths_ok(relative_path):
 def test_validation_paths_ko(relative_path):
     assert validator.check_path(relative_path) is False
 
+
 @pytest.mark.parametrize('parameters, filters', [
     ({'path': 'etc/rules/rule.xml', 'offset': '32', 'format': 'xml'},
     {'path': 'paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
