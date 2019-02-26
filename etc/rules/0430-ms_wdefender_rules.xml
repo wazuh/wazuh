@@ -48,7 +48,7 @@
     <rule id="20216" level="12">
         <if_sid>20215</if_sid>
         <field name="win.system.eventID">^1116$</field>
-        <description>Windows Defender: detected potentially unwanted software $(eventData.ProcessName)</description>
+        <description>Windows Defender: detected potentially unwanted software $(win.eventdata.processName)</description>
         <options>no_full_log</options>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
@@ -59,7 +59,7 @@
     <rule id="20217" level="7">
         <if_sid>20215</if_sid>
         <field name="win.system.eventID">^1117$</field>
-        <description>Windows Defender: error when taking action on potentially unwanted software $(eventData.ProcessName)</description>
+        <description>Windows Defender: error when taking action on potentially unwanted software $(win.eventdata.processName)</description>
         <options>no_full_log</options>
         <group>gdpr_IV_35.7.d,</group>
     </rule>
