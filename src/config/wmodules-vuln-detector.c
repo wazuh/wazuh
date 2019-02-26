@@ -338,7 +338,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                         free_update_node(updates[os_index]);
                         updates[os_index] = NULL;
                         if (os_index == CVE_NVD) {
-                            free_update_node(updates[CPE_NDIC]);
+                            //free_update_node(updates[CPE_NDIC]);
                             updates[CPE_NDIC] = NULL;
                         }
                         break;
