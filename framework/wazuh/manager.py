@@ -21,7 +21,7 @@ from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 
-re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(.*)$")
+re_logtest = re.compile(r"^.*(?:ERROR *: |CRITICAL *: )(.*)$")
 
 
 def status():
