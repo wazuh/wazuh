@@ -152,7 +152,7 @@
 
   <rule id="20221" level="8">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4646$</field>
+    <field name="win.system.eventID">^4646$</field>
     <description>IKE DoS-prevention mode started</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -161,7 +161,7 @@
 
   <rule id="20222" level="8">
     <if_sid>20012</if_sid>
-    <field name="system.eventID">^4652$|^4653$</field>
+    <field name="win.system.eventID">^4652$|^4653$</field>
     <description>An IPsec Main Mode negotiation failed</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -171,7 +171,7 @@
   <rule id="20223" level="8">
     <if_sid>20012</if_sid>
     <id>^4654$</id>
-    <field name="system.eventID">^4654$</field>
+    <field name="win.system.eventID">^4654$</field>
     <description>An IPsec Quick Mode negotiation failed</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -180,7 +180,7 @@
 
   <rule id="20224" level="8">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4983$|^4984$</field>
+    <field name="win.system.eventID">^4983$|^4984$</field>
     <description>An IPsec Extended Mode negotiation failed</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -189,7 +189,7 @@
 
   <rule id="20225" level="4">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4960$</field>
+    <field name="win.system.eventID">^4960$</field>
     <description>IPsec dropped an inbound packet that failed an integrity check</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -198,7 +198,7 @@
 
   <rule id="20226" level="8">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4961$|^4962$</field>
+    <field name="win.system.eventID">^4961$|^4962$</field>
     <description>IPsec dropped an inbound packet that failed a replay check</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -207,7 +207,7 @@
 
   <rule id="20227" level="8">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4963$</field>
+    <field name="win.system.eventID">^4963$</field>
     <description>IPsec dropped an inbound clear text packet that should have been secured</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -216,7 +216,7 @@
 
   <rule id="20228" level="4">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4965$</field>
+    <field name="win.system.eventID">^4965$</field>
     <description>IPsec received a packet from a remote computer with an incorrect Security Parameter Index (SPI)</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -225,7 +225,7 @@
 
   <rule id="20229" level="7">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4976$</field>
+    <field name="win.system.eventID">^4976$</field>
     <description>During Main Mode negotiation, IPsec received an invalid negotiation packet</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -234,7 +234,7 @@
 
   <rule id="20230" level="7">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4977$</field>
+    <field name="win.system.eventID">^4977$</field>
     <description>During Quick Mode negotiation, IPsec received an invalid negotiation packet</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -243,7 +243,7 @@
 
   <rule id="20231" level="7">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4978$</field>
+    <field name="win.system.eventID">^4978$</field>
     <description>During Extended Mode negotiation, IPsec received an invalid negotiation packet</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -252,7 +252,7 @@
 
   <rule id="20232" level="8">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^5453$</field>
+    <field name="win.system.eventID">^5453$</field>
     <description>An IPsec negotiation with a remote computer failed because the IKE and AuthIP IPsec Keying Modules (IKEEXT) service is not started</description>
     <group>windows,</group>
     <options>no_full_log</options>
@@ -261,7 +261,7 @@
 
   <rule id="20233" level="8">
     <if_sid>20012</if_sid>
-    <field name="system.eventID">^5480$</field>
+    <field name="win.system.eventID">^5480$</field>
     <description>IPsec Services failed to get the complete list of network interfaces on the computer</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -270,7 +270,7 @@
 
   <rule id="20234" level="8">
     <if_sid>20012</if_sid>
-    <field name="system.eventID">^5483$</field>
+    <field name="win.system.eventID">^5483$</field>
     <description>IPsec Services failed to initialize RPC server. IPsec Services could not be started</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -279,7 +279,7 @@
 
   <rule id="20235" level="8">
     <if_sid>20012</if_sid>
-    <field name="system.eventID">^5484$</field>
+    <field name="win.system.eventID">^5484$</field>
     <description>IPsec Services has experienced a critical failure and has been shut down</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -288,7 +288,7 @@
 
   <rule id="20236" level="8">
     <if_sid>20012</if_sid>
-    <field name="system.eventID">^5485$</field>
+    <field name="win.system.eventID">^5485$</field>
     <description>IPsec Services failed to process some IPsec filters on a plug-and-play event for network interfaces</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -297,7 +297,7 @@
 
   <rule id="20237" level="8">
     <if_sid>20011</if_sid>
-    <field name="system.eventID">^4710$</field>
+    <field name="win.system.eventID">^4710$</field>
     <description>IPsec Services was disabled</description>
     <options>no_full_log</options>
     <group>windows,</group>
@@ -306,7 +306,7 @@
 
   <rule id="20238" level="8">
     <if_sid>20012</if_sid>
-    <field name="system.eventID">^4712$</field>
+    <field name="win.system.eventID">^4712$</field>
     <description>IPsec Services encountered a potentially serious failure</description>
     <options>no_full_log</options>
     <group>windows,</group>

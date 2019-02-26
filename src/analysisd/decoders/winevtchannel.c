@@ -86,6 +86,7 @@ int DecodeWinevt(Eventinfo *lf){
     OS_XML xml;
     int xml_init = 0;
     int ret_val = 0;
+    cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
     cJSON *json_eventdata_in = cJSON_CreateObject();
@@ -429,7 +430,9 @@ int DecodeWinevt(Eventinfo *lf){
         cJSON_Delete(json_extra_in);
     }
 
-    returned_event = cJSON_PrintUnformatted(json_event);
+    cJSON_AddItemToObject(final_event, "win", json_event);
+
+    returned_event = cJSON_PrintUnformatted(final_event);
 
     if (returned_event){
         lf->full_log[strlen(returned_event)] = '\0';
@@ -456,7 +459,7 @@ cleanup:
     if (xml_init){
         OS_ClearXML(&xml);
     }
-    cJSON_Delete(json_event);
+    cJSON_Delete(final_event);
 
     return (ret_val);
 }

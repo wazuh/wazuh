@@ -114,14 +114,14 @@
 
     <rule id="20485" level="0">
         <if_sid>20001</if_sid>
-        <field name="system.channel">^Microsoft-Windows-Sysmon/Operational</field>
+        <field name="win.system.channel">^Microsoft-Windows-Sysmon/Operational</field>
         <description>Sysmon - Group of events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="20486" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^1$</field>
+        <field name="win.system.eventID">^1$</field>
         <description>Sysmon - Event 1: Process creation $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event1,</group>
@@ -129,7 +129,7 @@
 
     <rule id="20487" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^2$</field>
+        <field name="win.system.eventID">^2$</field>
         <description>Sysmon - Event 2: A process changed a file creation time $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event2,</group>
@@ -137,7 +137,7 @@
 
     <rule id="20488" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^3$</field>
+        <field name="win.system.eventID">^3$</field>
         <description>Sysmon - Event 3: Network connection $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event3,</group>
@@ -145,7 +145,7 @@
 
     <rule id="20489" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^4$</field>
+        <field name="win.system.eventID">^4$</field>
         <description>Sysmon - Event 4: Sysmon service state changed $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event4,</group>
@@ -153,7 +153,7 @@
 
     <rule id="20490" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^5$</field>
+        <field name="win.system.eventID">^5$</field>
         <description>Sysmon - Event 5: Process terminated $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event5,</group>
@@ -161,7 +161,7 @@
 
     <rule id="20491" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^6$</field>
+        <field name="win.system.eventID">^6$</field>
         <description>Sysmon - Event 6: Driver loaded $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event6,</group>
@@ -169,7 +169,7 @@
 
     <rule id="20492" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^7$</field>
+        <field name="win.system.eventID">^7$</field>
         <description>Sysmon - Event 7: Image loaded $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event7,</group>
@@ -177,7 +177,7 @@
 
     <rule id="20493" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^8$</field>
+        <field name="win.system.eventID">^8$</field>
         <description>Sysmon - Event 8: CreateRemoteThread $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event8,</group>
@@ -185,7 +185,7 @@
 
     <rule id="20494" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^9$</field>
+        <field name="win.system.eventID">^9$</field>
         <description>Sysmon - Event 9: RawAccessRead $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event9,</group>
@@ -193,7 +193,7 @@
 
     <rule id="20495" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^10$</field>
+        <field name="win.system.eventID">^10$</field>
         <description>Sysmon - Event 10: ProcessAccess $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_10,</group>
@@ -201,7 +201,7 @@
 
     <rule id="20496" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^11$</field>
+        <field name="win.system.eventID">^11$</field>
         <description>Sysmon - Event 11: FileCreate $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_11,</group>
@@ -209,7 +209,7 @@
 
     <rule id="20497" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^12$</field>
+        <field name="win.system.eventID">^12$</field>
         <description>Sysmon - Event 12: RegistryEvent (Object create and delete) $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_12,</group>
@@ -217,7 +217,7 @@
 
     <rule id="20498" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^13$</field>
+        <field name="win.system.eventID">^13$</field>
         <description>Sysmon - Event 13: RegistryEvent (Value Set) $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_13,</group>
@@ -225,7 +225,7 @@
 
     <rule id="20499" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^14$</field>
+        <field name="win.system.eventID">^14$</field>
         <description>Sysmon - Event 14: RegistryEvent (Key and Value Rename) $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_14,</group>
@@ -233,7 +233,7 @@
 
     <rule id="20500" level="0">
         <if_sid>20485</if_sid>
-        <field name="system.eventID">^15$</field>
+        <field name="win.system.eventID">^15$</field>
         <description>Sysmon - Event 15: FileCreateStreamHash $(eventData.description)</description>
         <options>no_full_log</options>
         <group>sysmon_event_15,</group>
@@ -419,34 +419,34 @@
 
         <rule id="20350" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">svchost.exe</field>
+        <field name="win.eventdata.image">svchost.exe</field>
         <description>Sysmon - Suspicious Process - svchost.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20351" level="0">
         <if_sid>20350</if_sid>
-        <field name="eventData.parentImage">\\services.exe</field>
+        <field name="win.eventdata.parentImage">\\services.exe</field>
         <description>Sysmon - Legitimate Parent Image - svchost.exe</description>
     </rule>
 
 
     <rule id="20352" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">lsm.exe</field>
+        <field name="win.eventdata.image">lsm.exe</field>
         <description>Sysmon - Suspicious Process - lsm.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20353" level="0">
         <if_sid>20352</if_sid>
-        <field name="eventData.parentImage">wininit.exe</field>
+        <field name="win.eventdata.parentImage">wininit.exe</field>
         <description>Sysmon - Legitimate Parent Image - lsm.exe</description>
     </rule>
 
     <rule id="20354" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.parentImage">lsm.exe</field>
+        <field name="win.eventdata.parentImage">lsm.exe</field>
         <description>Sysmon - Suspicious Process - lsm.exe is a Parent Image</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
@@ -454,34 +454,34 @@
 
     <rule id="20355" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">csrss.exe</field>
+        <field name="win.eventdata.image">csrss.exe</field>
         <description>Sysmon - Suspicious Process - csrss.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20356" level="0">
         <if_sid>20355</if_sid>
-        <field name="eventData.parentImage">smss.exe</field>
+        <field name="win.eventdata.parentImage">smss.exe</field>
         <description>Sysmon - Legitimate Parent Image - csrss.exe</description>
     </rule>
 
 
     <rule id="20357" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">lsass.exe</field>
+        <field name="win.eventdata.image">lsass.exe</field>
         <description>Sysmon - Suspicious Process - lsass</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20358" level="0">
         <if_sid>20357</if_sid>
-        <field name="eventData.parentImage">wininit.exe</field>
+        <field name="win.eventdata.parentImage">wininit.exe</field>
         <description>Sysmon - Legitimate Parent Image - lsass.exe</description>
     </rule>
 
     <rule id="20359" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.parentImage">lsass.exe</field>
+        <field name="win.eventdata.parentImage">lsass.exe</field>
         <description>Sysmon - Suspicious Process - lsass.exe is a Parent Image</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
@@ -489,98 +489,98 @@
 
     <rule id="20360" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">winlogon.exe</field>
+        <field name="win.eventdata.image">winlogon.exe</field>
         <description>Sysmon - Suspicious Process - winlogon.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20361" level="0">
         <if_sid>20360</if_sid>
-        <field name="eventData.parentImage">smss.exe</field>
+        <field name="win.eventdata.parentImage">smss.exe</field>
         <description>Sysmon - Legitimate Parent Image - winlogon.exe</description>
     </rule>
 
 
     <rule id="20362" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">wininit.exe</field>
+        <field name="win.eventdata.image">wininit.exe</field>
         <description>Sysmon - Suspicious Process - wininit</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20363" level="0">
         <if_sid>20362</if_sid>
-        <field name="eventData.parentImage">smss.exe</field>
+        <field name="win.eventdata.parentImage">smss.exe</field>
         <description>Sysmon - Legitimate Parent Image - wininit.exe</description>
     </rule>
 
 
     <rule id="20364" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">smss.exe</field>
+        <field name="win.eventdata.image">smss.exe</field>
         <description>Sysmon - Suspicious Process - smss.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20365" level="0">
         <if_sid>20364</if_sid>
-        <field name="eventData.parentImage">system</field>
+        <field name="win.eventdata.parentImage">system</field>
         <description>Sysmon - Legitimate Parent Image - smss.exe</description>
     </rule>
 
 
     <rule id="20366" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">taskhost.exe</field>
+        <field name="win.eventdata.image">taskhost.exe</field>
         <description>Sysmon - Suspicious Process - taskhost.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20367" level="0">
         <if_sid>20366</if_sid>
-        <field name="eventData.parentImage">services.exe|svchost.exe</field>
+        <field name="win.eventdata.parentImage">services.exe|svchost.exe</field>
         <description>Sysmon - Legitimate Parent Image - taskhost.exe</description>
     </rule>
 
 
     <rule id="20368" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">/services.exe</field>
+        <field name="win.eventdata.image">/services.exe</field>
         <description>Sysmon - Suspicious Process - services.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20369" level="0">
         <if_sid>20368</if_sid>
-        <field name="eventData.parentImage">wininit.exe</field>
+        <field name="win.eventdata.parentImage">wininit.exe</field>
         <description>Sysmon - Legitimate Parent Image - services.exe</description>
     </rule>
 
 
     <rule id="20370" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">dllhost.exe</field>
+        <field name="win.eventdata.image">dllhost.exe</field>
         <description>Sysmon - Suspicious Process - dllhost.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20371" level="0">
         <if_sid>20370</if_sid>
-        <field name="eventData.parentImage">svchost.exe|services.exe</field>
+        <field name="win.eventdata.parentImage">svchost.exe|services.exe</field>
         <description>Sysmon - Legitimate Parent Image - dllhost.exe</description>
     </rule>
 
 
     <rule id="20372" level="12">
         <if_group>sysmon_event1</if_group>
-        <field name="eventData.image">\\explorer.exe</field>
+        <field name="win.eventdata.image">\\explorer.exe</field>
         <description>Sysmon - Suspicious Process - explorer.exe</description>
         <group>pci_dss_10.6.1,pci_dss_11.4,gdpr_IV_35.7.d,</group>
     </rule>
 
     <rule id="20373" level="0">
         <if_sid>20372</if_sid>
-        <field name="eventData.parentImage">userinit.exe</field>
+        <field name="win.eventdata.parentImage">userinit.exe</field>
         <description>Sysmon - Legitimate Parent Image - explorer.exe</description>
     </rule>
     
