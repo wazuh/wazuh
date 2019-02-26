@@ -20,7 +20,7 @@ VERSION = "3.9.0"
 REQUIRES = ["connexion[swagger-ui]==2.2.0",
             "python_dateutil==2.6.0",
             "setuptools>=21.0.0",
-            "pyjwt==1.7.1",
+            "python-jose[cryptography]==3.0.1",
             "sqlalchemy==1.2.18"
             ]
 

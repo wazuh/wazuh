@@ -4,19 +4,22 @@
 
 
 import os
-from datetime import datetime
+from secrets import token_urlsafe
 from shutil import chown
+from time import time
 
-from sqlalchemy import create_engine, Column, String, DateTime
+from jose import JWTError, jwt
+from sqlalchemy import create_engine, Column, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from wazuh.common import ossec_path
+from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 
 # Set authentication database
 _auth_db_file = os.path.join(ossec_path, 'api', 'users.db')
-_engine = create_engine(f'sqlite://{_auth_db_file}', echo=False)
+_engine = create_engine(f'sqlite:///{_auth_db_file}', echo=False)
 _Base = declarative_base()
 
 
@@ -28,26 +31,29 @@ class _User(_Base):
     password = Column(String(256))
 
     def __repr__(self):
-       return f"<User(user={self.user})"
-
-
-class _Token(_Base):
-    __tablename__ = 'tokens'
-
-    token = Column(String(512), primary_key=True)
-    issued_date = Column(DateTime)
-    expiry_date = Column(DateTime)
+        return f"<User(user={self.user})"
 
 
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
 chown(_auth_db_file, 'root', 'ossec')
-Session = sessionmaker(bind=_engine)
+os.chmod(_auth_db_file, 0o640)
+_Session = sessionmaker(bind=_engine)
 
 
 class AuthenticationManager:
+    """
+    Class for dealing with authentication stuff without worrying about database.
+    It manages users and token generation.
+    """
 
     def add_user(self, username, password):
+        """
+        Creates a new user if it does not exist.
+        :param username: string Unique user name
+        :param password: string Password provided by user. It will be stored hashed
+        :return: True if the user has been created successfuly. False otherwise (i.e. already exists)
+        """
         try:
             self.session.add(_User(username=username, password=generate_password_hash(password)))
             self.session.commit()
@@ -57,15 +63,28 @@ class AuthenticationManager:
             return False
 
     def check_user(self, username, password):
+        """
+        Validates a username-password pair.
+        :param username: string Unique user name
+        :param password: string Password to be checked against the one saved in the database
+        :return: True if username and password matches. False otherwise.
+        """
         user = self.session.query(_User).filter_by(username=username).first()
         return check_password_hash(user.password, password) if user else False
 
-    def check_token(self, token):
-        db_token = self.session.query(_Token).filter_by(token=token).filter(_Token.expiry_date < datetime.now()).first()
-        return db_token is not None
+    def login_user(self, username, password):
+        """
+        Validates a username-password pair and generates a jwt token
+        :param username: string Unique user name
+        :param password: string Password to be checked against the one saved in the database
+        :return: string jwt encoded token or None if user credentials are rejected
+        """
+        if self.check_user(username=username, password=password):
+            return _generate_token(username)
+        return None
 
     def __enter__(self):
-        self.session = Session()
+        self.session = _Session()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -79,6 +98,13 @@ with AuthenticationManager() as auth:
 
 
 def check_user(user, password, required_scopes=None):
+    """
+    Convenience method to use in openapi specification
+    :param user: string Unique username
+    :param password: string user password
+    :param required_scopes:
+    :return:
+    """
     with AuthenticationManager() as auth:
         if auth.check_user(user, password):
             return {'sub': 'foo',
@@ -88,8 +114,49 @@ def check_user(user, password, required_scopes=None):
     return None
 
 
-def check_token(token, required_scopes=None):
-    if token == 'blablablablabla':
-        return {'active': True
-                }
-    return None
+# Set JWT settings
+JWT_ISSUER = 'wazuh'
+JWT_LIFETIME_SECONDS = 600
+JWT_ALGORITHM = 'HS256'
+
+
+# Generate secret file to keep safe or load existing secret
+secret_file_path = os.path.join(ossec_path, 'api', 'jwt_secret')
+if not os.path.exists(secret_file_path):
+    JWT_SECRET = token_urlsafe(512)
+    with open(secret_file_path, 'x') as secret_file:
+        secret_file.write(JWT_SECRET)
+    chown(secret_file_path, 'root', 'ossec')
+    os.chmod(secret_file_path, 0o640)
+else:
+    with open(secret_file_path, 'r') as secret_file:
+        JWT_SECRET = secret_file.readline()
+
+
+def _generate_token(user_id):
+    """
+    Generates an encoded jwt token. This method should be called once a user is properly logged on.
+    :param user_id: string Unique user name
+    :return: string jwt formatted string
+    """
+    timestamp = int(time())
+    payload = {
+        "iss": JWT_ISSUER,
+        "iat": int(timestamp),
+        "exp": int(timestamp + JWT_LIFETIME_SECONDS),
+        "sub": str(user_id),
+    }
+
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def decode_token(token):
+    """
+    Decodes a jwt formatted token. Raise an Unauthorized exception in case validation fails.
+    :param token: string jwt formatted token
+    :return: dict payload ot the token
+    """
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except JWTError as e:
+        raise Unauthorized from e
