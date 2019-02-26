@@ -48,7 +48,7 @@ MailMsg *OS_RecvMailQ(file_queue *fileq, struct tm *p, MailConfig *Mail, MailMsg
     /* Generate the logs */
     logs[0] = '\0';
     extra_data[0] = '\0';
-    logs[OS_MAXSTR] = '\0';
+    logs[OS_SIZE_4096] = '\0';
 
     while (al_data->log[i]) {
         log_size = strlen(al_data->log[i]) + 4;

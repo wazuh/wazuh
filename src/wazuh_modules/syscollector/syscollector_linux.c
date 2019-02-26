@@ -398,7 +398,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
     int epoch;
     char version[TYPE_LENGTH];
     char release[TYPE_LENGTH];
-    char final_version[V_LENGTH+6];
+    char final_version[V_LENGTH + 6];
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
@@ -553,7 +553,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         }
 
         if (epoch) {
-            snprintf(final_version, V_LENGTH+5, "%d:%s-%s", epoch, version, release);
+            snprintf(final_version, V_LENGTH + 5, "%d:%s-%s", epoch, version, release);
         } else {
             snprintf(final_version, V_LENGTH, "%s-%s", version, release);
         }
