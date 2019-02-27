@@ -316,6 +316,25 @@ def get_file(path):
     return output
 
 
+def delete_file(path):
+    """
+    Deletes a file.
+    :param path: Relative path of file from origin
+    :return: Confirmation message
+    """
+    full_path = join(common.ossec_path, path)
+
+    if exists(full_path):
+        try:
+            remove(full_path)
+        except IOError:
+            return WazuhException(1906)
+    else:
+        return 'File does not exist'
+
+    return 'File was deleted'
+
+
 def restart():
     """
     Restart Wazuh manager.
