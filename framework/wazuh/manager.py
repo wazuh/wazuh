@@ -328,9 +328,9 @@ def delete_file(path):
         try:
             remove(full_path)
         except IOError:
-            return WazuhException(1906)
+            raise WazuhException(1907)
     else:
-        return 'File does not exist'
+        raise WazuhException(1906)
 
     return 'File was deleted'
 
