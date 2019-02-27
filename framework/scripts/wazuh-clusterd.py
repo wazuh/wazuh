@@ -8,6 +8,7 @@ import asyncio
 import argparse
 import os
 import sys
+import time
 from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__, master, local_server, worker
 from wazuh import common, configuration, pyDaemonModule, Wazuh
 
@@ -20,7 +21,11 @@ def set_logging(debug_mode=0):
     logger.propagate = False
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
+    formatter = logging.Formatter(
+        fmt='%(asctime)s wazuh-clusterd: %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
+        datefmt="%Y/%m/%d %H:%M:%S"
+    )
+    formatter.converter = time.gmtime
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
@@ -145,7 +150,6 @@ if __name__ == '__main__':
 
     cluster_configuration = cluster.read_config(config_file=args.config_file)
     if cluster_configuration['disabled']:
-        main_logger.info("Cluster disabled. Exiting.")
         sys.exit(0)
     cluster_items = cluster.get_cluster_items()
     try:
