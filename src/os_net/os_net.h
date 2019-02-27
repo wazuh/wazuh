@@ -109,11 +109,6 @@ int OS_SendSecureTCPCluster(int sock, const void * command, const void * payload
  */
 int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length);
 
-
-// Receive dynamic size message. Use with OS_SendSecureTCP function.
-ssize_t OS_RecvSecureTCP_Dynamic(int sock, char **ret);
-
-
 // Byte ordering
 
 uint32_t wnet_order(uint32_t value);

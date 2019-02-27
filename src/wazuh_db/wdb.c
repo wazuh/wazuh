@@ -43,7 +43,7 @@ static const char *SQL_STMT[] = {
     "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     "DELETE FROM sys_processes WHERE scan_id != ?;",
     "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp) VALUES (?, ?, ?, ?, ?);",
+    "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp, metric) VALUES (?, ?, ?, ?, ?, ?);",
     "INSERT INTO sys_netaddr (scan_id, iface, proto, address, netmask, broadcast) VALUES (?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_netiface WHERE scan_id != ?;",
     "DELETE FROM sys_netproto WHERE scan_id != ?;",
@@ -65,7 +65,28 @@ static const char *SQL_STMT[] = {
     "SELECT end_scan FROM scan_info WHERE module = ?;",
     "SELECT fim_first_check FROM scan_info WHERE module = ?;",
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
-    "SELECT fim_third_check FROM scan_info WHERE module = ?;"
+    "SELECT fim_third_check FROM scan_info WHERE module = ?;",
+    "SELECT id,result FROM sca_check WHERE id = ?;",
+    "UPDATE sca_check SET result = ? WHERE id = ?;",
+    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);",
+    "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,score,hash) VALUES (?,?,?,?,?,?,?,?);",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
+    "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
+    "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
+    "SELECT name FROM sca_global WHERE name = ?;",
+    "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
+    "SELECT id FROM sca_policy WHERE id = ?;",
+    "INSERT INTO sca_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
+    "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
+    "SELECT result FROM sca_check WHERE scan_id = ? ORDER BY id;",
+    "SELECT id FROM sca_policy;",
+    "DELETE FROM sca_policy WHERE id = ?;",
+    "DELETE FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_scan_info WHERE policy_id = ?;",
+    "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "SELECT id FROM sca_check WHERE policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
@@ -202,7 +223,7 @@ wdb_t * wdb_open_agent2(int agent_id) {
         wdb = wdb_init(db, sagent_id);
         wdb_pool_append(wdb);
 
-        if (new_wdb = wdb_upgrade(wdb), new_wdb != NULL) {
+        if (new_wdb = wdb_upgrade(wdb), new_wdb != wdb) {
             // If I had to generate backup and change DB
             wdb = new_wdb;
             wdb_pool_append(wdb);

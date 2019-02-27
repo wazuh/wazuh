@@ -76,17 +76,21 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
+                free(command);
+                free(output);
                 pthread_exit(NULL);
         }
 
+        os_free(output);
+        free(command);
+
         if (attempts > docker_conf->attempts) {
-            mtinfo(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+            mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
             pthread_exit(NULL);
         }
 
-        mtinfo(WM_DOCKER_LOGTAG, "Docker-listener finished unexpected. Retrying to run it in %u seconds...", docker_conf->interval);
+        mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", status, docker_conf->interval);
         sleep(docker_conf->interval);
-
     }
 
     return NULL;

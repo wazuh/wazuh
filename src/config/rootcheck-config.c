@@ -13,6 +13,7 @@
 #include "config.h"
 
 
+
 static short eval_bool(const char *str)
 {
     if (str == NULL) {

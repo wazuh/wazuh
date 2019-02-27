@@ -70,6 +70,9 @@ void HandleSecure()
     /* Create Active Response forwarder thread */
     w_create_thread(AR_Forward, NULL);
 
+    /* Create Security configuration assessment forwarder thread */
+    w_create_thread(SCFGA_Forward, NULL);
+
     // Create Request listener thread
     w_create_thread(req_main, NULL);
 

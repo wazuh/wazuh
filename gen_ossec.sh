@@ -72,6 +72,7 @@ if [ "$1" = "conf" ]; then
   ROOTCHECK="yes"
   OPENSCAP="yes"
   SYSCOLLECTOR="yes"
+  SECURITY_CONFIGURATION_ASSESSMENT="yes"
   ACTIVERESPONSE="yes"
   AUTHD="yes"
   SSL_CERT="yes"

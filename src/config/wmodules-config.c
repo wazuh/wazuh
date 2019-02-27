@@ -146,6 +146,44 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     return 0;
 }
 
+int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
+{
+    wmodule **wmodules = (wmodule**)d1;
+    wmodule *cur_wmodule;
+    xml_node **children = NULL;
+
+    // Allocate memory
+    if ((cur_wmodule = *wmodules)) {
+        while (cur_wmodule->next)
+            cur_wmodule = cur_wmodule->next;
+
+        os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+        cur_wmodule = cur_wmodule->next;
+    } else
+        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+
+    if (!cur_wmodule) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return (OS_INVALID);
+    }
+
+    // Get children
+    if (children = OS_GetElementsbyNode(xml, node), !children) {
+        mdebug1("Empty configuration for module '%s'.", node->values[0]);
+    }
+
+    //Policy Monitoring Module
+    if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
+        if (wm_sca_read(xml,children, cur_wmodule) < 0) {
+            OS_ClearNode(children);
+            return OS_INVALID;
+        }
+    }
+
+    OS_ClearNode(children);
+    return 0;
+}
+
 int Test_WModule(const char * path) {
     int fail = 0;
     wmodule *test_wmodule;

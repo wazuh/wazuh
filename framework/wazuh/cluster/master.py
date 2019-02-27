@@ -132,10 +132,13 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         if command == b'dapi_forward':
             client, request = data.split(b' ', 1)
             client = client.decode()
-            if not client in self.server.clients:
-                raise WazuhException(3022, client)
-            else:
+            if client == 'fw_all_nodes':
+                for worker in self.server.clients.values():
+                    result = (await worker.send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+            elif client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
+            else:
+                raise WazuhException(3022, client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
@@ -201,7 +204,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             cmd, res = self.get_nodes(api_call_info['arguments'])
             if api_call_info['function'] == '/cluster/nodes/:node_name':
                 res = res['items'][0] if len(res['items']) > 0 else {}
-
         return cmd, json.dumps({'error': 0, 'data': res}).encode()
 
     def get_nodes(self, arguments: Dict) -> Tuple[bytes, Dict]:
@@ -262,7 +264,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
-        shutil.rmtree(decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         extra_valid_logger = self.task_loggers['Extra valid']
@@ -458,6 +459,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             for filename, data in files_checksums.items():
                 update_file(data=data, name=filename)
 
+            shutil.rmtree(decompressed_files_path)
+
         except Exception as e:
             self.logger.error("Error updating worker files: '{}'.".format(e))
             raise e
@@ -537,3 +540,7 @@ class Master(server.AbstractServer):
                     datetime.fromtimestamp(workers_info[node_name]['status']['last_keep_alive']))
 
         return {"n_connected_nodes": n_connected_nodes, "nodes": workers_info}
+
+    def get_node(self) -> Dict:
+        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
+                'node': self.configuration['node_name']}

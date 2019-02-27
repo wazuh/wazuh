@@ -2,35 +2,27 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
-from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
-from wazuh.exception import WazuhException
-from wazuh.utils import load_wazuh_xml
-from wazuh import common
-from datetime import datetime
-import time
-from os.path import exists, join
-from glob import glob
-import hashlib
+import json
+import random
 import re
 import socket
-import struct
 import subprocess
-from os.path import exists
 import time
+from collections import OrderedDict
+from datetime import datetime
+from glob import glob
+from os import remove, chmod
+from os.path import exists, join
+from shutil import move, Error
+from xml.dom.minidom import parseString
+from xml.parsers.expat import ExpatError
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
-from xml.dom.minidom import parseString
-from xml.parsers.expat import ExpatError
-from shutil import move, Error
-import socket
-from os import remove, chmod
-import random
+from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 
+re_logtest = re.compile(r"^.*(?:ERROR *: |CRITICAL *: )(.*)$")
 
-re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(.*)$")
 
 def status():
     """
@@ -438,20 +430,27 @@ def validation():
         if exists(api_socket_path):
             remove(api_socket_path)
 
-    errors = _extract_logstest_errors(buffer.decode('utf-8'))
+    try:
+        response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+    except (KeyError, json.decoder.JSONDecodeError) as e:
+        raise WazuhException(1904)
 
-    if len(errors) > 0:
-        return {'status': 'KO', 'details': errors}
+    return response
+
+
+def _parse_execd_output(output):
+    json_output = json.loads(output)
+    error_flag = json_output['error']
+    if error_flag != 0:
+        errors = []
+        log_lines = json_output['message'].splitlines(keepends=False)
+        for line in log_lines:
+            match = re_logtest.match(line)
+            if match:
+                errors.append(match.group(1))
+        errors = list(OrderedDict.fromkeys(errors))
+        response = {'status': 'KO', 'details': errors}
     else:
-        return {'status': 'OK'}
+        response = {'status': 'OK'}
 
-
-def _extract_logstest_errors(output):
-    log_lines = output.splitlines(keepends=False)
-    errors = []
-    for line in log_lines:
-        match = re_logtest.match(line)
-        if match:
-            errors.append(match.group(1))
-
-    return errors
+    return response
