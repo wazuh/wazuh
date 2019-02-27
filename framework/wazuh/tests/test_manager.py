@@ -9,7 +9,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from wazuh import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation
+from wazuh.manager import upload_file, get_file, restart, validation, remove
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -42,10 +42,6 @@ class TestManager(TestCase):
         self.output_lists_file = 'uploaded_test_lists'
 
     def tearDown(self):
-        regex = re.compile(r'^uploaded')
-        for filename in os.listdir(os.path.join(os.getcwd(), 'tests/data')):
-            if regex.match(filename):
-                os.remove(os.path.join(os.getcwd(), 'tests/data', filename))
         if os.listdir(self.api_tmp_path):
             os.remove(self.api_tmp_path + '*')
 
@@ -78,3 +74,13 @@ class TestManager(TestCase):
         result = validation()
         self.assertIsInstance(result, dict)
         self.assertIsInstance(result['status'], str)
+
+    def test_delete_file(self):
+        regex = re.compile(r'^uploaded')
+        for filename in os.listdir(os.path.join(os.getcwd(), 'tests/data')):
+            if regex.match(filename):
+                remove(os.path.join(os.getcwd(), 'tests/data', filename))
+
+        self.assertFalse(os.path.isfile(os.path.join(test_data_path, self.output_rules_file)))
+        self.assertFalse((os.path.join(test_data_path, self.output_decoders_file)))
+        self.assertFalse(os.path.isfile(os.path.join(test_data_path, self.output_lists_file)))
