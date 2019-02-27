@@ -307,8 +307,10 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                             strncpy(sf256_sum, "n/a", 4);
                         }
                         if (opts & CHECK_FOLLOW) {
+                            os_calloc(PATH_MAX + 2, sizeof(char), real_path);
                             if (realpath(file_name, real_path)) {
                                 strncpy(file_name, real_path, PATH_MAX+2);
+                            os_free(real_path);
                             } else {
                                 mwarn("Error in realpath() function: %s. Could not resolve symbolic link (%s).", strerror(errno), file_name);
                                 os_free(wd_sum);
