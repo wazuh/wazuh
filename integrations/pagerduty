@@ -79,7 +79,7 @@ else
     # This script can be also to send multiple alerts on a single file IF json format is used
     # Read the file and send alert per line found if format is json otherwise use text format
     while read line; do
-        if [ ! "${line:0:1}" == "{" ]; then
+        if [ ! "${line:0:1}" = "{" ]; then
             #echo "Alert is not in JSON format"
             alertformat="Not JSON"
             break
@@ -100,7 +100,7 @@ else
     done < $ALERTFILE
 
     # If the alert file was not in json format assume text format is in use
-    if [ ! "x${alertformat}" == "x" ]; then
+    if [ ! "x${alertformat}" = "x" ]; then
         #echo "Processing non-JSON alert"
         alert=`cat ${ALERTFILE}`
         while read line; do
