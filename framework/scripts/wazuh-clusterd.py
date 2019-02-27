@@ -145,7 +145,6 @@ if __name__ == '__main__':
 
     cluster_configuration = cluster.read_config(config_file=args.config_file)
     if cluster_configuration['disabled']:
-        main_logger.info("Cluster disabled. Exiting.")
         sys.exit(0)
     cluster_items = cluster.get_cluster_items()
     try:
