@@ -16,6 +16,7 @@ from os.path import exists, join
 from shutil import move, Error
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
+from typing import Dict
 
 from wazuh import common
 from wazuh.exception import WazuhException
@@ -438,7 +439,12 @@ def validation():
     return response
 
 
-def _parse_execd_output(output):
+def _parse_execd_output(output: str) -> Dict:
+    """
+    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
+    :param output: Raw output from execd
+    :return: Cleaned log message in a dictionary structure
+    """
     json_output = json.loads(output)
     error_flag = json_output['error']
     if error_flag != 0:
