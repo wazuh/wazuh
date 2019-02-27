@@ -41,8 +41,6 @@ def _iterate_lists(absolute_path, only_names=False):
     """
     Get the content of all CDB lists
     :param absolute_path: Full path of directory to get CDB lists
-    :param relative_path: Relative path of directory
-    :param dir_content: Content of the directory
     :param only_names: If this parameter is true, only the name of all lists will be showed
     :return: List with all CDB lists
     """
