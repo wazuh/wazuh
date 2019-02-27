@@ -21,9 +21,6 @@ from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 
-re_logtest = re.compile(r"^.*(?:ERROR *: |CRITICAL *: )(.*)$")
-
-
 def status():
     """
     Returns the Manager processes that are running.
@@ -439,6 +436,7 @@ def validation():
 
 
 def _parse_execd_output(output):
+    re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
     json_output = json.loads(output)
     error_flag = json_output['error']
     if error_flag != 0:
