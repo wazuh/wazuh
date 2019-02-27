@@ -161,6 +161,10 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
+    if (!mail.smtpserver) {
+        merror(INVALID_SMTP, "E-mail notification not configured properly... Clean exit.");
+        exit(0);
+    }
     if (mail.smtpserver[0] != '/') {
         /* chroot */
         if (Privsep_Chroot(dir) < 0) {
