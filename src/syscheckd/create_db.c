@@ -181,15 +181,14 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     char *buf;
     syscheck_node *s_node;
     struct stat statbuf;
+    struct stat statbuf_lnk;
     char str_size[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
     char *alert_msg = NULL;
     char *c_sum = NULL;
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
-#ifdef EVENTCHANNEL_SUPPORT
     int islink = 0;
-#endif
     char *sid = NULL;
     char *user = NULL;
     char *str_perm = NULL;
@@ -200,7 +199,6 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
     char *inode;
 #endif
 #if defined (EVENTCHANNEL_SUPPORT) || !defined(WIN32)
-    struct stat statbuf_lnk;
     char *real_path = NULL;
 #endif
 
@@ -309,7 +307,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                             strncpy(sf256_sum, "n/a", 4);
                         }
                         if (opts & CHECK_FOLLOW) {
-                            if(realpath(file_name, real_path)) {
+                            if (realpath(file_name, real_path)) {
                                 strncpy(file_name, real_path, PATH_MAX+2);
                             } else {
                                 mwarn("Error in realpath() function: %s. Could not resolve symbolic link (%s).", strerror(errno), file_name);
@@ -409,22 +407,18 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 #ifdef WIN32
             // Get the user name and its id
             if (opts & CHECK_OWNER) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
                     user = get_user(file_name, statbuf_lnk.st_uid, &sid);
                 } else {
                     user = get_user(file_name, statbuf.st_uid, &sid);
                 }
-#else
-                user = get_user(file_name, statbuf.st_uid, &sid);
-#endif
             }
 
             // Get the file permissions
             if (opts & CHECK_PERM) {
                 int error;
                 char perm_unescaped[OS_SIZE_6144 + 1];
-#ifdef EVENTCHANNEL_SUPPORT
+
                 if (islink) {
                     if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
                         merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
@@ -438,53 +432,34 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                         str_perm = escape_perm_sum(perm_unescaped);
                     }
                 }
-#else
-                if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-                    merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
-                } else {
-                    str_perm = escape_perm_sum(perm_unescaped);
-                }
-#endif
             }
 
             if (opts & CHECK_SIZE) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
-#else
-                sprintf(str_size,"%ld",(long)statbuf.st_size);
-#endif
             } else {
                 *str_size = '\0';
             }
 
             if (opts & CHECK_MTIME) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
-#else
-                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-#endif
             } else {
                 *str_mtime = '\0';
             }
 
             if (opts & CHECK_INODE) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
-#else
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-#endif
             } else {
                 *str_inode = '\0';
             }
@@ -507,11 +482,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                     opts & CHECK_MD5SUM ? mf_sum : "",
                     opts & CHECK_SHA1SUM ? sf_sum : "",
                     user ? user : "",
-#ifdef EVENTCHANNEL_SUPPORT
                     opts & CHECK_GROUP ? get_group(islink ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
-#else
-                    opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-#endif
                     str_mtime,
                     str_inode,
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -644,43 +615,31 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
 
 #ifdef WIN32
             if (opts & CHECK_SIZE) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
                 } else {
                     sprintf(str_size,"%ld",(long)statbuf.st_size);
                 }
-#else
-                sprintf(str_size,"%ld",(long)statbuf.st_size);
-#endif
             } else {
                 *str_size = '\0';
             }
 
             if (opts & CHECK_MTIME) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink) {
                     sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
                 } else {
                     sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
                 }
-#else
-                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-#endif
             } else {
                 *str_mtime = '\0';
             }
 
             if (opts & CHECK_INODE) {
-#ifdef EVENTCHANNEL_SUPPORT
                 if (islink && (opts & CHECK_FOLLOW)) {
                     sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
-#else
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-#endif
             } else {
                 *str_inode = '\0';
             }
@@ -692,11 +651,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                 opts & CHECK_MD5SUM ? mf_sum : "",
                 opts & CHECK_SHA1SUM ? sf_sum : "",
                 user ? user : "",
-#ifdef EVENTCHANNEL_SUPPORT
                 opts & CHECK_GROUP ? get_group(islink ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
-#else
-                opts & CHECK_GROUP ? get_group(statbuf.st_gid) : "",
-#endif
                 str_mtime,
                 str_inode,
                 opts & CHECK_SHA256SUM ? sf256_sum : "",
@@ -1362,6 +1317,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 // WIN32
 #ifdef WIN32
 int islink_win(const char *file_name) {
+    if (!file_name) return 0;
     DWORD attr;
     attr = GetFileAttributesA(file_name);
     if (attr == INVALID_FILE_ATTRIBUTES) {
@@ -1376,6 +1332,8 @@ int islink_win(const char *file_name) {
 
 #ifdef EVENTCHANNEL_SUPPORT
 char *real_path_win(const char *file_name, char *real_path) {
+    if (!file_name) return NULL;
+
     HANDLE handle = CreateFile(
             file_name,
             GENERIC_READ,
@@ -1423,7 +1381,7 @@ char *real_path_win(const char *file_name, char *real_path) {
         os_calloc(PATH_MAX+2, sizeof(char), aux);
         wcstombs(aux, szPrintName, PATH_MAX+2);
 
-        if(is_relative_path(aux)) {
+        if(is_relative_path(aux) == 1) {
             strcpy(real_path, file_name);
             if (!absolute_path(real_path, aux)) {
                 mdebug2("absolute_path() failed. This %s could not be a relative path", file_name);
@@ -1433,8 +1391,15 @@ char *real_path_win(const char *file_name, char *real_path) {
                 free(rdata);
                 return NULL;
             }
-        } else {
+        } else if (is_relative_path(aux) == 0) {
             wcstombs(real_path, szPrintName, PATH_MAX+2);
+        } else {
+            mdebug2("Symbolic link %s points to a NULL path", file_name);
+            os_free(aux);
+            os_free(filename);
+            free(szPrintName);
+            free(rdata);
+            return NULL;
         }
 
         str_lowercase(real_path);
@@ -1489,9 +1454,7 @@ int absolute_path(char *file_name, const char *relative_path) {
 }
 
 int is_relative_path(const char *file_name) {
-    if (!file_name) {
-        return 0;
-    }
+    if (!file_name) return -1;
 
     if (file_name[1] && file_name[2]) {
         if (file_name[1] == ':') {
