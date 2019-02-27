@@ -22,7 +22,7 @@ def set_logging(debug_mode=0):
     # configure logger
     fh = cluster.CustomFileRotatingHandler(filename="{}/logs/cluster.log".format(common.ossec_path), when='midnight')
     formatter = logging.Formatter(
-        fmt='%(asctime)s wazuh-clusterd: %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s',
+        fmt='%(asctime)s wazuh-clusterd: %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
         datefmt="%Y/%m/%d %H:%M:%S"
     )
     formatter.converter = time.gmtime
