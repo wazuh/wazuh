@@ -52,7 +52,6 @@
 #define V_LENGTH    128
 #define COMMAND_LENGTH  512
 #define PATH_LENGTH     512
-#define TIME_LENGTH     64
 #define ADDR6_LENGTH    256
 #define IFNAME_LENGTH   256
 #define SERIAL_LENGTH   512
@@ -111,6 +110,7 @@ typedef struct wm_sys_flags_t {
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory
     unsigned int programinfo:1;             // Installed packages inventory
+    unsigned int hotfixinfo:1;              // Windows hotfixes installed
     unsigned int portsinfo:1;               // Opened ports inventory
     unsigned int allports:1;                // Scan only listening ports or all
     unsigned int procinfo:1;                // Running processes inventory
@@ -158,14 +158,23 @@ char * sys_rpm_packages(int queue_fd, const char* WM_SYS_LOCATION, int random_id
 // Installed programs inventory for Windows
 void sys_programs_windows(const char* LOCATION);
 
+// Installed hotfixes inventory for Windows
+void sys_hotfixes(const char* LOCATION);
+
 // Network inventory for Windows XP
 char* get_network_xp(PIP_ADAPTER_ADDRESSES pCurrAddresses, PIP_ADAPTER_INFO AdapterInfo, int ID, char * timestamp);
 
 // Get values about a single program from the registry
 void read_win_program(const char * sec_key, int arch, int root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
 
+// Get values about a single hotfix from the registry
+void read_hotfix(const char *hotfix, int usec, const char * timestamp, int ID, const char * LOCATION);
+
 // List installed programs from the registry
 void list_programs(HKEY hKey, int arch, const char * root_key, int usec, const char * timestamp, int ID, const char * LOCATION);
+
+// List installed hotfixes from the registry
+void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
 
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION);
@@ -219,6 +228,9 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
 
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
+
+// Generate a random ID
+int wm_sys_get_random_id();
 
 #endif
 #endif

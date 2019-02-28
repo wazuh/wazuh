@@ -273,17 +273,8 @@ void sys_ports_linux(int queue_fd, const char* WM_SYS_LOCATION, int check_all){
     char *protocol;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH - 1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -379,8 +370,6 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     char *format = "rpm";
     char *timestamp;
-    time_t now;
-    struct tm localtm;
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -405,14 +394,7 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
 
     // Set timestamp
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if ((ret = db_create(&dbp, NULL, 0)) != 0) {
         mterror(WM_SYS_LOGTAG, "sys_rpm_packages(): failed to initialize the DB handler: %s", db_strerror(ret));
@@ -611,8 +593,6 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
     size_t length;
     int i, installed = 1;
     char *timestamp;
-    time_t now;
-    struct tm localtm;
     cJSON *object = NULL;
     cJSON *package = NULL;
 
@@ -621,14 +601,7 @@ char * sys_deb_packages(int queue_fd, const char* LOCATION, int random_id){
 
     // Set timestamp
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     memset(read_buff, 0, OS_MAXSTR);
 
@@ -827,17 +800,8 @@ void sys_hw_linux(int queue_fd, const char* LOCATION){
     char *string;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -891,17 +855,8 @@ void sys_os_unix(int queue_fd, const char* LOCATION){
     char *string;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -957,20 +912,12 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     struct ifaddrs *ifaddr, *ifa;
     int random_id = os_random();
     char *timestamp;
-    time_t now;
-    struct tm localtm;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
+    timestamp = w_get_timestamp(time(NULL));
 
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (random_id < 0)
         random_id = -random_id;
@@ -1477,8 +1424,6 @@ char* get_default_gateway(char *ifa_name){
 void sys_proc_linux(int queue_fd, const char* LOCATION) {
 
     char *timestamp;
-    time_t now;
-    struct tm localtm;
     int random_id = os_random();
 
     if (random_id < 0)
@@ -1487,14 +1432,7 @@ void sys_proc_linux(int queue_fd, const char* LOCATION) {
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
 
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    timestamp = w_get_timestamp(time(NULL));
 
     PROCTAB* proc = openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV);
 
@@ -1686,7 +1624,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 }
 
 void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
-    
+
     struct ifaddrs *ifa;
     int k = 0;
     int family = 0;
@@ -1706,7 +1644,7 @@ void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
     state = get_oper_state(iface_name);
     cJSON_AddStringToObject(interface, "state", state);
     free(state);
-  
+
     /* Get MAC address */
     char addr_path[PATH_LENGTH] = {'\0'};
     snprintf(addr_path, PATH_LENGTH, "%s%s/address", WM_SYS_IFDATA_DIR, iface_name);

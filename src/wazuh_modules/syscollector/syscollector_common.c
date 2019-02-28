@@ -129,6 +129,12 @@ void* wm_sys_main(wm_sys_t *sys) {
             #endif
         }
 
+        /* Installed hotfixes inventory */
+        if (sys->flags.hotfixinfo) {
+            #ifdef WIN32
+                sys_hotfixes(WM_SYS_LOCATION);
+            #endif
+        }
         /* Opened ports inventory */
         if (sys->flags.portsinfo){
             #if defined(WIN32)
@@ -282,3 +288,18 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
 void wm_sys_destroy(wm_sys_t *sys) {
     free(sys);
 }
+
+int wm_sys_get_random_id() {
+    int ID;
+    char random_id[SERIAL_LENGTH];
+
+    snprintf(random_id, SERIAL_LENGTH - 1, "%u%u", os_random(), os_random());
+    ID = atoi(random_id);
+
+    if (ID < 0) {
+        ID = -ID;
+    }
+
+    return ID;
+}
+

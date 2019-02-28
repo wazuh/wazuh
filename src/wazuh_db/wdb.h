@@ -57,7 +57,9 @@ typedef enum wdb_stmt {
     WDB_STMT_PROGRAM_DEL,
     WDB_STMT_PROGRAM_UPD,
     WDB_STMT_HWINFO_INSERT,
+    WDB_STMT_HOTFIX_INSERT,
     WDB_STMT_HWINFO_DEL,
+    WDB_STMT_HOTFIX_DEL,
     WDB_STMT_PORT_INSERT,
     WDB_STMT_PORT_DEL,
     WDB_STMT_PROC_INSERT,
@@ -400,6 +402,9 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 // Delete Network info from DB.
 int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id);
 
+// Delete Hotfix info from DB.
+int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id);
+
 // Insert IPv4/IPv6 protocol info tuple. Return 0 on success or -1 on error.
 int wdb_netproto_insert(wdb_t * wdb, const char * scan_id, const char * iface,  int type, const char * gateway, const char * dhcp, int metric);
 
@@ -429,6 +434,12 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
 
 // Save Packages info into DB.
 int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location);
+
+// Insert hotfix info tuple. Return 0 on success or -1 on error.
+int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
+
+// Save Hotfixes info into DB.
+int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix);
 
 // Update the new Package info with the previous scan.
 int wdb_package_update(wdb_t * wdb, const char * scan_id);
@@ -505,6 +516,8 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output);
 int wdb_parse_hardware(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_packages(wdb_t * wdb, char * input, char * output);
+
+int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 

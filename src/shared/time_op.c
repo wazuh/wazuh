@@ -9,9 +9,9 @@
  * Foundation.
  */
 
-#ifndef WIN32
 #include "shared.h"
 
+#ifndef WIN32
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
@@ -43,3 +43,19 @@ void time_sub(struct timespec * a, const struct timespec * b) {
 }
 
 #endif // WIN32
+
+char *w_get_timestamp(time_t time) {
+    struct tm localtm;
+    char *timestamp;
+
+    localtime_r(&time, &localtm);
+
+    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
+
+    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
+            localtm.tm_year + 1900, localtm.tm_mon + 1,
+            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+
+    return timestamp;
+}
+

@@ -155,6 +155,15 @@ CREATE TABLE IF NOT EXISTS sys_programs (
 
 CREATE INDEX IF NOT EXISTS programs_id ON sys_programs (scan_id);
 
+CREATE TABLE IF NOT EXISTS sys_hotfixes (
+    scan_id INTEGER,
+    scan_time TEXT,
+    hotfix TEXT,
+    PRIMARY KEY (scan_id, scan_time, hotfix)
+);
+
+CREATE INDEX IF NOT EXISTS hotfix_id ON sys_hotfixes (scan_id);
+
 CREATE TABLE IF NOT EXISTS sys_processes (
     scan_id INTEGER,
     scan_time TEXT,

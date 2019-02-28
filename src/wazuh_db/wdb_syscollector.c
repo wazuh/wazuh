@@ -306,6 +306,33 @@ int wdb_netinfo_delete(wdb_t * wdb, const char * scan_id) {
     return 0;
 }
 
+// Function to delete old Hotfix information from DB. Return 0 on success or -1 on error.
+int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("at wdb_hotfix_delete(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_HOTFIX_DEL) < 0) {
+        mdebug1("at wdb_hotfix_delete(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HOTFIX_DEL];
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        merror("Deleting old information from 'sys_hotfixes' table: %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    return 0;
+}
+
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version) {
 
@@ -419,6 +446,20 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
     return 0;
 }
 
+// Function to save Hotfix info into the DB. Return 0 on success or -1 on error.
+int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_hotfix_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_hotfix_insert(wdb, scan_id, scan_time, hotfix) < 0) {
+        return -1;
+    }
+
+    return 0;
+}
+
 // Insert Package info tuple. Return 0 on success or -1 on error.
 int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged) {
     sqlite3_stmt *stmt = NULL;
@@ -465,6 +506,31 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
         default:
             merror("at wdb_package_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
             return -1;
+    }
+}
+
+// Insert hotfix info tuple. Return 0 on success or -1 on error.
+int wdb_hotfix_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char *hotfix) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_HOTFIX_INSERT) < 0) {
+        mdebug1("at wdb_hotfix_insert(): cannot cache statement");
+    }
+
+    stmt = wdb->stmt[WDB_STMT_HOTFIX_INSERT];
+
+
+    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, hotfix, -1, NULL);
+
+
+    if (sqlite3_step(stmt) == SQLITE_DONE){
+        return 0;
+    }
+    else {
+        merror("at wdb_hotfix_insert(): sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
     }
 }
 

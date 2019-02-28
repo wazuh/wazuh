@@ -37,26 +37,13 @@ char* sys_parse_pkg(const char * app_folder, const char * timestamp, int random_
 void sys_packages_bsd(int queue_fd, const char* LOCATION){
 
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
     struct dirent *de;
     DIR *dr;
     char path[PATH_LENGTH];
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    // Set timestamp
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
@@ -310,22 +297,11 @@ void sys_packages_bsd(int queue_fd, const char* LOCATION){
     FILE *output;
     int i;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
     int status;
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed packages inventory.");
 
@@ -411,18 +387,7 @@ void sys_hw_bsd(int queue_fd, const char* LOCATION){
 
     char *string;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH-1,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
+    char *timestamp = w_get_timestamp(time(NULL));
 
     if (random_id < 0)
         random_id = -random_id;
@@ -672,21 +637,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     struct ifaddrs *ifaddrs_ptr, *ifa;
     int family;
     int random_id = os_random();
-    char *timestamp;
-    time_t now;
-    struct tm localtm;
+    char *timestamp = w_get_timestamp(time(NULL));
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
-
-    now = time(NULL);
-    localtime_r(&now, &localtm);
-
-    os_calloc(TIME_LENGTH, sizeof(char), timestamp);
-
-    snprintf(timestamp,TIME_LENGTH,"%d/%02d/%02d %02d:%02d:%02d",
-            localtm.tm_year + 1900, localtm.tm_mon + 1,
-            localtm.tm_mday, localtm.tm_hour, localtm.tm_min, localtm.tm_sec);
 
     if (random_id < 0)
         random_id = -random_id;
