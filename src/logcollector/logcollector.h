@@ -90,6 +90,7 @@ void win_readel();
 void win_read_vista_sec();
 void win_start_event_channel(char *evt_log, char future, char *query);
 void win_format_event_string(char *string);
+void win_format_event_string_wide(wchar_t *string);
 #endif
 
 #ifndef WIN32

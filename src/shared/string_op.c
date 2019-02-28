@@ -333,6 +333,57 @@ char *convert_windows_string(LPCWSTR string)
     return (dest);
 }
 
+wchar_t *convert_unix_string(char *string)
+{
+    wchar_t *dest = NULL;
+    size_t size = 0;
+    int result = 0;
+
+    if (string == NULL) {
+        return (NULL);
+    }
+
+    /* Determine size required */
+    size = MultiByteToWideChar(CP_UTF8,
+                               MB_ERR_INVALID_CHARS,
+                               string,
+                               -1,
+                               NULL,
+                               0);
+
+    if (size == 0) {
+        mferror(
+            "Could not MultiByteToWideChar() when determining size which returned (%lu)",
+            GetLastError());
+        return (NULL);
+    }
+
+    if ((dest = calloc(size, sizeof(wchar_t))) == NULL) {
+        mferror(
+            "Could not calloc() memory for MultiByteToWideChar() which returned [(%d)-(%s)]",
+            errno,
+            strerror(errno));
+        return (NULL);
+    }
+
+    result = MultiByteToWideChar(CP_UTF8,
+                                 MB_ERR_INVALID_CHARS,
+                                 string,
+                                 -1,
+                                 dest,
+                                 size);
+
+    if (result == 0) {
+        mferror(
+            "Could not MultiByteToWideChar() which returned (%lu)",
+            GetLastError());
+        free(dest);
+        return (NULL);
+    }
+
+    return (dest);
+}
+
 #define TOTALBYTES      8192
 #define BYTEINCREMENT   4096
 

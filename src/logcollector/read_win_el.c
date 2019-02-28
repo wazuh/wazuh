@@ -24,7 +24,6 @@ typedef struct _os_el {
     HANDLE h;
 
     DWORD record;
-
 } os_el;
 
 /** Global variables **/
@@ -34,7 +33,6 @@ os_el el[9];
 int el_last = 0;
 void *vista_sec_id_hash = NULL;
 void *dll_hash = NULL;
-
 
 /* Start the event logging for each el */
 int startEL(char *app, os_el *el)
@@ -110,41 +108,55 @@ char *el_getCategory(int category_id)
 }
 
 /* Returns the event */
-char *el_getEventDLL(char *evt_name, char *source, char *event)
+wchar_t *el_getEventDLL(char *evt_name, wchar_t *source, wchar_t *event)
 {
-    char *ret_str;
+    wchar_t *ret_str;
     HKEY key;
     DWORD ret;
-    char keyname[512] = {'\0'};
-    char *skey = NULL, *sval = NULL;
 
-    snprintf(keyname, 510,
-             "System\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
+    wchar_t keyname[512] = {L'\0'};
+
+    char *keyname_utf8 = NULL;
+    char *skey = NULL;
+    wchar_t *sval = NULL;
+
+    swprintf(keyname, 510,
+             L"System\\CurrentControlSet\\Services\\EventLog\\%s\\%ls",
              evt_name,
              source);
 
+    /* Generate UTF-8 string to use with OSHash functions */
+    keyname_utf8 = convert_windows_string(keyname);
+    if (!keyname_utf8) {
+        return (NULL);
+    }
+
     /* Check if we have it in memory */
-    ret_str = OSHash_Get(dll_hash, keyname + 42);
+    ret_str = OSHash_Get(dll_hash, keyname_utf8 + 42);
     if (ret_str) {
+        free(keyname_utf8);
         return (ret_str);
     }
 
     /* Open Registry */
-    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, keyname, 0,
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, keyname, 0,
                      KEY_ALL_ACCESS, &key) != ERROR_SUCCESS) {
+        free(keyname_utf8);
         return (NULL);
     }
 
+    /* Retrieve registry value */
     ret = MAX_PATH - 1;
-    if (RegQueryValueEx(key, "EventMessageFile", NULL,
+    if (RegQueryValueExW(key, L"EventMessageFile", NULL,
                         NULL, (LPBYTE)event, &ret) != ERROR_SUCCESS) {
-        event[0] = '\0';
+        event[0] = L'\0';
         RegCloseKey(key);
+        free(keyname_utf8);
         return (NULL);
     } else {
         /* Adding to memory */
-        skey = strdup(keyname + 42);
-        sval = strdup(event);
+        skey = strdup(keyname_utf8 + 42);
+        sval = wcsdup(event);
         
         if (skey != NULL && sval != NULL) {
             if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
@@ -164,12 +176,12 @@ char *el_getEventDLL(char *evt_name, char *source, char *event)
 }
 
 /* Returns a descriptive message of the event - Vista only */
-char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
+wchar_t *el_vista_getMessage(int evt_id_int, char **el_sstring)
 {
     DWORD fm_flags = 0;
-    LPSTR message = NULL;
-    char *desc_string;
-    char evt_id[16];
+    wchar_t *message = NULL;
+    wchar_t *desc_string = NULL;
+    char evt_id[16] = {'\0'};
 
     /* Flags for format event */
     fm_flags |= FORMAT_MESSAGE_FROM_STRING;
@@ -177,7 +189,6 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
     fm_flags |= FORMAT_MESSAGE_ARGUMENT_ARRAY;
 
     /* Get descriptive message */
-    evt_id[15] = '\0';
     snprintf(evt_id, 15, "%d", evt_id_int);
 
     desc_string = OSHash_Get(vista_sec_id_hash, evt_id);
@@ -185,8 +196,8 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
         return (NULL);
     }
 
-    if (!FormatMessage(fm_flags, desc_string, 0, 0,
-                       (LPTSTR) &message, 0, el_sstring)) {
+    if (!FormatMessageW(fm_flags, desc_string, 0, 0,
+                       message, 0, el_sstring)) {
         return (NULL);
     }
 
@@ -194,21 +205,17 @@ char *el_vista_getMessage(int evt_id_int, LPTSTR *el_sstring)
 }
 
 /* Returns a descriptive message of the event */
-char *el_getMessage(EVENTLOGRECORD *er,  char *name,
-                    char *source, LPTSTR *el_sstring)
+wchar_t *el_getMessage(EVENTLOGRECORD *er, char *name,
+                    wchar_t *source, char **el_sstring)
 {
     DWORD fm_flags = 0;
-    char tmp_str[257];
-    char event[MAX_PATH + 1];
-    char *curr_str;
-    char *next_str;
-    LPSTR message = NULL;
+    wchar_t tmp_str[257] = {L'\0'};
+    wchar_t event[MAX_PATH + 1] = {L'\0'};
+    wchar_t *curr_str = NULL;
+    wchar_t *next_str = NULL;
+    wchar_t *message = NULL;
 
     HMODULE hevt;
-
-    /* Initialize variables */
-    event[MAX_PATH] = '\0';
-    tmp_str[256] = '\0';
 
     /* Flags for format event */
     fm_flags |= FORMAT_MESSAGE_FROM_HMODULE;
@@ -221,21 +228,21 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     }
 
     /* If our event has multiple libraries, try each one of them */
-    while ((next_str = strchr(curr_str, ';'))) {
-        *next_str = '\0';
+    while ((next_str = wcschr(curr_str, L';'))) {
+        *next_str = L'\0';
 
-        ExpandEnvironmentStrings(curr_str, tmp_str, 255);
+        ExpandEnvironmentStringsW(curr_str, tmp_str, 255);
 
         /* Revert back old value */
-        *next_str = ';';
+        *next_str = L';';
 
         /* Load library */
-        hevt = LoadLibraryEx(tmp_str, NULL,
+        hevt = LoadLibraryExW(tmp_str, NULL,
                              DONT_RESOLVE_DLL_REFERENCES |
                              LOAD_LIBRARY_AS_DATAFILE);
         if (hevt) {
-            if (!FormatMessage(fm_flags, hevt, er->EventID, 0,
-                               (LPTSTR) &message, 0, el_sstring)) {
+            if (!FormatMessageW(fm_flags, hevt, er->EventID, 0,
+                               message, 0, el_sstring)) {
                 message = NULL;
             }
             FreeLibrary(hevt);
@@ -250,15 +257,14 @@ char *el_getMessage(EVENTLOGRECORD *er,  char *name,
     }
 
     /* Get last value */
-    ExpandEnvironmentStrings(curr_str, tmp_str, 255);
-    hevt = LoadLibraryEx(tmp_str, NULL,
+    ExpandEnvironmentStringsW(curr_str, tmp_str, 255);
+    hevt = LoadLibraryExW(tmp_str, NULL,
                          DONT_RESOLVE_DLL_REFERENCES |
                          LOAD_LIBRARY_AS_DATAFILE);
     if (hevt) {
-        int hr;
-        if (!(hr = FormatMessage(fm_flags, hevt, er->EventID,
+        if (!FormatMessageW(fm_flags, hevt, er->EventID,
                                  0,
-                                 (LPTSTR) &message, 0, el_sstring))) {
+                                 message, 0, el_sstring)) {
             message = NULL;
         }
         FreeLibrary(hevt);
@@ -284,31 +290,27 @@ void readel(os_el *el, int printit)
     int str_size;
     int id;
 
-    char mbuffer[BUFFER_SIZE + 1];
-    LPSTR sstr = NULL;
+    wchar_t mbuffer[BUFFER_SIZE + 1] = {L'\0'};
+    wchar_t *sstr = NULL;
 
-    char *tmp_str = NULL;
-    char *category;
-    char *source;
-    char *computer_name;
-    char *descriptive_msg;
+    wchar_t *tmp_str = NULL;
+    char *category = NULL;
+    wchar_t *source = NULL;
+    wchar_t *computer_name = NULL;
+    wchar_t *descriptive_msg = NULL;
 
-    char el_user[OS_FLSIZE + 1];
-    char el_domain[OS_FLSIZE + 1];
-    char el_string[OS_MAXSTR + 1];
-    char final_msg[OS_MAXSTR + 1];
-    LPSTR el_sstring[OS_FLSIZE + 1];
+    wchar_t el_user[OS_FLSIZE + 1] = {L'\0'};
+    wchar_t el_domain[OS_FLSIZE + 1] = {L'\0'};
+    wchar_t el_string[OS_MAXSTR + 1] = {L'\0'};
+    wchar_t final_msg[OS_MAXSTR + 1] = {L'\0'};
+    char *el_sstring[OS_FLSIZE + 1];
+
+    char *sstr_utf8 = NULL;
+    wchar_t *tmp_utf16 = NULL;
+    char *final_msg_utf8 = NULL;
 
     /* er must point to the mbuffer */
     el->er = (EVENTLOGRECORD *) &mbuffer;
-
-    /* Zero the values */
-    el_string[OS_MAXSTR] = '\0';
-    el_user[OS_FLSIZE] = '\0';
-    el_domain[OS_FLSIZE] = '\0';
-    final_msg[OS_MAXSTR] = '\0';
-    el_sstring[0] = NULL;
-    el_sstring[OS_FLSIZE] = NULL;
 
     /* Event log is not open */
     if (!el->h) {
@@ -316,7 +318,7 @@ void readel(os_el *el, int printit)
     }
 
     /* Read the event log */
-    while (ReadEventLog(el->h,
+    while (ReadEventLogW(el->h,
                         EVENTLOG_FORWARDS_READ | EVENTLOG_SEQUENTIAL_READ,
                         0,
                         el->er, BUFFER_SIZE - 1, &read, &needed)) {
@@ -330,9 +332,10 @@ void readel(os_el *el, int printit)
         while (read > 0) {
             /* We need to initialize every variable before the loop */
             category = el_getCategory(el->er->EventType);
-            source = (LPSTR) ((LPBYTE) el->er + sizeof(EVENTLOGRECORD));
-            computer_name = source + strlen(source) + 1;
+            source = (wchar_t*)((LPBYTE)el->er + sizeof(EVENTLOGRECORD));
+            computer_name = source + wcslen(source) + 1;
             descriptive_msg = NULL;
+            memset(el_sstring, 0, (OS_FLSIZE + 1) * sizeof(char*));
 
             /* Get event id */
             id = (int)el->er->EventID & _evtid;
@@ -340,38 +343,43 @@ void readel(os_el *el, int printit)
             /* Initialize domain/user size */
             user_size = 255;
             domain_size = 255;
-            el_domain[0] = '\0';
-            el_user[0] = '\0';
+            el_domain[0] = L'\0';
+            el_user[0] = L'\0';
 
             /* We must have some description */
             if (el->er->NumStrings) {
                 size_left = OS_MAXSTR - OS_SIZE_1024;
 
-                sstr = (LPSTR)((LPBYTE)el->er + el->er->StringOffset);
-                el_string[0] = '\0';
+                sstr = (wchar_t*)((LPBYTE)el->er + el->er->StringOffset);
+                el_string[0] = L'\0';
 
                 for (nstr = 0; nstr < el->er->NumStrings; nstr++) {
-                    str_size = strlen(sstr);
+                    str_size = wcslen(sstr);
                     if (size_left > 1) {
-                        strncat(el_string, sstr, size_left);
+                        wcsncat(el_string, sstr, size_left);
                     }
 
-                    tmp_str = strchr(el_string, '\0');
+                    tmp_str = wcschr(el_string, L'\0');
                     if (tmp_str) {
-                        *tmp_str = ' ';
+                        *tmp_str = L' ';
                         tmp_str++;
-                        *tmp_str = '\0';
+                        *tmp_str = L'\0';
                     } else {
                         merror("Invalid application string (size+)");
                     }
                     size_left -= str_size + 2;
 
                     if (nstr <= 92) {
-                        el_sstring[nstr] = (LPSTR)sstr;
-                        el_sstring[nstr + 1] = NULL;
+                        /* FormatMessageW() requires char** for the argument list */
+                        sstr_utf8 = convert_windows_string(sstr);
+                        if (sstr_utf8) {
+                            el_sstring[nstr] = sstr_utf8;
+                            el_sstring[nstr + 1] = NULL;
+                        }
+                        sstr_utf8 = NULL;
                     }
 
-                    sstr = strchr( (LPSTR)sstr, '\0');
+                    sstr = wcschr(sstr, '\0');
                     if (sstr) {
                         sstr++;
                     } else {
@@ -393,25 +401,25 @@ void readel(os_el *el, int printit)
 
                 if (descriptive_msg != NULL) {
                     /* format message */
-                    win_format_event_string(descriptive_msg);
+                    win_format_event_string_wide(descriptive_msg);
                 }
             } else {
-                strncpy(el_string, "(no message)", 128);
+                swprintf(el_string, 128, L"(no message)");
             }
 
             /* Get username */
             if (el->er->UserSidLength) {
                 SID_NAME_USE account_type;
-                if (!LookupAccountSid(NULL,
-                                      (SID *)((LPSTR)el->er +
+                if (!LookupAccountSidW(NULL,
+                                      (SID *)((LPBYTE)el->er +
                                               el->er->UserSidOffset),
                                       el_user,
                                       &user_size,
                                       el_domain,
                                       &domain_size,
                                       &account_type)) {
-                    strncpy(el_user, "(no user)", 255);
-                    strncpy(el_domain, "no domain", 255);
+                    swprintf(el_user, 255, L"(no user)");
+                    swprintf(el_domain, 255, L"no domain");
                 }
             }
 
@@ -436,28 +444,38 @@ void readel(os_el *el, int printit)
                 if ((uid_array_id >= 0) &&
                         el_sstring[uid_array_id] &&
                         el_sstring[uid_array_id + 1]) {
-                    strncpy(el_user, el_sstring[uid_array_id], OS_FLSIZE);
-                    strncpy(el_domain, el_sstring[uid_array_id + 1], OS_FLSIZE);
+                    /* Get user in UTF-16LE */
+                    tmp_utf16 = convert_unix_string(el_sstring[uid_array_id]);
+                    if (tmp_utf16) {
+                        swprintf(el_user, OS_FLSIZE, tmp_utf16);
+                        free(tmp_utf16);
+                        tmp_utf16 = NULL;
+                    }
+
+                    /* Get domain in UTF-16LE */
+                    tmp_utf16 = convert_unix_string(el_sstring[uid_array_id + 1]);
+                    if (tmp_utf16) {
+                        swprintf(el_domain, OS_FLSIZE, tmp_utf16);
+                        free(tmp_utf16);
+                        tmp_utf16 = NULL;
+                    }
                 } else {
-                    strncpy(el_user, "(no user)", 255);
-                    strncpy(el_domain, "no domain", 255);
+                    swprintf(el_user, 255, L"(no user)");
+                    swprintf(el_domain, 255, L"no domain");
                 }
             }
 
             else {
-                strncpy(el_user, "(no user)", 255);
-                strncpy(el_domain, "no domain", 255);
+                swprintf(el_user, 255, L"(no user)");
+                swprintf(el_domain, 255, L"no domain");
             }
 
             if (printit) {
                 DWORD _evtid = 65535;
                 int id = (int)el->er->EventID & _evtid;
 
-                final_msg[OS_MAXSTR - OS_LOG_HEADER] = '\0';
-                final_msg[OS_MAXSTR - OS_LOG_HEADER - 1] = '\0';
-
-                snprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER - 1,
-                         "%s WinEvtLog: %s: %s(%d): %s: %s: %s: %s: %s",
+                swprintf(final_msg, OS_MAXSTR - OS_LOG_HEADER - 1,
+                         L"%s WinEvtLog: %s: %s(%d): %ls: %ls: %ls: %ls: %ls",
                          epoch_to_human((int)el->er->TimeGenerated),
                          el->name,
                          category,
@@ -468,13 +486,25 @@ void readel(os_el *el, int printit)
                          computer_name,
                          descriptive_msg != NULL ? descriptive_msg : el_string);
 
-                if (SendMSG(logr_queue, final_msg, "WinEvtLog", LOCALFILE_MQ) < 0) {
-                    merror(QUEUE_SEND);
+                /* Generate UTF-8 string */
+                final_msg_utf8 = convert_windows_string(final_msg);
+                if (final_msg_utf8) {
+                    if (SendMSG(logr_queue, final_msg_utf8, "WinEvtLog", LOCALFILE_MQ) < 0) {
+                        merror(QUEUE_SEND);
+                    }
+                    free(final_msg_utf8);
                 }
             }
 
             if (descriptive_msg != NULL) {
                 LocalFree(descriptive_msg);
+            }
+
+            /* Cleanup el_sstring */
+            char **el_str_tmp = el_sstring;
+            while(*el_str_tmp != NULL) {
+                free(*el_str_tmp);
+                el_str_tmp++;
             }
 
             /* Change the point to the er */
@@ -493,8 +523,7 @@ void readel(os_el *el, int printit)
 
     /* Event log was cleared */
     else if (id == ERROR_EVENTLOG_FILE_CHANGED) {
-        char msg_alert[512 + 1];
-        msg_alert[512] = '\0';
+        char msg_alert[512 + 1] = {'\0'};
         mwarn("Event log cleared: '%s'", el->name);
 
         /* Send message about cleared */
@@ -519,9 +548,13 @@ void readel(os_el *el, int printit)
 /* Read Windows Vista security description */
 void win_read_vista_sec()
 {
-    char *p = NULL, *key = NULL, *desc = NULL;
+    char *p = NULL;
+    char *key = NULL;
+    char *desc = NULL;
     char buf[OS_MAXSTR + 1] = {'\0'};
     FILE *fp;
+
+    wchar_t *desc_utf16 = NULL;
 
     /* Vista security */
     fp = fopen("vista_sec.txt", "r");
@@ -565,17 +598,26 @@ void win_read_vista_sec()
             if (key) free(key);
             if (desc) free(desc);
         } else {
-            /* Insert on hash */
-            if (OSHash_Add(vista_sec_id_hash, key, desc) != 2) free(desc);
-            
-            /* OSHash_Add() duplicates the key, but not the data */
-            free(key);
+            /* Convert description to UTF16-LE */
+            desc_utf16 = convert_unix_string(desc);
+
+            /* Free ANSI description */
+            free(desc);
+
+            if (desc_utf16) {
+                /* Insert on hash */
+                if (OSHash_Add(vista_sec_id_hash, key, desc_utf16) != 2) free(desc_utf16);
+                
+                /* OSHash_Add() duplicates the key, but not the data */
+                free(key);
+            }
         }
         
         /* Reset pointer addresses before using strdup() again */
         /* The hash will keep the needed memory references */
         key = NULL;
         desc = NULL;
+        desc_utf16 = NULL;
     }
 
     fclose(fp);

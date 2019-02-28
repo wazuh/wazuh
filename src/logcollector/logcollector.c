@@ -836,6 +836,33 @@ void win_format_event_string(char *string)
     }
 }
 
+/* Remove newlines and replace tabs in the argument fields with spaces (wide char version) */
+void win_format_event_string_wide(wchar_t *string)
+{
+    if (string == NULL) {
+        return;
+    }
+
+    while (*string != L'\0') {
+        if (*string == L'\n' || *string == L'\r' || *string == L':') {
+            if (*string == L'\n' || *string == L'\r') {
+                *string = L' ';
+            }
+
+            string++;
+
+            while (*string == L'\t') {
+                *string = L' ';
+                string++;
+            }
+
+            continue;
+        }
+
+        string++;
+    }
+}
+
 #endif /* WIN32 */
 
 int update_current(logreader **current, int *i, int *j)

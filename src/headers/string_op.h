@@ -24,6 +24,9 @@
 /* converts a Windows format string to char* */
 char *convert_windows_string(LPCWSTR string);
 
+/* converts a char* string to Windows format */
+wchar_t *convert_unix_string(char *string);
+
 /* Retrieves a UTF-16LE value from Windows registry and encodes it to UTF-8 */
 char *w_reg_query_value(HKEY program_key, wchar_t *value_name);
 #endif

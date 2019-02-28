@@ -891,7 +891,11 @@ void list_programs(HKEY hKey, int arch, const wchar_t * root_key, int usec, cons
 
                 free(full_key);
             } else {
-                mterror(WM_SYS_LOGTAG, "Error reading key '%S'. Error code: %lu", achKey, retCode);
+                char *achKey_utf8 = convert_windows_string(achKey);
+                if (achKey_utf8) {
+                    mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey_utf8, retCode);
+                    free(achKey_utf8);
+                }
             }
         }
     }
@@ -968,7 +972,11 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
                 free(user_key);
 
             } else {
-                mterror(WM_SYS_LOGTAG, "Error reading key '%S'. Error code: %lu", achKey, retCode);
+                char *achKey_utf8 = convert_windows_string(achKey);
+                if (achKey_utf8) {
+                    mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey_utf8, retCode);
+                    free(achKey_utf8);
+                }
             }
         }
     }
@@ -1073,7 +1081,11 @@ void read_win_program(const wchar_t * sec_key, int arch, int root_key, int usec,
         
         RegCloseKey(program_key);
     } else {
-        mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: '%S' (Error code %lu)", sec_key, ret);
+        char *sec_key_utf8 = convert_windows_string(sec_key);
+        if (sec_key_utf8) {
+            mterror(WM_SYS_LOGTAG, "At read_win_program(): Unable to read key: '%s' (Error code %lu)", sec_key_utf8, ret);
+            free(sec_key_utf8);
+        }
     }
 }
 
