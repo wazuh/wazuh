@@ -157,6 +157,7 @@ wchar_t *el_getEventDLL(char *evt_name, wchar_t *source, wchar_t *event)
         /* Adding to memory */
         skey = strdup(keyname_utf8 + 42);
         sval = wcsdup(event);
+        free(keyname_utf8);
         
         if (skey != NULL && sval != NULL) {
             if (OSHash_Add(dll_hash, skey, sval) != 2) free(sval);
