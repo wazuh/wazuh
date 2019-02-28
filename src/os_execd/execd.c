@@ -81,6 +81,7 @@ int main(int argc, char **argv)
     gid_t gid;
     int m_queue = 0;
     int debug_level = 0;
+    pthread_t wcom_thread;
 
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -178,14 +179,17 @@ int main(int argc, char **argv)
 #endif
 
     // Start com request thread
-    w_create_thread(wcom_main, NULL);
+    if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {
+        exit(EXIT_FAILURE);
+    }
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
-    /* If AR is disabled, close this thread */
+    /* If AR is disabled, do not continue */
     if (c == 1) {
-        pthread_exit(NULL);
+        pthread_join(wcom_thread, NULL);
+        exit(EXIT_SUCCESS);
     }
 
     /* Start exec queue */
@@ -650,7 +654,7 @@ static int CheckManagerConfiguration(char ** output) {
     int timeout = 2000;
     char command_in[PATH_MAX] = {0};
     char *output_msg = NULL;
-    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", "bin/ossec-maild", "bin/wazuh-modulesd", NULL };
+    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", "bin/ossec-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", NULL };
     int i;
     ret_val = 0;
 

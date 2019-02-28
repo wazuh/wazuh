@@ -729,12 +729,12 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     int result_event = 0;
     char *hash_scan_info = NULL;
-    os_md5 hash_md5;
+    os_md5 hash_md5 = {0};
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
     
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
-    int scan_id_old;
+    int scan_id_old = 0;
     sscanf(hash_scan_info,"%s %d",hash_md5,&scan_id_old);
 
     switch (result_db)

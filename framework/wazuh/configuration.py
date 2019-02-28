@@ -431,18 +431,18 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None):
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     """
     Returns ossec.conf (manager) as dictionary.
 
     :param section: Filters by section (i.e. rules).
     :param field: Filters by field in section (i.e. included).
+    :param conf_file: Path of the configuration file to read.
     :return: ossec.conf (manager) as dictionary.
     """
-
     try:
         # Read XML
-        xml_data = load_wazuh_xml(common.ossec_conf)
+        xml_data = load_wazuh_xml(conf_file)
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)

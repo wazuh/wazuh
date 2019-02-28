@@ -249,9 +249,6 @@ testconfig()
 {
     # We first loop to check the config.
     for i in ${SDAEMONS}; do
-        if [ X"$i" = "Xwazuh-clusterd" ]; then
-            continue
-        fi
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
             if [ $USE_JSON = true ]; then
