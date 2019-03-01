@@ -54,6 +54,7 @@ def status():
 
     return data
 
+
 def __get_ossec_log_fields(log):
     regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
 
@@ -319,8 +320,11 @@ def get_file(path):
 def delete_file(path):
     """
     Deletes a file.
-    :param path: Relative path of file from origin
-    :return: Confirmation message
+
+    Returns a confirmation message if success, otherwise it raises
+    a WazuhException
+    :param path: Relative path of the file to be deleted
+    :return: string Confirmation message
     """
     full_path = join(common.ossec_path, path)
 
