@@ -1969,8 +1969,6 @@ class Agent:
 
 
         if WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver):
-            #agent_new_ver = manager_ver.split(" ")[1]
-            #agent_new_shasum
             for versions in versions:
                 if versions[0] == manager_ver.split(" ")[1]:
                     agent_new_ver = versions[0]
