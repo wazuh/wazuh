@@ -75,6 +75,11 @@ int realtime_checksumfile(char *file_name, whodata_evt *evt)
             /* Find tag position for the evaluated file name */
             int pos = find_dir_pos(file_name, 1, 0, 0);
 
+            if (pos < 0) {
+                mdebug2("File in hash table not monitored: %s", file_name);
+                return(0);
+            }
+
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
             s_node->checksum = strdup(alert_msg);

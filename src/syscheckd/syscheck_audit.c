@@ -718,7 +718,12 @@ void audit_parse(char *buffer) {
 
                             os_calloc(PATH_MAX + 2, sizeof(char), real_path);
                             if (realpath(w_evt->path, real_path), !real_path) {
+                                os_free(real_path);
                                 mdebug1("Error checking realpath() of link '%s'", w_evt->path);
+                                break;
+                            } else if (strcmp(w_evt->path, real_path) == 0) {
+                                os_free(real_path);
+                                mdebug1("Link deleted '%s'", w_evt->path);
                                 break;
                             }
 

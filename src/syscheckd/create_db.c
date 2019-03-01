@@ -360,8 +360,8 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                             }
                             if (opts & CHECK_FOLLOW) {
                                 strncpy(file_name, real_path, PATH_MAX+2);
-                                os_free(real_path);
                             }
+                            os_free(real_path);
                         } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                             if (!(opts & CHECK_FOLLOW)) {
                                 mdebug2("Follow symbolic links disabled.");
@@ -380,7 +380,7 @@ static int read_file(char *file_name, int dir_position, whodata_evt *evt, int ma
                         if (opts & CHECK_FOLLOW) {
                             mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), real_path);
                         }
-                        free(real_path);
+                        os_free(real_path);
                         os_free(wd_sum);
                         os_free(alert_msg);
                         return -1;
@@ -1035,13 +1035,22 @@ int run_dbcheck()
             if(curr_node && curr_node->key) {
                 do{
                     pos = find_dir_pos(curr_node->key, 1, 0, 0);
-                    mdebug2("Sending delete msg for file: %s", curr_node->key);
-                    snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
-                    send_syscheck_msg(alert_msg);
-                    OSHash_Delete_ex(syscheck.last_check, curr_node->key);
-                    if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
-                        free(data->checksum);
-                        free(data);
+                    if (pos < 0) {
+                        mdebug2("File in hash table not monitored: %s", curr_node->key);
+                        OSHash_Delete_ex(syscheck.last_check, curr_node->key);
+                        if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
+                            free(data->checksum);
+                            free(data);
+                        }
+                    } else {
+                        mdebug2("Sending delete msg for file: %s", curr_node->key);
+                        snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
+                        send_syscheck_msg(alert_msg);
+                        OSHash_Delete_ex(syscheck.last_check, curr_node->key);
+                        if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
+                            free(data->checksum);
+                            free(data);
+                        }
                     }
                     curr_node=curr_node->next;
                 }
