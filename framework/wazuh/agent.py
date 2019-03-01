@@ -1966,15 +1966,23 @@ class Agent:
 
         # Comparing versions
         agent_ver = self.version
-        if debug:
-            print("Agent version: {0}".format(agent_ver.split(" ")[1]))
-            print("Agent new version: {0}".format(agent_new_ver))
+
 
         if WazuhVersion(manager_ver.split(" ")[1]) < WazuhVersion(agent_new_ver):
-            raise WazuhException(1717, "Manager: {0} / Agent: {1} -> {2}".format(manager_ver.split(" ")[1], agent_ver.split(" ")[1], agent_new_ver))
+            #agent_new_ver = manager_ver.split(" ")[1]
+            #agent_new_shasum
+            for versions in versions:
+                if versions[0] == manager_ver.split(" ")[1]:
+                    agent_new_ver = versions[0]
+                    agent_new_shasum = versions[1]
+                    break
 
         if (WazuhVersion(agent_ver.split(" ")[1]) >= WazuhVersion(agent_new_ver) and not force):
             raise WazuhException(1716, "Agent ver: {0} / Agent new ver: {1}".format(agent_ver.split(" ")[1], agent_new_ver))
+
+        if debug:
+            print("Agent version: {0}".format(agent_ver.split(" ")[1]))
+            print("Agent new version: {0}".format(agent_new_ver))
 
         protocol = self._get_protocol(wpk_repo, use_http)
         # Generating file name
