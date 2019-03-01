@@ -7,8 +7,8 @@ import os
 import pytest
 from unittest.mock import patch, mock_open
 
-from wazuh import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation
+from wazuh.exception import WazuhException
+from wazuh.manager import upload_file, get_file, restart, validation, status
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -37,6 +37,25 @@ def test_manager():
     # Set up
     test_manager = InitManager()
     return test_manager
+
+
+@pytest.mark.parametrize('process_status', [
+    'running',
+    'stopped'
+])
+@patch('wazuh.manager.exists')
+@patch('wazuh.manager.glob')
+def test_status(manager_glob, manager_exists, test_manager, process_status):
+    def mock_glob(path_to_check):
+        return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
+
+    manager_glob.side_effect = mock_glob
+    manager_exists.return_value = True
+    manager_status = status()
+    assert isinstance(manager_status, dict)
+    assert all(process_status == x for x in manager_status.values())
+    if process_status == 'running':
+        manager_exists.assert_any_call("/proc/0234")
 
 
 @patch('socket.socket')
