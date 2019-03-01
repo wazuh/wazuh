@@ -422,7 +422,7 @@ int DecodeWinevt(Eventinfo *lf){
         if(strcmp(join_data,"")){
             cJSON_AddStringToObject(json_eventdata_in, "data", join_data);
         }
-        cJSON_AddItemToObject(json_event, "eventData", json_eventdata_in);
+        cJSON_AddItemToObject(json_event, "eventdata", json_eventdata_in);
     }
     if (extra){
         *extra = tolower(*extra);
