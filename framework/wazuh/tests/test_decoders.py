@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 import pytest
 
 from wazuh.decoder import Decoder
@@ -12,6 +12,15 @@ decoder_ossec_conf = {
     'decoder_dir': ['ruleset/decoders'],
     'decoder_exclude': 'decoders1.xml'
 }
+
+decoder_contents = '''
+<decoder name="agent-buffer">
+  <parent>wazuh</parent>
+  <prematch offset="after_parent">^Agent buffer:</prematch>
+  <regex offset="after_prematch">^ '(\S+)'.</regex>
+  <order>level</order>
+</decoder>
+    '''
 
 
 def decoders_files(file_path):
@@ -23,6 +32,10 @@ def decoders_files(file_path):
     return map(lambda x: file_path.replace('*.xml', f'decoders{x}.xml'), range(2))
 
 
+@pytest.mark.parametrize('func', [
+    Decoder.get_decoders_files,
+    Decoder.get_decoders
+])
 @pytest.mark.parametrize('status', [
     None,
     'all',
@@ -32,24 +45,32 @@ def decoders_files(file_path):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_status(mock_config, mock_glob, status):
+def test_get_decoders_file_status(mock_config, mock_glob, status, func):
     """
-    Tests getting decoders file using status filter
+    Tests getting decoders using status filter
     """
+    m = mock_open(read_data=decoder_contents)
     if status == 'random':
         with pytest.raises(WazuhException, match='.* 1202 .*'):
-            Decoder.get_decoders_files(status=status)
+            func(status=status)
     else:
-        d_files = Decoder.get_decoders_files(status=status)
-        if status is None or status == 'all':
-            assert d_files['totalItems'] == 2
-            assert d_files['items'][0]['status'] == 'enabled'
-            assert d_files['items'][1]['status'] == 'disabled'
-        else:
-            assert d_files['totalItems'] == 1
-            assert d_files['items'][0]['status'] == status
+        with patch('builtins.open', m):
+            d_files = func(status=status)
+            if isinstance(d_files['items'][0], Decoder):
+                d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+            if status is None or status == 'all':
+                assert d_files['totalItems'] == 2
+                assert d_files['items'][0]['status'] == 'enabled'
+                assert d_files['items'][1]['status'] == 'disabled'
+            else:
+                assert d_files['totalItems'] == 1
+                assert d_files['items'][0]['status'] == status
 
 
+@pytest.mark.parametrize('func', [
+    Decoder.get_decoders_files,
+    Decoder.get_decoders
+])
 @pytest.mark.parametrize('path', [
     None,
     'ruleset/decoders',
@@ -57,19 +78,27 @@ def test_get_decoders_file_status(mock_config, mock_glob, status):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_path(mock_config, mock_glob, path):
+def test_get_decoders_file_path(mock_config, mock_glob, path, func):
     """
     Tests getting decoders files filtering by path
     """
-    d_files = Decoder.get_decoders_files(path=path)
-    if path == 'random':
-        assert d_files['totalItems'] == 0
-        assert len(d_files['items']) == 0
-    else:
-        assert d_files['totalItems'] == 2
-        assert d_files['items'][0]['path'] == 'ruleset/decoders'
+    m = mock_open(read_data=decoder_contents)
+    with patch('builtins.open', m):
+        d_files = func(path=path)
+        if path == 'random':
+            assert d_files['totalItems'] == 0
+            assert len(d_files['items']) == 0
+        else:
+            assert d_files['totalItems'] == 2
+            if isinstance(d_files['items'][0], Decoder):
+                d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+            assert d_files['items'][0]['path'] == 'ruleset/decoders'
 
 
+@pytest.mark.parametrize('func', [
+    Decoder.get_decoders_files,
+    Decoder.get_decoders
+])
 @pytest.mark.parametrize('offset, limit', [
     (0, 0),
     (0, 1),
@@ -80,20 +109,26 @@ def test_get_decoders_file_path(mock_config, mock_glob, path):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit):
+def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit, func):
     """
     Tests getting decoders files using offset and limit
     """
     if limit > 0:
-        d_files = Decoder.get_decoders_files(offset=offset, limit=limit)
-        limit = d_files['totalItems'] if limit > d_files['totalItems'] else limit
-        assert d_files['totalItems'] == 2
-        assert len(d_files['items']) == (limit - offset if limit > offset else 0)
+        m = mock_open(read_data=decoder_contents)
+        with patch('builtins.open', m):
+            d_files = func(offset=offset, limit=limit)
+            limit = d_files['totalItems'] if limit > d_files['totalItems'] else limit
+            assert d_files['totalItems'] == 2
+            assert len(d_files['items']) == (limit - offset if limit > offset else 0)
     else:
         with pytest.raises(WazuhException, match='.* 1406 .*'):
             Decoder.get_decoders_files(offset=offset, limit=limit)
 
 
+@pytest.mark.parametrize('func', [
+    Decoder.get_decoders_files,
+    Decoder.get_decoders
+])
 @pytest.mark.parametrize('sort', [
     None,
     {"fields": ["file"], "order": "asc"},
@@ -101,15 +136,23 @@ def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_pagination(mock_config, mock_glob, sort):
+def test_get_decoders_file_sort(mock_config, mock_glob, sort, func):
     """
     Tests getting decoders files and sorting results
     """
-    d_files = Decoder.get_decoders_files(sort=sort)
-    if sort is not None:
-        assert d_files['items'][0]['file'] == f"decoders{'0' if sort['order'] == 'asc' else '1'}.xml"
+    m = mock_open(read_data=decoder_contents)
+    with patch('builtins.open', m):
+        d_files = func(sort=sort)
+        if isinstance(d_files['items'][0], Decoder):
+            d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+        if sort is not None:
+            assert d_files['items'][0]['file'] == f"decoders{'0' if sort['order'] == 'asc' else '1'}.xml"
 
 
+@pytest.mark.parametrize('func', [
+    Decoder.get_decoders_files,
+    Decoder.get_decoders
+])
 @pytest.mark.parametrize('search', [
     None,
     {"value": "1", "negation": 0},
@@ -117,10 +160,14 @@ def test_get_decoders_file_pagination(mock_config, mock_glob, sort):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_pagination(mock_config, mock_glob, search):
+def test_get_decoders_file_search(mock_config, mock_glob, search, func):
     """
     Tests getting decoders files and searching results
     """
-    d_files = Decoder.get_decoders_files(search=search)
-    if search is not None:
-        assert d_files['items'][0]['file'] == f"decoders{'0' if search['negation'] else '1'}.xml"
+    m = mock_open(read_data=decoder_contents)
+    with patch('builtins.open', m):
+        d_files = Decoder.get_decoders_files(search=search)
+        if isinstance(d_files['items'][0], Decoder):
+            d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+        if search is not None:
+            assert d_files['items'][0]['file'] == f"decoders{'0' if search['negation'] else '1'}.xml"

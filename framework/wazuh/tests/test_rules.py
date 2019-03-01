@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 import pytest
 
 from wazuh.rule import Rule
@@ -12,6 +12,19 @@ rule_ossec_conf = {
     'rule_dir': ['ruleset/rules'],
     'rule_exclude': 'rules1.xml'
 }
+
+rule_contents = '''
+<group name="ossec,">
+  <rule id="501" level="3">
+    <if_sid>500</if_sid>
+    <if_fts />
+    <options>alert_by_email</options>
+    <match>Agent started</match>
+    <description>New ossec agent connected.</description>
+    <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,</group>
+  </rule>
+</group>
+    '''
 
 
 def rules_files(file_path):
@@ -23,6 +36,10 @@ def rules_files(file_path):
     return map(lambda x: file_path.replace('*.xml', f'rules{x}.xml'), range(2))
 
 
+@pytest.mark.parametrize('func', [
+    Rule.get_rules_files,
+    Rule.get_rules
+])
 @pytest.mark.parametrize('status', [
     None,
     'all',
@@ -32,24 +49,32 @@ def rules_files(file_path):
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_status(mock_config, mock_glob, status):
+def test_get_rules_file_status(mock_config, mock_glob, status, func):
     """
-    Tests getting rules file using status filter
+    Tests getting rules using status filter
     """
+    m = mock_open(read_data=rule_contents)
     if status == 'random':
         with pytest.raises(WazuhException, match='.* 1202 .*'):
-            Rule.get_rules_files(status=status)
+            func(status=status)
     else:
-        d_files = Rule.get_rules_files(status=status)
-        if status is None or status == 'all':
-            assert d_files['totalItems'] == 2
-            assert d_files['items'][0]['status'] == 'enabled'
-            assert d_files['items'][1]['status'] == 'disabled'
-        else:
-            assert d_files['totalItems'] == 1
-            assert d_files['items'][0]['status'] == status
+        with patch('builtins.open', m):
+            d_files = func(status=status)
+            if isinstance(d_files['items'][0], Rule):
+                d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+            if status is None or status == 'all':
+                assert d_files['totalItems'] == 2
+                assert d_files['items'][0]['status'] == 'enabled'
+                assert d_files['items'][1]['status'] == 'disabled'
+            else:
+                assert d_files['totalItems'] == 1
+                assert d_files['items'][0]['status'] == status
 
 
+@pytest.mark.parametrize('func', [
+    Rule.get_rules_files,
+    Rule.get_rules
+])
 @pytest.mark.parametrize('path', [
     None,
     'ruleset/rules',
@@ -57,19 +82,27 @@ def test_get_rules_file_status(mock_config, mock_glob, status):
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_path(mock_config, mock_glob, path):
+def test_get_rules_file_path(mock_config, mock_glob, path, func):
     """
     Tests getting rules files filtering by path
     """
-    d_files = Rule.get_rules_files(path=path)
-    if path == 'random':
-        assert d_files['totalItems'] == 0
-        assert len(d_files['items']) == 0
-    else:
-        assert d_files['totalItems'] == 2
-        assert d_files['items'][0]['path'] == 'ruleset/rules'
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        d_files = func(path=path)
+        if path == 'random':
+            assert d_files['totalItems'] == 0
+            assert len(d_files['items']) == 0
+        else:
+            assert d_files['totalItems'] == 2
+            if isinstance(d_files['items'][0], Rule):
+                d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+            assert d_files['items'][0]['path'] == 'ruleset/rules'
 
 
+@pytest.mark.parametrize('func', [
+    Rule.get_rules_files,
+    Rule.get_rules
+])
 @pytest.mark.parametrize('offset, limit', [
     (0, 0),
     (0, 1),
@@ -80,20 +113,26 @@ def test_get_rules_file_path(mock_config, mock_glob, path):
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_pagination(mock_config, mock_glob, offset, limit):
+def test_get_rules_file_pagination(mock_config, mock_glob, offset, limit, func):
     """
     Tests getting rules files using offset and limit
     """
     if limit > 0:
-        d_files = Rule.get_rules_files(offset=offset, limit=limit)
-        limit = d_files['totalItems'] if limit > d_files['totalItems'] else limit
-        assert d_files['totalItems'] == 2
-        assert len(d_files['items']) == (limit - offset if limit > offset else 0)
+        m = mock_open(read_data=rule_contents)
+        with patch('builtins.open', m):
+            d_files = func(offset=offset, limit=limit)
+            limit = d_files['totalItems'] if limit > d_files['totalItems'] else limit
+            assert d_files['totalItems'] == 2
+            assert len(d_files['items']) == (limit - offset if limit > offset else 0)
     else:
         with pytest.raises(WazuhException, match='.* 1406 .*'):
             Rule.get_rules_files(offset=offset, limit=limit)
 
 
+@pytest.mark.parametrize('func', [
+    Rule.get_rules_files,
+    Rule.get_rules
+])
 @pytest.mark.parametrize('sort', [
     None,
     {"fields": ["file"], "order": "asc"},
@@ -101,15 +140,23 @@ def test_get_rules_file_pagination(mock_config, mock_glob, offset, limit):
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_pagination(mock_config, mock_glob, sort):
+def test_get_rules_file_sort(mock_config, mock_glob, sort, func):
     """
     Tests getting rules files and sorting results
     """
-    d_files = Rule.get_rules_files(sort=sort)
-    if sort is not None:
-        assert d_files['items'][0]['file'] == f"rules{'0' if sort['order'] == 'asc' else '1'}.xml"
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        d_files = func(sort=sort)
+        if isinstance(d_files['items'][0], Rule):
+            d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+        if sort is not None:
+            assert d_files['items'][0]['file'] == f"rules{'0' if sort['order'] == 'asc' else '1'}.xml"
 
 
+@pytest.mark.parametrize('func', [
+    Rule.get_rules_files,
+    Rule.get_rules
+])
 @pytest.mark.parametrize('search', [
     None,
     {"value": "1", "negation": 0},
@@ -117,10 +164,14 @@ def test_get_rules_file_pagination(mock_config, mock_glob, sort):
 ])
 @patch('wazuh.rule.glob', side_effect=rules_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=rule_ossec_conf)
-def test_get_rules_file_pagination(mock_config, mock_glob, search):
+def test_get_rules_file_search(mock_config, mock_glob, search, func):
     """
     Tests getting rules files and searching results
     """
-    d_files = Rule.get_rules_files(search=search)
-    if search is not None:
-        assert d_files['items'][0]['file'] == f"rules{'0' if search['negation'] else '1'}.xml"
+    m = mock_open(read_data=rule_contents)
+    with patch('builtins.open', m):
+        d_files = Rule.get_rules_files(search=search)
+        if isinstance(d_files['items'][0], Rule):
+            d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
+        if search is not None:
+            assert d_files['items'][0]['file'] == f"rules{'0' if search['negation'] else '1'}.xml"
