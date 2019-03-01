@@ -186,7 +186,7 @@ def upload_file(tmp_file, path, content_type, overwrite=False):
 
     :param tmp_file: Relative path of file name from origin
     :param path: Path of destination of the new file
-    :parm content_type: Content type of file from origin
+    :param content_type: Content type of file from origin
     :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
     """
