@@ -117,7 +117,7 @@ def main():
     # WPK upgrade file
     else:
         prev_ver = agent.version
-        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=myWazuh.version,
+        upgrade_command_result = agent.upgrade(wpk_repo=args.repository, debug=args.debug, version=args.version,
                                                force=args.force,
                                                show_progress=print_progress if not args.silent else None,
                                                chunk_size=args.chunk_size,
