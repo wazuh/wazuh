@@ -46,6 +46,16 @@ def test_manager():
 @patch('wazuh.manager.exists')
 @patch('wazuh.manager.glob')
 def test_status(manager_glob, manager_exists, test_manager, process_status):
+    """
+    Tests manager.status() function in two cases:
+        * PID files are created and processed are running,
+        * No process is running and therefore no PID files have been created
+    :param manager_glob: mock of glob.glob function
+    :param manager_exists: mock of os.path.exists function
+    :param test_manager: pytest fixture
+    :param process_status: status to test (valid values: running/stopped).
+    :return:
+    """
     def mock_glob(path_to_check):
         return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
 
@@ -71,12 +81,12 @@ def test_restart_ok(test_manager):
     ('input_decoders_file', 'output_decoders_file'),
     ('input_lists_file', 'output_lists_file')
 ])
-@patch('wazuh.common.ossec_path', test_data_path)
-@patch('time.time', lambda: 0)
-@patch('random.randint', lambda x, y: 0)
+@patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('time.time', return_value=0)
+@patch('random.randint', return_value=0)
 @patch('wazuh.manager.chmod')
 @patch('wazuh.manager.move')
-def test_upload_file(move_mock, chmod_mock, test_manager, input_file, output_file):
+def test_upload_file(move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
