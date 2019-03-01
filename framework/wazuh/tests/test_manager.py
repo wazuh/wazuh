@@ -53,7 +53,11 @@ def test_restart_ok(test_manager):
     ('input_lists_file', 'output_lists_file')
 ])
 @patch('wazuh.common.ossec_path', test_data_path)
-def test_upload_file(test_manager, input_file, output_file):
+@patch('time.time', lambda: 0)
+@patch('random.randint', lambda x, y: 0)
+@patch('wazuh.manager.chmod')
+@patch('wazuh.manager.move')
+def test_upload_file(move_mock, chmod_mock, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
@@ -63,13 +67,7 @@ def test_upload_file(test_manager, input_file, output_file):
         xml_file = f.read()
     m = mock_open(read_data=xml_file)
     with patch('builtins.open', m):
-        with patch('wazuh.manager.chmod'):
-            with patch('wazuh.manager.move') as move_mock:
-                with patch('time.time') as time_mock:
-                    with patch('random.randint') as random_mock:
-                        time_mock.return_value = 0
-                        random_mock.return_value = 0
-                        upload_file(input_file, output_file, 'application/xml')
+        upload_file(input_file, output_file, 'application/xml')
 
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')
