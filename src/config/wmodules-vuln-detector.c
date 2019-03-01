@@ -187,6 +187,12 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
+    } else if (!strcmp(feed, vu_feed_tag[FEED_MSB])) {
+        os_index = CVE_MSB;
+        os_strdup(vu_feed_tag[FEED_MSB], upd->version);
+        upd->dist_tag = vu_feed_tag[FEED_MSB];
+        upd->dist_ext = vu_feed_ext[FEED_MSB];
+        upd->dist_ref = FEED_MSB;
     } else {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
@@ -316,7 +322,9 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             if (version = strchr(feed, '-'), version) {
                 *version = '\0';
                 version++;
-            } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT]) && strcmp(feed, vu_feed_tag[FEED_NVD])) {
+            } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT]) &&
+                       strcmp(feed, vu_feed_tag[FEED_NVD])    &&
+                       strcmp(feed, vu_feed_tag[FEED_MSB])) {
                 merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
