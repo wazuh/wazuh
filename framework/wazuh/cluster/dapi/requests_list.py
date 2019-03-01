@@ -416,7 +416,7 @@ functions = {
     },
     'DELETE/cluster/:node_id/files': {
         'function': manager.delete_file,
-        'type': 'local_any',
+        'type': 'distributed_master',
         'is_async': False
     },
 
