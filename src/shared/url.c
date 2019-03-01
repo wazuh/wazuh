@@ -16,7 +16,7 @@ struct MemoryStruct {
   size_t size;
 };
 
-int wurl_get(const char * url, const char * dest){
+int wurl_get(const char * url, const char * dest, const char * header, const char *data){
     CURL *curl;
     FILE *fp;
     CURLcode res;
@@ -36,6 +36,15 @@ int wurl_get(const char * url, const char * dest){
         curl_easy_setopt(curl, CURLOPT_URL, url);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+
+        if (header) {
+            struct curl_slist *c_header = curl_slist_append(NULL, header);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, c_header);
+        }
+
+        if (data) {
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+        }
 
         // Enable SSL check if url is HTTPS
         if(!strncmp(url,"https",5)){
@@ -76,7 +85,7 @@ int w_download_status(int status,const char *url,const char *dest){
 }
 
 // Request download
-int wurl_request(const char * url, const char * dest) {
+int wurl_request(const char * url, const char * dest, const char *header, const char *data) {
     const char * COMMAND = "download";
     char response[64];
     char * _url;
@@ -85,6 +94,9 @@ int wurl_request(const char * url, const char * dest) {
     ssize_t zrecv;
     int sock;
     int retval = -1;
+    char *parsed_dest;
+    char *parsed_header = NULL;
+    char *parsed_data = NULL;
 
     if (!url) {
         return -1;
@@ -94,11 +106,26 @@ int wurl_request(const char * url, const char * dest) {
 
     _url = wstr_replace(url, " ", "%20");
 
+    // Escape delimiter
+
+    parsed_dest = wstr_replace(dest, "|", "\\|");
+    if (header) {
+        parsed_header = wstr_replace(header, "|", "\\|");
+    }
+    if (data) {
+        parsed_data = wstr_replace(data, "|", "\\|");
+    }
+
     // Build request
 
-    zrequest = strlen(_url) + strlen(dest) + strlen(COMMAND) + 3;
+    zrequest = strlen(_url) + strlen(parsed_dest) + strlen(COMMAND) +
+               (parsed_header ? strlen(parsed_header) : 0) +
+               (parsed_data ? strlen(parsed_data) : 0) + 6;
     os_malloc(zrequest, srequest);
-    snprintf(srequest, zrequest, "%s %s %s", COMMAND, _url, dest);
+    snprintf(srequest, zrequest, "%s %s|%s|%s|%s|", COMMAND, _url, parsed_dest, parsed_header ? parsed_header : "", parsed_header ? parsed_header : "");
+    free(parsed_dest);
+    free(parsed_header);
+    free(parsed_data);
 
     // Connect to downlod module
 
@@ -155,13 +182,13 @@ end:
 }
 
 // Request a uncompressed download (.gz)
-int wurl_request_gz(const char * url, const char * dest) {
+int wurl_request_gz(const char * url, const char * dest, const char * header, const char * data) {
     char compressed_file[OS_SIZE_6144 + 1];
     int retval = OS_INVALID;
 
     snprintf(compressed_file, OS_SIZE_6144, "tmp/req-%u", os_random());
 
-    if (wurl_request(url, compressed_file)) {
+    if (wurl_request(url, compressed_file, header, data)) {
         return retval;
     } else {
         if (w_uncompress_gzfile(compressed_file, dest)) {

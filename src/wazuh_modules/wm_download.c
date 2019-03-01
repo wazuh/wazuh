@@ -113,15 +113,23 @@ void wm_download_dispatch(char * buffer) {
     char * command;
     char * url;
     char * fpath;
+    char * unsc_fpath;
+    char * header;
+    char * unsc_header = NULL;
+    char * data;
+    char * unsc_data = NULL;
     char jpath[PATH_MAX];
+    char * next;
 
     // Get command
 
-    if (command = strtok(buffer, " "), !(command && *command)) {
+    if (next = strchr(buffer, ' '), !(next && *next)) {
         mdebug1("Empty request command");
         snprintf(buffer, OS_MAXSTR, "err empty command");
         return;
     }
+    *(next++) = '\0';
+    command = buffer;
 
     // Nowadays we only support the "download" command
 
@@ -133,45 +141,77 @@ void wm_download_dispatch(char * buffer) {
 
     // Get URL
 
-    if (url = strtok(NULL, " "), !(url && *url)) {
+    url = next;
+    if (next = wstr_chr(next, '|'), !(next && *next)) {
         mdebug1("Empty request URL");
         snprintf(buffer, OS_MAXSTR, "err empty url");
         return;
     }
+    *(next++) = '\0';
 
     // Get file path
 
-    if (fpath = strtok(NULL, " "), !(fpath && *fpath)) {
+    fpath = next;
+    if (next = wstr_chr(next, '|'), !(next && *next)) {
         mdebug1("Empty request file");
         snprintf(buffer, OS_MAXSTR, "err empty file name");
         return;
     }
+    *(next++) = '\0';
+
+    // Get request header
+
+    header = next;
+    if (next = wstr_chr(next, '|'), !(next && *next)) {
+        header = NULL;
+        mdebug2("Empty request header");
+    }
+    *(next++) = '\0';
+
+    // Get request data
+
+    data = next;
+    if (next = wstr_chr(next, '|'), !(next && *next)) {
+        data = NULL;
+        mdebug2("Empty request data");
+    }
+    *(next++) = '\0';
+
+    // Unescape
+
+    unsc_fpath = wstr_replace(fpath, "\\|", "|");
+    if (header && *header) {
+        unsc_header = wstr_replace(header, "\\|", "|");
+    }
+    if (data && *data) {
+        unsc_data = wstr_replace(data, "\\|", "|");
+    }
 
     // Jail path
 
-    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, fpath) >= (int)sizeof(jpath)) {
-        mdebug1("Path too long: %s", fpath);
+    if (snprintf(jpath, sizeof(jpath), "%s/%s", DEFAULTDIR, unsc_fpath) >= (int)sizeof(jpath)) {
+        mdebug1("Path too long: %s", unsc_fpath);
         snprintf(buffer, OS_MAXSTR, "err path too long");
-        return;
+        goto end;
     }
 
     if (w_ref_parent_folder(jpath)) {
-        mdebug1("Path references parent folder: %s", fpath);
+        mdebug1("Path references parent folder: %s", unsc_fpath);
         snprintf(buffer, OS_MAXSTR, "err parent folder reference");
-        return;
+        goto end;
     }
 
     // Run download
     mdebug1("Downloading '%s' to '%s'", url, jpath);
 
-    switch (wurl_get(url, jpath)) {
+    switch (wurl_get(url, jpath, unsc_header, unsc_data)) {
     case OS_CONNERR:
         mdebug1(WURL_DOWNLOAD_FILE_ERROR, jpath, url);
         snprintf(buffer, OS_MAXSTR, "err connecting to url");
         break;
 
     case OS_FILERR:
-        mdebug1(WURL_WRITE_FILE_ERROR, fpath);
+        mdebug1(WURL_WRITE_FILE_ERROR, unsc_fpath);
         snprintf(buffer, OS_MAXSTR, "err writing file");
         break;
 
@@ -179,6 +219,11 @@ void wm_download_dispatch(char * buffer) {
         snprintf(buffer, OS_MAXSTR, "ok");
         mdebug2("Download of '%s' finished", url);
     }
+
+end:
+    free(unsc_fpath);
+    free(unsc_header);
+    free(unsc_data);
 }
 
 // Destroy data
