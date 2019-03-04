@@ -72,7 +72,7 @@ class WazuhLogger:
         logger.propagate = False
         # configure logger
         fh = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
-        formatter = logging.Formatter(self.tag)
+        formatter = logging.Formatter(self.tag, style='{')
         fh.setFormatter(formatter)
         logger.addHandler(fh)
 

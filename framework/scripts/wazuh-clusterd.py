@@ -18,7 +18,7 @@ from wazuh import common, configuration, pyDaemonModule, Wazuh
 def set_logging(foreground_mode=False, debug_mode=0):
     cluster_logger = cluster.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
                                            debug_level=debug_mode,
-                                           tag='%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
+                                           tag='{asctime} {levelname}: [{tag}] [{subtag}] {message}')
     cluster_logger.setup_logger()
     return cluster_logger
 

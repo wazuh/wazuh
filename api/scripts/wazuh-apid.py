@@ -19,7 +19,7 @@ from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 #
 def set_logging(foreground_mode=False, debug_mode=0):
     api_logger = alogging.APILogger(foreground_mode=foreground_mode, log_path='logs/api.log', debug_level=debug_mode,
-                                    tag='%(asctime)s %(levelname)-8s: %(user) %(message)s')
+                                    tag='{asctime} {levelname}:{user}{message}')
     api_logger.setup_logger()
     return api_logger
 
