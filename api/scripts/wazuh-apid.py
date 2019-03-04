@@ -16,10 +16,11 @@ from api import alogging, encoder, configuration
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
+
 #
 # Aux functions
 #
-def set_logging(foreground_mode=False, debug_mode=0):
+def set_logging(foreground_mode=False, debug_mode='info'):
     api_logger = alogging.APILogger(foreground_mode=foreground_mode, log_path='logs/api.log', debug_level=debug_mode,
                                     tag='{asctime} {levelname}:{user}{message}')
     api_logger.setup_logger()
@@ -80,7 +81,7 @@ if __name__ == '__main__':
         os.setgid(common.ossec_gid)
         os.setuid(common.ossec_uid)
 
-    main_logger = set_logging(configuration, args.foreground)
+    main_logger = set_logging(args.foreground, configuration['logs']['level'])
 
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 

@@ -42,8 +42,18 @@ class APILogger(WazuhLogger):
         logging.root.addHandler(logging.NullHandler())
         self.logger.addFilter(self.filter)
         self.werkzeug_logger.addFilter(self.filter)
-        debug_level = logging.DEBUG2 if self.debug_level == 2 else \
-                                        logging.DEBUG if self.debug_level == 1 else logging.INFO
+        if self.debug_level == 'debug2':
+            debug_level = logging.DEBUG2
+        elif self.debug_level == 'debug':
+            debug_level = logging.DEBUG
+        elif self.debug_level == 'critical':
+            debug_level = logging.CRITICAL
+        elif self.debug_level == 'error':
+            debug_level = logging.ERROR
+        elif self.debug_level == 'warning':
+            debug_level = logging.WARNING
+        else:  # self.debug_level == 'info'
+            debug_level = logging.INFO
 
         self.logger.setLevel(debug_level)
         self.werkzeug_logger.setLevel(debug_level)
