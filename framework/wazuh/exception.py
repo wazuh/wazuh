@@ -149,6 +149,7 @@ class WazuhException(Exception):
         1902: 'Could not connect to \'execq\' socket',
         1903: 'Error deleting temporary file from API',
         1904: 'Bad data from \'execq\'',
+        1905: 'File was not updated because it already exists',
 
         # Database:
         2000: 'No such database file',
