@@ -67,6 +67,8 @@ static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
                 buffer[0] = '\0';
                 return;
             }
+        } else {
+            buffer[0] = '\0';
         }
     }
 }
@@ -303,7 +305,6 @@ void OS_Log(Eventinfo *lf)
         }
     }
 #endif
-
     if (lf->labels && lf->labels[0].key) {
         format_labels(labels, OS_MAXSTR, lf);
     } else {
