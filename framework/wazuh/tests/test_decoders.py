@@ -24,7 +24,9 @@ decoder_contents = '''
 
 
 @pytest.fixture()
-def open_mock():
+def open_mock(monkeypatch):
+    monkeypatch.setattr("wazuh.decoder.glob", decoders_files)
+    monkeypatch.setattr("wazuh.configuration.get_ossec_conf", lambda section: decoder_ossec_conf)
     return mock_open(read_data=decoder_contents)
 
 
@@ -48,9 +50,7 @@ def decoders_files(file_path):
     'disabled',
     'random'
 ])
-@patch('wazuh.decoder.glob', side_effect=decoders_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_status(mock_config, mock_glob, status, func, open_mock):
+def test_get_decoders_file_status(status, func, open_mock):
     """
     Tests getting decoders using status filter
     """
@@ -80,9 +80,7 @@ def test_get_decoders_file_status(mock_config, mock_glob, status, func, open_moc
     'ruleset/decoders',
     'random'
 ])
-@patch('wazuh.decoder.glob', side_effect=decoders_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_path(mock_config, mock_glob, path, func, open_mock):
+def test_get_decoders_file_path(path, func, open_mock):
     """
     Tests getting decoders files filtering by path
     """
@@ -110,9 +108,7 @@ def test_get_decoders_file_path(mock_config, mock_glob, path, func, open_mock):
     (2, 500),
     (3, 500)
 ])
-@patch('wazuh.decoder.glob', side_effect=decoders_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit, func, open_mock):
+def test_get_decoders_file_pagination(offset, limit, func, open_mock):
     """
     Tests getting decoders files using offset and limit
     """
@@ -136,9 +132,7 @@ def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit, fun
     {"fields": ["file"], "order": "asc"},
     {"fields": ["file"], "order": "desc"}
 ])
-@patch('wazuh.decoder.glob', side_effect=decoders_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_sort(mock_config, mock_glob, sort, func, open_mock):
+def test_get_decoders_file_sort(sort, func, open_mock):
     """
     Tests getting decoders files and sorting results
     """
@@ -159,9 +153,7 @@ def test_get_decoders_file_sort(mock_config, mock_glob, sort, func, open_mock):
     {"value": "1", "negation": 0},
     {"value": "1", "negation": 1}
 ])
-@patch('wazuh.decoder.glob', side_effect=decoders_files)
-@patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_search(mock_config, mock_glob, search, func, open_mock):
+def test_get_decoders_file_search(search, func, open_mock):
     """
     Tests getting decoders files and searching results
     """
