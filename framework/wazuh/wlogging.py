@@ -101,8 +101,9 @@ class WazuhLogger:
         self.logger = logger
 
     def __getattr__(self, item):
-        attribute = getattr(self.logger, item, None)
-        if attribute is None:
-            return getattr(self, item)
+        if hasattr(self.logger, item):
+            return getattr(self.logger, item)
+        elif item in vars(self):
+            return getattr(self, item, None)
         else:
-            return attribute
+            raise AttributeError(f"{self.__class__.__name__} object has no attribute {item}")
