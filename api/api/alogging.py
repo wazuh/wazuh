@@ -4,7 +4,9 @@
 from wazuh.wlogging import WazuhLogger
 import logging
 from flask import request
+import re
 
+request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
 
 class APIFilter(logging.Filter):
     """
@@ -26,7 +28,7 @@ class APIFilter(logging.Filter):
         return True
 
     def update_user(self, new_user: str):
-        self.user = f' {new_user} '
+        self.user = f' {new_user}'
 
 
 class APILogger(WazuhLogger):
@@ -39,9 +41,11 @@ class APILogger(WazuhLogger):
 
     def setup_logger(self):
         super().setup_logger()
+        # add a null handler to the root logger so the werkzeug logger doesnt create a stream handler.
         logging.root.addHandler(logging.NullHandler())
         self.logger.addFilter(self.filter)
         self.werkzeug_logger.addFilter(self.filter)
+
         if self.debug_level == 'debug2':
             debug_level = logging.DEBUG2
         elif self.debug_level == 'debug':
@@ -60,6 +64,12 @@ class APILogger(WazuhLogger):
 
         for h in self.logger.handlers:
             self.werkzeug_logger.addHandler(h)
+
+        def info_werkzeug(msg, *args, **kwargs):
+            if self.werkzeug_logger.isEnabledFor(logging.INFO):
+                self.werkzeug_logger._log(logging.INFO, request_pattern.sub('', msg), args, **kwargs)
+
+        self.werkzeug_logger.info = info_werkzeug
 
 
 def set_request_user_logs():
