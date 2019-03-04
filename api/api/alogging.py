@@ -76,6 +76,6 @@ def set_request_user_logs():
     """
     sets authenticated user in logs
     """
-    if request.path == '/login':
-        wazuh_logger = logging.getLogger('wazuh')
-        wazuh_logger.filters[0].update_user(request.authorization['username'])
+    new_user = request.authorization['username'] if request.authorization else ''
+    wazuh_logger = logging.getLogger('wazuh')
+    wazuh_logger.filters[0].update_user(new_user)
