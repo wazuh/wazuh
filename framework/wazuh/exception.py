@@ -150,6 +150,8 @@ class WazuhException(Exception):
         1903: 'Error deleting temporary file from API',
         1904: 'Bad data from \'execq\'',
         1905: 'File was not updated because it already exists',
+        1906: 'File does not exist',
+        1907: 'File could not be deleted',
 
         # Database:
         2000: 'No such database file',

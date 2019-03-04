@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import patch, mock_open
 
 from wazuh.exception import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation, status
+from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -152,3 +152,18 @@ def test_validation(test_manager, error_flag, error_msg):
     assert result['status'] == ('KO' if error_flag > 0 else 'OK')
     if error_flag:
         assert all(map(lambda x: x[0] in x[1], zip(result['details'], error_msg.split('\n'))))
+
+
+def test_delete_file(test_manager):
+    """
+    Tests delete_file function and all possible scenarios
+    """
+    with patch('wazuh.manager.exists', return_value=True):
+        with patch('wazuh.manager.remove'):
+            assert(isinstance(delete_file('/test/file'), str))
+        with patch('wazuh.manager.remove', side_effect=IOError()):
+            with pytest.raises(WazuhException, match='.* 1907 .*'):
+                delete_file('/test/file')
+    with patch('wazuh.manager.exists', return_value=False):
+        with pytest.raises(WazuhException, match='.* 1906 .*'):
+            delete_file('/test/file')
