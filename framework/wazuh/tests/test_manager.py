@@ -7,8 +7,8 @@ import os
 import pytest
 from unittest.mock import patch, mock_open
 
-from wazuh import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation
+from wazuh.exception import WazuhException
+from wazuh.manager import upload_file, get_file, restart, validation, status
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -39,6 +39,35 @@ def test_manager():
     return test_manager
 
 
+@pytest.mark.parametrize('process_status', [
+    'running',
+    'stopped'
+])
+@patch('wazuh.manager.exists')
+@patch('wazuh.manager.glob')
+def test_status(manager_glob, manager_exists, test_manager, process_status):
+    """
+    Tests manager.status() function in two cases:
+        * PID files are created and processed are running,
+        * No process is running and therefore no PID files have been created
+    :param manager_glob: mock of glob.glob function
+    :param manager_exists: mock of os.path.exists function
+    :param test_manager: pytest fixture
+    :param process_status: status to test (valid values: running/stopped).
+    :return:
+    """
+    def mock_glob(path_to_check):
+        return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
+
+    manager_glob.side_effect = mock_glob
+    manager_exists.return_value = True
+    manager_status = status()
+    assert isinstance(manager_status, dict)
+    assert all(process_status == x for x in manager_status.values())
+    if process_status == 'running':
+        manager_exists.assert_any_call("/proc/0234")
+
+
 @patch('socket.socket')
 def test_restart_ok(test_manager):
     """
@@ -52,8 +81,12 @@ def test_restart_ok(test_manager):
     ('input_decoders_file', 'output_decoders_file'),
     ('input_lists_file', 'output_lists_file')
 ])
-@patch('wazuh.common.ossec_path', test_data_path)
-def test_upload_file(test_manager, input_file, output_file):
+@patch('wazuh.common.ossec_path', new=test_data_path)
+@patch('time.time', return_value=0)
+@patch('random.randint', return_value=0)
+@patch('wazuh.manager.chmod')
+@patch('wazuh.manager.move')
+def test_upload_file(move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
@@ -63,13 +96,7 @@ def test_upload_file(test_manager, input_file, output_file):
         xml_file = f.read()
     m = mock_open(read_data=xml_file)
     with patch('builtins.open', m):
-        with patch('wazuh.manager.chmod'):
-            with patch('wazuh.manager.move') as move_mock:
-                with patch('time.time') as time_mock:
-                    with patch('random.randint') as random_mock:
-                        time_mock.return_value = 0
-                        random_mock.return_value = 0
-                        upload_file(input_file, output_file, 'application/xml')
+        upload_file(input_file, output_file, 'application/xml')
 
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'))
     m.assert_any_call(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'), 'w')

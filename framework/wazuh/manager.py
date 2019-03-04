@@ -25,16 +25,15 @@ from wazuh.utils import previous_month, cut_array, sort_array, search_array, tai
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 
-def status():
+def status() -> Dict:
     """
     Returns the Manager processes that are running.
-    :return: Array of dictionaries (keys: status, daemon).
+    :return: Dictionary (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted',
-                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild',
-                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd',
-                 'wazuh-clusterd']
+    processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
+                 'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
 
     data = {}
     for process in processes:
