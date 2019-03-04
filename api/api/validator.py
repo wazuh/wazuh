@@ -8,27 +8,28 @@ from xml.etree import ElementTree as ET
 import re
 
 
-regex_dict = {'numbers': r'^\d+$',
+regex_dict = {'alphanumeric_param': r'^[\w,\-\.\+\s\:]+$',
               'array_numbers': r'^\d+(,\d+)*$',
-              'names': r'^[\w\-\.]+$',
               'array_names': r'^[\w\-\.]+(,[\w\-\.]+)*$',
-              'paths': r'^[\w\-\.\\\/:]+$',
+              'boolean': r'^true$|^false$',
+              'cdb_list': r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$',
               'dates': r'^\d{8}$',
+              'empty_boolean': r'^$|(^true$|^false$)',
+              'hashes': r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$',
               'ips': r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$',
-              'alphanumeric_param': r'^[\w,\-\.\+\s\:]+$',
-              'sort_param': r'^[\w_\-\,\s\+\.]+$',
+              'names': r'^[\w\-\.]+$',
+              'numbers': r'^\d+$',
+              'ossec_key': r'[a-zA-Z0-9]+$',
+              'paths': r'^[\w\-\.\\\/:]+$',
+              'query_param': r'[\w ]+$',
+              'ranges': r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$',
+              'relative_paths': r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$',
               'search_param': r'^[^;\|&\^*>]+$',
               'select_param': r'^[\w\,\.]+$',
-              'ranges': r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$',
-              'hashes': r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$',
-              'ossec_key': r'[a-zA-Z0-9]+$',
+              'sort_param': r'^[\w_\-\,\s\+\.]+$',
               'timeframe_type': r'^(\d{1,}[d|h|m|s]?){1}$',
-              'empty_boolean': r'^$|(^true$|^false$)',
-              'yes_no_boolean': r'^yes$|^no$',
-              'boolean': r'^true$|^false$',
-              'query_param': r'[\w ]+$',
               'type_format': r'^xml$|^json$',
-              'relative_paths': r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$'
+              'yes_no_boolean': r'^yes$|^no$'
              }
 
 
@@ -39,8 +40,8 @@ def check_params(parameters, filters):
     :param filters: Dictionary with filters for checking parameters
     :return: True if parameters are OK, False otherwise
     """
-    for key in parameters.keys():
-        if key not in filters.keys() or not check_exp(parameters[key], filters[key]):
+    for key in parameters:
+        if key not in filters or not check_exp(parameters[key], filters[key]):
             return False
 
     return True
@@ -89,7 +90,7 @@ def check_cdb_list(cdb_list):
     :return: True if CDB list is OK, False otherwise
     """
     cdb_list_splitted = cdb_list.split('\n')
-    regex = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
+    regex = re.compile(regex_dict['cdb_list'])
     line = 1
 
     for elem in cdb_list_splitted:
@@ -106,5 +107,5 @@ def allowed_fields(filters):
     :param filters: Dictionary with valid filters
     :return: List with allowed filters
     """
-    return [field for field in filters.keys()]
+    return [field for field in filters]
 

@@ -3,6 +3,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import os
 import pytest
 
 from api import validator
@@ -44,7 +45,7 @@ from api import validator
     ('etc/lists/new_lists3', 'relative_paths')
 ])
 def test_validation_check_exp_ok(exp, regex_name):
-    assert validator.check_exp(exp, regex_name) is True
+    assert validator.check_exp(exp, regex_name)
 
 
 @pytest.mark.parametrize('exp, regex_name', [
@@ -80,7 +81,7 @@ def test_validation_check_exp_ok(exp, regex_name):
     ('/var/ossec/etc/lists/new_lists3', 'relative_paths')
 ])
 def test_validation_check_exp_ko(exp, regex_name):
-    assert validator.check_exp(exp, regex_name) is False
+    assert not validator.check_exp(exp, regex_name)
 
 
 @pytest.mark.parametrize('relative_path', [
@@ -90,7 +91,7 @@ def test_validation_check_exp_ko(exp, regex_name):
     ('etc/ossec.conf')
 ])
 def test_validation_paths_ok(relative_path):
-    assert validator.check_path(relative_path) is True
+    assert validator.check_path(relative_path)
 
 
 @pytest.mark.parametrize('relative_path', [
@@ -100,7 +101,7 @@ def test_validation_paths_ok(relative_path):
     ('etc/internal_options')
 ])
 def test_validation_paths_ko(relative_path):
-    assert validator.check_path(relative_path) is False
+    assert not validator.check_path(relative_path)
 
 
 @pytest.mark.parametrize('parameters, filters', [
@@ -114,7 +115,7 @@ def test_validation_paths_ko(relative_path):
      {'use_http': 'boolean', 'force': 'numbers', 'agent_id': 'numbers'})
 ])
 def test_validation_check_parms_ok(parameters, filters):
-    assert validator.check_params(parameters, filters) is True
+    assert validator.check_params(parameters, filters)
 
 
 @pytest.mark.parametrize('parameters, filters', [
@@ -128,7 +129,7 @@ def test_validation_check_parms_ok(parameters, filters):
      {'use_http': 'boolean', 'force': 'numbers'})
 ])
 def test_validation_check_parms_ko(parameters, filters):
-    assert validator.check_params(parameters, filters) is False
+    assert not validator.check_params(parameters, filters)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -136,7 +137,7 @@ def test_validation_check_parms_ko(parameters, filters):
      'audit-wazuh-x:execute \n audit-wazuh-c:command')
 ])
 def test_validation_cdb_list_ok(cdb_list):
-    assert validator.check_cdb_list(cdb_list) is True
+    assert validator.check_cdb_list(cdb_list)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -144,29 +145,24 @@ def test_validation_cdb_list_ok(cdb_list):
     ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute')
 ])
 def test_validation_cdb_list_ko(cdb_list):
-    assert validator.check_cdb_list(cdb_list) is False
+    assert not validator.check_cdb_list(cdb_list)
 
 
-@pytest.mark.parametrize('xml_string', [
-    ('<!--  Wazuh - Manager - Default configuration for centos 7  More info at: '
-     'https://documentation.wazuh.com  Mailing list: https://groups.google.com/forum/#!forum/wazuh--><ossec_config>  <global>   '
-     '<jsonout_output>yes</jsonout_output>    <alerts_log>yes</alerts_log>    <logall>no</logall>    <logall_json>no</logall_json>'
-     '<email_notification>no</email_notification>    <smtp_server>smtp.example.wazuh.com</smtp_server> '
-     '<email_from>ossecm@example.wazuh.com</email_from>    <email_to>recipient@example.wazuh.com</email_to>'
-     '<email_maxperhour>12</email_maxperhour>    <email_log_source>alerts.log</email_log_source></global></ossec_config>'),
-    ('<?xml version="1.0" encoding="UTF-8"?><note><to>wazuh</to></note>')
+@pytest.mark.parametrize('xml_file', [
+    (os.path.join(os.getcwd(), 'test/data/test_xml_1.xml')),
+    (os.path.join(os.getcwd(), 'test/data/test_xml_2.xml'))
 ])
-def test_validation_xml_ok(xml_string):
-    assert validator.check_xml(xml_string) is True
+def test_validation_xml_ok(xml_file):
+    with open(xml_file) as f:
+        xml_content = f.readlines()
+    assert validator.check_xml(xml_content)
 
 
-@pytest.mark.parametrize('xml_string', [
-    ('<!--  Wazuh - Manager - Default configuration for centos 7  More info at: '
-     'https://documentation.wazuh.com  Mailing list: https://groups.google.com/forum/#!forum/wazuh--><ossec_config>  <global>   '
-     '<jsonout_output>yes</jsonout_output>    <alerts_log>yes</alerts_log>    <logall>no</logall>    <logall_json>no</logall_json>'
-     '<email_notification>&no</email_notification><email_log_source>alerts.log</email_log_source></global></ossec_config>'),
-    ('<?xml version="1.0" encoding="UTF-8"?><note><to>wazuh</to><note>')
+@pytest.mark.parametrize('xml_file', [
+    (os.path.join(os.getcwd(), 'test/data/test_xml_ko_1.xml')),
+    (os.path.join(os.getcwd(), 'test/data/test_xml_ko_2.xml'))
 ])
-def test_validation_xml_ko(xml_string):
-    assert validator.check_xml(xml_string) is False
-
+def test_validation_xml_ko(xml_file):
+    with open(xml_file) as f:
+        xml_content = f.readlines()
+    assert not validator.check_xml(xml_content)
