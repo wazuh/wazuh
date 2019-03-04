@@ -589,3 +589,16 @@ int w_is_str_in_array(char *const *ar, const char *str)
     }
     return (0);
 }
+
+// Remove zeros from the end of the decimal number
+void w_remove_zero_dec(char *str_number) {
+    char *base;
+    char *number_end;
+
+    if (base = strchr(str_number, '.'), base) {
+        for (number_end = base; *number_end; number_end++);
+        for (--number_end; base != number_end && *number_end == '0'; number_end--) {
+            *number_end = '\0';
+        }
+    }
+}

@@ -109,4 +109,7 @@ void wstr_split(char *str, char *delim, char *replace_delim, int occurrences, ch
 // Check if the specified string is already in the array
 int w_is_str_in_array(char *const *ar, const char *str);
 
+// Remove zeros from the end of the decimal number
+void w_remove_zero_dec(char *str_number);
+
 #endif
