@@ -154,7 +154,7 @@ def test_validation_cdb_list_ko(cdb_list):
 ])
 def test_validation_xml_ok(xml_file):
     with open(xml_file) as f:
-        xml_content = f.readlines()
+        xml_content = f.read()
     assert validator.check_xml(xml_content)
 
 
@@ -164,5 +164,5 @@ def test_validation_xml_ok(xml_file):
 ])
 def test_validation_xml_ko(xml_file):
     with open(xml_file) as f:
-        xml_content = f.readlines()
+        xml_content = f.read()
     assert not validator.check_xml(xml_content)
