@@ -26,22 +26,30 @@ class APIFilter(logging.Filter):
         return True
 
     def update_user(self, new_user: str):
-        self.user = new_user
+        self.user = f' {new_user} '
 
 
 class APILogger(WazuhLogger):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.werkzeug_logger = logging.getLogger('werkzeug')
+        self.flask_logger = logging.getLogger('Flask')
         self.filter = APIFilter()
 
     def setup_logger(self):
         super().setup_logger()
+        logging.root.addHandler(logging.NullHandler())
         self.logger.addFilter(self.filter)
+        self.werkzeug_logger.addFilter(self.filter)
         debug_level = logging.DEBUG2 if self.debug_level == 2 else \
                                         logging.DEBUG if self.debug_level == 1 else logging.INFO
 
         self.logger.setLevel(debug_level)
+        self.werkzeug_logger.setLevel(debug_level)
+
+        for h in self.logger.handlers:
+            self.werkzeug_logger.addHandler(h)
 
 
 def set_request_user_logs():
