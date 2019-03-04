@@ -651,7 +651,17 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
                 }
             }
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
-            minfo("Option <%s> is deprecated and won't apply. Set up each queue size in the internal_options file.", xml_queue_size);
+            if (Config) {
+                char * end;
+
+                Config->queue_size = strtol(node[i]->content, &end, 10);
+
+                if (*end || Config->queue_size < 1) {
+                    merror("Invalid value for option '<%s>'", xml_queue_size);
+                    return OS_INVALID;
+                }
+
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
