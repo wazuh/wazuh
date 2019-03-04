@@ -172,6 +172,7 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         upd->dist_ext = vu_feed_ext[FEED_NVD];
         upd->dist_ref = FEED_NVD;
         upd->json_format = 1;
+        upd->interval = WM_VULNDETECTOR_NVD_UPDATE_INTERVAL;
         // Set the CPE feed (from NVD)
         /*
         os_calloc(1, sizeof(update_node), upd_list[CPE_NDIC]);
@@ -193,6 +194,7 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         upd->dist_tag = vu_feed_tag[FEED_MSB];
         upd->dist_ext = vu_feed_ext[FEED_MSB];
         upd->dist_ref = FEED_MSB;
+        upd->interval = WM_VULNDETECTOR_MSB_UPDATE_INTERVAL;
     } else {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
