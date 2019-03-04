@@ -19,10 +19,12 @@ All notable changes to this project will be documented in this file.
 
 - Introduced a network buffer in Remoted to cache incomplete messages from agents. This improves the performance by preventing Remoted from waiting for complete messages. ([#2528](https://github.com/wazuh/wazuh/pull/2528))
 - Improved alerts about disconnected agents: they will contain the data about the disconnected agent, although the alert is actually produced by the manager. ([#2379](https://github.com/wazuh/wazuh/pull/2379))
+- PagerDuty integration plain text alert support (by @spartantri). ([#2403](https://github.com/wazuh/wazuh/pull/2403))
 - Improved Remoted start-up logging messages. ([#2460](https://github.com/wazuh/wazuh/pull/2460))
 - Let _agent_auth_ warn when it receives extra input arguments. ([#2489](https://github.com/wazuh/wazuh/pull/2489))
 - Update the who-data related SELinux rules for Audit 3.0. This lets who-data work on Fedora 29. ([#2419](https://github.com/wazuh/wazuh/pull/2419))
 - Changed data source for network interface's MAC address in Syscollector so that it will be able to get bonded interfaces' MAC. ([#2550](https://github.com/wazuh/wazuh/pull/2550))
+- Migrated unit tests from Check to TAP (Test Anything Protocol). ([#2572](https://github.com/wazuh/wazuh/pull/2572))
 - Now labels starting with `_` are reserved for internal use. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
 - Now AWS wodle fetches aws.requestParameters.disableApiTermination with an unified format ([#2614](https://github.com/wazuh/wazuh/pull/2614))
 - Improved overall performance in cluster ([#2575](https://github.com/wazuh/wazuh/pull/2575))

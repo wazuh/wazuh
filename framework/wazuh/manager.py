@@ -25,16 +25,15 @@ from wazuh.utils import previous_month, cut_array, sort_array, search_array, tai
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 
-def status():
+def status() -> Dict:
     """
     Returns the Manager processes that are running.
-    :return: Array of dictionaries (keys: status, daemon).
+    :return: Dictionary (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted',
-                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild',
-                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd',
-                 'wazuh-clusterd']
+    processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
+                 'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
 
     data = {}
     for process in processes:
@@ -182,32 +181,44 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(tmp_file, path, content_type):
+def upload_file(tmp_file, path, content_type, overwrite=False):
     """
     Updates a group file
 
     :param tmp_file: Relative path of file name from origin
     :param path: Path of destination of the new file
-    :param content_type: Content type of the uploaded file (valid values: application/xml and application/octet-stream)
+    :param content_type: Content type of file from origin
+    :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
     """
     try:
-        with open(join(common.ossec_path, tmp_file)) as f:
-            file_data = f.read()
-    except IOError:
-        raise WazuhException(1005)
-    except Exception:
-        raise WazuhException(1000)
+        # if file already exists and overwrite is False, raise exception
+        if not overwrite and exists(join(common.ossec_path, path)):
+            raise WazuhException(1905)
 
-    if len(file_data) == 0:
-        raise WazuhException(1112)
+        try:
+            with open(join(common.ossec_path, tmp_file)) as f:
+                file_data = f.read()
+        except IOError:
+            raise WazuhException(1005)
+        except Exception:
+            raise WazuhException(1000)
 
-    if content_type == 'application/xml':
-        return upload_xml(file_data, path)
-    elif content_type == 'application/octet-stream':
-        return upload_list(file_data, path)
-    else:
-        raise WazuhException(1016)
+        if len(file_data) == 0:
+            raise WazuhException(1112)
+
+        if content_type == 'application/xml':
+            return upload_xml(file_data, path)
+        elif content_type == 'application/octet-stream':
+            return upload_list(file_data, path)
+        else:
+            raise WazuhException(1016)
+    finally:
+        # delete temporary file from API
+        try:
+            remove(join(common.ossec_path, tmp_file))
+        except OSError:
+            raise WazuhException(1903)
 
 
 def upload_xml(xml_file, path):
