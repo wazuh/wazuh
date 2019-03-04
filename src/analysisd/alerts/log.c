@@ -69,10 +69,6 @@ static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
             }
         }
     }
-
-    if (*buffer == NULL){
-        buffer[0] = '\0';
-    }
 }
 
 /* Store the events in a file
@@ -109,8 +105,7 @@ void OS_Store_Flush(){
 void OS_LogOutput(Eventinfo *lf)
 {
     int i;
-    char labels[OS_MAXSTR];
-    *labels = NULL;
+    char labels[OS_MAXSTR] = {0};
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -296,8 +291,7 @@ void OS_LogOutput(Eventinfo *lf)
 void OS_Log(Eventinfo *lf)
 {
     int i;
-    char labels[OS_MAXSTR];
-    *labels = NULL;
+    char labels[OS_MAXSTR] = {0};
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
