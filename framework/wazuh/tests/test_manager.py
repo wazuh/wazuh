@@ -4,11 +4,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
 import os
+import pytest
 from unittest.mock import patch, mock_open
 
-import pytest
-from wazuh import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation, delete_file
+from wazuh.exception import WazuhException
+from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file
+
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -19,7 +20,7 @@ class InitManager:
         Sets up necessary environment to test manager functions
         """
         # path for temporary API files
-        self.api_tmp_path = os.path.join(test_data_path, 'tmp')
+        self.api_tmp_path = os.path.join(os.getcwd(), 'tests/data/tmp')
         # rules
         self.input_rules_file = 'test_rules.xml'
         self.output_rules_file = 'uploaded_test_rules.xml'
