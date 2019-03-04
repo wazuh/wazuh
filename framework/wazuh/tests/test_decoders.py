@@ -23,6 +23,11 @@ decoder_contents = '''
     '''
 
 
+@pytest.fixture()
+def open_mock():
+    return mock_open(read_data=decoder_contents)
+
+
 def decoders_files(file_path):
     """
     Returns a list of decoders names
@@ -45,16 +50,15 @@ def decoders_files(file_path):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_status(mock_config, mock_glob, status, func):
+def test_get_decoders_file_status(mock_config, mock_glob, status, func, open_mock):
     """
     Tests getting decoders using status filter
     """
-    m = mock_open(read_data=decoder_contents)
     if status == 'random':
         with pytest.raises(WazuhException, match='.* 1202 .*'):
             func(status=status)
     else:
-        with patch('builtins.open', m):
+        with patch('builtins.open', open_mock):
             d_files = func(status=status)
             if isinstance(d_files['items'][0], Decoder):
                 d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
@@ -78,12 +82,11 @@ def test_get_decoders_file_status(mock_config, mock_glob, status, func):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_path(mock_config, mock_glob, path, func):
+def test_get_decoders_file_path(mock_config, mock_glob, path, func, open_mock):
     """
     Tests getting decoders files filtering by path
     """
-    m = mock_open(read_data=decoder_contents)
-    with patch('builtins.open', m):
+    with patch('builtins.open', open_mock):
         d_files = func(path=path)
         if path == 'random':
             assert d_files['totalItems'] == 0
@@ -109,13 +112,12 @@ def test_get_decoders_file_path(mock_config, mock_glob, path, func):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit, func):
+def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit, func, open_mock):
     """
     Tests getting decoders files using offset and limit
     """
     if limit > 0:
-        m = mock_open(read_data=decoder_contents)
-        with patch('builtins.open', m):
+        with patch('builtins.open', open_mock):
             d_files = func(offset=offset, limit=limit)
             limit = d_files['totalItems'] if limit > d_files['totalItems'] else limit
             assert d_files['totalItems'] == 2
@@ -136,12 +138,11 @@ def test_get_decoders_file_pagination(mock_config, mock_glob, offset, limit, fun
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_sort(mock_config, mock_glob, sort, func):
+def test_get_decoders_file_sort(mock_config, mock_glob, sort, func, open_mock):
     """
     Tests getting decoders files and sorting results
     """
-    m = mock_open(read_data=decoder_contents)
-    with patch('builtins.open', m):
+    with patch('builtins.open', open_mock):
         d_files = func(sort=sort)
         if isinstance(d_files['items'][0], Decoder):
             d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
@@ -160,12 +161,11 @@ def test_get_decoders_file_sort(mock_config, mock_glob, sort, func):
 ])
 @patch('wazuh.decoder.glob', side_effect=decoders_files)
 @patch('wazuh.configuration.get_ossec_conf', return_value=decoder_ossec_conf)
-def test_get_decoders_file_search(mock_config, mock_glob, search, func):
+def test_get_decoders_file_search(mock_config, mock_glob, search, func, open_mock):
     """
     Tests getting decoders files and searching results
     """
-    m = mock_open(read_data=decoder_contents)
-    with patch('builtins.open', m):
+    with patch('builtins.open', open_mock):
         d_files = Decoder.get_decoders_files(search=search)
         if isinstance(d_files['items'][0], Decoder):
             d_files['items'] = list(map(lambda x: x.to_dict(), d_files['items']))
