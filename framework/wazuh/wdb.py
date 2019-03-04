@@ -63,7 +63,7 @@ class WazuhDBConnection:
         data = self.__conn.recv(4)
         data_size = struct.unpack('<I',data[0:4])[0]
 
-        data = self.__conn.recv(data_size).decode('utf-8').split(" ", 1)
+        data = self.__conn.recv(data_size).decode('utf-8', 'ignore').split(" ", 1)
 
         if data[0] == "err":
             raise WazuhException(2003, data[1])
