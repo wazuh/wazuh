@@ -67,9 +67,11 @@ static void format_labels(char *buffer, size_t size, const Eventinfo *lf) {
                 buffer[0] = '\0';
                 return;
             }
-        } else {
-            buffer[0] = '\0';
         }
+    }
+
+    if (*buffer == NULL){
+        buffer[0] = '\0';
     }
 }
 
@@ -108,6 +110,7 @@ void OS_LogOutput(Eventinfo *lf)
 {
     int i;
     char labels[OS_MAXSTR];
+    *labels = NULL;
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
@@ -294,6 +297,7 @@ void OS_Log(Eventinfo *lf)
 {
     int i;
     char labels[OS_MAXSTR];
+    *labels = NULL;
 
 #ifdef LIBGEOIP_ENABLED
     if (Config.geoipdb_file) {
