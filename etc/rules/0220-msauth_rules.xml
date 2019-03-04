@@ -1146,6 +1146,15 @@
 
   <rule id="20019" level="3">
     <if_sid>20007</if_sid>
+    <field name="win.eventdata.workstationName">\.+</field>
+    <field name="win.eventdata.logonType">^2$</field>
+    <description>Windows Workstation Logon Success</description>
+    <options>no_full_log</options>
+    <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
+  </rule>
+
+  <rule id="20020" level="3">
+    <if_sid>20007</if_sid>
     <options>alert_by_email</options>
     <if_fts />
     <description>Windows: First time this user logged in this system</description>
@@ -1153,7 +1162,7 @@
     <group>authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
   </rule>
 
-  <rule id="20020" level="0">
+  <rule id="20021" level="0">
     <if_sid>20005</if_sid>
     <field name="win.system.eventID">^680$</field>
     <description>Windows login attempt (ignored). Duplicated</description>
@@ -1907,7 +1916,7 @@
   <rule id="20166" level="3">
     <if_sid>20007</if_sid>
     <field name="win.system.eventID">^4624$</field>
-    <field name="win.eventdata.logonType">8</field>
+    <field name="win.eventdata.logonType">^8$</field>
     <description>MS Exchange Logon Success</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
@@ -1916,7 +1925,7 @@
   <rule id="20167" level="0">
     <if_sid>20049</if_sid>
     <field name="win.system.eventID">^4634$</field>
-    <field name="win.eventdata.logonType">8</field>
+    <field name="win.eventdata.logonType">^8$</field>
     <description>MS Exchange User Logoff</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,</group>
@@ -1925,7 +1934,7 @@
   <!-- Composite rules -->
   <rule id="20085" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>20008</if_matched_sid>
-    <same_user />
+    <same_field>win.eventdata.targetUserName</same_field>
     <description>Windows: Multiple failed attempts to perform a privileged operation by the same user</description>
     <options>no_full_log</options>
     <group>pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
@@ -1933,7 +1942,7 @@
 
   <rule id="20086" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_group>win_authentication_failed</if_matched_group>
-    <same_source_ip />
+    <same_field>win.eventdata.ipAddress</same_field>
     <description>Multiple Windows Logon Failures</description>
     <options>no_full_log</options>
     <group>authentication_failures,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_11.4,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
@@ -1941,7 +1950,7 @@
 
   <rule id="20087" level="10" frequency="$MS_FREQ" timeframe="240">
     <if_matched_sid>20005</if_matched_sid>
-    <same_source_ip />
+    <same_field>win.eventdata.ipAddress</same_field>
     <description>Multiple Windows audit failure events</description>
     <options>no_full_log</options>
     <group>pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
