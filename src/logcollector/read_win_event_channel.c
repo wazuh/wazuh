@@ -538,6 +538,8 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         cJSON_AddStringToObject(event_json, "Message", "No message");
     }
 
+    win_format_event_string(xml_event);
+
     cJSON_AddStringToObject(event_json, "Event", xml_event);
     msg_sent = cJSON_PrintUnformatted(event_json);
 
