@@ -478,8 +478,16 @@ class ClusterFilter(logging.Filter):
 
 
 class ClusterLogger(WazuhLogger):
+    """
+    Defines the logger used by wazuh-clusterd.
+    """
 
     def setup_logger(self):
+        """
+        Set ups cluster logger. In addition to super().setup_logger() this method adds:
+            * A filter to add tag and subtags to cluster logs
+            * Sets log level based on the "debug_level" parameter received from wazuh-clusterd binary.
+        """
         super().setup_logger()
         self.logger.addFilter(ClusterFilter(tag='Cluster', subtag='Main'))
         debug_level = logging.DEBUG2 if self.debug_level == 2 else \

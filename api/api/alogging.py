@@ -6,11 +6,13 @@ import logging
 from flask import request
 import re
 
+# compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+\]|\s+\*\s+')
+
 
 class APIFilter(logging.Filter):
     """
-    Adds cluster related information into cluster logs.
+    Adds API related information into api logs.
     """
     def __init__(self, user: str = '', name: str = ''):
         """
@@ -32,14 +34,27 @@ class APIFilter(logging.Filter):
 
 
 class APILogger(WazuhLogger):
+    """
+    Defines the logger used by wazuh-apid
+    """
 
     def __init__(self, *args, **kwargs):
+        """
+        Constructor
+        """
         super().__init__(*args, **kwargs)
         self.werkzeug_logger = logging.getLogger('werkzeug')
-        self.flask_logger = logging.getLogger('Flask')
         self.filter = APIFilter()
 
     def setup_logger(self):
+        """
+        Set ups API logger. In addition to super().setup_logger() this method adds:
+            * A null handler to the root logger so the werkzeug doesn't add a stream handler to the root logger.
+            * A filter to both API logger and werkzeug logger to add authenticated user to API logs.
+            * Sets up log level based on the log level defined in API configuration file.
+            * Adds handlers configured in super().setup_logger() to the werkzeug logger.
+            * Modifies werkzeug logger info function to remove extra information from log messages.
+        """
         super().setup_logger()
         # add a null handler to the root logger so the werkzeug logger doesnt create a stream handler.
         logging.root.addHandler(logging.NullHandler())
@@ -66,6 +81,14 @@ class APILogger(WazuhLogger):
             self.werkzeug_logger.addHandler(h)
 
         def info_werkzeug(msg, *args, **kwargs):
+            """
+            Modifies werkzeug logger info function to remove extra information from log messages:
+                before: 127.0.0.1 - - [04/Mar/2019 13:27:37] "GET /token?pretty HTTP/1.1" 500 -
+                after: 127.0.0.1 - - "GET /token?pretty HTTP/1.1" 500 -
+                ---
+                before: * Running on http://0.0.0.0:55000/ (Press CTRL+C to quit)
+                After: Running on http://0.0.0.0:55000/ (Press CTRL+C to quit)
+            """
             if self.werkzeug_logger.isEnabledFor(logging.INFO):
                 self.werkzeug_logger._log(logging.INFO, request_pattern.sub('', msg), args, **kwargs)
 

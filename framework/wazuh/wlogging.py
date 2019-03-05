@@ -14,7 +14,7 @@ import calendar
 
 class CustomFileRotatingHandler(logging.handlers.TimedRotatingFileHandler):
     """
-    Wazuh cluster log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
+    Wazuh log rotation. It rotates the log at midnight and sets the appropiate permissions to the new log file.
     Also, rotated logs are stored in /logs/ossec
     """
 
@@ -61,6 +61,14 @@ class WazuhLogger:
     Defines attributes of a Python wazuh daemon's logger
     """
     def __init__(self, foreground_mode: bool, log_path: str, tag: str, debug_level: [int, str]):
+        """
+        Constructor
+
+        :param foreground_mode: Enable stream handler on sys.stderr
+        :param log_path: Filepath of the file to send logs to. Relative to the wazuh installation path.
+        :param tag: Tag defining logging format.
+        :param debug_level: Log level.
+        """
         self.log_path = os.path.join(common.ossec_path, log_path)
         self.tag = tag
         self.logger = None
@@ -68,6 +76,12 @@ class WazuhLogger:
         self.debug_level = debug_level
 
     def setup_logger(self):
+        """
+        Prepares a logger with:
+            * A rotating file handler
+            * A stream handler (if foreground_mode is enabled)
+            * An additional debug level.
+        """
         logger = logging.getLogger('wazuh')
         logger.propagate = False
         # configure logger
@@ -101,6 +115,14 @@ class WazuhLogger:
         self.logger = logger
 
     def __getattr__(self, item):
+        """
+        Overwrites __getattr__ magic method.
+            * If the item requested is an attribute of self.logger, return it.
+            * If it's an attribute of self, return it.
+            * Otherwise, raise an AttributeError exception
+        :param item: Name of the attribute to return
+        :return: attribute named "item".
+        """
         if hasattr(self.logger, item):
             return getattr(self.logger, item)
         elif item in vars(self):
