@@ -24,6 +24,3 @@ install:
 
 	# Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
-
-	# Install api python package
-	$(PYTHON_BIN) setup.py install
