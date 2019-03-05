@@ -631,6 +631,10 @@ int main_analysisd(int argc, char **argv)
         exit(0);
     }
 
+    if (Config.queue_size != 0) {
+        minfo("The option <queue_size> is deprecated and won't apply. Set up each queue size in the internal_options file.");
+    }
+
     /* Verbose message */
     mdebug1(PRIVSEP_MSG, dir, user);
 
