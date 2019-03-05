@@ -36,7 +36,11 @@ class _User(_Base):
 
 # This is the actual sqlite database creation
 _Base.metadata.create_all(_engine)
-chown(_auth_db_file, 'root', 'ossec')
+# Only if executing as root
+try:
+    chown(_auth_db_file, 'root', 'ossec')
+except PermissionError:
+    pass
 os.chmod(_auth_db_file, 0o640)
 _Session = sessionmaker(bind=_engine)
 
@@ -80,7 +84,7 @@ class AuthenticationManager:
         :return: string jwt encoded token or None if user credentials are rejected
         """
         if self.check_user(username=username, password=password):
-            return _generate_token(username)
+            return generate_token(username)
         return None
 
     def __enter__(self):
@@ -126,14 +130,18 @@ if not os.path.exists(secret_file_path):
     JWT_SECRET = token_urlsafe(512)
     with open(secret_file_path, 'x') as secret_file:
         secret_file.write(JWT_SECRET)
-    chown(secret_file_path, 'root', 'ossec')
+    # Only if executing as root
+    try:
+        chown(secret_file_path, 'root', 'ossec')
+    except PermissionError:
+        pass
     os.chmod(secret_file_path, 0o640)
 else:
     with open(secret_file_path, 'r') as secret_file:
         JWT_SECRET = secret_file.readline()
 
 
-def _generate_token(user_id):
+def generate_token(user_id):
     """
     Generates an encoded jwt token. This method should be called once a user is properly logged on.
     :param user_id: string Unique user name
