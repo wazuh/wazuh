@@ -63,5 +63,6 @@
 #define VU_INS_NVD_SEC        "(5516): Inserting NVD section..."
 #define VU_SOCKET_RETRY       "(5518): Unable to connect to socket '%s'. Waiting %d seconds."
 #define VU_INS_CPES_DIC       "(5523): Inserting Wazuh's CPE dictonary..."
+#define VU_FUNCTION_TIME      "(5528): It took %ld seconds to %s vulnerabilities in agent %s."
 
 #endif
