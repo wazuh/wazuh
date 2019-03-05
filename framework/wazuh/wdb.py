@@ -6,7 +6,6 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from os import strerror
 import socket
 import re
 import json
@@ -27,8 +26,8 @@ class WazuhDBConnection:
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.__conn.connect(self.socket_path)
-        except socket.error as e:
-            raise WazuhException(2005, strerror(e[0]))
+        except OSError as e:
+            raise WazuhException(2005, e)
 
 
     def __query_input_validation(self, query):
@@ -61,7 +60,7 @@ class WazuhDBConnection:
 
         # Get the data size (4 bytes)
         data = self.__conn.recv(4)
-        data_size = struct.unpack('<I',data[0:4])[0]
+        data_size = struct.unpack('<I', data[0:4])[0]
 
         data = self.__conn.recv(data_size).decode('utf-8', 'ignore').split(" ", 1)
 
