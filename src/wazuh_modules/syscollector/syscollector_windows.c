@@ -34,7 +34,7 @@ int set_token_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
 
 /* From process ID get its name */
 char* get_process_name(DWORD pid){
-    wchar_t read_buff[OS_MAXSTR] = {'\0'};
+    wchar_t read_buff[OS_MAXSTR] = {L'\0'};
     wchar_t *ptr = NULL;
     char *string = NULL;
 
@@ -833,9 +833,9 @@ void sys_programs_windows(const char* LOCATION){
 // List installed programs from the registry
 void list_programs(HKEY hKey, int arch, const wchar_t * root_key, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
-    wchar_t  achKey[KEY_LENGTH] = {'\0'};   // buffer for subkey name
+    wchar_t  achKey[KEY_LENGTH] = {L'\0'};   // buffer for subkey name
     DWORD    cbName;                        // size of name string
-    wchar_t  achClass[MAX_PATH] = {'\0'};   // buffer for class name
+    wchar_t  achClass[MAX_PATH] = {L'\0'};   // buffer for class name
     DWORD    cchClassName = MAX_PATH;       // size of class string
     DWORD    cSubKeys=0;                    // number of subkeys
     DWORD    cbMaxSubKey;                   // longest subkey size
@@ -904,9 +904,9 @@ void list_programs(HKEY hKey, int arch, const wchar_t * root_key, int usec, cons
 // List Windows users from the registry
 void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char * LOCATION) {
 
-    wchar_t  achKey[KEY_LENGTH] = {'\0'};   // buffer for subkey name
+    wchar_t  achKey[KEY_LENGTH] = {L'\0'};   // buffer for subkey name
     DWORD    cbName;                        // size of name string
-    wchar_t  achClass[MAX_PATH] = {'\0'};   // buffer for class name
+    wchar_t  achClass[MAX_PATH] = {L'\0'};   // buffer for class name
     DWORD    cchClassName = MAX_PATH;       // size of class string
     DWORD    cSubKeys=0;                    // number of subkeys
     DWORD    cbMaxSubKey;                   // longest subkey size
@@ -2003,7 +2003,7 @@ int ntpath_to_win32path(char *ntpath, char **outbuf)
 }
 
 void sys_proc_windows(const char* LOCATION) {
-    wchar_t read_buff[OS_MAXSTR] = {'\0'};
+    wchar_t read_buff[OS_MAXSTR] = {L'\0'};
 
     // Define time to sleep between messages sent
     int usec = 1000000 / wm_max_eps;
