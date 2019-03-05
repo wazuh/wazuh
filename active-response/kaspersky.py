@@ -317,9 +317,16 @@ def send_msg(wazuh_queue, msg):
 ##################################################################################################################
 
 def main():
-	set_logger('wazuh-kaspersky', foreground=args.verbose)
-	run_kaspersky()
-
+    # Logging the call
+    os.system("echo \"`date` " + " ".join(sys.argv) + "\" >> " + os.getcwd() + "/../logs/active-responses.log")
+    
+    # Check if the Kaspersky binary exists
+    if os.path.exists(bin_path + binary):
+        set_logger('wazuh-kaspersky', foreground=args.verbose)
+        run_kaspersky()
+    else:
+        print('Error: Kaspersky is not available on this host.')
+        sys.exit(1)
 
 if __name__ == "__main__":
 	main()
