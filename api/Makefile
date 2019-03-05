@@ -18,16 +18,7 @@ INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
 all: install
 
 install:
-	$(INSTALL_DIR) $(PREFIX)/api/api
-	$(INSTALL_DIR) $(PREFIX)/api/api/controllers
-	$(INSTALL_DIR) $(PREFIX)/api/api/models
-	$(INSTALL_DIR) $(PREFIX)/api/api/spec
 	$(INSTALL_DIR) $(PREFIX)/api/configuration
-
-	$(INSTALL_FILE) api/*.py ${PREFIX}/api/api
-	$(INSTALL_FILE) api/controllers/*.py ${PREFIX}/api/api/controllers
-	$(INSTALL_FILE) api/models/*.py ${PREFIX}/api/api/models
-	$(INSTALL_FILE) api/spec/*.yaml ${PREFIX}/api/api/spec
 	$(INSTALL_FILE) api/configuration/api.yml ${PREFIX}/api/configuration
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
