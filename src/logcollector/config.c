@@ -148,11 +148,14 @@ cJSON *getLocalfileConfig(void) {
     cJSON *localfiles = cJSON_CreateArray();
     _getLocalfilesListJSON(logff, localfiles);
 
-    unsigned int i = 0;
-    while (globs[i].gfiles) {
-        _getLocalfilesListJSON(globs[i].gfiles, localfiles);
-        i++;
+    if (globs) {
+        unsigned int i = 0;
+        while (globs[i].gfiles) {
+            _getLocalfilesListJSON(globs[i].gfiles, localfiles);
+            i++;
+        }
     }
+
     if (cJSON_GetArraySize(localfiles) > 0) {
         cJSON_AddItemToObject(root,"localfile",localfiles);
     }
