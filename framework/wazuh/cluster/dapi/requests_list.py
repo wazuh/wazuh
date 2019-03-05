@@ -292,6 +292,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    'DELETE/manager/files': {
+        'function': manager.delete_file,
+        'type': 'local_any',
+        'is_async': False
+    },
     'PUT/manager/restart': {
         'function': manager.restart,
         'type': 'local_any',
@@ -406,6 +411,11 @@ functions = {
     },
     'POST/cluster/:node_id/files': {
         'function': manager.upload_file,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'DELETE/cluster/:node_id/files': {
+        'function': manager.delete_file,
         'type': 'distributed_master',
         'is_async': False
     },
