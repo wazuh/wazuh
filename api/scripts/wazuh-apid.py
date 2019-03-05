@@ -6,13 +6,12 @@ import argparse
 import logging
 import os
 import sys
-import yaml
 import ssl
 
 import connexion
 from flask_cors import CORS
 
-from api import encoder, configuration
+from api import encoder, configuration, __path__ as api_path
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__
 
@@ -74,7 +73,7 @@ def print_version():
 
 
 def main(cors, port, host, ssl_context):
-    app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
+    app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec/'))
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
     if cors:
