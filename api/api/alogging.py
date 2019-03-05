@@ -42,7 +42,7 @@ class APILogger(WazuhLogger):
         """
         Constructor
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs, log_path='logs/api.log', tag='{asctime} {levelname}:{user} {message}')
         self.werkzeug_logger = logging.getLogger('werkzeug')
         self.filter = APIFilter()
 
