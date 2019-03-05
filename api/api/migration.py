@@ -68,7 +68,9 @@ def rename_old_fields(config):
     :param config: Dictionary with values of old configuration
     :return: Dictionary with renamed old fields
     """
-    old_to_new = {'BehindProxyServer': 'behind_proxy_server'}
+    old_to_new = {'BehindProxyServer': 'behind_proxy_server',
+                   'honorCipherOrder': 'honor_cipher_order',
+                   'secureProtocol': 'secure_protocol'}
     new_config = config
     for key in config:
         if key in old_to_new:
