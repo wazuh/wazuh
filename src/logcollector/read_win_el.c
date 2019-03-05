@@ -198,7 +198,7 @@ wchar_t *el_vista_getMessage(int evt_id_int, char **el_sstring)
     }
 
     if (!FormatMessageW(fm_flags, desc_string, 0, 0,
-                       message, 0, el_sstring)) {
+                       (LPWSTR)&message, 0, el_sstring)) {
         return (NULL);
     }
 
@@ -243,7 +243,7 @@ wchar_t *el_getMessage(EVENTLOGRECORD *er, char *name,
                              LOAD_LIBRARY_AS_DATAFILE);
         if (hevt) {
             if (!FormatMessageW(fm_flags, hevt, er->EventID, 0,
-                               message, 0, el_sstring)) {
+                               (LPWSTR)&message, 0, el_sstring)) {
                 message = NULL;
             }
             FreeLibrary(hevt);
@@ -265,7 +265,7 @@ wchar_t *el_getMessage(EVENTLOGRECORD *er, char *name,
     if (hevt) {
         if (!FormatMessageW(fm_flags, hevt, er->EventID,
                                  0,
-                                 message, 0, el_sstring)) {
+                                 (LPWSTR)&message, 0, el_sstring)) {
             message = NULL;
         }
         FreeLibrary(hevt);
@@ -291,7 +291,7 @@ void readel(os_el *el, int printit)
     int str_size;
     int id;
 
-    wchar_t mbuffer[BUFFER_SIZE + 1] = {L'\0'};
+    char mbuffer[BUFFER_SIZE + 1] = {'\0'};
     wchar_t *sstr = NULL;
 
     wchar_t *tmp_str = NULL;
@@ -328,7 +328,6 @@ void readel(os_el *el, int printit)
             el->er = (EVENTLOGRECORD *)&mbuffer;
             continue;
         }
-
 
         while (read > 0) {
             /* We need to initialize every variable before the loop */
