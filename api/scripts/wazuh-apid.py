@@ -39,7 +39,10 @@ def main(cors, port, host, ssl_context, main_logger):
     if cors:
         # add CORS support
         CORS(app.app)
-    app.run(port=port, host=host, ssl_context=ssl_context)
+    try:
+        app.run(port=port, host=host, ssl_context=ssl_context)
+    except Exception as e:
+        main_logger.error("Error starting API server: {}".format(e))
 
 
 #
