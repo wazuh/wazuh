@@ -100,7 +100,9 @@ def test_validation_check_exp_ok(exp, regex_name):
     # relative paths
     ('etc/internal_options', 'relative_paths'),
     ('../../path', 'relative_paths'),
-    ('/var/ossec/etc/lists/new_lists3', 'relative_paths')
+    ('/var/ossec/etc/lists/new_lists3', 'relative_paths'),
+    ('../ossec', 'relative_paths'),
+    ('etc/rules/../../../dir', 'relative_paths')
 ])
 def test_validation_check_exp_ko(exp, regex_name):
     assert not validator.check_exp(exp, regex_name)

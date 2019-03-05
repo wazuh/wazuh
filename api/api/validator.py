@@ -5,7 +5,10 @@
 
 import json
 from xml.etree import ElementTree as ET
+import os
 import re
+
+from wazuh import common
 
 
 regex_dict = {'alphanumeric_param': r'^[\w,\-\.\+\s\:]+$',
@@ -63,7 +66,7 @@ def check_path(relative_path):
     :param relative_path: XML string to check
     :return: True if XML is OK, False otherwise
     """
-    if './' in relative_path or '../' in relative_path:
+    if not is_safe_path(relative_path):
         return False
 
     return check_exp(relative_path, 'relative_paths')
@@ -108,4 +111,20 @@ def allowed_fields(filters):
     :return: List with allowed filters
     """
     return [field for field in filters]
+
+
+def is_safe_path(path, basedir=common.ossec_path, follow_symlinks=True):
+    """
+    Checks if a path is correct
+    :param path: Path to be checked
+    :param basedir: Wazuh installation directory
+    :param follow_symlinks: True if path is relative, False if it is absolute
+    :return: True if path is correct, False otherwise
+    """
+    # resolves symbolic links
+    if follow_symlinks:
+        full_path = common.ossec_path + path
+        return os.path.realpath(full_path).startswith(basedir)
+
+    return os.path.abspath(path).startswith(basedir)
 
