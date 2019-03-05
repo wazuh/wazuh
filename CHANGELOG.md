@@ -30,6 +30,7 @@ All notable changes to this project will be documented in this file.
 - Improved overall performance in cluster ([#2575](https://github.com/wazuh/wazuh/pull/2575))
 - Some improvements has been made in the _vulnerability-detector_ module. ([#2603](https://github.com/wazuh/wazuh/pull/2603))
 - Refactor of decoded fields from the Windows eventchannel decoder. ([#2684](https://github.com/wazuh/wazuh/pull/2684))
+- Deprecate global option `<queue_size>` for Analysisd. ([#2729](https://github.com/wazuh/wazuh/pull/2729))
 
 ### Fixed
 
@@ -56,6 +57,7 @@ All notable changes to this project will be documented in this file.
 - Prevent Execd from becoming defunct when Active Response disabled. ([#2692](https://github.com/wazuh/wazuh/pull/2692))
 - Fix error in Syscollector when unable to read the CPU frequency on agents. ([#2740](https://github.com/wazuh/wazuh/pull/2740))
 - Fix Windows escape format affecting non-format messages. ([#2725](https://github.com/wazuh/wazuh/pull/2725))
+- Avoid a segfault in mail daemon due to the XML tags order in the `ossec.conf`. ([#2711](https://github.com/wazuh/wazuh/pull/2711))
 
 ## [v3.8.2]
 
