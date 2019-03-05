@@ -386,7 +386,7 @@ pstatus()
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
                 if [ $USE_JSON = false ]; then
-                    echo "${pfile}: Process $j not used by ossec, removing..."
+                    echo "${pfile}: Process $j not used by Wazuh, removing..."
                 fi
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
