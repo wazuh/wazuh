@@ -12,75 +12,37 @@ import ssl
 import connexion
 from flask_cors import CORS
 
-from api import encoder, configuration
+from api import alogging, encoder, configuration
 from wazuh import common, pyDaemonModule, Wazuh
-from wazuh.cluster import cluster, __version__, __author__, __ossec_name__, __licence__
+from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
+
 
 #
 # Aux functions
 #
-def set_logging(configuration, foreground_mode=False):
-    logger = logging.getLogger('api')
-    logger.propagate = False
-    # configure logger
-    fh = cluster.CustomFileRotatingHandler(filename=configuration['logs']['path'], when='midnight')
-    formatter = logging.Formatter('%(asctime)s %(levelname)-8s: [%(tag)-15s] [%(subtag)-15s] %(message)s')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
-
-    if foreground_mode:
-        ch = logging.StreamHandler()
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-
-    logger.addFilter(cluster.ClusterFilter(tag='API', subtag='Main'))
-
-    # add a new debug level
-    logging.DEBUG2 = 5
-
-    def debug2(self, message, *args, **kws):
-        if self.isEnabledFor(logging.DEBUG2):
-            self._log(logging.DEBUG2, message, args, **kws)
-
-    def error(self, msg, *args, **kws):
-        if self.isEnabledFor(logging.ERROR):
-            kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
-            self._log(logging.ERROR, msg, args, **kws)
-
-    logging.addLevelName(logging.DEBUG2, "DEBUG2")
-
-    logging.Logger.debug2 = debug2
-    logging.Logger.error = error
-
-    if configuration['logs']['level'] == 'debug2':
-        debug_level = logging.DEBUG2
-    elif configuration['logs']['level'] == 'debug':
-        debug_level = logging.DEBUG
-    elif configuration['logs']['level'] == 'critical':
-        debug_level = logging.CRITICAL
-    elif configuration['logs']['level'] == 'error':
-        debug_level = logging.ERROR
-    elif configuration['logs']['level'] == 'warning':
-        debug_level = logging.WARNING
-    else:  # configuration['logs']['level'] == 'info'
-        debug_level = logging.INFO
-
-    logger.setLevel(debug_level)
-    return logger
+def set_logging(foreground_mode=False, debug_mode='info'):
+    api_logger = alogging.APILogger(foreground_mode=foreground_mode, debug_level=debug_mode)
+    api_logger.setup_logger()
+    return api_logger
 
 
 def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
-def main(cors, port, host, ssl_context):
+def main(cors, port, host, ssl_context, main_logger):
     app = connexion.App(__name__, specification_dir=f'{common.ossec_path}/api/api/spec/')
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
+    app.app.logger = main_logger
+    app.app.before_request(alogging.set_request_user_logs)
     if cors:
         # add CORS support
         CORS(app.app)
-    app.run(port=port, host=host, ssl_context=ssl_context)
+    try:
+        app.run(port=port, host=host, ssl_context=ssl_context)
+    except Exception as e:
+        main_logger.error("Error starting API server: {}".format(e))
 
 
 #
@@ -121,11 +83,11 @@ if __name__ == '__main__':
         os.setgid(common.ossec_gid)
         os.setuid(common.ossec_uid)
 
-    main_logger = set_logging(configuration, args.foreground)
+    main_logger = set_logging(args.foreground, configuration['logs']['level'])
 
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main(configuration['cors'], configuration['port'], configuration['host'], ssl_context)
+        main(configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
