@@ -4,7 +4,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
 from setuptools import setup, find_packages
 
 NAME = "api"
@@ -31,7 +30,7 @@ setup(
     url="https://github.com/wazuh",
     keywords=["Wazuh API"],
     install_requires=REQUIRES,
-    packages=find_packages(),
+    packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
     package_data={'': ['spec/spec.yaml']},
     include_package_data=True,
     zip_safe=False,
