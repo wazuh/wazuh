@@ -6,7 +6,6 @@
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from os import strerror
 import socket
 import re
 import json
@@ -27,8 +26,8 @@ class WazuhDBConnection:
         self.__conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
             self.__conn.connect(self.socket_path)
-        except socket.error as e:
-            raise WazuhException(2005, strerror(e[0]))
+        except OSError as e:
+            raise WazuhException(2005, e)
 
 
     def __query_input_validation(self, query):
@@ -52,7 +51,7 @@ class WazuhDBConnection:
                 raise WazuhException(2004, error_text)
 
 
-    def __send(self, msg):
+    def _send(self, msg):
         """
         Sends a message to the wdb socket
         """
@@ -61,9 +60,9 @@ class WazuhDBConnection:
 
         # Get the data size (4 bytes)
         data = self.__conn.recv(4)
-        data_size = struct.unpack('<I',data[0:4])[0]
+        data_size = struct.unpack('<I', data[0:4])[0]
 
-        data = self.__conn.recv(data_size).decode('utf-8').split(" ", 1)
+        data = self.__conn.recv(data_size).decode(encoding='utf-8', errors='ignore').split(" ", 1)
 
         if data[0] == "err":
             raise WazuhException(2003, data[1])
@@ -102,7 +101,7 @@ class WazuhDBConnection:
         def send_request_to_wdb(query_lower, step, off, response):
             try:
                 request = "{} limit {} offset {}".format(query_lower, step, off)
-                response.extend(self.__send(request))
+                response.extend(self._send(request))
             except ValueError:
                 # if the step is already 1, it can't be divided
                 if step == 1:
@@ -119,7 +118,7 @@ class WazuhDBConnection:
             regex = re.compile(r"\w+ \d+? sql delete from ([a-z0-9,_ ]+)")
             if regex.match(query_lower) is None:
                 raise WazuhException(2004, "Delete query is wrong")
-            return self.__send(query_lower)
+            return self._send(query_lower)
 
         # only for update queries
         if update:
@@ -128,7 +127,7 @@ class WazuhDBConnection:
                                r" '([a-z0-9,*_%\- ]+)'")
             if regex.match(query_lower) is None:
                 raise WazuhException(2004, "Update query is wrong")
-            return self.__send(query_lower)
+            return self._send(query_lower)
 
         # if the query has already a parameter limit / offset, divide using it
         offset = 0
@@ -145,7 +144,7 @@ class WazuhDBConnection:
             regex = re.compile(r"\w+ \d+? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
             select = regex.match(query_lower).group(1)
             countq = query_lower.replace(select, "count(*)", 1)
-            total = list(self.__send(countq)[0].values())[0]
+            total = list(self._send(countq)[0].values())[0]
 
             limit = lim if lim != 0 else total
 
@@ -164,4 +163,4 @@ class WazuhDBConnection:
             else:
                 return response
         else:
-            return list(self.__send(query_lower)[0].values())[0]
+            return list(self._send(query_lower)[0].values())[0]
