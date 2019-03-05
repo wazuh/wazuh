@@ -515,11 +515,7 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
             if (Mail) {
-                if (node[i]->content[0] == '/') {
-                    os_strdup(node[i]->content, Mail->smtpserver);
-                } else {
-                    Mail->smtpserver = OS_GetHost(node[i]->content, 5);
-                }
+                os_strdup(node[i]->content, Mail->smtpserver);
             }
 #endif
         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
