@@ -188,13 +188,13 @@ int set_feed_version(char *feed, char *version, update_node **upd_list) {
         upd_list[CPE_WDIC]->dist_ext = vu_feed_ext[FEED_CPEW];
         upd_list[CPE_WDIC]->dist_ref = FEED_CPEW;
         upd_list[CPE_WDIC]->json_format = 1;
-    } else if (!strcmp(feed, vu_feed_tag[FEED_MSB])) {
-        os_index = CVE_MSB;
-        os_strdup(vu_feed_tag[FEED_MSB], upd->version);
-        upd->dist_tag = vu_feed_tag[FEED_MSB];
-        upd->dist_ext = vu_feed_ext[FEED_MSB];
-        upd->dist_ref = FEED_MSB;
-        upd->interval = WM_VULNDETECTOR_MSB_UPDATE_INTERVAL;
+        // Set the MSB update node
+        os_calloc(1, sizeof(update_node), upd_list[CVE_MSB]);
+        upd_list[CVE_MSB]->dist_tag = vu_feed_tag[FEED_MSB];
+        upd_list[CVE_MSB]->interval = WM_VULNDETECTOR_ONLY_ONE_UPD;
+        upd_list[CVE_MSB]->dist_ext = vu_feed_ext[FEED_MSB];
+        upd_list[CVE_MSB]->dist_ref = FEED_MSB;
+        upd_list[CVE_MSB]->json_format = 1;
     } else {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         retval = OS_INVALID;
