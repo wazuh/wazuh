@@ -55,12 +55,20 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
 #endif
 
     if (_proto == IPPROTO_UDP) {
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#else 
+        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#endif
             return OS_SOCKTERR;
         }
     } else if (_proto == IPPROTO_TCP) {
         int flag = 1;
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#else
+        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#endif
             return (int)(OS_SOCKTERR);
         }
 
@@ -240,11 +248,19 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 #endif
 
     if (protocol == IPPROTO_TCP) {
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#else
+        if ((ossock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
+#endif
             return (OS_SOCKTERR);
         }
     } else if (protocol == IPPROTO_UDP) {
+#ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#else 
+        if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+#endif
             return (OS_SOCKTERR);
         }
     } else {
