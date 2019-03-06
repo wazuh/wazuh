@@ -299,6 +299,46 @@ components:
         ip:
           type: string
     
+    Healthcheck:
+      type: object
+      properties:
+        name:
+          type: string
+        info:
+          type: object
+          properties:
+            ip:
+              type: string
+            version:
+              type: string
+            type:
+              type: string
+              enum:
+              - worker
+              - master
+            totalActiveAgents:
+              type: integer
+        status:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - Agent status
+                  - Extra valid
+                  - Integrity
+                  - Last keep alive
+              date_start:
+                type: string
+              date_end:
+                type: string
+              synchronized_files:
+                type: integer
+              free:
+                type: boolean
+    
     # SCA models
     SCAChecks:
       type: object
@@ -729,7 +769,7 @@ components:
       required: True
       schema:
         type: string  
-          
+
 tags:
   - name: active-response
     description: 'Agents Active Response'
@@ -2800,6 +2840,76 @@ paths:
                   version: "3.9.0"
                   ip: "172.17.0.101"
   
+  /cluster/healthcheck:
+    get:
+      tags:
+      - cluster
+      summary: Show cluster healthcheck
+      description: Returns cluster healthcheck information such as last keep alive, last synchronization time and number of agents reporting on each node.
+      operationId: api.controllers.cluster.get_healthcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Health information
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Healthcheck'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - name: "node01"
+                      info:
+                        ip: "172.17.0.100"
+                        version: "3.9.0"
+                        type: "master"
+                        totalActiveAgents: 2
+                    - name: "node02"
+                      info:
+                        ip: "172.17.0.101"
+                        version: "3.9.0"
+                        type: "worker"
+                        totalActiveAgents: 5
+                      status:
+                        - type: "Agent status"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+                          synchronized_files: 4
+                          free: true
+                        - type: "Extra valid"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+                          synchronized_files: 4
+                          free: true
+                        - type: "Integrity"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+                          synchronized_files:
+                            shared: 5
+                            missing: 4
+                            extra_valid: 0
+                            extra: 0
+                          free: true
+                        - type: "Last keep alive"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+
   /cluster/status:
     get:
       tags:
@@ -2832,7 +2942,6 @@ paths:
                           enum:
                           - yes
                           - no
-
               example:
                 error: 0
                 data:
