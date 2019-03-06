@@ -268,6 +268,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
                 dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, i);
+                free_strarray(entry);
                 return (1);
             }
             i++;
