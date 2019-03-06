@@ -358,7 +358,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 continue;
             }
 
-            char path[PATH_MAX];
+            char path[PATH_MAX] = {0};
             OSStore *vars = NULL;
             cJSON * object = NULL;
             OSList *plist = NULL;
