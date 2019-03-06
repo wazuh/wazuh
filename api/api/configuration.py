@@ -79,8 +79,14 @@ def read_config() -> Dict:
         "experimental_features": False
     }
 
-    with open(common.api_config_path) as f:
-        configuration = yaml.safe_load(f)
+    if os.path.exists(common.api_config_path):
+        try:
+            with open(common.api_config_path) as f:
+                configuration = yaml.safe_load(f)
+        except IOError:
+            raise APIException(2000, "Error reading 'config.yml' file")
+    else:
+        configuration = None
 
     # if any value is missing from user's cluster configuration, add the default one:
     if configuration is None:

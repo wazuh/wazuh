@@ -9,7 +9,7 @@ import yaml
 
 from wazuh import common
 
-#from api import validator
+from api import validator
 
 
 def get_old_config(old_config_path='/var/ossec/api/configuration/config.js'):
