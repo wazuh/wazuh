@@ -1,8 +1,7 @@
 #!/bin/sh
 
-# Wazuh Template Selector
 # Copyright (C) 2015-2019, Wazuh Inc.
-# November 18, 2016.
+# March 6, 2019.
 #
 # This program is a free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -12,12 +11,12 @@
 . /etc/ossec-init.conf
   
 edit_value_tag() { 
-    if [ "$#" == "3" ] && [ ! -z "$2" ]; then
+    if [ "$#" == "2" ] && [ ! -z "$2" ]; then
         sed -ri "s#<$1>.+</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf" > /dev/null
     fi
 
     if [ "$?" != "0" ]; then
-        echo "Error updating $2 with variable $1." >> ${DIRECTORY}/logs/ossec.log
+        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> ${DIRECTORY}/logs/ossec.log
     fi
 }
 
@@ -29,6 +28,12 @@ add_parameter () {
 } 
 
 if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+
+    if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
+        touch -f ${DIRECTORY}/logs/ossec.log
+        chmod 660 ${DIRECTORY}/logs/ossec.log
+        chown root:ossec ${DIRECTORY}/logs/ossec.log
+    fi
 
     # Options to be modified in ossec.conf
     edit_value_tag "address" ${WAZUH_MANAGER_IP} 
