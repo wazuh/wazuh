@@ -418,7 +418,31 @@ components:
           enum:
           - stopped
           - running
-    
+
+    WazuhInfo:
+      type: object
+      properties:
+        path:
+          type: string
+        version:
+          type: string
+        compilation_date:
+          type: string
+        type:
+          type: string
+        max_agents:
+          type: integer
+        openssl_support:
+          type: string
+          enum:
+          - yes
+          - no
+        ruleset_version:
+          type: string
+        tz_offset:
+          type: string
+        tz_name:
+          type: string
     # SCA models
     SCAChecks:
       type: object
@@ -3186,6 +3210,42 @@ paths:
                   wazuh-clusterd: running
                   wazuh-modulesd: running
 
+  /cluster/{node_id}/info:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's information
+      description: Returns basic information about a specified node such as version, compilation date, installation path.
+      operationId: api.controllers.cluster.get_info_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Node information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhInfo'
+              example:
+                error: 0
+                data:
+                  path: /var/ossec
+                  version: v3.9.0
+                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  type: manager
+                  max_agents: 14000
+                  openssl_support: yes
+                  ruleset_version: 3905
+                  tz_offset: +0000
+                  tz_name: UTC
   /sca/{agent_id}:
     get:
       tags:
