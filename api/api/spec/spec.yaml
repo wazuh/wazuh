@@ -283,6 +283,22 @@ components:
         unknown:
           type: integer
     
+    ## Cluster models
+    ClusterNode:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - worker
+          - master
+        version:
+          type: string
+        ip:
+          type: string
+    
     # SCA models
     SCAChecks:
       type: object
@@ -697,6 +713,15 @@ components:
       description: Filters by title.
       schema:
         type: string
+    node_type:
+      in: query
+      name: type
+      description: Filters by node type.
+      schema:
+        type: string
+        enum:
+        - "worker"
+        - "master"
           
 tags:
   - name: active-response
@@ -2686,6 +2711,55 @@ paths:
                   cluster: "wazuh"
                   type: "worker"
 
+  /cluster/nodes:
+    get:
+      tags:
+      - cluster
+      summary: Get information about all nodes in the cluster.
+      description: Returns a list containing all connected nodes in the cluster.
+      operationId: api.controllers.cluster.get_cluster_nodes
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/node_type'
+      responses:
+        '200':
+          description: 'List of connected nodes'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/ClusterNode'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - name: "node02"
+                      type: "worker"
+                      version: "3.9.0"
+                      ip: "172.17.0.101"
+                    - name: "node01"
+                      type: "master"
+                      version: "3.9.0"
+                      ip: "172.17.0.100"
+
   /sca/{agent_id}:
     get:
       tags:
@@ -2705,6 +2779,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: 'SCA database elements'
@@ -2775,6 +2850,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/select'
       responses:
         '200':
           description: 'List of SCA Checks for a given policy ID'
