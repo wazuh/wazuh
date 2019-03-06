@@ -991,13 +991,14 @@ backup_old_api() {
 
 }
 
-restore_backup_api() {
+restore_old_api() {
 
     API_PATH=${PREFIX}/api
     API_PATH_BACKUP=${PREFIX}/~api
 
     if [ -f $API_PATH_BACKUP/configuration/config.js ]; then
-        cp -rfp $API_PATH_BACKUP/configuration/ssl/* $API_PATH/configuration/ssl/
+        mkdir $API_PATH/configuration/ssl
+        cp -rLfp $API_PATH_BACKUP/configuration/ssl/* $API_PATH/configuration/ssl
         #rm -rf $API_PATH_BACKUP
     fi
 
