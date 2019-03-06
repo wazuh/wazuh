@@ -2799,6 +2799,45 @@ paths:
                   type: "worker"
                   version: "3.9.0"
                   ip: "172.17.0.101"
+  
+  /cluster/status:
+    get:
+      tags:
+      - cluster
+      summary: Get cluster status
+      description: Returns information about the cluster status.
+      operationId: api.controllers.cluster.get_status
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Cluster status'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      properties:
+                        enabled:
+                          type: string
+                          enum:
+                          - yes
+                          - no
+                        running:
+                          type: string
+                          enum:
+                          - yes
+                          - no
+
+              example:
+                error: 0
+                data:
+                  enabled: yes
+                  running: yes
 
   /sca/{agent_id}:
     get:
