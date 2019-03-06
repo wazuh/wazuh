@@ -23,7 +23,7 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/api/configuration
 	$(INSTALL_RW_DIR) $(PREFIX)/api/security
 
-	$(INSTALL_EXEC) api/migration.py $(PREFIX)/api/migration.py
+	$(INSTALL_EXEC) migration.py $(PREFIX)/api/migration.py
 
 	$(INSTALL_FILE) api/configuration/template-api.yml ${PREFIX}/api/configuration
 

@@ -981,7 +981,7 @@ backup_old_api() {
 
         if [ -d $API_PATH/configuration/ssl ]; then
             mkdir $API_PATH_BACKUP/configuration/ssl
-            cp -rLfp $API_PATH/configuration/ssl $API_PATH_BACKUP/configuration/ssl
+            cp -rLfp $API_PATH/configuration/ssl/* $API_PATH_BACKUP/configuration/ssl
         fi
 
         # remove old API directory
