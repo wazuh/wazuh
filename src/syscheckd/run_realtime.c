@@ -511,6 +511,7 @@ int realtime_adddir(const char *dir, int whodata)
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror("Unable to add directory to real time monitoring: '%s' - Maximum size permitted.", dir);
+        w_mutex_unlock(&adddir_mutex);
         return (0);
     }
 
@@ -537,6 +538,7 @@ int realtime_adddir(const char *dir, int whodata)
             free(rtlocald);
             rtlocald = NULL;
             merror("Unable to add directory to real time monitoring: '%s'.", dir);
+            w_mutex_unlock(&adddir_mutex);
             return (0);
         }
         syscheck.realtime->fd++;
