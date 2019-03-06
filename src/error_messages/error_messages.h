@@ -347,6 +347,7 @@
 #define VU_NULL_AGENT_IP            "(5525): The agent database returned a null registration IP address. Skipping agent %s."
 #define VU_API_REQ_INV_NEW          "(5526): There was no valid response to '%s' after %d attempts. Trying the next page..."
 #define VU_UNC_SEVERITY             "(5527): Uncontrolled severity has been found: '%s'."
+#define VU_CPE_CLEAN_REQUEST_ERROR  "(5428): The CPEs of the agent %s could not be clenaed."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
