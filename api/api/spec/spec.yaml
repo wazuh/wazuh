@@ -708,7 +708,7 @@ tags:
   - name: ciscat
     description: ''
   - name: cluster
-    description: ''
+    description: 'Wazuh cluster and nodes management'
   - name: sca
     description: 'Policy monitoring'
   - name: decoders
@@ -2650,7 +2650,42 @@ paths:
                     notchecked: 71
                     unknown: 0
       x-swagger-router-controller: "api.controllers.ciscat_controller"
-  
+
+  /cluster/node:
+    get:
+      tags:
+      - cluster
+      summary: Get information about the local node.
+      description: Returns basic information about the cluster node receiving the request.
+      operationId: api.controllers.cluster.get_cluster_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Node basic information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      properties:
+                        node:
+                          type: string
+                        cluster:
+                          type: string
+                        type:
+                          type: string
+              example:
+                error: 0
+                data:
+                  node: "node02"
+                  cluster: "wazuh"
+                  type: "worker"
+
   /sca/{agent_id}:
     get:
       tags:
