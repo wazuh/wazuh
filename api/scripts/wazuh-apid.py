@@ -30,7 +30,7 @@ def print_version():
 
 
 def main(cors, port, host, ssl_context, main_logger):
-    app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec/'))
+    app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
     app.app.logger = main_logger
