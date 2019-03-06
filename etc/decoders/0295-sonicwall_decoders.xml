@@ -17,6 +17,6 @@
   -->
 <decoder name="sonicwall">
   <type>firewall</type>
-  <prematch>^id=\w+ sn=\w+ time=\S+ \S+ fw=\S+ pri=\d </prematch>
+  <prematch>^\s*id=\w+\s+sn=\w+ time="\.+" fw=\S+ pri=\d </prematch>
   <plugin_decoder>SonicWall_Decoder</plugin_decoder>
 </decoder>
