@@ -13,12 +13,14 @@ from sqlalchemy import create_engine, Column, String
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from wazuh.common import ossec_path
 from werkzeug.exceptions import Unauthorized
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from api.api_exception import APIException
+from api.constants import SECURITY_PATH
+
 # Set authentication database
-_auth_db_file = os.path.join(ossec_path, 'api', 'users.db')
+_auth_db_file = os.path.join(SECURITY_PATH, 'users.db')
 _engine = create_engine(f'sqlite:///{_auth_db_file}', echo=False)
 _Base = declarative_base()
 
@@ -125,20 +127,23 @@ JWT_ALGORITHM = 'HS256'
 
 
 # Generate secret file to keep safe or load existing secret
-secret_file_path = os.path.join(ossec_path, 'api', 'jwt_secret')
-if not os.path.exists(secret_file_path):
-    JWT_SECRET = token_urlsafe(512)
-    with open(secret_file_path, 'x') as secret_file:
-        secret_file.write(JWT_SECRET)
-    # Only if executing as root
-    try:
-        chown(secret_file_path, 'root', 'ossec')
-    except PermissionError:
-        pass
-    os.chmod(secret_file_path, 0o640)
-else:
-    with open(secret_file_path, 'r') as secret_file:
-        JWT_SECRET = secret_file.readline()
+_secret_file_path = os.path.join(SECURITY_PATH, 'jwt_secret')
+try:
+    if not os.path.exists(_secret_file_path):
+        JWT_SECRET = token_urlsafe(512)
+        with open(_secret_file_path, mode='x') as secret_file:
+            secret_file.write(JWT_SECRET)
+        # Only if executing as root
+        try:
+            chown(_secret_file_path, 'root', 'ossec')
+        except PermissionError:
+            pass
+        os.chmod(_secret_file_path, 0o640)
+    else:
+        with open(_secret_file_path, mode='r') as secret_file:
+            JWT_SECRET = secret_file.readline()
+except IOError as e:
+    raise APIException(2002)
 
 
 def generate_token(user_id):
