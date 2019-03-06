@@ -720,8 +720,15 @@ components:
       schema:
         type: string
         enum:
-        - "worker"
-        - "master"
+        - worker
+        - master
+    node_id:
+      in: path
+      name: node_id
+      description: Cluster node name.
+      required: True
+      schema:
+        type: string  
           
 tags:
   - name: active-response
@@ -2759,6 +2766,39 @@ paths:
                       type: "master"
                       version: "3.9.0"
                       ip: "172.17.0.100"
+    
+  /cluster/nodes/{node_id}:
+    get:
+      tags:
+      - cluster
+      summary: Get information about a specified node.
+      description: Returns information about a specified node in the cluster.
+      operationId: api.controllers.cluster.get_cluster_node_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Node information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ClusterNode'
+              example:
+                error: 0
+                data:
+                  name: "node02"
+                  type: "worker"
+                  version: "3.9.0"
+                  ip: "172.17.0.101"
 
   /sca/{agent_id}:
     get:
