@@ -915,14 +915,23 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if (strcmp(arch, "both") == 0) {
                 if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)))
-                return (OS_INVALID);
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+                
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))
-                return (OS_INVALID);
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+                
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag))
-                return (OS_INVALID);
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+                
             }
 
             if (tag)
