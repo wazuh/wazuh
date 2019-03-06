@@ -1140,6 +1140,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if(!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_nodiff);
                 continue;
             }
 
