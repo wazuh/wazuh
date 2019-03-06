@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from typing import Dict
 import json
 import os
 import re
@@ -12,7 +13,7 @@ from wazuh import common
 from api import validator
 
 
-def get_old_config(old_config_path='/var/ossec/api/configuration/config.js'):
+def get_old_config(old_config_path: str = '/var/ossec/~api/configuration/config.js') -> Dict:
     """
     Gets variables from old API
     :param old_config_path: Path of old API configuration file
@@ -38,7 +39,7 @@ def get_old_config(old_config_path='/var/ossec/api/configuration/config.js'):
     return rename_old_fields(old_config)
 
 
-def check_old_config(config):
+def check_old_config(config: Dict) -> bool:
     """
     Checks if old configuration is OK
     :param config: Dictionary with values of old configuration
@@ -62,15 +63,16 @@ def check_old_config(config):
     return True
 
 
-def rename_old_fields(config):
+def rename_old_fields(config: Dict) -> Dict:
     """
     Renames the name of old configuration fields to the current format
     :param config: Dictionary with values of old configuration
     :return: Dictionary with renamed old fields
     """
     old_to_new = {'BehindProxyServer': 'behind_proxy_server',
-                   'honorCipherOrder': 'honor_cipher_order',
-                   'secureProtocol': 'secure_protocol'}
+                  'honorCipherOrder': 'honor_cipher_order',
+                  'secureProtocol': 'secure_protocol'}
+
     new_config = config
     for key in config:
         if key in old_to_new:
@@ -109,7 +111,7 @@ def rename_old_fields(config):
     return new_config
 
 
-def write_into_yaml_file(config):
+def write_into_yaml_file(config: Dict):
     """
     Writes old configuration into a YAML file
     :param config: Dictionary with old configuration values
@@ -121,10 +123,6 @@ def write_into_yaml_file(config):
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
     except IOError:
         raise
-
-
-def save_old_files():
-    pass
 
 
 if __name__ == '__main__':

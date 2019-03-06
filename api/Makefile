@@ -28,7 +28,7 @@ install:
 	$(INSTALL_FILE) api/controllers/*.py ${PREFIX}/api/api/controllers
 	$(INSTALL_FILE) api/models/*.py ${PREFIX}/api/api/models
 	$(INSTALL_FILE) api/spec/*.yaml ${PREFIX}/api/api/spec
-	$(INSTALL_FILE) api/configuration/api.yml ${PREFIX}/api/configuration
+	$(INSTALL_FILE) api/configuration/template-api.yml ${PREFIX}/api/configuration
 
 #	Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)
