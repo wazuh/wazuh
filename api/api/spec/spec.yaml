@@ -443,6 +443,65 @@ components:
           type: string
         tz_name:
           type: string
+
+    WazuhConfiguration:
+      type: object
+      properties:
+        active-response:
+          type: object
+        command:
+          type: array
+          items:
+            type: object
+        agentless:
+          type: object
+        localfile:
+          type: array
+          items:
+            type: object
+        remote:
+          type: array
+          items:
+            type: object
+        syslog_output:
+          type: object
+        integration:
+          type: object
+        alerts:
+          type: object
+        client:
+          type: object
+        database_output:
+          type: object
+        email_alerts:
+          type: object
+        reports:
+          type: object
+        global:
+          type: object
+        open-scap:
+          type: object
+        cis-cat:
+          type: object
+        syscollector:
+          type: object
+        rootcheck:
+          type: object
+        ruleset:
+          type: object
+        syscheck:
+          type: object
+        auth:
+          type: object
+        cluster:
+          type: object
+        vulnerability-detector:
+          type: object
+        osquery:
+          type: object
+        labels:
+          type: object
+
     # SCA models
     SCAChecks:
       type: object
@@ -872,7 +931,44 @@ components:
       description: Cluster node name.
       required: True
       schema:
-        type: string  
+        type: string
+    section:
+      in: query
+      name: section
+      description: Indicates the wazuh configuration section
+      schema:
+        type: string
+        enum:
+        - active-response
+        - command
+        - agentless
+        - localfile
+        - remote
+        - syslog_output
+        - integration
+        - alerts
+        - client
+        - database_output
+        - email_alerts
+        - reports
+        - global
+        - open-scap
+        - cis-cat
+        - syscollector
+        - rootcheck
+        - ruleset
+        - syscheck
+        - auth
+        - cluster
+        - vulnerability-detector
+        - osquery
+        - labels
+    field:
+      in: query
+      name: field
+      description: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+      schema:
+        type: string
 
 tags:
   - name: active-response
@@ -3246,6 +3342,70 @@ paths:
                   ruleset_version: 3905
                   tz_offset: +0000
                   tz_name: UTC
+  
+  /cluster/{node_id}/configuration:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's configuration
+      description: Returns wazuh configuration used in node {node_id}
+      operationId: api.controllers.cluster.get_configuration_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/section'
+        - $ref: '#/components/parameters/field'
+      responses:
+        '200':
+          description: 'Node configuration'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhConfiguration'
+              example:
+                error: 0
+                data:
+                  global:
+                    jsonout_output: yes
+                    alerts_log: yes
+                    logall: no
+                    logall_json: no
+                    email_notification: no
+                    smtp_server: smtp.example.wazuh.com
+                    email_from: ossecm@example.wazuh.com
+                    email_to: recipient@example.wazuh.com
+                    email_maxperhour: 12
+                    email_log_source: alerts.log
+                    queue_size: 131072
+                    white_list:
+                      - 127.0.0.1
+                      - ^localhost.localdomain$
+                      - 127.0.0.53
+                  alerts:
+                    log_alert_level: "3"
+                    email_alert_level: "12"
+                  cis-cat:
+                    disabled: yes
+                    timeout: 1800
+                    interval: 1d
+                    scan-on-start: yes
+                    java_path: wodles/java
+                    ciscat_path: wodles/ciscat
+                  command:
+                    - name: disable-account
+                      executable: disable-account.sh
+                      expect: user
+                      timeout_allowed: yes
+                    - name: restart-ossec
+                      executable: restart-ossec.sh
+  
   /sca/{agent_id}:
     get:
       tags:
