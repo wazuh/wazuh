@@ -915,7 +915,16 @@ InstallLocal()
     fi
 
     ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    # backup old API
+    backup_old_api
+
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    # execute migration.py
+    ${PREFIX}/framework/python/bin/python3 ${PREFIX}/api/api/migration.py
+    # restore configuration and certificates from old API
+    restore_old_api
 
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
@@ -950,6 +959,43 @@ InstallLocal()
     touch ${PREFIX}/logs/integrations.log
     chmod 640 ${PREFIX}/logs/integrations.log
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
+}
+
+backup_old_api() {
+
+    API_PATH=${PREFIX}/api
+    API_PATH_BACKUP=${PREFIX}/~api
+
+    # do backup only if config.js file exists
+    if [ -f $API_PATH/configuration/config.js ]; then
+
+        if [ -e $API_PATH_BACKUP ]; then
+            exec_cmd "rm -rf $API_PATH_BACKUP/*"
+        else
+            exec_cmd "mkdir $API_PATH_BACKUP"
+            exec_cmd "chown root:ossec $API_PATH_BACKUP"
+        fi
+
+        exec_cmd "cp -Lfp $API_PATH/configuration/config.js $API_PATH_BACKUP/configuration/config.js"
+
+        if [ -d $API_PATH/ssl ]; then
+            exec_cmd "cp -rLfp $API_PATH/ssl $API_PATH_BACKUP/ssl"
+        fi
+
+    fi
+
+}
+
+restore_backup_api() {
+
+    API_PATH=${PREFIX}/api
+    API_PATH_BACKUP=${PREFIX}/~api
+
+    if [ -f $API_PATH_BACKUP/configuration/config.js ]; then
+        cp -rfp $API_PATH_BACKUP/configuration/ssl/* $API_PATH/configuration/ssl/
+        rm -rf $API_PATH_BACKUP
+    fi
+
 }
 
 TransferShared()
