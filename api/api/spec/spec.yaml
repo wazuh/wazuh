@@ -595,7 +595,7 @@ tags:
   - name: agents
     description: 'Agents management related operations'
   - name: cache
-    description: ''
+    description: 'API cache management'
   - name: ciscat
     description: ''
   - name: cluster
@@ -2334,8 +2334,8 @@ paths:
     delete:
       tags:
         - cache
-      summary: 'Clear group cache'
-      description: 'Clears cache of the specified group.'
+      summary: 'Clear entire cache'
+      description: 'Clears entire cache.'
       operationId: deleteCache
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -2425,8 +2425,8 @@ paths:
     get:
       tags:
         - cache
-      summary: 'Get cache index'
-      description: 'Returns current cache index.'
+      summary: 'Return cache configuration.'
+      description: 'Returns cache configuration.'
       operationId: getCacheConfig
       parameters:
         - $ref: '#/components/parameters/pretty'
