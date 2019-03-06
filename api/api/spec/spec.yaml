@@ -282,7 +282,39 @@ components:
           type: integer
         unknown:
           type: integer
-        
+    
+    # SCA models
+    SCAChecks:
+      type: object
+      properties:
+        file:
+          type: string
+        policy_id:
+          type: string
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        rationale:
+          type: string
+        remediation:
+          type: string
+        process:
+          type: string
+        directory:
+          type: string
+        registry:
+          type: string
+        references:
+          type: string
+        result:
+          type: string
+          enum:
+            - "passed"
+            - "failed"
+  
   securitySchemes:
     basicAuth:
       type: http
@@ -433,10 +465,23 @@ components:
       description: Filters by passed checks.
       schema:
         type: integer
+    policy_id:
+      in: query
+      name: policy_id
+      description: Filters by policy id.
+      required: True
+      schema:
+        type: integer
     fail:
       in: query
       name: fail
       description: Filters by failed checks.
+      schema:
+        type: integer
+    file:
+      in: query
+      name: file
+      description: Filters by filename.
       schema:
         type: integer
     error:
@@ -582,10 +627,52 @@ components:
       description: Filters by policy description.
       schema:
         type: string
+    directory:
+      in: query
+      name: directory
+      description: Filters by directory.
+      schema:
+        type: string
+    process:
+      in: query
+      name: process
+      description: Filters by process name.
+      schema:
+        type: integer
+    rationale:
+      in: query
+      name: rationale
+      description: Filters by rationale.
+      schema:
+        type: string
     references:
       in: query
       name: references
       description: Filters by references.
+      schema:
+        type: string
+    remediation:
+      in: query
+      name: remediation
+      description: Filters by remediation.
+      schema:
+        type: string
+    registry:
+      in: query
+      name: registry
+      description: Filters by registry.
+      schema:
+        type: string
+    result:
+      in: query
+      name: result
+      description: Filters by result.
+      schema:
+        type: string
+    title:
+      in: query
+      name: title
+      description: Filters by title.
       schema:
         type: string
           
@@ -600,8 +687,8 @@ tags:
     description: ''
   - name: cluster
     description: ''
-  - name: configuration-assessment
-    description: ''
+  - name: sca
+    description: 'Policy monitoring'
   - name: decoders
     description: ''
   - name: experimental
@@ -2542,29 +2629,35 @@ paths:
                     unknown: 0
       x-swagger-router-controller: "api.controllers.ciscat_controller"
   
-  /configuration-assessment/{agent_id}/:
-    #Not Corret Schema
+  /sca/{agent_id}/checks/{policy_id}:
     get:
       tags:
-      - agents
-      summary: 'Get all agents'
-      description: 'Returns a list with the available agents.'
-      operationId: getConfigAssessment
+      - sca
+      summary: 'Get policy monitoring alerts for a given policy'
+      description: 'Returns the policy monitoring alerts for a given policy'
+      operationId: getSCACheck
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/policy_id'
+        - $ref: '#/components/parameters/title'
         - $ref: '#/components/parameters/description'
+        - $ref: '#/components/parameters/rationale'
+        - $ref: '#/components/parameters/remediation'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/process'
+        - $ref: '#/components/parameters/directory'
+        - $ref: '#/components/parameters/registry'
         - $ref: '#/components/parameters/references'
+        - $ref: '#/components/parameters/result'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
       responses:
         '200':
-          description: 'Configuration Assesment'
+          description: 'List of SCA Checks for a given policy ID'
           content:
             application/json:
               schema:
@@ -2580,21 +2673,27 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/Agent'
+                                $ref: '#/components/schemas/SCAChecks'
               example:
                 error: 0
                 data:
-                  totalItems: 1
+                  totalItems: 2
                   items:
-                  - end_scan: "2019-02-19 10:22:15"
-                    name: System audit for web-related vulnerabilities
-                    start_scan: "2019-02-19 10:22:15"
-                    description: Guidance for establishing a secure configuration for web-related vulnerabilities.
-                    fail: 0
-                    references: (null)
-                    policy_id: system_audit
-                    score: 100
-                    pass: 76
+                  - result: "passed"
+                    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
+                    directory:  "/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www"
+                    id: 1008
+                    policy_id: "system_audit"
+                    compliance:
+                    - key: "pci_dss"
+                      value: "6.5, 6.6, 11.4"
+                  - file: "/etc/php.ini"
+                    result: "passed"
+                    title: "PHP - Displaying of errors is enabled"
+                    id: 1003
+                    policy_id: "system_audit"
+                    compliance:
+                    - 
       x-swagger-router-controller: "api.controllers.configuration_assessment_controller"
   
   /token:
