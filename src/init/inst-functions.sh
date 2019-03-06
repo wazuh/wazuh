@@ -970,16 +970,16 @@ backup_old_api() {
     if [ -f $API_PATH/configuration/config.js ]; then
 
         if [ -e $API_PATH_BACKUP ]; then
-            exec_cmd "rm -rf $API_PATH_BACKUP/*"
+            rm -rf $API_PATH_BACKUP/*
         else
-            exec_cmd "mkdir $API_PATH_BACKUP"
-            exec_cmd "chown root:ossec $API_PATH_BACKUP"
+            mkdir $API_PATH_BACKUP
+            chown root:ossec $API_PATH_BACKUP
         fi
 
-        exec_cmd "cp -Lfp $API_PATH/configuration/config.js $API_PATH_BACKUP/configuration/config.js"
+        cp -Lfp $API_PATH/configuration/config.js $API_PATH_BACKUP/configuration/config.js
 
         if [ -d $API_PATH/ssl ]; then
-            exec_cmd "cp -rLfp $API_PATH/ssl $API_PATH_BACKUP/ssl"
+            cp -rLfp $API_PATH/ssl $API_PATH_BACKUP/ssl
         fi
 
     fi
