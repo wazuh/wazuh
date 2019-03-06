@@ -319,6 +319,10 @@ int OS_ReadXMLRules(const char *rulefile,
                                              realloc(config_ruleinfo->srcip,
                                                      (ip_s + 2) * sizeof(os_ip *));
 
+                    if(config_ruleinfo->srcip == NULL) {
+                        merror_exit(MEM_ERROR, errno, strerror(errno));
+                    }
+                    
                     /* Allocate memory for the individual entries */
                     os_calloc(1, sizeof(os_ip),
                               config_ruleinfo->srcip[ip_s]);
