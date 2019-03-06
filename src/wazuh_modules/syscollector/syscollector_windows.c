@@ -1884,7 +1884,12 @@ void sys_network_windows(const char* LOCATION){
 
                 if (checkVista()) {
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
-                    string = _get_network_vista(pCurrAddresses, ID, timestamp);
+                    if(_get_network_vista) {
+                        string = _get_network_vista(pCurrAddresses, ID, timestamp);
+                    }
+                    else {
+                        os_strdup("UNKNOWN",string);
+                    }
                 } else {
                     /* Call function get_network_xp() */
                     string = get_network_xp(pCurrAddresses, AdapterInfo, ID, timestamp);
