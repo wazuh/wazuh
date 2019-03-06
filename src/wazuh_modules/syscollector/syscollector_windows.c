@@ -159,6 +159,7 @@ char* get_process_name(DWORD pid){
                     if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
                 }
             }
+            FreeLibrary(ntdll);
         } else {
             mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
         }
