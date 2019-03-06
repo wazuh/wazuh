@@ -1756,6 +1756,11 @@ void sys_network_windows(const char* LOCATION){
         }
     }
 
+    if (sys_library)  { 
+        FreeLibrary(sys_library);
+        sys_library = NULL;
+    }
+
     if (dwRetVal != NO_ERROR) return;
 
     // Define time to sleep between messages sent
@@ -1915,8 +1920,6 @@ void sys_network_windows(const char* LOCATION){
     if (pAddresses) {
         win_free(pAddresses);
     }
-
-    if (sys_library) FreeLibrary(sys_library);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");
