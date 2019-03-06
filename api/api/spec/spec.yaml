@@ -314,6 +314,28 @@ components:
           enum:
             - "passed"
             - "failed"
+
+    SCADatabase:
+      type: object
+      properties:
+          policy_id:
+            type: string
+          name:
+            type: string
+          description:
+            type: string
+          references:
+            type: string
+          pass:
+            type: integer
+          fail:
+            type: integer
+          score:
+            type: integer
+          end_scan:
+            type: string
+          start_scan:
+            type: string
   
   securitySchemes:
     basicAuth:
@@ -466,7 +488,7 @@ components:
       schema:
         type: integer
     policy_id:
-      in: query
+      in: path
       name: policy_id
       description: Filters by policy id.
       required: True
@@ -2629,13 +2651,75 @@ paths:
                     unknown: 0
       x-swagger-router-controller: "api.controllers.ciscat_controller"
   
+  /sca/{agent_id}:
+    get:
+      tags:
+      - sca
+      summary: Get security configuration assessment (SCA) database
+      description: Returns the security SCA database of an agent.
+      operationId: get_sca_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/description'
+        - $ref: '#/components/parameters/references'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/query'
+      responses:
+        '200':
+          description: 'SCA database elements'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SCADatabase'
+              example:
+               error: 0
+               data:
+                totalItems: 2
+                items:
+                - name: "System audit for SSH hardening"
+                  pass: 3
+                  score: 33
+                  references: "https://www.ssh.com/ssh/"
+                  fail: 6
+                  description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
+                  policy_id: "system_audit_ssh"
+                  end_scan: "2019-03-06 10:12:02"
+                  start_scan: "2019-03-06 10:12:02"
+                - name: "CIS benchmark for Debian/Linux"
+                  pass: 36
+                  score: 87
+                  references: "https://www.cisecurity.org/cis-benchmarks/"
+                  fail: 5
+                  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
+                  policy_id: "cis_debian"
+                  end_scan: "2019-03-06 10:11:53"
+                  start_scan: "2019-03-06 10:11:53"
+
   /sca/{agent_id}/checks/{policy_id}:
     get:
       tags:
       - sca
       summary: 'Get policy monitoring alerts for a given policy'
       description: 'Returns the policy monitoring alerts for a given policy'
-      operationId: getSCACheck
+      operationId: get_sca_checks
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2655,6 +2739,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/query'
       responses:
         '200':
           description: 'List of SCA Checks for a given policy ID'
