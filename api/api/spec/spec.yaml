@@ -3004,6 +3004,65 @@ paths:
                   enabled: yes
                   running: yes
 
+  /cluster/config:
+    get:
+      tags:
+      - cluster
+      summary: Get cluster configuration
+      description: Returns the current cluster configuration
+      operationId: api.controllers.cluster.get_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Cluster configuration
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                properties:
+                  data:
+                    properties:
+                      name:
+                        type: string
+                      node_name:
+                        type: string
+                      node_type:
+                        type: worker
+                        enum:
+                        - master
+                        - worker
+                      key:
+                        type: string
+                      port:
+                        type: integer
+                      bind_addr:
+                        type: string
+                      nodes:
+                        type: array
+                        items:
+                          type: string
+                      hidden:
+                        type: string
+                      disabled:
+                        type: boolean
+              example:
+                error: 0
+                data:
+                  name: wazuh
+                  node_name: node02
+                  node_type: worker
+                  key: 9d273b53510fef702b54a92e9cffc82e
+                  port: 1516
+                  bind_addr: 0.0.0.0
+                  nodes:
+                    - 172.17.0.100
+                  hidden: no
+                  disabled: false
+
   /sca/{agent_id}:
     get:
       tags:
