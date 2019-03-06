@@ -922,7 +922,7 @@ InstallLocal()
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
 
     # execute migration.py
-    ${PREFIX}/framework/python/bin/python3 ${PREFIX}/api/api/migration.py
+    ${PREFIX}/framework/python/bin/python3 ${PREFIX}/api/migration.py
     # restore configuration and certificates from old API
     restore_old_api
 
@@ -981,6 +981,9 @@ backup_old_api() {
         if [ -d $API_PATH/ssl ]; then
             cp -rLfp $API_PATH/ssl $API_PATH_BACKUP/ssl
         fi
+
+        # remove old API directory
+        rm -rf $API_PATH
 
     fi
 
