@@ -2909,6 +2909,62 @@ paths:
                         - type: "Last keep alive"
                           date_start: "2019-01-11 18:52:57.72"
                           date_end: "2019-01-11 18:52:57.73"
+  
+  /cluster/healthcheck/{node_id}:
+    get:
+      tags:
+      - cluster
+      summary: Show a specified node's healthcheck information
+      description: Returns cluster healthcheck information of an specified node.
+      operationId: api.controllers.cluster.get_healthcheck_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: Node health information
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/Healthcheck'
+              example:
+                error: 0
+                data:
+                  info:
+                    ip: "172.17.0.101"
+                    version: "3.9.0"
+                    type: "worker"
+                    totalActiveAgents: 5
+                  status:
+                    - type: "Agent status"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+                      synchronized_files: 4
+                      free: true
+                    - type: "Extra valid"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+                      synchronized_files: 4
+                      free: true
+                    - type: "Integrity"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+                      synchronized_files:
+                        shared: 5
+                        missing: 4
+                        extra_valid: 0
+                        extra: 0
+                      free: true
+                    - type: "Last keep alive"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
 
   /cluster/status:
     get:
