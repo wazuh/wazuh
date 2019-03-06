@@ -338,6 +338,86 @@ components:
                 type: integer
               free:
                 type: boolean
+
+    # Cluster and manager models
+    WazuhDaemonsStatus:
+      type: object
+      properties:
+        ossec-agentlessd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-analysisd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-authd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-csyslogd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-dbd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-monitord:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-execd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-integratord:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-logcollector:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-maild:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-remoted:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-reportd:
+          type: string
+          enum:
+          - stopped
+          - running
+        ossec-syscheckd:
+          type: string
+          enum:
+          - stopped
+          - running
+        wazuh-clusterd:
+          type: string
+          enum:
+          - stopped
+          - running
+        wazuh-modulesd:
+          type: string
+          enum:
+          - stopped
+          - running
     
     # SCA models
     SCAChecks:
@@ -3062,6 +3142,49 @@ paths:
                     - 172.17.0.100
                   hidden: no
                   disabled: false
+
+  /cluster/{node_id}/status:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's status
+      description: Returns the status of all Wazuh daemons in node node_id
+      operationId: api.controllers.cluster.get_status_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Node wazuh daemons statuses'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhDaemonsStatus'
+              example:
+                error: 0
+                data:
+                  ossec-agentlessd: stopped
+                  ossec-analysisd: running
+                  ossec-authd: stopped
+                  ossec-csyslogd: stopped
+                  ossec-dbd: stopped
+                  ossec-monitord: running
+                  ossec-execd: running
+                  ossec-integratord: stopped
+                  ossec-logcollector: running
+                  ossec-maild: stopped
+                  ossec-remoted: running
+                  ossec-reportd: stopped
+                  ossec-syscheckd: running
+                  wazuh-clusterd: running
+                  wazuh-modulesd: running
 
   /sca/{agent_id}:
     get:
