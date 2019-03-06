@@ -1239,7 +1239,7 @@ void sys_hw_windows(const char* LOCATION){
                 }
             }
         }
-    
+        FreeLibrary(sys_library);
     } else {
         
         char *command;
