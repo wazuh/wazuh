@@ -7,11 +7,12 @@
 OSSEC_GROUP       = ossec
 PREFIX            = /var/ossec
 
-RM_FILE      = rm -f
-INSTALL_DIR  = install -o root -g ${OSSEC_GROUP} -m 0750  -d
-INSTALL_EXEC = install -o root -g ${OSSEC_GROUP} -m 0750
-INSTALL_FILE = install -o root -g ${OSSEC_GROUP} -m 0640
-PYTHON_BIN   = $(PREFIX)/framework/python/bin/python3
+RM_FILE        = rm -f
+INSTALL_DIR    = install -o root -g ${OSSEC_GROUP} -m 0750 -d
+INSTALL_RW_DIR = install -o root -g ${OSSEC_GROUP} -m 0770 -d
+INSTALL_EXEC   = install -o root -g ${OSSEC_GROUP} -m 0750
+INSTALL_FILE   = install -o root -g ${OSSEC_GROUP} -m 0640
+PYTHON_BIN     = $(PREFIX)/framework/python/bin/python3
 
 
 .PHONY: all install
@@ -20,6 +21,8 @@ all: install
 
 install:
 	$(INSTALL_DIR) $(PREFIX)/api/configuration
+	$(INSTALL_RW_DIR) $(PREFIX)/api/security
+
 	$(INSTALL_FILE) api/configuration/api.yml ${PREFIX}/api/configuration
 
 	# Install scripts/%.py on $(PREFIX)/bin/%
