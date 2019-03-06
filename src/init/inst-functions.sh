@@ -978,8 +978,8 @@ backup_old_api() {
 
         cp -Lfp $API_PATH/configuration/config.js $API_PATH_BACKUP/configuration/config.js
 
-        if [ -d $API_PATH/ssl ]; then
-            cp -rLfp $API_PATH/ssl $API_PATH_BACKUP/ssl
+        if [ -d $API_PATH/configuration/ssl ]; then
+            cp -rLfp $API_PATH/configuration/ssl $API_PATH_BACKUP/configuration/ssl
         fi
 
         # remove old API directory
@@ -996,7 +996,7 @@ restore_backup_api() {
 
     if [ -f $API_PATH_BACKUP/configuration/config.js ]; then
         cp -rfp $API_PATH_BACKUP/configuration/ssl/* $API_PATH/configuration/ssl/
-        rm -rf $API_PATH_BACKUP
+        #rm -rf $API_PATH_BACKUP
     fi
 
 }
