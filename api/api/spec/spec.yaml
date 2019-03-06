@@ -105,11 +105,7 @@ components:
         affected_agents:
           type: array
           items:
-            type: string
-        failed_ids:
-          type: array
-          items:
-            type: string
+            type: integer
     
     AllAgentAffected:
       type: object
@@ -143,23 +139,14 @@ components:
       properties:
         msg:
           type: string
-        affected_groups:
+        ids:
           type: array
           items:
             type: string
         affected_agents:
           type: array
           items:
-            type: string
-        failed_ids:
-          type: array
-          items:
-            type: string
-        older_than:
-          type: string
-        total_affected_agents:
-          type: integer
-          format: int32
+            type: integer
           
     AgentIdKey:
       type: object
@@ -282,7 +269,7 @@ components:
           type: integer
         unknown:
           type: integer
-    
+          
     # SCA models
     SCAChecks:
       type: object
@@ -318,25 +305,25 @@ components:
     SCADatabase:
       type: object
       properties:
-          policy_id:
-            type: string
-          name:
-            type: string
-          description:
-            type: string
-          references:
-            type: string
-          pass:
-            type: integer
-          fail:
-            type: integer
-          score:
-            type: integer
-          end_scan:
-            type: string
-          start_scan:
-            type: string
-  
+        policy_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        references:
+          type: string
+        pass:
+          type: integer
+        fail:
+          type: integer
+        score:
+          type: integer
+        end_scan:
+          type: string
+        start_scan:
+          type: string
+        
   securitySchemes:
     basicAuth:
       type: http
@@ -348,26 +335,6 @@ components:
       bearerFormat: JWT
   
   parameters:
-    olderThanParam:
-      in: query
-      name: older_than
-      description: |
-        Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
-      schema:
-        type: string
-    statusParam:
-      in: query
-      name: status
-      description: Filters by agent status. Use commas to enter multiple statuses.
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - active
-          - pending
-          - neverconnected
-          - disconnected
     agent_id:
       in: path
       name: agent_id
@@ -375,98 +342,11 @@ components:
       required: true
       schema:
         type: integer
-    group_id:
-      in: path
-      name: group_id
-      description: Group ID.
-      required: true
-      schema:
-        type: string
-    group_cache:
-      in: path
-      name: group
-      description: Cache group.
-      required: true
-      schema:
-        type: string
-    file_name:
-      in: path
-      name: file_name
-      description: Filename.
-      required: true
-      schema:
-        type: string
     agent_name:
       in: path
       name: agent_name
       description: Agent name.
       required: true
-      schema:
-        type: string
-    pretty:
-      in: query
-      name: pretty
-      description: Show results in human-readable format
-      schema:
-        type: boolean
-    wait_for_complete:
-      in: query
-      name: wait_for_complete
-      description: Disable timeout response
-      schema:
-        type: boolean
-    offset:
-      in: query
-      name: offset
-      description: First element to return in the collection
-      schema:
-        type: integer
-        format: int32
-    limit:  
-      in: query
-      name: limit
-      description: Maximum number of elements to return
-      schema:
-        type: integer
-        format: int32
-    select:  
-      in: query
-      name: select
-      description: Select which fields to return (separated by comma)
-      schema:
-        type: array
-        items:
-          type: string
-    # It'd be more appropriate to be an array of strings, and separate the ascending or descending order in another param
-    sort:
-      in: query
-      name: sort
-      description: |
-            Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
-      schema:
-        type: string
-    search:
-      in: query
-      name: search
-      description: Looks for elements with the specified string
-      schema:
-        type: string
-    query:
-      in: query
-      name: q
-      description: Query to filter results by. For example q=&quot;status=Active&quot;
-      schema:
-        type: string
-    purge:
-      in: query
-      name: purge
-      description: Delete an agent from the key store
-      schema:
-        type: boolean
-    fields:
-      in: query
-      name: fields
-      description: List of fields affecting the operation.
       schema:
         type: string
     benchmark:
@@ -475,89 +355,29 @@ components:
       description: Filters by benchmark.
       schema:
         type: string
-    profile:
-      in: query
-      name: profile
-      description: Filters by evaluated profile.
-      schema:
-        type: string
-    pass:
-      in: query
-      name: pass
-      description: Filters by passed checks.
-      schema:
-        type: integer
-    policy_id:
+    component:
       in: path
-      name: policy_id
-      description: Filters by policy id.
-      required: True
-      schema:
-        type: integer
-    fail:
-      in: query
-      name: fail
-      description: Filters by failed checks.
-      schema:
-        type: integer
-    file:
-      in: query
-      name: file
-      description: Filters by filename.
-      schema:
-        type: integer
-    error:
-      in: query
-      name: error
-      description: Filters by encountered errors.
-      schema:
-        type: integer
-    notchecked:
-      in: query
-      name: notchecked
-      description: Filters by not checked.
-      schema:
-        type: integer
-    unknown:
-      in: query
-      name: unknown
-      description: Filters by unknown results.
-      schema:
-        type: integer
-    score:
-      in: query
-      name: score
-      description: Filters by final score.
-      schema:
-        type: integer
-    hash:
-      in: query
-      name: hash
-      description: Select algorithm to generate the sum.
-      schema:
-        type: string
-    list_agents:
-      in: query
-      name: ids
-      description: Array of agent's IDs
-      schema:
-        type: array
-        items:
-          type: integer
-    list_groups:
-      in: query
-      name: ids
-      description: Array of group's IDs
+      name: component
+      description: Selected agent's component.
+      required: true
       schema:
         type: array
         items:
           type: string
-    version:
-      in: query
-      name: version
-      description: Filters by agents version.
-      schema:
-        type: string
+          enum:
+          - agent
+          - agentless
+          - analysis
+          - auth
+          - com
+          - csyslog
+          - integrator
+          - logcollector
+          - mail
+          - monitor
+          - request
+          - syscheck
+          - wmodules
     configuration:
       in: path
       name: configuration
@@ -590,59 +410,6 @@ components:
           - syscheck
           - rootcheck
           - wmodules
-    component:
-      in: path
-      name: component
-      description: Selected agent's component.
-      required: true
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - agent
-          - agentless
-          - analysis
-          - auth
-          - com
-          - csyslog
-          - integrator
-          - logcollector
-          - mail
-          - monitor
-          - request
-          - syscheck
-          - wmodules
-    type:
-      in: query
-      name: type
-      description: Type of file.
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - conf
-          - rootkit_files
-          - rootkit_trojans
-          - rcl
-    format:
-      in: query
-      name: fromat
-      description: Optional. Output format (JSON, XML).
-      schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - json
-          - xml
-    name:
-      in: query
-      name: name
-      description: Filters by agent name.
-      schema:
-        type: string
     description:
       in: query
       name: description
@@ -655,16 +422,177 @@ components:
       description: Filters by directory.
       schema:
         type: string
+    error:
+      in: query
+      name: error
+      description: Filters by encountered errors.
+      schema:
+        type: integer
+    fail:
+      in: query
+      name: fail
+      description: Filters by failed checks.
+      schema:
+        type: integer
+    fields:
+      in: query
+      name: fields
+      description: List of fields affecting the operation.
+      schema:
+        type: string
+    file:
+      in: query
+      name: file
+      description: Filters by filename.
+      schema:
+        type: integer
+    file_name:
+      in: path
+      name: file_name
+      description: Filename.
+      required: true
+      schema:
+        type: string
+    format:
+      in: query
+      name: fromat
+      description: Optional. Output format (JSON, XML).
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - json
+          - xml
+    group_cache:
+      in: path
+      name: group
+      description: Cache group.
+      required: true
+      schema:
+        type: string
+    group_id:
+      in: path
+      name: group_id
+      description: Group ID.
+      required: true
+      schema:
+        type: string
+    hash:
+      in: query
+      name: hash
+      description: Select algorithm to generate the sum.
+      schema:
+        type: string
+    limit:  
+      in: query
+      name: limit
+      description: Maximum number of elements to return
+      schema:
+        type: integer
+        format: int32
+        default: 1
+        minimum: 1
+    list_agents:
+      in: query
+      name: list_agents
+      description: Array of agent's IDs
+      required: true
+      schema:
+        type: array
+        items:
+          type: integer
+    list_groups:
+      in: query
+      name: list_groups
+      description: Array of group's IDs
+      schema:
+        type: array
+        items:
+          type: string
+    name:
+      in: query
+      name: name
+      description: Filters by agent name.
+      schema:
+        type: string
+    notchecked:
+      in: query
+      name: notchecked
+      description: Filters by not checked.
+      schema:
+        type: integer
+    offset:
+      in: query
+      name: offset
+      description: First element to return in the collection
+      schema:
+        type: integer
+        format: int32
+        default: 0
+        minimum: 0
+    olderThanParam:
+      in: query
+      name: older_than
+      description: |
+        Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
+      schema:
+        type: string
+    pass:
+      in: query
+      name: pass
+      description: Filters by passed checks.
+      schema:
+        type: integer
+    pretty:
+      in: query
+      name: pretty
+      description: Show results in human-readable format
+      schema:
+        type: boolean
+        default: false
     process:
       in: query
       name: process
       description: Filters by process name.
       schema:
         type: integer
+    profile:
+      in: query
+      name: profile
+      description: Filters by evaluated profile.
+      schema:
+        type: string
+    policy_id:
+      in: path
+      name: policy_id
+      description: Filters by policy id.
+      required: True
+      schema:
+        type: integer
+    purge:
+      in: query
+      name: purge
+      description: Delete an agent from the key store
+      schema:
+        type: boolean
+        default: false
+    query:
+      in: query
+      name: q
+      description: Query to filter results by. For example q=&quot;status=Active&quot;
+      schema:
+        type: string
     rationale:
       in: query
       name: rationale
       description: Filters by rationale.
+      schema:
+        type: string
+    registry:
+      in: query
+      name: registry
+      description: Filters by registry.
       schema:
         type: string
     references:
@@ -679,25 +607,92 @@ components:
       description: Filters by remediation.
       schema:
         type: string
-    registry:
-      in: query
-      name: registry
-      description: Filters by registry.
-      schema:
-        type: string
     result:
       in: query
       name: result
       description: Filters by result.
       schema:
         type: string
+    score:
+      in: query
+      name: score
+      description: Filters by final score.
+      schema:
+        type: integer
+    search:
+      in: query
+      name: search
+      description: Looks for elements with the specified string
+      schema:
+        type: string
+    select:  
+      in: query
+      name: select
+      description: Select which fields to return (separated by comma)
+      schema:
+        type: array
+        items:
+          type: string
+    # It'd be more appropriate to be an array of strings, and separate the ascending or descending order in another param
+    sort:
+      in: query
+      name: sort
+      description: |
+            Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+      schema:
+        type: string
+    statusParam:
+      in: query
+      name: status
+      description: Filters by agent status. Use commas to enter multiple statuses.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - active
+          - pending
+          - neverconnected
+          - disconnected
     title:
       in: query
       name: title
       description: Filters by title.
       schema:
         type: string
-          
+    type:
+      in: query
+      name: type
+      description: Type of file.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - conf
+          - rootkit_files
+          - rootkit_trojans
+          - rcl
+    unknown:
+      in: query
+      name: unknown
+      description: Filters by unknown results.
+      schema:
+        type: integer
+    version:
+      in: query
+      name: version
+      description: Filters by agents version.
+      schema:
+        type: string
+    wait_for_complete:
+      in: query
+      name: wait_for_complete
+      description: Disable timeout response
+      schema:
+        type: boolean
+        default: false
+
 tags:
   - name: active-response
     description: 'Agents Active Response'
@@ -740,7 +735,7 @@ paths:
         - active-response
       summary: 'Run an AR command in the agent'
       description: 'Runs an Active Response command on a specified agent'
-      operationId: activeResponse
+      operationId: api.controllers.active_response_controller.activeResponse
       parameters:
         - $ref: '#/components/parameters/agent_id'
       
@@ -750,18 +745,21 @@ paths:
               schema:
                 properties:
                   command:
-                    description: Command.
+                    description: Command running in the agent.
                     type: string
                     
                   custom:
                     description: Custom.
                     type: boolean
+                    default: false
   
                   arguments:
                     description: Command arguments.
                     type: array
                     items:
                       type: string
+                required:
+                  - command
       responses:
         '200':
           description: 'Command send to agent'
@@ -770,10 +768,13 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
                 example:
                   data: "Command sent."
                   error: 0
-      x-swagger-router-controller: "api.controllers.active_response_controller"
 
   /agents:
     delete:
@@ -782,7 +783,7 @@ paths:
       summary: Delete agents
       description: |
         Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.
-      operationId: deleteAgents
+      operationId: api.controllers.agents_controller.deleteAgents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -801,7 +802,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'
+                      $ref: '#/components/schemas/AllAgentAffected'  
               example:
                 error: 0
                 data:
@@ -811,13 +812,12 @@ paths:
                   - '005'
                   older_than: 10s
                   total_affected_agents: 2
-      x-swagger-router-controller: "api.controllers.agents_controller"
     get:
       tags:
       - agents
       summary: 'Get all agents'
       description: 'Returns a list with the available agents.'
-      operationId: getAllAgents
+      operationId: api.controllers.agents_controller.getAllAgents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -952,13 +952,12 @@ paths:
                     ip: 10.0.0.62
                     id: '002'
                     node_name: unknown
-      x-swagger-router-controller: "api.controllers.agents_controller"
     post:
       tags:
       - agents
       summary: 'Add agent'
       description: 'Add a new agent.'
-      operationId: postAgent
+      operationId: api.controllers.agents_controller.postAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -971,14 +970,16 @@ paths:
                   name:
                     description: Agent name.
                     type: string
-                    
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-  
-                  force:
-                    description: Remove the old agent with the same IP if disconnected since <force> seconds.
+                  force_time:
+                    description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
+                    minimum: 1
+                required:
+                - name
+                - ip
       responses:
         '200':
           description: 'Add an agent'
@@ -996,16 +997,14 @@ paths:
                 data:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
-      x-swagger-router-controller: "api.controllers.agents_controller"
                   
-  
   /agents/{agent_id}:
     delete:
       tags:
         - agents
       summary: 'Delete an agent'
       description: 'Removes an agent.'
-      operationId: deleteAgent
+      operationId: api.controllers.agents_controller.deleteAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1029,13 +1028,12 @@ paths:
                   msg: All selected agents were removed
                   affected_agents:
                   - '008'
-      x-swagger-router-controller: "api.controllers.agents_controller"
     get:
       tags:
         - agents
       summary: 'Get an agent'
       description: 'Returns various information from an agent.'
-      operationId: getAgent
+      operationId: api.controllers.agents_controller.getAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1076,7 +1074,6 @@ paths:
                     name: manager
                     node_name: node01
                     id: '000'
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
@@ -1084,7 +1081,7 @@ paths:
         - agents
       summary: 'Get active configuration'
       description: 'Returns the active configuration in JSON format.'
-      operationId: getAgentConfig
+      operationId: api.controllers.agents_controller.getAgentConfig
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1146,7 +1143,6 @@ paths:
                         logformat: syslog
                         target:
                           - agent
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/{agent_id}/group:
     delete:
@@ -1154,7 +1150,7 @@ paths:
         - agents
       summary: 'Remove all agent groups.'
       description: 'Removes the group of the agent. The agent will automatically revert to the "default" group.'
-      operationId: deleteAgentGroup
+      operationId: api.controllers.agents_controller.deleteAgentGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1167,10 +1163,13 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
                 example:
                   error: 0
                   data: "Group unset for agent '004'."
-      x-swagger-router-controller: "api.controllers.agents_controller"
                   
   /agents/{agent_id}/group/is_sync:
     get:
@@ -1178,7 +1177,7 @@ paths:
         - agents
       summary: 'Get sync status of agent'
       description: 'Returns the sync status in JSON format.'
-      operationId: getSyncAgent
+      operationId: api.controllers.agents_controller.getSyncAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1202,7 +1201,6 @@ paths:
                 error: 0
                 data:
                     synced: false
-      x-swagger-router-controller: "api.controllers.agents_controller"
                   
   /agents/{agent_id}/group/{group_id}:
     delete:
@@ -1210,7 +1208,7 @@ paths:
         - agents
       summary: 'Remove a single group of an agent'
       description: 'Remove the group of the agent but will leave the rest of its group if it belongs to a multigroup.'
-      operationId: deleteAgentSingleGroup
+      operationId: api.controllers.agents_controller.deleteAgentSingleGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1224,16 +1222,19 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
                 example:
                   error: 0
                   data: "Group 'dmz' unset for agent '004'."
-      x-swagger-router-controller: "api.controllers.agents_controller"
     put:
       tags:
         - agents
       summary: 'Add agent group'
       description: 'Adds an agent to the specified group.'
-      operationId: putAgentSingleGroup
+      operationId: api.controllers.agents_controller.putAgentSingleGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1259,7 +1260,6 @@ paths:
                 example:
                   error: 0
                   data: "Group '004' already belongs to group 'dmz'."
-      x-swagger-router-controller: "api.controllers.agents_controller"
                   
   /agents/{agent_id}/key:
     get:
@@ -1267,7 +1267,7 @@ paths:
         - agents
       summary: 'Get agent key'
       description: 'Returns the key of an agent.'
-      operationId: getAgentKey
+      operationId: api.controllers.agents_controller.getAgentKey
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1288,7 +1288,6 @@ paths:
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
-      x-swagger-router-controller: "api.controllers.agents_controller"
                 
   /agents/{agent_id}/restart:
     put:
@@ -1296,7 +1295,7 @@ paths:
         - agents
       summary: 'Restart an agent'
       description: 'Restarts the specified agent.'
-      operationId: putRestartAgent
+      operationId: api.controllers.agents_controller.putRestartAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1319,7 +1318,6 @@ paths:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/{agent_id}/upgrade:
     put:
@@ -1327,7 +1325,7 @@ paths:
         - agents
       summary: 'Upgrade agent using online repository'
       description: 'Upgrade the agent using a WPK file from online repository.'
-      operationId: putUpgradeAgent
+      operationId: api.controllers.agents_controller.putUpgradeAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1366,7 +1364,6 @@ paths:
               example:
                 error: 0
                 data: "Upgrade procedure started"
-      x-swagger-router-controller: "api.controllers.agents_controller"
                 
   /agents/{agent_id}/upgrade_custom:
     put:
@@ -1374,7 +1371,7 @@ paths:
         - agents
       summary: 'Upgrade agent using online repository'
       description: 'Upgrade the agent using a WPK file from online repository.'
-      operationId: putUpgradeCustomAgent
+      operationId: api.controllers.agents_controller.putUpgradeCustomAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1404,7 +1401,6 @@ paths:
               example:
                 error: 0
                 data: "Installation started"
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/{agent_name}:
     put:
@@ -1412,7 +1408,7 @@ paths:
         - agents
       summary: 'Add agent (quick method)'
       description: 'Adds a new agent with name :agent_name. This agent will use ANY as IP.'
-      operationId: putNewAgent
+      operationId: api.controllers.agents_controller.putNewAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1434,16 +1430,14 @@ paths:
                 data:
                   id: "008"
                   key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/{agent_id}/upgrade_result:
-    #No claro donde se envia el parámetro timeout
     get:
       tags:
         - agents
       summary: 'Get upgrade result from agent'
       description: 'Returns the upgrade result from an agent.'
-      operationId: getAgentUpgrade
+      operationId: api.controllers.agents_controller.getAgentUpgrade
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1470,7 +1464,6 @@ paths:
               example:
                 error: 0
                 data: Agent upgraded successfully
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/group/{group_id}:
     delete:
@@ -1478,7 +1471,7 @@ paths:
         - agents
       summary: 'Remove a single group of multiple agents'
       description: 'Remove a list of agents of a group.'
-      operationId: deleteMultipleAgentGroup
+      operationId: api.controllers.agents_controller.deleteMultipleAgentGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1503,13 +1496,12 @@ paths:
                   affected_agents:
                   - '001'
                   - '002'
-      x-swagger-router-controller: "api.controllers.agents_controller"
     post:
       tags:
         - agents
       summary: 'Add a list of agents to a group'
       description: 'Adds a list of agents to the specified group.'
-      operationId: postMultipleAgentGroup
+      operationId: api.controllers.agents_controller.postMultipleAgentGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1544,14 +1536,13 @@ paths:
                   affected_agents:
                   - '001'
                   - '002'
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/groups:
     delete:
       tags:
         - agents
       summary: 'Delete a list of groups'
-      operationId: deleteListGroup
+      operationId: api.controllers.agents_controller.deleteListGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1579,13 +1570,12 @@ paths:
                   - '002'
                   - '005'
                   - '003'
-      x-swagger-router-controller: "api.controllers.agents_controller"
     get:
       tags:
         - agents
       summary: 'Get groups'
       description: 'Returns the list of existing agent groups.'
-      operationId: getListGroup
+      operationId: api.controllers.agents_controller.getListGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1622,7 +1612,6 @@ paths:
                     name: pciserver
                     mergedSum: 220d6c5fc253f251827ee7487341c0fc
                     configSum: ab73af41699f13fdd81903b5f23d8d00
-      x-swagger-router-controller: "api.controllers.agents_controller"
 
   /agents/groups/{group_id}:
     delete:
@@ -1630,7 +1619,7 @@ paths:
         - agents
       summary: 'Remove group'
       description: 'Removes the group. Agents that were assigned to the removed group will automatically revert to the "default" group.'
-      operationId: deleteGroup
+      operationId: api.controllers.agents_controller.deleteGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1654,13 +1643,12 @@ paths:
                   affected_groups:
                   - 'dmz'
                   affected_agents:
-      x-swagger-router-controller: "api.controllers.agents_controller"
     get:
       tags:
         - agents
       summary: 'Get agents in a group'
       description: 'Returns the list of agents in a group.'
-      operationId: getAgentInGroup
+      operationId: api.controllers.agents_controller.getAgentInGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1739,13 +1727,12 @@ paths:
                     registerIP: 10.0.0.15
                     node_name: unknown
                     id: '004'
-      x-swagger-router-controller: "api.controllers.agents_controller"
     put:
       tags:
         - agents
       summary: 'Create a group'
       description: 'Creates a new group.'
-      operationId: putGroup
+      operationId: api.controllers.agents_controller.putGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1765,7 +1752,6 @@ paths:
               example:
                 error: 0
                 data: "Group 'pciserver' created"
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/groups/{group_id}/configuration:
     get:
@@ -1773,7 +1759,7 @@ paths:
         - agents
       summary: 'Get group configuration'
       description: 'Returns the group configuration (agent.conf).'
-      operationId: getGroupConfig
+      operationId: api.controllers.agents_controller.getGroupConfig
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1810,13 +1796,12 @@ paths:
                       localfile:
                       - location: /var/log/linux.log
                       - log_format: syslog
-      x-swagger-router-controller: "api.controllers.agents_controller"
     post:
       tags:
         - agents
       summary: 'Put configuration file (agent.conf) into a group'
       description: 'Upload the group configuration (agent.conf).'
-      operationId: postGroupConfig
+      operationId: api.controllers.agents_controller.postGroupConfig
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1846,7 +1831,6 @@ paths:
               example:
                 error: 0
                 data: Agent configuration was updated successfully
-      x-swagger-router-controller: "api.controllers.agents_controller"
       
   /agents/groups/{group_id}/files:
     get:
@@ -1854,7 +1838,7 @@ paths:
         - agents
       summary: 'Get group files'
       description: 'Returns the files belonging to the group.'
-      operationId: getGroupFiles
+      operationId: api.controllers.agents_controller.getGroupFiles
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1940,7 +1924,6 @@ paths:
                       hash: 92d8011facc8b921ece301ea4ce6a616
                     - filename: win_malware_rcl.txt
                       hash: 6a8d3c63a0e77dea35aaed3ee2cca3a1
-      x-swagger-router-controller: "api.controllers.agents_controller"
       
   /agents/groups/{group_id}/files/{file_name}:
     get:
@@ -1948,7 +1931,7 @@ paths:
         - agents
       summary: 'Get a file in group'
       description: 'Returns the specified file belonging to the group parsed to JSON.'
-      operationId: getGroupFile
+      operationId: api.controllers.agents_controller.getGroupFile
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -1995,12 +1978,11 @@ paths:
                       reference: CIS_Debian_Benchmark_v1.0pdf
                       checks: 
                         - f:/etc/debian_version
-      x-swagger-router-controller: "api.controllers.agents_controller"
     post:
       tags:
         - agents
       summary: 'Upload file into a group'
-      operationId: postGroupFile
+      operationId: api.controllers.agents_controller.postGroupFile
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2031,7 +2013,6 @@ paths:
               example:
                 error: 0
                 data: Agent configuration was updated successfully
-      x-swagger-router-controller: "api.controllers.agents_controller"
              
   /agents/groups/insert:
     post:
@@ -2039,7 +2020,7 @@ paths:
         - agents
       summary: 'Get a file in group'
       description: 'Returns the specified file belonging to the group parsed to JSON.'
-      operationId: insertAgent
+      operationId: api.controllers.agents_controller.insertAgent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2084,7 +2065,6 @@ paths:
                 data:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/name/{agent_name}:
     get:
@@ -2092,7 +2072,7 @@ paths:
         - agents
       summary: 'Get an agent by its name'
       description: 'Returns various information from an agent called :agent_name.'
-      operationId: getAgentByName
+      operationId: api.controllers.agents_controller.getAgentByName
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2121,7 +2101,6 @@ paths:
                   registerIP: 10.0.0.9
                   node_name: unknown
                   id: "007"
-      x-swagger-router-controller: "api.controllers.agents_controller"
                   
   /agents/no_group:
     get:
@@ -2129,7 +2108,7 @@ paths:
         - agents
       summary: 'Get agents without group'
       description: 'Returns a list with the available agents without group.'
-      operationId: getAgentNoGroup
+      operationId: api.controllers.agents_controller.getAgentNoGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2184,7 +2163,6 @@ paths:
                       registerIP: 10.0.10.10
                       node_name: unknown
                       id: "123"
-      x-swagger-router-controller: "api.controllers.agents_controller"
                       
   /agents/outdated:
     get:
@@ -2192,7 +2170,7 @@ paths:
         - agents
       summary: 'Get outdated agents'
       description: 'Returns the list of outdated agents.'
-      operationId: getAgentOutdated
+      operationId: api.controllers.agents_controller.getAgentOutdated
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2230,14 +2208,13 @@ paths:
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/restart:
     post:
       tags:
       - agents
       summary: 'Restart a list of agents'
-      operationId: restartLisAgents
+      operationId: api.controllers.agents_controller.restartLisAgents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2272,12 +2249,11 @@ paths:
                     affected_agents:
                     - '002'
                     - '004'
-      x-swagger-router-controller: "api.controllers.agents_controller"
     put:
       tags:
       - agents
       summary: 'Restarts all agents'
-      operationId: restartAllAgents
+      operationId: api.controllers.agents_controller.restartAllAgents
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2292,16 +2268,14 @@ paths:
                 example:
                   error: 0
                   data: "Restarting all agents"
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/stats/distinct:
-    #Repasar schema
     get:
       tags:
         - agents
       summary: 'Get distinct fields in agents'
       description: 'Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination.'
-      operationId: getAgentFields
+      operationId: api.controllers.agents_controller.getAgentFields
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2353,7 +2327,6 @@ paths:
                         platform: ubuntu
                       count: 2
                     - count: 5
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /agents/summary:
     get:
@@ -2361,7 +2334,7 @@ paths:
         - agents
       summary: 'Get agents summary'
       description: 'Returns a summary of the available agents.'
-      operationId: getAgentSummart
+      operationId: api.controllers.agents_controller.getAgentSummart
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2395,7 +2368,6 @@ paths:
                   Disconnected: 0
                   Never connected: 5
                   Pending: 0
-      x-swagger-router-controller: "api.controllers.agents_controller"
               
   /agents/summary/os:
     get:
@@ -2403,7 +2375,7 @@ paths:
         - agents
       summary: 'Get OS summary'
       description: 'Returns a summary of the OS.'
-      operationId: getAgentSummaryOS
+      operationId: api.controllers.agents_controller.getAgentSummaryOS
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2437,7 +2409,6 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /cache/:
     delete:
@@ -2445,7 +2416,7 @@ paths:
         - cache
       summary: 'Clear entire cache'
       description: 'Clears entire cache.'
-      operationId: deleteCache
+      operationId: api.controllers.cache_controller.deleteCache
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2467,13 +2438,12 @@ paths:
                   all:
                     -
                   groups:
-      x-swagger-router-controller: "api.controllers.cache_controller"
     get:
       tags:
         - cache
       summary: 'Get cache index'
       description: 'Returns current cache index.'
-      operationId: getCache
+      operationId: api.controllers.cache_controller.getCache
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2495,7 +2465,6 @@ paths:
                   all:
                     -
                   groups:
-      x-swagger-router-controller: "api.controllers.cache_controller"
       
   /cache/{group}:
     delete:
@@ -2503,7 +2472,7 @@ paths:
         - cache
       summary: 'Clear group cache'
       description: 'Clears cache of the specified group.'
-      operationId: deleteCacheGroup
+      operationId: api.controllers.cache_controller.deleteCacheGroup
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2528,7 +2497,6 @@ paths:
                   groups:
                     agents:
                       - /agents/stats/distinct?pretty&fields=os.platform
-      x-swagger-router-controller: "api.controllers.agents_controller"
   
   /cache/config:
     get:
@@ -2536,7 +2504,7 @@ paths:
         - cache
       summary: 'Return cache configuration.'
       description: 'Returns cache configuration.'
-      operationId: getCacheConfig
+      operationId: api.controllers.cache_controller.getCacheConfig
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2576,7 +2544,6 @@ paths:
                     -
                   jsonp: false
                   redisClient: false
-      x-swagger-router-controller: "api.controllers.cache_controller"
       
   /ciscat/{agent_id}/results:
     get:
@@ -2584,7 +2551,7 @@ paths:
       - ciscat
       summary: 'Get CIS-CAT results from an agent'
       description: "Returns the agent's ciscat results info."
-      operationId: getAgentsCistatResults
+      operationId: api.controllers.ciscat_controller.getAgentsCistatResults
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2649,15 +2616,14 @@ paths:
                     pass: 96
                     notchecked: 71
                     unknown: 0
-      x-swagger-router-controller: "api.controllers.ciscat_controller"
   
   /sca/{agent_id}:
     get:
       tags:
       - sca
-      summary: Get security configuration assessment (SCA) database
-      description: Returns the security SCA database of an agent.
-      operationId: get_sca_agent
+      summary: 'Get security configuration assessment (SCA) database'
+      description: 'Returns the security SCA database of an agent.'
+      operationId: api.controllers.sca_controller.get_sca_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2719,7 +2685,7 @@ paths:
       - sca
       summary: 'Get policy monitoring alerts for a given policy'
       description: 'Returns the policy monitoring alerts for a given policy'
-      operationId: get_sca_checks
+      operationId: api.controllers.sca_controller.get_sca_checks
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -2779,7 +2745,6 @@ paths:
                     policy_id: "system_audit"
                     compliance:
                     - 
-      x-swagger-router-controller: "api.controllers.configuration_assessment_controller"
   
   /token:
     get:
@@ -2787,7 +2752,7 @@ paths:
       - login
       summary: 'User/password authentication to get an access token'
       description: 'This method should be called to get an API token. This token will expire at some time.'
-      operationId: loginUser
+      operationId: api.controllers.login_controller.loginUser
       security:
         - basicAuth: []
       responses:
@@ -2802,7 +2767,6 @@ paths:
                     type: string
         '401':
           description: 'Access unauthorized'
-      x-swagger-router-controller: "api.controllers.login_controller"
 
 externalDocs:
   description: Find more about Wazuh API usage
