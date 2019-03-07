@@ -816,14 +816,15 @@ void sys_hotfixes(const char* LOCATION){
     int ID = wm_sys_get_random_id();
     HKEY main_key;
     long unsigned int result;
-#ifdef EVENTCHANNEL_SUPPORT
-    const char *HOTFIXES_REG = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages";
-#else
-    const char *HOTFIXES_REG = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
-#endif
+    const char *HOTFIXES_REG;
     cJSON *end_evt;
     char *end_evt_str;
 
+    if (isVista) {
+        HOTFIXES_REG = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\Packages";
+    } else {
+        HOTFIXES_REG = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\HotFix";
+    }
 
     mtdebug1(WM_SYS_LOGTAG, "Starting installed hotfixes inventory.");
 
@@ -971,44 +972,44 @@ void list_hotfixes(HKEY hKey, int usec, const char * timestamp, int ID, const ch
         for (i = 0; i < cSubKeys; i++) {
             cbName = KEY_LENGTH;
             if (result = RegEnumKeyEx(hKey, i, achKey, &cbName, NULL, NULL, NULL, &ftLastWriteTime), result == ERROR_SUCCESS) {
-#ifdef EVENTCHANNEL_SUPPORT
-                if (OSRegex_Execute(achKey, hotfix_regex)) {
-                    char *hotfix = *hotfix_regex->d_sub_strings;
-                    char *saved_timestamp;
+                if (isVista) {
+                    if (OSRegex_Execute(achKey, hotfix_regex)) {
+                        char *hotfix = *hotfix_regex->d_sub_strings;
+                        char *saved_timestamp;
 
+                        // Ignore the hotfix if it is the same as the previous one
+                        if (!strcmp(hotfix, prev_hotfix)) {
+                            continue;
+                        }
+                        snprintf(prev_hotfix, 50, hotfix);
+
+                        if (saved_timestamp = OSHash_Get(hotfixes_table, hotfix), !saved_timestamp) {
+                            os_strdup(timestamp, saved_timestamp);
+                            if (OSHash_Add(hotfixes_table, hotfix, saved_timestamp) != 2) {
+                                free(saved_timestamp);
+                                mterror(WM_SYS_LOGTAG, "Could not add '%s' to the hotfixes hash table.", hotfix);
+                                return;
+                            }
+                        } else {
+                            if (!strcmp(timestamp, saved_timestamp)) {
+                                // It has been reported with this timestamp
+                                continue;
+                            } else {
+                                free(saved_timestamp);
+                                OSHash_Update(hotfixes_table, hotfix, timestamp);
+                            }
+                        }
+
+                        read_hotfix(hotfix, usec, timestamp, ID, LOCATION);
+                    }
+                    } else {
                     // Ignore the hotfix if it is the same as the previous one
-                    if (!strcmp(hotfix, prev_hotfix)) {
+                    if (!strcmp(achKey, prev_hotfix)) {
                         continue;
                     }
-                    snprintf(prev_hotfix, 50, hotfix);
-
-                    if (saved_timestamp = OSHash_Get(hotfixes_table, hotfix), !saved_timestamp) {
-                        os_strdup(timestamp, saved_timestamp);
-                        if (OSHash_Add(hotfixes_table, hotfix, saved_timestamp) != 2) {
-                            free(saved_timestamp);
-                            mterror(WM_SYS_LOGTAG, "Could not add '%s' to the hotfixes hash table.", hotfix);
-                            return;
-                        }
-                    } else {
-                        if (!strcmp(timestamp, saved_timestamp)) {
-                            // It has been reported with this timestamp
-                            continue;
-                        } else {
-                            free(saved_timestamp);
-                            OSHash_Update(hotfixes_table, hotfix, timestamp);
-                        }
-                    }
-
-                    read_hotfix(hotfix, usec, timestamp, ID, LOCATION);
+                    snprintf(prev_hotfix, 50, achKey);
+                    read_hotfix(achKey, usec, timestamp, ID, LOCATION);
                 }
-#else
-                // Ignore the hotfix if it is the same as the previous one
-                if (!strcmp(achKey, prev_hotfix)) {
-                    continue;
-                }
-                snprintf(prev_hotfix, 50, achKey);
-                read_hotfix(achKey, usec, timestamp, ID, LOCATION);
-#endif
             } else {
                 mterror(WM_SYS_LOGTAG, "Error reading key '%s'. Error code: %lu", achKey, result);
             }
