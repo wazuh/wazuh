@@ -1728,7 +1728,7 @@ tags:
   - name: login
     description: 'User authentication'
   - name: manager
-    description: ''
+    description: 'Wazuh manager information, status and logs'
   - name: rootcheck
     description: ''
   - name: rules
@@ -4593,6 +4593,678 @@ paths:
       responses:
         '200':
           description: 'Wazuh node logs summary'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhLogsSummary'
+              example:
+                error: 0
+                data:
+                  wazuh-modulesd:
+                    info: 2
+                    all: 2
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+                  wazuh-db:
+                    info: 1
+                    all: 4
+                    critical: 0
+                    debug: 0
+                    error: 3
+                    warning: 0
+                  ossec-rootcheck:
+                    info: 8
+                    all: 8
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+
+  /manager/status:
+    get:
+      tags:
+      - manager
+      summary: Get the Wazuh manager status
+      description: Returns the status of all Wazuh daemons
+      operationId: api.controllers.manager_controller.get_status
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh manager daemons statuses'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhDaemonsStatus'
+              example:
+                error: 0
+                data:
+                  ossec-agentlessd: stopped
+                  ossec-analysisd: running
+                  ossec-authd: stopped
+                  ossec-csyslogd: stopped
+                  ossec-dbd: stopped
+                  ossec-monitord: running
+                  ossec-execd: running
+                  ossec-integratord: stopped
+                  ossec-logcollector: running
+                  ossec-maild: stopped
+                  ossec-remoted: running
+                  ossec-reportd: stopped
+                  ossec-syscheckd: running
+                  wazuh-clusterd: running
+                  wazuh-modulesd: running
+
+  /manager/info:
+    get:
+      tags:
+      - manager
+      summary: Get Wazuh manager information
+      description: Returns basic information such as version, compilation date, installation path.
+      operationId: api.controllers.manager_controller.get_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Manager information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhInfo'
+              example:
+                error: 0
+                data:
+                  path: /var/ossec
+                  version: v3.9.0
+                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  type: manager
+                  max_agents: 14000
+                  openssl_support: yes
+                  ruleset_version: 3905
+                  tz_offset: +0000
+                  tz_name: UTC
+
+  /manager/configuration:
+    get:
+      tags:
+      - manager
+      summary: Get configuration
+      description: Returns wazuh configuration used
+      operationId: api.controllers.manager_controller.get_configuration
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/section'
+        - $ref: '#/components/parameters/field'
+      responses:
+        '200':
+          description: 'Wazuh configuration'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhConfiguration'
+              example:
+                error: 0
+                data:
+                  global:
+                    jsonout_output: yes
+                    alerts_log: yes
+                    logall: no
+                    logall_json: no
+                    email_notification: no
+                    smtp_server: smtp.example.wazuh.com
+                    email_from: ossecm@example.wazuh.com
+                    email_to: recipient@example.wazuh.com
+                    email_maxperhour: 12
+                    email_log_source: alerts.log
+                    queue_size: 131072
+                    white_list:
+                      - 127.0.0.1
+                      - ^localhost.localdomain$
+                      - 127.0.0.53
+                  alerts:
+                    log_alert_level: "3"
+                    email_alert_level: "12"
+                  cis-cat:
+                    disabled: yes
+                    timeout: 1800
+                    interval: 1d
+                    scan-on-start: yes
+                    java_path: wodles/java
+                    ciscat_path: wodles/ciscat
+                  command:
+                    - name: disable-account
+                      executable: disable-account.sh
+                      expect: user
+                      timeout_allowed: yes
+                    - name: restart-ossec
+                      executable: restart-ossec.sh
+
+  /manager/stats:
+    get:
+      tags:
+      - manager
+      summary: Get stats.
+      description: Returns Wazuh statistical information for the current or specified date.
+      operationId: api.controllers.manager_controller.get_stats
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/date'
+      responses:
+        '200':
+          description: 'Wazuh stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhStats'
+              example:
+                error: 0
+                data:
+                  - hour: 15
+                    alerts:
+                      - sigid: 5303
+                        level: 3
+                        times: 1
+                      - sigid: 5501
+                        level: 3
+                        times: 4
+                      - sigid: 221
+                        level: 0
+                        times: 653
+                    totalAlerts: 658
+                    events: 4387
+                    firewall: 0
+                  - hour: 16
+                    alerts:
+                      - sigid: 5521
+                        level: 0
+                        times: 1
+                      - sigid: 530
+                        level: 0
+                        times: 120
+                    totalAlerts: 121
+                    events: 4379
+                    syscheck: 0
+                    firewall: 0
+
+  /manager/stats/hourly:
+    get:
+      tags:
+      - manager
+      summary: Get stats by hour.
+      description: Returns Wazuh statistical information per hour. Each number in the averages field represents the average of alerts per hour.
+      operationId: api.controllers.manager_controller.get_stats_hourly
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh hourly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhHourlyStats'
+              example:
+                error: 0
+                data:
+                  averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                  interactions: 0
+
+  /manager/stats/weekly:
+    get:
+      tags:
+      - manager
+      summary: Get stats by week.
+      description: Returns Wazuh statistical information per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+      operationId: api.controllers.manager_controller.get_stats_weekly
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh weekly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhWeeklyStats'
+              example:
+                error: 0
+                data:
+                  Sun:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Mon:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Tue:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Wed:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Thu:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Fri:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Sat:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+
+  /manager/stats/analysisd:
+    get:
+      tags:
+      - manager
+      summary: Get a analysisd stats.
+      description: Returns Wazuh analysisd statistical information.
+      operationId: api.controllers.manager_controller.get_stats_analysisd
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh analysisd stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhAnalysisdStats'
+              example:
+                error: 0
+                data:
+                  total_events_decoded: 5
+                  syscheck_events_decoded: 0
+                  syscheck_edps: 0
+                  syscollector_events_decoded: 0
+                  syscollector_edps: 0
+                  rootcheck_events_decoded: 0
+                  rootcheck_edps: 0
+                  sca_events_decoded: 0
+                  sca_edps: 0
+                  hostinfo_events_decoded: 0
+                  hostinfo_edps: 0
+                  winevt_events_decoded: 0
+                  winevt_edps: 0
+                  other_events_decoded: 5
+                  other_events_edps: 1
+                  events_processed: 5
+                  events_edps: 1
+                  events_received: 5
+                  events_dropped: 0
+                  alerts_written: 0
+                  firewall_written: 0
+                  fts_written: 0
+                  syscheck_queue_usage: 0
+                  syscheck_queue_size: 16384
+                  syscollector_queue_usage: 0
+                  syscollector_queue_size: 16384
+                  rootcheck_queue_usage: 0
+                  rootcheck_queue_size: 16384
+                  sca_queue_usage: 0
+                  sca_queue_size: 16384
+                  hostinfo_queue_usage: 0
+                  hostinfo_queue_size: 16384
+                  winevt_queue_usage: 0
+                  winevt_queue_size: 16384
+                  event_queue_usage: 0
+                  event_queue_size: 16384
+                  rule_matching_queue_usage: 0
+                  rule_matching_queue_size: 16384
+                  alerts_queue_usage: 0
+                  alerts_queue_size: 16384
+                  firewall_queue_usage: 0
+                  firewall_queue_size: 16384
+                  statistical_queue_usage: 0
+                  statistical_queue_size: 16384
+                  archives_queue_usage: 0
+                  archives_queue_size: 16384
+
+  /manager/stats/remoted:
+    get:
+      tags:
+      - manager
+      summary: Get remoted stats.
+      description: Returns Wazuh remoted statistical information.
+      operationId: api.controllers.manager_controller.get_stats_remoted
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh remoted stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhRemotedStats'
+              example:
+                error: 0
+                data:
+                  queue_size: 0
+                  total_queue_size: 131072
+                  tcp_sessions: 0
+                  evt_count: 0
+                  ctrl_msg_count: 0
+                  discarded_count: 0
+                  msg_sent: 0
+                  recv_bytes: 0
+
+  /manager/logs:
+    get:
+      tags:
+      - manager
+      summary: Get the wazuh manager logs.
+      description: Returns the last 2000 wazuh log entries.
+      operationId: api.controllers.manager_controller.get_log
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/type_log'
+      responses:
+        '200':
+          description: 'Wazuh logs'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/WazuhLogs'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: "Syscheck scan frequency: 43200 seconds"
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: Starting syscheck scan.
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-rootcheck
+                      level: info
+                      description: Starting rootcheck scan.
+
+  /manager/logs/summary:
+    get:
+      tags:
+      - manager
+      summary: Get a summary of the wazuh manager logs.
+      description: Returns a summary of the last 2000 wazuh log entries.
+      operationId: api.controllers.manager_controller.get_log_summary
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh logs summary'
           content:
             application/json:
               schema:
