@@ -1086,7 +1086,7 @@ restore_old_api() {
             ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
         fi
         cp -rLfp ${API_PATH_BACKUP}/configuration/ssl/* ${API_PATH}/configuration/ssl
-        #rm -rf $API_PATH_BACKUP
+        rm -rf $API_PATH_BACKUP
     fi
 
 }
