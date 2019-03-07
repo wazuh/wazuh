@@ -59,6 +59,7 @@ All notable changes to this project will be documented in this file.
 - Fix error in Syscollector when unable to read the CPU frequency on agents. ([#2740](https://github.com/wazuh/wazuh/pull/2740))
 - Fix Windows escape format affecting non-format messages. ([#2725](https://github.com/wazuh/wazuh/pull/2725))
 - Avoid a segfault in mail daemon due to the XML tags order in the `ossec.conf`. ([#2711](https://github.com/wazuh/wazuh/pull/2711))
+- Prevent the key updating thread from starving in Remoted. ([#2761](https://github.com/wazuh/wazuh/pull/2761))
 
 ## [v3.8.2]
 
