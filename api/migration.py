@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from pwd import getpwnam
 from typing import Dict
 import json
 import os
@@ -117,10 +118,13 @@ def write_into_yaml_file(config: Dict):
     :param config: Dictionary with old configuration values
     """
     json_config = json.dumps(config)
+    config_yml_path = os.path.join(common.ossec_path, 'api/configuration/config.yml')
     try:
         #with open(common.api_config_path, 'w') as output_file:
-        with open('/var/ossec/api/configuration/config.yml', 'w') as output_file:
+        with open(config_yml_path, 'w') as output_file:
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
+        os.chown(config_yml_path, getpwnam('root').pw_uid, getpwnam('ossec').pw_uid)
+        os.chmod(config_yml_path, 0o640)
     except IOError:
         raise
 
