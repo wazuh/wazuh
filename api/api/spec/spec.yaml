@@ -1705,6 +1705,19 @@ components:
           - debug
           - debug2
           - critical
+    path:
+      in: query
+      name: path
+      description: Filepath to return.
+      required: true
+      schema:
+        type: string
+    overwrite:
+      in: query
+      name: overwrite
+      description: If set to false, an exception will be raised when updating contents of an already existing filename.
+      schema:
+        type: boolean
 
 tags:
   - name: active-response
@@ -4627,6 +4640,87 @@ paths:
                     debug: 0
                     error: 0
                     warning: 0
+
+  /cluster/{node_id}/files:
+    get:
+      tags:
+      - cluster
+      summary: Get file contents from a specified node in the cluster.
+      description: Returns file contents from any file in cluster node {node_id}.
+      operationId: api.controllers.cluster_controller.get_files_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'File contents'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+    post:
+      tags:
+      - cluster
+      summary: Updates file contents in a specified cluster node.
+      description: Replaces file contents with the data contained in the API request in a specified cluster node.
+      operationId: api.controllers.cluster_controller.post_files_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/overwrite'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File updated successfully.
+    delete:
+      tags:
+      - cluster
+      summary: Removes a file in a specified cluster node.
+      description: Removes a specified file in the node {node-id}.
+      operationId: api.controllers.cluster_controller.delete_files_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File was deleted.
 
   /manager/status:
     get:

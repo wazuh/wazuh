@@ -229,3 +229,42 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     pass
+
+
+def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
+    """Get file contents from a specified node in the cluster.
+
+    Returns file contents from any file in cluster node {node_id}.
+
+    :param node_id: Cluster node name.
+    :param path: Filepath to return.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+def post_files_node(node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
+    """Updates file contents in a specified cluster node.
+
+    Replaces file contents with the data contained in the API request in a specified cluster node.
+
+    :param node_id: Cluster node name.
+    :param path: Filepath to return.
+    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+
+def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
+    """Removes a file in a specified cluster node.
+
+    Removes a specified file in the node {node-id}.
+
+    :param node_id: Cluster node name.
+    :param path: Filepath to return.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
