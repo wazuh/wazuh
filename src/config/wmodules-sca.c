@@ -19,6 +19,7 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+static unsigned int profiles = 0;
 
 static short eval_bool(const char *str)
 {
@@ -29,32 +30,38 @@ static short eval_bool(const char *str)
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 {
     unsigned int i;
-    unsigned int profiles = 0;
     int month_interval = 0;
     wm_sca_t *sca;
 
-    os_calloc(1, sizeof(wm_sca_t), sca);
-    sca->enabled = 1;
-    sca->scan_on_start = 1;
-    sca->scan_wday = -1;
-    sca->scan_day = 0;
-    sca->scan_time = NULL;
-    sca->skip_nfs = 1;
-    sca->alert_msg = NULL;
-    sca->queue = -1;
-    module->context = &WM_SCA_CONTEXT;
-    module->tag = strdup(module->context->name);
-    module->data = sca;
+    if(!module->data) {
+        os_calloc(1, sizeof(wm_sca_t), sca);
+        sca->enabled = 1;
+        sca->scan_on_start = 1;
+        sca->scan_wday = -1;
+        sca->scan_day = 0;
+        sca->scan_time = NULL;
+        sca->skip_nfs = 1;
+        sca->alert_msg = NULL;
+        sca->queue = -1;
+        module->context = &WM_SCA_CONTEXT;
+        module->tag = strdup(module->context->name);
+        module->data = sca;
+    } 
+
+    sca = module->data;
+    
 
     if (!nodes)
         return 0;
 
-    /* We store up to 255 alerts in there */
-    os_calloc(256, sizeof(char *), sca->alert_msg);
-    int c = 0;
-    while (c <= 255) {
-        sca->alert_msg[c] = NULL;
-        c++;
+    if(!sca->alert_msg) {
+        /* We store up to 255 alerts in there */
+        os_calloc(256, sizeof(char *), sca->alert_msg);
+        int c = 0;
+        while (c <= 255) {
+            sca->alert_msg[c] = NULL;
+            c++;
+        }
     }
 
     for(i = 0; nodes[i]; i++)
