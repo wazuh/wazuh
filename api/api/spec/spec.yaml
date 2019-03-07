@@ -323,7 +323,45 @@ components:
           type: string
         start_scan:
           type: string
-        
+
+    # Decoders models
+    Decoder:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        name:
+          type: integer
+        position:
+          type: string
+        status:
+          type: string
+        details:
+          type: object
+          properties:
+            program_name:
+              type: string
+            parent:
+              type: string
+            prematch:
+              type: string
+            regex:
+              type: integer
+            order:
+              type: string
+
+    DecoderFile:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+
   securitySchemes:
     basicAuth:
       type: http
@@ -333,7 +371,7 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  
+
   parameters:
     agent_id:
       in: path
@@ -410,6 +448,14 @@ components:
           - syscheck
           - rootcheck
           - wmodules
+    decoder_name:
+      in: path
+      name: decoder_name
+      description: Decoder name
+      required: true
+      schema:
+        type: string
+
     description:
       in: query
       name: description
@@ -420,6 +466,12 @@ components:
       in: query
       name: directory
       description: Filters by directory.
+      schema:
+        type: string
+    download:
+      in: query
+      name: download
+      description: Downloads the file
       schema:
         type: string
     error:
@@ -484,7 +536,7 @@ components:
       description: Select algorithm to generate the sum.
       schema:
         type: string
-    limit:  
+    limit:
       in: query
       name: limit
       description: Maximum number of elements to return
@@ -544,6 +596,12 @@ components:
       description: Filters by passed checks.
       schema:
         type: integer
+    pathParam:
+      in: query
+      name: path
+      description: Filters by path
+      schema:
+        type: string
     pretty:
       in: query
       name: pretty
@@ -625,7 +683,7 @@ components:
       description: Looks for elements with the specified string
       schema:
         type: string
-    select:  
+    select:
       in: query
       name: select
       description: Select which fields to return (separated by comma)
@@ -641,9 +699,19 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    statusParam:
+    status:
       in: query
       name: status
+      description: Filters the decoders by status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    statusAgent:
+      in: query
+      name: status_agent
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -738,7 +806,7 @@ paths:
       operationId: api.controllers.active_response_controller.activeResponse
       parameters:
         - $ref: '#/components/parameters/agent_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -747,12 +815,12 @@ paths:
                   command:
                     description: Command running in the agent.
                     type: string
-                    
+
                   custom:
                     description: Custom.
                     type: boolean
                     default: false
-  
+
                   arguments:
                     description: Command arguments.
                     type: array
@@ -789,7 +857,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -802,7 +870,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'  
+                      $ref: '#/components/schemas/AllAgentAffected'
               example:
                 error: 0
                 data:
@@ -826,7 +894,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -997,7 +1065,7 @@ paths:
                 data:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
-                  
+
   /agents/{agent_id}:
     delete:
       tags:
@@ -1074,7 +1142,7 @@ paths:
                     name: manager
                     node_name: node01
                     id: '000'
-  
+
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
       tags:
@@ -1143,7 +1211,7 @@ paths:
                         logformat: syslog
                         target:
                           - agent
-  
+
   /agents/{agent_id}/group:
     delete:
       tags:
@@ -1170,7 +1238,7 @@ paths:
                 example:
                   error: 0
                   data: "Group unset for agent '004'."
-                  
+
   /agents/{agent_id}/group/is_sync:
     get:
       tags:
@@ -1196,12 +1264,12 @@ paths:
                         properties:
                           syncef:
                             type: boolean
-                        
+
               example:
                 error: 0
                 data:
                     synced: false
-                  
+
   /agents/{agent_id}/group/{group_id}:
     delete:
       tags:
@@ -1255,12 +1323,12 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
                 example:
                   error: 0
                   data: "Group '004' already belongs to group 'dmz'."
-                  
+
   /agents/{agent_id}/key:
     get:
       tags:
@@ -1284,11 +1352,11 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
-                
+
   /agents/{agent_id}/restart:
     put:
       tags:
@@ -1314,11 +1382,11 @@ paths:
                       $ref: '#/components/schemas/AgentAffected'
                 example:
                   error: 0
-                  data: 
+                  data:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
-  
+
   /agents/{agent_id}/upgrade:
     put:
       tags:
@@ -1359,12 +1427,12 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
                 data: "Upgrade procedure started"
-                
+
   /agents/{agent_id}/upgrade_custom:
     put:
       tags:
@@ -1396,12 +1464,12 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
                 data: "Installation started"
-  
+
   /agents/{agent_name}:
     put:
       tags:
@@ -1430,7 +1498,7 @@ paths:
                 data:
                   id: "008"
                   key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
-  
+
   /agents/{agent_id}/upgrade_result:
     get:
       tags:
@@ -1447,7 +1515,7 @@ paths:
           description: Seconds to wait for the agent to respond.
           schema:
             type: integer
-          
+
       responses:
         '200':
           description: 'Get agent upgrade result'
@@ -1460,11 +1528,11 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: Agent upgraded successfully
-  
+
   /agents/group/{group_id}:
     delete:
       tags:
@@ -1506,7 +1574,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -1536,7 +1604,7 @@ paths:
                   affected_agents:
                   - '001'
                   - '002'
-  
+
   /agents/groups:
     delete:
       tags:
@@ -1658,7 +1726,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -1747,12 +1815,12 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
                 data: "Group 'pciserver' created"
-  
+
   /agents/groups/{group_id}/configuration:
     get:
       tags:
@@ -1806,7 +1874,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-        
+
       requestBody:
         content:
           application/xml:
@@ -1815,7 +1883,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Upload configuration'
@@ -1831,7 +1899,7 @@ paths:
               example:
                 error: 0
                 data: Agent configuration was updated successfully
-      
+
   /agents/groups/{group_id}/files:
     get:
       tags:
@@ -1924,7 +1992,7 @@ paths:
                       hash: 92d8011facc8b921ece301ea4ce6a616
                     - filename: win_malware_rcl.txt
                       hash: 6a8d3c63a0e77dea35aaed3ee2cca3a1
-      
+
   /agents/groups/{group_id}/files/{file_name}:
     get:
       tags:
@@ -1976,7 +2044,7 @@ paths:
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
                       reference: CIS_Debian_Benchmark_v1.0pdf
-                      checks: 
+                      checks:
                         - f:/etc/debian_version
     post:
       tags:
@@ -1988,7 +2056,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-      
+
       requestBody:
         content:
           application/xml:
@@ -1997,7 +2065,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Post group file'
@@ -2013,7 +2081,7 @@ paths:
               example:
                 error: 0
                 data: Agent configuration was updated successfully
-             
+
   /agents/groups/insert:
     post:
       tags:
@@ -2032,19 +2100,19 @@ paths:
                   name:
                     description: Agent name.
                     type: string
-                    
+
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-                    
+
                   id:
                     description: Agent ID.
                     type: string
-                    
+
                   key:
                     description: "Agent key. Minimum length: 64 characters. Allowed values: ^[a-zA-Z0-9]+$"
                     type: string
-  
+
                   force:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
                     type: integer
@@ -2065,7 +2133,7 @@ paths:
                 data:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
-  
+
   /agents/name/{agent_name}:
     get:
       tags:
@@ -2101,7 +2169,7 @@ paths:
                   registerIP: 10.0.0.9
                   node_name: unknown
                   id: "007"
-                  
+
   /agents/no_group:
     get:
       tags:
@@ -2163,7 +2231,7 @@ paths:
                       registerIP: 10.0.10.10
                       node_name: unknown
                       id: "123"
-                      
+
   /agents/outdated:
     get:
       tags:
@@ -2208,7 +2276,7 @@ paths:
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
-  
+
   /agents/restart:
     post:
       tags:
@@ -2218,7 +2286,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        
+
       requestBody:
         content:
           application/json:
@@ -2229,7 +2297,7 @@ paths:
                   type: array
                   items:
                     type: string
-                  
+
       responses:
         '200':
           description: Agents restarted
@@ -2268,7 +2336,7 @@ paths:
                 example:
                   error: 0
                   data: "Restarting all agents"
-  
+
   /agents/stats/distinct:
     get:
       tags:
@@ -2327,7 +2395,7 @@ paths:
                         platform: ubuntu
                       count: 2
                     - count: 5
-  
+
   /agents/summary:
     get:
       tags:
@@ -2368,7 +2436,7 @@ paths:
                   Disconnected: 0
                   Never connected: 5
                   Pending: 0
-              
+
   /agents/summary/os:
     get:
       tags:
@@ -2409,7 +2477,7 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-  
+
   /cache/:
     delete:
       tags:
@@ -2465,7 +2533,7 @@ paths:
                   all:
                     -
                   groups:
-      
+
   /cache/{group}:
     delete:
       tags:
@@ -2497,7 +2565,7 @@ paths:
                   groups:
                     agents:
                       - /agents/stats/distinct?pretty&fields=os.platform
-  
+
   /cache/config:
     get:
       tags:
@@ -2544,7 +2612,7 @@ paths:
                     -
                   jsonp: false
                   redisClient: false
-      
+
   /ciscat/{agent_id}/results:
     get:
       tags:
@@ -2569,7 +2637,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-        
+
       responses:
         '200':
           description: 'List of agents or error description'
@@ -2616,7 +2684,7 @@ paths:
                     pass: 96
                     notchecked: 71
                     unknown: 0
-  
+
   /sca/{agent_id}:
     get:
       tags:
@@ -2744,7 +2812,256 @@ paths:
                     id: 1003
                     policy_id: "system_audit"
                     compliance:
-                    - 
+                    -
+
+  /decoders:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders'
+      description: 'Returns all decoders included in ossec.conf.'
+      operationId: api.controllers.decoders_controller.get_decoders
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathParam'
+        - $ref: '#/components/parameters/status'
+
+      responses:
+        '200':
+          description: 'List of decoders included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0005-wazuh_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: wazuh
+                    position: 0
+                    status: enabled
+                    details:
+                      prematch: "^wazuh: "
+                  - file: 0005-wazuh_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: agent-buffer
+                    position: 1
+                    status: enabled
+                    details:
+                      parent: wazuh
+                      prematch: "^Agent buffer:"
+                      regex: "^ '(\\S+)'."
+                      order: level
+
+  /decoders/{decoder_name}:
+    get:
+      tags:
+        - decoders
+      summary: 'Get decoders by name'
+      description: 'Returns the decoders with the specified name.'
+      operationId: api.controllers.decoders_controller.get_decoders_by_name
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/decoder_name'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of decoders with name selected'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                  - file: 0025-apache_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: apache-errorlog
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: "^apache2|^httpd"
+                  - file: 0025-apache_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: apache-errorlog
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^[warn] |^[notice] |^[error] "
+                  - file: 0025-apache_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: apache-errorlog
+                    position: 2
+                    status: enabled
+                    details:
+                      prematch: "^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:warn] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:notice] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S*:error] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:info] "
+
+  /decoders/files:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders files'
+      description: 'Returns all decoders files included in ossec.conf.'
+      operationId: api.controllers.decoders_controller.get_decoders_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathParam'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: 'List of decoders files included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/DecoderFile'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0185-openldap_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0220-postfix_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0400-identity_guard_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0190-openvpn_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0060-cisco-estreamer_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0335-telnet_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0035-asterisk_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0275-sendmail_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+
+  /decoders/parents:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all parent decoders'
+      description: 'Returns all parent decoders included in ossec.conf'
+      operationId: api.controllers.decoders_controller.get_decoders_parents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of parent decoders included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 153
+                  items:
+                  - file: local_decoder.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: local_decoder_example
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: local_decoder_example
+                  - file: 0465-azure_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: azure-storage
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^azure_tag: azure-storage. "
+                      regex: "^azure_storage_tag: (\\S+)"
+                      order: tag
   
   /token:
     get:
