@@ -105,24 +105,38 @@ help()
     exit 1;
 }
 
+DATABASE_MSG="This option is deprecated because Database is now enabled by default. If you want to change it, modify the ossec.conf file."
+SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default. If you want to change it, modify the ossec.conf file."
+AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default. If you want to change it, modify the ossec.conf file."
+INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default. If you want to change it, modify the ossec.conf file."
+
+
 # Enables additional daemons
 enable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
         exit 1;
     fi
 
-    if [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdatabase" ]; then
+        echo "$DATABASE_MSG"
+    elif [ "X$2" = "Xclient-syslog" ]; then
+        echo "$SYSLOG_MSG"
+    elif [ "X$2" = "Xagentless" ]; then
+        echo "$AGENTLESS_MSG";
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "$INTEGRATOR_MSG";
+    elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
-    elif [ "X$2" != "Xdatabase" ] && [ "X$2" != "Xclient-syslog" ] && [ "X$2" != "Xagentless" ] && [ "X$2" != "Xintegrator" ]; then
+    else
         echo ""
         echo "Invalid enable option."
         echo ""
-        echo "Enable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 enable [database|client-syslog|agentless|debug|integrator]"
+        echo "Enable options: debug"
+        echo "Usage: $0 enable debug"
         exit 1;
     fi
 }
@@ -132,8 +146,8 @@ disable()
 {
     if [ "X$2" = "X" ]; then
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless,debug|integrator]"
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
         exit 1;
     fi
     daemon=''
@@ -144,8 +158,8 @@ disable()
         echo ""
         echo "Invalid disable option."
         echo ""
-        echo "Disable options: database, client-syslog, agentless, debug, integrator"
-        echo "Usage: $0 disable [database|client-syslog|agentless|debug|integrator]"
+        echo "Disable options: debug"
+        echo "Usage: $0 disable debug"
         exit 1;
     fi
     if [ "$daemon" != '' ]; then
