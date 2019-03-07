@@ -675,6 +675,56 @@ components:
         recv_bytes:
           type: integer
 
+    WazuhLogs:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        tag:
+          type: string
+          enum:
+          - ossec-analysisd
+          - ossec-remoted
+          - sca
+          - ossec-authd
+          - wazuh-db
+          - ossec-execd
+          - ossec-maild
+          - ossec-monitord
+          - ossec-logcollector
+          - ossec-rootcheck
+          - ossec-syscheckd
+          - wazuh-modulesd
+          - wazuh-modulesd:agent-key-polling
+          - wazuh-modulesd:aws-s3
+          - wazuh-modulesd:azure-logs
+          - wazuh-modulesd:ciscat
+          - wazuh-modulesd:command
+          - wazuh-modulesd:database
+          - wazuh-modulesd:docker-listener
+          - wazuh-modulesd:download
+          - wazuh-modulesd:oscap
+          - wazuh-modulesd:osquery
+          - wazuh-modulesd:syscollector
+          - wazuh-modulesd:vulnerability-detector
+          - ossec-agentlessd
+          - ossec-testrule
+          - ossec-csyslogd
+          - ossec-dbd
+          - ossec-integratord
+          - ossec-reportd
+        level:
+          type: string
+          enum:
+          - error
+          - info
+          - warning
+          - debug
+          - debug2
+          - critical
+        description:
+          type: string
+
     # SCA models
     SCAChecks:
       type: object
@@ -1148,6 +1198,57 @@ components:
       description: Selects the date for getting the statistical information. Format YYYYMMDD.
       schema:
         type: string
+    category:
+      in: query
+      name: category
+      description: Filter by category of log.
+      schema:
+        type: string
+        enum:
+        - ossec-analysisd
+        - ossec-remoted
+        - sca
+        - ossec-authd
+        - wazuh-db
+        - ossec-execd
+        - ossec-maild
+        - ossec-monitord
+        - ossec-logcollector
+        - ossec-rootcheck
+        - ossec-syscheckd
+        - wazuh-modulesd
+        - wazuh-modulesd:agent-key-polling
+        - wazuh-modulesd:aws-s3
+        - wazuh-modulesd:azure-logs
+        - wazuh-modulesd:ciscat
+        - wazuh-modulesd:command
+        - wazuh-modulesd:database
+        - wazuh-modulesd:docker-listener
+        - wazuh-modulesd:download
+        - wazuh-modulesd:oscap
+        - wazuh-modulesd:osquery
+        - wazuh-modulesd:syscollector
+        - wazuh-modulesd:vulnerability-detector
+        - ossec-agentlessd
+        - ossec-testrule
+        - ossec-csyslogd
+        - ossec-dbd
+        - ossec-integratord
+        - ossec-reportd
+    type_log:
+      in: query
+      name: type_log
+      description: Filters by log level.
+      schema:
+        type: string
+        enum:
+          - all
+          - error
+          - warning
+          - info
+          - debug
+          - debug2
+          - critical
 
 tags:
   - name: active-response
@@ -4020,6 +4121,60 @@ paths:
                   discarded_count: 0
                   msg_sent: 0
                   recv_bytes: 0
+
+  /cluster/{node_id}/logs:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's wazuh logs.
+      description: Returns the last 2000 wazuh log entries in node {node_id}.
+      operationId: api.controllers.cluster.get_log_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/type_log'
+      responses:
+        '200':
+          description: 'Wazuh node logs'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/WazuhLogs'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: "Syscheck scan frequency: 43200 seconds"
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: Starting syscheck scan.
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-rootcheck
+                      level: info
+                      description: Starting rootcheck scan.
 
   /sca/{agent_id}:
     get:
