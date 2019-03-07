@@ -501,6 +501,33 @@ components:
           type: object
         labels:
           type: object
+    
+    WazuhStats:
+      type: array
+      items:
+        type: object
+        properties:
+          hour:
+            type: integer
+          alerts:
+            type: array
+            items:
+              type: object
+              properties:
+                sigid:
+                  type: integer
+                level:
+                  type: integer
+                times:
+                  type: integer
+          totalAlerts:
+            type: integer
+          events:
+            type: integer
+          syscheck:
+            type: integer
+          firewall:
+            type: integer
 
     # SCA models
     SCAChecks:
@@ -967,6 +994,12 @@ components:
       in: query
       name: field
       description: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+      schema:
+        type: string
+    date:
+      in: query
+      name: date
+      description: Selects the date for getting the statistical information. Format YYYYMMDD.
       schema:
         type: string
 
@@ -3405,6 +3438,61 @@ paths:
                       timeout_allowed: yes
                     - name: restart-ossec
                       executable: restart-ossec.sh
+  
+  /cluster/{node_id}/stats:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's stats.
+      description: Returns Wazuh statistical information in node {node_id} for the current or specified date.
+      operationId: api.controllers.cluster.get_stats_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/date'
+      responses:
+        '200':
+          description: 'Wazuh node stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhStats'
+              example:
+                error: 0
+                data:
+                  - hour: 15
+                    alerts:
+                      - sigid: 5303
+                        level: 3
+                        times: 1
+                      - sigid: 5501
+                        level: 3
+                        times: 4
+                      - sigid: 221
+                        level: 0
+                        times: 653
+                    totalAlerts: 658
+                    events: 4387
+                    firewall: 0
+                  - hour: 16
+                    alerts:
+                      - sigid: 5521
+                        level: 0
+                        times: 1
+                      - sigid: 530
+                        level: 0
+                        times: 120
+                    totalAlerts: 121
+                    events: 4379
+                    syscheck: 0
+                    firewall: 0
   
   /sca/{agent_id}:
     get:
