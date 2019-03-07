@@ -155,3 +155,143 @@ def restart_all_agents(wait_for_complete=False):  # noqa: E501
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
+
+def add_agent():
+    pass
+
+
+def delete_agent():
+    pass
+
+
+def get_agent():
+    pass
+
+
+def get_agent_config():
+    pass
+
+
+def delete_agent_group():
+    pass
+
+
+def get_sync_agent():
+    pass
+
+
+def delete_agent_single_group():
+    pass
+
+
+def put_agent_single_group():
+    pass
+
+
+def get_agent_key():
+    pass
+
+
+def put_restart_agent():
+    pass
+
+
+def put_upgrade_agent():
+    pass
+
+
+def put_upgrade_custom_agent():
+    pass
+
+
+def put_new_agent():
+    pass
+
+
+def get_agent_upgrade():
+    pass
+
+
+def delete_multiple_agent_group():
+    pass
+
+
+def post_multiple_agent_group():
+    pass
+
+
+def delete_list_group():
+    pass
+
+
+def get_list_group():
+    pass
+
+
+def delete_group():
+    pass
+
+
+def get_agent_in_group():
+    pass
+
+
+def put_group():
+    pass
+
+
+def get_group_config():
+    pass
+
+
+def post_group_config():
+    pass
+
+
+def get_group_files():
+    pass
+
+
+def get_group_file():
+    pass
+
+
+def post_group_file():
+    pass
+
+
+def insert_agent():
+    pass
+
+
+def get_agent_by_name():
+    pass
+
+
+def get_agent_no_group():
+    pass
+
+
+def get_agent_outdated():
+    pass
+
+
+def restart_list_agents():
+    pass
+
+
+def restart_all_agents():
+    pass
+
+
+def get_agent_fields():
+    pass
+
+
+def get_agent_summary():
+    pass
+
+
+def get_agent_summary_os():
+    pass

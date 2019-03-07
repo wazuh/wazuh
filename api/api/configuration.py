@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh import common
-from api.APIException import APIException
+from api.api_exception import APIException
 import os
 import yaml
 from typing import Dict, List, Tuple
