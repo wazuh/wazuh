@@ -5,3 +5,7 @@
 
 def get_sca_agent():
     pass
+
+
+def get_sca_checks():
+    pass
