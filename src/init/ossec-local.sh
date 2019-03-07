@@ -21,7 +21,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
 INITCONF="/etc/ossec-init.conf"
 
 # Reverse order of daemons
@@ -115,17 +115,9 @@ enable()
         exit 1;
     fi
 
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "DB_DAEMON=ossec-dbd" >> ${PLIST};
-    elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "CSYSLOG_DAEMON=ossec-csyslogd" >> ${PLIST};
-    elif [ "X$2" = "Xagentless" ]; then
-        echo "AGENTLESS_DAEMON=ossec-agentlessd" >> ${PLIST};
-    elif [ "X$2" = "Xintegrator" ]; then
-        echo "INTEGRATOR_DAEMON=ossec-integratord" >> ${PLIST};
-    elif [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
-    else
+    elif [ "X$2" != "Xdatabase" ] && [ "X$2" != "Xclient-syslog" ] && [ "X$2" != "Xagentless" ] && [ "X$2" != "Xintegrator" ]; then
         echo ""
         echo "Invalid enable option."
         echo ""
@@ -145,21 +137,10 @@ disable()
         exit 1;
     fi
     daemon=''
-    if [ "X$2" = "Xdatabase" ]; then
-        echo "DB_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-dbd'
-    elif [ "X$2" = "Xclient-syslog" ]; then
-        echo "CSYSLOG_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-csyslogd'
-    elif [ "X$2" = "Xagentless" ]; then
-        echo "AGENTLESS_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-agentlessd'
-    elif [ "X$2" = "Xintegrator" ]; then
-        echo "INTEGRATOR_DAEMON=\"\"" >> ${PLIST};
-        daemon='ossec-integratord'
-    elif [ "X$2" = "Xdebug" ]; then
+
+    if [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"\"" >> ${PLIST};
-    else
+    elif [ "X$2" != "Xdatabase" ] && [ "X$2" != "Xclient-syslog" ] && [ "X$2" != "Xagentless" ] && [ "X$2" != "Xintegrator" ]; then
         echo ""
         echo "Invalid disable option."
         echo ""
