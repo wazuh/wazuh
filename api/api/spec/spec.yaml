@@ -655,6 +655,26 @@ components:
         archives_queue_size: 
           type: integer
 
+    WazuhRemotedStats:
+      type: object
+      properties:
+        queue_size:
+          type: integer
+        total_queue_size:
+          type: integer
+        tcp_sessions:
+          type: integer
+        evt_count:
+          type: integer
+        ctrl_msg_count:
+          type: integer
+        discarded_count:
+          type: integer
+        msg_sent:
+          type: integer
+        recv_bytes:
+          type: integer
+
     # SCA models
     SCAChecks:
       type: object
@@ -3896,15 +3916,15 @@ paths:
       tags:
       - cluster
       summary: Get a specified node's analysisd stats.
-      description: Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
-      operationId: api.controllers.cluster.get_stats_weekly_node
+      description: Returns Wazuh analysisd statistical information in node {node_id}.
+      operationId: api.controllers.cluster.get_stats_analysisd_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
       responses:
         '200':
-          description: 'Wazuh node weekly stats'
+          description: 'Wazuh node analysisd stats'
           content:
             application/json:
               schema:
@@ -3964,6 +3984,42 @@ paths:
                   statistical_queue_size: 16384
                   archives_queue_usage: 0
                   archives_queue_size: 16384
+  
+  /cluster/{node_id}/stats/remoted:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's remoted stats.
+      description: Returns Wazuh remoted statistical information in node {node_id}.
+      operationId: api.controllers.cluster.get_stats_remoted_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node remoted stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhRemotedStats'
+              example:
+                error: 0
+                data:
+                  queue_size: 0
+                  total_queue_size: 131072
+                  tcp_sessions: 0
+                  evt_count: 0
+                  ctrl_msg_count: 0
+                  discarded_count: 0
+                  msg_sent: 0
+                  recv_bytes: 0
 
   /sca/{agent_id}:
     get:
