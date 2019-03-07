@@ -528,6 +528,18 @@ components:
             type: integer
           firewall:
             type: integer
+      
+    WazuhHourlyStats:
+      type: object
+      properties:
+        averages:
+          type: array
+          items:
+            type: integer
+          minItems: 24
+          maxItems: 24
+        iterations:
+          type: integer
 
     # SCA models
     SCAChecks:
@@ -3493,6 +3505,60 @@ paths:
                     events: 4379
                     syscheck: 0
                     firewall: 0
+
+  /cluster/{node_id}/stats/hourly:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's stats by hour.
+      description: Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
+      operationId: api.controllers.cluster.get_stats_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node hourly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhHourlyStats'
+              example:
+                error: 0
+                data:
+                  averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                  interactions: 0
   
   /sca/{agent_id}:
     get:
