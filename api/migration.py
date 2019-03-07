@@ -123,7 +123,7 @@ def write_into_yaml_file(config: Dict):
         #with open(common.api_config_path, 'w') as output_file:
         with open(config_yml_path, 'w') as output_file:
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
-        os.chown(config_yml_path, getpwnam('root').pw_uid, getpwnam('ossec').pw_uid)
+        os.chown(config_yml_path, getpwnam('root').pw_uid, getpwnam('ossec').pw_gid)
         os.chmod(config_yml_path, 0o640)
     except IOError:
         raise
