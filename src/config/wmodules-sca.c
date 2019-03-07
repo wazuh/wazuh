@@ -19,6 +19,7 @@ static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+static unsigned int profiles = 0;
 
 static short eval_bool(const char *str)
 {
@@ -29,7 +30,6 @@ static short eval_bool(const char *str)
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 {
     unsigned int i;
-    unsigned int profiles = 0;
     int month_interval = 0;
     wm_sca_t *sca;
 
