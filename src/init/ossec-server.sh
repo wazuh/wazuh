@@ -36,7 +36,7 @@ is_rhel_le_5() {
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 INITCONF="/etc/ossec-init.conf"
-DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd ${DB_DAEMON} ${CSYSLOG_DAEMON} ${AGENTLESS_DAEMON} ${INTEGRATOR_DAEMON}"
+DAEMONS="wazuh-modulesd ossec-monitord ossec-logcollector ossec-remoted ossec-syscheckd ossec-analysisd ossec-maild ossec-execd wazuh-db ossec-authd ossec-agentlessd ossec-integratord ossec-dbd ossec-csyslogd"
 
 if ! is_rhel_le_5
 then
@@ -131,10 +131,10 @@ help()
 }
 
 AUTHD_MSG="This option is deprecated because Authd is now enabled by default. If you want to change it, modify the ossec.conf file."
-DATABASE_MSG="This option is deprecated because Database is now enabled by default. If you want to change it, modify the ossec.conf file."
-SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default. If you want to change it, modify the ossec.conf file."
-AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default. If you want to change it, modify the ossec.conf file."
-INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default. If you want to change it, modify the ossec.conf file."
+DATABASE_MSG="This option is deprecated because Database is now enabled by default."
+SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
+AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
+INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
 
 # Enables additional daemons
 enable()
@@ -168,6 +168,7 @@ enable()
     fi
 }
 
+
 # Disables additional daemons
 disable()
 {
@@ -179,7 +180,15 @@ disable()
     fi
     daemon=''
   
-    if [ "X$2" = "Xdebug" ]; then
+    if [ "X$2" = "Xdatabase" ]; then
+        echo "$DATABASE_MSG"
+    elif [ "X$2" = "Xclient-syslog" ]; then
+        echo "$SYSLOG_MSG"
+    elif [ "X$2" = "Xagentless" ]; then
+        echo "$AGENTLESS_MSG";
+    elif [ "X$2" = "Xintegrator" ]; then
+        echo "$INTEGRATOR_MSG";
+    elif [ "X$2" = "Xdebug" ]; then
         echo "DEBUG_CLI=\"-d\"" >> ${PLIST};
     else
         echo ""
