@@ -725,6 +725,461 @@ components:
         description:
           type: string
 
+
+    WazuhLogsSummary:
+      type: object
+      properties:
+          ossec-analysisd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-remoted:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          sca:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-authd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-db:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-execd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-maild:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-monitord:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-logcollector:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-rootcheck:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-syscheckd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:agent-key-polling:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:aws-s3:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:azure-logs:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:ciscat:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:command:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:database:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:docker-listener:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:download:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:oscap:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:osquery:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:syscollector:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          wazuh-modulesd:vulnerability-detector:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-agentlessd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-testrule:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-csyslogd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-dbd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-integratord:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+          ossec-reportd:
+            type: object
+            properties:
+              info:
+                type: integer
+              all:
+                type: integer
+              critical:
+                type: integer
+              error:
+                type: integer
+              debug:
+                type: integer
+              warning:
+                type: integer
+
     # SCA models
     SCAChecks:
       type: object
@@ -4175,6 +4630,55 @@ paths:
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
+
+  /cluster/{node_id}/logs/summary:
+    get:
+      tags:
+      - cluster
+      summary: Get a summary of a specified node's wazuh logs.
+      description: Returns a summary of the last 2000 wazuh log entries in node {node_id}.
+      operationId: api.controllers.cluster.get_log_summary_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node logs summary'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhLogsSummary'
+              example:
+                error: 0
+                data:
+                  wazuh-modulesd:
+                    info: 2
+                    all: 2
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+                  wazuh-db:
+                    info: 1
+                    all: 4
+                    critical: 0
+                    debug: 0
+                    error: 3
+                    warning: 0
+                  ossec-rootcheck:
+                    info: 8
+                    all: 8
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
 
   /sca/{agent_id}:
     get:
