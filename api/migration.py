@@ -33,7 +33,7 @@ def get_old_config(old_config_path: str = '/var/ossec/~api/configuration/config.
                     #if check_old_config({var_name: var_value}):
                     #    old_config[var_name] = var_value
                     old_config[var_name] = var_value
-    except IOError, FileNotFoundError:
+    except IOError:
         raise
 
     return rename_old_fields(old_config)
@@ -121,7 +121,7 @@ def write_into_yaml_file(config: Dict):
         #with open(common.api_config_path, 'w') as output_file:
         with open('/var/ossec/api/configuration/config.yml', 'w') as output_file:
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
-    except IOError, FileNotFoundError:
+    except IOError:
         raise
 
 
