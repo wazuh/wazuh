@@ -21,6 +21,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     int agent_cfg = d2 ? *(int *)d2 : 0;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
 
     if (!node->attributes[0]) {
         merror("No such attribute '%s' at module.", XML_NAME);
@@ -35,11 +36,25 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     // Allocate memory
 
     if ((cur_wmodule = *wmodules)) {
-        while (cur_wmodule->next)
-            cur_wmodule = cur_wmodule->next;
+        cur_wmodule_exists = *wmodules;
+        int found = 0;
 
-        os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-        cur_wmodule = cur_wmodule->next;
+        while (cur_wmodule_exists) {
+            if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                cur_wmodule = cur_wmodule_exists;
+                found = 1;
+                break;
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next)
+                cur_wmodule = cur_wmodule->next;
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+        }
     } else
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
@@ -151,14 +166,29 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     wmodule **wmodules = (wmodule**)d1;
     wmodule *cur_wmodule;
     xml_node **children = NULL;
+    wmodule *cur_wmodule_exists;
 
     // Allocate memory
     if ((cur_wmodule = *wmodules)) {
-        while (cur_wmodule->next)
-            cur_wmodule = cur_wmodule->next;
+        cur_wmodule_exists = *wmodules;
+        int found = 0;
 
-        os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-        cur_wmodule = cur_wmodule->next;
+        while (cur_wmodule_exists) {
+            if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                cur_wmodule = cur_wmodule_exists;
+                found = 1;
+                break;
+            }
+            cur_wmodule_exists = cur_wmodule_exists->next;
+        }
+
+        if(!found) {
+            while (cur_wmodule->next)
+                cur_wmodule = cur_wmodule->next;
+
+            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
+            cur_wmodule = cur_wmodule->next;
+        }
     } else
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
 
@@ -169,7 +199,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
 
     // Get children
     if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'.", node->values[0]);
+        mdebug1("Empty configuration for module '%s'.", node->element);
     }
 
     //Policy Monitoring Module
