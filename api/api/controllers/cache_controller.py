@@ -3,14 +3,17 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-def get_decoders():
+def delete_cache():
     pass
 
-def get_decoders_by_name():
+
+def get_cache():
     pass
 
-def get_decoders_files():
+
+def delete_cache_group():
     pass
 
-def get_decoders_parents():
+
+def get_cache_config():
     pass

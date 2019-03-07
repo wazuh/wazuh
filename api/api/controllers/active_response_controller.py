@@ -3,14 +3,5 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-def get_decoders():
-    pass
-
-def get_decoders_by_name():
-    pass
-
-def get_decoders_files():
-    pass
-
-def get_decoders_parents():
+def active_response():
     pass

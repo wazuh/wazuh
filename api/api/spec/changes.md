@@ -22,3 +22,13 @@
 
 ### DELETE /agents/groups
 * Changed parameter **ids** name to **list_groups**
+
+##Experimental
+
+### GET /experimental/ciscat/results
+* Changed path to **/experimental/ciscat/:agent_id/results** because parameter **agent_id** must be on path, it's more correct.
+* Response mustn't show agent_id information if we use the previous change.
+
+### GET /experimental/syscollector/hardware
+* If summary say that the endpoint return hardware info of **all agents** the parameter **agent_id** isn't necessary
+* Parameters **ram_free**, **ram_total**, **cpu_cores**, **cpu_mhz**
