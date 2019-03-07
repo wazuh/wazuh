@@ -3664,7 +3664,7 @@ paths:
       - cluster
       summary: Get information about the local node.
       description: Returns basic information about the cluster node receiving the request.
-      operationId: api.controllers.cluster.get_cluster_node
+      operationId: api.controllers.cluster_controller.get_cluster_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3699,7 +3699,7 @@ paths:
       - cluster
       summary: Get information about all nodes in the cluster.
       description: Returns a list containing all connected nodes in the cluster.
-      operationId: api.controllers.cluster.get_cluster_nodes
+      operationId: api.controllers.cluster_controller.get_cluster_nodes
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3748,7 +3748,7 @@ paths:
       - cluster
       summary: Get information about a specified node.
       description: Returns information about a specified node in the cluster.
-      operationId: api.controllers.cluster.get_cluster_node_info
+      operationId: api.controllers.cluster_controller.get_cluster_node_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3781,7 +3781,7 @@ paths:
       - cluster
       summary: Show cluster healthcheck
       description: Returns cluster healthcheck information such as last keep alive, last synchronization time and number of agents reporting on each node.
-      operationId: api.controllers.cluster.get_healthcheck
+      operationId: api.controllers.cluster_controller.get_healthcheck
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3851,7 +3851,7 @@ paths:
       - cluster
       summary: Show a specified node's healthcheck information
       description: Returns cluster healthcheck information of an specified node.
-      operationId: api.controllers.cluster.get_healthcheck_node
+      operationId: api.controllers.cluster_controller.get_healthcheck_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3907,7 +3907,7 @@ paths:
       - cluster
       summary: Get cluster status
       description: Returns information about the cluster status.
-      operationId: api.controllers.cluster.get_status
+      operationId: api.controllers.cluster_controller.get_status
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3945,7 +3945,7 @@ paths:
       - cluster
       summary: Get cluster configuration
       description: Returns the current cluster configuration
-      operationId: api.controllers.cluster.get_config
+      operationId: api.controllers.cluster_controller.get_config
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4004,7 +4004,7 @@ paths:
       - cluster
       summary: Get a specified node's status
       description: Returns the status of all Wazuh daemons in node node_id
-      operationId: api.controllers.cluster.get_status_node
+      operationId: api.controllers.cluster_controller.get_status_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4047,7 +4047,7 @@ paths:
       - cluster
       summary: Get a specified node's information
       description: Returns basic information about a specified node such as version, compilation date, installation path.
-      operationId: api.controllers.cluster.get_info_node
+      operationId: api.controllers.cluster_controller.get_info_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4084,7 +4084,7 @@ paths:
       - cluster
       summary: Get a specified node's configuration
       description: Returns wazuh configuration used in node {node_id}
-      operationId: api.controllers.cluster.get_configuration_node
+      operationId: api.controllers.cluster_controller.get_configuration_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4147,7 +4147,7 @@ paths:
       - cluster
       summary: Get a specified node's stats.
       description: Returns Wazuh statistical information in node {node_id} for the current or specified date.
-      operationId: api.controllers.cluster.get_stats_node
+      operationId: api.controllers.cluster_controller.get_stats_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4202,7 +4202,7 @@ paths:
       - cluster
       summary: Get a specified node's stats by hour.
       description: Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
-      operationId: api.controllers.cluster.get_stats_hourly_node
+      operationId: api.controllers.cluster_controller.get_stats_hourly_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4256,7 +4256,7 @@ paths:
       - cluster
       summary: Get a specified node's stats by week.
       description: Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
-      operationId: api.controllers.cluster.get_stats_weekly_node
+      operationId: api.controllers.cluster_controller.get_stats_weekly_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4473,7 +4473,7 @@ paths:
       - cluster
       summary: Get a specified node's analysisd stats.
       description: Returns Wazuh analysisd statistical information in node {node_id}.
-      operationId: api.controllers.cluster.get_stats_analysisd_node
+      operationId: api.controllers.cluster_controller.get_stats_analysisd_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4547,7 +4547,7 @@ paths:
       - cluster
       summary: Get a specified node's remoted stats.
       description: Returns Wazuh remoted statistical information in node {node_id}.
-      operationId: api.controllers.cluster.get_stats_remoted_node
+      operationId: api.controllers.cluster_controller.get_stats_remoted_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4583,7 +4583,7 @@ paths:
       - cluster
       summary: Get a specified node's wazuh logs.
       description: Returns the last 2000 wazuh log entries in node {node_id}.
-      operationId: api.controllers.cluster.get_log_node
+      operationId: api.controllers.cluster_controller.get_log_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -4637,7 +4637,7 @@ paths:
       - cluster
       summary: Get a summary of a specified node's wazuh logs.
       description: Returns a summary of the last 2000 wazuh log entries in node {node_id}.
-      operationId: api.controllers.cluster.get_log_summary_node
+      operationId: api.controllers.cluster_controller.get_log_summary_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
