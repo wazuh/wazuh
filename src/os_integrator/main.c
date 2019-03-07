@@ -113,6 +113,7 @@ int main(int argc, char **argv)
     /* Reading configuration */
     if(!OS_ReadIntegratorConf(cfg, &integrator_config) || !integrator_config[0])
     {
+        minfo("Remote integrations not configured. Clean exit.");
         exit(0);
     }
 
