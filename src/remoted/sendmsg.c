@@ -14,7 +14,23 @@
 #include "os_net/os_net.h"
 
 /* pthread key update mutex */
-static pthread_rwlock_t keyupdate_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_rwlock_t keyupdate_rwlock;
+
+void key_lock_init()
+{
+    pthread_rwlockattr_t attr;
+    pthread_rwlockattr_init(&attr);
+
+#ifdef __linux__
+    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
+     * Do not use recursive locking.
+     */
+    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
+
+    pthread_rwlock_init(&keyupdate_rwlock, &attr);
+    pthread_rwlockattr_destroy(&attr);
+}
 
 void key_lock_read()
 {

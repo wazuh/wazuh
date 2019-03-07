@@ -112,6 +112,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length);
 
 int check_keyupdate(void);
 
+void key_lock_init(void);
+
 void key_lock_read(void);
 
 void key_lock_write(void);
