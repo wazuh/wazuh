@@ -65,5 +65,7 @@
 #define VU_INS_CPES_DIC       "(5523): Inserting Wazuh's CPE dictonary..."
 #define VU_FUNCTION_TIME      "(5529): It took %ld seconds to %s vulnerabilities in agent %s."
 #define VU_INS_MSB            "(5530): Inserting Microsoft Bulletins dictonary..."
+#define VU_HOTFIX_VUL         "(5533): Agent %s is vulnerable to %s because does not have the '%s' patch installed."
+#define VU_HOTFIX_INSTALLED   "(5534): Agent %s has installed %s that corrects the vulnerability %s."
 
 #endif

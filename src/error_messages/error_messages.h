@@ -295,7 +295,7 @@
 #define VU_QUERY_ERROR              "(5407): The query could not be formed."
 #define VU_OS_VERSION_ERROR         "(5408): Invalid OS version."
 #define VU_REFRESH_DB_ERROR         "(5409): Could not refresh the %s DB."
-#define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent '%s' could not be obtained."
+#define VU_GET_SOFTWARE_ERROR       "(5410): The software of the agent %s could not be obtained."
 #define VU_AG_CHECK_ERR             "(5411): Agent vulnerabilities could not be checked."
 #define VU_TABLE_ERROR              "(5412): Table %s is not available."
 #define VU_PACKAGE_TABLE_ERROR      "(5414): The packages table for agent %s could not be created."
@@ -347,7 +347,9 @@
 #define VU_NULL_AGENT_IP            "(5525): The agent database returned a null registration IP address. Skipping agent %s."
 #define VU_API_REQ_INV_NEW          "(5526): There was no valid response to '%s' after %d attempts. Trying the next page..."
 #define VU_UNC_SEVERITY             "(5527): Uncontrolled severity has been found: '%s'."
-#define VU_CPE_CLEAN_REQUEST_ERROR  "(5428): The CPEs of the agent %s could not be clenaed."
+#define VU_CPE_CLEAN_REQUEST_ERROR  "(5528): The CPEs of the agent %s could not be cleaned."
+#define VU_INVALID_CPE              "(5531): The ID %d is not a CPE."
+#define VU_HOTFIX_REQUEST_ERROR     "(5532): The hotfixes of the agent %s could not be requested."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
