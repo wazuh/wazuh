@@ -33,6 +33,10 @@ __declspec( dllexport ) char* wm_inet_ntop(UCHAR ucLocalAddr[]){
     char *address;
     address = calloc(129, sizeof(char));
 
+    if(address == NULL) {
+        return NULL;
+    }
+
     inet_ntop(AF_INET6,(struct in6_addr *)ucLocalAddr, address, 128);
 
     return address;
@@ -363,6 +367,10 @@ char* get_broadcast_addr(char* ip, char* netmask){
 
     struct in_addr host, mask, broadcast;
     char* broadcast_addr = calloc(NI_MAXHOST, sizeof(char));
+
+    if(broadcast_addr == NULL) {
+        return NULL;
+    }
 
     if (inet_pton(AF_INET, ip, &host) == 1 && inet_pton(AF_INET, netmask, &mask) == 1){
         broadcast.s_addr = host.s_addr | ~mask.s_addr;

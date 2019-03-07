@@ -557,7 +557,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb_t * wdb;
     os_calloc(1, sizeof(wdb_t), wdb);
     wdb->db = db;
-    pthread_mutex_init(&wdb->mutex, NULL);
+    w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
     return wdb;
 }

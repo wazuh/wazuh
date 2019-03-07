@@ -249,7 +249,7 @@ void wm_kill_children() {
 
     w_mutex_lock(&wm_children_mutex);
 
-    for (i = 0; wm_children[i] && i < WM_POOL_SIZE; i++)  {
+    for (i = 0; i < WM_POOL_SIZE && wm_children[i]; i++)  {
         TerminateProcess(wm_children[i], 127);
     }
 
