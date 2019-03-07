@@ -268,3 +268,26 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     pass
+
+
+def put_restart(pretty=False, wait_for_complete=False):
+    """Restarts all nodes in cluster.
+
+    Restarts all nodes in cluster.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+
+def put_restart_node(node_id, pretty=False, wait_for_complete=False):
+    """Restarts all nodes in cluster.
+
+    Restarts all nodes in cluster.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param node_id: Cluster node name.
+    """
+    pass
