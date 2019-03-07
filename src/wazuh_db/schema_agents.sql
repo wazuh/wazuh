@@ -98,6 +98,7 @@ CREATE TABLE IF NOT EXISTS sys_osinfo (
     sysname TEXT,
     release TEXT,
     version TEXT,
+    os_release TEXT,
     PRIMARY KEY (scan_id, os_name)
 );
 

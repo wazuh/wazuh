@@ -1872,6 +1872,7 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
     char * sysname;
     char * release;
     char * version;
+    char * os_release;
     int result;
 
     if (next = strchr(input, ' '), !next) {
@@ -2064,16 +2065,30 @@ int wdb_parse_osinfo(wdb_t * wdb, char * input, char * output) {
 
         release = curr;
         *next++ = '\0';
+        curr = next;
 
         if (!strcmp(release, "NULL"))
             release = NULL;
 
-        if (!strcmp(next, "NULL"))
-            version = NULL;
-        else
-            version = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid OS info query syntax.");
+            mdebug2("OS info query: %s", release);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid OS info query syntax, near '%.32s'", release);
+            return -1;
+        }
 
-        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version), result < 0) {
+        version = curr;
+        *next++ = '\0';
+
+        if (!strcmp(version, "NULL"))
+            version = NULL;
+
+        if (!strcmp(next, "NULL"))
+            os_release = NULL;
+        else
+            os_release = next;
+
+        if (result = wdb_osinfo_save(wdb, scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version, os_release), result < 0) {
             mdebug1("Cannot save OS information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save OS information.");
         } else {

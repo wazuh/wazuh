@@ -2319,6 +2319,9 @@ cJSON* getunameJSON()
         if (read_info->machine && (strcmp(read_info->machine, "unknown") != 0)){
             cJSON_AddStringToObject(root, "architecture", read_info->machine);
         }
+        if (read_info->os_release){
+            cJSON_AddStringToObject(root, "os_release", read_info->os_release);
+        }
 
         free_osinfo(read_info);
         return root;
