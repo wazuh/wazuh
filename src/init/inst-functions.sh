@@ -914,16 +914,6 @@ InstallLocal()
         LIB_FLAG="no"
     fi
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
-
-    # backup old API
-    backup_old_api
-
-    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
-    # restore configuration and certificates from old API
-    restore_old_api
-
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
@@ -957,51 +947,6 @@ InstallLocal()
     touch ${PREFIX}/logs/integrations.log
     chmod 640 ${PREFIX}/logs/integrations.log
     chown ${OSSEC_USER_MAIL}:${OSSEC_GROUP} ${PREFIX}/logs/integrations.log
-}
-
-backup_old_api() {
-
-    API_PATH=${PREFIX}/api
-    API_PATH_BACKUP=${PREFIX}/~api
-
-    # do backup only if config.js file exists
-    if [ -f $API_PATH/configuration/config.js ]; then
-
-        if [ -e $API_PATH_BACKUP ]; then
-            rm -rf $API_PATH_BACKUP/*
-        else
-            mkdir $API_PATH_BACKUP
-            chown root:ossec $API_PATH_BACKUP
-        fi
-
-        mkdir $API_PATH_BACKUP/configuration
-        cp -rLfp $API_PATH/configuration/config.js $API_PATH_BACKUP/configuration/config.js
-
-        if [ -d $API_PATH/configuration/ssl ]; then
-            mkdir $API_PATH_BACKUP/configuration/ssl
-            cp -rLfp $API_PATH/configuration/ssl/* $API_PATH_BACKUP/configuration/ssl
-        fi
-
-        # remove old API directory
-        rm -rf $API_PATH
-
-    fi
-
-}
-
-restore_old_api() {
-
-    API_PATH=${PREFIX}/api
-    API_PATH_BACKUP=${PREFIX}/~api
-
-    if [ -f $API_PATH_BACKUP/configuration/config.js ]; then
-        # execute migration.py
-        ${PREFIX}/framework/python/bin/python3 ../api/migration.py
-        mkdir $API_PATH/configuration/ssl
-        cp -rLfp $API_PATH_BACKUP/configuration/ssl/* $API_PATH/configuration/ssl
-        #rm -rf $API_PATH_BACKUP
-    fi
-
 }
 
 TransferShared()
@@ -1084,6 +1029,66 @@ InstallServer()
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} ${CPYTHON_FLAGS}
+
+    # install framework
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    # backup configuration and certificates from old API
+    backup_old_api
+
+    #install API
+    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    # restore configuration and certificates from old API
+    restore_old_api
+
+}
+
+backup_old_api() {
+
+    API_PATH=${PREFIX}/api
+    API_PATH_BACKUP=${PREFIX}/~api
+
+    # do backup only if config.js file exists
+    if [ -f ${API_PATH}/configuration/config.js ]; then
+
+        if [ -e ${API_PATH_BACKUP} ]; then
+            rm -rf ${API_PATH_BACKUP}/*
+        else
+            mkdir ${API_PATH_BACKUP}
+            chown root:ossec ${API_PATH_BACKUP}
+        fi
+
+        mkdir ${API_PATH_BACKUP}/configuration
+        cp -rLfp ${API_PATH}/configuration/config.js ${API_PATH_BACKUP}/configuration/config.js
+
+        if [ -d ${API_PATH}/configuration/ssl ]; then
+            mkdir ${API_PATH_BACKUP}/configuration/ssl
+            cp -rLfp ${API_PATH}/configuration/ssl/* ${API_PATH_BACKUP}/configuration/ssl
+        fi
+
+        # remove old API directory
+        rm -rf ${API_PATH}
+
+    fi
+
+}
+
+restore_old_api() {
+
+    API_PATH=${PREFIX}/api
+    API_PATH_BACKUP=${PREFIX}/~api
+
+    if [ -r ${API_PATH_BACKUP}/configuration/config.js ]; then
+        # execute migration.py
+        ${PREFIX}/framework/python/bin/python3 ${PREFIX}/api/migration.py
+        if [ ! -d ${API_PATH}/configuration/ssl ]; then
+            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
+        fi
+        cp -rLfp ${API_PATH_BACKUP}/configuration/ssl/* ${API_PATH}/configuration/ssl
+        #rm -rf $API_PATH_BACKUP
+    fi
+
 }
 
 InstallAgent()
@@ -1123,6 +1128,7 @@ InstallAgent()
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
     fi
+
 }
 
 InstallWazuh()
