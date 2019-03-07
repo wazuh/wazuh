@@ -64,7 +64,10 @@ void HandleSecure()
     // Initialize messag equeue
     rem_msginit(logr.queue_size);
 
-    /* Create Active Response forwarder thread */
+    /* Initialize the agent key table mutex */
+    key_lock_init();
+
+    /* Create shared file updating thread */
     w_create_thread(update_shared_files, NULL);
 
     /* Create Active Response forwarder thread */
