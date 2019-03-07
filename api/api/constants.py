@@ -6,5 +6,6 @@ import os
 
 from wazuh import common
 
-CONFIG_PATH = os.path.join(common.ossec_path, 'configuration', 'api.yml')
+CONFIG_PATH = os.path.join(common.ossec_path, 'configuration')
+CONFIG_FILE_PATH = os.path.join(common.ossec_path, 'configuration', 'api.yml')
 SECURITY_PATH = os.path.join(CONFIG_PATH, 'security')

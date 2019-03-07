@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-from api.constants import CONFIG_PATH, SECURITY_PATH
+from api.constants import CONFIG_FILE_PATH, SECURITY_PATH
 
 
 class APIException(Exception):
@@ -19,7 +19,7 @@ class APIException(Exception):
         self.code = code
         self.details = details
         self.exceptions = {
-            2000: f'Some parameters are not expected in the configuration file ({CONFIG_PATH})',
+            2000: f'Some parameters are not expected in the configuration file ({CONFIG_FILE_PATH})',
             2001: 'Error creating or reading secrets file. Please, ensure '
                   f'there is enough disk space and permission to write in {SECURITY_PATH}'
         }
