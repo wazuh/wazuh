@@ -921,8 +921,6 @@ InstallLocal()
 
     ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
 
-    # execute migration.py
-    ${PREFIX}/framework/python/bin/python3 ../api/migration.py
     # restore configuration and certificates from old API
     restore_old_api
 
@@ -997,6 +995,8 @@ restore_old_api() {
     API_PATH_BACKUP=${PREFIX}/~api
 
     if [ -f $API_PATH_BACKUP/configuration/config.js ]; then
+        # execute migration.py
+        ${PREFIX}/framework/python/bin/python3 ../api/migration.py
         mkdir $API_PATH/configuration/ssl
         cp -rLfp $API_PATH_BACKUP/configuration/ssl/* $API_PATH/configuration/ssl
         #rm -rf $API_PATH_BACKUP
