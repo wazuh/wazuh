@@ -40,12 +40,14 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         int found = 0;
 
         while (cur_wmodule_exists) {
-            if(strcmp(cur_wmodule_exists->tag,node->values[0]) == 0) {
-                cur_wmodule = cur_wmodule_exists;
-                found = 1;
-                break;
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->values[0]) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+                cur_wmodule_exists = cur_wmodule_exists->next;
             }
-            cur_wmodule_exists = cur_wmodule_exists->next;
         }
 
         if(!found) {
@@ -174,12 +176,14 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
         int found = 0;
 
         while (cur_wmodule_exists) {
-            if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
-                cur_wmodule = cur_wmodule_exists;
-                found = 1;
-                break;
+            if(cur_wmodule_exists->tag) {
+                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
+                    cur_wmodule = cur_wmodule_exists;
+                    found = 1;
+                    break;
+                }
+                cur_wmodule_exists = cur_wmodule_exists->next;
             }
-            cur_wmodule_exists = cur_wmodule_exists->next;
         }
 
         if(!found) {
