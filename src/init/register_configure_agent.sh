@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # March 6, 2019.
