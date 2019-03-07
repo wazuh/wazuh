@@ -5523,6 +5523,141 @@ paths:
                     error: 0
                     warning: 0
 
+  /manager/files:
+    get:
+      tags:
+      - manager
+      summary: Get file contents.
+      description: Returns file contents from any file.
+      operationId: api.controllers.manager_controller.get_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'File contents'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+    post:
+      tags:
+      - manager
+      summary: Updates file contents.
+      description: Replaces file contents with the data contained in the API request.
+      operationId: api.controllers.manager_controller.post_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/overwrite'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File updated successfully.
+    delete:
+      tags:
+      - manager
+      summary: Removes a file.
+      description: Removes a specified file.
+      operationId: api.controllers.manager_controller.delete_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File was deleted.
+  
+  /manager/restart:
+    put:
+      tags:
+      - manager
+      summary: Restarts the wazuh manager.
+      description: Restarts the wazuh manager.
+      operationId: api.controllers.cluster_controller.put_restart
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: Restarting manager.
+
+  /manager/configuration/validation:
+    get:
+      tags:
+      - manager
+      summary: Check Wazuh configuration.
+      description: Returns wether the Wazuh configuration is correct.
+      operationId: api.controllers.manager_controller.get_conf_validation
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ConfigurationValidation'
+              example:
+                error: 0
+                data:
+                  status: KO
+                  details:
+                    - "(1230): Invalid element in the configuration: 'hello'."
+                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
   /sca/{agent_id}:
     get:
       tags:

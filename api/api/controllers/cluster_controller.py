@@ -282,9 +282,9 @@ def put_restart(pretty=False, wait_for_complete=False):
 
 
 def put_restart_node(node_id, pretty=False, wait_for_complete=False):
-    """Restarts all nodes in cluster.
+    """Restarts a specific node in cluster.
 
-    Restarts all nodes in cluster.
+    Restarts a specific node in cluster.
 
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response

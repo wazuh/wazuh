@@ -142,3 +142,60 @@ def get_log_summary(pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     pass
+
+
+def get_files(path, pretty=False, wait_for_complete=False):
+    """Get file contents.
+
+    Returns file contents from any file.
+
+    :param path: Filepath to return.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+
+def post_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+    """Updates file contents.
+
+    Replaces file contents with the data contained in the API request.
+
+    :param path: Filepath to return.
+    :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+def delete_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+    """Removes a file.
+
+    Removes a specified file.
+
+    :param path: Filepath to return.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+def put_restart(pretty=False, wait_for_complete=False):
+    """Restarts the wazuh manager.
+
+    Restarts the wazuh manager.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+
+def get_conf_validation(pretty=False, wait_for_complete=False):
+    """Check Wazuh configuration.
+
+    Returns wether the Wazuh configuration is correct.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
