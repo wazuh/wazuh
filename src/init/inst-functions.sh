@@ -1053,17 +1053,17 @@ backup_old_api() {
     if [ -f ${API_PATH}/configuration/config.js ]; then
 
         if [ -e ${API_PATH_BACKUP} ]; then
-            rm -rf ${API_PATH_BACKUP}/*
+            rm -rf ${API_PATH_BACKUP}
         else
-            mkdir ${API_PATH_BACKUP}
+            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}
             chown root:ossec ${API_PATH_BACKUP}
         fi
 
-        mkdir ${API_PATH_BACKUP}/configuration
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}/configuration
         cp -rLfp ${API_PATH}/configuration/config.js ${API_PATH_BACKUP}/configuration/config.js
 
         if [ -d ${API_PATH}/configuration/ssl ]; then
-            mkdir ${API_PATH_BACKUP}/configuration/ssl
+            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}/configuration/ssl
             cp -rLfp ${API_PATH}/configuration/ssl/* ${API_PATH_BACKUP}/configuration/ssl
         fi
 
