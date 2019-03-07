@@ -541,6 +541,24 @@ components:
         iterations:
           type: integer
 
+    WazuhWeeklyStats:
+      type: object
+      properties:
+        Sun:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Mon:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Tue:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Wed:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Thu:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Fri:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Sat:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+
     # SCA models
     SCAChecks:
       type: object
@@ -3512,7 +3530,7 @@ paths:
       - cluster
       summary: Get a specified node's stats by hour.
       description: Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
-      operationId: api.controllers.cluster.get_stats_node
+      operationId: api.controllers.cluster.get_stats_hourly_node
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -3559,7 +3577,224 @@ paths:
                     - 65
                     - 23
                   interactions: 0
-  
+
+  /cluster/{node_id}/stats/weekly:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's stats by week.
+      description: Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+      operationId: api.controllers.cluster.get_stats_weekly_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node weekly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhWeeklyStats'
+              example:
+                error: 0
+                data:
+                  Sun:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Mon:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Tue:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Wed:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Thu:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Fri:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Sat:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+
   /sca/{agent_id}:
     get:
       tags:
