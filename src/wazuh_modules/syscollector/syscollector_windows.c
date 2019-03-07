@@ -1741,6 +1741,7 @@ void sys_network_windows(const char* LOCATION){
                 dwRetVal = GetLastError();
                 mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
             }
+            FreeLibrary(sys_library);
         } else {
             dwRetVal = GetLastError();
             LPSTR messageBuffer = NULL;
@@ -1755,11 +1756,6 @@ void sys_network_windows(const char* LOCATION){
             mterror(WM_SYS_LOGTAG, "Unable to load syscollector_win_ext.dll: %s (%lu)", messageBuffer, dwRetVal);
             LocalFree(messageBuffer);
         }
-    }
-
-    if (sys_library)  { 
-        FreeLibrary(sys_library);
-        sys_library = NULL;
     }
 
     if (dwRetVal != NO_ERROR) return;
