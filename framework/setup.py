@@ -9,6 +9,11 @@ from setuptools import setup, find_packages
 # Install the package locally: python setup.py install
 # Install the package dev: python setup.py develop
 
+REQUIRES = ["cryptography==2.4.2",
+            "setuptools>=21.0.0",
+            "uvloop==0.11.3"
+            ]
+
 setup(name='wazuh',
       version='3.9.0',
       description='Wazuh control with Python',
@@ -17,5 +22,5 @@ setup(name='wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
       packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
-      install_requires=[],
+      install_requires=REQUIRES,
       zip_safe=False)

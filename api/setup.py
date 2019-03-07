@@ -4,7 +4,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import sys
 from setuptools import setup, find_packages
 
 NAME = "api"
@@ -18,8 +17,13 @@ VERSION = "3.9.0"
 # http://pypi.python.org/pypi/setuptools
 
 REQUIRES = ["connexion[swagger-ui]==2.2.0",
+            "Flask-Cors==3.0.7",
+            "Flask==1.0.2",
             "python_dateutil==2.6.0",
-            "setuptools>=21.0.0"
+            "PyYAML==3.13",
+            "python-jose[cryptography]==3.0.1",
+            "setuptools>=21.0.0",
+            "sqlalchemy==1.3.0"
             ]
 
 setup(
@@ -31,7 +35,7 @@ setup(
     url="https://github.com/wazuh",
     keywords=["Wazuh API"],
     install_requires=REQUIRES,
-    packages=find_packages(),
+    packages=find_packages(exclude=["*.test", "*.test.*", "test.*", "test"]),
     package_data={'': ['spec/spec.yaml']},
     include_package_data=True,
     zip_safe=False,
