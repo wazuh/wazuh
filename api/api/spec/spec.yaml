@@ -558,6 +558,102 @@ components:
           $ref: '#/components/schemas/WazuhHourlyStats'
         Sat:
           $ref: '#/components/schemas/WazuhHourlyStats'
+    
+    WazuhAnalysisdStats:
+      type: object
+      properties:
+        total_events_decoded: 
+          type: integer
+        syscheck_events_decoded:
+          type: integer
+        syscheck_edps:
+          type: integer
+        syscollector_events_decoded: 
+          type: integer
+        syscollector_edps: 
+          type: integer
+        rootcheck_events_decoded:
+          type: integer
+        rootcheck_edps:
+          type: integer
+        sca_events_decoded: 
+          type: integer
+        sca_edps:
+          type: integer
+        hostinfo_events_decoded:
+          type: integer
+        hostinfo_edps:
+          type: integer
+        winevt_events_decoded:
+          type: integer
+        winevt_edps:
+          type: integer
+        other_events_decoded: 
+          type: integer
+        other_events_edps:
+          type: integer
+        events_processed: 
+          type: integer
+        events_edps: 
+          type: integer
+        events_received: 
+          type: integer
+        events_dropped:
+          type: integer
+        alerts_written:
+          type: integer
+        firewall_written:
+          type: integer
+        fts_written:
+          type: integer
+        syscheck_queue_usage:
+          type: integer
+        syscheck_queue_size: 
+          type: integer
+        syscollector_queue_usage:
+          type: integer
+        syscollector_queue_size: 
+          type: integer
+        rootcheck_queue_usage:
+          type: integer
+        rootcheck_queue_size: 
+          type: integer
+        sca_queue_usage:
+          type: integer
+        sca_queue_size: 
+          type: integer
+        hostinfo_queue_usage:
+          type: integer
+        hostinfo_queue_size: 
+          type: integer
+        winevt_queue_usage:
+          type: integer
+        winevt_queue_size: 
+          type: integer
+        event_queue_usage:
+          type: integer
+        event_queue_size: 
+          type: integer
+        rule_matching_queue_usage:
+          type: integer
+        rule_matching_queue_size: 
+          type: integer
+        alerts_queue_usage:
+          type: integer
+        alerts_queue_size: 
+          type: integer
+        firewall_queue_usage:
+          type: integer
+        firewall_queue_size: 
+          type: integer
+        statistical_queue_usage:
+          type: integer
+        statistical_queue_size: 
+          type: integer
+        archives_queue_usage:
+          type: integer
+        archives_queue_size: 
+          type: integer
 
     # SCA models
     SCAChecks:
@@ -3794,6 +3890,80 @@ paths:
                     - 65
                     - 23
                     interactions: 0
+
+  /cluster/{node_id}/stats/analysisd:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's analysisd stats.
+      description: Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+      operationId: api.controllers.cluster.get_stats_weekly_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node weekly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhAnalysisdStats'
+              example:
+                error: 0
+                data:
+                  total_events_decoded: 5
+                  syscheck_events_decoded: 0
+                  syscheck_edps: 0
+                  syscollector_events_decoded: 0
+                  syscollector_edps: 0
+                  rootcheck_events_decoded: 0
+                  rootcheck_edps: 0
+                  sca_events_decoded: 0
+                  sca_edps: 0
+                  hostinfo_events_decoded: 0
+                  hostinfo_edps: 0
+                  winevt_events_decoded: 0
+                  winevt_edps: 0
+                  other_events_decoded: 5
+                  other_events_edps: 1
+                  events_processed: 5
+                  events_edps: 1
+                  events_received: 5
+                  events_dropped: 0
+                  alerts_written: 0
+                  firewall_written: 0
+                  fts_written: 0
+                  syscheck_queue_usage: 0
+                  syscheck_queue_size: 16384
+                  syscollector_queue_usage: 0
+                  syscollector_queue_size: 16384
+                  rootcheck_queue_usage: 0
+                  rootcheck_queue_size: 16384
+                  sca_queue_usage: 0
+                  sca_queue_size: 16384
+                  hostinfo_queue_usage: 0
+                  hostinfo_queue_size: 16384
+                  winevt_queue_usage: 0
+                  winevt_queue_size: 16384
+                  event_queue_usage: 0
+                  event_queue_size: 16384
+                  rule_matching_queue_usage: 0
+                  rule_matching_queue_size: 16384
+                  alerts_queue_usage: 0
+                  alerts_queue_size: 16384
+                  firewall_queue_usage: 0
+                  firewall_queue_size: 16384
+                  statistical_queue_usage: 0
+                  statistical_queue_size: 16384
+                  archives_queue_usage: 0
+                  archives_queue_size: 16384
 
   /sca/{agent_id}:
     get:
