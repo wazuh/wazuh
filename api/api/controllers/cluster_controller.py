@@ -291,3 +291,26 @@ def put_restart_node(node_id, pretty=False, wait_for_complete=False):
     :param node_id: Cluster node name.
     """
     pass
+
+
+def get_conf_validation(pretty=False, wait_for_complete=False):
+    """Check Wazuh configuration in all cluster nodes.
+
+    Returns wether the Wazuh configuration in all cluster nodes is correct.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    """
+    pass
+
+
+def get_conf_validation_node(node_id, pretty=False, wait_for_complete=False):
+    """Check Wazuh configuration in a cluster node
+
+    Returns wether the Wazuh configuration in node {node_id} is correct.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param node_id: Cluster node name.
+    """
+    pass

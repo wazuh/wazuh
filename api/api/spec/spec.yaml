@@ -1171,6 +1171,19 @@ components:
                 type: integer
               warning:
                 type: integer
+    
+    ConfigurationValidation:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - OK
+          - KO
+        details:
+          type: array
+          items:
+            type: string
 
     # SCA models
     SCAChecks:
@@ -4774,6 +4787,69 @@ paths:
               example:
                 error: 0
                 data: Restarting manager.
+
+  /cluster/configuration/validation:
+    get:
+      tags:
+      - cluster
+      summary: Check Wazuh configuration in all cluster nodes.
+      description: Returns wether the Wazuh configuration in all cluster nodes is correct.
+      operationId: api.controllers.cluster_controller.get_conf_validation
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ConfigurationValidation'
+              example:
+                error: 0
+                data:
+                  status: KO
+                  details:
+                    - "(1230): Invalid element in the configuration: 'hello'."
+                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
+  /cluster/{node_id}/configuration/validation:
+    get:
+      tags:
+      - cluster
+      summary: Check Wazuh configuration in a cluster node
+      description: Returns wether the Wazuh configuration in node {node_id} is correct.
+      operationId: api.controllers.cluster_controller.get_conf_validation_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ConfigurationValidation'
+              example:
+                error: 0
+                data:
+                  status: KO
+                  details:
+                    - "(1230): Invalid element in the configuration: 'hello'."
+                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
   /manager/status:
     get:
