@@ -2,6 +2,29 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+
+def put_rootcheck(pretty=False, wait_for_complete=False):
+    """
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    """
+    pass
+
+
+def delete_rootcheck(pretty=False, wait_for_complete=False):
+    """
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    """
+    pass
+
+
 def get_rootcheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, 
                         select=None, sort=None, search=None, q='', status=None, pci='all', 
                         cis='all'):

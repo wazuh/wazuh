@@ -2649,6 +2649,56 @@ paths:
                     notchecked: 71
                     unknown: 0
 
+  /rootcheck:
+    put:
+      tags:
+      - rootcheck
+      summary: Run a rootcheck scan in all agents.
+      description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
+      operationId: api.controllers.rootcheck_controller.put_rootcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck on all agents"
+    delete:
+      tags:
+      - rootcheck
+      summary: Clear rootcheck scan results in all agents.
+      description: Clear rootcheck scan results in all agents.
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Rootcheck database deleted"
+
   /rootcheck/{agent_id}:
     get:
       tags:
