@@ -366,7 +366,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         if (dwWaitResult != WAIT_OBJECT_0) {
             switch (dwWaitResult) {
                 case WAIT_TIMEOUT:
-                    merror("Error waiting mutex (timeout).");
+                    mdebug2("Sending mutex timeout.");
                     sleep(5);
                     continue;
                 case WAIT_ABANDONED:
@@ -520,7 +520,7 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 }
 
 char *get_win_agent_ip(){
-    
+
     typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
     char *agent_ip = NULL;
