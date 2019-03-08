@@ -1070,6 +1070,18 @@ backup_old_api() {
         # remove old API directory
         rm -rf ${API_PATH}
 
+        # delete wazuh-api service
+        if command -v systemctl > /dev/null 2>&1; then
+            systemctl stop wazuh-api > /dev/null
+            systemctl disable wazuh-api > /dev/null
+            rm -f /etc/systemd/system/wazuh-api.service
+        elif command -v update-rc.d > /dev/null 2>&1; then
+            update-rc.d stop wazuh-api
+            chkconfig wazuh-api off
+            chkconfig --del wazuh-api
+            rm -f /etc/rc.d/init.d/wazuh-api
+        fi
+
     fi
 
 }
