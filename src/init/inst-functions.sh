@@ -1093,7 +1093,7 @@ restore_old_api() {
 
     if [ -r ${API_PATH_BACKUP}/configuration/config.js ]; then
         # execute migration.py
-        ${PREFIX}/framework/python/bin/python3 ${PREFIX}/api/migration.py
+        ${PREFIX}/framework/python/bin/python3 ../api/migration.py
         if [ ! -d ${API_PATH}/configuration/ssl ]; then
             ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
         fi
