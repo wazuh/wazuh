@@ -29,7 +29,7 @@ def get_old_config() -> Dict:
                 match = regex.match(line)
                 if match:
                     var_name = match.group(1)
-                    var_value = parse_to_yml_value(match.group(2))
+                    var_value = parse_to_yaml_value(match.group(2))
                     ### check config element by element?
                     #if check_old_config({var_name: var_value}):
                     #    old_config[var_name] = var_value
@@ -40,7 +40,7 @@ def get_old_config() -> Dict:
     return rename_old_fields(old_config)
 
 
-def parse_to_yml_value(value: str) -> [str, bool, int]:
+def parse_to_yaml_value(value: str) -> [str, bool, int]:
     """
     Parses a string value to boolean or int if it is needed
     :param value: String to be parsed
@@ -111,7 +111,7 @@ def rename_old_fields(config: Dict) -> Dict:
     if 'logs' in new_config:
         new_config['logs'] = {'level': new_config['logs']}
 
-    new_config['cache'] = {'enabled': None, 'debug': '', 'time': None
+    new_config['cache'] = {'enabled': None, 'debug': '', 'time': None}
 
     if 'cache_enabled' in new_config:
         new_config['cache']['enabled'] = new_config['cache_enabled']
