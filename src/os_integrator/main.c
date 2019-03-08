@@ -113,6 +113,9 @@ int main(int argc, char **argv)
     /* Reading configuration */
     if(!OS_ReadIntegratorConf(cfg, &integrator_config) || !integrator_config[0])
     {
+        if(!test_config) {
+            minfo("Remote integrations not configured. Clean exit.");
+        }
         exit(0);
     }
 
@@ -120,20 +123,19 @@ int main(int argc, char **argv)
     if(test_config)
         exit(0);
 
+     /* Pid before going into daemon mode. */
+    i = getpid();
+
+    /* Going on daemon mode */
+    if (!run_foreground) {
+        nowDaemon();
+        goDaemonLight();
+    }
+
     if (!integrator_config[0]) {
         /* Not configured */
         minfo("Remote integrations not configured. Clean exit.");
         exit(0);
-    }
-
-    /* Pid before going into daemon mode. */
-    i = getpid();
-
-    /* Going on daemon mode */
-
-    if (!run_foreground) {
-        nowDaemon();
-        goDaemonLight();
     }
 
     /* Creating some randomness  */
