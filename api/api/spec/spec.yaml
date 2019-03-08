@@ -294,6 +294,14 @@ components:
           type: string
         event:
           type: string
+
+    LastScan:
+      type: object
+      properties:
+        end:
+          type: string
+        start:
+          type: string
    
     # SCA models
     SCAChecks:
@@ -2827,6 +2835,36 @@ paths:
                   items:
                   - "2.3 Debian Linux"
                   - "1.4 Debian Linux"
+
+  /rootcheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - rootcheck
+      summary: Get last rootcheck scan dates.
+      description: Returns when the last rootcheck scan started and ended. If the scan is still in progress the end date will be unknown.
+      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: 'Scan dates'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                      - $ref: '#/components/schemas/LastScan'
+              example:
+                error: 0
+                data:
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
 
   /sca/{agent_id}:
     get:
