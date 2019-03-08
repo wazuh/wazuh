@@ -19,6 +19,7 @@ static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
+static void key_lock_init(void);
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
 #endif
@@ -86,7 +87,7 @@ void LogCollectorStart()
     current_files = 0;
 
     set_sockets();
-    w_rwlock_init(&files_update_rwlock, NULL);
+    key_lock_init();
 
 #ifndef WIN32
     /* To check for inode changes */
@@ -1513,4 +1514,20 @@ void w_create_input_threads(){
     }
 #endif
     }
+}
+
+void key_lock_init()
+{
+    pthread_rwlockattr_t attr;
+    pthread_rwlockattr_init(&attr);
+
+#ifdef __linux__
+    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
+     * Do not use recursive locking.
+     */
+    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
+
+    w_rwlock_init(&files_update_rwlock, &attr);
+    pthread_rwlockattr_destroy(&attr);
 }
