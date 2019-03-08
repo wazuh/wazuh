@@ -57,11 +57,13 @@ components:
         node_name:
           type: string
         dateAdd:
-          type: date-time
+          type: string
+          format: date-time
         version:
           type: string
         lastKeepAlive:
-          type: date-time
+          type: string
+          format: date-time
         os:
           type: object
           properties:
@@ -266,7 +268,8 @@ components:
             id:
               type: integer
             time:
-              type: date-time
+              type: string
+              format: date-time
         fail:
           type: integer
         benchmark:
@@ -288,9 +291,11 @@ components:
           - outstanding
           - solved
         readDay:
-          type: date-time
+          type: string
+          format: date-time
         oldDay:
-          type: date-time
+          type: string
+          format: date-time
         pci:
           type: string
         cis:
@@ -302,9 +307,11 @@ components:
       type: object
       properties:
         end:
-          type: date-time
+          type: string
+          format: date-time
         start:
-          type: date-time
+          type: string
+          format: date-time
    
     # SCA models
     SCAChecks:
@@ -356,9 +363,11 @@ components:
         score:
           type: integer
         end_scan:
-          type: date-time
+          type: string
+          format: date-time
         start_scan:
-          type: date-time
+          type: string
+          format: date-time
 
     SyscheckDatabase:
       type: object
@@ -377,7 +386,8 @@ components:
           type: string
           format: \d+
         date:
-          type: date-time
+          type: string
+          format: date-time
         perm:
           type: string
           format: \d+
@@ -396,7 +406,8 @@ components:
           type: string
           format: \d+
         mtime:
-          type: date-time
+          type: string
+          format: date-time
         sha256:
           type: string
           format: \w{64}
