@@ -57,11 +57,11 @@ components:
         node_name:
           type: string
         dateAdd:
-          type: string
+          type: date-time
         version:
           type: string
         lastKeepAlive:
-          type: string
+          type: date-time
         os:
           type: object
           properties:
@@ -263,7 +263,7 @@ components:
             id:
               type: integer
             time:
-              type: string
+              type: date-time
         fail:
           type: integer
         benchmark:
@@ -285,9 +285,9 @@ components:
           - outstanding
           - solved
         readDay:
-          type: string
+          type: date-time
         oldDay:
-          type: string
+          type: date-time
         pci:
           type: string
         cis:
@@ -299,9 +299,9 @@ components:
       type: object
       properties:
         end:
-          type: string
+          type: date-time
         start:
-          type: string
+          type: date-time
    
     # SCA models
     SCAChecks:
@@ -353,9 +353,9 @@ components:
         score:
           type: integer
         end_scan:
-          type: string
+          type: date-time
         start_scan:
-          type: string
+          type: date-time
 
     SyscheckDatabase:
       type: object
@@ -371,7 +371,7 @@ components:
         uid:
           type: string
         date:
-          type: string
+          type: date-time
         perm:
           type: string
         type:
@@ -388,7 +388,7 @@ components:
         gid:
           type: string
         mtime:
-          type: string
+          type: date-time
         sha256:
           type: string
         
