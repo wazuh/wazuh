@@ -2856,7 +2856,7 @@ paths:
       tags:
         - decoders
       summary: 'Get all decoders'
-      description: 'Returns all decoders included in ossec.conf.'
+      description: "Returns information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -2916,7 +2916,7 @@ paths:
       tags:
         - decoders
       summary: 'Get decoders by name'
-      description: 'Returns the decoders with the specified name.'
+      description: "Returns information about decoders with a specified name. This information include decoder's route, decoder's name, decoder's file among others"
       operationId: api.controllers.decoders_controller.get_decoders_by_name
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -2928,7 +2928,7 @@ paths:
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: 'List of decoders with name selected'
+          description: 'List of decoders with a specified selected'
           content:
             application/json:
               schema:
@@ -2977,7 +2977,7 @@ paths:
       tags:
         - decoders
       summary: 'Get all decoders files'
-      description: 'Returns all decoders files included in ossec.conf.'
+      description: "Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
       operationId: api.controllers.decoders_controller.get_decoders_files
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -2992,7 +2992,7 @@ paths:
         - $ref: '#/components/parameters/download'
       responses:
         '200':
-          description: 'List of decoders files included in ossec.conf'
+          description: 'List of decoders files'
           content:
             application/json:
               schema:
@@ -3050,7 +3050,7 @@ paths:
       tags:
         - decoders
       summary: 'Get all parent decoders'
-      description: 'Returns all parent decoders included in ossec.conf'
+      description: 'Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders'
       operationId: api.controllers.decoders_controller.get_decoders_parents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3061,7 +3061,7 @@ paths:
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: 'List of parent decoders included in ossec.conf'
+          description: 'List of parent decoders'
           content:
             application/json:
               schema:
