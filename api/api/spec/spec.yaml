@@ -136,8 +136,10 @@ components:
                 type: string
               mergedSum:
                 type: string
+                pattern: \w{32}  # MD5
               configSum:
                 type: string
+                pattern: \w{32}  # MD5
     
     AgentGroupDeleted:
       type: object
@@ -160,6 +162,7 @@ components:
           type: string
         key:
           type: string
+          format: \w+=*  # Base 64
           
     AgentSimple:
       type: object
@@ -362,18 +365,22 @@ components:
       properties:
         sha1:
           type: string
+          format: \w{40}
         file:
           type: string
         md5:
           type: string
+          format: \w{32}
         inode:
           type: integer
         uid:
           type: string
+          format: \d+
         date:
           type: date-time
         perm:
           type: string
+          format: \d+
         type:
           type: string
           enum:
@@ -387,10 +394,12 @@ components:
           type: integer
         gid:
           type: string
+          format: \d+
         mtime:
           type: date-time
         sha256:
           type: string
+          format: \w{64}
         
   securitySchemes:
     basicAuth:
