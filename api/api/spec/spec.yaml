@@ -356,6 +356,41 @@ components:
           type: string
         start_scan:
           type: string
+
+    SyscheckDatabase:
+      type: object
+      properties:
+        sha1:
+          type: string
+        file:
+          type: string
+        md5:
+          type: string
+        inode:
+          type: integer
+        uid:
+          type: string
+        date:
+          type: string
+        perm:
+          type: string
+        type:
+          type: string
+          enum:
+          - file
+          - registry
+        gname:
+          type: string
+        uname:
+          type: string
+        size:
+          type: integer
+        gid:
+          type: string
+        mtime:
+          type: string
+        sha256:
+          type: string
         
   securitySchemes:
     basicAuth:
@@ -479,7 +514,7 @@ components:
       name: file
       description: Filters by filename.
       schema:
-        type: integer
+        type: string
     file_name:
       in: path
       name: file_name
@@ -746,6 +781,45 @@ components:
       in: query
       name: cis
       description: Filters by CIS requirement.
+      schema:
+        type: string
+    filetype:
+      in: query
+      name: type
+      description: Filters by file type.
+      schema:
+        type: string
+        enum:
+        - file
+        - registry
+    summary:
+      in: query
+      name: summary
+      description: Returns a summary grouping by filename.
+      schema:
+        type: boolean
+    md5:
+      in: query
+      name: md5
+      description: Filters files with the specified MD5 checksum.
+      schema:
+        type: string
+    sha1:
+      in: query
+      name: sha1
+      description: Filters files with the specified SHA1 checksum.
+      schema:
+        type: string
+    sha256:
+      in: query
+      name: sha256
+      description: Filters files with the specified SHA256 checksum.
+      schema:
+        type: string
+    hashfilter:
+      in: query
+      name: hash
+      description: Filters files with the specified checksum (MD5, SHA256 or SHA1)
       schema:
         type: string
 
@@ -3092,6 +3166,132 @@ paths:
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck on all agents"
+
+  /syscheck/{agent_id}:
+    get:
+      tags:
+      - syscheck
+      summary: Get File integrity monitoring scan results
+      description: Returns FIM findings in the specified agent.
+      operationId: api.controllers.syscheck_controller.get_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filetype'
+        - $ref: '#/components/parameters/summary'
+        - $ref: '#/components/parameters/md5'
+        - $ref: '#/components/parameters/sha1'
+        - $ref: '#/components/parameters/sha256'
+        - $ref: '#/components/parameters/hashfilter'
+      responses:
+        '200':
+          description: Latest syscheck scan result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscheckDatabase'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - size: 61
+                      md5: 8588d49be3999f2daf69c3090682594f
+                      inode: 946
+                      perm: "100644"
+                      gname: root
+                      mtime: "2019-01-15 15:49:39"
+                      sha1: a2219a7fd0a77be7422a02049b8d27805c0250ba
+                      date: "2019-03-08 10:35:06"
+                      uname: root
+                      sha256: 303c346ece82ca4f6713ac176164285d0469f326b6f12a787e11f5d702529277
+                      gid: 0
+                      type: file
+                      uid: 0
+                      file: /etc/ssl/certs/TeliaSonera_Root_CA_v1.pem
+                    - sha1: 016f8bd2ea009451042a856611d5d2967760e833
+                      file: /etc/ssh/ssh_config
+                      md5: f7bf238a3b0bf155c565454a9f819731
+                      inode: 1579
+                      uid: "0"
+                      date: "2019-03-08 10:35:01"
+                      perm: 100644
+                      type: file
+                      gname: root
+                      uname: root
+                      size: 1580
+                      gid: "0"
+                      mtime: "2018-11-05 11:51:29"
+                      sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
+    put:
+      tags:
+      - syscheck
+      summary: Run FIM scan in an agent.
+      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
+      operationId: api.controllers.syscheck_controller.put_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck locally"
+    delete:
+      tags:
+      - syscheck
+      summary: Clear FIM scan results for a specified agent.
+      description: Clear file integrity monitoring scan results for a specified agent.
+      operationId: api.controllers.syscheck_controller.delete_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Syscheck database deleted"
 
 externalDocs:
   description: Find more about Wazuh API usage
