@@ -105,7 +105,7 @@ help()
     exit 1;
 }
 
-DATABASE_MSG="This option is deprecated because Database is now enabled by default."
+DATABASE_MSG="This option is deprecated because the database output is now enabled by default."
 SYSLOG_MSG="This option is deprecated because Client Syslog is now enabled by default."
 AGENTLESS_MSG="This option is deprecated because Agentless is now enabled by default."
 INTEGRATOR_MSG="This option is deprecated because Integrator is now enabled by default."
