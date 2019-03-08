@@ -275,7 +275,7 @@ components:
         unknown:
           type: integer
 
-        ## Cluster models
+    ## Cluster models
     ClusterNode:
       type: object
       properties:
@@ -288,6 +288,7 @@ components:
           - master
         version:
           type: string
+          format: \d+\.\d+\.\d+
         ip:
           type: string
     
@@ -303,6 +304,7 @@ components:
               type: string
             version:
               type: string
+              format: \d+\.\d+\.\d+
             type:
               type: string
               enum:
@@ -324,92 +326,55 @@ components:
                   - Last keep alive
               date_start:
                 type: string
+                format: date-time
               date_end:
                 type: string
+                format: date-time
               synchronized_files:
                 type: integer
               free:
                 type: boolean
+
+    DaemonStatus:
+      type: string
+      enum:
+      - stopped
+      - running
 
     # Cluster and manager models
     WazuhDaemonsStatus:
       type: object
       properties:
         ossec-agentlessd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-analysisd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-authd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-csyslogd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-dbd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-monitord:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-execd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-integratord:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-logcollector:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-maild:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-remoted:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-reportd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         ossec-syscheckd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         wazuh-clusterd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
         wazuh-modulesd:
-          type: string
-          enum:
-          - stopped
-          - running
+          $ref: '#/components/schemas/DaemonStatus'
 
     WazuhInfo:
       type: object
@@ -717,460 +682,85 @@ components:
         description:
           type: string
 
+    LogSummary:
+      type: object
+      properties:
+        info:
+          type: integer
+        all:
+          type: integer
+        critical:
+          type: integer
+        error:
+          type: integer
+        debug:
+          type: integer
+        warning:
+          type: integer
 
     WazuhLogsSummary:
       type: object
       properties:
           ossec-analysisd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-remoted:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           sca:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-authd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-db:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-execd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-maild:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-monitord:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-logcollector:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-rootcheck:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-syscheckd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:agent-key-polling:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:aws-s3:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:azure-logs:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:ciscat:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:command:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:database:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:docker-listener:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:download:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:oscap:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:osquery:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:vulnerability-detector:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-agentlessd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-testrule:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-csyslogd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-dbd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-integratord:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
           ossec-reportd:
-            type: object
-            properties:
-              info:
-                type: integer
-              all:
-                type: integer
-              critical:
-                type: integer
-              error:
-                type: integer
-              debug:
-                type: integer
-              warning:
-                type: integer
+            $ref: '#/components/schemas/LogSummary'
     
     ConfigurationValidation:
       type: object
