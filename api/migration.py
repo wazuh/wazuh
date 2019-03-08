@@ -29,10 +29,10 @@ def get_old_config() -> Dict:
                 match = regex.match(line)
                 if match:
                     var_name = match.group(1)
-                    var_value = parse_to_yaml_value(match.group(2))
-                    # add element to old_config only if it is right
+                    var_value = match.group(2)
                     if check_old_config({var_name: var_value}):
-                        old_config[var_name] = var_value
+                        # add element to old_config only if it is right
+                        old_config[var_name] = parse_to_yaml_value(var_value)
     except IOError:
         raise
 
