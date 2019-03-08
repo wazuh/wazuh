@@ -36,11 +36,11 @@ if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
     fi
 
     # Options to be modified in ossec.conf
-    edit_value_tag "address" ${WAZUH_MANAGER_IP} 
-    edit_value_tag "protocol" ${WAZUH_PROTOCOL} 
-    edit_value_tag "port" ${WAZUH_SERVER_PORT}  
-    edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}  
-    edit_value_tag "time_reconnect" ${WAZUH_TIME_RECONNECT}  
+    edit_value_tag "address" ${WAZUH_MANAGER_IP}
+    edit_value_tag "protocol" ${WAZUH_PROTOCOL}
+    edit_value_tag "port" ${WAZUH_SERVER_PORT}
+    edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
+    edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
     # Options to be used in register time. 
     if [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
@@ -53,7 +53,7 @@ if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
         OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_CERTIFICATE}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
-        ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log
+        ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>&1
         
     fi
 
