@@ -14,6 +14,8 @@
   # HTTPS Certificates
   # key: "api/configuration/ssl/server.key"
   # cert: "api/configuration/ssl/server.crt"
+  # use_ca: no
+  # ca: "api/configuration/ssl/ca.crt"
 
 # Advanced configuration
 

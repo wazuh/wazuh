@@ -30,10 +30,9 @@ def get_old_config() -> Dict:
                 if match:
                     var_name = match.group(1)
                     var_value = parse_to_yaml_value(match.group(2))
-                    ### check config element by element?
-                    #if check_old_config({var_name: var_value}):
-                    #    old_config[var_name] = var_value
-                    old_config[var_name] = var_value
+                    # add element to old_config only if it is right
+                    if check_old_config({var_name: var_value}):
+                        old_config[var_name] = var_value
     except IOError:
         raise
 
@@ -64,14 +63,13 @@ def check_old_config(config: Dict) -> bool:
     :param config: Dictionary with values of old configuration
     :return: True if old configuration is OK, False otherwise
     """
-    checks = {'host': 'ips', 'port': 'numbers', 'https': 'yes_no_boolean',
-              'basic_auth': 'yes_no_boolean', 'BehindProxyServer': 'yes_no_boolean',
+    checks = {'host': 'ips', 'port': 'numbers', 'basic_auth': 'yes_no_boolean',
+              'BehindProxyServer': 'yes_no_boolean',
+              'https': 'yes_no_boolean', 'https_key': 'paths', 'https_cert': 'paths',
               'logs': 'names', 'cors': 'yes_no_boolean',
               'cache_enabled': 'yes_no_boolean', 'cache_debug': 'yes_no_boolean',
               'cache_time': 'numbers', 'use_only_authd': 'boolean',
-              'drop_privileges': 'boolean', 'experimental_features': 'boolean',
-              'secureProtocol': 'names', 'honorCipherOrder': 'boolean',
-              'ciphers': 'names'
+              'drop_privileges': 'boolean', 'experimental_features': 'boolean'
             }
 
     # check old configuration values
@@ -88,27 +86,28 @@ def rename_old_fields(config: Dict) -> Dict:
     :param config: Dictionary with values of old configuration
     :return: Dictionary with renamed old fields
     """
-    old_to_new = {'BehindProxyServer': 'behind_proxy_server',
-                  'honorCipherOrder': 'honor_cipher_order',
-                  'secureProtocol': 'secure_protocol'}
-
     new_config = config
-    for key in config:
-        if key in old_to_new:
-            new_config[old_to_new[key]] = config[key]
-            del new_config[key]
 
     # relocate nested fields
     if 'https' in new_config:
-        new_config['https'] = {'enabled': new_config['https'],
-                               'key': '', 'cert': ''}
+        new_config['https'] = {'enabled': new_config['https'], 'key': '',
+                               'cert': '', 'ca': ''}
+
         if 'https_key' in new_config:
-            new_config['https']['https_key'] = new_config['https_key']
+            new_config['https']['key'] = new_config['https_key']
             del new_config['https_key']
 
         if 'https_cert' in new_config:
-            new_config['https']['https_cert'] = new_config['https_cert']
+            new_config['https']['cert'] = new_config['https_cert']
             del new_config['https_cert']
+
+        if 'https_use_ca' in new_config:
+            new_config['https']['use_ca'] = new_config['https_use_ca']
+            del new_config['https_use_ca']
+
+        if 'https_ca' in new_config:
+            new_config['https']['ca'] = new_config['https_ca']
+            del new_config['https_ca']
 
     if 'logs' in new_config:
         new_config['logs'] = {'level': new_config['logs']}
@@ -126,6 +125,22 @@ def rename_old_fields(config: Dict) -> Dict:
     if 'cache_time' in new_config:
         new_config['cache']['time'] = new_config['cache_time']
         del new_config['cache_time']
+
+    # fields to be renamed
+    old_to_new = {'BehindProxyServer': 'behind_proxy_server'}
+    # allowed fields
+    allowed_fields = ('host', 'port', 'basic_auth', 'BehindProxyServer',
+                      'https', 'https_key', 'https_cert', 'https_use_ca',
+                      'https_ca', 'logs', 'cors', 'cache_enabled', 'cache_debug',
+                      'cache_time', 'use_only_authd', 'drop_privileges',
+                      'experimental_features')
+    # delete and rename old fields
+    for key in config:
+        if key in old_to_new:
+            new_config[old_to_new[key]] = config[key]
+            del new_config[key]
+        if key not in allowed_fields:
+            del new_config[key]
 
     return new_config
 
