@@ -46,11 +46,9 @@ def parse_to_yaml_value(value: str) -> [str, bool, int]:
     :param value: String to be parsed
     :return: Parsed value
     """
-    if value == '':
-        return None
-    elif value == 'yes' or value == 'true':
+    if value in ('yes', 'true'):
         return True
-    elif value == 'no' or value == 'false':
+    elif value in ('no', 'false'):
         return False
     else:
         # if str contains an integer, returns as integer
