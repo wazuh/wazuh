@@ -372,12 +372,27 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                 char *checksum_inode;
 
                 os_strdup(s_node->checksum, checksum_inode);
-                inode_str = get_attr_from_checksum(checksum_inode, SK_INODE);
-                
-                if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
-                    free(w_inode);
+                if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0'){
+                    OSHashNode *s_inode;
+                    unsigned int *i;
+                    os_calloc(1, sizeof(unsigned int), i);
+
+                    for (s_inode = OSHash_Begin(syscheck.inode_hash, i); s_inode; s_inode = OSHash_Next(syscheck.inode_hash, i, s_inode)) {
+                        if(s_inode && s_inode->data){
+                            if(!strcmp(s_inode->data, file_name)){
+                                inode_str = s_inode->key;
+                                break;
+                            }
+                        }
+                    }
+                    os_free(i);
                 }
-                os_free(checksum_inode);
+                if(inode_str){
+                    if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
+                        free(w_inode);
+                    }
+                    os_free(checksum_inode);
+                }
             }
         }
 #endif

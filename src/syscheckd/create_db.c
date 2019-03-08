@@ -461,18 +461,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_mtime = '\0';
             }
 
-            if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
+            if (opts & CHECK_FOLLOW) {
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
             } else {
-                *str_inode = '\0';
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
             }
 
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
@@ -496,7 +492,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
                     opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                     str_mtime,
-                    str_inode,
+                    opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     0);
 #endif
@@ -969,6 +965,34 @@ int run_dbcheck()
                     send_syscheck_msg(alert_msg);
                     OSHash_Delete_ex(syscheck.last_check, curr_node->key);
                     if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
+                        char *checksum_inode;
+                        char *inode_str;
+                        char *w_inode;
+                        os_strdup(data->checksum, checksum_inode);
+
+                        if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0'){
+                            OSHashNode *s_inode;
+                            unsigned int *i;
+                            os_calloc(1, sizeof(unsigned int), i);
+
+                            for (s_inode = OSHash_Begin(syscheck.inode_hash, i); s_inode; s_inode = OSHash_Next(syscheck.inode_hash, i, s_inode)) {
+                                if(s_inode && s_inode->data){
+                                    if(!strcmp(s_inode->data, curr_node->key)){
+                                        inode_str = s_inode->key;
+                                        break;
+                                    }
+                                }
+                            }
+                            os_free(i);
+                        }
+
+                        if(inode_str){
+                            if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
+                                free(w_inode);
+                            }
+                            os_free(checksum_inode);
+                        }
+
                         free(data->checksum);
                         free(data);
                     }
