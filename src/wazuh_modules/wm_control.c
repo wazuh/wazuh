@@ -40,6 +40,7 @@ char* getPrimaryIP(){
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
+        return agent_ip;
     }
     else {
         for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
@@ -177,8 +178,13 @@ void *send_ip(){
 
         default:
             response = getPrimaryIP();
-            OS_SendUnix(peer, response, 0);
-            free(response);
+            if(response){
+                OS_SendUnix(peer, response, 0);
+                free(response);
+            }
+            else{
+                OS_SendUnix(peer,"Err",4);
+            }
             close(peer);
         }
         free(buffer);
