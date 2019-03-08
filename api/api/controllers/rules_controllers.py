@@ -27,6 +27,8 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :type level: str
     :param file: Filters by filename.
     :type file: str
+    :param path: Filters by rule path.
+    :type path: str
     :param pci: Filters by PCI requirement name.
     :type pci: str
     :param gdpr: Filters by GDPR requirement.
@@ -87,5 +89,32 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
+    """
+    pass
+
+
+def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+              search=None, status=None, file=None, path=None, download=None):
+    """
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param status: Filters by rules status.
+    :type status: List[str]
+    :param file: Filters by filename.
+    :type file: str
+    :param path: Filters by rule path.
+    :type path: str
+    :param download: Download the specified file.
+    :type download: str
     """
     pass
