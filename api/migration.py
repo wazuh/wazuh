@@ -53,7 +53,11 @@ def parse_to_yaml_value(value: str) -> [str, bool, int]:
     elif value == 'no' or value == 'false':
         return False
     else:
-        return value
+        # if str contains an integer, returns as integer
+        try:
+            return int(value)
+        except ValueError:
+            return value
 
 
 def check_old_config(config: Dict) -> bool:
