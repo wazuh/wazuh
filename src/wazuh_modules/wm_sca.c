@@ -517,7 +517,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements_array){
-                cJSON_free(requirements_array);
+                cJSON_Delete(requirements_array);
             }
 
             if(vars) {

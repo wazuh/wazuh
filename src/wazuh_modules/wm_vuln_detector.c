@@ -583,7 +583,7 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
         }
 
         if (sqlite3_prepare_v2(db, query, -1, &stmt, NULL) != SQLITE_OK) {
-            cJSON_free(alert);
+            cJSON_Delete(alert);
             return OS_INVALID;
         }
         sqlite3_bind_text(stmt, 1, agents_it->agent_OS, -1, NULL);
