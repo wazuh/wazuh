@@ -777,7 +777,7 @@ tags:
   - name: rules
     description: ''
   - name: syscheck
-    description: ''
+    description: 'File integrity monitoring'
   - name: syscollector
     description: ''
 
@@ -3066,6 +3066,32 @@ paths:
                     type: string
         '401':
           description: 'Access unauthorized'
+
+  /syscheck:
+    put:
+      tags:
+      - syscheck
+      summary: Run a syscheck scan in all agents.
+      description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
+      operationId: api.controllers.syscheck_controller.put_syscheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck on all agents"
 
 externalDocs:
   description: Find more about Wazuh API usage
