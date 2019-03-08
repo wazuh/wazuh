@@ -29,6 +29,8 @@ components:
     
     ListMetadata:
       type: object
+      required:
+      - totalItems
       properties:
         totalItems:
           type: integer
@@ -37,6 +39,13 @@ components:
     ## Agents models
     Agent:
       type: object
+      required:
+      - ip
+      - status
+      - dateAdd
+      - name
+      - node_name
+      - id
       properties:
         status:
           $ref: '#/components/schemas/AgentStatus'
@@ -86,6 +95,14 @@ components:
   
     AgentByName:
       type: object
+      required:
+      - ip
+      - status
+      - dateAdd
+      - name
+      - registerIP
+      - node_name
+      - id
       properties:
         ip:
           type: string
@@ -104,6 +121,9 @@ components:
   
     AgentAffected:
       type: object
+      required: 
+      - msg
+      - affected_agents
       properties:
         msg:
           type: string
@@ -114,6 +134,9 @@ components:
     
     AllAgentAffected:
       type: object
+      required:
+        - older_than
+        - total_affected_agents
       additionalProperties:
         $ref: '#/components/schemas/AgentAffected'
       properties:
@@ -125,6 +148,10 @@ components:
     
     AgentGroup:
       type: object
+      required:
+      - count
+      - name
+      - configSum
       properties:
         items:
           type: array
@@ -141,6 +168,10 @@ components:
     
     AgentGroupDeleted:
       type: object
+      required:
+      - msg
+      - ids
+      - affected_agents
       properties:
         msg:
           type: string
@@ -155,6 +186,9 @@ components:
           
     AgentIdKey:
       type: object
+      required:
+        - id
+        - key
       properties:
         id:
           type: string
@@ -163,6 +197,10 @@ components:
           
     AgentSimple:
       type: object
+      required:
+      - version
+      - id
+      - name
       properties:
         version:
           type: string
@@ -181,6 +219,9 @@ components:
     
     AgentConfiguration:
       type: object
+      required:
+        - logformat
+        - target
       properties:
         configuration:
           type: array
@@ -203,6 +244,9 @@ components:
     
     GroupConfiguration:
       type: object
+      required:
+      - filter
+      - config
       properties:
         filter:
           type: object
@@ -224,6 +268,9 @@ components:
     ## Cache models
     GroupCache:
       type: object
+      required:
+      - all
+      - group
       properties:
         all:
           type: array
@@ -234,6 +281,9 @@ components:
     
     GroupCacheComplete:
       type: object
+      required:
+      - all
+      - group
       properties:
         all:
           type: array
@@ -332,6 +382,10 @@ components:
     # Decoders models
     Decoder:
       type: object
+      required:
+      - file
+      - path
+      - name
       properties:
         file:
           type: string
@@ -359,6 +413,10 @@ components:
 
     DecoderFile:
       type: object
+      required:
+      - type
+      - path
+      - status
       properties:
         file:
           type: string
@@ -396,7 +454,7 @@ components:
     benchmark:
       in: query
       name: benchmark
-      description: Filters by benchmark.
+      description: Filters by benchmark type.
       schema:
         type: string
     component:
@@ -425,7 +483,7 @@ components:
     configuration:
       in: path
       name: configuration
-      description: Selected agent's configuration to read
+      description: Selected agent's configuration to read.
       required: true
       schema:
         type: array
@@ -457,11 +515,10 @@ components:
     decoder_name:
       in: path
       name: decoder_name
-      description: Decoder name
+      description: Decoder name.
       required: true
       schema:
         type: string
-
     description:
       in: query
       name: description
