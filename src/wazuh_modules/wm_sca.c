@@ -127,13 +127,9 @@ void * wm_sca_main(wm_sca_t * data) {
             /* DB for calculating hash only */
             os_realloc(cis_db_for_hash, (i + 2) * sizeof(cis_db_hash_info_t), cis_db_for_hash);
 
-            /* 1000 IDs for each policy file */
-            os_calloc(1000,sizeof(cis_db_info_t *),cis_db_for_hash[i].elem);
-
-            int j = 0;
-            for(j = 0; j < 1000;j++) {
-                cis_db_for_hash[i].elem[j] = NULL;
-            }
+            /* Prepare first ID for each policy file */
+            os_calloc(1,sizeof(cis_db_info_t *),cis_db_for_hash[i].elem);
+            cis_db_for_hash[i].elem[0] = NULL;
         }
     }
 
@@ -668,8 +664,17 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     }
 #endif
     cJSON *profile = NULL;
+    int check_count = 0;
 
     cJSON_ArrayForEach(profile,profile_check){
+
+        if(!cis_db_for_hash[cis_db_index].elem[check_count]) {
+            os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (check_count + 2), cis_db_for_hash[cis_db_index].elem);
+            cis_db_for_hash[cis_db_index].elem[check_count] = NULL;
+            cis_db_for_hash[cis_db_index].elem[check_count + 1] = NULL;
+        }
+
+        check_count++;
 
         c_title = cJSON_GetObjectItem(profile, "title");
         c_condition = cJSON_GetObjectItem(profile, "condition");
