@@ -786,6 +786,12 @@ components:
       description: Downloads the specified file.
       schema:
         type: string
+    rule_id:
+      in: path
+      name: rule_id
+      description: Filters by rule ID.
+      schema:
+        type: integer
 
 tags:
   - name: active-response
@@ -2765,6 +2771,62 @@ paths:
                       details:
                         if_sid: "510"
                         match: "^Windows Malware"
+
+  /rules/{rule_id}:
+    get:
+      tags:
+      - rules
+      summary: Filters rules by ID.
+      description: Filters results of /rules endpoint filtering by ID.
+      operationId: api.controllers.rules_controllers.get_rules_id
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/rule_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: "Rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Rules'
+              example:
+                error: 0
+                data:
+                  totalItems: 1
+                  items:
+                    - file: 0225-mcafee_av_rules.xml
+                      path: ruleset/rules
+                      id: 7514
+                      level: 5
+                      description: McAfee Windows AV - EICAR test file detected.
+                      status: enabled
+                      groups:
+                      - mcafee
+                      pci:
+                      -
+                      gdpr:
+                      -
+                      details:
+                        if_sid: "7505"
+                        match: contains the EICAR test file
+                        options: alert_by_email
 
   /rules/groups:
     get:
