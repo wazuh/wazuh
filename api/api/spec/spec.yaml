@@ -24,6 +24,8 @@ components:
         error:
           type: integer
           format: int32
+          minimum: 0
+          description: Result 0 (No error), other value (error).
         message:
           type: string
     
@@ -33,6 +35,41 @@ components:
       - totalItems
       properties:
         totalItems:
+          type: integer
+          format: int32
+          minimum: 0
+          
+    ItemAffected:
+      type: object
+      required: 
+      - msg
+      - affected_agents
+      properties:
+        msg:
+          type: string
+        affected_items:
+          type: array
+          items:
+            type: string
+        failed_items:
+          type: array
+          items:
+            type: string
+    
+    AllItemsAffected:
+      type: object
+      required:
+        - older_than
+        - total_affected_items
+      additionalProperties:
+        $ref: '#/components/schemas/ItemAffected'
+      properties:
+        older_than:
+          type: string
+        total_affected_items:
+          type: integer
+          format: int32
+        total_failed_items:
           type: integer
           format: int32
 
@@ -67,10 +104,12 @@ components:
           type: string
         dateAdd:
           type: string
+          format: date-time
         version:
           type: string
         lastKeepAlive:
           type: string
+          format: date-time
         os:
           type: object
           properties:
@@ -91,60 +130,7 @@ components:
             minor:
               type: string
         id:
-          type: string
-  
-    AgentByName:
-      type: object
-      required:
-      - ip
-      - status
-      - dateAdd
-      - name
-      - registerIP
-      - node_name
-      - id
-      properties:
-        ip:
-          type: string
-        status:
-          $ref: '#/components/schemas/AgentStatus'
-        dateAdd:
-          type: string
-        name:
-          type: string
-        registerIP:
-          type: string
-        node_name:
-          type: string
-        id:
-          type: string
-  
-    AgentAffected:
-      type: object
-      required: 
-      - msg
-      - affected_agents
-      properties:
-        msg:
-          type: string
-        affected_agents:
-          type: array
-          items:
-            type: integer
-    
-    AllAgentAffected:
-      type: object
-      required:
-        - older_than
-        - total_affected_agents
-      additionalProperties:
-        $ref: '#/components/schemas/AgentAffected'
-      properties:
-        older_than:
-          type: string
-        total_affected_agents:
-          type: integer
-          format: int32
+          $ref: '#/components/parameters/agent_id'
     
     AgentGroup:
       type: object
@@ -170,19 +156,23 @@ components:
       type: object
       required:
       - msg
-      - ids
+      - affected_groups
       - affected_agents
       properties:
         msg:
           type: string
-        ids:
+        affected_groups:
+          type: array
+          items:
+            type: string
+        failed_groups:
           type: array
           items:
             type: string
         affected_agents:
           type: array
           items:
-            type: integer
+            type: string
           
     AgentIdKey:
       type: object
@@ -436,14 +426,17 @@ components:
       scheme: bearer
       bearerFormat: JWT
       x-bearerInfoFunc: api.authentication.decode_token
+
   parameters:
     agent_id:
       in: path
       name: agent_id
-      description: Agent ID
+      description: Agent ID. All posible values since 000 onwards.
       required: true
       schema:
-        type: integer
+        type: string
+        minLength: 3
+        
     agent_name:
       in: path
       name: agent_name
@@ -933,7 +926,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'
+                      $ref: '#/components/schemas/AllItemsAffected'
               example:
                 error: 0
                 data:
@@ -1151,7 +1144,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -1435,7 +1428,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   error: 0
                   data:
@@ -1607,7 +1600,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -1647,7 +1640,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -2203,7 +2196,7 @@ paths:
                   properties:
                     data:
                       allOf:
-                        - $ref: '#/components/schemas/AgentByName'
+                        - $ref: '#/components/schemas/Agent'
               example:
                 error: 0
                 data:
@@ -2248,7 +2241,7 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/AgentByName'
+                                $ref: '#/components/schemas/Agent'
               example:
                 error: 0
                 data:
@@ -2351,7 +2344,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   error: 0
                   data:

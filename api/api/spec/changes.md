@@ -1,5 +1,7 @@
 ## General
 * Changed parameter **status** type *string* to *array*
+* Date type use a standard format ISO-8601 defined by date-time format.
+* Changed parameter **agent_id** type *integer* to *string* with minLength=3
 
 ## Active Response
 ### /active-response/:agent_id
@@ -22,6 +24,7 @@
 
 ### DELETE /agents/groups
 * Changed parameter **ids** name to **list_groups**
+* Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
 
 ##Cache
 ### DELETE /cache (Clear group cache)
