@@ -323,6 +323,95 @@ components:
           type: string
         start_scan:
           type: string
+          
+    # Decoders models
+    Decoder:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        name:
+          type: integer
+        position:
+          type: string
+        status:
+          type: string
+        details:
+          type: object
+          properties:
+            program_name:
+              type: string
+            parent:
+              type: string
+            prematch:
+              type: string
+            regex:
+              type: integer
+            order:
+              type: string
+    
+    DecoderFile:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          
+    # Experimental models
+    Hardware:
+      type: object
+      properties:
+        cpu:
+          type: object
+          properties:
+            cores:
+              type: integer
+            mhz:
+              type: number
+              format: double
+            name:
+              type: string
+        ram:
+          type: object
+          properties:
+            free:
+              type: integer
+            total:
+              type: integer
+            usage:
+              type: integer
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+        board_serial:
+          type: string
+        agent_id:
+          type: integer
+          
+    NetAddress:
+      type: object
+      properties:
+        proto:
+          type: string
+        iface:
+          type: string
+        scan_id:
+          type: string
+        address:
+          type: string
+        netmask:
+          type: string
+        agent_id:
+          type: integer
         
   securitySchemes:
     basicAuth:
@@ -335,6 +424,12 @@ components:
       bearerFormat: JWT
   
   parameters:
+    address:
+      in: query
+      name: address
+      description: Filters by address.
+      schema:
+        type: string
     agent_id:
       in: path
       name: agent_id
@@ -353,6 +448,18 @@ components:
       in: query
       name: benchmark
       description: Filters by benchmark.
+      schema:
+        type: string
+    broadcast:
+      in: query
+      name: broadcast
+      description: Filters by broadcast.
+      schema:
+        type: string
+    board_serial:
+      in: query
+      name: board_serial
+      description: Filters by board_serial.
       schema:
         type: string
     component:
@@ -410,6 +517,31 @@ components:
           - syscheck
           - rootcheck
           - wmodules
+    cpu_cores:
+      in: query
+      name: cpu_cores
+      description: Filters by number of CPU cores.
+      schema:
+        type: integer
+    cpu_mhz:
+      in: query
+      name: core_mhz
+      description: Filters by CPU MHz.
+      schema:
+        type: integer
+    cpu_name:
+      in: query
+      name: core_name
+      description: Filters by CPU name.
+      schema:
+        type: string
+    decoder_name:
+      in: path
+      name: decoder_name
+      description: Decoder name
+      required: true
+      schema:
+        type: string
     description:
       in: query
       name: description
@@ -420,6 +552,12 @@ components:
       in: query
       name: directory
       description: Filters by directory.
+      schema:
+        type: string
+    download:
+      in: query
+      name: download
+      description: Downloads the file
       schema:
         type: string
     error:
@@ -516,6 +654,12 @@ components:
       description: Filters by agent name.
       schema:
         type: string
+    netmask:
+      in: query
+      name: netmask
+      description: Filters by netmask.
+      schema:
+        type: string
     notchecked:
       in: query
       name: notchecked
@@ -544,6 +688,19 @@ components:
       description: Filters by passed checks.
       schema:
         type: integer
+    pathParam:
+      in: query
+      name: path
+      description: Filters by path
+      schema:
+        type: string
+    policy_id:
+      in: path
+      name: policy_id
+      description: Filters by policy id.
+      required: True
+      schema:
+        type: integer
     pretty:
       in: query
       name: pretty
@@ -563,13 +720,12 @@ components:
       description: Filters by evaluated profile.
       schema:
         type: string
-    policy_id:
-      in: path
-      name: policy_id
-      description: Filters by policy id.
-      required: True
+    proto:
+      in: query
+      name: proto
+      description: Filters by proto.
       schema:
-        type: integer
+        type: string
     purge:
       in: query
       name: purge
@@ -583,6 +739,18 @@ components:
       description: Query to filter results by. For example q=&quot;status=Active&quot;
       schema:
         type: string
+    ram_free:
+      in: query
+      name: ram_free
+      description: Filters by free ram in agent.
+      schema:
+        type: integer
+    ram_total:
+      in: query
+      name: ram_total
+      description: Filters by total ram in agent.
+      schema:
+        type: integer
     rationale:
       in: query
       name: rationale
@@ -641,9 +809,19 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    statusParam:
+    status:
       in: query
       name: status
+      description: Filters the decoders by status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    statusAgent:
+      in: query
+      name: status_agent
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -789,7 +967,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -826,7 +1004,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -1658,7 +1836,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -2572,7 +2750,7 @@ paths:
         
       responses:
         '200':
-          description: 'List of agents or error description'
+          description: 'List of CIS-CAT results'
           content:
             application/json:
               schema:
@@ -2745,6 +2923,480 @@ paths:
                     policy_id: "system_audit"
                     compliance:
                     - 
+  
+  /decoders:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders'
+      description: 'Returns all decoders included in ossec.conf.'
+      operationId: api.controllers.decoders_controller.get_decoders
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathParam'
+        - $ref: '#/components/parameters/status'
+
+      responses:
+        '200':
+          description: 'List of decoders included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0005-wazuh_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: wazuh
+                    position: 0
+                    status: enabled
+                    details:
+                      prematch: "^wazuh: "
+                  - file: 0005-wazuh_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: agent-buffer
+                    position: 1
+                    status: enabled
+                    details:
+                      parent: wazuh
+                      prematch: "^Agent buffer:"
+                      regex: "^ '(\\S+)'."
+                      order: level
+    
+  /decoders/{decoder_name}:
+    get:
+      tags:
+        - decoders
+      summary: 'Get decoders by name'
+      description: 'Returns the decoders with the specified name.'
+      operationId: api.controllers.decoders_controller.get_decoders_by_name
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/decoder_name'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of decoders with name selected'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                  - file: 0025-apache_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: apache-errorlog
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: "^apache2|^httpd"
+                  - file: 0025-apache_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: apache-errorlog
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^[warn] |^[notice] |^[error] "
+                  - file: 0025-apache_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: apache-errorlog
+                    position: 2
+                    status: enabled
+                    details:
+                      prematch: "^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:warn] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:notice] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S*:error] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:info] "
+      
+  /decoders/files:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders files'
+      description: 'Returns all decoders files included in ossec.conf.'
+      operationId: api.controllers.decoders_controller.get_decoders_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathParam'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: 'List of decoders files included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/DecoderFile'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0185-openldap_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0220-postfix_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0400-identity_guard_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0190-openvpn_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0060-cisco-estreamer_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0335-telnet_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0035-asterisk_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0275-sendmail_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+
+  /decoders/parents:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all parent decoders'
+      description: 'Returns all parent decoders included in ossec.conf'
+      operationId: api.controllers.decoders_controller.get_decoders_parents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of parent decoders included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 153
+                  items:
+                  - file: local_decoder.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: local_decoder_example
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: local_decoder_example
+                  - file: 0465-azure_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    name: azure-storage
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^azure_tag: azure-storage. "
+                      regex: "^azure_storage_tag: (\\S+)"
+                      order: tag
+  
+  /experimental/syscheck:
+    delete:
+      tags:
+        - experimental
+      summary: 'Clear syscheck database'
+      description: 'Clears the syscheck database for all agents.'
+      operationId: api.controllers.decoders_controller.clear_syscheck_database
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Delete syscheck database'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: Syscheck database deleted
+  
+  /experimental/ciscat/{agent_id}/results:
+    get:
+      tags:
+        - experimental
+      summary: 'Get CIS-CAT results'
+      description: "Returns the agent's ciscat results info."
+      operationId: api.controllers.decoders_controller.get_cis_cat_results
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/benchmark'
+        - $ref: '#/components/parameters/profile'
+        - $ref: '#/components/parameters/pass'
+        - $ref: '#/components/parameters/fail'
+        - $ref: '#/components/parameters/error'
+        - $ref: '#/components/parameters/notchecked'
+        - $ref: '#/components/parameters/unknown'
+        - $ref: '#/components/parameters/score'
+      responses:
+        '200':
+          description: 'List of CIS-CAT results'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/CiscatResults'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_1_-_Workstation
+                    score: 64
+                    error: 0
+                    scan:
+                      id: 1406741147
+                      time: "2018-09-06T07:50:52.630-07:00"
+                    fail: 53
+                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                    pass: 96
+                    notchecked: 71
+                    unknown: 0
+                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
+                    score: 57
+                    error: 0
+                    scan:
+                      id: 1406741147
+                      time: "2018-09-06T07:50:15.632-07:00"
+                    fail: 79
+                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                    pass: 104
+                    notchecked: 36
+                    unknown: 1
+
+  /experimental/syscollector/hardware:
+    get:
+      tags:
+        - experimental
+      summary: 'Get hardware info of all agents'
+      description: "Returns the agent's hardware info."
+      operationId: api.controllers.decoders_controller.get_hardware_info_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/ram_free'
+        - $ref: '#/components/parameters/ram_total'
+        - $ref: '#/components/parameters/cpu_cores'
+        - $ref: '#/components/parameters/cpu_mhz'
+        - $ref: '#/components/parameters/cpu_name'
+        - $ref: '#/components/parameters/board_serial'
+      responses:
+        '200':
+          description: "List of agent's hardware info"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Hardware'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - cpu:
+                      cores: 2
+                      error: 1992.001
+                      scan: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                    ram:
+                      free: 65396
+                      total: 492832
+                      usage: 87
+                    scan:
+                      id: 219248827
+                      time: "2019/02/19 10:22:14"
+                    board_serial: 0
+                    agent_id: "000"
+                  - cpu:
+                      cores: 1
+                      error: 1992.001
+                      scan: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                    ram:
+                      free: 40372
+                      total: 234968
+                      usage: 83
+                    scan:
+                      id: 257116304
+                      time: "2019/02/19 10:26:20"
+                    board_serial: 0
+                    agent_id: "001"
+  
+  /experimental/syscollector/netaddr:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network address info of all agents'
+      description: "Returns the agent's network address info."
+      operationId: api.controllers.decoders_controller.get_network_address_info_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/proto'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/broadcast'
+        - $ref: '#/components/parameters/netmask'
+      responses:
+        '200':
+          description: "List of agent's hardware info"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/NetAddress'
+              example:
+                error: 0
+                data:
+                  totalItems: 16
+                  items:
+                  - proto: ipv6
+                    ifaces: enp0s3
+                    scan_id: 1203337658
+                    address: "fe80::f9:71ff:fed7:9d11"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
+                  - proto: ipv6
+                    ifaces: enp0s8
+                    scan_id: 1203337658
+                    address: "fe80::a00:27ff:fefc:51f5"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
   
   /token:
     get:
