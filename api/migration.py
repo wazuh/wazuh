@@ -14,12 +14,13 @@ from wazuh import common
 from api import validator
 
 
-def get_old_config(old_config_path: str = '/var/ossec/~api/configuration/config.js') -> Dict:
+def get_old_config() -> Dict:
     """
     Gets variables from old API
     :param old_config_path: Path of old API configuration file
     :return: Dictionary with the variables from 'config.js' file
     """
+    old_config_path = os.path.join(common.ossec_path, '~api/configuration/config.js')
     old_config = {}
     regex = re.compile(r'^\s*config.(\w+)\s*=\s*\"?([\w.]*|true|false)\"?;?$')
     try:
