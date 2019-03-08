@@ -101,7 +101,7 @@ def rename_old_fields(config: Dict) -> Dict:
     # relocate nested fields
     if 'https' in new_config:
         new_config['https'] = {'enabled': new_config['https'],
-                               'key': None, 'cert': None}
+                               'key': '', 'cert': ''}
         if 'https_key' in new_config:
             new_config['https']['https_key'] = new_config['https_key']
             del new_config['https_key']
@@ -113,7 +113,7 @@ def rename_old_fields(config: Dict) -> Dict:
     if 'logs' in new_config:
         new_config['logs'] = {'level': new_config['logs']}
 
-    new_config['cache'] = {'enabled': None, 'debug': '', 'time': None}
+    new_config['cache'] = {'enabled': True, 'debug': 'info', 'time': 750}
 
     if 'cache_enabled' in new_config:
         new_config['cache']['enabled'] = new_config['cache_enabled']
