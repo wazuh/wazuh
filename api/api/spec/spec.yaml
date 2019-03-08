@@ -3932,32 +3932,32 @@ paths:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
                 - type: object
-                properties:
-                  data:
-                    properties:
-                      name:
-                        type: string
-                      node_name:
-                        type: string
-                      node_type:
-                        type: worker
-                        enum:
-                        - master
-                        - worker
-                      key:
-                        type: string
-                      port:
-                        type: integer
-                      bind_addr:
-                        type: string
-                      nodes:
-                        type: array
-                        items:
+                  properties:
+                    data:
+                      properties:
+                        name:
                           type: string
-                      hidden:
-                        type: string
-                      disabled:
-                        type: boolean
+                        node_name:
+                          type: string
+                        node_type:
+                          type: string
+                          enum:
+                          - master
+                          - worker
+                        key:
+                          type: string
+                        port:
+                          type: integer
+                        bind_addr:
+                          type: string
+                        nodes:
+                          type: array
+                          items:
+                            type: string
+                        hidden:
+                          type: string
+                        disabled:
+                          type: boolean
               example:
                 error: 0
                 data:
@@ -5607,7 +5607,7 @@ paths:
       - manager
       summary: Restarts the wazuh manager.
       description: Restarts the wazuh manager.
-      operationId: api.controllers.cluster_controller.put_restart
+      operationId: api.controllers.manager_controller.put_restart
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
