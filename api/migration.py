@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from pwd import getpwnam
 from typing import Dict
 import json
 import os
@@ -30,7 +29,7 @@ def get_old_config() -> Dict:
                 match = regex.match(line)
                 if match:
                     var_name = match.group(1)
-                    var_value = match.group(2)
+                    var_value = parse_to_yml_value(match.group(2))
                     ### check config element by element?
                     #if check_old_config({var_name: var_value}):
                     #    old_config[var_name] = var_value
@@ -39,6 +38,22 @@ def get_old_config() -> Dict:
         raise
 
     return rename_old_fields(old_config)
+
+
+def parse_to_yml_value(value: str) -> [str, bool, int]:
+    """
+    Parses a string value to boolean or int if it is needed
+    :param value: String to be parsed
+    :return: Parsed value
+    """
+    if value == '':
+        return None
+    elif value == 'yes' or value == 'true':
+        return True
+    elif value == 'no' or value == 'false':
+        return False
+    else:
+        return value
 
 
 def check_old_config(config: Dict) -> bool:
@@ -84,7 +99,7 @@ def rename_old_fields(config: Dict) -> Dict:
     # relocate nested fields
     if 'https' in new_config:
         new_config['https'] = {'enabled': new_config['https'],
-                               'key': '', 'cert': ''}
+                               'key': None, 'cert': None}
         if 'https_key' in new_config:
             new_config['https']['https_key'] = new_config['https_key']
             del new_config['https_key']
@@ -96,7 +111,7 @@ def rename_old_fields(config: Dict) -> Dict:
     if 'logs' in new_config:
         new_config['logs'] = {'level': new_config['logs']}
 
-    new_config['cache'] = {'enabled': '', 'debug': '', 'time': ''}
+    new_config['cache'] = {'enabled': None, 'debug': '', 'time': None
 
     if 'cache_enabled' in new_config:
         new_config['cache']['enabled'] = new_config['cache_enabled']
@@ -123,7 +138,7 @@ def write_into_yaml_file(config: Dict):
         with open(common.api_config_path, 'w') as output_file:
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
         # change group and permissions from config.yml file
-        os.chown(common.api_config_path, getpwnam('root').pw_uid, getpwnam('ossec').pw_gid)
+        os.chown(common.api_config_path, common.ossec_uid, common.ossec_gid)
         os.chmod(common.api_config_path, 0o640)
     except IOError:
         raise
