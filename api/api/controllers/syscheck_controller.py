@@ -78,3 +78,15 @@ def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     :type agent_id: str
     """
     pass
+
+def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
+    """
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID
+    :type agent_id: str
+    """
+    pass

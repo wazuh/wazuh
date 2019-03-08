@@ -3293,6 +3293,36 @@ paths:
                 error: 0
                 data: "Syscheck database deleted"
 
+  /syscheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - syscheck
+      summary: Get last syscheck scan dates.
+      description: Returns when the last syscheck scan started and ended. If the scan is still in progress the end date will be unknown.
+      operationId: api.controllers.syscheck_controller.get_last_scan_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: 'Scan dates'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                      - $ref: '#/components/schemas/LastScan'
+              example:
+                error: 0
+                data:
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
+
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
