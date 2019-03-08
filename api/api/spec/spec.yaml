@@ -2840,6 +2840,49 @@ paths:
                     - "1.4"
                     - "10.1"
 
+  /rules/gdpr:
+    get:
+      tags:
+      - rules
+      summary: Get all GDPR requirements.
+      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controllers.get_rules_gdpr
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'PCI requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - "II_5.1.f"
+                    - "IV_30.1.g"
+                    - "IV_32.2"
+                    - "IV_35.7.d"
+
   /sca/{agent_id}:
     get:
       tags:
