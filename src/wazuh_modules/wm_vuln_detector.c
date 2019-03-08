@@ -1738,7 +1738,7 @@ int wm_vuldet_update_feed(update_node *update) {
     success = 1;
 free_mem:
     if (json_feed) {
-        cJSON_free(json_feed);
+        cJSON_Delete(json_feed);
     }
     if (tmp_file) {
         free(tmp_file);
