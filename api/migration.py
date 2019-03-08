@@ -86,7 +86,7 @@ def rename_old_fields(config: Dict) -> Dict:
     :param config: Dictionary with values of old configuration
     :return: Dictionary with renamed old fields
     """
-    new_config = config
+    new_config = config.copy()
 
     # relocate nested fields
     if 'https' in new_config:
