@@ -2745,6 +2745,89 @@ paths:
                 error: 0
                 data: "Rootcheck database deleted"
 
+  /rootcheck/{agent_id}/pci:
+    get:
+      tags:
+      - rootcheck
+      summary: Get PCI requirements in the rootcheck database.
+      description: Returns a list containing PCI requirements that have been detected by rootcheck scans.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_pci_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: PCI requirements list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 1
+                  items:
+                  - 2.2.4
+
+  /rootcheck/{agent_id}/cis:
+    get:
+      tags:
+      - rootcheck
+      summary: Get CIS requirements in the rootcheck database.
+      description: Returns a list containing CIS requirements that have been detected by rootcheck scans.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_cis_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: CIS requirements list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - "2.3 Debian Linux"
+                  - "1.4 Debian Linux"
+
   /sca/{agent_id}:
     get:
       tags:

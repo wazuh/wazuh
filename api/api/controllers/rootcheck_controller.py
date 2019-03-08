@@ -61,3 +61,47 @@ def delete_rootcheck_agent(agent_id, pretty=False, wait_for_complete=False):
     :type agent_id: str
     """
     pass
+
+
+def get_rootcheck_pci_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, 
+                            sort=None, search=None):
+    """
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID
+    :type agent_id: str
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    """
+    pass
+
+
+def get_rootcheck_cis_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, 
+                            sort=None, search=None):
+    """
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID
+    :type agent_id: str
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    """
+    pass
