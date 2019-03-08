@@ -274,7 +274,42 @@ components:
           type: integer
         unknown:
           type: integer
-          
+
+    Rules:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        id:
+          type: integer
+        level:
+          type: integer
+          minimum: 0
+          maximum: 15
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+          - enabled
+          - disabled
+        groups:
+          type: array
+          items:
+            type: string
+        pci:
+          type: array
+          items:
+            type: string
+        gdpr:
+          type: array
+          items:
+            type: string
+        details:
+          type: object
+
     # SCA models
     SCAChecks:
       type: object
@@ -451,7 +486,7 @@ components:
       name: file
       description: Filters by filename.
       schema:
-        type: integer
+        type: string
     file_name:
       in: path
       name: file_name
@@ -698,6 +733,47 @@ components:
       schema:
         type: boolean
         default: false
+    group:
+      in: query
+      name: group
+      description: Filters by rule group.
+      schema:
+        type: string
+    level:
+      in: query
+      name: level
+      description: Filters by rule level. Can be a single level (4) or an interval (2-4)
+      schema:
+        type: string
+        format: \d(?>-\d)?  # 4 or 4-5
+    path:
+      in: query
+      name: path
+      description: Filters by rule path.
+      schema:
+        type: string
+    rulestatus:
+      in: query
+      name: status
+      description: Filters by rule status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    pci:
+      in: query
+      name: pci
+      description: Filters by PCI requirement name.
+      schema:
+        type: string
+    gdpr:
+      in: query
+      name: gdpr
+      description: Filters by GDPR requirement.
+      schema:
+        type: string
 
 tags:
   - name: active-response
@@ -725,7 +801,7 @@ tags:
   - name: rootcheck
     description: ''
   - name: rules
-    description: ''
+    description: 'Wazuh ruleset management'
   - name: syscheck
     description: ''
   - name: syscollector
@@ -2599,6 +2675,85 @@ paths:
                     notchecked: 71
                     unknown: 0
   
+  /rules:
+    get:
+      tags:
+      - rules
+      summary: Get information about all Wazuh rules.
+      description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
+      operationId: api.controllers.rules_controllers.get_rules
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/group'
+        - $ref: '#/components/parameters/level'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/gdpr'
+      responses:
+        '200':
+          description: "Rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Rules'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - file: 0016-wazuh_rules.xml
+                      path: ruleset/rules
+                      id: 203
+                      level: 9
+                      description: Agent event queue is full. Events may be lost.
+                      status: enabled
+                      groups:
+                      - agent_flooding
+                      - wazuh
+                      pci:
+                      -
+                      gdpr:
+                      - IV_35.7.d
+                      details:
+                        if_sid: "201"
+                        level: "full"
+                    - file: 0015-ossec_rules.xml
+                      path: ruleset/rules
+                      id: 513
+                      level: 9
+                      description: Windows malware detected.
+                      status: enabled
+                      groups:
+                      - rootcheck
+                      - gpg13_4.2
+                      - ossec
+                      pci:
+                      -
+                      gdpr:
+                      - IV_35.7.d
+                      details:
+                        if_sid: "510"
+                        match: "^Windows Malware"
+
   /sca/{agent_id}:
     get:
       tags:
