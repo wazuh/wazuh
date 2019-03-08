@@ -119,13 +119,12 @@ def write_into_yaml_file(config: Dict):
     :param config: Dictionary with old configuration values
     """
     json_config = json.dumps(config)
-    config_yml_path = os.path.join(common.ossec_path, 'api/configuration/config.yml')
     try:
-        with open(config_yml_path, 'w') as output_file:
+        with open(common.api_config_path, 'w') as output_file:
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
         # change group and permissions from config.yml file
-        os.chown(config_yml_path, getpwnam('root').pw_uid, getpwnam('ossec').pw_gid)
-        os.chmod(config_yml_path, 0o640)
+        os.chown(common.api_config_path, getpwnam('root').pw_uid, getpwnam('ossec').pw_gid)
+        os.chmod(common.api_config_path, 0o640)
     except IOError:
         raise
 
