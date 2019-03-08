@@ -274,7 +274,27 @@ components:
           type: integer
         unknown:
           type: integer
-          
+
+    # Rootcheck models
+    RootcheckDatabase:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - outstanding
+          - solved
+        readDay:
+          type: string
+        oldDay:
+          type: string
+        pci:
+          type: string
+        cis:
+          type: string
+        event:
+          type: string
+   
     # SCA models
     SCAChecks:
       type: object
@@ -698,6 +718,28 @@ components:
       schema:
         type: boolean
         default: false
+    status:
+      in: query
+      name: status
+      description: Filter by scan status
+      schema:
+        type: string
+        enum:
+        - all
+        - outstanding
+        - solved
+    pci:
+      in: query
+      name: pci
+      description: Filters by PCI requirement.
+      schema:
+        type: string
+    cis:
+      in: query
+      name: cis
+      description: Filters by CIS requirement.
+      schema:
+        type: string
 
 tags:
   - name: active-response
@@ -723,7 +765,7 @@ tags:
   - name: manager
     description: ''
   - name: rootcheck
-    description: ''
+    description: 'Detection of rootkit, ports and hidden processes and many other scans.'
   - name: rules
     description: ''
   - name: syscheck
@@ -2598,7 +2640,111 @@ paths:
                     pass: 96
                     notchecked: 71
                     unknown: 0
-  
+
+  /rootcheck/{agent_id}:
+    get:
+      tags:
+      - rootcheck
+      summary: Get Rootcheck database
+      description: Returns rootcheck findings and scan results in the specified agent.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/cis'
+      responses:
+        '200':
+          description: Latest rootcheck scan result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/RootcheckDatabase'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - status: outstanding
+                      readDay: "2019-03-08 09:20:05"
+                      oldDay: "2019-03-08 09:20:05"
+                      event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
+                    - status: outstanding
+                      readDay: "2019-03-08 09:20:05"
+                      oldDay: "2019-03-08 09:20:05"
+                      pci: 2.2.4
+                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
+    put:
+      tags:
+      - rootcheck
+      summary: Run rootcheck scan in an agent.
+      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
+      operationId: api.controllers.rootcheck_controller.put_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck locally"
+    delete:
+      tags:
+      - rootcheck
+      summary: Clear rootcheck scan results for a specified agent.
+      description: Clear rootcheck scan results for a specified agent.
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Rootcheck database deleted"
+
   /sca/{agent_id}:
     get:
       tags:
