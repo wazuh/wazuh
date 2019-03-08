@@ -3225,7 +3225,7 @@ paths:
         - $ref: '#/components/parameters/score'
       responses:
         '200':
-          description: 'List of CIS-CAT results'
+          description: 'Return a list of CIS-CAT results'
           content:
             application/json:
               schema:
