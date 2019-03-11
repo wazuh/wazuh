@@ -2809,7 +2809,6 @@ int wm_vuldet_db_empty() {
     int result;
 
     if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
-        mterror(WM_VULNDETECTOR_LOGTAG, VU_GLOBALDB_OPEN_ERROR);
         return wm_vuldet_sql_error(db, NULL);
     }
 
