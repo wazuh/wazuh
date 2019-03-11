@@ -287,21 +287,21 @@ int wm_vuldet_is_valid_year(char *source, int *date) {
 
 int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
     unsigned int i;
-    wm_vuldet_t *vulnerability_detector;
+    wm_vuldet_t *vuldet;
     update_node **updates;
     long unsigned int run_update = 0;
 
-    os_calloc(1, sizeof(wm_vuldet_t), vulnerability_detector);
-    vulnerability_detector->flags.run_on_start = 1;
-    vulnerability_detector->flags.enabled = 1;
-    vulnerability_detector->ignore_time = VU_DEF_IGNORE_TIME;
-    vulnerability_detector->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
-    vulnerability_detector->agents_software = NULL;
+    os_calloc(1, sizeof(wm_vuldet_t), vuldet);
+    vuldet->flags.run_on_start = 1;
+    vuldet->flags.enabled = 1;
+    vuldet->ignore_time = VU_DEF_IGNORE_TIME;
+    vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
+    vuldet->agents_software = NULL;
     module->context = &WM_VULNDETECTOR_CONTEXT;
     module->tag = strdup(module->context->name);
-    module->data = vulnerability_detector;
+    module->data = vuldet;
 
-    updates = vulnerability_detector->updates;
+    updates = vuldet->updates;
 
     if (!nodes)
         return 0;
@@ -312,15 +312,15 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
-                vulnerability_detector->flags.enabled = 0;
+                vuldet->flags.enabled = 0;
             else if (!strcmp(nodes[i]->content, "no")) {
-                vulnerability_detector->flags.enabled = 1;
+                vuldet->flags.enabled = 1;
             } else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_INTERVAL)) {
-            if (wm_vuldet_get_interval(nodes[i]->content, &run_update)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->detection_interval)) {
                 merror("Invalid interval at module '%s'.", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -336,15 +336,15 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_ON_START)) {
             if (!strcmp(nodes[i]->content, "yes")) {
-                vulnerability_detector->flags.run_on_start = 1;
+                vuldet->flags.run_on_start = 1;
             } else if (!strcmp(nodes[i]->content, "no")) {
-                vulnerability_detector->flags.run_on_start = 0;
+                vuldet->flags.run_on_start = 0;
             } else {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_RUN_ON_START, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_IGNORE_TIME)) {
-            if (wm_vuldet_get_interval(nodes[i]->content, &vulnerability_detector->ignore_time)) {
+            if (wm_vuldet_get_interval(nodes[i]->content, &vuldet->ignore_time)) {
                 merror("Invalid ignore_time at module '%s'.", WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -354,7 +354,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         }
     }
 
-    vulnerability_detector->flags.update = run_update;
+    vuldet->flags.update = run_update;
 
     return 0;
 }
@@ -670,6 +670,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->path ? updates[os_index]->path : "none",
             updates[os_index]->url ? updates[os_index]->url : "none",
             updates[os_index]->update_from_year);
+        *update = 1;
     }
 
 end:
