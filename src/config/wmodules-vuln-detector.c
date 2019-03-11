@@ -24,14 +24,14 @@ typedef struct vu_os_feed {
 static int wm_vuldet_get_interval(char *source, unsigned long *interval);
 static int wm_vuldet_is_valid_year(char *source, int *date);
 static int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list);
-static void wm_vuldet_free_update_node(update_node *node);
 static int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
 static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
 static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node **updates, long unsigned int *update);
-static int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
+static int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags);
 static int wm_vuldet_provider_enable(xml_node **node);
 static char *wm_vuldet_provider_name(xml_node *node);
 static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds);
+static void wm_vuldet_free_update_node(update_node *update);
 
 // Options
 static const char *XML_DISABLED = "disabled";
@@ -47,26 +47,13 @@ static const char *XML_PORT = "port";
 static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
+static const char *XML_PATCH_SCAN = "patch_scan";
 
 // Deprecated
 static const char *XML_FEED = "feed";
 static const char *XML_UPDATE_UBUNTU_OVAL = "update_ubuntu_oval";
 static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 static const char *XML_VERSION = "version";
-
-void wm_vuldet_free_update_node(update_node *node) {
-    free(node->dist);
-    free(node->version);
-    free(node->url);
-    free(node->path);
-    if (node->allowed_OS_list) {
-        w_FreeArray(node->allowed_OS_list);
-    }
-    if (node->allowed_ver_list) {
-        w_FreeArray(node->allowed_ver_list);
-    }
-    free(node);
-}
 
 int format_os_version(char *OS, char **os_name, char **os_ver) {
     char OS_cpy[OS_SIZE_1024];
@@ -220,8 +207,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 
     if (upd_list[os_index]) {
         mwarn("Duplicate OVAL configuration for '%s %s'.", upd->dist, upd->version);
-        free(upd->dist);
-        free(upd->version);
+        wm_vuldet_free_update_node(upd);
         free(upd);
         retval = OS_SUPP_SIZE;
         goto end;
@@ -237,6 +223,7 @@ int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list
 end:
     if (retval == OS_SUPP_SIZE || retval == OS_INVALID) {
         wm_vuldet_free_update_node(upd);
+        free(upd);
     }
 
     return retval;
@@ -293,6 +280,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
 
     os_calloc(1, sizeof(wm_vuldet_t), vuldet);
     vuldet->flags.run_on_start = 1;
+    vuldet->flags.patch_scan = 1;
     vuldet->flags.enabled = 1;
     vuldet->ignore_time = VU_DEF_IGNORE_TIME;
     vuldet->detection_interval = WM_VULNDETECTOR_DEFAULT_INTERVAL;
@@ -325,7 +313,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_PROVIDER)) {
-            if (wm_vuldet_read_provider(xml, nodes[i], updates, &run_update)) {
+            if (wm_vuldet_read_provider(xml, nodes[i], updates, &vuldet->flags)) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_FEED) ||
@@ -354,7 +342,7 @@ int wm_vuldet_read(const OS_XML *xml, xml_node **nodes, wmodule *module) {
         }
     }
 
-    vuldet->flags.update = run_update;
+    vuldet->flags.update = vuldet->flags.update | run_update;
 
     return 0;
 }
@@ -473,9 +461,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
     if (version = strchr(feed, '-'), version) {
         *version = '\0';
         version++;
-    } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT]) &&
-                strcmp(feed, vu_feed_tag[FEED_NVD])    &&
-                strcmp(feed, vu_feed_tag[FEED_MSB])) {
+    } else if (strcmp(feed, vu_feed_tag[FEED_REDHAT])) {
         merror("Invalid feed '%s' at module '%s'.", feed, WM_VULNDETECTOR_CONTEXT.name);
         return OS_INVALID;
     }
@@ -495,6 +481,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
         if (!strcmp(chld_node[j]->element, XML_DISABLED)) {
             if (!strcmp(chld_node[j]->content, "yes")) {
                 wm_vuldet_free_update_node(updates[os_index]);
+                os_free(updates[os_index]);
                 updates[os_index] = NULL;
                 if (os_index == CVE_NVD) {
                     //wm_vuldet_free_update_node(updates[CPE_NDIC]);
@@ -576,7 +563,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
     return 0;
 }
 
-int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update) {
+int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags) {
     int os_index;
     int i;
     XML_NODE chld_node = NULL;
@@ -614,6 +601,16 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_INTERVAL, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
+        } else if (!strcmp(chld_node[i]->element, XML_PATCH_SCAN)) {
+            if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
+                if (!strcmp(chld_node[i]->content, "yes")) {
+                    flags->patch_scan = 1;
+                } else {
+                    flags->patch_scan = 0;
+                }
+            } else {
+                mwarn("%s option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
+            }
         } else if (strcmp(chld_node[i]->element, XML_OS) && strcmp(chld_node[i]->element, XML_DISABLED)) {
             merror("Invalid option in %s section for module %s: %s.", XML_PROVIDER, WM_VULNDETECTOR_CONTEXT.name, chld_node[i]->element);
             return OS_INVALID;
@@ -636,7 +633,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
             updates[os_index]->url = os_list->url;
             updates[os_index]->path = os_list->path;
-            *update = 1;
+            flags->update = 1;
 
             mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s'.",
                         pr_name,
@@ -664,13 +661,18 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->update_from_year = update_since;
         }
 
+        if (os_index == CVE_NVD && !flags->patch_scan) {
+            wm_vuldet_free_update_node(updates[CVE_MSB]);
+            os_free(updates[CVE_MSB]);
+        }
+
         mdebug1("Added %s feed. Interval: %lus | Path: '%s' | Url: '%s' | Update since: %d.",
             pr_name,
             updates[os_index]->interval,
             updates[os_index]->path ? updates[os_index]->path : "none",
             updates[os_index]->url ? updates[os_index]->url : "none",
             updates[os_index]->update_from_year);
-        *update = 1;
+        flags->update = 1;
     }
 
 end:
@@ -747,6 +749,16 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
     }
 
     return 0;
+}
+
+void wm_vuldet_free_update_node(update_node *update) {
+    free(update->dist);
+    free(update->version);
+    free(update->url);
+    w_FreeArray(update->allowed_OS_list);
+    free(update->allowed_OS_list);
+    w_FreeArray(update->allowed_ver_list);
+    free(update->allowed_ver_list);
 }
 
 #endif
