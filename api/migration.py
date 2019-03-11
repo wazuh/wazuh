@@ -101,14 +101,6 @@ def rename_old_fields(config: Dict) -> Dict:
             new_config['https']['cert'] = new_config['https_cert']
             del new_config['https_cert']
 
-        if 'https_use_ca' in new_config:
-            new_config['https']['use_ca'] = new_config['https_use_ca']
-            del new_config['https_use_ca']
-
-        if 'https_ca' in new_config:
-            new_config['https']['ca'] = new_config['https_ca']
-            del new_config['https_ca']
-
     if 'logs' in new_config:
         new_config['logs'] = {'level': new_config['logs']}
 
@@ -130,10 +122,9 @@ def rename_old_fields(config: Dict) -> Dict:
     old_to_new = {'BehindProxyServer': 'behind_proxy_server'}
     # allowed fields
     allowed_fields = ('host', 'port', 'basic_auth', 'BehindProxyServer',
-                      'https', 'https_key', 'https_cert', 'https_use_ca',
-                      'https_ca', 'logs', 'cors', 'cache_enabled', 'cache_debug',
-                      'cache_time', 'use_only_authd', 'drop_privileges',
-                      'experimental_features')
+                      'https', 'https_key', 'https_cert', 'logs', 'cors',
+                      'cache_enabled', 'cache_debug', 'cache_time',
+                      'use_only_authd', 'drop_privileges', 'experimental_features')
     # delete and rename old fields
     for key in config:
         if key in old_to_new:
