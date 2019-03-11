@@ -218,6 +218,8 @@ cJSON *getSyscheckConfig(void) {
         }
         if (cJSON_GetArraySize(audkey) > 0) {
             cJSON_AddItemToObject(whodata,"audit_key",audkey);
+        } else {
+            cJSON_free(audkey);
         }
     }
     if (syscheck.audit_healthcheck) {
