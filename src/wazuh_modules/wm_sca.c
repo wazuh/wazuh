@@ -495,13 +495,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
                     os_free(integrity_hash);
                 }
 
+                minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
             }
 
             w_del_plist(plist);
             plist = NULL;
-
-            minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
 
     next:
             if(fp){
