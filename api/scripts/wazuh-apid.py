@@ -76,7 +76,7 @@ if __name__ == '__main__':
         try:
             ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
         except IOError:
-            pass
+            raise
     else:
         ssl_context = None
 
