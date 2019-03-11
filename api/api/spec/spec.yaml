@@ -26,7 +26,7 @@ components:
           format: int32
         message:
           type: string
-    
+
     ListMetadata:
       type: object
       properties:
@@ -83,7 +83,7 @@ components:
               type: string
         id:
           type: string
-  
+
     AgentByName:
       type: object
       properties:
@@ -101,7 +101,7 @@ components:
           type: string
         id:
           type: string
-  
+
     AgentAffected:
       type: object
       properties:
@@ -111,7 +111,7 @@ components:
           type: array
           items:
             type: integer
-    
+
     AllAgentAffected:
       type: object
       additionalProperties:
@@ -122,7 +122,7 @@ components:
         total_affected_agents:
           type: integer
           format: int32
-    
+
     AgentGroup:
       type: object
       properties:
@@ -138,7 +138,7 @@ components:
                 type: string
               configSum:
                 type: string
-    
+
     AgentGroupDeleted:
       type: object
       properties:
@@ -152,7 +152,7 @@ components:
           type: array
           items:
             type: integer
-          
+
     AgentIdKey:
       type: object
       properties:
@@ -160,7 +160,7 @@ components:
           type: string
         key:
           type: string
-          
+
     AgentSimple:
       type: object
       properties:
@@ -170,7 +170,7 @@ components:
           type: string
         name:
           type: string
-    
+
     AgentStatus:
       type: string
       enum:
@@ -178,7 +178,7 @@ components:
       - pending
       - neverconnected
       - disconnected
-    
+
     AgentConfiguration:
       type: object
       properties:
@@ -200,7 +200,7 @@ components:
                   type: string
               frequency:
                 type: integer
-    
+
     GroupConfiguration:
       type: object
       properties:
@@ -220,7 +220,7 @@ components:
                     type: string
                   log_format:
                     type: string
-    
+
     ## Cache models
     GroupCache:
       type: object
@@ -231,7 +231,7 @@ components:
             type: string
         group:
           type: object
-    
+
     GroupCacheComplete:
       type: object
       properties:
@@ -246,7 +246,7 @@ components:
               type: array
               items:
                 type: string
-                
+
     ## CisCat models
     CiscatResults:
       type: object
@@ -291,7 +291,7 @@ components:
           format: \d+\.\d+\.\d+
         ip:
           type: string
-    
+
     Healthcheck:
       type: object
       properties:
@@ -458,7 +458,7 @@ components:
           type: object
         labels:
           type: object
-    
+
     WazuhStats:
       type: array
       items:
@@ -485,7 +485,7 @@ components:
             type: integer
           firewall:
             type: integer
-      
+
     WazuhHourlyStats:
       type: object
       properties:
@@ -515,25 +515,25 @@ components:
           $ref: '#/components/schemas/WazuhHourlyStats'
         Sat:
           $ref: '#/components/schemas/WazuhHourlyStats'
-    
+
     WazuhAnalysisdStats:
       type: object
       properties:
-        total_events_decoded: 
+        total_events_decoded:
           type: integer
         syscheck_events_decoded:
           type: integer
         syscheck_edps:
           type: integer
-        syscollector_events_decoded: 
+        syscollector_events_decoded:
           type: integer
-        syscollector_edps: 
+        syscollector_edps:
           type: integer
         rootcheck_events_decoded:
           type: integer
         rootcheck_edps:
           type: integer
-        sca_events_decoded: 
+        sca_events_decoded:
           type: integer
         sca_edps:
           type: integer
@@ -545,15 +545,15 @@ components:
           type: integer
         winevt_edps:
           type: integer
-        other_events_decoded: 
+        other_events_decoded:
           type: integer
         other_events_edps:
           type: integer
-        events_processed: 
+        events_processed:
           type: integer
-        events_edps: 
+        events_edps:
           type: integer
-        events_received: 
+        events_received:
           type: integer
         events_dropped:
           type: integer
@@ -565,51 +565,51 @@ components:
           type: integer
         syscheck_queue_usage:
           type: integer
-        syscheck_queue_size: 
+        syscheck_queue_size:
           type: integer
         syscollector_queue_usage:
           type: integer
-        syscollector_queue_size: 
+        syscollector_queue_size:
           type: integer
         rootcheck_queue_usage:
           type: integer
-        rootcheck_queue_size: 
+        rootcheck_queue_size:
           type: integer
         sca_queue_usage:
           type: integer
-        sca_queue_size: 
+        sca_queue_size:
           type: integer
         hostinfo_queue_usage:
           type: integer
-        hostinfo_queue_size: 
+        hostinfo_queue_size:
           type: integer
         winevt_queue_usage:
           type: integer
-        winevt_queue_size: 
+        winevt_queue_size:
           type: integer
         event_queue_usage:
           type: integer
-        event_queue_size: 
+        event_queue_size:
           type: integer
         rule_matching_queue_usage:
           type: integer
-        rule_matching_queue_size: 
+        rule_matching_queue_size:
           type: integer
         alerts_queue_usage:
           type: integer
-        alerts_queue_size: 
+        alerts_queue_size:
           type: integer
         firewall_queue_usage:
           type: integer
-        firewall_queue_size: 
+        firewall_queue_size:
           type: integer
         statistical_queue_usage:
           type: integer
-        statistical_queue_size: 
+        statistical_queue_size:
           type: integer
         archives_queue_usage:
           type: integer
-        archives_queue_size: 
+        archives_queue_size:
           type: integer
 
     WazuhRemotedStats:
@@ -761,7 +761,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           ossec-reportd:
             $ref: '#/components/schemas/LogSummary'
-    
+
     ConfigurationValidation:
       type: object
       properties:
@@ -774,6 +774,47 @@ components:
           type: array
           items:
             type: string
+
+    RulesFiles:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          enum:
+          - enabled
+          - disabled
+
+    Rules:
+      allOf:
+        - $ref: '#/components/schemas/RulesFiles'
+        - type: object
+          properties:
+            id:
+              type: integer
+            level:
+              type: integer
+              minimum: 0
+              maximum: 15
+            description:
+              type: string
+            groups:
+              type: array
+              items:
+                type: string
+            pci:
+              type: array
+              items:
+                type: string
+            gdpr:
+              type: array
+              items:
+                type: string
+            details:
+              type: object
 
     # SCA models
     SCAChecks:
@@ -828,7 +869,7 @@ components:
           type: string
         start_scan:
           type: string
-        
+
   securitySchemes:
     basicAuth:
       type: http
@@ -990,7 +1031,7 @@ components:
       description: Select algorithm to generate the sum.
       schema:
         type: string
-    limit:  
+    limit:
       in: query
       name: limit
       description: Maximum number of elements to return
@@ -1131,7 +1172,7 @@ components:
       description: Looks for elements with the specified string
       schema:
         type: string
-    select:  
+    select:
       in: query
       name: select
       description: Select which fields to return (separated by comma)
@@ -1321,6 +1362,60 @@ components:
       description: If set to false, an exception will be raised when updating contents of an already existing filename.
       schema:
         type: boolean
+    group:
+      in: query
+      name: group
+      description: Filters by rule group.
+      schema:
+        type: string
+    level:
+      in: query
+      name: level
+      description: Filters by rule level. Can be a single level (4) or an interval (2-4)
+      schema:
+        type: string
+        format: \d(?>-\d)?  # 4 or 4-5
+    rule_path:
+      in: query
+      name: path
+      description: Filters by rule path.
+      schema:
+        type: string
+    rulestatus:
+      in: query
+      name: status
+      description: Filters by rule status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    pci:
+      in: query
+      name: pci
+      description: Filters by PCI requirement name.
+      schema:
+        type: string
+    gdpr:
+      in: query
+      name: gdpr
+      description: Filters by GDPR requirement.
+      schema:
+        type: string
+    download:
+      in: query
+      name: download
+      description: Downloads the specified file.
+      schema:
+        type: string
+    rule_id:
+      in: path
+      name: rule_id
+      description: Filters by rule ID.
+      required: true
+      schema:
+        type: integer
 
 tags:
   - name: active-response
@@ -1348,7 +1443,7 @@ tags:
   - name: rootcheck
     description: ''
   - name: rules
-    description: ''
+    description: 'Wazuh ruleset management'
   - name: syscheck
     description: ''
   - name: syscollector
@@ -1367,7 +1462,7 @@ paths:
       operationId: api.controllers.active_response_controller.active_response
       parameters:
         - $ref: '#/components/parameters/agent_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -1376,12 +1471,12 @@ paths:
                   command:
                     description: Command running in the agent.
                     type: string
-                    
+
                   custom:
                     description: Custom.
                     type: boolean
                     default: false
-  
+
                   arguments:
                     description: Command arguments.
                     type: array
@@ -1431,7 +1526,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'  
+                      $ref: '#/components/schemas/AllAgentAffected'
               example:
                 error: 0
                 data:
@@ -1821,7 +1916,7 @@ paths:
                         properties:
                           syncef:
                             type: boolean
-                        
+
               example:
                 error: 0
                 data:
@@ -1879,7 +1974,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
                 example:
                   error: 0
@@ -1907,7 +2002,7 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
@@ -1936,7 +2031,7 @@ paths:
                       $ref: '#/components/schemas/AgentAffected'
                 example:
                   error: 0
-                  data: 
+                  data:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
@@ -1980,7 +2075,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -2016,7 +2111,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -2065,7 +2160,7 @@ paths:
           description: Seconds to wait for the agent to respond.
           schema:
             type: integer
-          
+
       responses:
         '200':
           description: 'Get agent upgrade result'
@@ -2078,7 +2173,7 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: Agent upgraded successfully
@@ -2123,7 +2218,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -2363,7 +2458,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -2421,7 +2516,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-        
+
       requestBody:
         content:
           application/xml:
@@ -2430,7 +2525,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Upload configuration'
@@ -2589,7 +2684,7 @@ paths:
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
                       reference: CIS_Debian_Benchmark_v1.0pdf
-                      checks: 
+                      checks:
                         - f:/etc/debian_version
     post:
       tags:
@@ -2601,7 +2696,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-      
+
       requestBody:
         content:
           application/xml:
@@ -2610,7 +2705,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Post group file'
@@ -2644,19 +2739,19 @@ paths:
                   name:
                     description: Agent name.
                     type: string
-                    
+
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-                    
+
                   id:
                     description: Agent ID.
                     type: string
-                    
+
                   key:
                     description: "Agent key. Minimum length: 64 characters. Allowed values: ^[a-zA-Z0-9]+$"
                     type: string
-  
+
                   force:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
                     type: integer
@@ -2826,7 +2921,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        
+
       requestBody:
         content:
           application/json:
@@ -2837,7 +2932,7 @@ paths:
                   type: array
                   items:
                     type: string
-                  
+
       responses:
         '200':
           description: Agents restarted
@@ -3014,7 +3109,7 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-  
+
   /cache/:
     delete:
       tags:
@@ -3070,7 +3165,7 @@ paths:
                   all:
                     -
                   groups:
-      
+
   /cache/{group}:
     delete:
       tags:
@@ -3102,7 +3197,7 @@ paths:
                   groups:
                     agents:
                       - /agents/stats/distinct?pretty&fields=os.platform
-  
+
   /cache/config:
     get:
       tags:
@@ -3149,7 +3244,7 @@ paths:
                     -
                   jsonp: false
                   redisClient: false
-      
+
   /ciscat/{agent_id}/results:
     get:
       tags:
@@ -3174,7 +3269,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-        
+
       responses:
         '200':
           description: 'List of agents or error description'
@@ -3256,7 +3351,7 @@ paths:
                   node: "node02"
                   cluster: "wazuh"
                   type: "worker"
-  
+
   /cluster/nodes:
     get:
       tags:
@@ -4350,7 +4445,7 @@ paths:
               example:
                 error: 0
                 data: Restarting cluster.
-  
+
   /cluster/{node_id}/restart:
     put:
       tags:
@@ -5190,7 +5285,7 @@ paths:
               example:
                 error: 0
                 data: File was deleted.
-  
+
   /manager/restart:
     put:
       tags:
@@ -5247,6 +5342,325 @@ paths:
                   details:
                     - "(1230): Invalid element in the configuration: 'hello'."
                     - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
+  /rules:
+    get:
+      tags:
+      - rules
+      summary: Get information about all Wazuh rules.
+      description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
+      operationId: api.controllers.rules_controllers.get_rules
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/group'
+        - $ref: '#/components/parameters/level'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/rule_path'
+        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/gdpr'
+      responses:
+        '200':
+          description: "Rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Rules'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - file: 0016-wazuh_rules.xml
+                      path: ruleset/rules
+                      id: 203
+                      level: 9
+                      description: Agent event queue is full. Events may be lost.
+                      status: enabled
+                      groups:
+                      - agent_flooding
+                      - wazuh
+                      pci:
+                      -
+                      gdpr:
+                      - IV_35.7.d
+                      details:
+                        if_sid: "201"
+                        level: "full"
+                    - file: 0015-ossec_rules.xml
+                      path: ruleset/rules
+                      id: 513
+                      level: 9
+                      description: Windows malware detected.
+                      status: enabled
+                      groups:
+                      - rootcheck
+                      - gpg13_4.2
+                      - ossec
+                      pci:
+                      -
+                      gdpr:
+                      - IV_35.7.d
+                      details:
+                        if_sid: "510"
+                        match: "^Windows Malware"
+
+  /rules/{rule_id}:
+    get:
+      tags:
+      - rules
+      summary: Filters rules by ID.
+      description: Filters results of /rules endpoint filtering by ID.
+      operationId: api.controllers.rules_controllers.get_rules_id
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/rule_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: "Rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Rules'
+              example:
+                error: 0
+                data:
+                  totalItems: 1
+                  items:
+                    - file: 0225-mcafee_av_rules.xml
+                      path: ruleset/rules
+                      id: 7514
+                      level: 5
+                      description: McAfee Windows AV - EICAR test file detected.
+                      status: enabled
+                      groups:
+                      - mcafee
+                      pci:
+                      -
+                      gdpr:
+                      -
+                      details:
+                        if_sid: "7505"
+                        match: contains the EICAR test file
+                        options: alert_by_email
+
+  /rules/groups:
+    get:
+      tags:
+      - rules
+      summary: Get all rule groups names.
+      description: Returns a list containing all rule groups names.
+      operationId: api.controllers.rules_controllers.get_rules_groups
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'Rule groups names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - access_control
+                    - access_denied
+                    - accesslog
+                    - account_changed
+
+  /rules/pci:
+    get:
+      tags:
+      - rules
+      summary: Get all PCI requirements.
+      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controllers.get_rules_pci
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'PCI requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - "1.1.1"
+                    - "1.3.4"
+                    - "1.4"
+                    - "10.1"
+
+  /rules/gdpr:
+    get:
+      tags:
+      - rules
+      summary: Get all GDPR requirements.
+      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controllers.get_rules_gdpr
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'PCI requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - "II_5.1.f"
+                    - "IV_30.1.g"
+                    - "IV_32.2"
+                    - "IV_35.7.d"
+
+  /rules/files:
+    get:
+      tags:
+      - rules
+      summary: Get all files which defines rules.
+      description: Returns a list containing all files used to define rules and their status.
+      operationId: api.controllers.rules_controllers.get_rules_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/rule_path'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: 'SCA database elements'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/RulesFiles'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - file: 0010-rules_config.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0015-ossec_rules.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0016-wazuh_rules.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0020-syslog_rules.xml
+                      path: ruleset/rules
+                      status: enabled
 
   /sca/{agent_id}:
     get:
@@ -5375,7 +5789,7 @@ paths:
                     id: 1003
                     policy_id: "system_audit"
                     compliance:
-                    - 
+                    -
 
   /security/user/authenticate:
     get:
