@@ -2827,6 +2827,10 @@ paths:
       - lists
       summary: 'Get paths from all lists'
       description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      operationId: api.controllers.lists_controller.get_lists_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
           description: 'Successfully got all CDB lists and the files where are defined'
