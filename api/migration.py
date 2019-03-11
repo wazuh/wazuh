@@ -21,7 +21,7 @@ def get_old_config() -> Dict:
     """
     old_config_path = os.path.join(common.ossec_path, '~api/configuration/config.js')
     old_config = {}
-    regex = re.compile(r'^\s*config.(\w+)\s*=\s*\"?([\w.]*|true|false)\"?;?$')
+    regex = re.compile(r'^\s*config.(\w+)\s*=\s*\"?([\w\/.]*|true|false)\"?;?$')
     try:
         # import old config file!
         with open(old_config_path) as input_file:
