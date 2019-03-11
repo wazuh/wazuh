@@ -91,7 +91,7 @@ def rename_old_fields(config: Dict) -> Dict:
     # relocate nested fields
     if 'https' in new_config:
         new_config['https'] = {'enabled': new_config['https'], 'key': '',
-                               'cert': '', 'ca': ''}
+                               'cert': ''}
 
         if 'https_key' in new_config:
             new_config['https']['key'] = new_config['https_key']

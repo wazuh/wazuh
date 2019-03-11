@@ -73,9 +73,6 @@ if __name__ == '__main__':
 
     if configuration['https']['enabled']:
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-        if configuration['https']['use_ca']:
-            ssl_context.verify_mode = ssl.CERT_REQUIRED
-            ssl_context.load_verify_locations(configuration['https']['ca'])
         ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
     else:
         ssl_context = None
