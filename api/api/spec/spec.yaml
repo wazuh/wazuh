@@ -28,7 +28,7 @@ components:
           description: Result 0 (No error), other value (error).
         message:
           type: string
-    
+
     ListMetadata:
       type: object
       required:
@@ -38,10 +38,10 @@ components:
           type: integer
           format: int32
           minimum: 0
-          
+
     ItemAffected:
       type: object
-      required: 
+      required:
       - msg
       - affected_items
       properties:
@@ -55,7 +55,7 @@ components:
           type: array
           items:
             type: string
-    
+
     AllItemsAffected:
       type: object
       required:
@@ -231,6 +231,16 @@ components:
                   type: string
               frequency:
                 type: integer
+
+    CDBList:
+      type: array
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+          value:
+            type: string
 
     GroupConfiguration:
       type: object
@@ -1153,7 +1163,7 @@ components:
         type: integer
         format: int32
         minimum: 0
-    pathParam:
+    pathFilter:
       in: query
       name: path
       description: Filters by path
@@ -1258,19 +1268,9 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    status:
+    statusAgentParam:
       in: query
-      name: status
-      description: Filters the decoders by status.
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-        - all
-    statusAgent:
-      in: query
-      name: status_agent
+      name: agent_status
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -1281,6 +1281,20 @@ components:
           - pending
           - neverconnected
           - disconnected
+        minItems: 1
+    statusRLDParam:
+      in: query
+      name: list_status
+      description: Filters by list status. Use commas to enter multiple statuses.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - enabled
+          - disabled
+          - all
+        minItems: 1
     title:
       in: query
       name: title
@@ -1461,7 +1475,7 @@ tags:
   - name: experimental
     description: ''
   - name: lists
-    description: ''
+    description: 'CDB lists'
   - name: login
     description: 'User authentication'
   - name: manager
@@ -1469,7 +1483,7 @@ tags:
   - name: rootcheck
     description: ''
   - name: rules
-    description: ''
+    description: 'Rules management'
   - name: syscheck
     description: ''
   - name: syscollector
@@ -1525,6 +1539,7 @@ paths:
                 example:
                   data: "Command sent."
                   error: 0
+
   /agents:
     delete:
       tags:
@@ -1538,7 +1553,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusAgent'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -1575,7 +1590,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusAgent'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -2348,6 +2363,7 @@ paths:
                     name: pciserver
                     mergedSum: 220d6c5fc253f251827ee7487341c0fc
                     configSum: ab73af41699f13fdd81903b5f23d8d00
+
   /agents/groups/{group_id}:
     delete:
       tags:
@@ -2393,7 +2409,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusAgent'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -5480,7 +5496,7 @@ paths:
                     id: 1003
                     policy_id: "system_audit"
                     compliance:
-  
+
   /decoders:
     get:
       tags:
@@ -5496,8 +5512,8 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathParam'
-        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
 
       responses:
         '200':
@@ -5612,8 +5628,8 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathParam'
-        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/download'
       responses:
         '200':
@@ -5712,7 +5728,8 @@ paths:
                     details:
                       prematch: "^azure_tag: azure-storage. "
                       regex: "^azure_storage_tag: (\\S+)"
-                      order: tag 
+                      order: tag
+
   /security/user/authenticate:
     get:
       tags:
@@ -5735,6 +5752,87 @@ paths:
         '401':
           description: 'Access unauthorized'
 
+  /lists:
+    get:
+      tags:
+      - lists
+      summary: 'Get all CDB lists'
+      description: 'Returns the contents of all CDB lists. Optionally, the result can be filtered by several criteria. See available parameters for more details.'
+      operationId: api.controllers.lists_controller.get_lists
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/pathFilter'
+      responses:
+        '200':
+          description: 'Successfully got CDB lists'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - $ref: '#/components/schemas/CDBList'
+                example:
+                  error: 0
+                  data:
+                    totalItems: 1
+                    items:
+                      -
+                        - key: audit-wazuh-w
+                          value: write
+                        - key: audit-wazuh-r
+                          value: read
+
+  /lists/files:
+    get:
+      tags:
+      - lists
+      summary: 'Get paths from all lists'
+      description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      operationId: api.controllers.lists_controller.get_lists_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Successfully got all CDB lists and the files where are defined'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            name:
+                              type: string
+                            path:
+                              type: string
+                example:
+                  error: 0
+                  data:
+                    totalItems: 2
+                    items:
+                      - name: security-eventchannel
+                        path: etc/lists
+                      - name: aws-sources
+                        path: etc/lists/amazon
+
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
+
