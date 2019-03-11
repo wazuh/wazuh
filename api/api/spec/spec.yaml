@@ -24,19 +24,65 @@ components:
         error:
           type: integer
           format: int32
+          minimum: 0
+          description: Result 0 (No error), other value (error).
         message:
           type: string
     
     ListMetadata:
       type: object
+      required:
+      - totalItems
       properties:
         totalItems:
+          type: integer
+          format: int32
+          minimum: 0
+          
+    ItemAffected:
+      type: object
+      required: 
+      - msg
+      - affected_items
+      properties:
+        msg:
+          type: string
+        affected_items:
+          type: array
+          items:
+            type: string
+        failed_items:
+          type: array
+          items:
+            type: string
+    
+    AllItemsAffected:
+      type: object
+      required:
+        - older_than
+        - total_affected_items
+      allOf:
+        - $ref: '#/components/schemas/ItemAffected'
+      properties:
+        older_than:
+          type: string
+        total_affected_items:
+          type: integer
+          format: int32
+        total_failed_items:
           type: integer
           format: int32
 
     ## Agents models
     Agent:
       type: object
+      required:
+      - ip
+      - status
+      - dateAdd
+      - name
+      - node_name
+      - id
       properties:
         status:
           $ref: '#/components/schemas/AgentStatus'
@@ -85,48 +131,13 @@ components:
               type: string
         id:
           type: string
-  
-    AgentByName:
-      type: object
-      properties:
-        ip:
-          type: string
-        status:
-          $ref: '#/components/schemas/AgentStatus'
-        dateAdd:
-          type: string
-        name:
-          type: string
-        registerIP:
-          type: string
-        node_name:
-          type: string
-        id:
-          type: string
-  
-    AgentAffected:
-      type: object
-      properties:
-        msg:
-          type: string
-        affected_agents:
-          type: array
-          items:
-            type: integer
-    
-    AllAgentAffected:
-      type: object
-      additionalProperties:
-        $ref: '#/components/schemas/AgentAffected'
-      properties:
-        older_than:
-          type: string
-        total_affected_agents:
-          type: integer
-          format: int32
-    
+
     AgentGroup:
       type: object
+      required:
+      - count
+      - name
+      - configSum
       properties:
         items:
           type: array
@@ -142,32 +153,47 @@ components:
               configSum:
                 type: string
                 pattern: \w{32}  # MD5
-    
+
     AgentGroupDeleted:
       type: object
+      required:
+      - msg
+      - affected_groups
+      - affected_agents
       properties:
         msg:
           type: string
-        ids:
+        affected_groups:
+          type: array
+          items:
+            type: string
+        failed_groups:
           type: array
           items:
             type: string
         affected_agents:
           type: array
           items:
-            type: integer
-          
+            type: string
+
     AgentIdKey:
       type: object
+      required:
+        - id
+        - key
       properties:
         id:
           type: string
         key:
           type: string
           format: \w+=*  # Base 64
-          
+
     AgentSimple:
       type: object
+      required:
+      - version
+      - id
+      - name
       properties:
         version:
           type: string
@@ -175,7 +201,7 @@ components:
           type: string
         name:
           type: string
-    
+
     AgentStatus:
       type: string
       enum:
@@ -183,9 +209,12 @@ components:
       - pending
       - neverconnected
       - disconnected
-    
+
     AgentConfiguration:
       type: object
+      required:
+        - logformat
+        - target
       properties:
         configuration:
           type: array
@@ -205,9 +234,12 @@ components:
                   type: string
               frequency:
                 type: integer
-    
+
     GroupConfiguration:
       type: object
+      required:
+      - filter
+      - config
       properties:
         filter:
           type: object
@@ -225,20 +257,13 @@ components:
                     type: string
                   log_format:
                     type: string
-    
-    ## Cache models
+
+    ## Cache model
     GroupCache:
       type: object
-      properties:
-        all:
-          type: array
-          items:
-            type: string
-        group:
-          type: object
-    
-    GroupCacheComplete:
-      type: object
+      required:
+      - all
+      - group
       properties:
         all:
           type: array
@@ -251,7 +276,25 @@ components:
               type: array
               items:
                 type: string
-                
+
+    CacheConfig:
+      type: object
+      properties:
+        debug:
+          type: boolean
+        defaultDuration:
+          type: integer
+        enabled:
+          type: boolean
+        appendKey:
+          type: array
+          items:
+            type: string
+        jsonp:
+          type: boolean
+        redisClient:
+          type: boolean
+
     ## CisCat models
     CiscatResults:
       type: object
@@ -297,7 +340,7 @@ components:
           format: \d+\.\d+\.\d+
         ip:
           type: string
-    
+
     Healthcheck:
       type: object
       properties:
@@ -464,7 +507,7 @@ components:
           type: object
         labels:
           type: object
-    
+
     WazuhStats:
       type: array
       items:
@@ -491,7 +534,7 @@ components:
             type: integer
           firewall:
             type: integer
-      
+
     WazuhHourlyStats:
       type: object
       properties:
@@ -521,25 +564,25 @@ components:
           $ref: '#/components/schemas/WazuhHourlyStats'
         Sat:
           $ref: '#/components/schemas/WazuhHourlyStats'
-    
+
     WazuhAnalysisdStats:
       type: object
       properties:
-        total_events_decoded: 
+        total_events_decoded:
           type: integer
         syscheck_events_decoded:
           type: integer
         syscheck_edps:
           type: integer
-        syscollector_events_decoded: 
+        syscollector_events_decoded:
           type: integer
-        syscollector_edps: 
+        syscollector_edps:
           type: integer
         rootcheck_events_decoded:
           type: integer
         rootcheck_edps:
           type: integer
-        sca_events_decoded: 
+        sca_events_decoded:
           type: integer
         sca_edps:
           type: integer
@@ -551,15 +594,15 @@ components:
           type: integer
         winevt_edps:
           type: integer
-        other_events_decoded: 
+        other_events_decoded:
           type: integer
         other_events_edps:
           type: integer
-        events_processed: 
+        events_processed:
           type: integer
-        events_edps: 
+        events_edps:
           type: integer
-        events_received: 
+        events_received:
           type: integer
         events_dropped:
           type: integer
@@ -571,51 +614,51 @@ components:
           type: integer
         syscheck_queue_usage:
           type: integer
-        syscheck_queue_size: 
+        syscheck_queue_size:
           type: integer
         syscollector_queue_usage:
           type: integer
-        syscollector_queue_size: 
+        syscollector_queue_size:
           type: integer
         rootcheck_queue_usage:
           type: integer
-        rootcheck_queue_size: 
+        rootcheck_queue_size:
           type: integer
         sca_queue_usage:
           type: integer
-        sca_queue_size: 
+        sca_queue_size:
           type: integer
         hostinfo_queue_usage:
           type: integer
-        hostinfo_queue_size: 
+        hostinfo_queue_size:
           type: integer
         winevt_queue_usage:
           type: integer
-        winevt_queue_size: 
+        winevt_queue_size:
           type: integer
         event_queue_usage:
           type: integer
-        event_queue_size: 
+        event_queue_size:
           type: integer
         rule_matching_queue_usage:
           type: integer
-        rule_matching_queue_size: 
+        rule_matching_queue_size:
           type: integer
         alerts_queue_usage:
           type: integer
-        alerts_queue_size: 
+        alerts_queue_size:
           type: integer
         firewall_queue_usage:
           type: integer
-        firewall_queue_size: 
+        firewall_queue_size:
           type: integer
         statistical_queue_usage:
           type: integer
-        statistical_queue_size: 
+        statistical_queue_size:
           type: integer
         archives_queue_usage:
           type: integer
-        archives_queue_size: 
+        archives_queue_size:
           type: integer
 
     WazuhRemotedStats:
@@ -767,7 +810,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           ossec-reportd:
             $ref: '#/components/schemas/LogSummary'
-    
+
     ConfigurationValidation:
       type: object
       properties:
@@ -912,7 +955,42 @@ components:
         sha256:
           type: string
           format: \w{64}
-        
+
+    # Decoders models
+    Decoder:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DecoderFile'
+      properties:
+        name:
+          type: integer
+        position:
+          type: string
+        details:
+          type: object
+          properties:
+            program_name:
+              type: string
+            parent:
+              type: string
+            prematch:
+              type: string
+            regex:
+              type: integer
+            order:
+              type: string
+
+    DecoderFile:
+      type: object
+      required:
+      - file
+      - status
+      properties:
+        file:
+          type: string
+        status:
+          type: string
+
   securitySchemes:
     basicAuth:
       type: http
@@ -924,14 +1002,16 @@ components:
       scheme: bearer
       bearerFormat: JWT
       x-bearerInfoFunc: api.authentication.decode_token
+
   parameters:
     agent_id:
       in: path
       name: agent_id
-      description: Agent ID
+      description: Agent ID. All posible values since 000 onwards.
       required: true
       schema:
-        type: integer
+        type: string
+        minLength: 3
     agent_name:
       in: path
       name: agent_name
@@ -942,7 +1022,7 @@ components:
     benchmark:
       in: query
       name: benchmark
-      description: Filters by benchmark.
+      description: Filters by benchmark type.
       schema:
         type: string
     component:
@@ -971,7 +1051,7 @@ components:
     configuration:
       in: path
       name: configuration
-      description: Selected agent's configuration to read
+      description: Selected agent's configuration to read.
       required: true
       schema:
         type: array
@@ -1000,6 +1080,13 @@ components:
           - syscheck
           - rootcheck
           - wmodules
+    decoder_name:
+      in: path
+      name: decoder_name
+      description: Decoder name.
+      required: true
+      schema:
+        type: string
     description:
       in: query
       name: description
@@ -1012,18 +1099,28 @@ components:
       description: Filters by directory.
       schema:
         type: string
+    download:
+      in: query
+      name: download
+      description: Downloads the file
+      schema:
+        type: string
     error:
       in: query
       name: error
       description: Filters by encountered errors.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     fail:
       in: query
       name: fail
       description: Filters by failed checks.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     fields:
       in: query
       name: fields
@@ -1074,7 +1171,7 @@ components:
       description: Select algorithm to generate the sum.
       schema:
         type: string
-    limit:  
+    limit:
       in: query
       name: limit
       description: Maximum number of elements to return
@@ -1112,6 +1209,8 @@ components:
       description: Filters by not checked.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     offset:
       in: query
       name: offset
@@ -1134,6 +1233,14 @@ components:
       description: Filters by passed checks.
       schema:
         type: integer
+        format: int32
+        minimum: 0
+    pathParam:
+      in: query
+      name: path
+      description: Filters by path
+      schema:
+        type: string
     pretty:
       in: query
       name: pretty
@@ -1146,7 +1253,7 @@ components:
       name: process
       description: Filters by process name.
       schema:
-        type: integer
+        type: string
     profile:
       in: query
       name: profile
@@ -1159,7 +1266,7 @@ components:
       description: Filters by policy id.
       required: True
       schema:
-        type: integer
+        type: string
     purge:
       in: query
       name: purge
@@ -1209,13 +1316,15 @@ components:
       description: Filters by final score.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     search:
       in: query
       name: search
       description: Looks for elements with the specified string
       schema:
         type: string
-    select:  
+    select:
       in: query
       name: select
       description: Select which fields to return (separated by comma)
@@ -1231,9 +1340,19 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    statusParam:
+    status:
       in: query
       name: status
+      description: Filters the decoders by status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    statusAgent:
+      in: query
+      name: status_agent
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -1405,7 +1524,7 @@ components:
       description: If set to false, an exception will be raised when updating contents of an already existing filename.
       schema:
         type: boolean
-    status:
+    rootcheck_status:
       in: query
       name: status
       description: Filter by scan status
@@ -1495,7 +1614,7 @@ tags:
   - name: rules
     description: ''
   - name: syscheck
-    description: 'File integrity monitoring'
+    description: 'File integrity monitoring.'
   - name: syscollector
     description: ''
 
@@ -1512,7 +1631,7 @@ paths:
       operationId: api.controllers.active_response_controller.active_response
       parameters:
         - $ref: '#/components/parameters/agent_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -1521,12 +1640,12 @@ paths:
                   command:
                     description: Command running in the agent.
                     type: string
-                    
+
                   custom:
                     description: Custom.
                     type: boolean
                     default: false
-  
+
                   arguments:
                     description: Command arguments.
                     type: array
@@ -1549,7 +1668,6 @@ paths:
                 example:
                   data: "Command sent."
                   error: 0
-
   /agents:
     delete:
       tags:
@@ -1563,7 +1681,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -1576,7 +1694,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'  
+                      $ref: '#/components/schemas/AllItemsAffected'
               example:
                 error: 0
                 data:
@@ -1600,7 +1718,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -1794,7 +1912,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -1966,7 +2084,7 @@ paths:
                         properties:
                           syncef:
                             type: boolean
-                        
+
               example:
                 error: 0
                 data:
@@ -2024,7 +2142,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
                 example:
                   error: 0
@@ -2052,7 +2170,7 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
@@ -2078,10 +2196,10 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   error: 0
-                  data: 
+                  data:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
@@ -2125,7 +2243,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -2161,7 +2279,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -2210,7 +2328,7 @@ paths:
           description: Seconds to wait for the agent to respond.
           schema:
             type: integer
-          
+
       responses:
         '200':
           description: 'Get agent upgrade result'
@@ -2223,7 +2341,7 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: Agent upgraded successfully
@@ -2250,7 +2368,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -2268,7 +2386,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -2290,7 +2408,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -2373,7 +2491,6 @@ paths:
                     name: pciserver
                     mergedSum: 220d6c5fc253f251827ee7487341c0fc
                     configSum: ab73af41699f13fdd81903b5f23d8d00
-
   /agents/groups/{group_id}:
     delete:
       tags:
@@ -2419,7 +2536,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgent'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -2508,7 +2625,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -2566,7 +2683,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-        
+
       requestBody:
         content:
           application/xml:
@@ -2575,7 +2692,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Upload configuration'
@@ -2734,7 +2851,7 @@ paths:
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
                       reference: CIS_Debian_Benchmark_v1.0pdf
-                      checks: 
+                      checks:
                         - f:/etc/debian_version
     post:
       tags:
@@ -2746,7 +2863,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-      
+
       requestBody:
         content:
           application/xml:
@@ -2755,7 +2872,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Post group file'
@@ -2789,19 +2906,19 @@ paths:
                   name:
                     description: Agent name.
                     type: string
-                    
+
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-                    
+
                   id:
                     description: Agent ID.
                     type: string
-                    
+
                   key:
                     description: "Agent key. Minimum length: 64 characters. Allowed values: ^[a-zA-Z0-9]+$"
                     type: string
-  
+
                   force:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
                     type: integer
@@ -2846,7 +2963,7 @@ paths:
                   properties:
                     data:
                       allOf:
-                        - $ref: '#/components/schemas/AgentByName'
+                        - $ref: '#/components/schemas/Agent'
               example:
                 error: 0
                 data:
@@ -2891,7 +3008,7 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/AgentByName'
+                                $ref: '#/components/schemas/Agent'
               example:
                 error: 0
                 data:
@@ -2971,7 +3088,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        
+
       requestBody:
         content:
           application/json:
@@ -2982,7 +3099,7 @@ paths:
                   type: array
                   items:
                     type: string
-                  
+
       responses:
         '200':
           description: Agents restarted
@@ -2994,7 +3111,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   error: 0
                   data:
@@ -3159,7 +3276,7 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-  
+
   /cache/:
     delete:
       tags:
@@ -3215,7 +3332,7 @@ paths:
                   all:
                     -
                   groups:
-      
+
   /cache/{group}:
     delete:
       tags:
@@ -3238,7 +3355,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/GroupCacheComplete'
+                      $ref: '#/components/schemas/GroupCache'
               example:
                 error: 0
                 data:
@@ -3247,7 +3364,7 @@ paths:
                   groups:
                     agents:
                       - /agents/stats/distinct?pretty&fields=os.platform
-  
+
   /cache/config:
     get:
       tags:
@@ -3269,21 +3386,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      properties:
-                        debug:
-                          type: boolean
-                        defaultDuration:
-                          type: integer
-                        enabled:
-                          type: boolean
-                        appendKey:
-                          type: array
-                          items:
-                            type: string
-                        jsonp:
-                          type: boolean
-                        redisClient:
-                          type: boolean
+                      $ref: '#/components/schemas/CacheConfig'
               example:
                 error: 0
                 data:
@@ -3294,7 +3397,7 @@ paths:
                     -
                   jsonp: false
                   redisClient: false
-      
+
   /ciscat/{agent_id}/results:
     get:
       tags:
@@ -3319,7 +3422,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-        
+
       responses:
         '200':
           description: 'List of agents or error description'
@@ -3401,7 +3504,7 @@ paths:
                   node: "node02"
                   cluster: "wazuh"
                   type: "worker"
-  
+
   /cluster/nodes:
     get:
       tags:
@@ -4495,7 +4598,7 @@ paths:
               example:
                 error: 0
                 data: Restarting cluster.
-  
+
   /cluster/{node_id}/restart:
     put:
       tags:
@@ -5335,7 +5438,7 @@ paths:
               example:
                 error: 0
                 data: File was deleted.
-  
+
   /manager/restart:
     put:
       tags:
@@ -5970,7 +6073,239 @@ paths:
                 data:
                   end: "2019-03-08 10:35:21"
                   start: "2019-03-08 10:34:56"
+  
+  /decoders:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders'
+      description: "Returns information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
+      operationId: api.controllers.decoders_controller.get_decoders
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathParam'
+        - $ref: '#/components/parameters/status'
 
+      responses:
+        '200':
+          description: 'List of decoders included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0005-wazuh_decoders.xml
+                    name: wazuh
+                    position: 0
+                    status: enabled
+                    details:
+                      prematch: "^wazuh: "
+                  - file: 0005-wazuh_decoders.xml
+                    name: agent-buffer
+                    position: 1
+                    status: enabled
+                    details:
+                      parent: wazuh
+                      prematch: "^Agent buffer:"
+                      regex: "^ '(\\S+)'."
+                      order: level
+
+  /decoders/{decoder_name}:
+    get:
+      tags:
+        - decoders
+      summary: 'Get decoders by name'
+      description: "Returns information about decoders with a specified name. This information include decoder's route, decoder's name, decoder's file among others"
+      operationId: api.controllers.decoders_controller.get_decoders_by_name
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/decoder_name'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of decoders with a specified selected'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                  - file: 0025-apache_decoders.xml
+                    name: apache-errorlog
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: "^apache2|^httpd"
+                  - file: 0025-apache_decoders.xml
+                    name: apache-errorlog
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^[warn] |^[notice] |^[error] "
+                  - file: 0025-apache_decoders.xml
+                    name: apache-errorlog
+                    position: 2
+                    status: enabled
+                    details:
+                      prematch: "^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:warn] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:notice] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S*:error] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:info] "
+
+  /decoders/files:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders files'
+      description: "Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
+      operationId: api.controllers.decoders_controller.get_decoders_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathParam'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: 'List of decoders files'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/DecoderFile'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0185-openldap_decoders.xml
+                    status: enabled
+                  - file: 0220-postfix_decoders.xml
+                    status: enabled
+                  - file: 0400-identity_guard_decoders.xml
+                    status: enabled
+                  - file: 0190-openvpn_decoders.xml
+                    status: enabled
+                  - file: 0060-cisco-estreamer_decoders.xml
+                    status: enabled
+                  - file: 0335-telnet_decoders.xml
+                    status: enabled
+                  - file: 0035-asterisk_decoders.xml
+                    status: enabled
+                  - file: 0275-sendmail_decoders.xml
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    status: enabled
+
+  /decoders/parents:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all parent decoders'
+      description: 'Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders'
+      operationId: api.controllers.decoders_controller.get_decoders_parents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of parent decoders'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 153
+                  items:
+                  - file: local_decoder.xml
+                    name: local_decoder_example
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: local_decoder_example
+                  - file: 0465-azure_decoders.xml
+                    name: azure-storage
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^azure_tag: azure-storage. "
+                      regex: "^azure_storage_tag: (\\S+)"
+                      order: tag 
   /security/user/authenticate:
     get:
       tags:
@@ -5996,4 +6331,3 @@ paths:
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-
