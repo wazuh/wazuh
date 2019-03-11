@@ -73,6 +73,7 @@ if __name__ == '__main__':
 
     if configuration['https']['enabled']:
         try:
+            ssl_context = ssl.SSLContext()
             ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
         except IOError:
             raise
