@@ -725,6 +725,8 @@ void send_win32_info(time_t curr_time)
         } else {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
         }
+
+        free(agent_ip);
     }
     else{
         if (File_DateofChange(AGENTCONFIGINT) > 0) {
