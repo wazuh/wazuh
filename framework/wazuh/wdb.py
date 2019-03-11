@@ -16,7 +16,7 @@ class WazuhDBConnection:
     Represents a connection to the wdb socket
     """
 
-    def __init__(self, request_slice=20, max_size=6144):
+    def __init__(self, request_slice=180, max_size=6144):
         """
         Constructor
         """
