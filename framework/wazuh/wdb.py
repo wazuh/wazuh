@@ -102,12 +102,16 @@ class WazuhDBConnection:
             try:
                 request = "{} limit {} offset {}".format(query_lower, step, off)
                 response.extend(self._send(request))
-            except ValueError:
-                # if the step is already 1, it can't be divided
+            except json.JSONDecodeError as e:
+                # if the JSON returned by Wazuh DB can't be decoded, it means it was sent incomplete.
+                # Request half of the data.
                 if step == 1:
-                    raise WazuhException(2007)
+                    # if the step is already 1, it can't be divided
+                    raise WazuhException(2007, str(e))
                 send_request_to_wdb(query_lower, step // 2, off, response)
                 send_request_to_wdb(query_lower, step // 2, step // 2 + off, response)
+            except Exception as e:
+                raise WazuhException(2007, str(e))
 
         query_lower = self.__query_lower(query)
 
