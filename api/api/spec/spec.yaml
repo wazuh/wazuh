@@ -26,7 +26,7 @@ components:
           format: int32
         message:
           type: string
-    
+
     ListMetadata:
       type: object
       properties:
@@ -83,7 +83,7 @@ components:
               type: string
         id:
           type: string
-  
+
     AgentByName:
       type: object
       properties:
@@ -101,7 +101,7 @@ components:
           type: string
         id:
           type: string
-  
+
     AgentAffected:
       type: object
       properties:
@@ -111,7 +111,7 @@ components:
           type: array
           items:
             type: integer
-    
+
     AllAgentAffected:
       type: object
       additionalProperties:
@@ -122,7 +122,7 @@ components:
         total_affected_agents:
           type: integer
           format: int32
-    
+
     AgentGroup:
       type: object
       properties:
@@ -138,7 +138,7 @@ components:
                 type: string
               configSum:
                 type: string
-    
+
     AgentGroupDeleted:
       type: object
       properties:
@@ -152,7 +152,7 @@ components:
           type: array
           items:
             type: integer
-          
+
     AgentIdKey:
       type: object
       properties:
@@ -160,7 +160,7 @@ components:
           type: string
         key:
           type: string
-          
+
     AgentSimple:
       type: object
       properties:
@@ -170,7 +170,7 @@ components:
           type: string
         name:
           type: string
-    
+
     AgentStatus:
       type: string
       enum:
@@ -178,7 +178,7 @@ components:
       - pending
       - neverconnected
       - disconnected
-    
+
     AgentConfiguration:
       type: object
       properties:
@@ -200,7 +200,17 @@ components:
                   type: string
               frequency:
                 type: integer
-    
+
+    CDBList:
+      type: array
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+          value:
+            type: string
+
     GroupConfiguration:
       type: object
       properties:
@@ -220,7 +230,7 @@ components:
                     type: string
                   log_format:
                     type: string
-    
+
     ## Cache models
     GroupCache:
       type: object
@@ -231,7 +241,7 @@ components:
             type: string
         group:
           type: object
-    
+
     GroupCacheComplete:
       type: object
       properties:
@@ -246,7 +256,7 @@ components:
               type: array
               items:
                 type: string
-                
+
     ## CisCat models
     CiscatResults:
       type: object
@@ -274,7 +284,7 @@ components:
           type: integer
         unknown:
           type: integer
-          
+
     # SCA models
     SCAChecks:
       type: object
@@ -328,7 +338,7 @@ components:
           type: string
         start_scan:
           type: string
-        
+
   securitySchemes:
     basicAuth:
       type: http
@@ -490,7 +500,7 @@ components:
       description: Select algorithm to generate the sum.
       schema:
         type: string
-    limit:  
+    limit:
       in: query
       name: limit
       description: Maximum number of elements to return
@@ -550,6 +560,12 @@ components:
       description: Filters by passed checks.
       schema:
         type: integer
+    pathFilter:
+      in: query
+      name: path
+      description: Filters by path field
+      schema:
+        type: string
     pretty:
       in: query
       name: pretty
@@ -631,7 +647,7 @@ components:
       description: Looks for elements with the specified string
       schema:
         type: string
-    select:  
+    select:
       in: query
       name: select
       description: Select which fields to return (separated by comma)
@@ -647,9 +663,9 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    statusParam:
+    statusAgentParam:
       in: query
-      name: status
+      name: agent_status
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -660,6 +676,20 @@ components:
           - pending
           - neverconnected
           - disconnected
+        minItems: 1
+    statusListParam:
+      in: query
+      name: list_status
+      description: Filters by list status. Use commas to enter multiple statuses.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - enabled
+          - disabled
+          - all
+        minItems: 1
     title:
       in: query
       name: title
@@ -717,7 +747,7 @@ tags:
   - name: experimental
     description: ''
   - name: lists
-    description: ''
+    description: 'CDB lists'
   - name: login
     description: 'User authentication'
   - name: manager
@@ -725,7 +755,7 @@ tags:
   - name: rootcheck
     description: ''
   - name: rules
-    description: ''
+    description: 'Rules management'
   - name: syscheck
     description: ''
   - name: syscollector
@@ -744,7 +774,7 @@ paths:
       operationId: api.controllers.active_response_controller.active_response
       parameters:
         - $ref: '#/components/parameters/agent_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -753,12 +783,12 @@ paths:
                   command:
                     description: Command running in the agent.
                     type: string
-                    
+
                   custom:
                     description: Custom.
                     type: boolean
                     default: false
-  
+
                   arguments:
                     description: Command arguments.
                     type: array
@@ -795,7 +825,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -808,7 +838,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'  
+                      $ref: '#/components/schemas/AllAgentAffected'
               example:
                 error: 0
                 data:
@@ -832,7 +862,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -1198,7 +1228,7 @@ paths:
                         properties:
                           syncef:
                             type: boolean
-                        
+
               example:
                 error: 0
                 data:
@@ -1256,7 +1286,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
                 example:
                   error: 0
@@ -1284,7 +1314,7 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
@@ -1313,7 +1343,7 @@ paths:
                       $ref: '#/components/schemas/AgentAffected'
                 example:
                   error: 0
-                  data: 
+                  data:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
@@ -1357,7 +1387,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -1393,7 +1423,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -1442,7 +1472,7 @@ paths:
           description: Seconds to wait for the agent to respond.
           schema:
             type: integer
-          
+
       responses:
         '200':
           description: 'Get agent upgrade result'
@@ -1455,7 +1485,7 @@ paths:
                     properties:
                       data:
                         type: string
-                        
+
               example:
                 error: 0
                 data: Agent upgraded successfully
@@ -1500,7 +1530,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-      
+
       requestBody:
         content:
           application/json:
@@ -1651,7 +1681,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -1740,7 +1770,7 @@ paths:
                   - $ref: '#/components/schemas/ApiResponse'
                   - type: object
                     properties:
-                      data: 
+                      data:
                         type: string
               example:
                 error: 0
@@ -1798,7 +1828,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
-        
+
       requestBody:
         content:
           application/xml:
@@ -1807,7 +1837,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Upload configuration'
@@ -1966,7 +1996,7 @@ paths:
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
                       reference: CIS_Debian_Benchmark_v1.0pdf
-                      checks: 
+                      checks:
                         - f:/etc/debian_version
     post:
       tags:
@@ -1978,7 +2008,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/group_id'
         - $ref: '#/components/parameters/file_name'
-      
+
       requestBody:
         content:
           application/xml:
@@ -1987,7 +2017,7 @@ paths:
                 file_name:
                   description: Updated file
                   type: string
-      
+
       responses:
         '200':
           description: 'Post group file'
@@ -2021,19 +2051,19 @@ paths:
                   name:
                     description: Agent name.
                     type: string
-                    
+
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-                    
+
                   id:
                     description: Agent ID.
                     type: string
-                    
+
                   key:
                     description: "Agent key. Minimum length: 64 characters. Allowed values: ^[a-zA-Z0-9]+$"
                     type: string
-  
+
                   force:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
                     type: integer
@@ -2203,7 +2233,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        
+
       requestBody:
         content:
           application/json:
@@ -2214,7 +2244,7 @@ paths:
                   type: array
                   items:
                     type: string
-                  
+
       responses:
         '200':
           description: Agents restarted
@@ -2391,7 +2421,7 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-  
+
   /cache/:
     delete:
       tags:
@@ -2447,7 +2477,7 @@ paths:
                   all:
                     -
                   groups:
-      
+
   /cache/{group}:
     delete:
       tags:
@@ -2479,7 +2509,7 @@ paths:
                   groups:
                     agents:
                       - /agents/stats/distinct?pretty&fields=os.platform
-  
+
   /cache/config:
     get:
       tags:
@@ -2526,7 +2556,7 @@ paths:
                     -
                   jsonp: false
                   redisClient: false
-      
+
   /ciscat/{agent_id}/results:
     get:
       tags:
@@ -2551,7 +2581,7 @@ paths:
         - $ref: '#/components/parameters/notchecked'
         - $ref: '#/components/parameters/unknown'
         - $ref: '#/components/parameters/score'
-        
+
       responses:
         '200':
           description: 'List of agents or error description'
@@ -2598,7 +2628,7 @@ paths:
                     pass: 96
                     notchecked: 71
                     unknown: 0
-  
+
   /sca/{agent_id}:
     get:
       tags:
@@ -2726,7 +2756,7 @@ paths:
                     id: 1003
                     policy_id: "system_audit"
                     compliance:
-                    - 
+                    -
 
   /security/user/authenticate:
     get:
@@ -2749,6 +2779,82 @@ paths:
                     type: string
         '401':
           description: 'Access unauthorized'
+
+  /lists:
+    get:
+      tags:
+      - lists
+      summary: 'Get all CDB lists'
+      description: 'Returns the contents of all CDB lists. Optionally, the result can be filtered by several criteria. See available parameters for more details.'
+      operationId: api.controllers.lists_controller.get_lists
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/statusListParam'
+        - $ref: '#/components/parameters/pathFilter'
+      responses:
+        '200':
+          description: 'Successfully got CDB lists'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - $ref: '#/components/schemas/CDBList'
+                example:
+                  error: 0
+                  data:
+                    totalItems: 1
+                    items:
+                      -
+                        - key: audit-wazuh-w
+                          value: write
+                        - key: audit-wazuh-r
+                          value: read
+
+  /lists/files:
+    get:
+      tags:
+      - lists
+      summary: 'Get paths from all lists'
+      description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      responses:
+        '200':
+          description: 'Successfully got all CDB lists and the files where are defined'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            name:
+                              type: string
+                            path:
+                              type: string
+                example:
+                  error: 0
+                  data:
+                    totalItems: 2
+                    items:
+                      - name: security-eventchannel
+                        path: etc/lists
+                      - name: aws-sources
+                        path: etc/lists/amazon
 
 externalDocs:
   description: Find more about Wazuh API usage
