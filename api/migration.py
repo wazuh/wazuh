@@ -28,8 +28,7 @@ def get_old_config() -> Dict:
             for line in input_file:
                 match = regex.match(line)
                 if match:
-                    var_name = match.group(1)
-                    var_value = match.group(2)
+                    var_name, var_value = match.groups()
                     if check_old_config({var_name: var_value}):
                         # add element to old_config only if it is right
                         old_config[var_name] = parse_to_yaml_value(var_value)
@@ -51,10 +50,7 @@ def parse_to_yaml_value(value: str) -> [str, bool, int]:
         return False
     else:
         # if str contains an integer, returns as integer
-        try:
-            return int(value)
-        except ValueError:
-            return value
+        return int(value) if value.isdigit() else value
 
 
 def check_old_config(config: Dict) -> bool:

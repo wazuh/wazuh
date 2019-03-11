@@ -72,7 +72,6 @@ if __name__ == '__main__':
         os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
     if configuration['https']['enabled']:
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
         try:
             ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
         except IOError:
