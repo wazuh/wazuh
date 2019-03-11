@@ -2781,7 +2781,11 @@ cJSON *wm_vuldet_dump(const wm_vuldet_t * vulnerability_detector){
             cJSON_AddItemToArray(feeds,feed);
         }
     }
-    if (cJSON_GetArraySize(feeds) > 0) cJSON_AddItemToObject(wm_vd,"feeds",feeds);
+    if (cJSON_GetArraySize(feeds) > 0) {
+        cJSON_AddItemToObject(wm_vd,"feeds",feeds);
+    } else {
+        cJSON_free(feeds);
+    }
 
     cJSON_AddItemToObject(root,"vulnerability-detector",wm_vd);
 
