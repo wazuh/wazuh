@@ -274,7 +274,507 @@ components:
           type: integer
         unknown:
           type: integer
+
+    ## Cluster models
+    ClusterNode:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+          - worker
+          - master
+        version:
+          type: string
+          format: \d+\.\d+\.\d+
+        ip:
+          type: string
     
+    Healthcheck:
+      type: object
+      properties:
+        name:
+          type: string
+        info:
+          type: object
+          properties:
+            ip:
+              type: string
+            version:
+              type: string
+              format: \d+\.\d+\.\d+
+            type:
+              type: string
+              enum:
+              - worker
+              - master
+            totalActiveAgents:
+              type: integer
+        status:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - Agent status
+                  - Extra valid
+                  - Integrity
+                  - Last keep alive
+              date_start:
+                type: string
+                format: date-time
+              date_end:
+                type: string
+                format: date-time
+              synchronized_files:
+                type: integer
+              free:
+                type: boolean
+
+    DaemonStatus:
+      type: string
+      enum:
+      - stopped
+      - running
+
+    # Cluster and manager models
+    WazuhDaemonsStatus:
+      type: object
+      properties:
+        ossec-agentlessd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-analysisd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-authd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-csyslogd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-dbd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-monitord:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-execd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-integratord:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-logcollector:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-maild:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-remoted:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-reportd:
+          $ref: '#/components/schemas/DaemonStatus'
+        ossec-syscheckd:
+          $ref: '#/components/schemas/DaemonStatus'
+        wazuh-clusterd:
+          $ref: '#/components/schemas/DaemonStatus'
+        wazuh-modulesd:
+          $ref: '#/components/schemas/DaemonStatus'
+
+    WazuhInfo:
+      type: object
+      properties:
+        path:
+          type: string
+        version:
+          type: string
+        compilation_date:
+          type: string
+        type:
+          type: string
+        max_agents:
+          type: integer
+        openssl_support:
+          type: string
+          enum:
+          - yes
+          - no
+        ruleset_version:
+          type: string
+        tz_offset:
+          type: string
+        tz_name:
+          type: string
+
+    WazuhConfiguration:
+      type: object
+      properties:
+        active-response:
+          type: object
+        command:
+          type: array
+          items:
+            type: object
+        agentless:
+          type: object
+        localfile:
+          type: array
+          items:
+            type: object
+        remote:
+          type: array
+          items:
+            type: object
+        syslog_output:
+          type: object
+        integration:
+          type: object
+        alerts:
+          type: object
+        client:
+          type: object
+        database_output:
+          type: object
+        email_alerts:
+          type: object
+        reports:
+          type: object
+        global:
+          type: object
+        open-scap:
+          type: object
+        cis-cat:
+          type: object
+        syscollector:
+          type: object
+        rootcheck:
+          type: object
+        ruleset:
+          type: object
+        syscheck:
+          type: object
+        auth:
+          type: object
+        cluster:
+          type: object
+        vulnerability-detector:
+          type: object
+        osquery:
+          type: object
+        labels:
+          type: object
+    
+    WazuhStats:
+      type: array
+      items:
+        type: object
+        properties:
+          hour:
+            type: integer
+          alerts:
+            type: array
+            items:
+              type: object
+              properties:
+                sigid:
+                  type: integer
+                level:
+                  type: integer
+                times:
+                  type: integer
+          totalAlerts:
+            type: integer
+          events:
+            type: integer
+          syscheck:
+            type: integer
+          firewall:
+            type: integer
+      
+    WazuhHourlyStats:
+      type: object
+      properties:
+        averages:
+          type: array
+          items:
+            type: integer
+          minItems: 24
+          maxItems: 24
+        iterations:
+          type: integer
+
+    WazuhWeeklyStats:
+      type: object
+      properties:
+        Sun:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Mon:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Tue:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Wed:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Thu:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Fri:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+        Sat:
+          $ref: '#/components/schemas/WazuhHourlyStats'
+    
+    WazuhAnalysisdStats:
+      type: object
+      properties:
+        total_events_decoded: 
+          type: integer
+        syscheck_events_decoded:
+          type: integer
+        syscheck_edps:
+          type: integer
+        syscollector_events_decoded: 
+          type: integer
+        syscollector_edps: 
+          type: integer
+        rootcheck_events_decoded:
+          type: integer
+        rootcheck_edps:
+          type: integer
+        sca_events_decoded: 
+          type: integer
+        sca_edps:
+          type: integer
+        hostinfo_events_decoded:
+          type: integer
+        hostinfo_edps:
+          type: integer
+        winevt_events_decoded:
+          type: integer
+        winevt_edps:
+          type: integer
+        other_events_decoded: 
+          type: integer
+        other_events_edps:
+          type: integer
+        events_processed: 
+          type: integer
+        events_edps: 
+          type: integer
+        events_received: 
+          type: integer
+        events_dropped:
+          type: integer
+        alerts_written:
+          type: integer
+        firewall_written:
+          type: integer
+        fts_written:
+          type: integer
+        syscheck_queue_usage:
+          type: integer
+        syscheck_queue_size: 
+          type: integer
+        syscollector_queue_usage:
+          type: integer
+        syscollector_queue_size: 
+          type: integer
+        rootcheck_queue_usage:
+          type: integer
+        rootcheck_queue_size: 
+          type: integer
+        sca_queue_usage:
+          type: integer
+        sca_queue_size: 
+          type: integer
+        hostinfo_queue_usage:
+          type: integer
+        hostinfo_queue_size: 
+          type: integer
+        winevt_queue_usage:
+          type: integer
+        winevt_queue_size: 
+          type: integer
+        event_queue_usage:
+          type: integer
+        event_queue_size: 
+          type: integer
+        rule_matching_queue_usage:
+          type: integer
+        rule_matching_queue_size: 
+          type: integer
+        alerts_queue_usage:
+          type: integer
+        alerts_queue_size: 
+          type: integer
+        firewall_queue_usage:
+          type: integer
+        firewall_queue_size: 
+          type: integer
+        statistical_queue_usage:
+          type: integer
+        statistical_queue_size: 
+          type: integer
+        archives_queue_usage:
+          type: integer
+        archives_queue_size: 
+          type: integer
+
+    WazuhRemotedStats:
+      type: object
+      properties:
+        queue_size:
+          type: integer
+        total_queue_size:
+          type: integer
+        tcp_sessions:
+          type: integer
+        evt_count:
+          type: integer
+        ctrl_msg_count:
+          type: integer
+        discarded_count:
+          type: integer
+        msg_sent:
+          type: integer
+        recv_bytes:
+          type: integer
+
+    WazuhLogs:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        tag:
+          type: string
+          enum:
+          - ossec-analysisd
+          - ossec-remoted
+          - sca
+          - ossec-authd
+          - wazuh-db
+          - ossec-execd
+          - ossec-maild
+          - ossec-monitord
+          - ossec-logcollector
+          - ossec-rootcheck
+          - ossec-syscheckd
+          - wazuh-modulesd
+          - wazuh-modulesd:agent-key-polling
+          - wazuh-modulesd:aws-s3
+          - wazuh-modulesd:azure-logs
+          - wazuh-modulesd:ciscat
+          - wazuh-modulesd:command
+          - wazuh-modulesd:database
+          - wazuh-modulesd:docker-listener
+          - wazuh-modulesd:download
+          - wazuh-modulesd:oscap
+          - wazuh-modulesd:osquery
+          - wazuh-modulesd:syscollector
+          - wazuh-modulesd:vulnerability-detector
+          - ossec-agentlessd
+          - ossec-testrule
+          - ossec-csyslogd
+          - ossec-dbd
+          - ossec-integratord
+          - ossec-reportd
+        level:
+          type: string
+          enum:
+          - error
+          - info
+          - warning
+          - debug
+          - debug2
+          - critical
+        description:
+          type: string
+
+    LogSummary:
+      type: object
+      properties:
+        info:
+          type: integer
+        all:
+          type: integer
+        critical:
+          type: integer
+        error:
+          type: integer
+        debug:
+          type: integer
+        warning:
+          type: integer
+
+    WazuhLogsSummary:
+      type: object
+      properties:
+          ossec-analysisd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-remoted:
+            $ref: '#/components/schemas/LogSummary'
+          sca:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-authd:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-db:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-execd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-maild:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-monitord:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-logcollector:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-rootcheck:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-syscheckd:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:agent-key-polling:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:aws-s3:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:azure-logs:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:ciscat:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:command:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:database:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:docker-listener:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:download:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:oscap:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:osquery:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:syscollector:
+            $ref: '#/components/schemas/LogSummary'
+          wazuh-modulesd:vulnerability-detector:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-agentlessd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-testrule:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-csyslogd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-dbd:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-integratord:
+            $ref: '#/components/schemas/LogSummary'
+          ossec-reportd:
+            $ref: '#/components/schemas/LogSummary'
+    
+    ConfigurationValidation:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - OK
+          - KO
+        details:
+          type: array
+          items:
+            type: string
+
     RulesFiles:
       type: object
       properties:
@@ -287,7 +787,7 @@ components:
           enum:
           - enabled
           - disabled
-    
+
     Rules:
       allOf:
         - $ref: '#/components/schemas/RulesFiles'
@@ -492,7 +992,7 @@ components:
       name: file
       description: Filters by filename.
       schema:
-        type: string
+        type: integer
     file_name:
       in: path
       name: file_name
@@ -739,6 +1239,129 @@ components:
       schema:
         type: boolean
         default: false
+    node_type:
+      in: query
+      name: type
+      description: Filters by node type.
+      schema:
+        type: string
+        enum:
+        - worker
+        - master
+    node_id:
+      in: path
+      name: node_id
+      description: Cluster node name.
+      required: True
+      schema:
+        type: string
+    section:
+      in: query
+      name: section
+      description: Indicates the wazuh configuration section
+      schema:
+        type: string
+        enum:
+        - active-response
+        - command
+        - agentless
+        - localfile
+        - remote
+        - syslog_output
+        - integration
+        - alerts
+        - client
+        - database_output
+        - email_alerts
+        - reports
+        - global
+        - open-scap
+        - cis-cat
+        - syscollector
+        - rootcheck
+        - ruleset
+        - syscheck
+        - auth
+        - cluster
+        - vulnerability-detector
+        - osquery
+        - labels
+    field:
+      in: query
+      name: field
+      description: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+      schema:
+        type: string
+    date:
+      in: query
+      name: date
+      description: Selects the date for getting the statistical information. Format YYYYMMDD.
+      schema:
+        type: string
+    category:
+      in: query
+      name: category
+      description: Filter by category of log.
+      schema:
+        type: string
+        enum:
+        - ossec-analysisd
+        - ossec-remoted
+        - sca
+        - ossec-authd
+        - wazuh-db
+        - ossec-execd
+        - ossec-maild
+        - ossec-monitord
+        - ossec-logcollector
+        - ossec-rootcheck
+        - ossec-syscheckd
+        - wazuh-modulesd
+        - wazuh-modulesd:agent-key-polling
+        - wazuh-modulesd:aws-s3
+        - wazuh-modulesd:azure-logs
+        - wazuh-modulesd:ciscat
+        - wazuh-modulesd:command
+        - wazuh-modulesd:database
+        - wazuh-modulesd:docker-listener
+        - wazuh-modulesd:download
+        - wazuh-modulesd:oscap
+        - wazuh-modulesd:osquery
+        - wazuh-modulesd:syscollector
+        - wazuh-modulesd:vulnerability-detector
+        - ossec-agentlessd
+        - ossec-testrule
+        - ossec-csyslogd
+        - ossec-dbd
+        - ossec-integratord
+        - ossec-reportd
+    type_log:
+      in: query
+      name: type_log
+      description: Filters by log level.
+      schema:
+        type: string
+        enum:
+          - all
+          - error
+          - warning
+          - info
+          - debug
+          - debug2
+          - critical
+    path:
+      in: query
+      name: path
+      description: Filepath to return.
+      required: true
+      schema:
+        type: string
+    overwrite:
+      in: query
+      name: overwrite
+      description: If set to false, an exception will be raised when updating contents of an already existing filename.
+      schema:
+        type: boolean
     group:
       in: query
       name: group
@@ -752,7 +1375,7 @@ components:
       schema:
         type: string
         format: \d(?>-\d)?  # 4 or 4-5
-    path:
+    rule_path:
       in: query
       name: path
       description: Filters by rule path.
@@ -803,7 +1426,7 @@ tags:
   - name: ciscat
     description: ''
   - name: cluster
-    description: ''
+    description: 'Wazuh cluster and nodes management'
   - name: sca
     description: 'Policy monitoring'
   - name: decoders
@@ -815,7 +1438,7 @@ tags:
   - name: login
     description: 'User authentication'
   - name: manager
-    description: ''
+    description: 'Wazuh manager information, status and logs'
   - name: rootcheck
     description: ''
   - name: rules
@@ -2692,7 +3315,2033 @@ paths:
                     pass: 96
                     notchecked: 71
                     unknown: 0
+
+  /cluster/node:
+    get:
+      tags:
+      - cluster
+      summary: Get information about the local node.
+      description: Returns basic information about the cluster node receiving the request.
+      operationId: api.controllers.cluster_controller.get_cluster_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Node basic information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      properties:
+                        node:
+                          type: string
+                        cluster:
+                          type: string
+                        type:
+                          type: string
+              example:
+                error: 0
+                data:
+                  node: "node02"
+                  cluster: "wazuh"
+                  type: "worker"
   
+  /cluster/nodes:
+    get:
+      tags:
+      - cluster
+      summary: Get information about all nodes in the cluster.
+      description: Returns a list containing all connected nodes in the cluster.
+      operationId: api.controllers.cluster_controller.get_cluster_nodes
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/node_type'
+      responses:
+        '200':
+          description: 'List of connected nodes'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/ClusterNode'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - name: "node02"
+                      type: "worker"
+                      version: "3.9.0"
+                      ip: "172.17.0.101"
+                    - name: "node01"
+                      type: "master"
+                      version: "3.9.0"
+                      ip: "172.17.0.100"
+
+  /cluster/nodes/{node_id}:
+    get:
+      tags:
+      - cluster
+      summary: Get information about a specified node.
+      description: Returns information about a specified node in the cluster.
+      operationId: api.controllers.cluster_controller.get_cluster_node_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Node information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ClusterNode'
+              example:
+                error: 0
+                data:
+                  name: "node02"
+                  type: "worker"
+                  version: "3.9.0"
+                  ip: "172.17.0.101"
+
+  /cluster/healthcheck:
+    get:
+      tags:
+      - cluster
+      summary: Show cluster healthcheck
+      description: Returns cluster healthcheck information such as last keep alive, last synchronization time and number of agents reporting on each node.
+      operationId: api.controllers.cluster_controller.get_healthcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Health information
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Healthcheck'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - name: "node01"
+                      info:
+                        ip: "172.17.0.100"
+                        version: "3.9.0"
+                        type: "master"
+                        totalActiveAgents: 2
+                    - name: "node02"
+                      info:
+                        ip: "172.17.0.101"
+                        version: "3.9.0"
+                        type: "worker"
+                        totalActiveAgents: 5
+                      status:
+                        - type: "Agent status"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+                          synchronized_files: 4
+                          free: true
+                        - type: "Extra valid"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+                          synchronized_files: 4
+                          free: true
+                        - type: "Integrity"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+                          synchronized_files:
+                            shared: 5
+                            missing: 4
+                            extra_valid: 0
+                            extra: 0
+                          free: true
+                        - type: "Last keep alive"
+                          date_start: "2019-01-11 18:52:57.72"
+                          date_end: "2019-01-11 18:52:57.73"
+
+  /cluster/healthcheck/{node_id}:
+    get:
+      tags:
+      - cluster
+      summary: Show a specified node's healthcheck information
+      description: Returns cluster healthcheck information of an specified node.
+      operationId: api.controllers.cluster_controller.get_healthcheck_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: Node health information
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/Healthcheck'
+              example:
+                error: 0
+                data:
+                  info:
+                    ip: "172.17.0.101"
+                    version: "3.9.0"
+                    type: "worker"
+                    totalActiveAgents: 5
+                  status:
+                    - type: "Agent status"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+                      synchronized_files: 4
+                      free: true
+                    - type: "Extra valid"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+                      synchronized_files: 4
+                      free: true
+                    - type: "Integrity"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+                      synchronized_files:
+                        shared: 5
+                        missing: 4
+                        extra_valid: 0
+                        extra: 0
+                      free: true
+                    - type: "Last keep alive"
+                      date_start: "2019-01-11 18:52:57.72"
+                      date_end: "2019-01-11 18:52:57.73"
+
+  /cluster/status:
+    get:
+      tags:
+      - cluster
+      summary: Get cluster status
+      description: Returns information about the cluster status.
+      operationId: api.controllers.cluster_controller.get_status
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Cluster status'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      properties:
+                        enabled:
+                          type: string
+                          enum:
+                          - yes
+                          - no
+                        running:
+                          type: string
+                          enum:
+                          - yes
+                          - no
+              example:
+                error: 0
+                data:
+                  enabled: yes
+                  running: yes
+
+  /cluster/config:
+    get:
+      tags:
+      - cluster
+      summary: Get cluster configuration
+      description: Returns the current cluster configuration
+      operationId: api.controllers.cluster_controller.get_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Cluster configuration
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      properties:
+                        name:
+                          type: string
+                        node_name:
+                          type: string
+                        node_type:
+                          type: string
+                          enum:
+                          - master
+                          - worker
+                        key:
+                          type: string
+                        port:
+                          type: integer
+                        bind_addr:
+                          type: string
+                        nodes:
+                          type: array
+                          items:
+                            type: string
+                        hidden:
+                          type: string
+                        disabled:
+                          type: boolean
+              example:
+                error: 0
+                data:
+                  name: wazuh
+                  node_name: node02
+                  node_type: worker
+                  key: 9d273b53510fef702b54a92e9cffc82e
+                  port: 1516
+                  bind_addr: 0.0.0.0
+                  nodes:
+                    - 172.17.0.100
+                  hidden: no
+                  disabled: false
+
+  /cluster/{node_id}/status:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's status
+      description: Returns the status of all Wazuh daemons in node node_id
+      operationId: api.controllers.cluster_controller.get_status_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Node wazuh daemons statuses'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhDaemonsStatus'
+              example:
+                error: 0
+                data:
+                  ossec-agentlessd: stopped
+                  ossec-analysisd: running
+                  ossec-authd: stopped
+                  ossec-csyslogd: stopped
+                  ossec-dbd: stopped
+                  ossec-monitord: running
+                  ossec-execd: running
+                  ossec-integratord: stopped
+                  ossec-logcollector: running
+                  ossec-maild: stopped
+                  ossec-remoted: running
+                  ossec-reportd: stopped
+                  ossec-syscheckd: running
+                  wazuh-clusterd: running
+                  wazuh-modulesd: running
+
+  /cluster/{node_id}/info:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's information
+      description: Returns basic information about a specified node such as version, compilation date, installation path.
+      operationId: api.controllers.cluster_controller.get_info_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Node information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhInfo'
+              example:
+                error: 0
+                data:
+                  path: /var/ossec
+                  version: v3.9.0
+                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  type: manager
+                  max_agents: 14000
+                  openssl_support: yes
+                  ruleset_version: 3905
+                  tz_offset: +0000
+                  tz_name: UTC
+
+  /cluster/{node_id}/configuration:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's configuration
+      description: Returns wazuh configuration used in node {node_id}
+      operationId: api.controllers.cluster_controller.get_configuration_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/section'
+        - $ref: '#/components/parameters/field'
+      responses:
+        '200':
+          description: 'Node configuration'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhConfiguration'
+              example:
+                error: 0
+                data:
+                  global:
+                    jsonout_output: yes
+                    alerts_log: yes
+                    logall: no
+                    logall_json: no
+                    email_notification: no
+                    smtp_server: smtp.example.wazuh.com
+                    email_from: ossecm@example.wazuh.com
+                    email_to: recipient@example.wazuh.com
+                    email_maxperhour: 12
+                    email_log_source: alerts.log
+                    queue_size: 131072
+                    white_list:
+                      - 127.0.0.1
+                      - ^localhost.localdomain$
+                      - 127.0.0.53
+                  alerts:
+                    log_alert_level: "3"
+                    email_alert_level: "12"
+                  cis-cat:
+                    disabled: yes
+                    timeout: 1800
+                    interval: 1d
+                    scan-on-start: yes
+                    java_path: wodles/java
+                    ciscat_path: wodles/ciscat
+                  command:
+                    - name: disable-account
+                      executable: disable-account.sh
+                      expect: user
+                      timeout_allowed: yes
+                    - name: restart-ossec
+                      executable: restart-ossec.sh
+
+  /cluster/{node_id}/stats:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's stats.
+      description: Returns Wazuh statistical information in node {node_id} for the current or specified date.
+      operationId: api.controllers.cluster_controller.get_stats_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/date'
+      responses:
+        '200':
+          description: 'Wazuh node stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhStats'
+              example:
+                error: 0
+                data:
+                  - hour: 15
+                    alerts:
+                      - sigid: 5303
+                        level: 3
+                        times: 1
+                      - sigid: 5501
+                        level: 3
+                        times: 4
+                      - sigid: 221
+                        level: 0
+                        times: 653
+                    totalAlerts: 658
+                    events: 4387
+                    firewall: 0
+                  - hour: 16
+                    alerts:
+                      - sigid: 5521
+                        level: 0
+                        times: 1
+                      - sigid: 530
+                        level: 0
+                        times: 120
+                    totalAlerts: 121
+                    events: 4379
+                    syscheck: 0
+                    firewall: 0
+
+  /cluster/{node_id}/stats/hourly:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's stats by hour.
+      description: Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the average of alerts per hour.
+      operationId: api.controllers.cluster_controller.get_stats_hourly_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node hourly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhHourlyStats'
+              example:
+                error: 0
+                data:
+                  averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                  interactions: 0
+
+  /cluster/{node_id}/stats/weekly:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's stats by week.
+      description: Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+      operationId: api.controllers.cluster_controller.get_stats_weekly_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node weekly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhWeeklyStats'
+              example:
+                error: 0
+                data:
+                  Sun:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Mon:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Tue:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Wed:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Thu:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Fri:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Sat:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+
+  /cluster/{node_id}/stats/analysisd:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's analysisd stats.
+      description: Returns Wazuh analysisd statistical information in node {node_id}.
+      operationId: api.controllers.cluster_controller.get_stats_analysisd_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node analysisd stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhAnalysisdStats'
+              example:
+                error: 0
+                data:
+                  total_events_decoded: 5
+                  syscheck_events_decoded: 0
+                  syscheck_edps: 0
+                  syscollector_events_decoded: 0
+                  syscollector_edps: 0
+                  rootcheck_events_decoded: 0
+                  rootcheck_edps: 0
+                  sca_events_decoded: 0
+                  sca_edps: 0
+                  hostinfo_events_decoded: 0
+                  hostinfo_edps: 0
+                  winevt_events_decoded: 0
+                  winevt_edps: 0
+                  other_events_decoded: 5
+                  other_events_edps: 1
+                  events_processed: 5
+                  events_edps: 1
+                  events_received: 5
+                  events_dropped: 0
+                  alerts_written: 0
+                  firewall_written: 0
+                  fts_written: 0
+                  syscheck_queue_usage: 0
+                  syscheck_queue_size: 16384
+                  syscollector_queue_usage: 0
+                  syscollector_queue_size: 16384
+                  rootcheck_queue_usage: 0
+                  rootcheck_queue_size: 16384
+                  sca_queue_usage: 0
+                  sca_queue_size: 16384
+                  hostinfo_queue_usage: 0
+                  hostinfo_queue_size: 16384
+                  winevt_queue_usage: 0
+                  winevt_queue_size: 16384
+                  event_queue_usage: 0
+                  event_queue_size: 16384
+                  rule_matching_queue_usage: 0
+                  rule_matching_queue_size: 16384
+                  alerts_queue_usage: 0
+                  alerts_queue_size: 16384
+                  firewall_queue_usage: 0
+                  firewall_queue_size: 16384
+                  statistical_queue_usage: 0
+                  statistical_queue_size: 16384
+                  archives_queue_usage: 0
+                  archives_queue_size: 16384
+
+  /cluster/{node_id}/stats/remoted:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's remoted stats.
+      description: Returns Wazuh remoted statistical information in node {node_id}.
+      operationId: api.controllers.cluster_controller.get_stats_remoted_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node remoted stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhRemotedStats'
+              example:
+                error: 0
+                data:
+                  queue_size: 0
+                  total_queue_size: 131072
+                  tcp_sessions: 0
+                  evt_count: 0
+                  ctrl_msg_count: 0
+                  discarded_count: 0
+                  msg_sent: 0
+                  recv_bytes: 0
+
+  /cluster/{node_id}/logs:
+    get:
+      tags:
+      - cluster
+      summary: Get a specified node's wazuh logs.
+      description: Returns the last 2000 wazuh log entries in node {node_id}.
+      operationId: api.controllers.cluster_controller.get_log_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/type_log'
+      responses:
+        '200':
+          description: 'Wazuh node logs'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/WazuhLogs'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: "Syscheck scan frequency: 43200 seconds"
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: Starting syscheck scan.
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-rootcheck
+                      level: info
+                      description: Starting rootcheck scan.
+
+  /cluster/{node_id}/logs/summary:
+    get:
+      tags:
+      - cluster
+      summary: Get a summary of a specified node's wazuh logs.
+      description: Returns a summary of the last 2000 wazuh log entries in node {node_id}.
+      operationId: api.controllers.cluster_controller.get_log_summary_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Wazuh node logs summary'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhLogsSummary'
+              example:
+                error: 0
+                data:
+                  wazuh-modulesd:
+                    info: 2
+                    all: 2
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+                  wazuh-db:
+                    info: 1
+                    all: 4
+                    critical: 0
+                    debug: 0
+                    error: 3
+                    warning: 0
+                  ossec-rootcheck:
+                    info: 8
+                    all: 8
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+
+  /cluster/{node_id}/files:
+    get:
+      tags:
+      - cluster
+      summary: Get file contents from a specified node in the cluster.
+      description: Returns file contents from any file in cluster node {node_id}.
+      operationId: api.controllers.cluster_controller.get_files_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'File contents'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+    post:
+      tags:
+      - cluster
+      summary: Updates file contents in a specified cluster node.
+      description: Replaces file contents with the data contained in the API request in a specified cluster node.
+      operationId: api.controllers.cluster_controller.post_files_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/overwrite'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File updated successfully.
+    delete:
+      tags:
+      - cluster
+      summary: Removes a file in a specified cluster node.
+      description: Removes a specified file in the node {node-id}.
+      operationId: api.controllers.cluster_controller.delete_files_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File was deleted.
+
+  /cluster/restart:
+    put:
+      tags:
+      - cluster
+      summary: Restarts all nodes in cluster.
+      description: Restarts all nodes in cluster.
+      operationId: api.controllers.cluster_controller.put_restart
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: Restarting cluster.
+  
+  /cluster/{node_id}/restart:
+    put:
+      tags:
+      - cluster
+      summary: Restarts a specific node in cluster.
+      description: Restarts a specific node in cluster.
+      operationId: api.controllers.cluster_controller.put_restart_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: Restarting manager.
+
+  /cluster/configuration/validation:
+    get:
+      tags:
+      - cluster
+      summary: Check Wazuh configuration in all cluster nodes.
+      description: Returns wether the Wazuh configuration in all cluster nodes is correct.
+      operationId: api.controllers.cluster_controller.get_conf_validation
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ConfigurationValidation'
+              example:
+                error: 0
+                data:
+                  status: KO
+                  details:
+                    - "(1230): Invalid element in the configuration: 'hello'."
+                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
+  /cluster/{node_id}/configuration/validation:
+    get:
+      tags:
+      - cluster
+      summary: Check Wazuh configuration in a cluster node
+      description: Returns wether the Wazuh configuration in node {node_id} is correct.
+      operationId: api.controllers.cluster_controller.get_conf_validation_node
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ConfigurationValidation'
+              example:
+                error: 0
+                data:
+                  status: KO
+                  details:
+                    - "(1230): Invalid element in the configuration: 'hello'."
+                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
+  /manager/status:
+    get:
+      tags:
+      - manager
+      summary: Get the Wazuh manager status
+      description: Returns the status of all Wazuh daemons
+      operationId: api.controllers.manager_controller.get_status
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh manager daemons statuses'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhDaemonsStatus'
+              example:
+                error: 0
+                data:
+                  ossec-agentlessd: stopped
+                  ossec-analysisd: running
+                  ossec-authd: stopped
+                  ossec-csyslogd: stopped
+                  ossec-dbd: stopped
+                  ossec-monitord: running
+                  ossec-execd: running
+                  ossec-integratord: stopped
+                  ossec-logcollector: running
+                  ossec-maild: stopped
+                  ossec-remoted: running
+                  ossec-reportd: stopped
+                  ossec-syscheckd: running
+                  wazuh-clusterd: running
+                  wazuh-modulesd: running
+
+  /manager/info:
+    get:
+      tags:
+      - manager
+      summary: Get Wazuh manager information
+      description: Returns basic information such as version, compilation date, installation path.
+      operationId: api.controllers.manager_controller.get_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Manager information'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhInfo'
+              example:
+                error: 0
+                data:
+                  path: /var/ossec
+                  version: v3.9.0
+                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  type: manager
+                  max_agents: 14000
+                  openssl_support: yes
+                  ruleset_version: 3905
+                  tz_offset: +0000
+                  tz_name: UTC
+
+  /manager/configuration:
+    get:
+      tags:
+      - manager
+      summary: Get configuration
+      description: Returns wazuh configuration used
+      operationId: api.controllers.manager_controller.get_configuration
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/section'
+        - $ref: '#/components/parameters/field'
+      responses:
+        '200':
+          description: 'Wazuh configuration'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhConfiguration'
+              example:
+                error: 0
+                data:
+                  global:
+                    jsonout_output: yes
+                    alerts_log: yes
+                    logall: no
+                    logall_json: no
+                    email_notification: no
+                    smtp_server: smtp.example.wazuh.com
+                    email_from: ossecm@example.wazuh.com
+                    email_to: recipient@example.wazuh.com
+                    email_maxperhour: 12
+                    email_log_source: alerts.log
+                    queue_size: 131072
+                    white_list:
+                      - 127.0.0.1
+                      - ^localhost.localdomain$
+                      - 127.0.0.53
+                  alerts:
+                    log_alert_level: "3"
+                    email_alert_level: "12"
+                  cis-cat:
+                    disabled: yes
+                    timeout: 1800
+                    interval: 1d
+                    scan-on-start: yes
+                    java_path: wodles/java
+                    ciscat_path: wodles/ciscat
+                  command:
+                    - name: disable-account
+                      executable: disable-account.sh
+                      expect: user
+                      timeout_allowed: yes
+                    - name: restart-ossec
+                      executable: restart-ossec.sh
+
+  /manager/stats:
+    get:
+      tags:
+      - manager
+      summary: Get stats.
+      description: Returns Wazuh statistical information for the current or specified date.
+      operationId: api.controllers.manager_controller.get_stats
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/date'
+      responses:
+        '200':
+          description: 'Wazuh stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhStats'
+              example:
+                error: 0
+                data:
+                  - hour: 15
+                    alerts:
+                      - sigid: 5303
+                        level: 3
+                        times: 1
+                      - sigid: 5501
+                        level: 3
+                        times: 4
+                      - sigid: 221
+                        level: 0
+                        times: 653
+                    totalAlerts: 658
+                    events: 4387
+                    firewall: 0
+                  - hour: 16
+                    alerts:
+                      - sigid: 5521
+                        level: 0
+                        times: 1
+                      - sigid: 530
+                        level: 0
+                        times: 120
+                    totalAlerts: 121
+                    events: 4379
+                    syscheck: 0
+                    firewall: 0
+
+  /manager/stats/hourly:
+    get:
+      tags:
+      - manager
+      summary: Get stats by hour.
+      description: Returns Wazuh statistical information per hour. Each number in the averages field represents the average of alerts per hour.
+      operationId: api.controllers.manager_controller.get_stats_hourly
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh hourly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhHourlyStats'
+              example:
+                error: 0
+                data:
+                  averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                  interactions: 0
+
+  /manager/stats/weekly:
+    get:
+      tags:
+      - manager
+      summary: Get stats by week.
+      description: Returns Wazuh statistical information per week. Each number in the averages field represents the average of alerts per hour for that specific day.
+      operationId: api.controllers.manager_controller.get_stats_weekly
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh weekly stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhWeeklyStats'
+              example:
+                error: 0
+                data:
+                  Sun:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Mon:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Tue:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Wed:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Thu:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Fri:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+                  Sat:
+                    averages:
+                    - 40
+                    - 24
+                    - 67
+                    - 234
+                    - 66
+                    - 24
+                    - 634
+                    - 66
+                    - 123
+                    - 56
+                    - 65
+                    - 23
+                    - 666
+                    - 233
+                    - 646
+                    - 44
+                    - 64
+                    - 99
+                    - 34
+                    - 235
+                    - 653
+                    - 25
+                    - 65
+                    - 23
+                    interactions: 0
+
+  /manager/stats/analysisd:
+    get:
+      tags:
+      - manager
+      summary: Get a analysisd stats.
+      description: Returns Wazuh analysisd statistical information.
+      operationId: api.controllers.manager_controller.get_stats_analysisd
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh analysisd stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhAnalysisdStats'
+              example:
+                error: 0
+                data:
+                  total_events_decoded: 5
+                  syscheck_events_decoded: 0
+                  syscheck_edps: 0
+                  syscollector_events_decoded: 0
+                  syscollector_edps: 0
+                  rootcheck_events_decoded: 0
+                  rootcheck_edps: 0
+                  sca_events_decoded: 0
+                  sca_edps: 0
+                  hostinfo_events_decoded: 0
+                  hostinfo_edps: 0
+                  winevt_events_decoded: 0
+                  winevt_edps: 0
+                  other_events_decoded: 5
+                  other_events_edps: 1
+                  events_processed: 5
+                  events_edps: 1
+                  events_received: 5
+                  events_dropped: 0
+                  alerts_written: 0
+                  firewall_written: 0
+                  fts_written: 0
+                  syscheck_queue_usage: 0
+                  syscheck_queue_size: 16384
+                  syscollector_queue_usage: 0
+                  syscollector_queue_size: 16384
+                  rootcheck_queue_usage: 0
+                  rootcheck_queue_size: 16384
+                  sca_queue_usage: 0
+                  sca_queue_size: 16384
+                  hostinfo_queue_usage: 0
+                  hostinfo_queue_size: 16384
+                  winevt_queue_usage: 0
+                  winevt_queue_size: 16384
+                  event_queue_usage: 0
+                  event_queue_size: 16384
+                  rule_matching_queue_usage: 0
+                  rule_matching_queue_size: 16384
+                  alerts_queue_usage: 0
+                  alerts_queue_size: 16384
+                  firewall_queue_usage: 0
+                  firewall_queue_size: 16384
+                  statistical_queue_usage: 0
+                  statistical_queue_size: 16384
+                  archives_queue_usage: 0
+                  archives_queue_size: 16384
+
+  /manager/stats/remoted:
+    get:
+      tags:
+      - manager
+      summary: Get remoted stats.
+      description: Returns Wazuh remoted statistical information.
+      operationId: api.controllers.manager_controller.get_stats_remoted
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh remoted stats'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhRemotedStats'
+              example:
+                error: 0
+                data:
+                  queue_size: 0
+                  total_queue_size: 131072
+                  tcp_sessions: 0
+                  evt_count: 0
+                  ctrl_msg_count: 0
+                  discarded_count: 0
+                  msg_sent: 0
+                  recv_bytes: 0
+
+  /manager/logs:
+    get:
+      tags:
+      - manager
+      summary: Get the wazuh manager logs.
+      description: Returns the last 2000 wazuh log entries.
+      operationId: api.controllers.manager_controller.get_log
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/type_log'
+      responses:
+        '200':
+          description: 'Wazuh logs'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/WazuhLogs'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: "Syscheck scan frequency: 43200 seconds"
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-syscheckd
+                      level: info
+                      description: Starting syscheck scan.
+                    - timestamp: "2019-03-07 11:21:17"
+                      tag: ossec-rootcheck
+                      level: info
+                      description: Starting rootcheck scan.
+
+  /manager/logs/summary:
+    get:
+      tags:
+      - manager
+      summary: Get a summary of the wazuh manager logs.
+      description: Returns a summary of the last 2000 wazuh log entries.
+      operationId: api.controllers.manager_controller.get_log_summary
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Wazuh logs summary'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/WazuhLogsSummary'
+              example:
+                error: 0
+                data:
+                  wazuh-modulesd:
+                    info: 2
+                    all: 2
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+                  wazuh-db:
+                    info: 1
+                    all: 4
+                    critical: 0
+                    debug: 0
+                    error: 3
+                    warning: 0
+                  ossec-rootcheck:
+                    info: 8
+                    all: 8
+                    critical: 0
+                    debug: 0
+                    error: 0
+                    warning: 0
+
+  /manager/files:
+    get:
+      tags:
+      - manager
+      summary: Get file contents.
+      description: Returns file contents from any file.
+      operationId: api.controllers.manager_controller.get_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'File contents'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+    post:
+      tags:
+      - manager
+      summary: Updates file contents.
+      description: Replaces file contents with the data contained in the API request.
+      operationId: api.controllers.manager_controller.post_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/overwrite'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File updated successfully.
+    delete:
+      tags:
+      - manager
+      summary: Removes a file.
+      description: Removes a specified file.
+      operationId: api.controllers.manager_controller.delete_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/path'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: File was deleted.
+  
+  /manager/restart:
+    put:
+      tags:
+      - manager
+      summary: Restarts the wazuh manager.
+      description: Restarts the wazuh manager.
+      operationId: api.controllers.manager_controller.put_restart
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: Restarting manager.
+
+  /manager/configuration/validation:
+    get:
+      tags:
+      - manager
+      summary: Check Wazuh configuration.
+      description: Returns wether the Wazuh configuration is correct.
+      operationId: api.controllers.manager_controller.get_conf_validation
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Confirmation message'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ConfigurationValidation'
+              example:
+                error: 0
+                data:
+                  status: KO
+                  details:
+                    - "(1230): Invalid element in the configuration: 'hello'."
+                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
   /rules:
     get:
       tags:
@@ -2710,7 +5359,7 @@ paths:
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/rule_path'
         - $ref: '#/components/parameters/rulestatus'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
@@ -2971,7 +5620,7 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/rule_path'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/rulestatus'
         - $ref: '#/components/parameters/download'
