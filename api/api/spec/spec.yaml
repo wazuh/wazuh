@@ -130,8 +130,8 @@ components:
             minor:
               type: string
         id:
-          $ref: '#/components/parameters/agent_id'
-    
+          type: string
+
     AgentGroup:
       type: object
       required:
@@ -151,7 +151,7 @@ components:
                 type: string
               configSum:
                 type: string
-    
+
     AgentGroupDeleted:
       type: object
       required:
@@ -173,7 +173,7 @@ components:
           type: array
           items:
             type: string
-          
+
     AgentIdKey:
       type: object
       required:
@@ -184,7 +184,7 @@ components:
           type: string
         key:
           type: string
-          
+
     AgentSimple:
       type: object
       required:
@@ -198,7 +198,7 @@ components:
           type: string
         name:
           type: string
-    
+
     AgentStatus:
       type: string
       enum:
@@ -206,7 +206,7 @@ components:
       - pending
       - neverconnected
       - disconnected
-    
+
     AgentConfiguration:
       type: object
       required:
@@ -231,7 +231,7 @@ components:
                   type: string
               frequency:
                 type: integer
-    
+
     GroupConfiguration:
       type: object
       required:
@@ -254,7 +254,7 @@ components:
                     type: string
                   log_format:
                     type: string
-    
+
     ## Cache model
     GroupCache:
       type: object
@@ -273,7 +273,7 @@ components:
               type: array
               items:
                 type: string
-    
+
     CacheConfig:
       type: object
       properties:
@@ -291,7 +291,7 @@ components:
           type: boolean
         redisClient:
           type: boolean
-  
+
     ## CisCat models
     CiscatResults:
       type: object
@@ -336,7 +336,7 @@ components:
           format: \d+\.\d+\.\d+
         ip:
           type: string
-    
+
     Healthcheck:
       type: object
       properties:
@@ -503,7 +503,7 @@ components:
           type: object
         labels:
           type: object
-    
+
     WazuhStats:
       type: array
       items:
@@ -530,7 +530,7 @@ components:
             type: integer
           firewall:
             type: integer
-      
+
     WazuhHourlyStats:
       type: object
       properties:
@@ -560,25 +560,25 @@ components:
           $ref: '#/components/schemas/WazuhHourlyStats'
         Sat:
           $ref: '#/components/schemas/WazuhHourlyStats'
-    
+
     WazuhAnalysisdStats:
       type: object
       properties:
-        total_events_decoded: 
+        total_events_decoded:
           type: integer
         syscheck_events_decoded:
           type: integer
         syscheck_edps:
           type: integer
-        syscollector_events_decoded: 
+        syscollector_events_decoded:
           type: integer
-        syscollector_edps: 
+        syscollector_edps:
           type: integer
         rootcheck_events_decoded:
           type: integer
         rootcheck_edps:
           type: integer
-        sca_events_decoded: 
+        sca_events_decoded:
           type: integer
         sca_edps:
           type: integer
@@ -590,15 +590,15 @@ components:
           type: integer
         winevt_edps:
           type: integer
-        other_events_decoded: 
+        other_events_decoded:
           type: integer
         other_events_edps:
           type: integer
-        events_processed: 
+        events_processed:
           type: integer
-        events_edps: 
+        events_edps:
           type: integer
-        events_received: 
+        events_received:
           type: integer
         events_dropped:
           type: integer
@@ -610,51 +610,51 @@ components:
           type: integer
         syscheck_queue_usage:
           type: integer
-        syscheck_queue_size: 
+        syscheck_queue_size:
           type: integer
         syscollector_queue_usage:
           type: integer
-        syscollector_queue_size: 
+        syscollector_queue_size:
           type: integer
         rootcheck_queue_usage:
           type: integer
-        rootcheck_queue_size: 
+        rootcheck_queue_size:
           type: integer
         sca_queue_usage:
           type: integer
-        sca_queue_size: 
+        sca_queue_size:
           type: integer
         hostinfo_queue_usage:
           type: integer
-        hostinfo_queue_size: 
+        hostinfo_queue_size:
           type: integer
         winevt_queue_usage:
           type: integer
-        winevt_queue_size: 
+        winevt_queue_size:
           type: integer
         event_queue_usage:
           type: integer
-        event_queue_size: 
+        event_queue_size:
           type: integer
         rule_matching_queue_usage:
           type: integer
-        rule_matching_queue_size: 
+        rule_matching_queue_size:
           type: integer
         alerts_queue_usage:
           type: integer
-        alerts_queue_size: 
+        alerts_queue_size:
           type: integer
         firewall_queue_usage:
           type: integer
-        firewall_queue_size: 
+        firewall_queue_size:
           type: integer
         statistical_queue_usage:
           type: integer
-        statistical_queue_size: 
+        statistical_queue_size:
           type: integer
         archives_queue_usage:
           type: integer
-        archives_queue_size: 
+        archives_queue_size:
           type: integer
 
     WazuhRemotedStats:
@@ -806,7 +806,7 @@ components:
             $ref: '#/components/schemas/LogSummary'
           ossec-reportd:
             $ref: '#/components/schemas/LogSummary'
-    
+
     ConfigurationValidation:
       type: object
       properties:
@@ -3361,7 +3361,7 @@ paths:
                   node: "node02"
                   cluster: "wazuh"
                   type: "worker"
-  
+
   /cluster/nodes:
     get:
       tags:
@@ -4455,7 +4455,7 @@ paths:
               example:
                 error: 0
                 data: Restarting cluster.
-  
+
   /cluster/{node_id}/restart:
     put:
       tags:
@@ -5295,7 +5295,7 @@ paths:
               example:
                 error: 0
                 data: File was deleted.
-  
+
   /manager/restart:
     put:
       tags:
@@ -5738,4 +5738,3 @@ paths:
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-
