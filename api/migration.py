@@ -70,11 +70,11 @@ def check_old_config(config: Dict) -> bool:
               'cache_enabled': 'yes_no_boolean', 'cache_debug': 'yes_no_boolean',
               'cache_time': 'numbers', 'use_only_authd': 'boolean',
               'drop_privileges': 'boolean', 'experimental_features': 'boolean'
-            }
+             }
 
     # check old configuration values
-    for key in config:
-        if key not in checks or not validator.check_exp(key, checks[key]):
+    for key, value in config.items():
+        if key not in checks or not validator.check_exp(value, checks[key]):
             return False
 
     return True
