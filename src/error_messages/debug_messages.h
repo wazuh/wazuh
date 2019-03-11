@@ -13,7 +13,7 @@
 
 /* vulnerability-detector messages*/
 #define VU_DOWNLOAD           "(5450): Downloading %s database..."
-#define VU_OVA_UPDATED        "(5451): %s OVAL has been updated correctly."
+#define VU_FEED_UPDATED       "(5451): %s feed has been updated correctly."
 #define VU_START_SCAN         "(5452): Starting vulnerability scanning."
 #define VU_END_SCAN           "(5453): Vulnerability scanning finished."
 #define VU_START_AG_AN        "(5454): Analyzing agent %s vulnerabilities..."
@@ -40,7 +40,7 @@
 #define VU_NO_SOFTWARE        "(5475): No changes have been found with respect to the last package inventory for agent %s."
 #define VU_AG_NO_TARGET       "(5476): The analysis can not be launched because there are no target agents."
 #define VU_AG_DISC            "(5477): The vulnerabilities of the agent %s will not be checked because it is disconnected."
-#define VU_LOCAL_FETCH        "(5478): Fetching OVAL from '%s'..."
+#define VU_LOCAL_FETCH        "(5478): Fetching feed from '%s'..."
 #define VU_OPERATION_NOT_REC  "(5479): Operation '%s' not recognized."
 #define VU_DOUBLE_NOT_VULN    "(5480): The '%s' package from agent %s is not vulnerable to %s. Condition: package version (%s) %s %s and %s %s."
 #define VU_DOUBLE_VULN        "(5481): The '%s' package from agent %s is vulnerable to %s. Condition: package version (%s) %s %s and %s %s."
@@ -67,5 +67,6 @@
 #define VU_INS_MSB            "(5530): Inserting Microsoft Bulletins dictonary..."
 #define VU_HOTFIX_VUL         "(5533): Agent %s is vulnerable to %s because does not have the '%s' patch installed."
 #define VU_HOTFIX_INSTALLED   "(5534): Agent %s has installed %s that corrects the vulnerability %s."
+#define VU_UPDATE_JSON_FEED   "(5537): Updating from '%s'..."
 
 #endif

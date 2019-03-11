@@ -48,6 +48,7 @@ static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
 static const char *XML_PATCH_SCAN = "patch_scan";
+static const char *XML_MULTI_PATH = "multi_path";
 
 // Deprecated
 static const char *XML_FEED = "feed";
@@ -568,6 +569,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     int i;
     XML_NODE chld_node = NULL;
     char *pr_name = NULL;
+    char *multi_path = NULL;
     vu_os_feed *os_list = NULL;
     int update_since = 0;
     long unsigned int update_interval = 0;
@@ -608,6 +610,12 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                 } else {
                     flags->patch_scan = 0;
                 }
+            } else {
+                mwarn("%s option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
+            }
+        } else if (!strcmp(chld_node[i]->element, XML_MULTI_PATH)) {
+            if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) || strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
+                os_strdup(chld_node[i]->content, multi_path);
             } else {
                 mwarn("%s option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
             }
@@ -661,6 +669,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->update_from_year = update_since;
         }
 
+        updates[os_index]->multi_path = multi_path;
+
         if (os_index == CVE_NVD && !flags->patch_scan) {
             wm_vuldet_free_update_node(updates[CVE_MSB]);
             os_free(updates[CVE_MSB]);
@@ -673,6 +683,12 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             updates[os_index]->url ? updates[os_index]->url : "none",
             updates[os_index]->update_from_year);
         flags->update = 1;
+    }
+
+    if (updates[os_index]->multi_path && updates[os_index]->multi_url) {
+        os_free(updates[os_index]->multi_url);
+    } else if (updates[os_index]->path && updates[os_index]->url) {
+        os_free(updates[os_index]->url);
     }
 
 end:
@@ -754,7 +770,10 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
 void wm_vuldet_free_update_node(update_node *update) {
     free(update->dist);
     free(update->version);
+    free(update->path);
+    free(update->multi_path);
     free(update->url);
+    free(update->multi_url);
     w_FreeArray(update->allowed_OS_list);
     free(update->allowed_OS_list);
     w_FreeArray(update->allowed_ver_list);

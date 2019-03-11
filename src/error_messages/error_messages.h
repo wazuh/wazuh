@@ -321,7 +321,7 @@
 #define VU_REPORT_ERROR             "(5436): The agent %s vulnerabilities could not be reported."
 #define VU_UPDATE_RETRY             "(5437): Failed when updating '%s %s' database. Retrying in %lu seconds..."
 #define VU_API_REQ_INV              "(5489): There was no valid response to '%s' after %d attempts."
-#define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
+#define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed from '%s' file."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
 #define VU_UNCOMPRESS_ERROR         "(5497): Could not uncompress the file downloaded from '%s'."
@@ -350,6 +350,8 @@
 #define VU_CPE_CLEAN_REQUEST_ERROR  "(5528): The CPEs of the agent %s could not be cleaned."
 #define VU_INVALID_CPE              "(5531): The ID %d is not a CPE."
 #define VU_HOTFIX_REQUEST_ERROR     "(5532): The hotfixes of the agent %s could not be requested."
+#define VU_MULTIPATH_ERROR          "(5535): Invalid multi_path '%s': %s."
+#define VU_REGEX_COMPILE_ERROR      "(5536): Cannot compile '%s' regular expression."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
