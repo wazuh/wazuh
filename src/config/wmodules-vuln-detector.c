@@ -49,6 +49,9 @@ static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
 static const char *XML_PATCH_SCAN = "patch_scan";
 static const char *XML_MULTI_PATH = "multi_path";
+static const char *XML_MULTI_URL = "multi_url";
+static const char *XML_START = "start";
+static const char *XML_END = "end";
 
 // Deprecated
 static const char *XML_FEED = "feed";
@@ -566,10 +569,13 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
 
 int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **updates, wm_vuldet_flags *flags) {
     int os_index;
-    int i;
+    int i, j;
     XML_NODE chld_node = NULL;
     char *pr_name = NULL;
     char *multi_path = NULL;
+    char *multi_url = NULL;
+    int start = -1;
+    int end = -1;
     vu_os_feed *os_list = NULL;
     int update_since = 0;
     long unsigned int update_interval = 0;
@@ -616,6 +622,25 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         } else if (!strcmp(chld_node[i]->element, XML_MULTI_PATH)) {
             if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) || strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
                 os_strdup(chld_node[i]->content, multi_path);
+            } else {
+                mwarn("%s option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
+            }
+        } else if (!strcmp(chld_node[i]->element, XML_MULTI_URL)) {
+            if (strcasestr(pr_name, vu_feed_tag[FEED_NVD]) || strcasestr(pr_name, vu_feed_tag[FEED_REDHAT])) {
+                os_strdup(chld_node[i]->content, multi_url);
+                for (j = 0; chld_node[i]->attributes && chld_node[i]->attributes[j]; j++) {
+                    if (!strcmp(chld_node[i]->attributes[j], XML_START)) {
+                        start = atoi(chld_node[i]->values[j]);
+                    } else if (!strcmp(chld_node[i]->attributes[j], XML_END)) {
+                        end = atoi(chld_node[i]->values[j]);
+                    } else {
+                        mwarn("Invalid tag '%s' for '%s' option.", chld_node[i]->attributes[j], chld_node[i]->element);
+                    }
+                }
+                if (strstr(multi_url, NVD_MULTI_URL_TAG) && (start == -1 || end == -1)) {
+                    merror("Invalid use of the '%s' option.", chld_node[i]->element);
+                    return OS_INVALID;
+                }
             } else {
                 mwarn("%s option is only available from the %s provider.", chld_node[i]->element, vu_feed_tag[FEED_NVD]);
             }
@@ -670,17 +695,20 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         }
 
         updates[os_index]->multi_path = multi_path;
+        updates[os_index]->multi_url = multi_url;
+        updates[os_index]->multi_url_start = start;
+        updates[os_index]->multi_url_end = end;
 
         if (os_index == CVE_NVD && !flags->patch_scan) {
             wm_vuldet_free_update_node(updates[CVE_MSB]);
             os_free(updates[CVE_MSB]);
         }
 
-        mdebug1("Added %s feed. Interval: %lus | Path: '%s' | Url: '%s' | Update since: %d.",
+        mdebug1("Added %s feed. Interval: %lus | Multi path: '%s' | Multi url: '%s' | Update since: %d.",
             pr_name,
             updates[os_index]->interval,
-            updates[os_index]->path ? updates[os_index]->path : "none",
-            updates[os_index]->url ? updates[os_index]->url : "none",
+            updates[os_index]->multi_path ? updates[os_index]->multi_path : "none",
+            updates[os_index]->multi_url ? updates[os_index]->multi_url : "none",
             updates[os_index]->update_from_year);
         flags->update = 1;
     }
