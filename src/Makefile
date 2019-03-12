@@ -24,6 +24,7 @@ EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
+EXTERNAL_MSGPACK=external/msgpack/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -217,7 +218,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
 
 
 
@@ -623,10 +624,12 @@ LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
+MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
+EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
@@ -787,6 +790,19 @@ $(EXTERNAL_AUDIT)Makefile:
 
 	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
+#### msgoack #########
+
+msgpack_c := $(wildcard $(EXTERNAL_MSGPACK)/src/*.c)
+msgpack_o := $(msgpack_c:.c=.o)
+
+$(MSGPACK_LIB): ${msgpack_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+
+$(EXTERNAL_MSGPACK)src/%.o: $(EXTERNAL_MSGPACK)src/%.c
+	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $^ -o $@
+
+
 ################################
 #### External dependencies  ####
 ################################
@@ -823,7 +839,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1588,6 +1604,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
+	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
