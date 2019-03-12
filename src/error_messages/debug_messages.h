@@ -68,5 +68,6 @@
 #define VU_HOTFIX_VUL         "(5533): Agent %s is vulnerable to %s because does not have the '%s' patch installed."
 #define VU_HOTFIX_INSTALLED   "(5534): Agent %s has installed %s that corrects the vulnerability %s."
 #define VU_UPDATE_JSON_FEED   "(5537): Updating from '%s'..."
+#define VU_INDEX_TIME         "(5538): It took %ld seconds to %s vulnerabilities."
 
 #endif
