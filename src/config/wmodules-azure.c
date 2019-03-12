@@ -91,7 +91,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
-            azure->timeout = strtoul(nodes[i]->content, NULL, 0);
+            azure->timeout = atol(nodes[i]->content);
 
             if (azure->timeout == 0 || azure->timeout == UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
@@ -443,7 +443,7 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
                 minfo("At module '%s': Workspace ID only available for Log Analytics API. Skipping it...", WM_AZURE_CONTEXT.name);
             }
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
-            request->timeout = strtoul(nodes[i]->content, NULL, 0);
+            request->timeout = atol(nodes[i]->content);
 
             if (request->timeout == 0 || request->timeout == UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
@@ -662,7 +662,7 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
             os_strdup(nodes[i]->content, container->time_offset);
 
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
-            container->timeout = strtoul(nodes[i]->content, NULL, 0);
+            container->timeout = atol(nodes[i]->content);
 
             if (container->timeout == 0 || container->timeout == UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
