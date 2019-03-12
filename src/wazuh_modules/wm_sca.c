@@ -411,7 +411,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON *profiles = cJSON_GetObjectItem(object, "checks");
             requirements_array = cJSON_CreateArray();
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
-            cJSON_AddItemToArray(requirements_array, requirements);
+            cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
             if(wm_sca_check_policy(policy)) {
                 merror("Reading 'policy' section of file: '%s'. Skipping it.", path);
