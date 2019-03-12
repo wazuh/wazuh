@@ -60,7 +60,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
-            ciscat->timeout = strtoul(nodes[i]->content, NULL, 0);
+            ciscat->timeout = atol(nodes[i]->content);
 
             if (ciscat->timeout == 0 || ciscat->timeout == UINT_MAX) {
                 merror("Invalid timeout at module '%s'", WM_CISCAT_CONTEXT.name);
@@ -127,7 +127,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
                     cur_eval->profile = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_TIMEOUT)) {
-                    cur_eval->timeout = strtoul(children[j]->content, NULL, 0);
+                    cur_eval->timeout = atol(children[j]->content);
 
                     if (cur_eval->timeout == 0 || cur_eval->timeout == UINT_MAX) {
                         merror("Invalid timeout at module '%s'", WM_CISCAT_CONTEXT.name);
