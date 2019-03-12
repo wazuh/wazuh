@@ -116,7 +116,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     } else {
         /* New file */
         int pos;
-        int is_link = 0;
 #ifdef WIN_WHODATA
         if (evt) {
             pos = evt->dir_position;
