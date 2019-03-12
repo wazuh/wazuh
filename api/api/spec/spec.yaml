@@ -1159,6 +1159,23 @@ components:
           type: string
           minLength: 3
 
+    SyscollectorProtocol:
+      type: object
+      properties:
+        iface:
+          type: string
+        scan_id:
+          type: integer
+        type:
+          type: string
+        dhcp:
+          type: string
+          enum:
+          - enabled
+          - disabled
+        agent_id:
+          type: string
+          minLength: 3
   securitySchemes:
     basicAuth:
       type: http
@@ -1866,7 +1883,6 @@ components:
       description: Filters by netmask.
       schema:
         type: string
-
     adapter:
       in: query
       name: adapter
@@ -1885,52 +1901,79 @@ components:
       description: Filters by mtu.
       schema:
         type: integer
+        minimum: 0
     tx_packets:
       in: query
       name: tx_packets
       description: Filters by tx_packets.
       schema:
         type: integer
+        minimum: 0
     rx_packets:
       in: query
       name: rx_packets
       description: Filters by rx_packets.
       schema:
         type: integer
+        minimum: 0
     tx_bytes:
       in: query
       name: tx_bytes
       description: Filters by tx_bytes.
       schema:
         type: integer
+        minimum: 0
     rx_bytes:
       in: query
       name: rx_bytes
       description: Filters by rx_bytes.
       schema:
         type: integer
+        minimum: 0
     tx_errors:
       in: query
       name: tx_errors
       description: Filters by tx_errors.
       schema:
         type: integer
+        minimum: 0
     rx_errors:
       in: query
       name: rx_errors
       description: Filters by rx_errors.
       schema:
         type: integer
+        minimum: 0
     tx_dropped:
       in: query
       name: tx_dropped
       description: Filters by tx_dropped.
       schema:
         type: integer
+        minimum: 0
     rx_dropped:
       in: query
       name: rx_dropped
       description: Filters by rx_dropped.
+      schema:
+        type: integer
+        minimum: 0
+    iface:
+      in: query
+      name: iface
+      description: Filters by network interface.
+      schema:
+        type: string
+    gateway:
+      in: query
+      name: gateway
+      description: Filters by network gateway.
+      schema:
+        type: string
+    dhcp:
+      in: query
+      name: dhcp
+      description: Filters by network dhcp (enabled or disabled).
       schema:
         type: integer
 
@@ -7369,6 +7412,60 @@ paths:
                     type: "ethernet"
                     mtu: 1500
                     state: "up"
+                    agent_id: "000"
+
+  /experimental/syscollector/netproto:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network protocol info of all agents'
+      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/iface'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/gateway'
+        - $ref: '#/components/parameters/dhcp'
+      responses:
+        '200':
+          description: "Return a list of agent's network protocol results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProtocol'
+              example:
+                error: 0
+                data:
+                  totalItems: 16
+                  items:
+                  - iface: "enp0s3"
+                    scan_id: 1203337658
+                    type: "ipv6"
+                    dhcp: "enabled"
+                    agent_id: "000"
+                  - iface: "enp0s8"
+                    scan_id: 1203337658
+                    type: "ipv6"
+                    dhcp: "enabled"
                     agent_id: "000"
 
   /security/user/authenticate:
