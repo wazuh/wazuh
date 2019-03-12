@@ -334,6 +334,33 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id) {
     }
 }
 
+/* Delete distinct configuration assessment policy. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_sca_check_delete_distinct(): cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_CHECK_DELETE_DISTINCT) < 0) {
+        mdebug1("at wdb_sca_check_delete_distinct(): cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SCA_CHECK_DELETE_DISTINCT];
+
+    sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
+    
+    if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
 int wdb_sca_check_delete(wdb_t * wdb,char * policy_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){

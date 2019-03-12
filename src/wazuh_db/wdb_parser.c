@@ -677,6 +677,22 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "delete_check_distinct") == 0) {
+
+        char *policy_id;
+
+        curr = next;
+        policy_id = curr;
+
+        if (result = wdb_sca_check_delete_distinct(wdb,policy_id), result < 0) {
+            mdebug1("Cannot delete Security Configuration Assessment checks.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment checks.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+        return result;
+        
     } else if (strcmp(curr, "delete_check") == 0) {
 
         char *policy_id;

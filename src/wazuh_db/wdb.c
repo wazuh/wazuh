@@ -86,7 +86,8 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_scan_info WHERE policy_id = ?;",
     "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
-    "SELECT id FROM sca_check WHERE policy_id = ?;"
+    "SELECT id FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_check WHERE scan_id != (SELECT scan_id FROM sca_check WHERE policy_id = ? ) AND policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;
