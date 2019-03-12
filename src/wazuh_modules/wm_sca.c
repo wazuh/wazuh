@@ -55,6 +55,7 @@ static char *wm_sca_hash_integrity(int policy_index);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
+static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id);  // Send dump end event
 
 #ifndef WIN32
 static void * wm_sca_request_thread(wm_sca_t * data);
@@ -2264,12 +2265,33 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 }
             }
 
+            sleep(5);
+           
+            int elements_sent = i - 1;
+            mdebug1("Sending dump ended event");
+            wm_sca_send_dump_end(data,elements_sent,data->profile[*policy_index]->policy_id);
+
             mdebug1("Finished dumping DB for policy index: %u",*policy_index);
             os_free(policy_index);
         }
     }
 
     return NULL;
+}
+
+
+static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id) {
+    cJSON *dump_event = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(dump_event, "type", "dump_end");
+    cJSON_AddStringToObject(dump_event, "policy_id", policy_id);
+    cJSON_AddNumberToObject(dump_event, "elements_sent", elements_sent);
+
+    wm_sca_send_alert(data,dump_event);
+
+    cJSON_Delete(dump_event);
+
+    return 0;
 }
 
 #ifdef WIN32
