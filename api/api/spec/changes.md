@@ -46,5 +46,8 @@
 
 ## Experimental
 ### General
-* Changed ram_free, ram_total, cpu_cores type to integer and **cpu_mhz** type to number float
+* Changed **ram_free**, **ram_total**, **cpu_cores** type to integer and **cpu_mhz** type to number float
 * Deleded all parameters **agent_id** from all endpoints
+
+### /experimental/syscollector/netiface
+* Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.

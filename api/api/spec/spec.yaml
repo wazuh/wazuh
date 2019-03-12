@@ -1100,6 +1100,65 @@ components:
           type: string
           minLength: 3
 
+    SyscollectorInterface:
+      type: object
+      properties:
+        rx:
+          type: object
+          properties:
+            bytes:
+              type: integer
+              minimum: 0
+            dropped:
+              type: integer
+              format: int32
+              minimum: 0
+            error:
+              type: integer
+              format: int32
+              minimum: 0
+            packets:
+              type: integer
+              minimum: 0
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        tx:
+          type: object
+          properties:
+            bytes:
+              type: integer
+              minimum: 0
+            dropped:
+              type: integer
+              format: int32
+              minimum: 0
+            error:
+              type: integer
+              format: int32
+              minimum: 0
+            packets:
+              type: integer
+              minimum: 0
+        mac:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        mtu:
+          type: integer
+        state:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
   securitySchemes:
     basicAuth:
       type: http
@@ -1807,6 +1866,73 @@ components:
       description: Filters by netmask.
       schema:
         type: string
+
+    adapter:
+      in: query
+      name: adapter
+      description: Filters by adapter.
+      schema:
+        type: string
+    state:
+      in: query
+      name: state
+      description: Filters by state.
+      schema:
+        type: string
+    mtu:
+      in: query
+      name: mtu
+      description: Filters by mtu.
+      schema:
+        type: integer
+    tx_packets:
+      in: query
+      name: tx_packets
+      description: Filters by tx_packets.
+      schema:
+        type: integer
+    rx_packets:
+      in: query
+      name: rx_packets
+      description: Filters by rx_packets.
+      schema:
+        type: integer
+    tx_bytes:
+      in: query
+      name: tx_bytes
+      description: Filters by tx_bytes.
+      schema:
+        type: integer
+    rx_bytes:
+      in: query
+      name: rx_bytes
+      description: Filters by rx_bytes.
+      schema:
+        type: integer
+    tx_errors:
+      in: query
+      name: tx_errors
+      description: Filters by tx_errors.
+      schema:
+        type: integer
+    rx_errors:
+      in: query
+      name: rx_errors
+      description: Filters by rx_errors.
+      schema:
+        type: integer
+    tx_dropped:
+      in: query
+      name: tx_dropped
+      description: Filters by tx_dropped.
+      schema:
+        type: integer
+    rx_dropped:
+      in: query
+      name: rx_dropped
+      description: Filters by rx_dropped.
+      schema:
+        type: integer
 
 tags:
   - name: active-response
@@ -7152,6 +7278,97 @@ paths:
                     scan_id: 1203337658
                     address: "fe80::a00:27ff:fefc:51f5"
                     netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
+
+  /experimental/syscollector/netiface:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network interface info of all agents'
+      description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others  of all agents."
+      operationId: api.controllers.experimental_controller.get_network_interface_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/adapter'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/mtu'
+        - $ref: '#/components/parameters/tx_packets'
+        - $ref: '#/components/parameters/rx_packets'
+        - $ref: '#/components/parameters/tx_bytes'
+        - $ref: '#/components/parameters/rx_bytes'
+        - $ref: '#/components/parameters/tx_errors'
+        - $ref: '#/components/parameters/rx_errors'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/state'
+      responses:
+        '200':
+          description: "Return a list of agent's network interfaces results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorInterface'
+              example:
+                error: 0
+                data:
+                  totalItems: 8
+                  items:
+                  - rx:
+                      bytes: 47319629
+                      dropped: 0
+                      errors: 0
+                      packets: 43889
+                    scan:
+                      id: 1203337658
+                      time: "2019/02/19 10:22:14"
+                    tx:
+                      bytes: 843282
+                      dropped: 0
+                      errors: 0
+                      packets: 12505
+                    mac: "02:f9:71:d7:9d:11"
+                    name: "enp0s3"
+                    type: "ethernet"
+                    mtu: 1500
+                    state: "up"
+                    agent_id: "000"
+                  - rx:
+                      bytes: 0
+                      dropped: 0
+                      errors: 0
+                      packets: 0
+                    scan:
+                      id: 1203337658
+                      time: "2019/02/19 10:22:14"
+                    tx:
+                      bytes: 3874
+                      dropped: 0
+                      errors: 0
+                      packets: 19
+                    mac: "08:00:27:fc:51:f5"
+                    name: "enp0s8"
+                    type: "ethernet"
+                    mtu: 1500
+                    state: "up"
                     agent_id: "000"
 
   /security/user/authenticate:
