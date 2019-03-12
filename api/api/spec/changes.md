@@ -37,9 +37,14 @@
 * Changed parameter **ids** name to **list_groups**
 * Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
 
-##Cache
+## Cache
 ### DELETE /cache (Clear group cache)
 * Changed path to **/cache/:group_id** because this path is used in other endpoint.
 
 ### GET /lists
 * Parameter **status** renamed to **list_status**
+
+## Experimental
+### General
+* Changed ram_free, ram_total, cpu_cores type to integer and **cpu_mhz** type to number float
+* Deleded all parameters **agent_id** from all endpoints

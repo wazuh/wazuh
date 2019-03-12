@@ -950,6 +950,60 @@ components:
         status:
           type: string
 
+  # Syscollector models
+    SyscollectorHardware:
+      type: object
+      properties:
+        cpu:
+          type: object
+          properties:
+            cores:
+              type: integer
+            mhz:
+              type: number
+              format: float
+            name:
+              type: string
+        ram:
+          type: object
+          properties:
+            free:
+              type: integer
+            total:
+              type: integer
+            usage:
+              type: integer
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        board_serial:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorNetwork:
+      type: object
+      properties:
+        cpu:
+          type: string
+        iface:
+          type: string
+        scan_id:
+          type: integer
+        address:
+          type: string
+        netmask:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
   securitySchemes:
     basicAuth:
       type: http
@@ -1483,6 +1537,122 @@ components:
       description: If set to false, an exception will be raised when updating contents of an already existing filename.
       schema:
         type: boolean
+    group:
+      in: query
+      name: group
+      description: Filters by rule group.
+      schema:
+        type: string
+    level:
+      in: query
+      name: level
+      description: Filters by rule level. Can be a single level (4) or an interval (2-4)
+      schema:
+        type: string
+        format: \d(?>-\d)?  # 4 or 4-5
+    rule_path:
+      in: query
+      name: path
+      description: Filters by rule path.
+      schema:
+        type: string
+    rulestatus:
+      in: query
+      name: status
+      description: Filters by rule status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    pci:
+      in: query
+      name: pci
+      description: Filters by PCI requirement name.
+      schema:
+        type: string
+    gdpr:
+      in: query
+      name: gdpr
+      description: Filters by GDPR requirement.
+      schema:
+        type: string
+    rule_id:
+      in: path
+      name: rule_id
+      description: Filters by rule ID.
+      required: true
+      schema:
+        type: integer
+    ram_free:
+      in: query
+      name: ram_free
+      description: Filters by ram_free.
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+    ram_total:
+      in: query
+      name: ram_total
+      description: Filters by ram_total.
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+    cpu_cores:
+      in: query
+      name: cpu_cores
+      description: Filters by cpu_cores.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    cpu_mhz:
+      in: query
+      name: cpu_mhz
+      description: Filters by cpu_mhz.
+      schema:
+        type: number
+        format: float
+        minimum: 1
+    cpu_name:
+      in: query
+      name: cpu_name
+      description: Filters by cpu_name.
+      schema:
+        type: string
+    board_serial:
+      in: query
+      name: board_serial
+      description: Filters by board_serial.
+      schema:
+        type: string
+    proto:
+      in: query
+      name: proto
+      description: Filters by IP protocol.
+      schema:
+        type: string
+    address:
+      in: query
+      name: address
+      description: Filters by IP address.
+      schema:
+        type: string
+    broadcast:
+      in: query
+      name: broadcast
+      description: Filters by broadcast direction.
+      schema:
+        type: string
+    netmask:
+      in: query
+      name: netmask
+      description: Filters by netmask.
+      schema:
+        type: string
 
 tags:
   - name: active-response
@@ -6100,17 +6270,16 @@ paths:
                 error: 0
                 data: Syscheck database deleted
 
-  /experimental/ciscat/{agent_id}/results:
+  /experimental/ciscat/results:
     get:
       tags:
         - experimental
       summary: 'Get CIS-CAT results'
       description: "Returns the agent's ciscat results info."
-      operationId: api.controllers.decoders_controller.get_cis_cat_results
+      operationId: api.controllers.experimental_controller.get_cis_cat_results
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
@@ -6170,6 +6339,134 @@ paths:
                     pass: 104
                     notchecked: 36
                     unknown: 1
+
+  /experimental/syscollector/hardware:
+    get:
+      tags:
+        - experimental
+      summary: 'Get hardware info of all agents'
+      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
+      operationId: api.controllers.experimental_controller.get_hardware_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/ram_free'
+        - $ref: '#/components/parameters/ram_total'
+        - $ref: '#/components/parameters/cpu_cores'
+        - $ref: '#/components/parameters/cpu_mhz'
+        - $ref: '#/components/parameters/cpu_name'
+        - $ref: '#/components/parameters/board_serial'
+      responses:
+        '200':
+          description: "Return a list of agent's hardware results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorHardware'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - cpu:
+                      core: 2
+                      mhz: 1992.001
+                      name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                    ram:
+                      free: 65396
+                      total: 492832
+                      usage: 87
+                    scan:
+                      id: 219248827
+                      time: "2019/02/19 10:22:14"
+                    board_serial: "0"
+                    agent_id: "000"
+                  - cpu:
+                      core: 1
+                      mhz: 1992.001
+                      name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                    ram:
+                      free: 40372
+                      total: 234968
+                      usage: 83
+                    scan:
+                      id: 257116304
+                      time: "2019/02/19 10:26:20"
+                    board_serial: "0"
+                    agent_id: "001"
+
+  /experimental/syscollector/netaddr:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network address info of all agents'
+      description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others  of all agents."
+      operationId: api.controllers.experimental_controller.get_network_address_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/proto'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/broadcast'
+        - $ref: '#/components/parameters/netmask'
+      responses:
+        '200':
+          description: "Return a list of agent's network results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorNetwork'
+              example:
+                error: 0
+                data:
+                  totalItems: 16
+                  items:
+                  - proto: "ipv6"
+                    iface: "enp0s3"
+                    scan_id: 1203337658
+                    address: "fe80::f9:71ff:fed7:9d11"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
+                  - proto: "ipv6"
+                    iface: "enp0s8"
+                    scan_id: 1203337658
+                    address: "fe80::a00:27ff:fefc:51f5"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
 
   /security/user/authenticate:
     get:
