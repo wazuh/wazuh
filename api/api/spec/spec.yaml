@@ -1217,6 +1217,41 @@ components:
           type: string
           minLength: 3
 
+    SyscollectorPackages:
+      type: object
+      properties:
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        name:
+          type: string
+        section:
+          type: string
+        priority:
+          type: string
+        size:
+          type: string
+        description:
+          type: string
+        architecture:
+          type: string
+        multiarch:
+          type: string
+        vendor:
+          type: string
+        version:
+          type: string
+        format:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
   securitySchemes:
     basicAuth:
       type: http
@@ -2039,6 +2074,12 @@ components:
       in: query
       name: release
       description: Filters by release.
+      schema:
+        type: integer
+    vendor:
+      in: query
+      name: vendor
+      description: Filters by vendor.
       schema:
         type: integer
 
@@ -7609,6 +7650,78 @@ paths:
                     sysname: "Linux"
                     hostname: "agent-1"
                     agent_id: "001"
+
+  /experimental/syscollector/packages:
+    get:
+      tags:
+        - experimental
+      summary: 'Get packages info of all agents'
+      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
+      operationId: api.controllers.experimental_controller.get_packages_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/vendor'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/format'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPackages'
+              example:
+                error: 0
+                data:
+                  totalItems: 2014
+                  items:
+                  - scan:
+                      id: 1631140954
+                      time: "2019/02/19 10:22:14"
+                    name: "acl"
+                    section: "utils"
+                    priority: "optional"
+                    size: 200
+                    description: "Access control list utilities"
+                    architecture: "amd64"
+                    multiarch: "foreign"
+                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                    version: "2.2.52-3build1"
+                    format: "deb"
+                    agent_id: "000"
+                  - scan:
+                      id: 1631140954
+                      time: "2019/02/19 10:22:14"
+                    name: "accountsservice"
+                    section: "admin"
+                    priority: "optional"
+                    size: 440
+                    description: "query and manipulate user account information"
+                    architecture: "amd64"
+                    multiarch: "foreign"
+                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                    version: "0.6.45-1ubuntu1"
+                    format: "deb"
+                    agent_id: "000"
 
   /security/user/authenticate:
     get:
