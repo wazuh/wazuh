@@ -7538,7 +7538,7 @@ paths:
       tags:
         - experimental
       summary: 'Get network protocol info of all agents'
-      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others of all agents."
+      description: "Returns the agent's network protocol info. This information include os information, architecture information among others of all agents."
       operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
