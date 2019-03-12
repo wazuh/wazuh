@@ -11,8 +11,17 @@
 * **command** description changed.
 
 ## Agents
+
+
 ### DELETE /agents
 * Parameter **ids** must be in query, not in body because DELETE operations can't have a requestBody in OpenAPI 3
+* Parameter **status** renamed to **agent_status**
+
+### GET /agents
+* Parameter **status** renamed to **agent_status**
+
+### GET /agents/groups/{group_id}
+* Parameter **status** renamed to **agent_status**
 
 ### POST /agents
 * Changed parameter **force** name to **force_time**
@@ -31,3 +40,6 @@
 ##Cache
 ### DELETE /cache (Clear group cache)
 * Changed path to **/cache/:group_id** because this path is used in other endpoint.
+
+### GET /lists
+* Parameter **status** renamed to **list_status**

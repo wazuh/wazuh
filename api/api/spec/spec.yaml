@@ -820,6 +820,47 @@ components:
           items:
             type: string
 
+    RulesFiles:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          enum:
+          - enabled
+          - disabled
+
+    Rules:
+      allOf:
+        - $ref: '#/components/schemas/RulesFiles'
+        - type: object
+          properties:
+            id:
+              type: integer
+            level:
+              type: integer
+              minimum: 0
+              maximum: 15
+            description:
+              type: string
+            groups:
+              type: array
+              items:
+                type: string
+            pci:
+              type: array
+              items:
+                type: string
+            gdpr:
+              type: array
+              items:
+                type: string
+            details:
+              type: object
+
     # SCA models
     SCAChecks:
       type: object
