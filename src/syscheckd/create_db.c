@@ -522,9 +522,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
 
                     if(!strcmp(inode_path, file_name)) { // FILE_NAME == INODE_PATH
-                        minfo("Found an inode with same path: path in inode-ht:'%s' filename:'%s'", inode_path, file_name);
+                        mdebug1("Found inode '%s' with same path: '%s'", str_inode, file_name);
                     } else {
-                        minfo("Updating path in inode hash: %s (%s) ", inode_path, str_inode);
+                        mdebug1("Updating path in inode hash table: %s (%s) ", inode_path, str_inode);
                         OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)file_name);
                     }
                 }
@@ -749,6 +749,13 @@ end:
 
 int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
 {
+    char *f_name;
+    short is_nfs;
+    DIR *dp;
+    struct dirent *entry;
+    int opts;
+    size_t dir_size;
+
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
@@ -771,15 +778,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 #endif
 
-    int opts;
-    size_t dir_size;
-    char *f_name;
-    short is_nfs;
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
-
-    DIR *dp;
-    struct dirent *entry;
-
     opts = syscheck.opts[dir_position];
 
     /* Directory should be valid */
