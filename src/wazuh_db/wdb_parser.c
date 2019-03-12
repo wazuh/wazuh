@@ -469,6 +469,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "update") == 0) {
 
         int pm_id;
+        int scan_id;
 
         curr = next;
         pm_id = strtol(curr,NULL,10);
@@ -483,7 +484,22 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
         result_check = next;
 
-        if (result = wdb_sca_update(wdb, result_check, pm_id), result < 0) {
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        curr = next;
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        if (result = wdb_sca_update(wdb, result_check, pm_id,scan_id), result < 0) {
             mdebug1("Cannot update Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot update Security Configuration Assessment information.");
         } else {
@@ -689,6 +705,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment checks.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
+            wdb_sca_check_compliances_delete(wdb);
         }
 
         return result;
@@ -711,17 +728,13 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "query_results") == 0) {
 
-        int scan_id;
+        char * policy_id;
         char result_found[OS_MAXSTR + 1] = {0};
 
         curr = next;
+        policy_id = curr;
 
-        if (!strncmp(curr, "NULL", 4))
-            scan_id = -1;
-        else
-            scan_id = strtol(curr,NULL,10);
-
-        result = wdb_sca_checks_get_result(wdb, scan_id, result_found);
+        result = wdb_sca_checks_get_result(wdb, policy_id, result_found);
 
         switch (result) {
             case 0:

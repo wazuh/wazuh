@@ -352,6 +352,7 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id) {
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_DELETE_DISTINCT];
 
     sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, policy_id, -1, NULL);
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -653,7 +654,7 @@ int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan
 }
 
 /* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_sca_checks_get_result(wdb_t * wdb, int scan_id, char * output) {
+int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("cannot begin transaction");
@@ -669,7 +670,7 @@ int wdb_sca_checks_get_result(wdb_t * wdb, int scan_id, char * output) {
 
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_GET_ALL_RESULTS];
 
-    sqlite3_bind_int(stmt, 1, scan_id);
+    sqlite3_bind_text(stmt, 1, policy_id,-1, NULL);
 
     char *str = NULL;
     int has_result = 0;
@@ -704,7 +705,7 @@ end:
 }
 
 /* Update a configuration assessment entry. Returns affected rows on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int id) {
+int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_update(): cannot begin transaction");
@@ -721,7 +722,8 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id) {
     stmt = wdb->stmt[WDB_STMT_SCA_UPDATE];
 
     sqlite3_bind_text(stmt, 1, result,-1, NULL);
-    sqlite3_bind_int(stmt, 2, id);
+    sqlite3_bind_int(stmt, 2, scan_id);
+    sqlite3_bind_int(stmt, 3, id);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);
