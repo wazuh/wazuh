@@ -130,7 +130,7 @@ components:
             minor:
               type: string
         id:
-          $ref: '#/components/parameters/agent_id'
+          type: string
 
     AgentGroup:
       type: object
@@ -149,8 +149,12 @@ components:
                 type: string
               mergedSum:
                 type: string
+                pattern: \w{32}
+                format: md5
               configSum:
                 type: string
+                pattern: \w{32}
+                format: md5
 
     AgentGroupDeleted:
       type: object
@@ -184,6 +188,8 @@ components:
           type: string
         key:
           type: string
+          pattern: \w+=*
+          format: base64
 
     AgentSimple:
       type: object
@@ -210,8 +216,8 @@ components:
     AgentConfiguration:
       type: object
       required:
-        - logformat
-        - target
+      - logformat
+      - target
       properties:
         configuration:
           type: array
@@ -231,6 +237,16 @@ components:
                   type: string
               frequency:
                 type: integer
+
+    CDBList:
+      type: array
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+          value:
+            type: string
 
     GroupConfiguration:
       type: object
@@ -255,7 +271,7 @@ components:
                   log_format:
                     type: string
 
-    ## Cache model
+    ## Cache models
     GroupCache:
       type: object
       required:
@@ -309,6 +325,7 @@ components:
               type: integer
             time:
               type: string
+              format: date-time
         fail:
           type: integer
         benchmark:
@@ -820,6 +837,39 @@ components:
           items:
             type: string
 
+    # Rootcheck models
+    RootcheckDatabase:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - outstanding
+          - solved
+        readDay:
+          type: string
+          format: date-time
+        oldDay:
+          type: string
+          format: date-time
+        pci:
+          type: string
+        cis:
+          type: string
+        event:
+          type: string
+
+    LastScan:
+      type: object
+      properties:
+        end:
+          type: string
+          format: date-time
+        start:
+          type: string
+          format: date-time
+
+    # Rules models
     RulesFiles:
       type: object
       properties:
@@ -912,8 +962,54 @@ components:
           type: integer
         end_scan:
           type: string
+          format: date-time
         start_scan:
           type: string
+          format: date-time
+
+    # Syscheck models
+    SyscheckDatabase:
+      type: object
+      properties:
+        sha1:
+          type: string
+          format: \w{40}
+        file:
+          type: string
+        md5:
+          type: string
+          format: \w{32}
+        inode:
+          type: integer
+        uid:
+          type: string
+          format: \d+
+        date:
+          type: string
+          format: date-time
+        perm:
+          type: string
+          format: \d+
+        type:
+          type: string
+          enum:
+          - file
+          - registry
+        gname:
+          type: string
+        uname:
+          type: string
+        size:
+          type: integer
+        gid:
+          type: string
+          format: \d+
+        mtime:
+          type: string
+          format: date-time
+        sha256:
+          type: string
+          format: \w{64}
 
     # Decoders models
     Decoder:
@@ -1015,7 +1111,6 @@ components:
       scheme: bearer
       bearerFormat: JWT
       x-bearerInfoFunc: api.authentication.decode_token
-
   parameters:
     agent_id:
       in: path
@@ -1248,7 +1343,7 @@ components:
         type: integer
         format: int32
         minimum: 0
-    pathParam:
+    pathFilter:
       in: query
       name: path
       description: Filters by path
@@ -1353,19 +1448,9 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    status:
+    statusAgentParam:
       in: query
-      name: status
-      description: Filters the decoders by status.
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-        - all
-    statusAgent:
-      in: query
-      name: status_agent
+      name: agent_status
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -1376,6 +1461,20 @@ components:
           - pending
           - neverconnected
           - disconnected
+        minItems: 1
+    statusRLDParam:
+      in: query
+      name: list_status
+      description: Filters by list status. Use commas to enter multiple statuses.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - enabled
+          - disabled
+          - all
+        minItems: 1
     title:
       in: query
       name: title
@@ -1585,6 +1684,61 @@ components:
       required: true
       schema:
         type: integer
+    rootcheck_status:
+      in: query
+      name: status
+      description: Filter by scan status
+      schema:
+        type: string
+        enum:
+        - all
+        - outstanding
+        - solved
+    cis:
+      in: query
+      name: cis
+      description: Filters by CIS requirement.
+      schema:
+        type: string
+    filetype:
+      in: query
+      name: type
+      description: Filters by file type.
+      schema:
+        type: string
+        enum:
+        - file
+        - registry
+    summary:
+      in: query
+      name: summary
+      description: Returns a summary grouping by filename.
+      schema:
+        type: boolean
+    md5:
+      in: query
+      name: md5
+      description: Filters files with the specified MD5 checksum.
+      schema:
+        type: string
+    sha1:
+      in: query
+      name: sha1
+      description: Filters files with the specified SHA1 checksum.
+      schema:
+        type: string
+    sha256:
+      in: query
+      name: sha256
+      description: Filters files with the specified SHA256 checksum.
+      schema:
+        type: string
+    hashfilter:
+      in: query
+      name: hash
+      description: Filters files with the specified checksum (MD5, SHA256 or SHA1)
+      schema:
+        type: string
     ram_free:
       in: query
       name: ram_free
@@ -1672,17 +1826,17 @@ tags:
   - name: experimental
     description: ''
   - name: lists
-    description: ''
+    description: 'CDB lists'
   - name: login
     description: 'User authentication'
   - name: manager
     description: 'Wazuh manager information, status and logs'
   - name: rootcheck
-    description: ''
+    description: 'Detection of rootkit, ports and hidden processes and many other scans.'
   - name: rules
-    description: ''
+    description: 'Wazuh ruleset management'
   - name: syscheck
-    description: ''
+    description: 'File integrity monitoring.'
   - name: syscollector
     description: ''
 
@@ -1736,6 +1890,7 @@ paths:
                 example:
                   data: "Command sent."
                   error: 0
+
   /agents:
     delete:
       tags:
@@ -1749,7 +1904,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusAgent'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -1786,7 +1941,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusAgent'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -2559,6 +2714,7 @@ paths:
                     name: pciserver
                     mergedSum: 220d6c5fc253f251827ee7487341c0fc
                     configSum: ab73af41699f13fdd81903b5f23d8d00
+
   /agents/groups/{group_id}:
     delete:
       tags:
@@ -2604,7 +2760,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusAgent'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -4757,6 +4913,86 @@ paths:
                     - "(1230): Invalid element in the configuration: 'hello'."
                     - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
+  /lists:
+    get:
+      tags:
+      - lists
+      summary: 'Get all CDB lists'
+      description: 'Returns the contents of all CDB lists. Optionally, the result can be filtered by several criteria. See available parameters for more details.'
+      operationId: api.controllers.lists_controller.get_lists
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/pathFilter'
+      responses:
+        '200':
+          description: 'Successfully got CDB lists'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - $ref: '#/components/schemas/CDBList'
+                example:
+                  error: 0
+                  data:
+                    totalItems: 1
+                    items:
+                      -
+                        - key: audit-wazuh-w
+                          value: write
+                        - key: audit-wazuh-r
+                          value: read
+
+  /lists/files:
+    get:
+      tags:
+      - lists
+      summary: 'Get paths from all lists'
+      description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      operationId: api.controllers.lists_controller.get_lists_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Successfully got all CDB lists and the files where are defined'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            name:
+                              type: string
+                            path:
+                              type: string
+                example:
+                  error: 0
+                  data:
+                    totalItems: 2
+                    items:
+                      - name: security-eventchannel
+                        path: etc/lists
+                      - name: aws-sources
+                        path: etc/lists/amazon
+
   /manager/status:
     get:
       tags:
@@ -5564,6 +5800,273 @@ paths:
                     - "(1230): Invalid element in the configuration: 'hello'."
                     - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
+  /rootcheck:
+    put:
+      tags:
+      - rootcheck
+      summary: Run a rootcheck scan in all agents.
+      description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
+      operationId: api.controllers.rootcheck_controller.put_rootcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck on all agents"
+    delete:
+      tags:
+      - rootcheck
+      summary: Clear rootcheck scan results in all agents.
+      description: Clear rootcheck scan results in all agents.
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Rootcheck database deleted"
+
+  /rootcheck/{agent_id}:
+    get:
+      tags:
+      - rootcheck
+      summary: Get Rootcheck database
+      description: Returns rootcheck findings and scan results in the specified agent.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/rootcheck_status'
+        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/cis'
+      responses:
+        '200':
+          description: Latest rootcheck scan result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/RootcheckDatabase'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - status: outstanding
+                      readDay: "2019-03-08 09:20:05"
+                      oldDay: "2019-03-08 09:20:05"
+                      event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
+                    - status: outstanding
+                      readDay: "2019-03-08 09:20:05"
+                      oldDay: "2019-03-08 09:20:05"
+                      pci: 2.2.4
+                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
+    put:
+      tags:
+      - rootcheck
+      summary: Run rootcheck scan in an agent.
+      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
+      operationId: api.controllers.rootcheck_controller.put_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck locally"
+    delete:
+      tags:
+      - rootcheck
+      summary: Clear rootcheck scan results for a specified agent.
+      description: Clear rootcheck scan results for a specified agent.
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Rootcheck database deleted"
+
+  /rootcheck/{agent_id}/pci:
+    get:
+      tags:
+      - rootcheck
+      summary: Get PCI requirements in the rootcheck database.
+      description: Returns a list containing PCI requirements that have been detected by rootcheck scans.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_pci_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: PCI requirements list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 1
+                  items:
+                  - 2.2.4
+
+  /rootcheck/{agent_id}/cis:
+    get:
+      tags:
+      - rootcheck
+      summary: Get CIS requirements in the rootcheck database.
+      description: Returns a list containing CIS requirements that have been detected by rootcheck scans.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_cis_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: CIS requirements list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - "2.3 Debian Linux"
+                  - "1.4 Debian Linux"
+
+  /rootcheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - rootcheck
+      summary: Get last rootcheck scan dates.
+      description: Returns when the last rootcheck scan started and ended. If the scan is still in progress the end date will be unknown.
+      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: 'Scan dates'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                      - $ref: '#/components/schemas/LastScan'
+              example:
+                error: 0
+                data:
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
+
   /rules:
     get:
       tags:
@@ -6010,6 +6513,189 @@ paths:
                     id: 1003
                     policy_id: "system_audit"
                     compliance:
+                    -
+
+  /syscheck:
+    put:
+      tags:
+      - syscheck
+      summary: Run a syscheck scan in all agents.
+      description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
+      operationId: api.controllers.syscheck_controller.put_syscheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck on all agents"
+
+  /syscheck/{agent_id}:
+    get:
+      tags:
+      - syscheck
+      summary: Get File integrity monitoring scan results
+      description: Returns FIM findings in the specified agent.
+      operationId: api.controllers.syscheck_controller.get_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filetype'
+        - $ref: '#/components/parameters/summary'
+        - $ref: '#/components/parameters/md5'
+        - $ref: '#/components/parameters/sha1'
+        - $ref: '#/components/parameters/sha256'
+        - $ref: '#/components/parameters/hashfilter'
+      responses:
+        '200':
+          description: Latest syscheck scan result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscheckDatabase'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - size: 61
+                      md5: 8588d49be3999f2daf69c3090682594f
+                      inode: 946
+                      perm: "100644"
+                      gname: root
+                      mtime: "2019-01-15 15:49:39"
+                      sha1: a2219a7fd0a77be7422a02049b8d27805c0250ba
+                      date: "2019-03-08 10:35:06"
+                      uname: root
+                      sha256: 303c346ece82ca4f6713ac176164285d0469f326b6f12a787e11f5d702529277
+                      gid: 0
+                      type: file
+                      uid: 0
+                      file: /etc/ssl/certs/TeliaSonera_Root_CA_v1.pem
+                    - sha1: 016f8bd2ea009451042a856611d5d2967760e833
+                      file: /etc/ssh/ssh_config
+                      md5: f7bf238a3b0bf155c565454a9f819731
+                      inode: 1579
+                      uid: "0"
+                      date: "2019-03-08 10:35:01"
+                      perm: 100644
+                      type: file
+                      gname: root
+                      uname: root
+                      size: 1580
+                      gid: "0"
+                      mtime: "2018-11-05 11:51:29"
+                      sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
+    put:
+      tags:
+      - syscheck
+      summary: Run FIM scan in an agent.
+      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
+      operationId: api.controllers.syscheck_controller.put_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck locally"
+    delete:
+      tags:
+      - syscheck
+      summary: Clear FIM scan results for a specified agent.
+      description: Clear file integrity monitoring scan results for a specified agent.
+      operationId: api.controllers.syscheck_controller.delete_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Syscheck database deleted"
+
+  /syscheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - syscheck
+      summary: Get last syscheck scan dates.
+      description: Returns when the last syscheck scan started and ended. If the scan is still in progress the end date will be unknown.
+      operationId: api.controllers.syscheck_controller.get_last_scan_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: 'Scan dates'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                      - $ref: '#/components/schemas/LastScan'
+              example:
+                error: 0
+                data:
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
 
   /decoders:
     get:
@@ -6026,8 +6712,8 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathParam'
-        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
 
       responses:
         '200':
@@ -6142,8 +6828,8 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/pathParam'
-        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/download'
       responses:
         '200':
