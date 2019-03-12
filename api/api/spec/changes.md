@@ -43,3 +43,8 @@
 
 ### GET /lists
 * Parameter **status** renamed to **list_status**
+
+## Manager/Cluster
+
+### GET/manager/stats/weekly
+* Parameter **hours** changed to **averages**.
