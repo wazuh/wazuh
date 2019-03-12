@@ -51,7 +51,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
 
 def read_config() -> Dict:
     """
-    Reads user API configuration and merges it with the default one 
+    Reads user API configuration and merges it with the default one
     :return: API configuration
     """
     default_configuration = {
