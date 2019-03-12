@@ -363,7 +363,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #ifndef WIN32
         if(evt && evt->inode) {
             if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
-                free(w_inode);
+                os_free(w_inode);
             }
         }
         else {
@@ -389,7 +389,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                 }
                 if(inode_str){
                     if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
-                        free(w_inode);
+                        os_free(w_inode);
                     }
                     os_free(checksum_inode);
                 }

@@ -513,17 +513,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             switch (ret) {
             case 0:
-                free(hash_file_name);
+                os_free(hash_file_name);
                 mdebug2("Not enough memory to add inode to db: %s (%s) ", file_name, str_inode);
                 break;
             case 1:
-                free(hash_file_name);
+                os_free(hash_file_name);
 
                 if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
-
-                    if(!strcmp(inode_path, file_name)) { // FILE_NAME == INODE_PATH
-                        mdebug1("Found inode '%s' with same path: '%s'", str_inode, file_name);
-                    } else {
+                    if(strcmp(inode_path, file_name)) {
                         mdebug1("Updating path in inode hash table: %s (%s) ", inode_path, str_inode);
                         OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)file_name);
                     }
