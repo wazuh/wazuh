@@ -1176,6 +1176,47 @@ components:
         agent_id:
           type: string
           minLength: 3
+
+    SyscollectorOS:
+      type: object
+      properties:
+        os:
+          type: object
+          properties:
+            codename:
+              type: string
+            major:
+              type: string
+            minor:
+              type: string
+            name:
+              type: string
+            platform:
+              type: string
+            version:
+              type: string
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        release:
+          type: string
+        architecture:
+          type: string
+        version:
+          type: string
+        sysname:
+          type: string
+        hostname:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
   securitySchemes:
     basicAuth:
       type: http
@@ -1974,6 +2015,30 @@ components:
       in: query
       name: dhcp
       description: Filters by network dhcp (enabled or disabled).
+      schema:
+        type: integer
+    os_name:
+      in: query
+      name: os_name
+      description: "Filters by os_name. Example: Ubuntu, Windows..."
+      schema:
+        type: string
+    architecture:
+      in: query
+      name: architecture
+      description: Filters by architecture.
+      schema:
+        type: string
+    os_version:
+      in: query
+      name: os_version
+      description: Filters by os_version.
+      schema:
+        type: string
+    release:
+      in: query
+      name: release
+      description: Filters by release.
       schema:
         type: integer
 
@@ -7467,6 +7532,83 @@ paths:
                     type: "ipv6"
                     dhcp: "enabled"
                     agent_id: "000"
+
+  /experimental/syscollector/os:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network protocol info of all agents'
+      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/os_name'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/os_version'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/release'
+      responses:
+        '200':
+          description: "Return a list of agent's network protocol results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorOS'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - os:
+                      codename: "Bionic Beaver"
+                      major: "18"
+                      minor: "04"
+                      name: "Ubuntu"
+                      platform: "ubuntu"
+                      version: "18.04.1 LTS (Bionic Beaver)"
+                    scan:
+                      id: 651932304
+                      time: "2019/02/19 10:22:14"
+                    release: "4.15.0-43-generic"
+                    architecture: "x86_64"
+                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
+                    sysname: "Linux"
+                    hostname: "master"
+                    agent_id: "000"
+                  - os:
+                      codename: "Bionic Beaver"
+                      major: "18"
+                      minor: "04"
+                      name: "Ubuntu"
+                      platform: "ubuntu"
+                      version: "18.04.1 LTS (Bionic Beaver)"
+                    scan:
+                      id: 780978297
+                      time: "2019/02/19 10:26:20"
+                    release: "4.15.0-43-generic"
+                    architecture: "x86_64"
+                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
+                    sysname: "Linux"
+                    hostname: "agent-1"
+                    agent_id: "001"
 
   /security/user/authenticate:
     get:
