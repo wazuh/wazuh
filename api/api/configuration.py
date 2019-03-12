@@ -62,7 +62,9 @@ def read_config() -> Dict:
         "https": {
             "enabled": False,
             "key": "api/configuration/ssl/server.key",
-            "cert": "api/configuration/ssl/server.crt"
+            "cert": "api/configuration/ssl/server.crt",
+            "use_ca": False,
+            "ca": "api/configuration/ssl/ca.crt"
         },
         "logs": {
             "level": "info",
@@ -96,6 +98,6 @@ def read_config() -> Dict:
         configuration = fill_dict(default_configuration, configuration)
 
     # append ossec_path to all paths in configuration
-    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert')])
+    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration
