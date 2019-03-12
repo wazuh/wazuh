@@ -33,7 +33,7 @@ void CiscatInit(){
 }
 
 /* Special decoder for CIS-CAT events */
-int DecodeCiscat(Eventinfo *lf)
+int DecodeCiscat(Eventinfo *lf, int *socket)
 {
     cJSON *logJSON;
     char *msg_type = NULL;
@@ -76,7 +76,6 @@ int DecodeCiscat(Eventinfo *lf)
     }
 
     if (strcmp(msg_type, "scan_info") == 0) {
-        int socket = -1;
         char *msg = NULL;
         cJSON * cis_data;
 
@@ -172,7 +171,7 @@ int DecodeCiscat(Eventinfo *lf)
                 wm_strcat(&msg, "NULL", '|');
             }
 
-            if (sc_send_db(msg,&socket) < 0) {
+            if (sc_send_db(msg, socket) < 0) {
                 cJSON_Delete(logJSON);
                 return (0);
             }

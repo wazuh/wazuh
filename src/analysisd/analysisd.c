@@ -57,7 +57,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb);
 int DecodeRootcheck(Eventinfo *lf);
 int DecodeHostinfo(Eventinfo *lf);
 int DecodeSyscollector(Eventinfo *lf,int *socket);
-int DecodeCiscat(Eventinfo *lf);
+int DecodeCiscat(Eventinfo *lf, int *socket);
 int DecodeWinevt(Eventinfo *lf);
 int DecodeSCA(Eventinfo *lf,int *socket);
 
@@ -2092,6 +2092,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
     char * msg = NULL;
     regex_matching decoder_match;
     memset(&decoder_match, 0, sizeof(regex_matching));
+    int sock = -1;
 
     while(1){
 
@@ -2111,7 +2112,7 @@ void * w_decode_event_thread(__attribute__((unused)) void * args){
             }
 
             if (msg[0] == CISCAT_MQ) {
-                if (!DecodeCiscat(lf)) {
+                if (!DecodeCiscat(lf, &sock)) {
                     w_free_event_info(lf);
                     free(msg);
                     continue;
