@@ -68,7 +68,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         // If it returns < 0, we've already alerted the deleted file
         if (c_read_file(file_name, buf, c_sum, evt) < 0) {
             os_free(path);
-            print_hash_table();
             return (0);
         }
 
@@ -111,7 +110,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             os_free(buf);
             os_free(path);
-            print_hash_table();
 
             return (1);
         } else {
@@ -119,7 +117,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         }
 
         os_free(path);
-        print_hash_table();
 
         return (0);
     } else {
@@ -151,11 +148,9 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
                     read_dir(path, pos, evt, depth, 1);
                     os_free(path);
-                    print_hash_table();
                     return 0;
                 } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
                     os_free(path);
-                    print_hash_table();
                     return 0;
                 }
             }
@@ -166,8 +161,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     }
 
     os_free(path);
-    print_hash_table();
-
     return (0);
 }
 
