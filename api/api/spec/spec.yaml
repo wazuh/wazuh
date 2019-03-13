@@ -2319,6 +2319,12 @@ components:
       description: Filters by process suser.
       schema:
         type: string
+    iface_name:
+      in: query
+      name: iface_name
+      description: Filters by interface name.
+      schema:
+        type: string
         
 tags:
   - name: active-response
@@ -8157,7 +8163,7 @@ paths:
       tags:
         - syscollector
       summary: 'Get hardware info'
-      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
+      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others."
       operationId: api.controllers.experimental_controller.get_hardware_info
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8191,6 +8197,62 @@ paths:
                     id: 599386135
                     time: "2019/03/08 08:30:53"
                   board_serial: "0"
+  
+  /syscollector/{agent_id}/netaddr:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get network address info of an agent'
+      description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
+      operationId: api.controllers.experimental_controller.get_network_address_info_of_an_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/iface_name'
+        - $ref: '#/components/parameters/proto'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/broadcast'
+        - $ref: '#/components/parameters/netmask'
+      responses:
+        '200':
+          description: "Return a list of agent's network results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorNetwork'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - proto: "ipv6"
+                    address: "fe80::f9:71ff:fed7:9d11"
+                    iface: "enp0s3"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    scan_id: 1478544824
+                  - proto: "ipv6"
+                    address: "fe80::a00:27ff:fe78:5d4"
+                    iface: "enp0s8"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    scan_id: 1478544824
 
   /security/user/authenticate:
     get:
