@@ -1330,7 +1330,6 @@ components:
           type: string
         euser:
           type: string
-          
         sgroup:
           type: string
         size:
@@ -1341,13 +1340,16 @@ components:
           minimum: 0
         nice:
           type: integer
-          minimum: 0
+        argvs:
+          type: string
         share:
           type: integer
           minimum: 0
         processor:
           type: integer
         ruser:
+          type: string
+        cmd:
           type: string
         egroup:
           type: string
@@ -8518,7 +8520,198 @@ paths:
                     version: "3.5.44"
                     section: "admin"
                     multiarch: "foreign"
+  
+  /syscollector/{agent_id}/ports:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get ports info of an agents'
+      description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
+      operationId: api.controllers.experimental_controller.get_ports_info_of_an_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/pid'
+        - $ref: '#/components/parameters/protocol'
+        - $ref: '#/components/parameters/local_ip'
+        - $ref: '#/components/parameters/local_port'
+        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/tx_queue'
+        - $ref: '#/components/parameters/state'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPorts'
+              example:
+                error: 0
+                data:
+                  totalItems: 6
+                  items:
+                  - local:
+                      ip: "0.0.0.0"
+                      port: 1515
+                    remote:
+                      ip: "0.0.0.0"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 255211
+                    protocol: "tcp"
+                  - local:
+                      ip: "0.0.0.0"
+                      port: 1516
+                    remote:
+                      ip: "0.0.0.0"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 256005
+                    protocol: "tcp"
 
+  /syscollector/{agent_id}/processes:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get processes info'
+      description: "Returns the agent's processes info."
+      operationId: api.controllers.experimental_controller.get_processes_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/process_pid'
+        - $ref: '#/components/parameters/process_state'
+        - $ref: '#/components/parameters/ppid'
+        - $ref: '#/components/parameters/egroup'
+        - $ref: '#/components/parameters/euser'
+        - $ref: '#/components/parameters/fgroup'
+        - $ref: '#/components/parameters/process_name'
+        - $ref: '#/components/parameters/nlwp'
+        - $ref: '#/components/parameters/pgrp'
+        - $ref: '#/components/parameters/priority'
+        - $ref: '#/components/parameters/rgroup'
+        - $ref: '#/components/parameters/ruser'
+        - $ref: '#/components/parameters/sgroup'
+        - $ref: '#/components/parameters/suser'
+      responses:
+        '200':
+          description: "Return a list of agent's processes results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProcess'
+              example:
+                error: 0
+                data:
+                  totalItems: 120
+                  items:
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 20
+                    suser: "root"
+                    ppid: 2196
+                    vm_size: 13312
+                    session: 2195
+                    pid: "2204"
+                    nlwp: 1
+                    name: "bash"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 3328
+                    stime: 0
+                    nice: 0
+                    argvs: "/tmp/vagrant-shell,172.17.0.100,master,node01"
+                    share: 595
+                    processor: 1
+                    ruser: "root"
+                    cmd: "bash"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 2195
+                    resident: 659
+                    utime: 0
+                    tgid: 2204
+                    start_time: 8
+                    tty: 0
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "I"
+                    priority: 0
+                    suser: "root"
+                    ppid: 2
+                    vm_size: 0
+                    session: 0
+                    pid: "121"
+                    nlwp: 1
+                    name: "charger_manager"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: -20
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 121
+                    start_time: 1009
+                    tty: 0
+  
   /security/user/authenticate:
     get:
       tags:
