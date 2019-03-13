@@ -181,16 +181,8 @@ components:
 
     AgentConfiguration:
       type: object
-<<<<<<< HEAD
-=======
       required:
-<<<<<<< HEAD
-      - logformat
-      - target
->>>>>>> ceb089c8d5df43febdc61ef85b9190e3faab7092
-=======
         - configuration
->>>>>>> dev-flask-poc
       properties:
         configuration:
           type: array
@@ -925,6 +917,331 @@ components:
         start_scan:
           type: string
 
+  # Syscollector models
+    SyscollectorHardware:
+      type: object
+      properties:
+        cpu:
+          type: object
+          properties:
+            cores:
+              type: integer
+            mhz:
+              type: number
+              format: float
+            name:
+              type: string
+        ram:
+          type: object
+          properties:
+            free:
+              type: integer
+            total:
+              type: integer
+            usage:
+              type: integer
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        board_serial:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorNetwork:
+      type: object
+      properties:
+        cpu:
+          type: string
+        iface:
+          type: string
+        scan_id:
+          type: integer
+        address:
+          type: string
+        netmask:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorInterface:
+      type: object
+      properties:
+        rx:
+          type: object
+          properties:
+            bytes:
+              type: integer
+              minimum: 0
+            dropped:
+              type: integer
+              format: int32
+              minimum: 0
+            error:
+              type: integer
+              format: int32
+              minimum: 0
+            packets:
+              type: integer
+              minimum: 0
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        tx:
+          type: object
+          properties:
+            bytes:
+              type: integer
+              minimum: 0
+            dropped:
+              type: integer
+              format: int32
+              minimum: 0
+            error:
+              type: integer
+              format: int32
+              minimum: 0
+            packets:
+              type: integer
+              minimum: 0
+        mac:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        mtu:
+          type: integer
+        state:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorProtocol:
+      type: object
+      properties:
+        iface:
+          type: string
+        scan_id:
+          type: integer
+        type:
+          type: string
+        dhcp:
+          type: string
+          enum:
+          - enabled
+          - disabled
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorOS:
+      type: object
+      properties:
+        os:
+          type: object
+          properties:
+            codename:
+              type: string
+            major:
+              type: string
+            minor:
+              type: string
+            name:
+              type: string
+            platform:
+              type: string
+            version:
+              type: string
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        release:
+          type: string
+        architecture:
+          type: string
+        version:
+          type: string
+        sysname:
+          type: string
+        hostname:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorPackages:
+      type: object
+      properties:
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        name:
+          type: string
+        section:
+          type: string
+        priority:
+          type: string
+        size:
+          type: string
+        description:
+          type: string
+        architecture:
+          type: string
+        multiarch:
+          type: string
+        vendor:
+          type: string
+        version:
+          type: string
+        format:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorPorts:
+      type: object
+      properties:
+        local:
+          type: object
+          properties:
+            ip:
+              type: string
+            port:
+              type: integer
+              minimum: 0
+        remote:
+          type: object
+          properties:
+            ip:
+              type: string
+            port:
+              type: integer
+              minimum: 0
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        state:
+          type: string
+        tx_queue:
+          type: integer
+          minimum: 0
+        rx_queue:
+          type: integer
+          minimum: 0
+        inode:
+          type: integer
+        protocol:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+
+    SyscollectorProcess:
+      type: object
+      properties:
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        fgroup:
+          type: string
+        state:
+          type: string
+        priority:
+          type: integer
+        suser:
+          type: string
+        ppid:
+          type: integer
+          minimum: 0
+        vm_size:
+          type: integer
+          minimum: 0
+        session:
+          type: integer
+        pid:
+          type: string
+        nlwp:
+          type: integer
+        name:
+          type: string
+        euser:
+          type: string
+        sgroup:
+          type: string
+        size:
+          type: integer
+          minimum: 0
+        stime:
+          type: integer
+          minimum: 0
+        nice:
+          type: integer
+        argvs:
+          type: string
+        share:
+          type: integer
+          minimum: 0
+        processor:
+          type: integer
+        ruser:
+          type: string
+        cmd:
+          type: string
+        egroup:
+          type: string
+        rgroup:
+          type: string
+        pgrp:
+          type: integer
+        resident:
+          type: integer
+        utime:
+          type: integer
+        tgid:
+          type: integer
+        start_time:
+          type: integer
+        tty:
+          type: integer
+        agent_id:
+          type: string
+          minLength: 3
+
   securitySchemes:
     basicAuth:
       type: http
@@ -1169,7 +1486,7 @@ components:
       in: path
       name: policy_id
       description: Filters by policy id.
-      required: True
+      required: true
       schema:
         type: integer
     purge:
@@ -1307,7 +1624,7 @@ components:
       in: path
       name: node_id
       description: Cluster node name.
-      required: True
+      required: true
       schema:
         type: string
     section:
@@ -1515,7 +1832,334 @@ components:
       description: Filters by rule ID.
       required: true
       schema:
+<<<<<<< HEAD
         type: integer
+=======
+        type: string
+    ram_free:
+      in: query
+      name: ram_free
+      description: Filters by ram_free.
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+    ram_total:
+      in: query
+      name: ram_total
+      description: Filters by ram_total.
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+    cpu_cores:
+      in: query
+      name: cpu_cores
+      description: Filters by cpu_cores.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+    cpu_mhz:
+      in: query
+      name: cpu_mhz
+      description: Filters by cpu_mhz.
+      schema:
+        type: number
+        format: float
+        minimum: 1
+    cpu_name:
+      in: query
+      name: cpu_name
+      description: Filters by cpu_name.
+      schema:
+        type: string
+    board_serial:
+      in: query
+      name: board_serial
+      description: Filters by board_serial.
+      schema:
+        type: string
+    proto:
+      in: query
+      name: proto
+      description: Filters by IP protocol.
+      schema:
+        type: string
+    address:
+      in: query
+      name: address
+      description: Filters by IP address.
+      schema:
+        type: string
+    broadcast:
+      in: query
+      name: broadcast
+      description: Filters by broadcast direction.
+      schema:
+        type: string
+    netmask:
+      in: query
+      name: netmask
+      description: Filters by netmask.
+      schema:
+        type: string
+    adapter:
+      in: query
+      name: adapter
+      description: Filters by adapter.
+      schema:
+        type: string
+    state:
+      in: query
+      name: state
+      description: Filters by state.
+      schema:
+        type: string
+    mtu:
+      in: query
+      name: mtu
+      description: Filters by mtu.
+      schema:
+        type: integer
+        minimum: 0
+    tx_packets:
+      in: query
+      name: tx_packets
+      description: Filters by tx_packets.
+      schema:
+        type: integer
+        minimum: 0
+    rx_packets:
+      in: query
+      name: rx_packets
+      description: Filters by rx_packets.
+      schema:
+        type: integer
+        minimum: 0
+    tx_bytes:
+      in: query
+      name: tx_bytes
+      description: Filters by tx_bytes.
+      schema:
+        type: integer
+        minimum: 0
+    rx_bytes:
+      in: query
+      name: rx_bytes
+      description: Filters by rx_bytes.
+      schema:
+        type: integer
+        minimum: 0
+    tx_errors:
+      in: query
+      name: tx_errors
+      description: Filters by tx_errors.
+      schema:
+        type: integer
+        minimum: 0
+    rx_errors:
+      in: query
+      name: rx_errors
+      description: Filters by rx_errors.
+      schema:
+        type: integer
+        minimum: 0
+    tx_dropped:
+      in: query
+      name: tx_dropped
+      description: Filters by tx_dropped.
+      schema:
+        type: integer
+        minimum: 0
+    rx_dropped:
+      in: query
+      name: rx_dropped
+      description: Filters by rx_dropped.
+      schema:
+        type: integer
+        minimum: 0
+    iface:
+      in: query
+      name: iface
+      description: Filters by network interface.
+      schema:
+        type: string
+    gateway:
+      in: query
+      name: gateway
+      description: Filters by network gateway.
+      schema:
+        type: string
+    dhcp:
+      in: query
+      name: dhcp
+      description: Filters by network dhcp (enabled or disabled).
+      schema:
+        type: integer
+    os_name:
+      in: query
+      name: os_name
+      description: "Filters by os_name. Example: Ubuntu, Windows..."
+      schema:
+        type: string
+    architecture:
+      in: query
+      name: architecture
+      description: Filters by architecture.
+      schema:
+        type: string
+    os_version:
+      in: query
+      name: os_version
+      description: Filters by os_version.
+      schema:
+        type: string
+    release:
+      in: query
+      name: release
+      description: Filters by release.
+      schema:
+        type: integer
+    vendor:
+      in: query
+      name: vendor
+      description: Filters by vendor.
+      schema:
+        type: integer
+    pid:
+      in: query
+      name: pid
+      description: Filters by pid.
+      schema:
+        type: integer
+    protocol:
+      in: query
+      name: protocol
+      description: Filters by protocol.
+      schema:
+        type: string
+    local_ip:
+      in: query
+      name: local_ip
+      description: Filters by Local IP.
+      schema:
+        type: string
+    local_port:
+      in: query
+      name: local_port
+      description: Filters by Local Port.
+      schema:
+        type: integer
+    remote_ip:
+      in: query
+      name: remote_ip
+      description: Filters by Remote IP.
+      schema:
+        type: string
+    tx_queue:
+      in: query
+      name: tx_queue
+      description: Filters by tx_queue.
+      schema:
+        type: integer
+    process_pid:
+      in: query
+      name: process_pid
+      description: Filters by process pid.
+      schema:
+        type: integer
+    process_state:
+      in: query
+      name: process_status
+      description: Filters by process state.
+      schema:
+        type: string
+    ppid:
+      in: query
+      name: ppid
+      description: Filters by process parent pid.
+      schema:
+        type: integer
+    egroup:
+      in: query
+      name: egroup
+      description: Filters by process egroup.
+      schema:
+        type: string
+    euser:
+      in: query
+      name: euser
+      description: Filters by process euser.
+      schema:
+        type: string
+    fgroup:
+      in: query
+      name: fgroup
+      description: Filters by process fgroup.
+      schema:
+        type: string
+    process_name:
+      in: query
+      name: process_name
+      description: Filters by process name.
+      schema:
+        type: string
+    nlwp:
+      in: query
+      name: nlwp
+      description: Filters by process nlwp.
+      schema:
+        type: integer
+    pgrp:
+      in: query
+      name: pgrp
+      description: Filters by process pgrp.
+      schema:
+        type: integer
+    priority:
+      in: query
+      name: priority
+      description: Filters by process priority.
+      schema:
+        type: integer
+    rgroup:
+      in: query
+      name: rgroup
+      description: Filters by process rgroup.
+      schema:
+        type: string
+    ruser:
+      in: query
+      name: ruser
+      description: Filters by process ruser.
+      schema:
+        type: string
+    sgroup:
+      in: query
+      name: sgroup
+      description: Filters by process sgroup.
+      schema:
+        type: string
+    suser:
+      in: query
+      name: suser
+      description: Filters by process suser.
+      schema:
+        type: string
+    iface_name:
+      in: query
+      name: iface_name
+      description: Filters by interface name.
+      schema:
+        type: string
+    package_version:
+      in: query
+      name: package_version
+      description: Filters by version name.
+      schema:
+        type: string
+>>>>>>> dev-flask-poc
 
 tags:
   - name: active-response
@@ -1525,22 +2169,35 @@ tags:
   - name: cache
     description: 'API cache management'
   - name: ciscat
+<<<<<<< HEAD
     description: ''
+=======
+    description: 'Retrieve information from CIS-CAT scans'
+>>>>>>> dev-flask-poc
   - name: cluster
     description: 'Wazuh cluster and nodes management'
   - name: sca
     description: 'Policy monitoring'
   - name: decoders
+<<<<<<< HEAD
     description: ''
   - name: experimental
     description: ''
   - name: lists
     description: ''
+=======
+    description: 'Wazuh decoders management'
+  - name: experimental
+    description: 'Not ready for production endpoints. Use with caution'
+  - name: lists
+    description: 'CDB lists'
+>>>>>>> dev-flask-poc
   - name: login
     description: 'User authentication'
   - name: manager
     description: 'Wazuh manager information, status and logs'
   - name: rootcheck
+<<<<<<< HEAD
     description: ''
   - name: rules
     description: 'Wazuh ruleset management'
@@ -1548,6 +2205,15 @@ tags:
     description: ''
   - name: syscollector
     description: ''
+=======
+    description: 'Detection of rootkit, ports and hidden processes and many other scans.'
+  - name: rules
+    description: 'Wazuh ruleset management'
+  - name: syscheck
+    description: 'File integrity monitoring.'
+  - name: syscollector
+    description: 'Capability to collect interesting information for each agent'
+>>>>>>> dev-flask-poc
 
 security:
     - jwt: []
@@ -6297,6 +6963,1682 @@ paths:
                     compliance:
                     -
 
+<<<<<<< HEAD
+  /security/user/authenticate:
+    get:
+=======
+  /syscheck:
+    put:
+      tags:
+      - syscheck
+      summary: Run a syscheck scan in all agents.
+      description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
+      operationId: api.controllers.syscheck_controller.put_syscheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck on all agents"
+
+  /syscheck/{agent_id}:
+    get:
+      tags:
+      - syscheck
+      summary: Get File integrity monitoring scan results
+      description: Returns FIM findings in the specified agent.
+      operationId: api.controllers.syscheck_controller.get_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/filetype'
+        - $ref: '#/components/parameters/summary'
+        - $ref: '#/components/parameters/md5'
+        - $ref: '#/components/parameters/sha1'
+        - $ref: '#/components/parameters/sha256'
+        - $ref: '#/components/parameters/hashfilter'
+      responses:
+        '200':
+          description: Latest syscheck scan result
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscheckDatabase'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - size: 61
+                      md5: 8588d49be3999f2daf69c3090682594f
+                      inode: 946
+                      perm: "100644"
+                      gname: root
+                      mtime: "2019-01-15 15:49:39"
+                      sha1: a2219a7fd0a77be7422a02049b8d27805c0250ba
+                      date: "2019-03-08 10:35:06"
+                      uname: root
+                      sha256: 303c346ece82ca4f6713ac176164285d0469f326b6f12a787e11f5d702529277
+                      gid: 0
+                      type: file
+                      uid: 0
+                      file: /etc/ssl/certs/TeliaSonera_Root_CA_v1.pem
+                    - sha1: 016f8bd2ea009451042a856611d5d2967760e833
+                      file: /etc/ssh/ssh_config
+                      md5: f7bf238a3b0bf155c565454a9f819731
+                      inode: 1579
+                      uid: "0"
+                      date: "2019-03-08 10:35:01"
+                      perm: 100644
+                      type: file
+                      gname: root
+                      uname: root
+                      size: 1580
+                      gid: "0"
+                      mtime: "2018-11-05 11:51:29"
+                      sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
+    put:
+      tags:
+      - syscheck
+      summary: Run FIM scan in an agent.
+      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
+      operationId: api.controllers.syscheck_controller.put_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck locally"
+    delete:
+      tags:
+      - syscheck
+      summary: Clear FIM scan results for a specified agent.
+      description: Clear file integrity monitoring scan results for a specified agent.
+      operationId: api.controllers.syscheck_controller.delete_syscheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Syscheck database deleted"
+
+  /syscheck/{agent_id}/last_scan:
+    get:
+      tags:
+      - syscheck
+      summary: Get last syscheck scan dates.
+      description: Returns when the last syscheck scan started and ended. If the scan is still in progress the end date will be unknown.
+      operationId: api.controllers.syscheck_controller.get_last_scan_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: 'Scan dates'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                      - $ref: '#/components/schemas/LastScan'
+              example:
+                error: 0
+                data:
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
+
+  /decoders:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders'
+      description: "Returns information about all decoders included in ossec.conf. This information include decoder's route, decoder's name, decoder's file among others"
+      operationId: api.controllers.decoders_controller.get_decoders
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
+
+      responses:
+        '200':
+          description: 'List of decoders included in ossec.conf'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0005-wazuh_decoders.xml
+                    name: wazuh
+                    position: 0
+                    status: enabled
+                    details:
+                      prematch: "^wazuh: "
+                  - file: 0005-wazuh_decoders.xml
+                    name: agent-buffer
+                    position: 1
+                    status: enabled
+                    details:
+                      parent: wazuh
+                      prematch: "^Agent buffer:"
+                      regex: "^ '(\\S+)'."
+                      order: level
+
+  /decoders/{decoder_name}:
+    get:
+      tags:
+        - decoders
+      summary: 'Get decoders by name'
+      description: "Returns information about decoders with a specified name. This information include decoder's route, decoder's name, decoder's file among others"
+      operationId: api.controllers.decoders_controller.get_decoders_by_name
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/decoder_name'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of decoders with a specified selected'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 3
+                  items:
+                  - file: 0025-apache_decoders.xml
+                    name: apache-errorlog
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: "^apache2|^httpd"
+                  - file: 0025-apache_decoders.xml
+                    name: apache-errorlog
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^[warn] |^[notice] |^[error] "
+                  - file: 0025-apache_decoders.xml
+                    name: apache-errorlog
+                    position: 2
+                    status: enabled
+                    details:
+                      prematch: "^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:warn] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:notice] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S*:error] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:info] "
+
+  /decoders/files:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all decoders files'
+      description: "Returns information about all decoders files used in Wazuh. This information include decoder's file, decoder's route and decoder's status among others"
+      operationId: api.controllers.decoders_controller.get_decoders_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: 'List of decoders files'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/DecoderFile'
+              example:
+                error: 0
+                data:
+                  totalItems: 571
+                  items:
+                  - file: 0185-openldap_decoders.xml
+                    status: enabled
+                  - file: 0220-postfix_decoders.xml
+                    status: enabled
+                  - file: 0400-identity_guard_decoders.xml
+                    status: enabled
+                  - file: 0190-openvpn_decoders.xml
+                    status: enabled
+                  - file: 0060-cisco-estreamer_decoders.xml
+                    status: enabled
+                  - file: 0335-telnet_decoders.xml
+                    status: enabled
+                  - file: 0035-asterisk_decoders.xml
+                    status: enabled
+                  - file: 0275-sendmail_decoders.xml
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    path: /var/ossec/ruleset/decoders
+                    status: enabled
+                  - file: 0345-unbound_decoders.xml
+                    status: enabled
+
+  /decoders/parents:
+    get:
+      tags:
+        - decoders
+      summary: 'Get all parent decoders'
+      description: 'Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders'
+      operationId: api.controllers.decoders_controller.get_decoders_parents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'List of parent decoders'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Decoder'
+              example:
+                error: 0
+                data:
+                  totalItems: 153
+                  items:
+                  - file: local_decoder.xml
+                    name: local_decoder_example
+                    position: 0
+                    status: enabled
+                    details:
+                      program_name: local_decoder_example
+                  - file: 0465-azure_decoders.xml
+                    name: azure-storage
+                    position: 1
+                    status: enabled
+                    details:
+                      prematch: "^azure_tag: azure-storage. "
+                      regex: "^azure_storage_tag: (\\S+)"
+                      order: tag
+
+  /experimental/syscheck:
+    delete:
+>>>>>>> dev-flask-poc
+      tags:
+        - experimental
+      summary: 'Clear syscheck database'
+      description: 'Clears the syscheck database for all agents.'
+      operationId: api.controllers.experimental_controller.clear_syscheck_database
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Delete syscheck database'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: Syscheck database deleted
+
+  /experimental/ciscat/results:
+    get:
+      tags:
+        - experimental
+      summary: 'Get CIS-CAT results'
+      description: "Returns the agent's ciscat results info."
+      operationId: api.controllers.experimental_controller.get_cis_cat_results
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/benchmark'
+        - $ref: '#/components/parameters/profile'
+        - $ref: '#/components/parameters/pass'
+        - $ref: '#/components/parameters/fail'
+        - $ref: '#/components/parameters/error'
+        - $ref: '#/components/parameters/notchecked'
+        - $ref: '#/components/parameters/unknown'
+        - $ref: '#/components/parameters/score'
+      responses:
+        '200':
+          description: 'Return a list of CIS-CAT results'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/CiscatResults'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_1_-_Workstation
+                    score: 64
+                    error: 0
+                    scan:
+                      id: 1406741147
+                      time: "2018-09-06T07:50:52.630-07:00"
+                    fail: 53
+                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                    pass: 96
+                    notchecked: 71
+                    unknown: 0
+                  - profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
+                    score: 57
+                    error: 0
+                    scan:
+                      id: 1406741147
+                      time: "2018-09-06T07:50:15.632-07:00"
+                    fail: 79
+                    benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
+                    pass: 104
+                    notchecked: 36
+                    unknown: 1
+
+  /experimental/syscollector/hardware:
+    get:
+      tags:
+        - experimental
+      summary: 'Get hardware info of all agents'
+      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
+      operationId: api.controllers.experimental_controller.get_hardware_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/ram_free'
+        - $ref: '#/components/parameters/ram_total'
+        - $ref: '#/components/parameters/cpu_cores'
+        - $ref: '#/components/parameters/cpu_mhz'
+        - $ref: '#/components/parameters/cpu_name'
+        - $ref: '#/components/parameters/board_serial'
+      responses:
+        '200':
+          description: "Return a list of agent's hardware results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorHardware'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - cpu:
+                      core: 2
+                      mhz: 1992.001
+                      name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                    ram:
+                      free: 65396
+                      total: 492832
+                      usage: 87
+                    scan:
+                      id: 219248827
+                      time: "2019/02/19 10:22:14"
+                    board_serial: "0"
+                    agent_id: "000"
+                  - cpu:
+                      core: 1
+                      mhz: 1992.001
+                      name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                    ram:
+                      free: 40372
+                      total: 234968
+                      usage: 83
+                    scan:
+                      id: 257116304
+                      time: "2019/02/19 10:26:20"
+                    board_serial: "0"
+                    agent_id: "001"
+
+  /experimental/syscollector/netaddr:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network address info of all agents'
+      description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others  of all agents."
+      operationId: api.controllers.experimental_controller.get_network_address_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/proto'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/broadcast'
+        - $ref: '#/components/parameters/netmask'
+      responses:
+        '200':
+          description: "Return a list of agent's network results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorNetwork'
+              example:
+                error: 0
+                data:
+                  totalItems: 16
+                  items:
+                  - proto: "ipv6"
+                    iface: "enp0s3"
+                    scan_id: 1203337658
+                    address: "fe80::f9:71ff:fed7:9d11"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
+                  - proto: "ipv6"
+                    iface: "enp0s8"
+                    scan_id: 1203337658
+                    address: "fe80::a00:27ff:fefc:51f5"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    agent_id: "000"
+
+  /experimental/syscollector/netiface:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network interface info of all agents'
+      description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others  of all agents."
+      operationId: api.controllers.experimental_controller.get_network_interface_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/adapter'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/mtu'
+        - $ref: '#/components/parameters/tx_packets'
+        - $ref: '#/components/parameters/rx_packets'
+        - $ref: '#/components/parameters/tx_bytes'
+        - $ref: '#/components/parameters/rx_bytes'
+        - $ref: '#/components/parameters/tx_errors'
+        - $ref: '#/components/parameters/rx_errors'
+        - $ref: '#/components/parameters/tx_dropped'
+        - $ref: '#/components/parameters/rx_dropped'
+      responses:
+        '200':
+          description: "Return a list of agent's network interfaces results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorInterface'
+              example:
+                error: 0
+                data:
+                  totalItems: 8
+                  items:
+                  - rx:
+                      bytes: 47319629
+                      dropped: 0
+                      errors: 0
+                      packets: 43889
+                    scan:
+                      id: 1203337658
+                      time: "2019/02/19 10:22:14"
+                    tx:
+                      bytes: 843282
+                      dropped: 0
+                      errors: 0
+                      packets: 12505
+                    mac: "02:f9:71:d7:9d:11"
+                    name: "enp0s3"
+                    type: "ethernet"
+                    mtu: 1500
+                    state: "up"
+                    agent_id: "000"
+                  - rx:
+                      bytes: 0
+                      dropped: 0
+                      errors: 0
+                      packets: 0
+                    scan:
+                      id: 1203337658
+                      time: "2019/02/19 10:22:14"
+                    tx:
+                      bytes: 3874
+                      dropped: 0
+                      errors: 0
+                      packets: 19
+                    mac: "08:00:27:fc:51:f5"
+                    name: "enp0s8"
+                    type: "ethernet"
+                    mtu: 1500
+                    state: "up"
+                    agent_id: "000"
+
+  /experimental/syscollector/netproto:
+    get:
+      tags:
+        - experimental
+      summary: 'Get network protocol info of all agents'
+      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/iface'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/gateway'
+        - $ref: '#/components/parameters/dhcp'
+      responses:
+        '200':
+          description: "Return a list of agent's network protocol results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProtocol'
+              example:
+                error: 0
+                data:
+                  totalItems: 16
+                  items:
+                  - iface: "enp0s3"
+                    scan_id: 1203337658
+                    type: "ipv6"
+                    dhcp: "enabled"
+                    agent_id: "000"
+                  - iface: "enp0s8"
+                    scan_id: 1203337658
+                    type: "ipv6"
+                    dhcp: "enabled"
+                    agent_id: "000"
+
+  /experimental/syscollector/os:
+    get:
+      tags:
+        - experimental
+      summary: 'Get OS info of all agents'
+      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/os_name'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/os_version'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/release'
+      responses:
+        '200':
+          description: "Return a list of agent's OS results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorOS'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - os:
+                      codename: "Bionic Beaver"
+                      major: "18"
+                      minor: "04"
+                      name: "Ubuntu"
+                      platform: "ubuntu"
+                      version: "18.04.1 LTS (Bionic Beaver)"
+                    scan:
+                      id: 651932304
+                      time: "2019/02/19 10:22:14"
+                    release: "4.15.0-43-generic"
+                    architecture: "x86_64"
+                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
+                    sysname: "Linux"
+                    hostname: "master"
+                    agent_id: "000"
+                  - os:
+                      codename: "Bionic Beaver"
+                      major: "18"
+                      minor: "04"
+                      name: "Ubuntu"
+                      platform: "ubuntu"
+                      version: "18.04.1 LTS (Bionic Beaver)"
+                    scan:
+                      id: 780978297
+                      time: "2019/02/19 10:26:20"
+                    release: "4.15.0-43-generic"
+                    architecture: "x86_64"
+                    version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
+                    sysname: "Linux"
+                    hostname: "agent-1"
+                    agent_id: "001"
+
+  /experimental/syscollector/packages:
+    get:
+      tags:
+        - experimental
+      summary: 'Get packages info of all agents'
+      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
+      operationId: api.controllers.experimental_controller.get_packages_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/vendor'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/package_version'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPackages'
+              example:
+                error: 0
+                data:
+                  totalItems: 2014
+                  items:
+                  - scan:
+                      id: 1631140954
+                      time: "2019/02/19 10:22:14"
+                    name: "acl"
+                    section: "utils"
+                    priority: "optional"
+                    size: 200
+                    description: "Access control list utilities"
+                    architecture: "amd64"
+                    multiarch: "foreign"
+                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                    version: "2.2.52-3build1"
+                    format: "deb"
+                    agent_id: "000"
+                  - scan:
+                      id: 1631140954
+                      time: "2019/02/19 10:22:14"
+                    name: "accountsservice"
+                    section: "admin"
+                    priority: "optional"
+                    size: 440
+                    description: "query and manipulate user account information"
+                    architecture: "amd64"
+                    multiarch: "foreign"
+                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                    version: "0.6.45-1ubuntu1"
+                    format: "deb"
+                    agent_id: "000"
+
+  /experimental/syscollector/ports:
+    get:
+      tags:
+        - experimental
+      summary: 'Get ports info of all agents'
+      description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_ports_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/pid'
+        - $ref: '#/components/parameters/protocol'
+        - $ref: '#/components/parameters/local_ip'
+        - $ref: '#/components/parameters/local_port'
+        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/tx_queue'
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/process'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPorts'
+              example:
+                error: 0
+                data:
+                  totalItems: 18
+                  items:
+                  - local:
+                      ip: "::"
+                      port: 22
+                    remote:
+                      ip: "::"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 19354
+                    protocol: "tcp6"
+                    agent_id: "000"
+                  - local:
+                      ip: "::"
+                      port: 55000
+                    remote:
+                      ip: "::"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 258878
+                    protocol: "tcp6"
+                    agent_id: "000"
+
+  /experimental/syscollector/processes:
+    get:
+      tags:
+        - experimental
+      summary: 'Get processes info of all agents'
+      description: "Returns the agent's processes info."
+      operationId: api.controllers.experimental_controller.get_processes_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/process_pid'
+        - $ref: '#/components/parameters/process_state'
+        - $ref: '#/components/parameters/ppid'
+        - $ref: '#/components/parameters/egroup'
+        - $ref: '#/components/parameters/euser'
+        - $ref: '#/components/parameters/fgroup'
+        - $ref: '#/components/parameters/process_name'
+        - $ref: '#/components/parameters/nlwp'
+        - $ref: '#/components/parameters/pgrp'
+        - $ref: '#/components/parameters/priority'
+        - $ref: '#/components/parameters/rgroup'
+        - $ref: '#/components/parameters/ruser'
+        - $ref: '#/components/parameters/sgroup'
+        - $ref: '#/components/parameters/suser'
+      responses:
+        '200':
+          description: "Return a list of agent's processes results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProcess'
+              example:
+                error: 0
+                data:
+                  totalItems: 420
+                  items:
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 20
+                    suser: "root"
+                    ppid: 0
+                    vm_size: 0
+                    session: 0
+                    pid: "2"
+                    nlwp: 1
+                    name: "kthreadd"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: 0
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 2
+                    start_time: 8
+                    tty: 0
+                    agent_id: "000"
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 25
+                    suser: "root"
+                    ppid: 2
+                    vm_size: 0
+                    session: 0
+                    pid: "28"
+                    nlwp: 1
+                    name: "ksmd"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: 5
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 28
+                    start_time: 22
+                    tty: 0
+                    agent_id: "000"
+
+  /syscollector/{agent_id}/hardware:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get hardware info'
+      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others."
+      operationId: api.controllers.experimental_controller.get_hardware_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/select'
+      responses:
+        '200':
+          description: "Return a list of agent's hardware results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SyscollectorHardware'
+              example:
+                error: 0
+                data:
+                  cpu:
+                    core: 2
+                    mhz: 1991.999
+                    name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                  ram:
+                    free: 55592
+                    total: 492832
+                    usage: 89
+                  scan:
+                    id: 599386135
+                    time: "2019/03/08 08:30:53"
+                  board_serial: "0"
+
+  /syscollector/{agent_id}/netaddr:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get network address info of an agent'
+      description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
+      operationId: api.controllers.experimental_controller.get_network_address_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/iface_name'
+        - $ref: '#/components/parameters/proto'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/broadcast'
+        - $ref: '#/components/parameters/netmask'
+      responses:
+        '200':
+          description: "Return a list of agent's network results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorNetwork'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - proto: "ipv6"
+                    address: "fe80::f9:71ff:fed7:9d11"
+                    iface: "enp0s3"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    scan_id: 1478544824
+                  - proto: "ipv6"
+                    address: "fe80::a00:27ff:fe78:5d4"
+                    iface: "enp0s8"
+                    netmask: "ffff:ffff:ffff:ffff::"
+                    scan_id: 1478544824
+
+  /syscollector/{agent_id}/netiface:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get network interface info of an agents'
+      description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
+      operationId: api.controllers.experimental_controller.get_network_interface_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/adapter'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/mtu'
+        - $ref: '#/components/parameters/tx_packets'
+        - $ref: '#/components/parameters/rx_packets'
+        - $ref: '#/components/parameters/tx_bytes'
+        - $ref: '#/components/parameters/rx_bytes'
+        - $ref: '#/components/parameters/tx_errors'
+        - $ref: '#/components/parameters/rx_errors'
+        - $ref: '#/components/parameters/tx_dropped'
+        - $ref: '#/components/parameters/rx_dropped'
+      responses:
+        '200':
+          description: "Return a list of agent's network interfaces results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorInterface'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - rx:
+                      bytes: 151695946
+                      dropped: 0
+                      errors: 0
+                      packets: 111792
+                    scan:
+                      id: 1478544824
+                      time: "2019/03/08 08:30:53"
+                    tx:
+                      bytes: 2408059
+                      dropped: 0
+                      errors: 0
+                      packets: 35104
+                    name: "enp0s3"
+                    state: "up"
+                    type: "ethernet"
+                    mtu: 1500
+                    mac: "02:f9:71:d7:9d:11"
+                  - rx:
+                      bytes: 0
+                      dropped: 0
+                      errors: 0
+                      packets: 0
+                    scan:
+                      id: 1478544824
+                      time: "2019/03/08 08:30:53"
+                    tx:
+                      bytes: 5312
+                      dropped: 0
+                      errors: 0
+                      packets: 24
+                    name: "enp0s8"
+                    state: "up"
+                    type: "ethernet"
+                    mtu: 1500
+                    mac: "08:00:27:78:05:d4"
+
+  /syscollector/{agent_id}/netproto:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get network protocol info of an agents'
+      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others"
+      operationId: api.controllers.experimental_controller.get_network_protocol_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/iface'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/gateway'
+        - $ref: '#/components/parameters/dhcp'
+      responses:
+        '200':
+          description: "Return a list of agent's network protocol results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProtocol'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - type: "ipv6"
+                    iface: "enp0s3"
+                    dhcp: "enabled"
+                    scan_id: 1478544824
+                  - type: "ipv6"
+                    iface: "enp0s8"
+                    dhcp: "enabled"
+                    scan_id: 1478544824
+
+  /syscollector/{agent_id}/os:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get OS info'
+      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_os_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/select'
+      responses:
+        '200':
+          description: "Return a list of agent's OS results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SyscollectorOS'
+              example:
+                error: 0
+                data:
+                  os:
+                    codename: "Bionic Beaver"
+                    major: "18"
+                    minor: "04"
+                    name: "Ubuntu"
+                    platform: "ubuntu"
+                    version: "18.04.1 LTS (Bionic Beaver)"
+                  scan:
+                    id: 242764188
+                    time: "2019/03/08 08:30:53"
+                  architecture: "x86_64"
+                  release: "4.15.0-43-generic"
+                  version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
+                  sysname: "Linux"
+                  hostname: "master"
+
+  /syscollector/{agent_id}/packages:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get packages info'
+      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
+      operationId: api.controllers.experimental_controller.get_packages_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/vendor'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/package_version'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPackages'
+              example:
+                error: 0
+                data:
+                  totalItems: 535
+                  items:
+                  - scan:
+                      id: 520922172
+                      time: "2019/03/08 08:30:53"
+                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                    name: "base-files"
+                    priority: "required"
+                    description: "Debian base system miscellaneous files"
+                    architecture: "amd64"
+                    format: "deb"
+                    size: 386
+                    version: "10.1ubuntu2.3"
+                    section: "admin"
+                    multiarch: "foreign"
+                  - scan:
+                      id: 520922172
+                      time: "2019/03/08 08:30:53"
+                    vendor: "Colin Watson <cjwatson@debian.org>"
+                    name: "base-passwd"
+                    priority: "required"
+                    description: "Debian base system master password and group files"
+                    architecture: "amd64"
+                    format: "deb"
+                    size: 228
+                    version: "3.5.44"
+                    section: "admin"
+                    multiarch: "foreign"
+
+  /syscollector/{agent_id}/ports:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get ports info of an agents'
+      description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
+      operationId: api.controllers.experimental_controller.get_ports_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/pid'
+        - $ref: '#/components/parameters/protocol'
+        - $ref: '#/components/parameters/local_ip'
+        - $ref: '#/components/parameters/local_port'
+        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/tx_queue'
+        - $ref: '#/components/parameters/state'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPorts'
+              example:
+                error: 0
+                data:
+                  totalItems: 6
+                  items:
+                  - local:
+                      ip: "0.0.0.0"
+                      port: 1515
+                    remote:
+                      ip: "0.0.0.0"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 255211
+                    protocol: "tcp"
+                  - local:
+                      ip: "0.0.0.0"
+                      port: 1516
+                    remote:
+                      ip: "0.0.0.0"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 256005
+                    protocol: "tcp"
+
+  /syscollector/{agent_id}/processes:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get processes info'
+      description: "Returns the agent's processes info."
+      operationId: api.controllers.experimental_controller.get_processes_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/process_pid'
+        - $ref: '#/components/parameters/process_state'
+        - $ref: '#/components/parameters/ppid'
+        - $ref: '#/components/parameters/egroup'
+        - $ref: '#/components/parameters/euser'
+        - $ref: '#/components/parameters/fgroup'
+        - $ref: '#/components/parameters/process_name'
+        - $ref: '#/components/parameters/nlwp'
+        - $ref: '#/components/parameters/pgrp'
+        - $ref: '#/components/parameters/priority'
+        - $ref: '#/components/parameters/rgroup'
+        - $ref: '#/components/parameters/ruser'
+        - $ref: '#/components/parameters/sgroup'
+        - $ref: '#/components/parameters/suser'
+      responses:
+        '200':
+          description: "Return a list of agent's processes results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProcess'
+              example:
+                error: 0
+                data:
+                  totalItems: 120
+                  items:
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 20
+                    suser: "root"
+                    ppid: 2196
+                    vm_size: 13312
+                    session: 2195
+                    pid: "2204"
+                    nlwp: 1
+                    name: "bash"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 3328
+                    stime: 0
+                    nice: 0
+                    argvs: "/tmp/vagrant-shell,172.17.0.100,master,node01"
+                    share: 595
+                    processor: 1
+                    ruser: "root"
+                    cmd: "bash"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 2195
+                    resident: 659
+                    utime: 0
+                    tgid: 2204
+                    start_time: 8
+                    tty: 0
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "I"
+                    priority: 0
+                    suser: "root"
+                    ppid: 2
+                    vm_size: 0
+                    session: 0
+                    pid: "121"
+                    nlwp: 1
+                    name: "charger_manager"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: -20
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 121
+                    start_time: 1009
+                    tty: 0
+
   /security/user/authenticate:
     get:
       tags:
@@ -6322,4 +8664,3 @@ paths:
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-
