@@ -180,6 +180,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     OSMatch *restriction;
     char *buf;
     syscheck_node *s_node;
+    char *inode_path;
     struct stat statbuf;
     char str_size[50], str_mtime[50], str_inode[50];
     char *wd_sum = NULL;
@@ -210,11 +211,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     /* Win32 does not have lstat */
     if (stat(file_name, &statbuf) < 0)
 #else
-    if (evt && evt->inode) {
-        if (file_inode = OSHash_Get_ex(syscheck.inode_hash, evt->inode), file_inode) {
-            file_name = file_inode;
-        }
-    }
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
@@ -237,9 +233,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             }
 #ifndef WIN32
             // Delete from inode hash table
-            if (evt && evt->inode) {
-                if (inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), inode) {
-                    os_free(inode);
+            if (inode_path = OSHash_Get_ex(syscheck.inode_hash, file_name), inode_path) {
+                if(!strcmp(inode_path, file_name)) {
+                    OSHash_Delete_ex(syscheck.inode_hash, file_name);
+                    os_free(inode_path);
                 }
             }
 #endif
@@ -517,12 +514,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 mdebug2("Not enough memory to add inode to db: %s (%s) ", file_name, str_inode);
                 break;
             case 1:
-                os_free(hash_file_name);
-
                 if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
                     if(strcmp(inode_path, file_name)) {
                         mdebug1("Updating path in inode hash table: %s (%s) ", inode_path, str_inode);
-                        OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)file_name);
+                        OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
+                        os_free(inode_path);
                     }
                 }
             }
@@ -858,11 +854,6 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #endif /* WIN32 */
         free(f_name);
         return (-1);
-    }
-    else if (evt) {
-        free(f_name);
-        closedir(dp);
-        return (0);
     }
 
     /* Check for real time flag */
@@ -1257,4 +1248,34 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
     free(dir_name_full);
     return 0;
 }
+
+int print_hash_table() {
+    OSHashNode *hash_node;
+    syscheck_node *fp_node;
+    unsigned int *inode_it;
+    int i = 0;
+    os_calloc(1, sizeof(unsigned int), inode_it);
+
+    hash_node = OSHash_Begin(syscheck.fp, inode_it);
+    while(hash_node) {
+        fp_node = hash_node->data;
+        minfo("FP(%d) => '%s' -> '%s'\n", i, (char*)hash_node->key, (char*)fp_node->checksum);
+        hash_node = OSHash_Next(syscheck.fp, inode_it, hash_node);
+        i++;
+    }
+
+    *inode_it = 0;
+    i = 0;
+
+    hash_node = OSHash_Begin(syscheck.inode_hash, inode_it);
+    while(hash_node) {
+        minfo("IH(%d) => '%s' -> '%s'\n", i, (char*)hash_node->key, (char*)hash_node->data);
+        hash_node = OSHash_Next(syscheck.inode_hash, inode_it, hash_node);
+        i++;
+    }
+    os_free(inode_it);
+
+    return 0;
+}
+
 #endif

@@ -136,4 +136,6 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
+int print_hash_table();
+
 #endif
