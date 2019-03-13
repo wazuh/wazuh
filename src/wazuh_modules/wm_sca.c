@@ -399,7 +399,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 goto next;
             }
 
-            if (object = yaml2json(&document), !object) {
+            if (object = yaml2json(&document,1), !object) {
                 merror("Transforming yaml to json: '%s'. Skipping it.",path);
                 goto next;
             }
