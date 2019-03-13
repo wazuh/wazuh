@@ -1045,7 +1045,7 @@ components:
           type: string
         status:
           type: string
-
+  
   # Syscollector models
     SyscollectorHardware:
       type: object
@@ -1158,7 +1158,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-
+  
     SyscollectorProtocol:
       type: object
       properties:
@@ -1176,7 +1176,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-
+    
     SyscollectorOS:
       type: object
       properties:
@@ -1193,7 +1193,7 @@ components:
               type: string
             platform:
               type: string
-            version:
+            version: 
               type: string
         scan:
           type: object
@@ -1216,7 +1216,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-
+    
     SyscollectorPackages:
       type: object
       properties:
@@ -1251,7 +1251,50 @@ components:
         agent_id:
           type: string
           minLength: 3
-
+          
+    SyscollectorPorts:
+      type: object
+      properties:
+        local:
+          type: object
+          properties:
+            ip:
+              type: string
+            port:
+              type: integer
+              minimum: 0
+        remote:
+          type: object
+          properties:
+            ip:
+              type: string
+            port:
+              type: integer
+              minimum: 0
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        state:
+          type: string
+        tx_queue:
+          type: integer
+          minimum: 0
+        rx_queue:
+          type: integer
+          minimum: 0
+        inode:
+          type: integer
+        protocol:
+          type: string
+        agent_id:
+          type: string
+          minLength: 3
+          
   securitySchemes:
     basicAuth:
       type: http
@@ -2082,7 +2125,43 @@ components:
       description: Filters by vendor.
       schema:
         type: integer
-
+    pid:
+      in: query
+      name: pid
+      description: Filters by pid.
+      schema:
+        type: integer
+    protocol:
+      in: query
+      name: protocol
+      description: Filters by protocol.
+      schema:
+        type: string
+    local_ip:
+      in: query
+      name: local_ip
+      description: Filters by Local IP.
+      schema:
+        type: string
+    local_port:
+      in: query
+      name: local_port
+      description: Filters by Local Port.
+      schema:
+        type: integer
+    remote_ip:
+      in: query
+      name: remote_ip
+      description: Filters by Remote IP.
+      schema:
+        type: string
+    tx_queue:
+      in: query
+      name: tx_queue
+      description: Filters by tx_queue.
+      schema:
+        type: integer
+        
 tags:
   - name: active-response
     description: 'Agents Active Response'
@@ -7300,7 +7379,7 @@ paths:
                     pass: 104
                     notchecked: 36
                     unknown: 1
-
+  
   /experimental/syscollector/hardware:
     get:
       tags:
@@ -7372,7 +7451,7 @@ paths:
                       time: "2019/02/19 10:26:20"
                     board_serial: "0"
                     agent_id: "001"
-
+  
   /experimental/syscollector/netaddr:
     get:
       tags:
@@ -7519,7 +7598,7 @@ paths:
                     mtu: 1500
                     state: "up"
                     agent_id: "000"
-
+  
   /experimental/syscollector/netproto:
     get:
       tags:
@@ -7650,7 +7729,7 @@ paths:
                     sysname: "Linux"
                     hostname: "agent-1"
                     agent_id: "001"
-
+  
   /experimental/syscollector/packages:
     get:
       tags:
@@ -7722,6 +7801,84 @@ paths:
                     version: "0.6.45-1ubuntu1"
                     format: "deb"
                     agent_id: "000"
+  
+  /experimental/syscollector/ports:
+    get:
+      tags:
+        - experimental
+      summary: 'Get ports info of all agents'
+      description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_ports_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/pid'
+        - $ref: '#/components/parameters/protocol'
+        - $ref: '#/components/parameters/local_ip'
+        - $ref: '#/components/parameters/local_port'
+        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/tx_queue'
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/process'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPorts'
+              example:
+                error: 0
+                data:
+                  totalItems: 18
+                  items:
+                  - local:
+                      ip: "::"
+                      port: 22
+                    remote:
+                      ip: "::"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 19354
+                    protocol: "tcp6"
+                    agent_id: "000"
+                  - local:
+                      ip: "::"
+                      port: 55000
+                    remote:
+                      ip: "::"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 258878
+                    protocol: "tcp6"
+                    agent_id: "000"
 
   /security/user/authenticate:
     get:
@@ -7748,3 +7905,4 @@ paths:
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
+
