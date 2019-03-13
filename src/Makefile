@@ -579,7 +579,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -736,7 +736,7 @@ $(EXTERNAL_LIBYAML)Makefile:
 ifeq (${TARGET},winagent)
 	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
 else
-	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
+	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
 endif
 
 #### curl ##########
@@ -1438,10 +1438,11 @@ install_api:
 
 CFLAGS_TEST = -g -O0 --coverage
 
-LIBS_TEST = -lcheck -lm -lrt -lsubunit
+# LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 ifdef TEST
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
+	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 endif #TEST
@@ -1452,7 +1453,7 @@ test: build_tests
 	${MAKE} run_tests
 
 run_tests:
-	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=yes --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
+	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
 
 build_tests: external
 	${MAKE} DEBUG=1 TEST=1 ${test_programs}
@@ -1463,22 +1464,22 @@ test_o := $(test_c:.c=.o)
 tests/%.o: tests/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-test_os_zlib: tests/test_os_zlib.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_xml: tests/test_os_xml.o ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_regex: tests/test_os_regex.c ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+tap_os_crypto: tests/tap_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
+tap_os_net: tests/tap_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_os_zlib: tests/tap_os_zlib.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests

@@ -159,6 +159,9 @@ char* get_process_name(DWORD pid){
                     if (pBuffer != NULL) HeapFree(hHeap, 0, pBuffer);
                 }
             }
+            if(ntdll) {
+                FreeLibrary(ntdll);
+            }
         } else {
             mtwarn(WM_SYS_LOGTAG, "At get_process_name(): Unable to retrieve handle for process with PID %lu (%lu).", pid, GetLastError());
         }
@@ -1238,7 +1241,9 @@ void sys_hw_windows(const char* LOCATION){
                 }
             }
         }
-    
+        if(sys_library) {
+            FreeLibrary(sys_library);
+        }
     } else {
         
         char *command;
@@ -1740,6 +1745,7 @@ void sys_network_windows(const char* LOCATION){
                 dwRetVal = GetLastError();
                 mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
             }
+            FreeLibrary(sys_library);
         } else {
             dwRetVal = GetLastError();
             LPSTR messageBuffer = NULL;
@@ -1878,7 +1884,12 @@ void sys_network_windows(const char* LOCATION){
 
                 if (checkVista()) {
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
-                    string = _get_network_vista(pCurrAddresses, ID, timestamp);
+                    if(_get_network_vista) {
+                        string = _get_network_vista(pCurrAddresses, ID, timestamp);
+                    }
+                    else {
+                        os_strdup("UNKNOWN",string);
+                    }
                 } else {
                     /* Call function get_network_xp() */
                     string = get_network_xp(pCurrAddresses, AdapterInfo, ID, timestamp);
@@ -1915,8 +1926,6 @@ void sys_network_windows(const char* LOCATION){
     if (pAddresses) {
         win_free(pAddresses);
     }
-
-    if (sys_library) FreeLibrary(sys_library);
 
     cJSON *object = cJSON_CreateObject();
     cJSON_AddStringToObject(object, "type", "network_end");

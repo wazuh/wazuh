@@ -34,6 +34,10 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
     Eventinfo *first_lf;
     OSListNode *lf_node;
     int frequency_count = 0;
+    int i;
+    int found;
+    const char * my_field;
+    const char * field;
 
     /* Checking if sid search is valid */
     if (!rule->sid_search) {
@@ -90,6 +94,49 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
             }
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
+                continue;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0 || lf->nfields == 0)
+                continue;
+
+            found = 1;
+            for (i = 0; rule->same_fields[i] && found; ++i) {
+                found = 0;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (!found) {
+                continue;
+            }
+        }
+
+        /* Check for differences from dynamic fields values (not_same_field) */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0 && lf->nfields == 0)
+                continue;
+
+            found = 0;
+            for (i = 0; rule->not_same_fields[i] && !found; ++i) {
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (found) {
                 continue;
             }
         }
@@ -203,7 +250,11 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
     OSListNode *lf_node;
     Eventinfo *first_lf;
     int frequency_count = 0;
+    int i;
+    int found;
     OSList *list = rule->group_search;
+    const char * my_field;
+    const char * field;
 
     //w_mutex_lock(&rule->mutex);
 
@@ -263,6 +314,51 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
             }
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
+                continue;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0 || lf->nfields == 0) {
+                continue;
+            }
+
+            found = 1;
+            for (i = 0; rule->same_fields[i] && found; ++i) {
+                found = 0;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (!found) {
+                continue;
+            }
+        }
+
+        /* Check for differences from dynamic fields values (not_same_field) */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0 && lf->nfields == 0) {
+                continue;
+            }
+
+            found = 0;
+            for (i = 0; rule->not_same_fields[i] && !found; ++i) {
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (found) {
                 continue;
             }
         }
@@ -377,6 +473,10 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
     EventNode *first_pt;
     Eventinfo *lf = NULL;
     int frequency_count = 0;
+    int i;
+    int found;
+    const char * my_field;
+    const char * field;
 
     w_mutex_lock(&rule->mutex);
 
@@ -447,6 +547,49 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
             }
 
             if (strcmp(lf->srcip, my_lf->srcip) != 0) {
+                goto next_it;
+            }
+        }
+
+        /* Check for repetitions from same dynamic fields */
+        if (rule->context_opts & SAME_FIELD) {
+            if (my_lf->nfields == 0 || lf->nfields == 0)
+                goto next_it;
+
+            found = 1;
+            for (i = 0; rule->same_fields[i] && found; ++i) {
+                found = 0;
+                my_field = FindField(my_lf, rule->same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (!found) {
+                goto next_it;
+            }
+        }
+
+        /* Check for differences from dynamic fields values (not_same_field) */
+        if (rule->context_opts & NOT_SAME_FIELD) {
+            if (my_lf->nfields == 0 && lf->nfields == 0)
+                goto next_it;
+
+            found = 0;
+            for (i = 0; rule->not_same_fields[i] && !found; ++i) {
+                my_field = FindField(my_lf, rule->not_same_fields[i]);
+                if (my_field) {
+                    field = FindField(lf, rule->not_same_fields[i]);
+                    if (field && strcmp(my_field, field) == 0) {
+                        found = 1;
+                    }
+                }
+            }
+
+            if (found) {
                 goto next_it;
             }
         }

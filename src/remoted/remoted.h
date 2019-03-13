@@ -85,8 +85,8 @@ void HandleSecure() __attribute__((noreturn));
 /* Forward active response events */
 void *AR_Forward(void *arg) __attribute__((noreturn));
 
-/* Forward configuration assessment events */
-void *CFGA_Forward(void *arg) __attribute__((noreturn));
+/* Forward Security configuration assessment events */
+void *SCFGA_Forward(void *arg) __attribute__((noreturn));
 
 /* Initialize the manager */
 void manager_init();
@@ -111,6 +111,8 @@ int req_save(const char * counter, const char * buffer, size_t length);
 int send_msg(const char *agent_id, const char *msg, ssize_t msg_length);
 
 int check_keyupdate(void);
+
+void key_lock_init(void);
 
 void key_lock_read(void);
 

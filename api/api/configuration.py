@@ -49,7 +49,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     return {**default, **config}
 
 
-def read_config() -> Dict:
+def read_config(config_file=common.api_config_path) -> Dict:
     """
     Reads user API configuration and merges it with the default one
     :return: API configuration
@@ -79,7 +79,7 @@ def read_config() -> Dict:
         "experimental_features": False
     }
 
-    with open(common.api_config_path) as f:
+    with open(config_file) as f:
         configuration = yaml.safe_load(f)
 
     # if any value is missing from user's cluster configuration, add the default one:

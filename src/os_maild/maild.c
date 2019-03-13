@@ -9,6 +9,7 @@
  */
 
 #include "shared.h"
+#include "os_net/os_net.h"
 #include "maild.h"
 #include "mail_list.h"
 
@@ -161,7 +162,26 @@ int main(int argc, char **argv)
         merror_exit(SETGID_ERROR, group, errno, strerror(errno));
     }
 
-    if (mail.smtpserver[0] != '/') {
+    if (!mail.mn) {
+        minfo("Mail notifications are disabled. Exiting.");
+        exit(0);
+    }
+
+    if (!mail.smtpserver) {
+        merror_exit("SMTP server not set. Exiting.");
+    }
+    else if (mail.smtpserver[0] != '/') {
+
+        char * aux_smtp_server;
+        aux_smtp_server = mail.smtpserver;
+
+        mail.smtpserver = OS_GetHost(aux_smtp_server, 5);
+        if (!mail.smtpserver) {
+            merror_exit(INVALID_SMTP, aux_smtp_server);
+        }
+
+        free(aux_smtp_server);
+
         /* chroot */
         if (Privsep_Chroot(dir) < 0) {
             merror_exit(CHROOT_ERROR, dir, errno, strerror(errno));

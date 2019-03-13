@@ -139,22 +139,18 @@ components:
       - name
       - configSum
       properties:
-        items:
-          type: array
-          items:
-            properties:
-              count:
-                type: integer
-              name:
-                type: string
-              mergedSum:
-                type: string
-                pattern: \w{32}
-                format: md5
-              configSum:
-                type: string
-                pattern: \w{32}
-                format: md5
+        count:
+          type: integer
+        name:
+          type: string
+        mergedSum:
+          type: string
+          pattern: \w{32}
+          format: md5
+        configSum:
+          type: string
+          pattern: \w{32}
+          format: md5
 
     AgentGroupDeleted:
       type: object
@@ -216,12 +212,14 @@ components:
     AgentConfiguration:
       type: object
       required:
-      - logformat
-      - target
+        - configuration
       properties:
         configuration:
           type: array
           items:
+            required:
+              - logformat
+              - target
             properties:
               file:
                 type: string
@@ -2575,7 +2573,14 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroup'
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/AgentGroup'
               example:
                 error: 0
                 data:

@@ -184,7 +184,7 @@ void _getRulesListJSON(RuleNode *list, cJSON *array) {
         cJSON_AddNumberToObject(rule,"sigid",node->ruleinfo->sigid);
         cJSON_AddNumberToObject(rule,"level",node->ruleinfo->level);
         cJSON_AddNumberToObject(rule,"maxsize",node->ruleinfo->maxsize);
-        cJSON_AddNumberToObject(rule,"frequency",node->ruleinfo->frequency);
+        cJSON_AddNumberToObject(rule,"frequency",node->ruleinfo->event_search ? node->ruleinfo->frequency + 2 : node->ruleinfo->frequency);
         cJSON_AddNumberToObject(rule,"timeframe",node->ruleinfo->timeframe);
         cJSON_AddNumberToObject(rule,"ignore_time",node->ruleinfo->ignore_time);
         cJSON_AddNumberToObject(rule,"decoded_as",node->ruleinfo->decoded_as);

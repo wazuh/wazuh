@@ -64,7 +64,9 @@ typedef enum vu_severity {
     VU_HIGH,
     VU_IMPORTANT,
     VU_CRITICAL,
-    VU_NONE
+    VU_NONE,
+    VU_NEGL,
+    VU_UNTR
 } vu_severity;
 
 typedef enum vu_logic {

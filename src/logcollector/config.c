@@ -148,13 +148,18 @@ cJSON *getLocalfileConfig(void) {
     cJSON *localfiles = cJSON_CreateArray();
     _getLocalfilesListJSON(logff, localfiles);
 
-    unsigned int i = 0;
-    while (globs[i].gfiles) {
-        _getLocalfilesListJSON(globs[i].gfiles, localfiles);
-        i++;
+    if (globs) {
+        unsigned int i = 0;
+        while (globs[i].gfiles) {
+            _getLocalfilesListJSON(globs[i].gfiles, localfiles);
+            i++;
+        }
     }
+
     if (cJSON_GetArraySize(localfiles) > 0) {
         cJSON_AddItemToObject(root,"localfile",localfiles);
+    } else {
+        cJSON_free(localfiles);
     }
 
     return root;
@@ -187,6 +192,8 @@ cJSON *getSocketConfig(void) {
 
     if (cJSON_GetArraySize(targets) > 0) {
         cJSON_AddItemToObject(root,"target",targets);
+    } else {
+        cJSON_free(targets);
     }
 
     return root;
