@@ -2327,6 +2327,12 @@ components:
       description: Filters by interface name.
       schema:
         type: string
+    package_version:
+      in: query
+      name: package_version
+      description: Filters by version name.
+      schema:
+        type: string
 
 tags:
   - name: active-response
@@ -2336,13 +2342,13 @@ tags:
   - name: cache
     description: 'API cache management'
   - name: ciscat
-    description: ''
+    description: 'Retrieve information from CIS-CAT scans'
   - name: cluster
     description: 'Wazuh cluster and nodes management'
   - name: sca
     description: 'Policy monitoring'
   - name: decoders
-    description: ''
+    description: 'Wazuh decoders management'
   - name: experimental
     description: ''
   - name: lists
@@ -7823,8 +7829,8 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get network protocol info of all agents'
-      description: "Returns the agent's network protocol info. This information include os information, architecture information among others of all agents."
+      summary: 'Get OS info of all agents'
+      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
       operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7841,7 +7847,7 @@ paths:
         - $ref: '#/components/parameters/release'
       responses:
         '200':
-          description: "Return a list of agent's network protocol results"
+          description: "Return a list of agent's OS results"
           content:
             application/json:
               schema:
@@ -7915,6 +7921,7 @@ paths:
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/architecture'
         - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/package_version'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -8206,7 +8213,7 @@ paths:
         - syscollector
       summary: 'Get network address info of an agent'
       description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
-      operationId: api.controllers.experimental_controller.get_network_address_info_of_an_agents
+      operationId: api.controllers.experimental_controller.get_network_address_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8262,7 +8269,7 @@ paths:
         - syscollector
       summary: 'Get network interface info of an agents'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
-      operationId: api.controllers.experimental_controller.get_network_interface_info_of_an_agents
+      operationId: api.controllers.experimental_controller.get_network_interface_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8352,7 +8359,7 @@ paths:
         - syscollector
       summary: 'Get network protocol info of an agents'
       description: "Returns the agent's network protocol info. This information include interface, type protocol information among others"
-      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_an_agents
+      operationId: api.controllers.experimental_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8520,7 +8527,7 @@ paths:
         - syscollector
       summary: 'Get ports info of an agents'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
-      operationId: api.controllers.experimental_controller.get_ports_info_of_an_agents
+      operationId: api.controllers.experimental_controller.get_ports_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
