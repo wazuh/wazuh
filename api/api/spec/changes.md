@@ -56,3 +56,10 @@
 * Parameter **pid** renamed to **process_pid**
 * Parameter **status** renamed to **process_status**
 * Parameter **name** renamed to **process_name**
+
+## Syscollectior
+### /syscollector/:agent_id/netaddr
+* Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netiface
+* Added **agent_id** parameter.

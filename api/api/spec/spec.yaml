@@ -7698,8 +7698,8 @@ paths:
         - $ref: '#/components/parameters/rx_bytes'
         - $ref: '#/components/parameters/tx_errors'
         - $ref: '#/components/parameters/rx_errors'
-        - $ref: '#/components/parameters/type'
-        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/tx_dropped'
+        - $ref: '#/components/parameters/rx_dropped'
       responses:
         '200':
           description: "Return a list of agent's network interfaces results"
@@ -8253,6 +8253,96 @@ paths:
                     iface: "enp0s8"
                     netmask: "ffff:ffff:ffff:ffff::"
                     scan_id: 1478544824
+  
+  /syscollector/{agent_id}/netiface:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get network interface info of an agents'
+      description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
+      operationId: api.controllers.experimental_controller.get_network_interface_info_of_an_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/adapter'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/state'
+        - $ref: '#/components/parameters/mtu'
+        - $ref: '#/components/parameters/tx_packets'
+        - $ref: '#/components/parameters/rx_packets'
+        - $ref: '#/components/parameters/tx_bytes'
+        - $ref: '#/components/parameters/rx_bytes'
+        - $ref: '#/components/parameters/tx_errors'
+        - $ref: '#/components/parameters/rx_errors'
+        - $ref: '#/components/parameters/tx_dropped'
+        - $ref: '#/components/parameters/rx_dropped'
+      responses:
+        '200':
+          description: "Return a list of agent's network interfaces results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorInterface'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                  - rx:
+                      bytes: 151695946
+                      dropped: 0
+                      errors: 0
+                      packets: 111792
+                    scan:
+                      id: 1478544824
+                      time: "2019/03/08 08:30:53"
+                    tx:
+                      bytes: 2408059
+                      dropped: 0
+                      errors: 0
+                      packets: 35104
+                    name: "enp0s3"
+                    state: "up"
+                    type: "ethernet"
+                    mtu: 1500
+                    mac: "02:f9:71:d7:9d:11"
+                  - rx:
+                      bytes: 0
+                      dropped: 0
+                      errors: 0
+                      packets: 0
+                    scan:
+                      id: 1478544824
+                      time: "2019/03/08 08:30:53"
+                    tx:
+                      bytes: 5312
+                      dropped: 0
+                      errors: 0
+                      packets: 24
+                    name: "enp0s8"
+                    state: "up"
+                    type: "ethernet"
+                    mtu: 1500
+                    mac: "08:00:27:78:05:d4"
 
   /security/user/authenticate:
     get:
