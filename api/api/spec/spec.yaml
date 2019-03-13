@@ -939,27 +939,39 @@ components:
       properties:
         file:
           type: string
+          description: Analyzed file path.
         policy_id:
           type: string
+          description: Scanned policy ID.
         id:
           type: integer
+          description: Policy check ID. A policy contains multiple checks.
         title:
           type: string
+          description: A brief description of what is being checked.
         description:
           type: string
+          description: A description of what is being checked.
         rationale:
           type: string
+          description: Explains why this check is necessary.
         remediation:
           type: string
+          description: Explains how to fix the check, this field is very useful in case the check failed.
         process:
           type: string
+          description: Checks whether a process is running or not.
         directory:
           type: string
+          description: Analyzed directories.
         registry:
           type: string
+          description: Analyzed registry.
         references:
+          description: A link to a documentation page about the check.
           type: string
         result:
+          description: Check result.
           type: string
           enum:
             - "passed"
@@ -970,24 +982,33 @@ components:
       properties:
         policy_id:
           type: string
+          description: Policy ID. This value must be used in `GET/sca/{agent_id}/checks/{policy_id}` API call.
         name:
           type: string
+          description: Policy name.
         description:
           type: string
+          description: Brief description of what the policy is checking.
         references:
           type: string
+          description: A link to a documentation page about the policy.
         pass:
           type: integer
+          description: Number of passed checks.
         fail:
           type: integer
+          description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
         score:
           type: integer
+          description: Percentage of passed checks.
         end_scan:
           type: string
           format: date-time
+          description: When the last scan finished.
         start_scan:
           type: string
           format: date-time
+          description: When the last scan started.
 
     # Syscheck models
     SyscheckDatabase:
@@ -6617,21 +6638,35 @@ paths:
                 data:
                   totalItems: 2
                   items:
-                  - result: "passed"
-                    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
-                    directory:  "/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www"
-                    id: 1008
-                    policy_id: "system_audit"
+                  - remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+                    rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
+                    title: "Ensure separate partition exists for /var"
+                    policy_id: cis_debian
+                    file: /etc/fstab
+                    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
+                    id: 5003
+                    result: failed
+                    references: "https://tldp.org/HOWTO/LVM-HOWTO/"
                     compliance:
-                    - key: "pci_dss"
-                      value: "6.5, 6.6, 11.4"
-                  - file: "/etc/php.ini"
-                    result: "passed"
-                    title: "PHP - Displaying of errors is enabled"
-                    id: 1003
-                    policy_id: "system_audit"
+                    - key: cis
+                      value: "1.1.6"
+                    - key: cis_csc
+                      value: "5"
+                  - remediation: "Run the following commands to remove exim: # apt-get remove exim4; # apt-get purge exim4"
+                    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
+                    title: "Ensure IMAP and POP3 server is not enabled (POP3)"
+                    policy_id: cis_debian
+                    file: /etc/inetd.conf
+                    description: exim is an open source IMAP and POP3 server for Linux based systems.
+                    id: 5022
+                    result: passed
                     compliance:
-                    -
+                    - key: cis
+                      value: "2.2.11"
+                    - key: cis_csc
+                      value: "9"
+                    - key: pci_dss
+                      value: "2.2.2"
 
   /syscheck:
     put:
