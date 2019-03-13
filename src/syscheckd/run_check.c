@@ -362,9 +362,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
 #ifndef WIN32
         if(evt && evt->inode) {
-            if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
-                os_free(w_inode);
-            }
+            w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode);
         }
         else {
             if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
@@ -372,14 +370,14 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                 char *checksum_inode;
 
                 os_strdup(s_node->checksum, checksum_inode);
-                if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0'){
+                if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0') {
                     OSHashNode *s_inode;
                     unsigned int *i;
                     os_calloc(1, sizeof(unsigned int), i);
 
                     for (s_inode = OSHash_Begin(syscheck.inode_hash, i); s_inode; s_inode = OSHash_Next(syscheck.inode_hash, i, s_inode)) {
                         if(s_inode && s_inode->data){
-                            if(!strcmp(s_inode->data, file_name)){
+                            if(!strcmp(s_inode->data, file_name)) {
                                 inode_str = s_inode->key;
                                 break;
                             }
@@ -401,6 +399,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             free(s_node->checksum);
             free(s_node);
         }
+
+        os_free(w_inode);
 
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);
