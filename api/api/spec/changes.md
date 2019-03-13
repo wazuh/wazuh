@@ -51,3 +51,8 @@
 
 ### /experimental/syscollector/netiface
 * Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.
+
+### /experimental/syscollector/processes
+* Parameter **pid** renamed to **process_pid**
+* Parameter **status** renamed to **process_status**
+* Parameter **name** renamed to **process_name**

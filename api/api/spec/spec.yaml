@@ -1295,6 +1295,80 @@ components:
           type: string
           minLength: 3
           
+    SyscollectorProcess:
+      type: object
+      properties:
+        scan:
+          type: object
+          properties:
+            id:
+              type: integer
+            time:
+              type: string
+              format: date-time
+        fgroup:
+          type: string
+        state:
+          type: string
+        priority:
+          type: integer
+        suser:
+          type: string
+        ppid:
+          type: integer
+          minimum: 0
+        vm_size:
+          type: integer
+          minimum: 0
+        session:
+          type: integer
+        pid:
+          type: string
+        nlwp:
+          type: integer
+        name:
+          type: string
+        euser:
+          type: string
+          
+        sgroup:
+          type: string
+        size:
+          type: integer
+          minimum: 0
+        stime:
+          type: integer
+          minimum: 0
+        nice:
+          type: integer
+          minimum: 0
+        share:
+          type: integer
+          minimum: 0
+        processor:
+          type: integer
+        ruser:
+          type: string
+        egroup:
+          type: string
+        rgroup:
+          type: string
+        pgrp:
+          type: integer
+        resident:
+          type: integer
+        utime:
+          type: integer
+        tgid:
+          type: integer
+        start_time:
+          type: integer
+        tty:
+          type: integer
+        agent_id:
+          type: string
+          minLength: 3
+          
   securitySchemes:
     basicAuth:
       type: http
@@ -2161,6 +2235,90 @@ components:
       description: Filters by tx_queue.
       schema:
         type: integer
+    process_pid:
+      in: query
+      name: process_pid
+      description: Filters by process pid.
+      schema:
+        type: integer
+    process_state:
+      in: query
+      name: process_status
+      description: Filters by process state.
+      schema:
+        type: string
+    ppid:
+      in: query
+      name: ppid
+      description: Filters by process parent pid.
+      schema:
+        type: integer
+    egroup:
+      in: query
+      name: egroup
+      description: Filters by process egroup.
+      schema:
+        type: string
+    euser:
+      in: query
+      name: euser
+      description: Filters by process euser.
+      schema:
+        type: string
+    fgroup:
+      in: query
+      name: fgroup
+      description: Filters by process fgroup.
+      schema:
+        type: string
+    process_name:
+      in: query
+      name: process_name
+      description: Filters by process name.
+      schema:
+        type: string
+    nlwp:
+      in: query
+      name: nlwp
+      description: Filters by process nlwp.
+      schema:
+        type: integer
+    pgrp:
+      in: query
+      name: pgrp
+      description: Filters by process pgrp.
+      schema:
+        type: integer
+    priority:
+      in: query
+      name: priority
+      description: Filters by process priority.
+      schema:
+        type: integer
+    rgroup:
+      in: query
+      name: rgroup
+      description: Filters by process rgroup.
+      schema:
+        type: string
+    ruser:
+      in: query
+      name: ruser
+      description: Filters by process ruser.
+      schema:
+        type: string
+    sgroup:
+      in: query
+      name: sgroup
+      description: Filters by process sgroup.
+      schema:
+        type: string
+    suser:
+      in: query
+      name: suser
+      description: Filters by process suser.
+      schema:
+        type: string
         
 tags:
   - name: active-response
@@ -7878,6 +8036,120 @@ paths:
                     rx_queue: 0
                     inode: 258878
                     protocol: "tcp6"
+                    agent_id: "000"
+
+  /experimental/syscollector/processes:
+    get:
+      tags:
+        - experimental
+      summary: 'Get packages info of all agents'
+      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
+      operationId: api.controllers.experimental_controller.get_processes_info_of_all_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/process_pid'
+        - $ref: '#/components/parameters/process_state'
+        - $ref: '#/components/parameters/ppid'
+        - $ref: '#/components/parameters/egroup'
+        - $ref: '#/components/parameters/euser'
+        - $ref: '#/components/parameters/fgroup'
+        - $ref: '#/components/parameters/process_name'
+        - $ref: '#/components/parameters/nlwp'
+        - $ref: '#/components/parameters/pgrp'
+        - $ref: '#/components/parameters/priority'
+        - $ref: '#/components/parameters/rgroup'
+        - $ref: '#/components/parameters/ruser'
+        - $ref: '#/components/parameters/sgroup'
+        - $ref: '#/components/parameters/suser'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProcess'
+              example:
+                error: 0
+                data:
+                  totalItems: 420
+                  items:
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 20
+                    suser: "root"
+                    ppid: 0
+                    vm_size: 0
+                    session: 0
+                    pid: "2"
+                    nlwp: 1
+                    name: "kthreadd"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: 0
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 2
+                    start_time: 8
+                    tty: 0
+                    agent_id: "000"
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 25
+                    suser: "root"
+                    ppid: 2
+                    vm_size: 0
+                    session: 0
+                    pid: "28"
+                    nlwp: 1
+                    name: "ksmd"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: 5
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 28
+                    start_time: 22
+                    tty: 0
                     agent_id: "000"
 
   /security/user/authenticate:
