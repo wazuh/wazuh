@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     /* Set the name */
     OS_SetName(ARGV0);
 
-    while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:a:I:i"
+    while ((c = getopt(argc, argv, "VdhtG:m:p:A:cv:x:k:D:P:aI:i"
 #ifndef WIN32
     "g:D:"
 #endif
