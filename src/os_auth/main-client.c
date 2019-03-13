@@ -51,7 +51,7 @@ static void help_agent_auth()
     print_out("    -m <addr>   Manager IP address");
     print_out("    -p <port>   Manager port (default: %d)", DEFAULT_PORT);
     print_out("    -A <name>   Agent name (default: hostname)");
-    print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
+    print_out("    -c <cipher> SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify the server");
     print_out("    -x <path>   Full path to agent certificate");
     print_out("    -k <path>   Full path to agent key");
