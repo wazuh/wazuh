@@ -98,6 +98,8 @@ class LocalClient(client.AbstractClientManager):
         elif result.startswith('WazuhException'):
             _, code, message = result.split(' ', 2)
             raise exception.WazuhException(int(code), message)
+        elif result == 'There are no connected worker nodes':
+            request_result = '{}'
         else:
             if self.command == b'dapi' or self.command == b'dapi_forward' or self.command == b'send_file' or \
                     result == 'Sent request to master node':

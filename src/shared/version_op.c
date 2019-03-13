@@ -54,6 +54,8 @@ os_info *get_win_version()
     if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+            free(info);
+            free(subkey);
             return (NULL);
         }
     }

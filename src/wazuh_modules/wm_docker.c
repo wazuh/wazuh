@@ -36,7 +36,7 @@ const wm_context WM_DOCKER_CONTEXT = {
 void* wm_docker_main(wm_docker_t *docker_conf) {
 
     int status = 0;
-    char * command = NULL;
+    char * command = WM_DOCKER_SCRIPT_PATH;
     char * output = NULL;
     int attempts = 0;
 
@@ -58,8 +58,6 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         // Running the docker listener script
 
-        command = strdup(WM_DOCKER_SCRIPT_PATH);
-
         mtdebug1(WM_DOCKER_LOGTAG, "Launching command '%s'.", command);
 
         switch (wm_exec(command, &output, &status, 0, NULL)) {
@@ -76,17 +74,19 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
                 break;
             default:
                 mterror(WM_DOCKER_LOGTAG, "Internal calling. Exiting...");
+                free(output);
                 pthread_exit(NULL);
         }
 
+        os_free(output);
+
         if (attempts > docker_conf->attempts) {
-            mtinfo(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
+            mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
             pthread_exit(NULL);
         }
 
-        mtinfo(WM_DOCKER_LOGTAG, "Docker-listener finished unexpected. Retrying to run it in %u seconds...", docker_conf->interval);
+        mtwarn(WM_DOCKER_LOGTAG, "Docker-listener finished unexpectedly (code %d). Retrying to run it in %u seconds...", status, docker_conf->interval);
         sleep(docker_conf->interval);
-
     }
 
     return NULL;

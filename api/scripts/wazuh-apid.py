@@ -52,11 +52,16 @@ if __name__ == '__main__':
     ####################################################################################################################
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
     parser.add_argument('-V', help="Print version", action='store_true', dest="version")
+    parser.add_argument('-t', help="Test configuration", action='store_true', dest='test_config')
+    parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
+                        default=common.ossec_conf)
     args = parser.parse_args()
 
     my_wazuh = Wazuh(get_init=True)
 
     configuration = configuration.read_config()
+    if args.test_config:
+        sys.exit(0)
 
     if args.version:
         print_version()

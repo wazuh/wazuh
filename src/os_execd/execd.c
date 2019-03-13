@@ -13,6 +13,7 @@
 #include "os_regex/os_regex.h"
 #include "os_net/os_net.h"
 #include "wazuh_modules/wmodules.h"
+#include "../external/cJSON/cJSON.h"
 #include "execd.h"
 
 int repeated_offenders_timeout[] = {0, 0, 0, 0, 0, 0, 0};
@@ -24,6 +25,7 @@ time_t pending_upg = 0;
 static void help_execd(void) __attribute__((noreturn));
 static void execd_shutdown(int sig) __attribute__((noreturn));
 static void ExecdStart(int q) __attribute__((noreturn));
+static int CheckManagerConfiguration(char ** output);
 
 /* Global variables */
 static OSList *timeout_list;
@@ -79,6 +81,7 @@ int main(int argc, char **argv)
     gid_t gid;
     int m_queue = 0;
     int debug_level = 0;
+    pthread_t wcom_thread;
 
     const char *group = GROUPGLOBAL;
     const char *cfg = DEFAULTCPATH;
@@ -176,14 +179,17 @@ int main(int argc, char **argv)
 #endif
 
     // Start com request thread
-    w_create_thread(wcom_main, NULL);
+    if (CreateThreadJoinable(&wcom_thread, wcom_main, NULL) < 0) {
+        exit(EXIT_FAILURE);
+    }
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
 
-    /* If AR is disabled, close this thread */
+    /* If AR is disabled, do not continue */
     if (c == 1) {
-        pthread_exit(NULL);
+        pthread_join(wcom_thread, NULL);
+        exit(EXIT_SUCCESS);
     }
 
     /* Start exec queue */
@@ -370,26 +376,29 @@ static void ExecdStart(int q)
             tmp_msg++;
         }
 
-        if(!strcmp(name,"check-manager-configuration")) {
+        if(!strcmp(name, "check-manager-configuration")) {
             char *output = NULL;
-            int result_code;
-            int timeout = 600;
-            char command_in[PATH_MAX] = {0};
-            snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, "bin/ossec-logtest","-t");
+            cJSON *result_obj = cJSON_CreateObject();
 
-            if (wm_exec(command_in, &output, &result_code, timeout, NULL) < 0) {
-                if (result_code == 0x7F) {
-                    mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
-                } else {
-                    mwarn("Error executing [%s]", command_in);
-                }
+            if(CheckManagerConfiguration(&output)) {
+                char error_msg[OS_SIZE_4096 - 27] = {0};
+                snprintf(error_msg, OS_SIZE_4096 - 27, "%s", output);
 
+                cJSON_AddNumberToObject(result_obj, "error", 1);
+                cJSON_AddStringToObject(result_obj, "message", error_msg);
                 os_free(output);
-                continue;
+                output = cJSON_PrintUnformatted(result_obj);
+            } else {
+                cJSON_AddNumberToObject(result_obj, "error", 0);
+                cJSON_AddStringToObject(result_obj, "message", "ok");
+                os_free(output);
+                output = cJSON_PrintUnformatted(result_obj);
             }
 
-            int rc;
+            cJSON_Delete(result_obj);
+            mdebug1("Sending configuration check: %s", output);
 
+            int rc;
             /* Start api socket */
             int api_sock;
             if ((api_sock = StartMQ(EXECQUEUEPATHAPI, WRITE)) < 0) {
@@ -637,6 +646,63 @@ static void ExecdStart(int q)
             i--;
         }
     }
+}
+
+static int CheckManagerConfiguration(char ** output) {
+    int ret_val;
+    int result_code;
+    int timeout = 2000;
+    char command_in[PATH_MAX] = {0};
+    char *output_msg = NULL;
+    char *daemons[] = { "bin/ossec-authd", "bin/ossec-remoted", "bin/ossec-execd", "bin/ossec-analysisd", "bin/ossec-logcollector", "bin/ossec-integratord",  "bin/ossec-syscheckd", "bin/ossec-maild", "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/ossec-agentlessd", "bin/ossec-integratord", "bin/ossec-dbd", "bin/ossec-csyslogd", NULL };
+    int i;
+    ret_val = 0;
+
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
+    for (i = 0; daemons[i]; i++) {
+        output_msg = NULL;
+        snprintf(command_in, PATH_MAX, "%s/%s %s", DEFAULTDIR, daemons[i], "-t");
+
+        if (wm_exec(command_in, &output_msg, &result_code, timeout, NULL) < 0) {
+            if (result_code == 0x7F) {
+                mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+            } else {
+                mwarn("Error executing [%s]", command_in);
+            }
+
+            os_free(output_msg);
+            goto error;
+        }
+
+        if (output_msg && *output_msg) {
+            // Remove last newline
+            size_t lastchar = strlen(output_msg) - 1;
+            output_msg[lastchar] = output_msg[lastchar] == '\n' ? '\0' : output_msg[lastchar];
+
+            wm_strcat(output, output_msg, ' ');
+        }
+
+        os_free(output_msg);
+
+        if(result_code) {
+            ret_val = result_code;
+            break;
+        }
+    }
+
+    gettimeofday(&end, NULL);
+
+    double elapsed = (end.tv_usec - start.tv_usec) / 1000.0;
+    mdebug1("Elapsed configuration check time: %0.3f milliseconds", elapsed);
+
+    return ret_val;
+
+error:
+
+    ret_val = 1;
+    return ret_val;
 }
 
 #endif /* !WIN32 */
