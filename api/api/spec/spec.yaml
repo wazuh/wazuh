@@ -8042,8 +8042,8 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get packages info of all agents'
-      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
+      summary: 'Get processes info of all agents'
+      description: "Returns the agent's processes info."
       operationId: api.controllers.experimental_controller.get_processes_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8069,7 +8069,7 @@ paths:
         - $ref: '#/components/parameters/suser'
       responses:
         '200':
-          description: "Return a list of agent's packages results"
+          description: "Return a list of agent's processes results"
           content:
             application/json:
               schema:
