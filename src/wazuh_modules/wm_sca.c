@@ -1987,10 +1987,13 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
         {
             if(compliance->child->valuestring){
                 cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
+            } else if(compliance->child->valuedouble) {
+                char double_value[128] = {0};
+                snprintf(double_value,128,"%g",compliance->child->valuedouble);
+
+                cJSON_AddStringToObject(add_compliances,compliance->child->string,double_value);
             } else if(compliance->child->valueint) {
                 cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
-            } else if(compliance->child->valuedouble) {
-                cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valuedouble);
             }
         }
 
