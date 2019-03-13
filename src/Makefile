@@ -1581,7 +1581,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc clean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
-	-cd ${EXTERNAL_LIBYAML} && ${MAKE} clean
+	-cd ${EXTERNAL_LIBYAML} && ${MAKE} distclean
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
