@@ -1726,7 +1726,7 @@ paths:
         - active-response
       summary: 'Run an AR command in the agent'
       description: 'Runs an Active Response command on a specified agent'
-      operationId: api.controllers.active_response_controller.active_response
+      operationId: api.controllers.active_response_controller.run_command
       parameters:
         - $ref: '#/components/parameters/agent_id'
 
