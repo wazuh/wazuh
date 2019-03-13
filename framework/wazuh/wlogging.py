@@ -86,7 +86,7 @@ class WazuhLogger:
         logger.propagate = False
         # configure logger
         fh = CustomFileRotatingHandler(filename=self.log_path, when='midnight')
-        formatter = logging.Formatter(self.tag, style='{')
+        formatter = logging.Formatter(self.tag, style='{', datefmt="%Y/%m/%d %H:%M:%S")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
 

@@ -5,7 +5,7 @@ import itertools
 from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException
 from wazuh.agent import Agent
-from wazuh.manager import status
+from wazuh.manager import status, restart
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
@@ -46,6 +46,9 @@ def check_cluster_config(config):
         raise WazuhException(3004, 'Invalid node type {0}. Correct values are master and worker'.format(
             config['node_type']))
 
+    elif not 1024 < config['port'] < 65535:
+        raise WazuhException(3004, "Port must be higher than 1024 and lower than 65535.")
+
     if len(config['nodes']) > 1:
         logger.warning(
             "Found more than one node in configuration. Only master node should be specified. Using {} as master.".
@@ -55,9 +58,6 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhException(3004, "Invalid elements in node fields: {0}.".format(', '.join(invalid_elements)))
-
-    if not isinstance(config['port'], int):
-        raise WazuhException(3004, "Cluster port must be an integer.")
 
 
 def get_cluster_items():
@@ -83,7 +83,7 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
-def read_config():
+def read_config(config_file=common.ossec_conf):
     cluster_default_configuration = {
         'disabled': False,
         'node_type': 'master',
@@ -97,7 +97,7 @@ def read_config():
     }
 
     try:
-        config_cluster = get_ossec_conf('cluster')
+        config_cluster = get_ossec_conf(section='cluster', conf_file=config_file)
     except WazuhException as e:
         if e.code == 1106:
             # if no cluster configuration is present in ossec.conf, return default configuration but disabling it.
@@ -112,12 +112,15 @@ def read_config():
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
+    if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
+        raise WazuhException(3004, "Cluster port must be an integer.")
+
     config_cluster['port'] = int(config_cluster['port'])
     if config_cluster['disabled'] == 'no':
         config_cluster['disabled'] = False
     elif config_cluster['disabled'] == 'yes':
         config_cluster['disabled'] = True
-    else:
+    elif not isinstance(config_cluster['disabled'], bool):
         raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
             config_cluster['disabled']))
 
@@ -361,6 +364,16 @@ def clean_up(node_name=""):
         logger.debug("[Cluster] Removed '{}'.".format(rm_path))
     except Exception as e:
         logger.error("[Cluster] Error cleaning up: {0}.".format(str(e)))
+
+
+def restart_all_nodes():
+    """
+    Restart all cluster nodes.
+
+    :return: Confirmation message.
+    """
+    restart()
+    return "Restarting cluster"
 
 
 #

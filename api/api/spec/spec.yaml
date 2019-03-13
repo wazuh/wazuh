@@ -126,18 +126,18 @@ components:
     AgentGroup:
       type: object
       properties:
-        items:
-          type: array
-          items:
-            properties:
-              count:
-                type: integer
-              name:
-                type: string
-              mergedSum:
-                type: string
-              configSum:
-                type: string
+        count:
+          type: integer
+        name:
+          type: string
+        mergedSum:
+          type: string
+          pattern: \w{32}
+          format: md5
+        configSum:
+          type: string
+          pattern: \w{32}
+          format: md5
 
     AgentGroupDeleted:
       type: object
@@ -184,13 +184,20 @@ components:
 <<<<<<< HEAD
 =======
       required:
+<<<<<<< HEAD
       - logformat
       - target
 >>>>>>> ceb089c8d5df43febdc61ef85b9190e3faab7092
+=======
+        - configuration
+>>>>>>> dev-flask-poc
       properties:
         configuration:
           type: array
           items:
+            required:
+              - logformat
+              - target
             properties:
               file:
                 type: string
@@ -2399,7 +2406,14 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroup'
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/AgentGroup'
               example:
                 error: 0
                 data:

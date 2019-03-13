@@ -49,7 +49,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     return {**default, **config}
 
 
-def read_config() -> Dict:
+def read_config(config_file=common.api_config_path) -> Dict:
     """
     Reads user API configuration and merges it with the default one
     :return: API configuration

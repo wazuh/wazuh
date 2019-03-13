@@ -9,7 +9,7 @@ from wazuh.decoder import Decoder
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
-import wazuh.configuration_assessment as configuration_assessment
+import wazuh.security_configuration_assessment as sca
 import wazuh.manager as manager
 import wazuh.rootcheck as rootcheck
 import wazuh.stats as stats
@@ -292,6 +292,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    'DELETE/manager/files': {
+        'function': manager.delete_file,
+        'type': 'local_any',
+        'is_async': False
+    },
     'PUT/manager/restart': {
         'function': manager.restart,
         'type': 'local_any',
@@ -390,7 +395,7 @@ functions = {
         'is_async': False
     },
     'PUT/cluster/restart': {
-        'function': manager.restart,
+        'function': cluster.restart_all_nodes,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -406,6 +411,11 @@ functions = {
     },
     'POST/cluster/:node_id/files': {
         'function': manager.upload_file,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    'DELETE/cluster/:node_id/files': {
+        'function': manager.delete_file,
         'type': 'distributed_master',
         'is_async': False
     },
@@ -442,14 +452,14 @@ functions = {
         'is_async': False
     },
 
-    # Configuration assessment
-    '/configuration-assessment/:agent_id': {
-        'function': configuration_assessment.get_ca_list,
+    # Security configuration assessment
+    '/sca/:agent_id': {
+        'function': sca.get_sca_list,
         'type': 'distributed_master',
         'is_async': False
     },
-    '/configuration-assessment/:agent_id/checks/:policy_id': {
-        'function': configuration_assessment.get_ca_checks,
+    '/sca/:agent_id/checks/:policy_id': {
+        'function': sca.get_sca_checks,
         'type': 'distributed_master',
         'is_async': False
     },

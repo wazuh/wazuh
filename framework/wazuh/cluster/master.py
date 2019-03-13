@@ -264,7 +264,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
         logger.info("Analyzing worker files: Received {} files to check.".format(len(files_checksums)))
         self.process_files_from_worker(files_checksums, decompressed_files_path, logger)
-        shutil.rmtree(decompressed_files_path)
 
     async def sync_extra_valid(self, task_name: str, received_file: asyncio.Event):
         extra_valid_logger = self.task_loggers['Extra valid']

@@ -16,7 +16,7 @@
 
 
 /* Start of a new thread. Only returns on unrecoverable errors. */
-void *CFGA_Forward(__attribute__((unused)) void *arg)
+void *SCFGA_Forward(__attribute__((unused)) void *arg)
 {
     int cfgarq = 0;
     char *agent_id;

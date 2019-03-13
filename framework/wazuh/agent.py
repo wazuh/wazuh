@@ -226,7 +226,7 @@ class Agent:
         self.group         = None
         self.manager       = None
         self.node_name     = None
-        self.registerIP    = None
+        self.registerIP    = ip
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -335,7 +335,7 @@ class Agent:
 
 
     def compute_key(self):
-        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
+        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.registerIP, self.internal_key)
         return b64encode(str_key.encode()).decode()
 
     def get_key(self):
@@ -344,7 +344,6 @@ class Agent:
 
         :return: Agent key.
         """
-
         self._load_info_from_DB()
         if self.id != "000":
             self.key = self.compute_key()
@@ -492,8 +491,8 @@ class Agent:
         if not backup:
             # Remove agent files
             agent_files = [
-                '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip),
+                '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP),
+                '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP),
                 '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
                 '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
                 '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
@@ -512,7 +511,7 @@ class Agent:
             # Create backup directory
             # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
             date_part = date.today().strftime('%Y/%b/%d')
-            main_agent_backup_dir = '{0}/agents/{1}/{2}-{3}-{4}'.format(common.backup_path, date_part, self.id, self.name, self.ip)
+            main_agent_backup_dir = '{0}/agents/{1}/{2}-{3}-{4}'.format(common.backup_path, date_part, self.id, self.name, self.registerIP)
             agent_backup_dir = main_agent_backup_dir
 
             not_agent_dir = True
@@ -528,8 +527,8 @@ class Agent:
 
             # Move agent file
             agent_files = [
-                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip), '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)),
+                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP), '{0}/agent-info'.format(agent_backup_dir)),
+                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP), '{0}/rootcheck'.format(agent_backup_dir)),
                 ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
                 ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
                 ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),

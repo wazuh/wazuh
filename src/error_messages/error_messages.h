@@ -19,7 +19,7 @@
 #define FOPEN_ERROR   "(1103): Could not open file '%s' due to [(%d)-(%s)]."
 #define SIZE_ERROR    "(1104): Maximum string size reached for: %s."
 #define NULL_ERROR    "(1105): Attempted to use null string. "
-#define FORMAT_ERROR  "(1106): String not correctly formated."
+#define FORMAT_ERROR  "(1106): String not correctly formatted."
 #define MKDIR_ERROR   "(1107): Could not create directory '%s' due to [(%d)-(%s)]."
 //#define PERM_ERROR    "%s(1108): ERROR: Permission error. Operation not completed."
 #define THREAD_ERROR  "(1109): Unable to create new pthread."
@@ -324,8 +324,10 @@
 #define VU_PARSED_FEED_ERROR        "(5491): The %s feed couldn't be parsed."
 #define VU_VER_EXTRACT_ERROR        "(5493): The version of '%s' could not be extracted."
 #define VU_GLOBALDB_ERROR           "(5496): Could not connect to global DB."
-#define VU_API_REQ_INV_NEW          "(5497): There was no valid response to '%s' after %d attempts. Trying the next page..."
-#define VU_UNC_SEVERITY             "(5498): Uncontrolled severity has been found: '%s'."
+#define VU_NULL_AGENT_ID            "(5497): The agent database returned a null agent ID. Skipping agent."
+#define VU_NULL_AGENT_IP            "(5498): The agent database returned a null registration IP address. Skipping agent %s."
+#define VU_API_REQ_INV_NEW          "(5499): There was no valid response to '%s' after %d attempts. Trying the next page..."
+#define VU_UNC_SEVERITY             "(5500): Uncontrolled severity has been found: '%s'."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
