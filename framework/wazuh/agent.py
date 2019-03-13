@@ -1852,7 +1852,14 @@ class Agent:
             else:
                 multigroup_name = 'default' if not group_list else group_list[0]
             Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
-            return "Group '{}' unset for agent '{}'.".format(group_id, agent_id)
+            # for show the return message properly it is necessary to get the original group list
+            original_group_list = group_name.split(',')
+            if len(original_group_list) > 1:
+                return f"Group '{group_id}' unset for agent '{agent_id}'."
+            elif 'default' in original_group_list:
+                return "Agent only belongs to 'default' and it cannot be unset from this group."
+            else:
+                return "Agent must belong to a group at least. Adding to default group."
         else:
             raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
 
