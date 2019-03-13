@@ -181,6 +181,12 @@ components:
 
     AgentConfiguration:
       type: object
+<<<<<<< HEAD
+=======
+      required:
+      - logformat
+      - target
+>>>>>>> ceb089c8d5df43febdc61ef85b9190e3faab7092
       properties:
         configuration:
           type: array
@@ -816,6 +822,48 @@ components:
             details:
               type: object
 
+    # Rules models
+    RulesFiles:
+      type: object
+      properties:
+        file:
+          type: string
+        path:
+          type: string
+        status:
+          type: string
+          enum:
+          - enabled
+          - disabled
+
+    Rules:
+      allOf:
+        - $ref: '#/components/schemas/RulesFiles'
+        - type: object
+          properties:
+            id:
+              type: integer
+            level:
+              type: integer
+              minimum: 0
+              maximum: 15
+            description:
+              type: string
+            groups:
+              type: array
+              items:
+                type: string
+            pci:
+              type: array
+              items:
+                type: string
+            gdpr:
+              type: array
+              items:
+                type: string
+            details:
+              type: object
+
     # SCA models
     SCAChecks:
       type: object
@@ -1376,6 +1424,51 @@ components:
         type: string
         format: \d(?>-\d)?  # 4 or 4-5
     rule_path:
+      in: query
+      name: path
+      description: Filters by rule path.
+      schema:
+        type: string
+    rulestatus:
+      in: query
+      name: status
+      description: Filters by rule status.
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
+    pci:
+      in: query
+      name: pci
+      description: Filters by PCI requirement name.
+      schema:
+        type: string
+    gdpr:
+      in: query
+      name: gdpr
+      description: Filters by GDPR requirement.
+      schema:
+        type: string
+    rule_id:
+      in: path
+      name: rule_id
+      description: Filters by rule ID.
+      required: true
+      schema:
+        type: integer
+    rootcheck_status:
+      in: query
+      name: status
+      description: Filter by scan status
+      schema:
+        type: string
+        enum:
+        - all
+        - outstanding
+        - solved
+    cis:
       in: query
       name: path
       description: Filters by rule path.
@@ -4536,6 +4629,86 @@ paths:
                     - "(1230): Invalid element in the configuration: 'hello'."
                     - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
+  /lists:
+    get:
+      tags:
+      - lists
+      summary: 'Get all CDB lists'
+      description: 'Returns the contents of all CDB lists. Optionally, the result can be filtered by several criteria. See available parameters for more details.'
+      operationId: api.controllers.lists_controller.get_lists
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/statusRLDParam'
+        - $ref: '#/components/parameters/pathFilter'
+      responses:
+        '200':
+          description: 'Successfully got CDB lists'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - $ref: '#/components/schemas/CDBList'
+                example:
+                  error: 0
+                  data:
+                    totalItems: 1
+                    items:
+                      -
+                        - key: audit-wazuh-w
+                          value: write
+                        - key: audit-wazuh-r
+                          value: read
+
+  /lists/files:
+    get:
+      tags:
+      - lists
+      summary: 'Get paths from all lists'
+      description: 'Returns the path from all lists. Use this method to know all the CDB lists and their location in the filesystem relative to Wazuh installation folder'
+      operationId: api.controllers.lists_controller.get_lists_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: 'Successfully got all CDB lists and the files where are defined'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            name:
+                              type: string
+                            path:
+                              type: string
+                example:
+                  error: 0
+                  data:
+                    totalItems: 2
+                    items:
+                      - name: security-eventchannel
+                        path: etc/lists
+                      - name: aws-sources
+                        path: etc/lists/amazon
+
   /manager/status:
     get:
       tags:
@@ -5342,6 +5515,325 @@ paths:
                   details:
                     - "(1230): Invalid element in the configuration: 'hello'."
                     - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
+  /rules:
+    get:
+      tags:
+      - rules
+      summary: Get information about all Wazuh rules.
+      description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
+      operationId: api.controllers.rules_controllers.get_rules
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/group'
+        - $ref: '#/components/parameters/level'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/rule_path'
+        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/pci'
+        - $ref: '#/components/parameters/gdpr'
+      responses:
+        '200':
+          description: "Rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Rules'
+              example:
+                error: 0
+                data:
+                  totalItems: 2
+                  items:
+                    - file: 0016-wazuh_rules.xml
+                      path: ruleset/rules
+                      id: 203
+                      level: 9
+                      description: Agent event queue is full. Events may be lost.
+                      status: enabled
+                      groups:
+                      - agent_flooding
+                      - wazuh
+                      pci:
+                      -
+                      gdpr:
+                      - IV_35.7.d
+                      details:
+                        if_sid: "201"
+                        level: "full"
+                    - file: 0015-ossec_rules.xml
+                      path: ruleset/rules
+                      id: 513
+                      level: 9
+                      description: Windows malware detected.
+                      status: enabled
+                      groups:
+                      - rootcheck
+                      - gpg13_4.2
+                      - ossec
+                      pci:
+                      -
+                      gdpr:
+                      - IV_35.7.d
+                      details:
+                        if_sid: "510"
+                        match: "^Windows Malware"
+
+  /rules/{rule_id}:
+    get:
+      tags:
+      - rules
+      summary: Filters rules by ID.
+      description: Filters results of /rules endpoint filtering by ID.
+      operationId: api.controllers.rules_controllers.get_rules_id
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/rule_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: "Rules"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/Rules'
+              example:
+                error: 0
+                data:
+                  totalItems: 1
+                  items:
+                    - file: 0225-mcafee_av_rules.xml
+                      path: ruleset/rules
+                      id: 7514
+                      level: 5
+                      description: McAfee Windows AV - EICAR test file detected.
+                      status: enabled
+                      groups:
+                      - mcafee
+                      pci:
+                      -
+                      gdpr:
+                      -
+                      details:
+                        if_sid: "7505"
+                        match: contains the EICAR test file
+                        options: alert_by_email
+
+  /rules/groups:
+    get:
+      tags:
+      - rules
+      summary: Get all rule groups names.
+      description: Returns a list containing all rule groups names.
+      operationId: api.controllers.rules_controllers.get_rules_groups
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'Rule groups names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - access_control
+                    - access_denied
+                    - accesslog
+                    - account_changed
+
+  /rules/pci:
+    get:
+      tags:
+      - rules
+      summary: Get all PCI requirements.
+      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controllers.get_rules_pci
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'PCI requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - "1.1.1"
+                    - "1.3.4"
+                    - "1.4"
+                    - "10.1"
+
+  /rules/gdpr:
+    get:
+      tags:
+      - rules
+      summary: Get all GDPR requirements.
+      description: Returns all PCI requirements names defined in the Wazuh ruleset.
+      operationId: api.controllers.rules_controllers.get_rules_gdpr
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: 'PCI requirements names'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                type: string
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - "II_5.1.f"
+                    - "IV_30.1.g"
+                    - "IV_32.2"
+                    - "IV_35.7.d"
+
+  /rules/files:
+    get:
+      tags:
+      - rules
+      summary: Get all files which defines rules.
+      description: Returns a list containing all files used to define rules and their status.
+      operationId: api.controllers.rules_controllers.get_rules_files
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/rule_path'
+        - $ref: '#/components/parameters/file'
+        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: 'SCA database elements'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/RulesFiles'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                    - file: 0010-rules_config.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0015-ossec_rules.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0016-wazuh_rules.xml
+                      path: ruleset/rules
+                      status: enabled
+                    - file: 0020-syslog_rules.xml
+                      path: ruleset/rules
+                      status: enabled
 
   /rules:
     get:
