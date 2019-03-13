@@ -44,6 +44,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
+static void PushDumpRequest(char * agent_id, char * policy_id);
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequestDBThread();
 static int ConnectToSecurityConfigurationAssessmentSocket();
@@ -859,7 +860,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
     result_db = FindCheckResults(lf,policy_id->valuestring,socket,wdb_response);
-    char request_db[OS_SIZE_4096 + 1] = {0};
 
     switch (result_db)
     {
@@ -873,11 +873,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash->valuestring);
                 mdebug2("Requesting DB dump");
-                snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s",lf->agent_id,policy_id->valuestring);
-                char *msg = NULL;
-
-                os_strdup(request_db,msg);
-                queue_push_ex(request_queue,msg);
+                PushDumpRequest(lf->agent_id,policy_id->valuestring);
             }
 
             break;
@@ -910,7 +906,6 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
         result_db = FindCheckResults(lf,policy_id->valuestring,socket,wdb_response);
-        char request_db[OS_SIZE_4096 + 1] = {0};
 
         if (!result_db)
         {   
@@ -928,11 +923,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
                     mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash_md5);
                     mdebug2("Requesting DB dump");
-                    snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s",lf->agent_id,policy_id->valuestring);
-                    char *msg = NULL;
-
-                    os_strdup(request_db,msg);
-                    queue_push_ex(request_queue,msg);
+                    PushDumpRequest(lf->agent_id,policy_id->valuestring);
                 }
             }
             os_free(hash_scan_info);
@@ -1361,6 +1352,16 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     if(file){
         fillData(lf, "sca.file", file->valuestring);
     }
+}
+
+static void PushDumpRequest(char * agent_id, char * policy_id) {
+    char request_db[OS_SIZE_4096 + 1] = {0};
+
+    snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s",agent_id,policy_id);
+    char *msg = NULL;
+
+    os_strdup(request_db,msg);
+    queue_push_ex(request_queue,msg);
 }
 
 int pm_send_db(char *msg, char *response, int *sock)
