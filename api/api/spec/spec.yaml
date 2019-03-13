@@ -1557,7 +1557,7 @@ components:
       schema:
         type: integer
         format: int32
-        default: 1
+        default: 500
         minimum: 1
     list_agents:
       in: query
@@ -1643,7 +1643,7 @@ components:
       in: path
       name: policy_id
       description: Filters by policy id.
-      required: True
+      required: true
       schema:
         type: string
     purge:
@@ -1797,7 +1797,7 @@ components:
       in: path
       name: node_id
       description: Cluster node name.
-      required: True
+      required: true
       schema:
         type: string
     section:
@@ -2350,7 +2350,7 @@ tags:
   - name: decoders
     description: 'Wazuh decoders management'
   - name: experimental
-    description: ''
+    description: 'Not ready for production endpoints. Use with caution'
   - name: lists
     description: 'CDB lists'
   - name: login
@@ -2364,7 +2364,7 @@ tags:
   - name: syscheck
     description: 'File integrity monitoring.'
   - name: syscollector
-    description: ''
+    description: 'Capability to collect interesting information for each agent'
 
 security:
     - jwt: []
