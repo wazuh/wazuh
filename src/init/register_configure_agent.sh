@@ -53,7 +53,7 @@ if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
         OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_CERTIFICATE}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
-        ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>&1
+        ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>/dev/null
         
     fi
 
