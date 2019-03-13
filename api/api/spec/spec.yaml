@@ -1230,7 +1230,7 @@ components:
       schema:
         type: integer
         format: int32
-        default: 1
+        default: 500
         minimum: 1
     list_agents:
       in: query
