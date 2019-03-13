@@ -178,7 +178,7 @@
                     </Component>
 
                     <Component Id="OSSEC_PRE6.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="ossec-pre6.conf" KeyPath="yes">
+                        <File Id="OSSEC_PRE6.CONF" Name="ossec.conf" Source="default-ossec-pre6.conf" KeyPath="yes">
                             <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
                         </File>
                         <Condition>VersionNT &lt; 600</Condition>

@@ -183,7 +183,7 @@ Section "Wazuh Agent (required)" MainSec
     File ossec-agent.exe
     File ossec-agent-eventchannel.exe
     File default-ossec.conf
-    File ossec-pre6.conf
+    File default-ossec-pre6.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File ossec-rootcheck.exe
@@ -297,9 +297,9 @@ Section "Wazuh Agent (required)" MainSec
         ClearErrors
         IfFileExists "$INSTDIR\ossec.conf" ConfPresentOSSEC
         ${If} ${AtLeastWinVista}
-        Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+            Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
         ${Else}
-        Rename "$INSTDIR\ossec-pre6.conf" "$INSTDIR\ossec.conf"
+            Rename "$INSTDIR\default-ossec-pre6.conf" "$INSTDIR\ossec.conf"
         ${EndIf}
         IfErrors ConfErrorOSSEC ConfPresentOSSEC
     ConfErrorOSSEC:
