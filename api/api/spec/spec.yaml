@@ -1045,7 +1045,7 @@ components:
           type: string
         status:
           type: string
-  
+
   # Syscollector models
     SyscollectorHardware:
       type: object
@@ -1158,7 +1158,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-  
+
     SyscollectorProtocol:
       type: object
       properties:
@@ -1176,7 +1176,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-    
+
     SyscollectorOS:
       type: object
       properties:
@@ -1193,7 +1193,7 @@ components:
               type: string
             platform:
               type: string
-            version: 
+            version:
               type: string
         scan:
           type: object
@@ -1216,7 +1216,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-    
+
     SyscollectorPackages:
       type: object
       properties:
@@ -1251,7 +1251,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-          
+
     SyscollectorPorts:
       type: object
       properties:
@@ -1294,7 +1294,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-          
+
     SyscollectorProcess:
       type: object
       properties:
@@ -1330,7 +1330,6 @@ components:
           type: string
         euser:
           type: string
-          
         sgroup:
           type: string
         size:
@@ -1341,13 +1340,16 @@ components:
           minimum: 0
         nice:
           type: integer
-          minimum: 0
+        argvs:
+          type: string
         share:
           type: integer
           minimum: 0
         processor:
           type: integer
         ruser:
+          type: string
+        cmd:
           type: string
         egroup:
           type: string
@@ -1368,7 +1370,7 @@ components:
         agent_id:
           type: string
           minLength: 3
-          
+
   securitySchemes:
     basicAuth:
       type: http
@@ -2325,7 +2327,7 @@ components:
       description: Filters by interface name.
       schema:
         type: string
-        
+
 tags:
   - name: active-response
     description: 'Agents Active Response'
@@ -7543,7 +7545,7 @@ paths:
                     pass: 104
                     notchecked: 36
                     unknown: 1
-  
+
   /experimental/syscollector/hardware:
     get:
       tags:
@@ -7615,7 +7617,7 @@ paths:
                       time: "2019/02/19 10:26:20"
                     board_serial: "0"
                     agent_id: "001"
-  
+
   /experimental/syscollector/netaddr:
     get:
       tags:
@@ -7762,7 +7764,7 @@ paths:
                     mtu: 1500
                     state: "up"
                     agent_id: "000"
-  
+
   /experimental/syscollector/netproto:
     get:
       tags:
@@ -7893,7 +7895,7 @@ paths:
                     sysname: "Linux"
                     hostname: "agent-1"
                     agent_id: "001"
-  
+
   /experimental/syscollector/packages:
     get:
       tags:
@@ -7965,7 +7967,7 @@ paths:
                     version: "0.6.45-1ubuntu1"
                     format: "deb"
                     agent_id: "000"
-  
+
   /experimental/syscollector/ports:
     get:
       tags:
@@ -8157,7 +8159,7 @@ paths:
                     start_time: 22
                     tty: 0
                     agent_id: "000"
-  
+
   /syscollector/{agent_id}/hardware:
     get:
       tags:
@@ -8197,7 +8199,7 @@ paths:
                     id: 599386135
                     time: "2019/03/08 08:30:53"
                   board_serial: "0"
-  
+
   /syscollector/{agent_id}/netaddr:
     get:
       tags:
@@ -8253,7 +8255,7 @@ paths:
                     iface: "enp0s8"
                     netmask: "ffff:ffff:ffff:ffff::"
                     scan_id: 1478544824
-  
+
   /syscollector/{agent_id}/netiface:
     get:
       tags:
@@ -8344,6 +8346,365 @@ paths:
                     mtu: 1500
                     mac: "08:00:27:78:05:d4"
 
+  /syscollector/{agent_id}/netproto:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get network protocol info of an agents'
+      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others"
+      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_an_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/iface'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/gateway'
+        - $ref: '#/components/parameters/dhcp'
+      responses:
+        '200':
+          description: "Return a list of agent's network protocol results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProtocol'
+              example:
+                error: 0
+                data:
+                  totalItems: 4
+                  items:
+                  - type: "ipv6"
+                    iface: "enp0s3"
+                    dhcp: "enabled"
+                    scan_id: 1478544824
+                  - type: "ipv6"
+                    iface: "enp0s8"
+                    dhcp: "enabled"
+                    scan_id: 1478544824
+
+  /syscollector/{agent_id}/os:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get OS info'
+      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
+      operationId: api.controllers.experimental_controller.get_os_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/select'
+      responses:
+        '200':
+          description: "Return a list of agent's OS results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SyscollectorOS'
+              example:
+                error: 0
+                data:
+                  os:
+                    codename: "Bionic Beaver"
+                    major: "18"
+                    minor: "04"
+                    name: "Ubuntu"
+                    platform: "ubuntu"
+                    version: "18.04.1 LTS (Bionic Beaver)"
+                  scan:
+                    id: 242764188
+                    time: "2019/03/08 08:30:53"
+                  architecture: "x86_64"
+                  release: "4.15.0-43-generic"
+                  version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
+                  sysname: "Linux"
+                  hostname: "master"
+
+  /syscollector/{agent_id}/packages:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get packages info'
+      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
+      operationId: api.controllers.experimental_controller.get_packages_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/vendor'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/architecture'
+        - $ref: '#/components/parameters/format'
+        - $ref: '#/components/parameters/package_version'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPackages'
+              example:
+                error: 0
+                data:
+                  totalItems: 535
+                  items:
+                  - scan:
+                      id: 520922172
+                      time: "2019/03/08 08:30:53"
+                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+                    name: "base-files"
+                    priority: "required"
+                    description: "Debian base system miscellaneous files"
+                    architecture: "amd64"
+                    format: "deb"
+                    size: 386
+                    version: "10.1ubuntu2.3"
+                    section: "admin"
+                    multiarch: "foreign"
+                  - scan:
+                      id: 520922172
+                      time: "2019/03/08 08:30:53"
+                    vendor: "Colin Watson <cjwatson@debian.org>"
+                    name: "base-passwd"
+                    priority: "required"
+                    description: "Debian base system master password and group files"
+                    architecture: "amd64"
+                    format: "deb"
+                    size: 228
+                    version: "3.5.44"
+                    section: "admin"
+                    multiarch: "foreign"
+
+  /syscollector/{agent_id}/ports:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get ports info of an agents'
+      description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
+      operationId: api.controllers.experimental_controller.get_ports_info_of_an_agents
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/pid'
+        - $ref: '#/components/parameters/protocol'
+        - $ref: '#/components/parameters/local_ip'
+        - $ref: '#/components/parameters/local_port'
+        - $ref: '#/components/parameters/remote_ip'
+        - $ref: '#/components/parameters/tx_queue'
+        - $ref: '#/components/parameters/state'
+      responses:
+        '200':
+          description: "Return a list of agent's packages results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorPorts'
+              example:
+                error: 0
+                data:
+                  totalItems: 6
+                  items:
+                  - local:
+                      ip: "0.0.0.0"
+                      port: 1515
+                    remote:
+                      ip: "0.0.0.0"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 255211
+                    protocol: "tcp"
+                  - local:
+                      ip: "0.0.0.0"
+                      port: 1516
+                    remote:
+                      ip: "0.0.0.0"
+                      port: 0
+                    scan:
+                      id: 2112182802
+                      time: "2019/03/08 08:30:59"
+                    state: "listening"
+                    tx_queue: 0
+                    rx_queue: 0
+                    inode: 256005
+                    protocol: "tcp"
+
+  /syscollector/{agent_id}/processes:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get processes info'
+      description: "Returns the agent's processes info."
+      operationId: api.controllers.experimental_controller.get_processes_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/process_pid'
+        - $ref: '#/components/parameters/process_state'
+        - $ref: '#/components/parameters/ppid'
+        - $ref: '#/components/parameters/egroup'
+        - $ref: '#/components/parameters/euser'
+        - $ref: '#/components/parameters/fgroup'
+        - $ref: '#/components/parameters/process_name'
+        - $ref: '#/components/parameters/nlwp'
+        - $ref: '#/components/parameters/pgrp'
+        - $ref: '#/components/parameters/priority'
+        - $ref: '#/components/parameters/rgroup'
+        - $ref: '#/components/parameters/ruser'
+        - $ref: '#/components/parameters/sgroup'
+        - $ref: '#/components/parameters/suser'
+      responses:
+        '200':
+          description: "Return a list of agent's processes results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      allOf:
+                        - $ref: '#/components/schemas/ListMetadata'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/SyscollectorProcess'
+              example:
+                error: 0
+                data:
+                  totalItems: 120
+                  items:
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "S"
+                    priority: 20
+                    suser: "root"
+                    ppid: 2196
+                    vm_size: 13312
+                    session: 2195
+                    pid: "2204"
+                    nlwp: 1
+                    name: "bash"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 3328
+                    stime: 0
+                    nice: 0
+                    argvs: "/tmp/vagrant-shell,172.17.0.100,master,node01"
+                    share: 595
+                    processor: 1
+                    ruser: "root"
+                    cmd: "bash"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 2195
+                    resident: 659
+                    utime: 0
+                    tgid: 2204
+                    start_time: 8
+                    tty: 0
+                  - scan:
+                      id: 225991434
+                      time: "2019/03/08 08:30:59"
+                    fgroup: "root"
+                    state: "I"
+                    priority: 0
+                    suser: "root"
+                    ppid: 2
+                    vm_size: 0
+                    session: 0
+                    pid: "121"
+                    nlwp: 1
+                    name: "charger_manager"
+                    euser: "root"
+                    sgroup: "root"
+                    size: 0
+                    stime: 0
+                    nice: -20
+                    share: 0
+                    processor: 1
+                    ruser: "root"
+                    egroup: "root"
+                    rgroup: "root"
+                    pgrp: 0
+                    resident: 0
+                    utime: 0
+                    tgid: 121
+                    start_time: 1009
+                    tty: 0
+
   /security/user/authenticate:
     get:
       tags:
@@ -8369,4 +8730,3 @@ paths:
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-
