@@ -37,3 +37,18 @@ def test_wrong_character_encodings_wdb(wdb_mock):
         mywdb = WazuhDBConnection()
         received = mywdb._send("test")
         assert received == {"bad": "bad"}
+
+
+@patch('wazuh.wdb.WazuhDBConnection')
+def test_null_values_are_removed(wdb_mock):
+    """
+    Tests '(null)' values are removed from the resulting dictionary
+    """
+    def recv_mock(size_to_receive):
+        nulls_string = b' {"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}'
+        return bytes(len(nulls_string)) if size_to_receive == 4 else nulls_string
+
+    with patch('socket.socket.recv', side_effect=recv_mock):
+        mywdb = WazuhDBConnection()
+        received = mywdb._send("test")
+        assert received == {"a": "a", "c": [1, 2, 3], "d": {}}
