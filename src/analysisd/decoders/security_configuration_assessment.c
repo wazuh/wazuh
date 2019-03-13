@@ -1455,6 +1455,9 @@ int pm_send_db(char *msg, char *response, int *sock)
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
     switch (length)
     {
+    case OS_SOCKTERR:
+        mwarn("OS_RecvSecureTCP(): Got a message with invalid length.");
+        break;
     case -1:
         merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
         goto end;
