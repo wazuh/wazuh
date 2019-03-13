@@ -235,14 +235,20 @@ components:
       description: Configuration the agent is currently using. The output of this API call depends on the component requested and the agent configuration.
 
     CDBList:
-      type: array
-      items:
-        type: object
-        properties:
-          key:
-            type: string
-          value:
-            type: string
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        path:
+          type: string
+          description: Filepath that contains the returned CDB definitions.
 
     GroupConfiguration:
       type: object
@@ -5032,17 +5038,32 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/ListMetadata'
-                        - $ref: '#/components/schemas/CDBList'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/CDBList'
                 example:
                   error: 0
                   data:
-                    totalItems: 1
+                    totalItems: 2
                     items:
-                      -
+                      - path: etc/lists/amazon/aws-eventnames
+                        items:
+                        - key: AttachLoadBalancers
+                          value: Autoscaling
+                        - key: TerminateInstanceInAutoScalingGroup
+                          value: Autoscaling
+                        - key: CreateStack
+                          value: Cloudformation
+                      - path: etc/lists/audit-keys
+                        items:
                         - key: audit-wazuh-w
                           value: write
-                        - key: audit-wazuh-r
-                          value: read
+                        - key: audit-wazuh-a
+                          value: attribute
+
 
   /lists/files:
     get:
@@ -5069,10 +5090,17 @@ paths:
                         - $ref: '#/components/schemas/ListMetadata'
                         - type: object
                           properties:
-                            name:
-                              type: string
-                            path:
-                              type: string
+                            items:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  name:
+                                    description: Name of the CDB list file.
+                                    type: string
+                                  path:
+                                    description: Path where the CDB list file is stored. This path is relative to the Wazuh installation path.
+                                    type: string
                 example:
                   error: 0
                   data:
