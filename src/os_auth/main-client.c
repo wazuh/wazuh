@@ -323,11 +323,11 @@ int main(int argc, char **argv)
             }
 
             fclose(fp);
-            printf("INFO: Using password specified on file: %s\n", AUTHDPASS_PATH);
+            minfo("Using password specified on file: %s", AUTHDPASS_PATH);
         }
     }
     if (!authpass) {
-        printf("INFO: No authentication password provided.\n");
+        minfo("No authentication password provided.");
     }
 
     /* Connect via TCP */
@@ -351,14 +351,14 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    printf("INFO: Connected to %s:%d\n", ipaddress, port);
+    minfo("Connected to %s:%d", ipaddress, port);
 
     /* Additional verification of the manager's certificate if a hostname
      * rather than an IP address is given on the command line. Could change
      * this to do the additional validation on IP addresses as well if needed.
      */
     if (ca_cert) {
-        printf("INFO: Verifying manager's certificate\n");
+        minfo("Verifying manager's certificate");
         if (check_x509_cert(ssl, manager) != VERIFY_TRUE) {
             merror("Unable to verify server certificate.");
             free(buf);
@@ -366,7 +366,7 @@ int main(int argc, char **argv)
         }
     }
 
-    printf("INFO: Using agent name as: %s\n", agentname);
+    minfo("Using agent name as: %s", agentname);
 
     if (authpass) {
         snprintf(buf, 2048, "OSSEC PASS: %s OSSEC A:'%s'", authpass, agentname);
@@ -408,13 +408,13 @@ int main(int argc, char **argv)
     strncat(buf,"\n",1);
     ret = SSL_write(ssl, buf, strlen(buf));
     if (ret < 0) {
-        printf("SSL write error (unable to send message.)\n");
+        merror("SSL write error (unable to send message.)");
         ERR_print_errors_fp(stderr);
         free(buf);
         exit(1);
     }
 
-    printf("INFO: Send request to manager. Waiting for reply.\n");
+    minfo("Send request to manager. Waiting for reply.");
 
     while (1) {
         ret = SSL_read(ssl, buf, OS_SIZE_65536 + OS_SIZE_4096);
@@ -427,18 +427,25 @@ int main(int argc, char **argv)
                     if (tmpstr) {
                         *tmpstr = '\0';
                     }
-                    printf("%s (from manager)\n", buf);
+                    if (strlen(buf) > 7 && !strncmp(buf, "ERROR: ", 7)) {
+                        char *tmpbuf;
+                        tmpbuf = strchr(buf, ' ');
+                        tmpbuf++;
+                        if (tmpbuf && tmpbuf[0] != '\0') {
+                            merror("%s (from manager)", tmpbuf);
+                        }
+                    }
                 } else if (strncmp(buf, "OSSEC K:'", 9) == 0) {
                     char *key;
                     char *tmpstr;
                     char **entry;
-                    printf("INFO: Received response with agent key\n");
+                    minfo("Received response with agent key");
 
                     key = buf;
                     key += 9;
                     tmpstr = strchr(key, '\'');
                     if (!tmpstr) {
-                        printf("ERROR: Invalid key received. Closing connection.\n");
+                        merror("Invalid key received. Closing connection.");
                         free(buf);
                         exit(1);
                     }
@@ -446,7 +453,7 @@ int main(int argc, char **argv)
                     entry = OS_StrBreak(' ', key, 4);
                     if (!OS_IsValidID(entry[0]) || !OS_IsValidName(entry[1]) ||
                             !OS_IsValidIP(entry[2], NULL) || !OS_IsValidName(entry[3])) {
-                        printf("ERROR: Invalid key received (2). Closing connection.\n");
+                        merror("Invalid key received (2). Closing connection.");
                         free(buf);
                         exit(1);
                     }
@@ -458,7 +465,7 @@ int main(int argc, char **argv)
                         fp = fopen(KEYSFILE_PATH, "w");
 
                         if (!fp) {
-                            printf("ERROR: Unable to open key file: %s", KEYSFILE_PATH);
+                            merror("Unable to open key file: %s", KEYSFILE_PATH);
                             free(buf);
                             exit(1);
                         }
@@ -466,20 +473,20 @@ int main(int argc, char **argv)
                         fclose(fp);
                     }
                     key_added = 1;
-                    printf("INFO: Valid key created. Finished.\n");
+                    minfo("Valid key created. Finished.");
                 }
                 break;
             case SSL_ERROR_ZERO_RETURN:
             case SSL_ERROR_SYSCALL:
                 if (key_added == 0) {
-                    printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
+                    merror("Unable to create key. Either wrong password or connection not accepted by the manager.");
                 }
-                printf("INFO: Connection closed.\n");
+                minfo("Connection closed.");
                 free(buf);
                 exit(!key_added);
                 break;
             default:
-                printf("ERROR: SSL read (unable to receive message)\n");
+                merror("SSL read (unable to receive message)");
                 free(buf);
                 exit(1);
                 break;
@@ -489,7 +496,7 @@ int main(int argc, char **argv)
 
     /* Shut down the socket */
     if (key_added == 0) {
-        printf("ERROR: Unable to create key. Either wrong password or connection not accepted by the manager.\n");
+        merror("Unable to create key. Either wrong password or connection not accepted by the manager.");
     }
     SSL_CTX_free(ctx);
     close(sock);
