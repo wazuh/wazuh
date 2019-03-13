@@ -20,7 +20,7 @@ def get_os_info():
 def get_packages_info():
     pass
 
-def get_packages_info():
+def get_ports_info():
     pass
 
 def get_processes_info():
