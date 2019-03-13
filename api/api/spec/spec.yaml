@@ -2325,12 +2325,6 @@ components:
       description: Filters by interface name.
       schema:
         type: string
-    package_version:
-      in: query
-      name: package_version
-      description: Filters by version name.
-      schema:
-        type: string
         
 tags:
   - name: active-response
@@ -7827,8 +7821,8 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get OS info of all agents'
-      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
+      summary: 'Get network protocol info of all agents'
+      description: "Returns the agent's network protocol info. This information include os information, architecture information among others of all agents."
       operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7845,7 +7839,7 @@ paths:
         - $ref: '#/components/parameters/release'
       responses:
         '200':
-          description: "Return a list of agent's OS results"
+          description: "Return a list of agent's network protocol results"
           content:
             application/json:
               schema:
@@ -7919,7 +7913,6 @@ paths:
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/architecture'
         - $ref: '#/components/parameters/format'
-        - $ref: '#/components/parameters/package_version'
       responses:
         '200':
           description: "Return a list of agent's packages results"
@@ -8350,174 +8343,6 @@ paths:
                     type: "ethernet"
                     mtu: 1500
                     mac: "08:00:27:78:05:d4"
-  
-  /syscollector/{agent_id}/netproto:
-    get:
-      tags:
-        - syscollector
-      summary: 'Get network protocol info of an agents'
-      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others"
-      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_an_agents
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/iface'
-        - $ref: '#/components/parameters/type'
-        - $ref: '#/components/parameters/gateway'
-        - $ref: '#/components/parameters/dhcp'
-      responses:
-        '200':
-          description: "Return a list of agent's network protocol results"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorProtocol'
-              example:
-                error: 0
-                data:
-                  totalItems: 4
-                  items:
-                  - type: "ipv6"
-                    iface: "enp0s3"
-                    dhcp: "enabled"
-                    scan_id: 1478544824
-                  - type: "ipv6"
-                    iface: "enp0s8"
-                    dhcp: "enabled"
-                    scan_id: 1478544824
-  
-  /syscollector/{agent_id}/os:
-    get:
-      tags:
-        - syscollector
-      summary: 'Get OS info'
-      description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_os_info
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/select'
-      responses:
-        '200':
-          description: "Return a list of agent's OS results"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/SyscollectorOS'
-              example:
-                error: 0
-                data:
-                  os:
-                    codename: "Bionic Beaver"
-                    major: "18"
-                    minor: "04"
-                    name: "Ubuntu"
-                    platform: "ubuntu"
-                    version: "18.04.1 LTS (Bionic Beaver)"
-                  scan:
-                    id: 242764188
-                    time: "2019/03/08 08:30:53"
-                  architecture: "x86_64"
-                  release: "4.15.0-43-generic"
-                  version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
-                  sysname: "Linux"
-                  hostname: "master"
-  
-  /syscollector/{agent_id}/packages:
-    get:
-      tags:
-        - syscollector
-      summary: 'Get packages info'
-      description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
-      operationId: api.controllers.experimental_controller.get_packages_info
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/vendor'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/architecture'
-        - $ref: '#/components/parameters/format'
-        - $ref: '#/components/parameters/package_version'
-      responses:
-        '200':
-          description: "Return a list of agent's packages results"
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/SyscollectorPackages'
-              example:
-                error: 0
-                data:
-                  totalItems: 535
-                  items:
-                  - scan:
-                      id: 520922172
-                      time: "2019/03/08 08:30:53"
-                    vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
-                    name: "base-files"
-                    priority: "required"
-                    description: "Debian base system miscellaneous files"
-                    architecture: "amd64"
-                    format: "deb"
-                    size: 386
-                    version: "10.1ubuntu2.3"
-                    section: "admin"
-                    multiarch: "foreign"
-                  - scan:
-                      id: 520922172
-                      time: "2019/03/08 08:30:53"
-                    vendor: "Colin Watson <cjwatson@debian.org>"
-                    name: "base-passwd"
-                    priority: "required"
-                    description: "Debian base system master password and group files"
-                    architecture: "amd64"
-                    format: "deb"
-                    size: 228
-                    version: "3.5.44"
-                    section: "admin"
-                    multiarch: "foreign"
 
   /security/user/authenticate:
     get:
