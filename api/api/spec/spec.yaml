@@ -40,6 +40,13 @@ components:
           format: int32
           minimum: 0
           description: Total elements available. It can be used to implement pagination over results.
+    
+    ConfirmationMessage:
+      type: object
+      properties:
+        data:
+          type: string
+          description: Confirmation message.
 
     ItemAffected:
       type: object
@@ -48,8 +55,10 @@ components:
       - affected_items
       properties:
         msg:
+          description: Confirmation message.
           type: string
         affected_items:
+          description: Items that successfully applied the API call action.
           type: array
           items:
             type: string
@@ -320,7 +329,7 @@ components:
           description: Percentage of passed checks.
           type: integer
         error:
-          description: Whether there was an error running the scan or not.
+          description: "Number of checks that CIS-CAT wasn't able to run."
           type: integer
         scan:
           type: object
@@ -553,6 +562,7 @@ components:
         type: object
         properties:
           hour:
+            description: Hour of the day in 24h format.
             type: integer
           alerts:
             type: array
@@ -560,24 +570,32 @@ components:
               type: object
               properties:
                 sigid:
+                  description: Rule ID that matched the event.
                   type: integer
                 level:
+                  description: Alert level
                   type: integer
                 times:
+                  description: Number of times the alert was raised during the specified hour.
                   type: integer
           totalAlerts:
+            description: Number of alerts raised during the specified hour.
             type: integer
           events:
+            description: Number of events procesed during the specified hour.
             type: integer
           syscheck:
+            description: Number of syscheck alerts raised during the specified hour.
             type: integer
           firewall:
+            description: Number of firewall alerts raised during the specified hour.
             type: integer
 
     WazuhHourlyStats:
       type: object
       properties:
         averages:
+          description: Array containing the number of alerts for every hour.
           type: array
           items:
             type: integer
@@ -608,116 +626,170 @@ components:
       type: object
       properties:
         total_events_decoded:
+          description: Total events decoded in the last 5 seconds. This number is not accumulative, the number in the following 5 seconds can be lower than the previous one.
           type: integer
         syscheck_events_decoded:
+          description: Same as `total_events_decoded` but for FIM events.
           type: integer
         syscheck_edps:
+          description: FIM events decoded per second (EDPS = Events Decoded Per Second).
           type: integer
         syscollector_events_decoded:
+          description: Same as `total_events_decoded` but for system inventory events.
           type: integer
         syscollector_edps:
+          description: System inventory events decoded per second.
           type: integer
         rootcheck_events_decoded:
+          description: Same as `total_events_decoded` but for rootcheck events.
           type: integer
         rootcheck_edps:
+          description: Rootcheck events decoded per second.
           type: integer
         sca_events_decoded:
+          description: Same as `total_events_decoded` but for policy monitoring events.
           type: integer
         sca_edps:
+          description: Policy monitoring events decoded per second.
           type: integer
         hostinfo_events_decoded:
+          description: Same as `total_events_decoded` but for hostinfo events.
           type: integer
         hostinfo_edps:
+          description: Hostinfo events decoded per second.
           type: integer
         winevt_events_decoded:
+          description: Same as `total_events_decoded` but for Windows events.
           type: integer
         winevt_edps:
+          description: Windows events decoded per second.
           type: integer
         other_events_decoded:
+          description: Same as `total_events_decoded` but for non catalogued events.
           type: integer
         other_events_edps:
+          description: Non catalogued events decoded per second.
           type: integer
         events_processed:
+          description: Total of events processed (i.e. matched against Wazuh ruleset) in the last 5 seconds.
           type: integer
         events_edps:
+          description: Same as `events_processed` but per second.
           type: integer
         events_received:
+          description: Events received in `analysisd` from the rest of modules in the last 5 seconds.
           type: integer
         events_dropped:
+          description: "Discarded events because they didn't match any rule in the ruleset."
           type: integer
         alerts_written:
+          description: Total of alerts written in disk during the last 5 seconds.
           type: integer
         firewall_written:
+          description: Same as `alerts_written` but focusing in firewall alerts.
           type: integer
         fts_written:
+          description: "Same as `alerts_written` but focusing in [FTS alerts](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts#fts)."
           type: integer
         syscheck_queue_usage:
+          description: Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when the queue is full.
           type: integer
         syscheck_queue_size:
+          description: Syscheck events queue size.
           type: integer
         syscollector_queue_usage:
+          description: Same as `syscheck_queue_usage` but for system inventory events.
           type: integer
         syscollector_queue_size:
+          description: System inventory events queue size.
           type: integer
         rootcheck_queue_usage:
+          description: Same as `syscheck_queue_usage` but for rootcheck events.
           type: integer
         rootcheck_queue_size:
+          description: Rootcheck events queue size.
           type: integer
         sca_queue_usage:
+          description: Same as `syscheck_queue_usage` but for policy monitoring events.
           type: integer
         sca_queue_size:
+          description: Policy monitoring events queue size.
           type: integer
         hostinfo_queue_usage:
+          description: Same as `syscheck_queue_usage` but for hostinfo events.
           type: integer
         hostinfo_queue_size:
+          description: Hostinfo events queue size.
           type: integer
         winevt_queue_usage:
+          description: Same as `syscheck_queue_usage` but for Windows events.
           type: integer
         winevt_queue_size:
+          description: Windows events queue size.
           type: integer
         event_queue_usage:
+          description: Same as `syscheck_queue_usage` but for events not catalogued in any of the previously mentioned queues.
           type: integer
         event_queue_size:
+          description: Non catalogued events queue size.
           type: integer
         rule_matching_queue_usage:
+          description: After decoding, events are pushed to a _pending to process_ queue which will match the events against the Wazuh ruleset to raise alerts. This variable shows usage of that queue.
           type: integer
         rule_matching_queue_size:
+          description: Pending to process events queue size.
           type: integer
         alerts_queue_usage:
+          description: If an event matches a rule, an alert is raised. The alerts are pushed to a _pending to write in disk alerts_ queue. This variable shows usage of that queue.
           type: integer
         alerts_queue_size:
+          description: Pending to write in disk alerts queue size.
           type: integer
         firewall_queue_usage:
+          description: Percentage of use in the queue of events to write in the firewall log.
           type: integer
         firewall_queue_size:
+          description: _Events to write in the firewall log_ queue size.
           type: integer
         statistical_queue_usage:
+          description: Stats log queue usage.
           type: integer
         statistical_queue_size:
+          description: Stats log queue size.
           type: integer
         archives_queue_usage:
+          description: _Events to write in the archives.log_ queue usage.
           type: integer
         archives_queue_size:
+          description: _Events to write in the archives.log_ queue size.
           type: integer
 
     WazuhRemotedStats:
       type: object
       properties:
         queue_size:
+          description: Usage of the queue to storage events from agents.
           type: integer
         total_queue_size:
+          description: Total queue size to store events from agents.
           type: integer
         tcp_sessions:
+          description: Number of TCP active sessions during the last five seconds.
           type: integer
         evt_count:
+          description: Number of events sent to Analysisd during the last five seconds.
           type: integer
         ctrl_msg_count:
+          description: Number of control messages received from all agents during the last five seconds.
           type: integer
         discarded_count:
+          description: Number of discarded events received from agents during the last five seconds.
           type: integer
         msg_sent:
+          description: Number of messages sent to the agents during the last five seconds.
           type: integer
         recv_bytes:
+          description: Number of received bytes from all agents during the last five seconds.
           type: integer
 
     WazuhLogs:
@@ -771,6 +843,7 @@ components:
           - debug2
           - critical
         description:
+          description: Log message.
           type: string
 
     LogSummary:
@@ -857,11 +930,13 @@ components:
       type: object
       properties:
         status:
+          description: "Configuration status. If the returned value is KO, the configuration isn't valid."
           type: string
           enum:
           - OK
           - KO
         details:
+          description: "Errors found reading the configuration. If the status is `OK` this field isn't returned."
           type: array
           items:
             type: string
@@ -875,17 +950,23 @@ components:
           enum:
           - outstanding
           - solved
+          description: Status of the check, respecting to the previous scan.
         readDay:
           type: string
           format: date-time
+          description: Lastest scan date.
         oldDay:
           type: string
           format: date-time
+          description: Previous scan date.
         pci:
+          description: PCI DSS check level.
           type: string
         cis:
+          description: CIS compliance check level.
           type: string
         event:
+          description: Brief description of what is being checked.
           type: string
 
     LastScan:
@@ -894,9 +975,11 @@ components:
         end:
           type: string
           format: date-time
+          description: 'Date when the latest scan finished. If it is in progress, "n/a" will be returned.'
         start:
           type: string
           format: date-time
+          description: 'Date when the latest scan started. If no scans have been run, "n/a" will be returned.'
 
     # Rules models
     RulesFiles:
@@ -921,26 +1004,33 @@ components:
         - type: object
           properties:
             id:
+              description: Rule ID.
               type: integer
             level:
+              description: Rule level.
               type: integer
               minimum: 0
               maximum: 15
             description:
+              description: Rule description. This description is shown when an alert matching the rule is raised.
               type: string
             groups:
+              description: Groups the rule belongs to.
               type: array
               items:
                 type: string
             pci:
+              description: PCI DSS checks the rule is checking.
               type: array
               items:
                 type: string
             gdpr:
+              description: GDPR checks the rule is checking.
               type: array
               items:
                 type: string
             details:
+              description: Rule definition details.
               type: object
 
     # SCA models
@@ -1988,10 +2078,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
                 example:
                   data: "Command sent."
                   error: 0
@@ -2394,13 +2481,10 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
-                example:
-                  error: 0
-                  data: "Group unset for agent '004'."
+                - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Group unset for agent '004'."
   
   /agents/{agent_id}/group/is_sync:
     get:
@@ -2427,7 +2511,6 @@ paths:
                         properties:
                           syncef:
                             type: boolean
-
               example:
                 error: 0
                 data:
@@ -2453,13 +2536,10 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
-                example:
-                  error: 0
-                  data: "Group 'dmz' unset for agent '004'."
+                - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Group 'dmz' unset for agent '004'."
     put:
       tags:
         - agents
@@ -2484,13 +2564,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-                example:
-                  error: 0
-                  data: "Group '004' already belongs to group 'dmz'."
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Group '004' already belongs to group 'dmz'."
   
   /agents/{agent_id}/key:
     get:
@@ -2515,7 +2592,7 @@ paths:
                     properties:
                       data:
                         type: string
-
+                        description: Agent key.
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
@@ -2588,10 +2665,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Upgrade procedure started"
@@ -2625,10 +2699,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Installation started"
@@ -2687,11 +2758,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Agent upgraded successfully
@@ -2980,10 +3047,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Group 'pciserver' created"
@@ -3059,10 +3123,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Agent configuration was updated successfully
@@ -3232,10 +3293,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Agent configuration was updated successfully
@@ -3290,6 +3348,7 @@ paths:
                 data:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
+  
   /agents/name/{agent_name}:
     get:
       tags:
@@ -3325,6 +3384,7 @@ paths:
                   registerIP: 10.0.0.9
                   node_name: unknown
                   id: "007"
+  
   /agents/no_group:
     get:
       tags:
@@ -3386,6 +3446,7 @@ paths:
                       registerIP: 10.0.10.10
                       node_name: unknown
                       id: "123"
+  
   /agents/outdated:
     get:
       tags:
@@ -3430,6 +3491,7 @@ paths:
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
+  
   /agents/restart:
     post:
       tags:
@@ -3486,9 +3548,11 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                example:
-                  error: 0
-                  data: "Restarting all agents"
+                - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Restarting all agents"
+
   /agents/stats/distinct:
     get:
       tags:
@@ -3547,6 +3611,7 @@ paths:
                         platform: ubuntu
                       count: 2
                     - count: 5
+
   /agents/summary:
     get:
       tags:
@@ -3587,6 +3652,7 @@ paths:
                   Disconnected: 0
                   Never connected: 5
                   Pending: 0
+
   /agents/summary/os:
     get:
       tags:
@@ -3618,6 +3684,7 @@ paths:
                         - type: object
                           properties:
                             items:
+                              description: List of Operating system platforms.
                               type: array
                               items:
                                 type: string
@@ -3844,10 +3911,13 @@ paths:
                     data:
                       properties:
                         node:
+                          description: Node name.
                           type: string
                         cluster:
+                          description: Cluster name the node belongs to.
                           type: string
                         type:
+                          description: Node type.
                           type: string
               example:
                 error: 0
@@ -4087,11 +4157,13 @@ paths:
                     data:
                       properties:
                         enabled:
+                          description: Whether the cluster is enabled in the Wazuh configuration.
                           type: string
                           enum:
                           - yes
                           - no
                         running:
+                          description: Whether the cluster daemon is running.
                           type: string
                           enum:
                           - yes
@@ -4125,27 +4197,36 @@ paths:
                     data:
                       properties:
                         name:
+                          description: Cluster name.
                           type: string
                         node_name:
+                          description: Node name.
                           type: string
                         node_type:
+                          description: Node type.
                           type: string
                           enum:
                           - master
                           - worker
                         key:
+                          description: Cluster key used to encrypt messages.
                           type: string
                         port:
+                          description: Port used by the **master** node to communicate with workers.
                           type: integer
                         bind_addr:
+                          description: Network interface used by the **master** to listen to incoming connections.
                           type: string
                         nodes:
+                          description: List of cluster master nodes. This list is used by **worker** nodes to connect to the master.
                           type: array
                           items:
                             type: string
                         hidden:
+                          description: Whether to hide the cluster information in the alerts.
                           type: string
                         disabled:
+                          description: Whether the cluster is enabled or not.
                           type: boolean
               example:
                 error: 0
@@ -4866,6 +4947,7 @@ paths:
                 - type: object
                   properties:
                     data:
+                      description: File contents.
                       type: string
               example:
                 error: 0
@@ -4890,10 +4972,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File updated successfully.
@@ -4916,10 +4995,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File was deleted.
@@ -4942,10 +5018,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Restarting cluster.
@@ -4969,10 +5042,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Restarting manager.
@@ -5836,6 +5906,7 @@ paths:
                 - type: object
                   properties:
                     data:
+                      description: File contents.
                       type: string
               example:
                 error: 0
@@ -5859,10 +5930,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File updated successfully.
@@ -5884,10 +5952,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File was deleted.
@@ -5910,10 +5975,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Restarting manager.
@@ -5967,10 +6029,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck on all agents"
@@ -5991,10 +6050,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Rootcheck database deleted"
@@ -6070,10 +6126,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck locally"
@@ -6095,10 +6148,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Rootcheck database deleted"
@@ -6696,10 +6746,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck on all agents"
@@ -6797,10 +6844,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck locally"
@@ -6822,10 +6866,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Syscheck database deleted"
@@ -7118,4 +7159,3 @@ paths:
 externalDocs:
   description: Find more about Wazuh API usage
   url: 'https://documentation.wazuh.com/current/user-manual/api/index.html'
-
