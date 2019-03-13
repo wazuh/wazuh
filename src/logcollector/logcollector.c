@@ -19,7 +19,7 @@ static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
-static void key_lock_init(void);
+static void files_lock_init(void);
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
 #endif
@@ -87,7 +87,7 @@ void LogCollectorStart()
     current_files = 0;
 
     set_sockets();
-    key_lock_init();
+    files_lock_init();
 
 #ifndef WIN32
     /* To check for inode changes */
@@ -1516,7 +1516,7 @@ void w_create_input_threads(){
     }
 }
 
-void key_lock_init()
+void files_lock_init()
 {
     pthread_rwlockattr_t attr;
     pthread_rwlockattr_init(&attr);
