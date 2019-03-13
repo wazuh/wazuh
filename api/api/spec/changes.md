@@ -52,6 +52,9 @@
 ### /experimental/syscollector/netiface
 * Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.
 
+### /experimental/syscollector/packages
+* Parameter **version** renamed to **package_version**
+
 ### /experimental/syscollector/processes
 * Parameter **pid** renamed to **process_pid**
 * Parameter **status** renamed to **process_status**
@@ -63,3 +66,9 @@
 
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+
+### /syscollector/:agent_id/netproto
+* Added **agent_id** parameter.
+
+### /syscollector/:agent_id/packages
+* Parameter **version** renamed to **package_version**
