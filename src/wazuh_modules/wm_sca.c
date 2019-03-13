@@ -55,6 +55,7 @@ static char *wm_sca_hash_integrity(int policy_index);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
+static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id,int scan_id);  // Send dump end event
 
 #ifndef WIN32
 static void * wm_sca_request_thread(wm_sca_t * data);
@@ -398,7 +399,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 goto next;
             }
 
-            if (object = yaml2json(&document), !object) {
+            if (object = yaml2json(&document,1), !object) {
                 merror("Transforming yaml to json: '%s'. Skipping it.",path);
                 goto next;
             }
@@ -1986,10 +1987,13 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
         {
             if(compliance->child->valuestring){
                 cJSON_AddStringToObject(add_compliances,compliance->child->string,compliance->child->valuestring);
+            } else if(compliance->child->valuedouble) {
+                char double_value[128] = {0};
+                snprintf(double_value,128,"%g",compliance->child->valuedouble);
+
+                cJSON_AddStringToObject(add_compliances,compliance->child->string,double_value);
             } else if(compliance->child->valueint) {
                 cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valueint);
-            } else if(compliance->child->valuedouble) {
-                cJSON_AddNumberToObject(add_compliances,compliance->child->string,compliance->child->valuedouble);
             }
         }
 
@@ -2250,6 +2254,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             minfo("Integration checksum failed for policy: '%s'. Resending scan results in %d seconds.", data->profile[*policy_index]->profile,random);
 
             wm_delay(1000 * time);
+            int scan_id = -1;
 
             for(i = 0; cis_db_for_hash[*policy_index].elem[i]; i++) {
                 cis_db_info_t *event;
@@ -2259,10 +2264,24 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                     if(event->event){
                         cJSON *db_obj;
                         db_obj = event->event;
+
+                        if(scan_id == -1) {
+                            cJSON * scan_id_obj = cJSON_GetObjectItem(db_obj, "id");
+
+                            if(scan_id_obj) {
+                                scan_id =  scan_id_obj->valueint;
+                            }
+                        }
                         wm_sca_send_event_check(data,db_obj);
                     }
                 }
             }
+
+            sleep(5);
+           
+            int elements_sent = i - 1;
+            mdebug1("Sending dump ended event");
+            wm_sca_send_dump_end(data,elements_sent,data->profile[*policy_index]->policy_id,scan_id);
 
             mdebug1("Finished dumping DB for policy index: %u",*policy_index);
             os_free(policy_index);
@@ -2270,6 +2289,22 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
     }
 
     return NULL;
+}
+
+
+static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id, int scan_id) {
+    cJSON *dump_event = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(dump_event, "type", "dump_end");
+    cJSON_AddStringToObject(dump_event, "policy_id", policy_id);
+    cJSON_AddNumberToObject(dump_event, "elements_sent", elements_sent);
+    cJSON_AddNumberToObject(dump_event, "scan_id", scan_id);
+
+    wm_sca_send_alert(data,dump_event);
+
+    cJSON_Delete(dump_event);
+
+    return 0;
 }
 
 #ifdef WIN32
