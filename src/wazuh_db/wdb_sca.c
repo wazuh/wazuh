@@ -335,7 +335,7 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id) {
 }
 
 /* Delete distinct configuration assessment policy. Returns 0 on success or -1 on error (new) */
-int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id) {
+int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_sca_check_delete_distinct(): cannot begin transaction");
@@ -351,7 +351,7 @@ int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id) {
 
     stmt = wdb->stmt[WDB_STMT_SCA_CHECK_DELETE_DISTINCT];
 
-    sqlite3_bind_text(stmt, 1, policy_id, -1, NULL);
+    sqlite3_bind_int(stmt, 1, scan_id);
     sqlite3_bind_text(stmt, 2, policy_id, -1, NULL);
     
     if (sqlite3_step(stmt) == SQLITE_DONE) {

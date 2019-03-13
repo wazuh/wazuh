@@ -259,7 +259,7 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id);
 int wdb_sca_check_compliances_delete(wdb_t * wdb);
 
 /* Delete distinct configuration assessment check. Returns 0 on success or -1 on error (new) */
-int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id);
+int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);

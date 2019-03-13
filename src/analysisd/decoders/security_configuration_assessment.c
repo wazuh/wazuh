@@ -30,7 +30,7 @@ static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *w
 static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
-static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id, int *socket);
+static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__((unused)) int id , __attribute__((unused)) int scan_id,__attribute__((unused)) char * title,__attribute__((unused)) char *description, __attribute__((unused)) char *rationale, __attribute__((unused)) char *remediation,__attribute__((unused)) char * file, __attribute__((unused))char * directory,__attribute__((unused)) char * process, __attribute__((unused)) char * registry,__attribute__((unused)) char * reference,__attribute__((unused))char * result,__attribute__((unused))char * policy_id,cJSON *event);
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
@@ -41,7 +41,7 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event);
 static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id);
 static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
-static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id);
+static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
 static void PushDumpRequest(char * agent_id, char * policy_id);
@@ -439,7 +439,7 @@ static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket) {
     return retval;
 }
 
-static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id, int *socket) {
+static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket) {
     char *msg = NULL;
     char *response = NULL;
     int retval = -1;
@@ -447,7 +447,7 @@ static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id, int *socket
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check_distinct %s", lf->agent_id, policy_id);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca delete_check_distinct %s|%d", lf->agent_id, policy_id,scan_id);
 
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -887,10 +887,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *elements_sent = NULL;
     cJSON *policy_id = NULL;
+    cJSON *scan_id = NULL;
 
-    if(!CheckDumpJSON(event,&elements_sent,&policy_id)) {
+    if(!CheckDumpJSON(event,&elements_sent,&policy_id,&scan_id)) {
 
-        int result_db = DeletePolicyCheckDistinct(lf, policy_id->valuestring, socket);
+        int result_db = DeletePolicyCheckDistinct(lf, policy_id->valuestring,scan_id->valueint,socket);
 
         switch (result_db)
         {
@@ -932,7 +933,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
     }
 }
 
-static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id) {
+static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id) {
     int retval = 1;
     cJSON *obj;
 
@@ -949,6 +950,11 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id) {
     obj = *policy_id;
     if( !obj->valuestring ) {
         merror("Malformed JSON: field 'policy_id' must be a string");
+        return retval;
+    }
+
+    if( *scan_id = cJSON_GetObjectItem(event, "scan_id"), !*scan_id) {
+        merror("Malformed JSON: field 'scan_id' not found");
         return retval;
     }
  

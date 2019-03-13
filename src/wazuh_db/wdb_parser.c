@@ -696,11 +696,26 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "delete_check_distinct") == 0) {
 
         char *policy_id;
+        int scan_id;
 
         curr = next;
         policy_id = curr;
 
-        if (result = wdb_sca_check_delete_distinct(wdb,policy_id), result < 0) {
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        *next++ = '\0';
+        curr = next;
+        if (!strncmp(curr, "NULL", 4))
+            scan_id = -1;
+        else
+            scan_id = strtol(curr,NULL,10);
+
+        if (result = wdb_sca_check_delete_distinct(wdb,policy_id,scan_id), result < 0) {
             mdebug1("Cannot delete Security Configuration Assessment checks.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Security Configuration Assessment checks.");
         } else {
