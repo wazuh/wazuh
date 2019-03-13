@@ -8151,6 +8151,46 @@ paths:
                     start_time: 22
                     tty: 0
                     agent_id: "000"
+  
+  /syscollector/{agent_id}/hardware:
+    get:
+      tags:
+        - syscollector
+      summary: 'Get hardware info'
+      description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
+      operationId: api.controllers.experimental_controller.get_hardware_info
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/select'
+      responses:
+        '200':
+          description: "Return a list of agent's hardware results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/SyscollectorHardware'
+              example:
+                error: 0
+                data:
+                  cpu:
+                    core: 2
+                    mhz: 1991.999
+                    name: Intel(R) Core(TM) i7-8550U CPU @ 1.80GHz
+                  ram:
+                    free: 55592
+                    total: 492832
+                    usage: 89
+                  scan:
+                    id: 599386135
+                    time: "2019/03/08 08:30:53"
+                  board_serial: "0"
 
   /security/user/authenticate:
     get:
