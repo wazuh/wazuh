@@ -314,28 +314,38 @@ components:
       type: object
       properties:
         profile:
+          description: CIS-CAT profile scanned.
           type: string
         score:
+          description: Percentage of passed checks.
           type: integer
         error:
+          description: Whether there was an error running the scan or not.
           type: integer
         scan:
           type: object
           properties:
             id:
+              description: Scan ID.
               type: integer
             time:
+              description: Date when the scan was performed.
               type: string
               format: date-time
         fail:
+          description: Number of failed checks. If this number is higher than 0 the host will probably have a vulnerability.
           type: integer
         benchmark:
-          type: integer
+          description: CIS-CAT benchmark where the profile is defined.
+          type: string
         pass:
+          description: Number of passed checks.
           type: integer
         notchecked:
+          description: Number of not passed checks.
           type: integer
         unknown:
+          description: Number of checks which status CIS-CAT wasn't able to determine.
           type: integer
 
     ## Cluster models
