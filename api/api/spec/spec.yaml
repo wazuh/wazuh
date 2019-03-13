@@ -24,19 +24,65 @@ components:
         error:
           type: integer
           format: int32
+          minimum: 0
+          description: Result 0 (No error), other value (error).
         message:
           type: string
 
     ListMetadata:
       type: object
+      required:
+      - totalItems
       properties:
         totalItems:
+          type: integer
+          format: int32
+          minimum: 0
+
+    ItemAffected:
+      type: object
+      required:
+      - msg
+      - affected_items
+      properties:
+        msg:
+          type: string
+        affected_items:
+          type: array
+          items:
+            type: string
+        failed_items:
+          type: array
+          items:
+            type: string
+
+    AllItemsAffected:
+      type: object
+      required:
+        - older_than
+        - total_affected_items
+      allOf:
+        - $ref: '#/components/schemas/ItemAffected'
+      properties:
+        older_than:
+          type: string
+        total_affected_items:
+          type: integer
+          format: int32
+        total_failed_items:
           type: integer
           format: int32
 
     ## Agents models
     Agent:
       type: object
+      required:
+      - ip
+      - status
+      - dateAdd
+      - name
+      - node_name
+      - id
       properties:
         status:
           $ref: '#/components/schemas/AgentStatus'
@@ -58,10 +104,12 @@ components:
           type: string
         dateAdd:
           type: string
+          format: date-time
         version:
           type: string
         lastKeepAlive:
           type: string
+          format: date-time
         os:
           type: object
           properties:
@@ -84,47 +132,12 @@ components:
         id:
           type: string
 
-    AgentByName:
-      type: object
-      properties:
-        ip:
-          type: string
-        status:
-          $ref: '#/components/schemas/AgentStatus'
-        dateAdd:
-          type: string
-        name:
-          type: string
-        registerIP:
-          type: string
-        node_name:
-          type: string
-        id:
-          type: string
-
-    AgentAffected:
-      type: object
-      properties:
-        msg:
-          type: string
-        affected_agents:
-          type: array
-          items:
-            type: integer
-
-    AllAgentAffected:
-      type: object
-      additionalProperties:
-        $ref: '#/components/schemas/AgentAffected'
-      properties:
-        older_than:
-          type: string
-        total_affected_agents:
-          type: integer
-          format: int32
-
     AgentGroup:
       type: object
+      required:
+      - count
+      - name
+      - configSum
       properties:
         count:
           type: integer
@@ -141,28 +154,45 @@ components:
 
     AgentGroupDeleted:
       type: object
+      required:
+      - msg
+      - affected_groups
+      - affected_agents
       properties:
         msg:
           type: string
-        ids:
+        affected_groups:
+          type: array
+          items:
+            type: string
+        failed_groups:
           type: array
           items:
             type: string
         affected_agents:
           type: array
           items:
-            type: integer
+            type: string
 
     AgentIdKey:
       type: object
+      required:
+        - id
+        - key
       properties:
         id:
           type: string
         key:
           type: string
+          pattern: \w+=*
+          format: base64
 
     AgentSimple:
       type: object
+      required:
+      - version
+      - id
+      - name
       properties:
         version:
           type: string
@@ -206,8 +236,21 @@ components:
               frequency:
                 type: integer
 
+    CDBList:
+      type: array
+      items:
+        type: object
+        properties:
+          key:
+            type: string
+          value:
+            type: string
+
     GroupConfiguration:
       type: object
+      required:
+      - filter
+      - config
       properties:
         filter:
           type: object
@@ -229,16 +272,9 @@ components:
     ## Cache models
     GroupCache:
       type: object
-      properties:
-        all:
-          type: array
-          items:
-            type: string
-        group:
-          type: object
-
-    GroupCacheComplete:
-      type: object
+      required:
+      - all
+      - group
       properties:
         all:
           type: array
@@ -251,6 +287,24 @@ components:
               type: array
               items:
                 type: string
+
+    CacheConfig:
+      type: object
+      properties:
+        debug:
+          type: boolean
+        defaultDuration:
+          type: integer
+        enabled:
+          type: boolean
+        appendKey:
+          type: array
+          items:
+            type: string
+        jsonp:
+          type: boolean
+        redisClient:
+          type: boolean
 
     ## CisCat models
     CiscatResults:
@@ -269,6 +323,7 @@ components:
               type: integer
             time:
               type: string
+              format: date-time
         fail:
           type: integer
         benchmark:
@@ -780,46 +835,37 @@ components:
           items:
             type: string
 
-    RulesFiles:
+    # Rootcheck models
+    RootcheckDatabase:
       type: object
       properties:
-        file:
-          type: string
-        path:
-          type: string
         status:
           type: string
           enum:
-          - enabled
-          - disabled
+          - outstanding
+          - solved
+        readDay:
+          type: string
+          format: date-time
+        oldDay:
+          type: string
+          format: date-time
+        pci:
+          type: string
+        cis:
+          type: string
+        event:
+          type: string
 
-    Rules:
-      allOf:
-        - $ref: '#/components/schemas/RulesFiles'
-        - type: object
-          properties:
-            id:
-              type: integer
-            level:
-              type: integer
-              minimum: 0
-              maximum: 15
-            description:
-              type: string
-            groups:
-              type: array
-              items:
-                type: string
-            pci:
-              type: array
-              items:
-                type: string
-            gdpr:
-              type: array
-              items:
-                type: string
-            details:
-              type: object
+    LastScan:
+      type: object
+      properties:
+        end:
+          type: string
+          format: date-time
+        start:
+          type: string
+          format: date-time
 
     # Rules models
     RulesFiles:
@@ -914,7 +960,88 @@ components:
           type: integer
         end_scan:
           type: string
+          format: date-time
         start_scan:
+          type: string
+          format: date-time
+
+    # Syscheck models
+    SyscheckDatabase:
+      type: object
+      properties:
+        sha1:
+          type: string
+          format: \w{40}
+        file:
+          type: string
+        md5:
+          type: string
+          format: \w{32}
+        inode:
+          type: integer
+        uid:
+          type: string
+          format: \d+
+        date:
+          type: string
+          format: date-time
+        perm:
+          type: string
+          format: \d+
+        type:
+          type: string
+          enum:
+          - file
+          - registry
+        gname:
+          type: string
+        uname:
+          type: string
+        size:
+          type: integer
+        gid:
+          type: string
+          format: \d+
+        mtime:
+          type: string
+          format: date-time
+        sha256:
+          type: string
+          format: \w{64}
+
+    # Decoders models
+    Decoder:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DecoderFile'
+      properties:
+        name:
+          type: integer
+        position:
+          type: string
+        details:
+          type: object
+          properties:
+            program_name:
+              type: string
+            parent:
+              type: string
+            prematch:
+              type: string
+            regex:
+              type: integer
+            order:
+              type: string
+
+    DecoderFile:
+      type: object
+      required:
+      - file
+      - status
+      properties:
+        file:
+          type: string
+        status:
           type: string
 
   # Syscollector models
@@ -1257,10 +1384,11 @@ components:
     agent_id:
       in: path
       name: agent_id
-      description: Agent ID
+      description: Agent ID. All posible values since 000 onwards.
       required: true
       schema:
-        type: integer
+        type: string
+        minLength: 3
     agent_name:
       in: path
       name: agent_name
@@ -1271,7 +1399,7 @@ components:
     benchmark:
       in: query
       name: benchmark
-      description: Filters by benchmark.
+      description: Filters by benchmark type.
       schema:
         type: string
     component:
@@ -1300,7 +1428,7 @@ components:
     configuration:
       in: path
       name: configuration
-      description: Selected agent's configuration to read
+      description: Selected agent's configuration to read.
       required: true
       schema:
         type: array
@@ -1329,6 +1457,13 @@ components:
           - syscheck
           - rootcheck
           - wmodules
+    decoder_name:
+      in: path
+      name: decoder_name
+      description: Decoder name.
+      required: true
+      schema:
+        type: string
     description:
       in: query
       name: description
@@ -1341,18 +1476,28 @@ components:
       description: Filters by directory.
       schema:
         type: string
+    download:
+      in: query
+      name: download
+      description: Downloads the file
+      schema:
+        type: string
     error:
       in: query
       name: error
       description: Filters by encountered errors.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     fail:
       in: query
       name: fail
       description: Filters by failed checks.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     fields:
       in: query
       name: fields
@@ -1364,7 +1509,7 @@ components:
       name: file
       description: Filters by filename.
       schema:
-        type: integer
+        type: string
     file_name:
       in: path
       name: file_name
@@ -1441,6 +1586,8 @@ components:
       description: Filters by not checked.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     offset:
       in: query
       name: offset
@@ -1463,6 +1610,14 @@ components:
       description: Filters by passed checks.
       schema:
         type: integer
+        format: int32
+        minimum: 0
+    pathFilter:
+      in: query
+      name: path
+      description: Filters by path
+      schema:
+        type: string
     pretty:
       in: query
       name: pretty
@@ -1475,7 +1630,7 @@ components:
       name: process
       description: Filters by process name.
       schema:
-        type: integer
+        type: string
     profile:
       in: query
       name: profile
@@ -1488,7 +1643,7 @@ components:
       description: Filters by policy id.
       required: true
       schema:
-        type: integer
+        type: string
     purge:
       in: query
       name: purge
@@ -1538,6 +1693,8 @@ components:
       description: Filters by final score.
       schema:
         type: integer
+        format: int32
+        minimum: 0
     search:
       in: query
       name: search
@@ -1560,9 +1717,9 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
-    statusParam:
+    statusAgentParam:
       in: query
-      name: status
+      name: agent_status
       description: Filters by agent status. Use commas to enter multiple statuses.
       schema:
         type: array
@@ -1573,6 +1730,20 @@ components:
           - pending
           - neverconnected
           - disconnected
+        minItems: 1
+    statusRLDParam:
+      in: query
+      name: list_status
+      description: Filters by list status. Use commas to enter multiple statuses.
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+          - enabled
+          - disabled
+          - all
+        minItems: 1
     title:
       in: query
       name: title
@@ -1794,47 +1965,48 @@ components:
         - solved
     cis:
       in: query
-      name: path
-      description: Filters by rule path.
+      name: cis
+      description: Filters by CIS requirement.
       schema:
         type: string
-    rulestatus:
+    filetype:
       in: query
-      name: status
-      description: Filters by rule status.
+      name: type
+      description: Filters by file type.
       schema:
         type: string
         enum:
-        - enabled
-        - disabled
-        - all
-    pci:
+        - file
+        - registry
+    summary:
       in: query
-      name: pci
-      description: Filters by PCI requirement name.
+      name: summary
+      description: Returns a summary grouping by filename.
+      schema:
+        type: boolean
+    md5:
+      in: query
+      name: md5
+      description: Filters files with the specified MD5 checksum.
       schema:
         type: string
-    gdpr:
+    sha1:
       in: query
-      name: gdpr
-      description: Filters by GDPR requirement.
+      name: sha1
+      description: Filters files with the specified SHA1 checksum.
       schema:
         type: string
-    download:
+    sha256:
       in: query
-      name: download
-      description: Downloads the specified file.
+      name: sha256
+      description: Filters files with the specified SHA256 checksum.
       schema:
         type: string
-    rule_id:
-      in: path
-      name: rule_id
-      description: Filters by rule ID.
-      required: true
+    hashfilter:
+      in: query
+      name: hash
+      description: Filters files with the specified checksum (MD5, SHA256 or SHA1)
       schema:
-<<<<<<< HEAD
-        type: integer
-=======
         type: string
     ram_free:
       in: query
@@ -2159,7 +2331,6 @@ components:
       description: Filters by version name.
       schema:
         type: string
->>>>>>> dev-flask-poc
 
 tags:
   - name: active-response
@@ -2169,43 +2340,22 @@ tags:
   - name: cache
     description: 'API cache management'
   - name: ciscat
-<<<<<<< HEAD
-    description: ''
-=======
     description: 'Retrieve information from CIS-CAT scans'
->>>>>>> dev-flask-poc
   - name: cluster
     description: 'Wazuh cluster and nodes management'
   - name: sca
     description: 'Policy monitoring'
   - name: decoders
-<<<<<<< HEAD
-    description: ''
-  - name: experimental
-    description: ''
-  - name: lists
-    description: ''
-=======
     description: 'Wazuh decoders management'
   - name: experimental
     description: 'Not ready for production endpoints. Use with caution'
   - name: lists
     description: 'CDB lists'
->>>>>>> dev-flask-poc
   - name: login
     description: 'User authentication'
   - name: manager
     description: 'Wazuh manager information, status and logs'
   - name: rootcheck
-<<<<<<< HEAD
-    description: ''
-  - name: rules
-    description: 'Wazuh ruleset management'
-  - name: syscheck
-    description: ''
-  - name: syscollector
-    description: ''
-=======
     description: 'Detection of rootkit, ports and hidden processes and many other scans.'
   - name: rules
     description: 'Wazuh ruleset management'
@@ -2213,7 +2363,6 @@ tags:
     description: 'File integrity monitoring.'
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
->>>>>>> dev-flask-poc
 
 security:
     - jwt: []
@@ -2279,7 +2428,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/olderThanParam'
       responses:
         '200':
@@ -2292,7 +2441,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllAgentAffected'
+                      $ref: '#/components/schemas/AllItemsAffected'
               example:
                 error: 0
                 data:
@@ -2316,7 +2465,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
         - in: query
@@ -2510,7 +2659,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -2794,7 +2943,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   error: 0
                   data:
@@ -2966,7 +3115,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -3006,7 +3155,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
               example:
                 error: 0
                 data:
@@ -3142,7 +3291,7 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusParam'
+        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
       responses:
         '200':
@@ -3569,7 +3718,7 @@ paths:
                   properties:
                     data:
                       allOf:
-                        - $ref: '#/components/schemas/AgentByName'
+                        - $ref: '#/components/schemas/Agent'
               example:
                 error: 0
                 data:
@@ -3614,7 +3763,7 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/AgentByName'
+                                $ref: '#/components/schemas/Agent'
               example:
                 error: 0
                 data:
@@ -3717,7 +3866,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentAffected'
+                      $ref: '#/components/schemas/ItemAffected'
                 example:
                   error: 0
                   data:
@@ -3961,7 +4110,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/GroupCacheComplete'
+                      $ref: '#/components/schemas/GroupCache'
               example:
                 error: 0
                 data:
@@ -3992,21 +4141,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      properties:
-                        debug:
-                          type: boolean
-                        defaultDuration:
-                          type: integer
-                        enabled:
-                          type: boolean
-                        appendKey:
-                          type: array
-                          items:
-                            type: string
-                        jsonp:
-                          type: boolean
-                        redisClient:
-                          type: boolean
+                      $ref: '#/components/schemas/CacheConfig'
               example:
                 error: 0
                 data:
@@ -6196,30 +6331,79 @@ paths:
                     - "(1230): Invalid element in the configuration: 'hello'."
                     - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
-  /rules:
-    get:
+  /rootcheck:
+    put:
       tags:
-      - rules
-      summary: Get information about all Wazuh rules.
-      description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
-      operationId: api.controllers.rules_controllers.get_rules
+      - rootcheck
+      summary: Run a rootcheck scan in all agents.
+      description: Runs syscheck and rootcheck in all agents (Wazuh launches both processes simultaneously).
+      operationId: api.controllers.rootcheck_controller.put_rootcheck
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck on all agents"
+    delete:
+      tags:
+      - rootcheck
+      summary: Clear rootcheck scan results in all agents.
+      description: Clear rootcheck scan results in all agents.
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Rootcheck database deleted"
+
+  /rootcheck/{agent_id}:
+    get:
+      tags:
+      - rootcheck
+      summary: Get Rootcheck database
+      description: Returns rootcheck findings and scan results in the specified agent.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/group'
-        - $ref: '#/components/parameters/level'
-        - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rule_path'
-        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/rootcheck_status'
         - $ref: '#/components/parameters/pci'
-        - $ref: '#/components/parameters/gdpr'
+        - $ref: '#/components/parameters/cis'
       responses:
         '200':
-          description: "Rules"
+          description: Latest rootcheck scan result
           content:
             application/json:
               schema:
@@ -6235,64 +6419,90 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/Rules'
+                                $ref: '#/components/schemas/RootcheckDatabase'
               example:
                 error: 0
                 data:
                   totalItems: 2
                   items:
-                    - file: 0016-wazuh_rules.xml
-                      path: ruleset/rules
-                      id: 203
-                      level: 9
-                      description: Agent event queue is full. Events may be lost.
-                      status: enabled
-                      groups:
-                      - agent_flooding
-                      - wazuh
-                      pci:
-                      -
-                      gdpr:
-                      - IV_35.7.d
-                      details:
-                        if_sid: "201"
-                        level: "full"
-                    - file: 0015-ossec_rules.xml
-                      path: ruleset/rules
-                      id: 513
-                      level: 9
-                      description: Windows malware detected.
-                      status: enabled
-                      groups:
-                      - rootcheck
-                      - gpg13_4.2
-                      - ossec
-                      pci:
-                      -
-                      gdpr:
-                      - IV_35.7.d
-                      details:
-                        if_sid: "510"
-                        match: "^Windows Malware"
-
-  /rules/{rule_id}:
-    get:
+                    - status: outstanding
+                      readDay: "2019-03-08 09:20:05"
+                      oldDay: "2019-03-08 09:20:05"
+                      event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
+                    - status: outstanding
+                      readDay: "2019-03-08 09:20:05"
+                      oldDay: "2019-03-08 09:20:05"
+                      pci: 2.2.4
+                      event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
+    put:
       tags:
-      - rules
-      summary: Filters rules by ID.
-      description: Filters results of /rules endpoint filtering by ID.
-      operationId: api.controllers.rules_controllers.get_rules_id
+      - rootcheck
+      summary: Run rootcheck scan in an agent.
+      description: Runs syscheck and rootcheck scans in a specified agent (Wazuh launches both processes at the same time).
+      operationId: api.controllers.rootcheck_controller.put_rootcheck_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/rule_id'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Restarting Syscheck/Rootcheck locally"
+    delete:
+      tags:
+      - rootcheck
+      summary: Clear rootcheck scan results for a specified agent.
+      description: Clear rootcheck scan results for a specified agent.
+      operationId: api.controllers.rootcheck_controller.delete_rootcheck_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
+      responses:
+        '200':
+          description: Confirmation message
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      type: string
+              example:
+                error: 0
+                data: "Rootcheck database deleted"
+
+  /rootcheck/{agent_id}/pci:
+    get:
+      tags:
+      - rootcheck
+      summary: Get PCI requirements in the rootcheck database.
+      description: Returns a list containing PCI requirements that have been detected by rootcheck scans.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_pci_agent
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: "Rules"
+          description: PCI requirements list.
           content:
             application/json:
               schema:
@@ -6308,46 +6518,32 @@ paths:
                             items:
                               type: array
                               items:
-                                $ref: '#/components/schemas/Rules'
+                                type: string
               example:
                 error: 0
                 data:
                   totalItems: 1
                   items:
-                    - file: 0225-mcafee_av_rules.xml
-                      path: ruleset/rules
-                      id: 7514
-                      level: 5
-                      description: McAfee Windows AV - EICAR test file detected.
-                      status: enabled
-                      groups:
-                      - mcafee
-                      pci:
-                      -
-                      gdpr:
-                      -
-                      details:
-                        if_sid: "7505"
-                        match: contains the EICAR test file
-                        options: alert_by_email
+                  - 2.2.4
 
-  /rules/groups:
+  /rootcheck/{agent_id}/cis:
     get:
       tags:
-      - rules
-      summary: Get all rule groups names.
-      description: Returns a list containing all rule groups names.
-      operationId: api.controllers.rules_controllers.get_rules_groups
+      - rootcheck
+      summary: Get CIS requirements in the rootcheck database.
+      description: Returns a list containing CIS requirements that have been detected by rootcheck scans.
+      operationId: api.controllers.rootcheck_controller.get_rootcheck_cis_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/agent_id'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
       responses:
         '200':
-          description: 'Rule groups names'
+          description: CIS requirements list.
           content:
             application/json:
               schema:
@@ -6367,30 +6563,25 @@ paths:
               example:
                 error: 0
                 data:
-                  totalItems: 4
+                  totalItems: 2
                   items:
-                    - access_control
-                    - access_denied
-                    - accesslog
-                    - account_changed
+                  - "2.3 Debian Linux"
+                  - "1.4 Debian Linux"
 
-  /rules/pci:
+  /rootcheck/{agent_id}/last_scan:
     get:
       tags:
-      - rules
-      summary: Get all PCI requirements.
-      description: Returns all PCI requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controllers.get_rules_pci
+      - rootcheck
+      summary: Get last rootcheck scan dates.
+      description: Returns when the last rootcheck scan started and ended. If the scan is still in progress the end date will be unknown.
+      operationId: api.controllers.rootcheck_controller.get_last_scan_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
-          description: 'PCI requirements names'
+          description: 'Scan dates'
           content:
             application/json:
               schema:
@@ -6400,120 +6591,12 @@ paths:
                   properties:
                     data:
                       allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
+                      - $ref: '#/components/schemas/LastScan'
               example:
                 error: 0
                 data:
-                  totalItems: 4
-                  items:
-                    - "1.1.1"
-                    - "1.3.4"
-                    - "1.4"
-                    - "10.1"
-
-  /rules/gdpr:
-    get:
-      tags:
-      - rules
-      summary: Get all GDPR requirements.
-      description: Returns all PCI requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controllers.get_rules_gdpr
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: 'PCI requirements names'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                type: string
-              example:
-                error: 0
-                data:
-                  totalItems: 4
-                  items:
-                    - "II_5.1.f"
-                    - "IV_30.1.g"
-                    - "IV_32.2"
-                    - "IV_35.7.d"
-
-  /rules/files:
-    get:
-      tags:
-      - rules
-      summary: Get all files which defines rules.
-      description: Returns a list containing all files used to define rules and their status.
-      operationId: api.controllers.rules_controllers.get_rules_files
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/rule_path'
-        - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rulestatus'
-        - $ref: '#/components/parameters/download'
-      responses:
-        '200':
-          description: 'SCA database elements'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ListMetadata'
-                        - type: object
-                          properties:
-                            items:
-                              type: array
-                              items:
-                                $ref: '#/components/schemas/RulesFiles'
-              example:
-                error: 0
-                data:
-                  totalItems: 4
-                  items:
-                    - file: 0010-rules_config.xml
-                      path: ruleset/rules
-                      status: enabled
-                    - file: 0015-ossec_rules.xml
-                      path: ruleset/rules
-                      status: enabled
-                    - file: 0016-wazuh_rules.xml
-                      path: ruleset/rules
-                      status: enabled
-                    - file: 0020-syslog_rules.xml
-                      path: ruleset/rules
-                      status: enabled
+                  end: "2019-03-08 10:35:21"
+                  start: "2019-03-08 10:34:56"
 
   /rules:
     get:
@@ -6963,10 +7046,6 @@ paths:
                     compliance:
                     -
 
-<<<<<<< HEAD
-  /security/user/authenticate:
-    get:
-=======
   /syscheck:
     put:
       tags:
@@ -7384,7 +7463,6 @@ paths:
 
   /experimental/syscheck:
     delete:
->>>>>>> dev-flask-poc
       tags:
         - experimental
       summary: 'Clear syscheck database'
