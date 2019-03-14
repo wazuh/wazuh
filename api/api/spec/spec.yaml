@@ -52,12 +52,13 @@ components:
       type: object
       properties:
         id:
-          description: Scan ID.
           type: integer
+          format: int64
+          description: Scan ID.
         time:
-          description: Date when the scan was performed.
           type: string
           format: date-time
+          description: Date when the scan was performed.
 
     ItemAffected:
       type: object
@@ -66,11 +67,11 @@ components:
       - affected_items
       properties:
         msg:
-          description: Confirmation message.
           type: string
+          description: Confirmation message.
         affected_items:
-          description: Items that successfully applied the API call action.
           type: array
+          description: Items that successfully applied the API call action.
           items:
             type: string
         failed_items:
@@ -90,8 +91,8 @@ components:
         older_than:
           type: string
           pattern: ^(\d{1,}[d|h|m|s]?){1}$
-          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
           default: 7d
+          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
         total_affected_items:
           type: integer
           format: int32
@@ -99,8 +100,8 @@ components:
         total_failed_items:
           type: integer
           format: int32
-          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
           minimum: 1
+          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
 
     ## Agents models
     ExtraAgentFields:
@@ -118,9 +119,9 @@ components:
           description: MD5 checksum of agent configuration file.
         group:
           type: array
+          description: List of groups that the agent belongs to.
           items:
             type: string
-          description: List of groups that the agent belongs to.
         mergedSum:
           type: string
           description: MD5 checksum of all agent shared configuration files merged.
@@ -183,8 +184,8 @@ components:
             properties:
               count:
                 type: integer
-                description: Number of agents belonging to that group.
                 minimum: 0
+                description: Number of agents belonging to that group.
               name:
                 type: string
               mergedSum:
@@ -208,9 +209,9 @@ components:
           type: string
         affected_agents:
           type: array
+          description: List of agents which belonged to the group but were moved to the default one.
           items:
             $ref: '#/components/schemas/AgentID'
-          description: List of agents which belonged to the group but were moved to the default one.
 
     AgentIdKey:
       type: object
@@ -338,31 +339,37 @@ components:
       type: object
       properties:
         profile:
-          description: CIS-CAT profile scanned.
           type: string
+          description: CIS-CAT profile scanned.
         score:
+          type: integer
+          format: int32
           description: Percentage of passed checks.
-          type: integer
         error:
-          description: "Number of checks that CIS-CAT wasn't able to run."
           type: integer
+          format: int32
+          description: "Number of checks that CIS-CAT wasn't able to run."
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         fail:
+          type: integer
+          format: int32
           description: Number of failed checks. If this number is higher than 0 the host will probably have a vulnerability.
-          type: integer
         benchmark:
-          description: CIS-CAT benchmark where the profile is defined.
           type: string
+          description: CIS-CAT benchmark where the profile is defined.
         pass:
+          type: integer
+          format: int32
           description: Number of passed checks.
-          type: integer
         notchecked:
+          type: integer
+          format: int32
           description: Number of not passed checks.
-          type: integer
         unknown:
-          description: Number of checks which status CIS-CAT wasn't able to determine.
           type: integer
+          format: int32
+          description: Number of checks which status CIS-CAT wasn't able to determine.
 
     ## Cluster models
     ClusterNodeBasic:
@@ -383,11 +390,8 @@ components:
           description: IP the node is using to communicate with other nodes in the cluster.
 
     ClusterNodeName:
-      type: object
-      properties:
-        name:
-          type: string
-          description: Node ID.
+      type: string
+      description: Node ID.
 
     ClusterNode:
       allOf:
@@ -398,7 +402,7 @@ components:
       type: object
       properties:
         name:
-          - $ref: '#/components/schemas/ClusterNodeName'
+          $ref: '#/components/schemas/ClusterNodeName'
         info:
           allOf:
             - $ref: '#/components/schemas/ClusterNodeBasic'
@@ -406,21 +410,23 @@ components:
               properties:
                 totalActiveAgents:
                   type: integer
+                  format: int32
+                  minimum: 0
                   description: Number of agents currently reporting to that node.
         status:
-          description: Field only available in worker nodes. Shows information regarding synchronized data with the master node.
           type: array
+          description: Field only available in worker nodes. Shows information regarding synchronized data with the master node.
           items:
             type: object
             properties:
               type:
                 type: string
+                description: Type of synchronization.
                 enum:
                   - Agent status
                   - Extra valid
                   - Integrity
                   - Last keep alive
-                description: Type of synchronization.
               date_start:
                 type: string
                 format: date-time
@@ -431,6 +437,7 @@ components:
                 description: Date when the synchronization process finished.
               synchronized_files:
                 type: integer
+                format: int32
                 description: Number of synchronized files.
               free:
                 type: boolean
@@ -496,6 +503,8 @@ components:
           - manager
         max_agents:
           type: integer
+          format: int32
+          minimum: 0
           description: Maximum number of agents that can be registered. This variable is defined at compilation time.
         openssl_support:
           type: boolean
@@ -570,47 +579,58 @@ components:
         type: object
         properties:
           hour:
-            description: Hour of the day in 24h format.
             type: integer
+            format: int32
+            description: Hour of the day in 24h format.
           alerts:
             type: array
             items:
               type: object
               properties:
                 sigid:
+                  type: integer
+                  format: int32
                   description: Rule ID that matched the event.
-                  type: integer
                 level:
+                  type: integer
+                  format: int32
+                  minimum: 3
+                  maximum: 15
                   description: Alert level
-                  type: integer
                 times:
-                  description: Number of times the alert was raised during the specified hour.
                   type: integer
+                  format: int32
+                  description: Number of times the alert was raised during the specified hour.
           totalAlerts:
+            type: integer
+            format: int32
             description: Number of alerts raised during the specified hour.
-            type: integer
           events:
+            type: integer
+            format: int32
             description: Number of events procesed during the specified hour.
-            type: integer
           syscheck:
+            type: integer
+            format: int32
             description: Number of syscheck alerts raised during the specified hour.
-            type: integer
           firewall:
-            description: Number of firewall alerts raised during the specified hour.
             type: integer
+            format: int32
+            description: Number of firewall alerts raised during the specified hour.
 
     WazuhHourlyStats:
       type: object
       properties:
         averages:
-          description: Array containing the number of alerts for every hour.
           type: array
+          maxLength: 24
+          minLength: 24
+          description: Array containing the number of alerts for every hour.
           items:
             type: integer
-          minItems: 24
-          maxItems: 24
         iterations:
           type: integer
+          format: int32
 
     WazuhWeeklyStats:
       type: object
@@ -634,171 +654,225 @@ components:
       type: object
       properties:
         total_events_decoded:
+          type: integer
+          format: int32
           description: Total events decoded in the last 5 seconds. This number is not accumulative, the number in the following 5 seconds can be lower than the previous one.
-          type: integer
         syscheck_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for FIM events.
-          type: integer
         syscheck_edps:
+          type: integer
+          format: int32
           description: FIM events decoded per second (EDPS = Events Decoded Per Second).
-          type: integer
         syscollector_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for system inventory events.
-          type: integer
         syscollector_edps:
+          type: integer
+          format: int32
           description: System inventory events decoded per second.
-          type: integer
         rootcheck_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for rootcheck events.
-          type: integer
         rootcheck_edps:
+          type: integer
+          format: int32
           description: Rootcheck events decoded per second.
-          type: integer
         sca_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for policy monitoring events.
-          type: integer
         sca_edps:
+          type: integer
+          format: int32
           description: Policy monitoring events decoded per second.
-          type: integer
         hostinfo_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for hostinfo events.
-          type: integer
         hostinfo_edps:
+          type: integer
+          format: int32
           description: Hostinfo events decoded per second.
-          type: integer
         winevt_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for Windows events.
-          type: integer
         winevt_edps:
+          type: integer
+          format: int32
           description: Windows events decoded per second.
-          type: integer
         other_events_decoded:
+          type: integer
+          format: int32
           description: Same as `total_events_decoded` but for non catalogued events.
-          type: integer
         other_events_edps:
+          type: integer
+          format: int32
           description: Non catalogued events decoded per second.
-          type: integer
         events_processed:
+          type: integer
+          format: int32
           description: Total of events processed (i.e. matched against Wazuh ruleset) in the last 5 seconds.
-          type: integer
         events_edps:
+          type: integer
+          format: int32
           description: Same as `events_processed` but per second.
-          type: integer
         events_received:
+          type: integer
+          format: int32
           description: Events received in `analysisd` from the rest of modules in the last 5 seconds.
-          type: integer
         events_dropped:
+          type: integer
+          format: int32
           description: "Discarded events because they didn't match any rule in the ruleset."
-          type: integer
         alerts_written:
+          type: integer
+          format: int32
           description: Total of alerts written in disk during the last 5 seconds.
-          type: integer
         firewall_written:
+          type: integer
+          format: int32
           description: Same as `alerts_written` but focusing in firewall alerts.
-          type: integer
         fts_written:
+          type: integer
+          format: int32
           description: "Same as `alerts_written` but focusing in [FTS alerts](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts#fts)."
-          type: integer
         syscheck_queue_usage:
+          type: integer
+          format: int32
           description: Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when the queue is full.
-          type: integer
         syscheck_queue_size:
+          type: integer
+          format: int32
           description: Syscheck events queue size.
-          type: integer
         syscollector_queue_usage:
+          type: integer
+          format: int32
           description: Same as `syscheck_queue_usage` but for system inventory events.
-          type: integer
         syscollector_queue_size:
+          type: integer
+          format: int32
           description: System inventory events queue size.
-          type: integer
         rootcheck_queue_usage:
+          type: integer
+          format: int32
           description: Same as `syscheck_queue_usage` but for rootcheck events.
-          type: integer
         rootcheck_queue_size:
+          type: integer
+          format: int32
           description: Rootcheck events queue size.
-          type: integer
         sca_queue_usage:
+          type: integer
+          format: int32
           description: Same as `syscheck_queue_usage` but for policy monitoring events.
-          type: integer
         sca_queue_size:
+          type: integer
+          format: int32
           description: Policy monitoring events queue size.
-          type: integer
         hostinfo_queue_usage:
+          type: integer
+          format: int32
           description: Same as `syscheck_queue_usage` but for hostinfo events.
-          type: integer
         hostinfo_queue_size:
+          type: integer
+          format: int32
           description: Hostinfo events queue size.
-          type: integer
         winevt_queue_usage:
+          type: integer
+          format: int32
           description: Same as `syscheck_queue_usage` but for Windows events.
-          type: integer
         winevt_queue_size:
+          type: integer
+          format: int32
           description: Windows events queue size.
-          type: integer
         event_queue_usage:
+          type: integer
+          format: int32
           description: Same as `syscheck_queue_usage` but for events not catalogued in any of the previously mentioned queues.
-          type: integer
         event_queue_size:
+          type: integer
+          format: int32
           description: Non catalogued events queue size.
-          type: integer
         rule_matching_queue_usage:
+          type: integer
+          format: int32
           description: After decoding, events are pushed to a _pending to process_ queue which will match the events against the Wazuh ruleset to raise alerts. This variable shows usage of that queue.
-          type: integer
         rule_matching_queue_size:
+          type: integer
+          format: int32
           description: Pending to process events queue size.
-          type: integer
         alerts_queue_usage:
+          type: integer
+          format: int32
           description: If an event matches a rule, an alert is raised. The alerts are pushed to a _pending to write in disk alerts_ queue. This variable shows usage of that queue.
-          type: integer
         alerts_queue_size:
+          type: integer
+          format: int32
           description: Pending to write in disk alerts queue size.
-          type: integer
         firewall_queue_usage:
+          type: integer
+          format: int32
           description: Percentage of use in the queue of events to write in the firewall log.
-          type: integer
         firewall_queue_size:
+          type: integer
+          format: int32
           description: _Events to write in the firewall log_ queue size.
-          type: integer
         statistical_queue_usage:
+          type: integer
+          format: int32
           description: Stats log queue usage.
-          type: integer
         statistical_queue_size:
+          type: integer
+          format: int32
           description: Stats log queue size.
-          type: integer
         archives_queue_usage:
+          type: integer
+          format: int32
           description: _Events to write in the archives.log_ queue usage.
-          type: integer
         archives_queue_size:
-          description: _Events to write in the archives.log_ queue size.
           type: integer
+          format: int32
+          description: _Events to write in the archives.log_ queue size.
 
     WazuhRemotedStats:
       type: object
       properties:
         queue_size:
+          type: integer
+          format: int32
           description: Usage of the queue to storage events from agents.
-          type: integer
         total_queue_size:
+          type: integer
+          format: int32
           description: Total queue size to store events from agents.
-          type: integer
         tcp_sessions:
+          type: integer
+          format: int32
           description: Number of TCP active sessions during the last five seconds.
-          type: integer
         evt_count:
+          type: integer
+          format: int32
           description: Number of events sent to Analysisd during the last five seconds.
-          type: integer
         ctrl_msg_count:
+          type: integer
+          format: int32
           description: Number of control messages received from all agents during the last five seconds.
-          type: integer
         discarded_count:
+          type: integer
+          format: int32
           description: Number of discarded events received from agents during the last five seconds.
-          type: integer
         msg_sent:
+          type: integer
+          format: int32
           description: Number of messages sent to the agents during the last five seconds.
-          type: integer
         recv_bytes:
-          description: Number of received bytes from all agents during the last five seconds.
           type: integer
+          format: int32
+          description: Number of received bytes from all agents during the last five seconds.
 
     WazuhLogs:
       type: object
@@ -807,8 +881,8 @@ components:
           type: string
           format: date-time
         tag:
-          description: Wazuh component that logged the event.
           type: string
+          description: Wazuh component that logged the event.
           enum:
           - ossec-analysisd
           - ossec-remoted
@@ -841,8 +915,8 @@ components:
           - ossec-integratord
           - ossec-reportd
         level:
-          description: Log level.
           type: string
+          description: Log level.
           enum:
           - error
           - info
@@ -851,24 +925,36 @@ components:
           - debug2
           - critical
         description:
-          description: Log message.
           type: string
+          description: Log message.
 
     LogSummary:
       type: object
       properties:
         info:
           type: integer
+          format: int32
+          minimum: 0
         all:
           type: integer
+          format: int32
+          minimum: 0
         critical:
           type: integer
+          format: int32
+          minimum: 0
         error:
           type: integer
+          format: int32
+          minimum: 0
         debug:
           type: integer
+          format: int32
+          minimum: 0
         warning:
           type: integer
+          format: int32
+          minimum: 0
 
     WazuhLogsSummary:
       type: object
@@ -938,14 +1024,14 @@ components:
       type: object
       properties:
         status:
-          description: "Configuration status. If the returned value is KO, the configuration isn't valid."
           type: string
+          description: "Configuration status. If the returned value is KO, the configuration isn't valid."
           enum:
           - OK
           - KO
         details:
-          description: "Errors found reading the configuration. If the status is `OK` this field isn't returned."
           type: array
+          description: "Errors found reading the configuration. If the status is `OK` this field isn't returned."
           items:
             type: string
 
@@ -955,10 +1041,10 @@ components:
       properties:
         status:
           type: string
+          description: Status of the check, respecting to the previous scan.
           enum:
           - outstanding
           - solved
-          description: Status of the check, respecting to the previous scan.
         readDay:
           type: string
           format: date-time
@@ -968,14 +1054,14 @@ components:
           format: date-time
           description: Previous scan date.
         pci:
-          description: PCI DSS check level.
           type: string
+          description: PCI DSS requirement level.
         cis:
-          description: CIS compliance check level.
           type: string
+          description: CIS compliance requirement level.
         event:
-          description: Brief description of what is being checked.
           type: string
+          description: Brief description of what is being checked.
 
     LastScan:
       type: object
@@ -1000,8 +1086,8 @@ components:
           type: string
           description: Path where the file defining the rule is located. The path is relative to the Wazuh install path.
         status:
-          description: Rule status.
           type: string
+          description: Rule status.
           enum:
           - enabled
           - disabled
@@ -1012,34 +1098,36 @@ components:
         - type: object
           properties:
             id:
+              type: integer
+              format: int32
               description: Rule ID.
-              type: integer
             level:
-              description: Rule level.
               type: integer
+              format: int32
               minimum: 0
               maximum: 15
+              description: Rule level.
             description:
-              description: Rule description. This description is shown when an alert matching the rule is raised.
               type: string
+              description: Rule description. This description is shown when an alert matching the rule is raised.
             groups:
-              description: Groups the rule belongs to.
               type: array
+              description: Groups the rule belongs to.
               items:
                 type: string
             pci:
-              description: PCI DSS checks the rule is checking.
               type: array
+              description: PCI DSS checks the rule is checking.
               items:
                 type: string
             gdpr:
-              description: GDPR checks the rule is checking.
               type: array
+              description: GDPR checks the rule is checking.
               items:
                 type: string
             details:
-              description: Rule definition details.
               type: object
+              description: Rule definition details.
 
     # SCA models
     SCAChecks:
@@ -1053,6 +1141,7 @@ components:
           description: Scanned policy ID.
         id:
           type: integer
+          format: int32
           description: Policy check ID. A policy contains multiple checks.
         title:
           type: string
@@ -1076,11 +1165,11 @@ components:
           type: string
           description: Analyzed registry.
         references:
+          type: string
           description: A link to a documentation page about the check.
-          type: string
         result:
-          description: Check result.
           type: string
+          description: Check result.
           enum:
             - "passed"
             - "failed"
@@ -1102,12 +1191,15 @@ components:
           description: A link to a documentation page about the policy.
         pass:
           type: integer
+          format: int32
           description: Number of passed checks.
         fail:
           type: integer
+          format: int32
           description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
         score:
           type: integer
+          format: int32
           description: Percentage of passed checks.
         end_scan:
           type: string
@@ -1137,6 +1229,7 @@ components:
           description: MD5 checksum of the file.
         inode:
           type: integer
+          format: int32
           description: inode of the file. Only available in Linux agents.
         uid:
           type: string
@@ -1152,10 +1245,10 @@ components:
           description: File permissions.
         type:
           type: string
+          description: File type. Registry type only available in Windows agents.
           enum:
           - file
           - registry
-          description: File type. Registry type only available in Windows agents.
         gname:
           type: string
           description: Group name. Only available in Linux agents.
@@ -1164,6 +1257,7 @@ components:
           description: User name of the file.
         size:
           type: integer
+          format: int64
           description: File size in bytes.
         gid:
           type: string
@@ -1190,8 +1284,9 @@ components:
           description: Decoder name
         position:
           type: integer
-          description: Position of this decoder in the decoder file. The parent decoder will have position 0, the following defined decoder will have position 1, and so on.
+          format: int32
           minimum: 0
+          description: Position of this decoder in the decoder file. The parent decoder will have position 0, the following defined decoder will have position 1, and so on.
         details:
           type: object
           description: Decoder definition fields.
@@ -1203,7 +1298,7 @@ components:
             prematch:
               type: string
             regex:
-              type: integer
+              type: string
             order:
               type: string
 
@@ -1214,11 +1309,11 @@ components:
       - status
       properties:
         file:
+          type: string
           description: Filename containing decoder definitions.
-          type: string
         status:
-          description: Whether the decoders defined in that file are used by Wazuh or not.
           type: string
+          description: Whether the decoders defined in that file are used by Wazuh or not.
 
   # Syscollector models
     SyscollectorHardware:
@@ -1228,38 +1323,42 @@ components:
           type: object
           properties:
             cores:
-              description: Number of cores the CPU has.
-              minimum: 0
               type: integer
-            mhz:
-              description: Mhz the CPU has.
-              type: number
+              format: int32
               minimum: 0
+              description: Number of cores the CPU has.
+            mhz:
+              type: number
               format: float
+              minimum: 0
+              description: Mhz the CPU has.
             name:
-              description: CPU name.
               type: string
+              description: CPU name.
         ram:
           type: object
           properties:
             free:
+              type: integer
+              format: int32
+              minimum: 0
               description: Current free RAM memory.
-              type: integer
-              minimum: 0
             total:
-              description: Total RAM memory.
               type: integer
+              format: int32
               minimum: 0
+              description: Total RAM memory.
             usage:
-              description: RAM memory currently used.
               type: integer
+              format: int32
               minimum: 0
               maximum: 100
+              description: RAM memory currently used.
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         board_serial:
-          description: Motherboard serial number. This value will be empty in virtual machines.
           type: string
+          description: Motherboard serial number. This value will be empty in virtual machines.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1267,17 +1366,18 @@ components:
       type: object
       properties:
         iface:
+          type: string
           description: Network interface name.
-          type: string
         scan_id:
-          description: Scan ID.
           type: integer
+          format: int64
+          description: Scan ID.
         address:
+          type: string
           description: IP address associated with the network interface.
-          type: string
         netmask:
-          description: Netmask associated with the network interface.
           type: string
+          description: Netmask associated with the network interface.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1285,23 +1385,25 @@ components:
       type: object
       properties:
         bytes:
+          type: integer
+          format: int32
+          minimum: 0
           description: Number of bytes in the network interface.
-          type: integer
-          minimum: 0
         dropped:
+          type: integer
+          format: int32
+          minimum: 0
           description: Number of dropped packages in the network interface.
-          type: integer
-          format: int32
-          minimum: 0
         error:
-          description: Number of packages containing any error in the network interface.
           type: integer
           format: int32
           minimum: 0
+          description: Number of packages containing any error in the network interface.
         packets:
-          description: Number of packages in the network interface.
           type: integer
+          format: int32
           minimum: 0
+          description: Number of packages in the network interface.
 
     SyscollectorInterface:
       type: object
@@ -1315,21 +1417,22 @@ components:
           description: Information related to sent packets in the network interface.
           $ref: '#/components/schemas/NetworkInterfacePackets'
         mac:
+          type: string
           description: MAC Address of the network interface.
-          type: string
         name:
+          type: string
           description: Network interface name.
-          type: string
         type:
-          description: Network interface type.
           type: string
+          description: Network interface type.
         mtu:
           type: integer
+          format: int32
           minimum: 0
           description: "Network interface's Maximum Transfer Unit"
         state:
-          description: Network interface state.
           type: string
+          description: Network interface state.
           enum:
           - up
           - down
@@ -1343,17 +1446,18 @@ components:
           description: Network interface name.
           type: string
         scan_id:
-          description: Scan ID.
           type: integer
+          format: int64
+          description: Scan ID.
         type:
-          description: Protocol of the interface data
           type: string
+          description: Protocol of the interface data
           enum:
           - ipv4
           - ipv6
         dhcp:
-          description: DHCP status.
           type: string
+          description: DHCP status.
           enum:
           - enabled
           - disabled
@@ -1369,40 +1473,40 @@ components:
           type: object
           properties:
             codename:
+              type: string
               description: OS version codename.
-              type: string
             major:
+              type: string
               description: Major release version.
-              type: string
             minor:
+              type: string
               description: Minor release version
-              type: string
             name:
+              type: string
               description: OS name.
-              type: string
             platform:
+              type: string
               description: OS platform name.
-              type: string
             version:
-              description: Full version name.
               type: string
+              description: Full version name.
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         release:
+          type: string
           description: Release name.
-          type: string
         architecture:
+          type: string
           description: OS arquitecture.
-          type: string
         version:
+          type: string
           description: Release version.
-          type: string
         sysname:
+          type: string
           description: System name.
-          type: string
         hostname:
-          description: Machine's hostname.
           type: string
+          description: Machine's hostname.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -1412,39 +1516,39 @@ components:
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         name:
+          type: string
           description: Package name.
-          type: string
         section:
+          type: string
           description: Package section.
-          type: string
         priority:
+          type: string
           description: Package priority.
-          type: string
         size:
+          type: string
           description: Installed package size in bytes.
-          type: string
         description:
+          type: string
           description: Brief package description.
-          type: string
         architecture:
+          type: string
           description: Package architecture.
-          type: string
         multiarch:
-          description: Whether the package has multiarchitecture support.
           type: string
+          description: Whether the package has multiarchitecture support.
           enum:
           - allowed
           - same
           - foreign
         vendor:
+          type: string
           description: Vendor name.
-          type: string
         version:
+          type: string
           description: Release version installed.
-          type: string
         format:
-          description: Package format.
           type: string
+          description: Package format.
           enum:
           - deb
           - rpm
@@ -1457,12 +1561,13 @@ components:
       type: object
       properties:
         ip:
-          description: Bind IP.
           type: string
+          description: Bind IP.
         port:
-          description: Port used.
           type: integer
           minimum: 0
+          format: int32
+          description: Port used.
 
     SyscollectorPorts:
       type: object
@@ -1476,8 +1581,8 @@ components:
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         state:
-          description: Communication status.
           type: string
+          description: Communication status.
           enum:
           - established
           - syn_sent
@@ -1493,18 +1598,22 @@ components:
           - delete_tcp
           - unknown
         tx_queue:
+          type: integer
+          format: int32
+          minimum: 0
           description: Packets pending to be transmitted.
-          type: integer
-          minimum: 0
         rx_queue:
-          description: Packets at the receiver queue.
           type: integer
+          format: int32
           minimum: 0
+          description: Packets at the receiver queue.
         inode:
-          description: Port inode.
           type: integer
+          format: int64
+          description: Port inode.
         protocol:
           type: string
+          description: Protocol used in the communication.
           enum:
           - tcp
           - udp
@@ -1513,11 +1622,12 @@ components:
         agent_id:
           $ref: '#/components/schemas/AgentID'
         pid:
-          description: PID owner of the opened port.
           type: integer
+          format: int32
+          description: PID owner of the opened port.
         process:
-          description: Name of the PID.
           type: string
+          description: Name of the PID.
 
     SyscollectorProcess:
       type: object
@@ -1525,95 +1635,111 @@ components:
         scan:
           $ref: '#/components/schemas/ScanIdTime'
         fgroup:
+          type: string
           description: Filesystem group name.
-          type: string
         state:
+          type: string
           description: Process state.
-          type: string
         priority:
+          type: integer
+          format: int32
           description: Kernel scheduling priority.
-          type: integer
         suser:
+          type: string
           description: Saved-set user.
-          type: string
         ppid:
+          type: integer
+          format: int32
+          minimum: 0
           description: Process parent PID.
-          type: integer
-          minimum: 0
         vm_size:
+          type: integer
+          format: int32
+          minimum: 0
           description: Total VM size (KB)
-          type: integer
-          minimum: 0
         session:
+          type: integer
+          format: int32
           description: Process session.
-          type: integer
         pid:
+          type: string
           description: Process PID.
-          type: string
         nlwp:
+          type: integer
+          format: int32
           description: Number of light weight processes.
-          type: integer
         name:
+          type: string
           description: Process name.
-          type: string
         euser:
+          type: string
           description: Effective user.
-          type: string
         sgroup:
+          type: string
           description: Saved-set group
-          type: string
         size:
+          type: integer
+          format: int32
+          minimum: 0
           description: Process size in bytes.
-          type: integer
-          minimum: 0
         stime:
+          type: integer
+          format: int32
+          minimum: 0
           description: Time spent executing system code.
-          type: integer
-          minimum: 0
         nice:
+          type: integer
+          format: int32
           description: Nice value of the process
-          type: integer
         argvs:
+          type: string
           description: Process received arguments.
-          type: string
         share:
+          type: integer
+          format: int32
+          minimum: 0
           description: Shared memory.
-          type: integer
-          minimum: 0
         processor:
-          description: Processor number which is running the process.
           type: integer
+          format: int32
           minimum: 0
+          description: Processor number which is running the process.
         ruser:
+          type: string
           description: Real user.
-          type: string
         cmd:
+          type: string
           description: Executed command.
-          type: string
         egroup:
+          type: string
           description: Effective group.
-          type: string
         rgroup:
-          description: Real group.
           type: string
+          description: Real group.
         pgrp:
+          type: integer
+          format: int32
           description: Process group.
-          type: integer
         resident:
+          type: integer
+          format: int32
           description: Process resident size in bytes.
-          type: integer
         utime:
+          type: integer
+          format: int32
           description: Time spent executing user code.
-          type: integer
         tgid:
+          type: integer
+          format: int32
           description: Thread Group ID.
-          type: integer
         start_time:
+          type: integer
+          format: int64
           description: Time when the process started.
-          type: integer
         tty:
-          description: Process TTY number.
           type: integer
+          format: int32
+          description: Process TTY number.
         agent_id:
           $ref: '#/components/schemas/AgentID'
 
@@ -4053,10 +4179,11 @@ paths:
                     $ref: '#/components/schemas/AgentID'
                   key:
                     type: string
-                    description: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
-                    length: 64
+                    maxLength: 64
+                    minLength: 64
                     pattern: ^[a-zA-Z0-9]+$
                     format: key
+                    description: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
                   name:
                     description: Agent name.
                     type: string
