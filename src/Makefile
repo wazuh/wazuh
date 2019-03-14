@@ -1422,7 +1422,7 @@ install_python:
 python_dependencies := requirements.txt
 
 install_dependencies: install_python
-	${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
+	${WPYTHON_DIR}/bin/pip3 install -r ../framework/${python_dependencies}
 
 
 install_framework:
