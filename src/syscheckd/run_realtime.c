@@ -49,6 +49,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     // To obtain path without symbolic links
     os_calloc(PATH_MAX, sizeof(char), real_path);
 
+#ifndef WIN32
     if (realpath(file_name, real_path) == NULL) {
         os_strdup(file_name, path);
         os_free(real_path);
@@ -56,6 +57,9 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         os_strdup(real_path, path);
         os_free(real_path);
     }
+#else
+    os_strdup(file_name, path);
+#endif
 
     if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
         char c_sum[OS_SIZE_4096 + 1];

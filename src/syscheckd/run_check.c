@@ -399,8 +399,9 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             free(s_node->checksum);
             free(s_node);
         }
-
+#ifndef WIN32
         os_free(w_inode);
+#endif
 
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);

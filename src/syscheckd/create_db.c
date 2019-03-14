@@ -946,9 +946,9 @@ int run_dbcheck()
             mdebug2("Sending delete msg for file: %s", curr_node->key);
             snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
             send_syscheck_msg(alert_msg);
-
+#ifndef WIN32
             fim_delete_hashes(curr_node->key);
-
+#endif
             OSHash_Delete_ex(syscheck.last_check, curr_node->key);
         }
         os_free(i);
