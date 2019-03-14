@@ -1452,7 +1452,7 @@ int pm_send_db(char *msg, char *response, int *sock)
     }
 
     // Receive response from socket
-    length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
+    length = OS_RecvSecureTCP(*sock, response, OS_SIZE_6144);
     switch (length)
     {
     case OS_SOCKTERR:
