@@ -165,12 +165,73 @@ def delete_agent():
     pass
 
 
-def get_agent():
-    pass
+def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
+    """Get an agent
+
+    Returns various information from an agent.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param select: Select which fields to return (separated by comma)
+    :type select: List[str]
+
+    :rtype: AgentData
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'select': select
+                }
+
+    dapi = DistributedAPI(f=Agent.get_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def get_agent_config():
-    pass
+def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Get active configuration
+
+    Returns the active configuration in JSON format.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param component: Selected agent's component.
+    :type component: str
+    :param configuration: Selected agent's configuration to read.
+    :type configuration: str
+
+    :rtype: AgentConfigurationData
+        """
+    f_kwargs = {'agent_id': agent_id,
+                'component': component,
+                'configuration': configuration
+                }
+
+    dapi = DistributedAPI(f=Agent.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def delete_agent_group():
