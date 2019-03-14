@@ -37,6 +37,9 @@
 * Changed parameter **ids** name to **list_groups**
 * Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
 
+### POST/agents/insert
+* `force` parameter set to boolean.
+
 ## Cache
 ### DELETE /cache (Clear group cache)
 * Changed path to **/cache/:group_id** because this path is used in other endpoint.

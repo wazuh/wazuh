@@ -3915,12 +3915,12 @@ paths:
               example:
                 error: 0
                 data: Agent configuration was updated successfully
-  /agents/groups/insert:
+  /agents/insert:
     post:
       tags:
         - agents
-      summary: 'Get a file in group'
-      description: 'Returns the specified file belonging to the group parsed to JSON.'
+      summary: 'Add an agent specifying all its basic properties'
+      description: 'Adds an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace it using `force` parameter.'
       operationId: api.controllers.agents_controller.insert_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3929,26 +3929,30 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
+                  id:
+                    $ref: '#/components/schemas/AgentID'
+                  key:
+                    type: string
+                    description: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
+                    length: 64
+                    pattern: ^[a-zA-Z0-9]+$
+                    format: key
                   name:
                     description: Agent name.
                     type: string
-
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-
-                  id:
-                    description: Agent ID.
-                    type: string
-
-                  key:
-                    description: "Agent key. Minimum length: 64 characters. Allowed values: ^[a-zA-Z0-9]+$"
-                    type: string
-
                   force:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
-                    type: integer
+                    type: boolean
+              example:
+                name: NewHost_2
+                ip: 10.0.10.10
+                id: 123
+                key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
       responses:
         '200':
           description: 'Get group file'
