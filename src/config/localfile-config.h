@@ -73,6 +73,7 @@ typedef struct _logreader {
     char **target;
     logtarget * log_target;
     int duplicated;
+    char *exclude;
     wlabel_t *labels;
     pthread_mutex_t mutex;
     int exists;

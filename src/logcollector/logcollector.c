@@ -21,6 +21,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
+static void check_pattern_expand_excluded();
 #endif
 
 /* Global variables */
@@ -93,6 +94,8 @@ void LogCollectorStart()
     struct stat tmp_stat;
 
     check_pattern_expand(1);
+
+    check_pattern_expand_excluded();
 
     /* Set the files mutexes */
     w_set_file_mutexes();
@@ -579,6 +582,9 @@ void LogCollectorStart()
                     }
                 }
             }
+
+            /* Check for excluded files */
+            check_pattern_expand_excluded();
 #endif
             w_rwlock_unlock(&files_update_rwlock);
 
@@ -1003,6 +1009,73 @@ int check_pattern_expand(int do_seek) {
     w_mutexattr_destroy(&attr);
 
     return retval;
+}
+
+void check_pattern_expand_excluded() {
+    glob_t g;
+    int err;
+    int glob_offset;
+    int found;
+    int i, j;
+
+    IT_control f_control = 0;
+    logreader *current;
+
+    if (globs) {
+        for (i = 0, j = -1;; i++) {
+            if (f_control = update_current(&current, &i, &j), f_control) {
+                if (f_control == NEXT_IT) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            
+            /* Check for files to exclude */
+            if(current->file && !current->command && current->exclude) {
+                glob_offset = 0;
+                if (err = glob(current->exclude, 0, NULL, &g), err) {
+                    if (err == GLOB_NOMATCH) {
+                        mdebug1(GLOB_NFOUND, current->exclude);
+                    } else {
+                        mdebug1(GLOB_ERROR, current->exclude);
+                    }
+                    continue;
+                }
+                while (g.gl_pathv[glob_offset] != NULL) {
+                    found = 0;
+                    int k;
+                    for (k = 0; globs[j].gfiles[k].file; k++) {
+                        if (!strcmp(globs[j].gfiles[k].file, g.gl_pathv[glob_offset])) {
+                            found = 1;
+                            break;
+                        }
+                    }
+
+                    /* Excluded file found, remove it completely */
+                    if(found) {
+                        int result;
+
+                        if (j < 0) {
+                            result = Remove_Localfile(&logff, k, 0, 1);
+                        } else {
+                            result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
+                        }
+                            
+                        if (result) {
+                            merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
+                        } else {
+                            mdebug2(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        }
+                    }
+                    glob_offset++;
+                }
+                globfree(&g);
+            }
+            current = NULL;
+        }
+    }
 }
 #endif
 

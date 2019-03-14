@@ -193,6 +193,7 @@
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
 #define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
+#define EXCLUDE_FILE    "(1964): File excluded: '%s'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

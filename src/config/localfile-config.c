@@ -33,6 +33,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
+    const char *xml_localfile_exclude = "exclude";
 
     logreader *logf;
     logreader_config *log_config;
@@ -263,6 +264,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+        } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
+            os_strdup(node[i]->content, logf[pl].exclude);
         } else if (strcasecmp(node[i]->element, xml_localfile_alias) == 0) {
             os_strdup(node[i]->content, logf[pl].alias);
         } else {
