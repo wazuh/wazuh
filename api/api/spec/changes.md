@@ -43,6 +43,9 @@
 ### PUT /agents/{agent_id}/upgrade
 * Changed parameter type **force** from integer to boolean
 
+### POST/agents/insert
+* Parameter **force** renamed to **force_after**
+
 ## Cache
 ### DELETE /cache (Clear group cache)
 * Changed path to **/cache/:group_id** because this path is used in other endpoint.
@@ -53,6 +56,7 @@
 ## Cluster
 ### GET /cluster/{node_id}/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD
+
 
 ## Experimental
 ### General
@@ -70,6 +74,12 @@
 ## Manager
 ### GET /manager/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD
+
+### GET/manager/info
+* Parameter `openssl_support` is now a boolean.
+
+### GET/manager/stats/weekly
+* Parameter **hours** changed to **averages**.
 
 ## Syscollectior
 ### /syscollector/:agent_id/netaddr
