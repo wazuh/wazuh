@@ -2767,7 +2767,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      type: object
+                      allOf:
+                        - $ref: '#/components/schemas/AgentConfiguration'
               example:
                 error: 0
                 data:
