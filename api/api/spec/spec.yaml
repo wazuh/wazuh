@@ -396,7 +396,10 @@ components:
     ClusterNode:
       allOf:
         - $ref: '#/components/schemas/ClusterNodeBasic'
-        - $ref: '#/components/schemas/ClusterNodeName'
+        - type: object
+          properties:
+            node_name:
+              $ref: '#/components/schemas/ClusterNodeName'
         
     Healthcheck:
       type: object
