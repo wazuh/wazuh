@@ -1680,6 +1680,7 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
+        message = f'All selected agents were removed to group {group_id}'
         for agent_id in agent_id_list:
             try:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
@@ -1687,10 +1688,8 @@ class Agent:
             except Exception as e:
                 failed_ids.append(create_exception_dic(agent_id, e))
 
-            if not failed_ids:
-                message = 'All selected agents were removed to group ' + group_id
-            else:
-                message = 'Some agents were not removed from group ' + group_id
+            if failed_ids:
+                message = f'Some agents were not removed from group {group_id}'
 
         if failed_ids:
             final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
