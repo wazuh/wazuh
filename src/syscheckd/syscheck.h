@@ -137,6 +137,6 @@ size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
 int print_hash_table();
-int fim_delete_hashes(const char *file_name);
+int fim_delete_hashes(char *file_name);
 
 #endif

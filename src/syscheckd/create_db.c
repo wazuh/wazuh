@@ -224,7 +224,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
-            fim_delete_hashes(file_name);
+            fim_delete_hashes((char*)file_name);
 #else
             // Delete from hash table
             if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
@@ -1205,7 +1205,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
     return 0;
 }
 
-int fim_delete_hashes(const char *file_name) {
+int fim_delete_hashes(char *file_name) {
     char *checksum_inode;
     char *inode_str;
     char *w_inode;
@@ -1241,8 +1241,9 @@ int fim_delete_hashes(const char *file_name) {
         }
 
         os_free(checksum_inode);
-        free(data->checksum);
-        free(data);
+        os_free(data->checksum);
+        os_free(data);
+        os_free(file_name);
     }
 
     return 0;
