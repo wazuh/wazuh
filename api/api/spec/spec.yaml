@@ -2061,7 +2061,7 @@ components:
     format:
       in: query
       name: format
-      description: Optional. Output format (JSON, XML).
+      description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
       schema:
         type: array
         items:
