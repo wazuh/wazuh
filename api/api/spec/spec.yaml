@@ -382,22 +382,23 @@ components:
           type: string
           description: IP the node is using to communicate with other nodes in the cluster.
 
-
-    ClusterNode:
-      allOf:
-        - $ref: '#/components/schemas/ClusterNodeBasic'
-        - type: object
-          properties:
-            name:
-              type: string
-              description: Node ID.
-        
-    Healthcheck:
+    ClusterNodeName:
       type: object
       properties:
         name:
           type: string
           description: Node ID.
+
+    ClusterNode:
+      allOf:
+        - $ref: '#/components/schemas/ClusterNodeBasic'
+        - $ref: '#/components/schemas/ClusterNodeName'
+        
+    Healthcheck:
+      type: object
+      properties:
+        name:
+          - $ref: '#/components/schemas/ClusterNodeName'
         info:
           allOf:
             - $ref: '#/components/schemas/ClusterNodeBasic'
