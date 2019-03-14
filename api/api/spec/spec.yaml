@@ -398,8 +398,11 @@ components:
     ClusterNode:
       allOf:
         - $ref: '#/components/schemas/ClusterNodeBasic'
-        - $ref: '#/components/schemas/ClusterNodeName'
-
+        - type: object
+          properties:
+            node_name:
+              $ref: '#/components/schemas/ClusterNodeName'
+        
     Healthcheck:
       type: object
       properties:
@@ -1787,19 +1790,19 @@ components:
       schema:
         type: string
         enum:
-          - agent
-          - agentless
-          - analysis
-          - auth
-          - com
-          - csyslog
-          - integrator
-          - logcollector
-          - mail
-          - monitor
-          - request
-          - syscheck
-          - wmodules
+        - agent
+        - agentless
+        - analysis
+        - auth
+        - com
+        - csyslog
+        - integrator
+        - logcollector
+        - mail
+        - monitor
+        - request
+        - syscheck
+        - wmodules
     configuration:
       in: path
       name: configuration
@@ -1975,28 +1978,28 @@ components:
       schema:
         type: string
         enum:
-          - client
-          - buffer
-          - labels
-          - internal
-          - agentless
-          - global
-          - active_response
-          - alerts
-          - command
-          - rules
-          - decoders
-          - auth
-          - active-response
-          - cluster
-          - csyslog
-          - integration
-          - localfile
-          - socket
-          - remote
-          - syscheck
-          - rootcheck
-          - wmodules
+        - client
+        - buffer
+        - labels
+        - internal
+        - agentless
+        - global
+        - active_response
+        - alerts
+        - command
+        - rules
+        - decoders
+        - auth
+        - active-response
+        - cluster
+        - csyslog
+        - integration
+        - localfile
+        - socket
+        - remote
+        - syscheck
+        - rootcheck
+        - wmodules
     decoder_name:
       in: path
       name: decoder_name
@@ -3349,26 +3352,29 @@ paths:
               example:
                 error: 0
                 data:
-                    lastKeepAlive: '9999-12-31T23:59:59Z'
-                    ip: 127.0.0.1
-                    registerIP: 127.0.0.1
-                    manager: manager
-                    os:
-                      arch: x86_64
-                      codename: Bionic Beaver
-                      major: '18'
-                      minor: '04'
-                      name: Ubuntu
-                      platform: ubuntu
-                      uname: Linux |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon Sep 24 16:19:09
-                        UTC 2018 |x86_64
-                      version: 18.04.1 LTS
-                    status: Active
-                    version: Wazuh v3.8.0
-                    dateAdd: '2018-10-11T09:37:23Z'
-                    name: manager
-                    node_name: node01
-                    id: '000'
+                  configSum: "ab73af41699f13fdd81903b5f23d8d00"
+                  dateAdd: '2018-10-11T09:37:23Z'
+                  group:
+                    - default
+                  id: "002"
+                  ip: "172.18.0.6"
+                  lastKeepAlive: "2019-03-14T11:36:55Z"
+                  manager: "9f393e777dfb"
+                  mergedSum: "f8d49771911ed9d5c45b03a40babd065"
+                  name: "176772c37776"
+                  node_name: "worker1"
+                  os:
+                    arch: "x86_64"
+                    codename: "Bionic Beaver"
+                    major: "18"
+                    minor: "04"
+                    name: "Ubuntu"
+                    platform: "ubuntu"
+                    uname: "Linux |176772c37776 |4.15.0-46-generic |#49~16.04.1-Ubuntu SMP Tue Feb 12 17:45:24 UTC 2019 |x86_64"
+                    version: "18.04.2 LTS"
+                  registerIP: "172.18.0.6"
+                  status: "Active"
+                  version: "Wazuh v3.8.2"
 
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
