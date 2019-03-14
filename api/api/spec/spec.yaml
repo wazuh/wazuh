@@ -1189,7 +1189,7 @@ components:
           type: string
           description: Decoder name
         position:
-          type: string
+          type: integer
           description: Position of this decoder in the decoder file. The parent decoder will have position 0, the following defined decoder will have position 1, and so on.
           minimum: 0
         details:
