@@ -494,7 +494,7 @@ Section "Uninstall"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
     Delete "$INSTDIR\ruleset\sca\*"
-    Delete "$INSTDIR\ruleset\"
+    Delete "$INSTDIR\ruleset\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -516,6 +516,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
+    RMDir "$INSTDIR\ruleset\sca"
     RMDir "$INSTDIR\ruleset"
     RMDir "$INSTDIR"
 SectionEnd
