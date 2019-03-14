@@ -48,9 +48,12 @@
 * Parameter **status** renamed to **list_status**
 
 ## Manager/Cluster
+### GET/manager/info
+* Parameter `openssl_support` is now a boolean.
 
 ### GET/manager/stats/weekly
 * Parameter **hours** changed to **averages**.
+
 ## Experimental
 ### General
 * Changed **ram_free**, **ram_total**, **cpu_cores** type to integer and **cpu_mhz** type to number float
