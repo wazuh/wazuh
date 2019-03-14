@@ -48,6 +48,17 @@ components:
           type: string
           description: Confirmation message.
 
+    ScanIdTime:
+      type: object
+      properties:
+        id:
+          description: Scan ID.
+          type: integer
+        time:
+          description: Date when the scan was performed.
+          type: string
+          format: date-time
+
     ItemAffected:
       type: object
       required:
@@ -198,7 +209,7 @@ components:
         affected_agents:
           type: array
           items:
-            type: string
+            $ref: '#/components/schemas/AgentID'
           description: List of agents which belonged to the group but were moved to the default one.
 
     AgentIdKey:
@@ -208,7 +219,7 @@ components:
         - key
       properties:
         id:
-          type: string
+          $ref: '#/components/schemas/AgentID'
         key:
           type: string
           pattern: \w+=*
@@ -224,8 +235,7 @@ components:
           type: string
           description: Wazuh version the agent has intalled.
         id:
-          type: string
-          description: ID assigned to the agent when it was registered. 
+          $ref: '#/components/schemas/AgentID'
         name:
           type: string
           description: Agent name used at registration process.
@@ -238,6 +248,11 @@ components:
       - neverconnected
       - disconnected
       description: Agent status. It is calculated based on the last keep alive and the Wazuh version.
+
+    AgentID:
+      type: string
+      minLength: 3
+      description: Agent ID.
 
     AgentConfiguration:
       type: object
@@ -332,15 +347,7 @@ components:
           description: "Number of checks that CIS-CAT wasn't able to run."
           type: integer
         scan:
-          type: object
-          properties:
-            id:
-              description: Scan ID.
-              type: integer
-            time:
-              description: Date when the scan was performed.
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         fail:
           description: Number of failed checks. If this number is higher than 0 the host will probably have a vulnerability.
           type: integer
@@ -1236,18 +1243,11 @@ components:
             usage:
               type: integer
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         board_serial:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorNetwork:
       type: object
@@ -1263,8 +1263,7 @@ components:
         netmask:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorInterface:
       type: object
@@ -1287,13 +1286,7 @@ components:
               type: integer
               minimum: 0
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         tx:
           type: object
           properties:
@@ -1322,8 +1315,7 @@ components:
         state:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorProtocol:
       type: object
@@ -1340,8 +1332,7 @@ components:
           - enabled
           - disabled
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorOS:
       type: object
@@ -1362,13 +1353,7 @@ components:
             version:
               type: string
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         release:
           type: string
         architecture:
@@ -1380,20 +1365,13 @@ components:
         hostname:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorPackages:
       type: object
       properties:
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         name:
           type: string
         section:
@@ -1415,8 +1393,7 @@ components:
         format:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorPorts:
       type: object
@@ -1438,13 +1415,7 @@ components:
               type: integer
               minimum: 0
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         state:
           type: string
         tx_queue:
@@ -1458,20 +1429,13 @@ components:
         protocol:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorProcess:
       type: object
       properties:
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         fgroup:
           type: string
         state:
@@ -1534,8 +1498,7 @@ components:
         tty:
           type: integer
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
   securitySchemes:
     basicAuth:
