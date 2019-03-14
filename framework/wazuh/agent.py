@@ -1685,19 +1685,17 @@ class Agent:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
                 affected_agents.append(agent_id)
             except Exception as e:
-                failed_ids.append(agent_id)
+                failed_ids.append(create_exception_dic(agent_id, e))
 
             if not failed_ids:
                 message = 'All selected agents were removed to group ' + group_id
             else:
-                message = 'Some agents were not removed to group ' + group_id
+                message = 'Some agents were not removed from group ' + group_id
 
-            final_dict = {}
-
-            if failed_ids:
-                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
-            else:
-                final_dict = {'msg': message, 'affected_agents': affected_agents}
+        if failed_ids:
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+        else:
+            final_dict = {'msg': message, 'affected_agents': affected_agents}
 
         return final_dict
 
