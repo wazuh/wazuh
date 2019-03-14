@@ -70,7 +70,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[OS_SIZE_4096] = '\0';
 
         // If it returns < 0, we've already alerted the deleted file
-        if (c_read_file(file_name, buf, c_sum, evt) < 0) {
+        if (c_read_file(path, buf, c_sum, evt) < 0) {
             os_free(path);
             return (0);
         }

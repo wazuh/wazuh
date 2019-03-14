@@ -386,9 +386,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                     os_free(i);
                 }
                 if(inode_str){
-                    if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
-                        os_free(w_inode);
-                    }
+                    w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str);
                     os_free(checksum_inode);
                 }
             }

@@ -224,7 +224,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
-            fim_delete_hashes((char*)file_name);
+            fim_delete_hashes(strdup(file_name));
 #else
             // Delete from hash table
             if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
@@ -508,9 +508,10 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             case 1:
                 if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
                     if(strcmp(inode_path, file_name)) {
-                        mdebug1("Updating path in inode hash table: %s (%s) ", inode_path, str_inode);
+                        mdebug2("Updating path '%s' in inode hash table: %s (%s) ", file_name, inode_path, str_inode);
                         OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
                         read_file(inode_path, dir_position, evt, max_depth);
+                        os_free(inode_path);
                     }
                 }
             }
@@ -947,7 +948,7 @@ int run_dbcheck()
             snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
             send_syscheck_msg(alert_msg);
 #ifndef WIN32
-            fim_delete_hashes(curr_node->key);
+            fim_delete_hashes(strdup(curr_node->key));
 #endif
             OSHash_Delete_ex(syscheck.last_check, curr_node->key);
         }
@@ -1243,8 +1244,8 @@ int fim_delete_hashes(char *file_name) {
         os_free(checksum_inode);
         os_free(data->checksum);
         os_free(data);
-        os_free(file_name);
     }
+    os_free(file_name);
 
     return 0;
 }
