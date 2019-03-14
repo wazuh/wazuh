@@ -20,6 +20,10 @@ from api.api_exception import APIException
 from api.constants import SECURITY_PATH
 
 # Set authentication database
+if not os.path.isdir(SECURITY_PATH):
+    os.mkdir(SECURITY_PATH)
+    chown(SECURITY_PATH, 'root', 'ossec')
+    os.chmod(SECURITY_PATH, 0o770)
 _auth_db_file = os.path.join(SECURITY_PATH, 'users.db')
 _engine = create_engine(f'sqlite:///{_auth_db_file}', echo=False)
 _Base = declarative_base()

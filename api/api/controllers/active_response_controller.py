@@ -9,13 +9,14 @@ import logging
 
 import wazuh.active_response as active_response
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from ..models.active_response_model import ActiveResponse
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh.active_response_controller')
 
 
-def run_command(pretty=False, wait_for_complete=False):
+def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
     """
     Runs an Active Response command on a specified agent
 
@@ -37,11 +38,11 @@ def run_command(pretty=False, wait_for_complete=False):
 
     # get body parameters
     if connexion.request.is_json:
-        body = connexion.request.get_json()
+        active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
+    else:
+        return 'ERROR', 400
 
-    f_kwargs = {'agent_id': agent_id, 'command': command, 'custom': custom,
-                'arguments': arguments
-               }
+    f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
 
     dapi = DistributedAPI(f=active_response.run_command,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
