@@ -400,7 +400,7 @@ components:
         - $ref: '#/components/schemas/ClusterNodeBasic'
         - type: object
           properties:
-            node_name:
+            name:
               $ref: '#/components/schemas/ClusterNodeName'
         
     Healthcheck:
