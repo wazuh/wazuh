@@ -201,7 +201,9 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # 
 def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get active configuration
 
-    Returns the active configuration in JSON format.'  # noqa: E501
+    Returns the active configuration the agent is currently using. This can be different from the 
+    configuration present in the configuration file, if it has been modified and the agent has 
+    not been restarted yet.  # noqa: E501
 
     :param pretty: Show results in human-readable format
     :type pretty: bool
