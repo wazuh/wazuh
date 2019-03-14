@@ -76,6 +76,7 @@ typedef struct _logreader {
     wlabel_t *labels;
     pthread_mutex_t mutex;
     int exists;
+    unsigned int age;
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 

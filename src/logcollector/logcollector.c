@@ -1336,6 +1336,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
+    struct stat tmp_stat;
 #endif
 
     /* Daemon loop */
@@ -1417,6 +1418,23 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 ungetc(r, current->fp);
     #endif
 
+#ifndef WIN32
+                if ((fstat(fileno(current->fp), &tmp_stat)) == -1) {
+                    merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+
+                } else {
+                    struct timespec c_currenttime;
+                    gettime(&c_currenttime);
+
+                    /* Ignore file */
+                    if((c_currenttime.tv_sec - current->age) >= tmp_stat.st_mtime) {
+                        mdebug1("Ignoring file %s due to modification time",current->file);
+                        w_mutex_unlock(&current->mutex);
+                        w_rwlock_unlock(&files_update_rwlock);
+                        continue;
+                    }
+                }
+#endif
                 /* Finally, send to the function pointer to read it */
                 current->read(current, &r, 0);
                 /* Check for error */

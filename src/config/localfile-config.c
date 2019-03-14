@@ -33,6 +33,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_label = "label";
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
+    const char *xml_localfile_age = "age";
 
     logreader *logf;
     logreader_config *log_config;
@@ -265,6 +266,39 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
         } else if (strcasecmp(node[i]->element, xml_localfile_alias) == 0) {
             os_strdup(node[i]->content, logf[pl].alias);
+        } else if (!strcmp(node[i]->element, xml_localfile_age)) {
+            char *endptr;
+            logf[pl].age  = strtoul(node[i]->content, &endptr, 0);
+
+            if (logf[pl].age == 0 || logf[pl].age == UINT_MAX) {
+                merror("Invalid age for localfile");
+                return OS_INVALID;
+            }
+
+            switch (*endptr) {
+            case 'M':
+                logf[pl].age *= 60; // We can`t calculate seconds of a month
+                break;
+            case 'w':
+                logf[pl].age *= 604800;
+                break;
+            case 'd':
+                logf[pl].age *= 86400;
+                break;
+            case 'h':
+                logf[pl].age *= 3600;
+                break;
+            case 'm':
+                logf[pl].age *= 60;
+                break;
+            case 's':
+            case '\0':
+                break;
+            default:
+                merror("Invalid age for localfile");
+                return OS_INVALID;
+            }
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
