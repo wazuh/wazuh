@@ -276,9 +276,6 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             switch (*endptr) {
-            case 'M':
-                logf[pl].age *= 60; // We can`t calculate seconds of a month
-                break;
             case 'w':
                 logf[pl].age *= 604800;
                 break;
