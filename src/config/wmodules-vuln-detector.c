@@ -18,6 +18,7 @@ typedef struct vu_os_feed {
     long unsigned int interval;
     char *url;
     char *path;
+    int port;
     struct vu_os_feed *next;
 } vu_os_feed;
 
@@ -32,6 +33,7 @@ static int wm_vuldet_provider_enable(xml_node **node);
 static char *wm_vuldet_provider_name(xml_node *node);
 static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds);
 static void wm_vuldet_free_update_node(update_node *update);
+static void wm_vuldet_set_port_to_url(char **url, int port);
 
 // Options
 static const char *XML_DISABLED = "disabled";
@@ -579,6 +581,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
     vu_os_feed *os_list = NULL;
     int update_since = 0;
     long unsigned int update_interval = 0;
+    int port = 0;
 
     if (pr_name = wm_vuldet_provider_name(node), !pr_name) {
         mwarn("Empty %s name.", XML_PROVIDER);
@@ -634,6 +637,9 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                         start = atoi(chld_node[i]->values[j]);
                     } else if (!strcmp(chld_node[i]->attributes[j], XML_END)) {
                         end = atoi(chld_node[i]->values[j]);
+                    }  else if (!strcmp(chld_node[i]->attributes[j], XML_PORT)) {
+                        port = strtol(chld_node[i]->values[j], NULL, 10);
+                        wm_vuldet_set_port_to_url(&multi_url, port);
                     } else {
                         mwarn("Invalid tag '%s' for '%s' option.", chld_node[i]->attributes[j], chld_node[i]->element);
                     }
@@ -667,6 +673,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
             updates[os_index]->url = os_list->url;
             updates[os_index]->path = os_list->path;
+            updates[os_index]->port = os_list->port;
             flags->update = 1;
 
             mdebug1("Added %s (%s) feed. Interval: %lus | Path: '%s' | Url: '%s'.",
@@ -699,6 +706,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
         updates[os_index]->multi_url = multi_url;
         updates[os_index]->multi_url_start = start;
         updates[os_index]->multi_url_end = end;
+        updates[os_index]->port = port;
 
         if (os_index == CVE_NVD && !flags->patch_scan) {
             wm_vuldet_free_update_node(updates[CVE_MSB]);
@@ -785,11 +793,17 @@ int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds) {
                 } else if (!strcmp(node[i]->attributes[j], XML_URL)) {
                     free(feeds_it->url);
                     os_strdup(node[i]->values[j], feeds_it->url);
+                } else if (!strcmp(node[i]->attributes[j],  XML_PORT)) {
+                    feeds_it->port = strtol(node[i]->values[j], NULL, 10);
                 } else {
                     merror("Invalid attribute '%s' in '%s' option for %s.", node[i]->attributes[j], XML_OS, WM_VULNDETECTOR_CONTEXT.name);
                     return OS_INVALID;
                 }
             }
+            if (feeds_it->url) {
+                wm_vuldet_set_port_to_url(&feeds_it->url, feeds_it->port);
+            }
+
         }
     }
 
@@ -807,6 +821,42 @@ void wm_vuldet_free_update_node(update_node *update) {
     free(update->allowed_OS_list);
     w_FreeArray(update->allowed_ver_list);
     free(update->allowed_ver_list);
+}
+
+void wm_vuldet_set_port_to_url(char **url, int port) {
+    char *https_tag = "https://";
+    char *http_tag = "http://";
+    char *url_it;
+    char *new_url;
+    char *file;
+    char port_str[21];
+
+    if (!port) {
+        return;
+    }
+
+    snprintf(port_str, 20, ":%d", port);
+
+    if (url_it = strstr(*url, https_tag), url_it) {
+        url_it += strlen(https_tag);
+    } else if (url_it = strstr(*url, http_tag), url_it) {
+        url_it += strlen(http_tag);
+    }
+
+    if (file = strchr(url_it, '/'), file) {
+        size_t size;
+
+        *(file++) = '\0';
+        size = strlen(*url) + strlen(file) + strlen(port_str) + 2;
+
+        os_calloc(size + 1, sizeof(char), new_url);
+        snprintf(new_url, size, "%s%s/%s", *url, port_str, file);
+
+        free(*url);
+        *url = new_url;
+    } else {
+        wm_strcat(url, port_str, 0);
+    }
 }
 
 #endif
