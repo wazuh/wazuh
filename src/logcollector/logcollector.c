@@ -1337,6 +1337,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     int int_error = 0;
     struct timeval fp_timeout;
     struct stat tmp_stat;
+#else
+    BY_HANDLE_FILE_INFORMATION lpFileInformation;
 #endif
 
     /* Daemon loop */
@@ -1404,6 +1406,25 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 * pass it to the function pointer directly.
                 */
     #ifndef WIN32
+
+                if(current->age) {
+                    if ((fstat(fileno(current->fp), &tmp_stat)) == -1) {
+                        merror(FSTAT_ERROR, current->file, errno, strerror(errno));
+
+                    } else {
+                        struct timespec c_currenttime;
+                        gettime(&c_currenttime);
+
+                        /* Ignore file */
+                        if((c_currenttime.tv_sec - current->age) >= tmp_stat.st_mtime) {
+                            mdebug1("Ignoring file '%s' due to modification time",current->file);
+                            w_mutex_unlock(&current->mutex);
+                            w_rwlock_unlock(&files_update_rwlock);
+                            continue;
+                        }
+                    }
+                }
+
                 /* We check for the end of file. If is returns EOF,
                 * we don't attempt to read it.
                 */
@@ -1418,22 +1439,31 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 ungetc(r, current->fp);
     #endif
 
-#ifndef WIN32
-                if ((fstat(fileno(current->fp), &tmp_stat)) == -1) {
-                    merror(FSTAT_ERROR, current->file, errno, strerror(errno));
-
+#ifdef WIN32
+            if(current->age) {
+                if ((GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
+                    merror("Unable to get file information by handle.");
+                    w_mutex_unlock(&current->mutex);
+                    w_rwlock_unlock(&files_update_rwlock);
+                    continue;
                 } else {
-                    struct timespec c_currenttime;
-                    gettime(&c_currenttime);
+                    FILETIME ft_handle = lpFileInformation.ftLastWriteTime;
+
+                    /* Current machine EPOCH time */
+                    long long int c_currenttime = get_windows_time_epoch();
+
+                    /* Current file EPOCH time */
+                    long long int file_currenttime = get_windows_file_time_epoch(ft_handle);
 
                     /* Ignore file */
-                    if((c_currenttime.tv_sec - current->age) >= tmp_stat.st_mtime) {
-                        mdebug1("Ignoring file %s due to modification time",current->file);
+                    if((c_currenttime - current->age) >= file_currenttime) {
+                        mdebug1("Ignoring file '%s' due to modification time",current->file);
                         w_mutex_unlock(&current->mutex);
                         w_rwlock_unlock(&files_update_rwlock);
                         continue;
                     }
                 }
+            }
 #endif
                 /* Finally, send to the function pointer to read it */
                 current->read(current, &r, 0);
