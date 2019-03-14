@@ -1436,7 +1436,6 @@ components:
           - allowed
           - same
           - foreign
-          -
         vendor:
           description: Vendor name.
           type: string
