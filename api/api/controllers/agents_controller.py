@@ -10,8 +10,7 @@ from wazuh.cluster.dapi.dapi import DistributedAPI
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('agents_controller')
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger('wazuh.agents_controller')
 
 
 def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, status=None, older_than=None):  # noqa: E501
