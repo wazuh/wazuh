@@ -4,18 +4,18 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import connexion
 import logging
 
-from wazuh.active_response import active_response
+import wazuh.active_response as active_response
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('active_response_controller')
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger('wazuh.active_response_controller')
 
 
-def run_command(pretty=False, wait_for_complete=False, agent_id='000', command='', custom=False, arguments=''):
+def run_command(pretty=False, wait_for_complete=False):
     """
     Runs an Active Response command on a specified agent
 
@@ -23,15 +23,21 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command='
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
-    :param agent_id: Agent ID
+    :param agent_id: Agent ID. All posible values since 000 onwards
     :type agent_id: str
-    :param command: Command
+    :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
     :type command: str
-    :param custom: Custom
-    :type custom: boolean
+    :param custom: Whether the specified command is a custom command or not
+    :type custom: bool
     :param arguments: Command arguments
     :type arguments: str
+
+    :rtype: dict
     """
+
+    # get body parameters
+    if connexion.request.is_json:
+        body = connexion.request.get_json()
 
     f_kwargs = {'agent_id': agent_id, 'command': command, 'custom': custom,
                 'arguments': arguments
@@ -49,5 +55,3 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command='
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
-
-    
