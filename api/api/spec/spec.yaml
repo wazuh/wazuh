@@ -7892,10 +7892,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Syscheck database deleted
