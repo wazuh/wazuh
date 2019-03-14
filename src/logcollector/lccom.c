@@ -133,7 +133,7 @@ void * lccom_main(__attribute__((unused)) void * arg) {
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror("At lccom_main(): OS_RecvSecureTCP() response size is bigger than expected");
+            merror("At lccom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
             break;
 
         case -1:

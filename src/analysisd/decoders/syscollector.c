@@ -1615,7 +1615,7 @@ int sc_send_db(char *msg, int *sock) {
     length = OS_RecvSecureTCP(*sock, response, OS_SIZE_128);
     switch (length) {
         case OS_SOCKTERR:
-            merror("At sc_send_db(): OS_RecvSecureTCP() response size is bigger than expected");
+            merror("At sc_send_db(): OS_RecvSecureTCP(): response size is bigger than expected");
             break;
 
         case -1:
