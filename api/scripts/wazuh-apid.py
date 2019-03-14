@@ -77,8 +77,14 @@ if __name__ == '__main__':
         os.chmod('{0}/logs/api.log'.format(common.ossec_path), 0o660)
 
     if configuration['https']['enabled']:
-        ssl_context = ssl.SSLContext()
-        ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
+        try:
+            ssl_context = ssl.SSLContext()
+            if configuration['https']['use_ca']:
+                ssl_context.verify_mode = ssl.CERT_REQUIRED
+                ssl_context.load_verify_locations(configuration['https']['ca'])
+            ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
+        except IOError:
+            raise
     else:
         ssl_context = None
 

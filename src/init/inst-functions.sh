@@ -914,9 +914,6 @@ InstallLocal()
         LIB_FLAG="no"
     fi
 
-    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
-    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
-
     if [ ! -f ${PREFIX}/etc/decoders/local_decoder.xml ]; then
         ${INSTALL} -m 0640 -o ossec -g ${OSSEC_GROUP} -b ../etc/local_decoder.xml ${PREFIX}/etc/decoders/local_decoder.xml
     fi
@@ -1032,6 +1029,78 @@ InstallServer()
 
     ### Install Python
     ${MAKEBIN} wpython PREFIX=${PREFIX} ${CPYTHON_FLAGS}
+
+    # install framework
+    ${MAKEBIN} --quiet -C ../framework install PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${LIB_FLAG}
+
+    # backup configuration and certificates from old API
+    backup_old_api
+
+    #install API
+    ${MAKEBIN} --quiet -C ../api install PREFIX=${PREFIX}
+
+    # restore configuration and certificates from old API
+    restore_old_api
+
+}
+
+backup_old_api() {
+
+    API_PATH=${PREFIX}/api
+    API_PATH_BACKUP=${PREFIX}/~api
+
+    # do backup only if config.js file exists
+    if [ -f ${API_PATH}/configuration/config.js ]; then
+
+        if [ -e ${API_PATH_BACKUP} ]; then
+            rm -rf ${API_PATH_BACKUP}
+        else
+            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}
+            chown root:ossec ${API_PATH_BACKUP}
+        fi
+
+        ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}/configuration
+        cp -rLfp ${API_PATH}/configuration/config.js ${API_PATH_BACKUP}/configuration/config.js
+
+        if [ -d ${API_PATH}/configuration/ssl ]; then
+            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH_BACKUP}/configuration/ssl
+            cp -rLfp ${API_PATH}/configuration/ssl/* ${API_PATH_BACKUP}/configuration/ssl
+        fi
+
+        # remove old API directory
+        rm -rf ${API_PATH}
+
+        # delete wazuh-api service
+        if command -v systemctl > /dev/null 2>&1; then
+            systemctl stop wazuh-api > /dev/null
+            systemctl disable wazuh-api > /dev/null
+            rm -f /etc/systemd/system/wazuh-api.service
+        elif command -v update-rc.d > /dev/null 2>&1; then
+            update-rc.d stop wazuh-api
+            chkconfig wazuh-api off
+            chkconfig --del wazuh-api
+            rm -f /etc/rc.d/init.d/wazuh-api
+        fi
+
+    fi
+
+}
+
+restore_old_api() {
+
+    API_PATH=${PREFIX}/api
+    API_PATH_BACKUP=${PREFIX}/~api
+
+    if [ -r ${API_PATH_BACKUP}/configuration/config.js ]; then
+        # execute migration.py
+        ${PREFIX}/framework/python/bin/python3 ../api/migration.py
+        if [ ! -d ${API_PATH}/configuration/ssl ]; then
+            ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${API_PATH}/configuration/ssl
+        fi
+        cp -rLfp ${API_PATH_BACKUP}/configuration/ssl/* ${API_PATH}/configuration/ssl
+        rm -rf $API_PATH_BACKUP
+    fi
+
 }
 
 InstallAgent()
@@ -1071,6 +1140,7 @@ InstallAgent()
         ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles/docker
         ${INSTALL} -m 0750 -o root -g ${OSSEC_GROUP} ../wodles/docker-listener/DockerListener.py ${PREFIX}/wodles/docker/DockerListener
     fi
+
 }
 
 InstallWazuh()
