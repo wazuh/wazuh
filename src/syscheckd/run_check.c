@@ -324,7 +324,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     char *str_perm = NULL;
     char *user;
 #else
-    char *w_inode;
+    char *w_inode = NULL;
     char str_owner[50], str_group[50], str_perm[50];
 #endif
 
