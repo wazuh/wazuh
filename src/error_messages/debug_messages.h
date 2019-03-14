@@ -58,7 +58,7 @@
 #define VU_INS_CPES_SEC       "(5498): Inserting CPEs section..."
 #define VU_AGENT_CPE_RECV     "(5507): The CPE '%s' from the agent %d was received from wazuh-db."
 #define VU_CPE_GENERATED      "(5509): CPE generated from vendor '%s' and product '%s': '%s'."
-#define VU_UPDATING_NVD_YEAR  "(5512): Synchronizing the year %d vulnerability database..."
+#define VU_UPDATING_NVD_YEAR  "(5512): Synchronizing the year %d of the vulnerability database..."
 #define VU_GEN_CPE_COUNT      "(5514): CPEs generated for agent %s: %d/%d."
 #define VU_INS_NVD_SEC        "(5516): Inserting NVD section..."
 #define VU_SOCKET_RETRY       "(5518): Unable to connect to socket '%s'. Waiting %d seconds."
@@ -69,5 +69,7 @@
 #define VU_HOTFIX_INSTALLED   "(5534): Agent %s has installed %s that corrects the vulnerability %s."
 #define VU_UPDATE_JSON_FEED   "(5537): Updating from '%s'..."
 #define VU_INDEX_TIME         "(5538): It took %ld seconds to %s vulnerabilities."
+#define VU_UPDATING_RH_YEAR   "(5539): Synchronizing the page %d from the vulnerability database..."
+#define VU_INS_RH_SEC         "(5540): Inserting Red Hat section..."
 
 #endif

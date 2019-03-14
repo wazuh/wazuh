@@ -352,6 +352,7 @@
 #define VU_HOTFIX_REQUEST_ERROR     "(5532): The hotfixes of the agent %s could not be requested."
 #define VU_MULTIPATH_ERROR          "(5535): Invalid multi_path '%s': %s."
 #define VU_REGEX_COMPILE_ERROR      "(5536): Cannot compile '%s' regular expression."
+#define VU_RH_REQ_FAIL_MAX          "(5541): The maximum number of failed requests has been reached."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."

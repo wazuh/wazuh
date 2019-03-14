@@ -22,7 +22,7 @@ typedef struct vu_os_feed {
 } vu_os_feed;
 
 static int wm_vuldet_get_interval(char *source, unsigned long *interval);
-static int wm_vuldet_is_valid_year(char *source, int *date);
+static int wm_vuldet_is_valid_year(char *source, int *date, int max);
 static int wm_vuldet_set_feed_version(char *feed, char *version, update_node **upd_list);
 static int wm_vuldet_read_deprecated_config(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
 static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node, update_node **updates, long unsigned int *update);
@@ -261,7 +261,7 @@ int wm_vuldet_get_interval(char *source, unsigned long *interval) {
     return 0;
 }
 
-int wm_vuldet_is_valid_year(char *source, int *date) {
+int wm_vuldet_is_valid_year(char *source, int *date, int max) {
     time_t n_date;
     struct tm *t_date;
 
@@ -269,7 +269,7 @@ int wm_vuldet_is_valid_year(char *source, int *date) {
     n_date = time (NULL);
     t_date = gmtime(&n_date);
 
-    if ((!*date) || *date < RED_HAT_REPO_MIN_YEAR || *date > (t_date->tm_year + 1900)) {
+    if ((!*date) || *date <  max || *date > (t_date->tm_year + 1900)) {
         return 0;
     }
 
@@ -516,7 +516,7 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
                 mwarn("'%s' only can be used with %s feed.", XML_UPDATE_CPE_INTERVAL, updates[os_index]->dist_tag);
             }
         }*/ else if (!strcmp(chld_node[j]->element, XML_UPDATE_FROM_YEAR)) {
-            if (!wm_vuldet_is_valid_year(chld_node[j]->content, &updates[os_index]->update_from_year)) {
+            if (!wm_vuldet_is_valid_year(chld_node[j]->content, &updates[os_index]->update_from_year, RED_HAT_REPO_MIN_YEAR)) {
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                 OS_ClearNode(chld_node);
                 return OS_INVALID;
@@ -600,7 +600,8 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
 
     for (i = 0; chld_node[i] && chld_node[i]; i++) {
         if (!strcmp(chld_node[i]->element, XML_UPDATE_FROM_YEAR)) {
-            if (!wm_vuldet_is_valid_year(chld_node[i]->content, &update_since)) {
+            if (!wm_vuldet_is_valid_year(chld_node[i]->content, &update_since,
+                                          !strcmp(pr_name, vu_feed_tag[FEED_REDHAT]) ? RED_HAT_REPO_MIN_YEAR : NVD_REPO_MIN_YEAR)) {
                 merror("Invalid content for '%s' option at module '%s'.", XML_UPDATE_FROM_YEAR, WM_VULNDETECTOR_CONTEXT.name);
                 return OS_INVALID;
             }
