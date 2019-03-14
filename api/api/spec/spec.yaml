@@ -130,7 +130,7 @@ components:
             minor:
               type: string
         id:
-          type: string
+          $ref: '#/components/schemas/AgentId'
 
     AgentGroup:
       type: object
@@ -174,6 +174,11 @@ components:
           items:
             type: string
 
+    AgentId:
+      type: string
+      format: numbers
+      minLength: 3
+
     AgentIdKey:
       type: object
       required:
@@ -181,7 +186,7 @@ components:
         - key
       properties:
         id:
-          type: string
+          $ref: '#/components/schemas/AgentId'
         key:
           type: string
           pattern: \w+=*
@@ -197,7 +202,7 @@ components:
         version:
           type: string
         id:
-          type: string
+          $ref: '#/components/schemas/AgentId'
         name:
           type: string
 
@@ -287,6 +292,10 @@ components:
               type: array
               items:
                 type: string
+
+    GroupId:
+      type: string
+      format: alphanumeric
 
     CacheConfig:
       type: object
@@ -1078,8 +1087,7 @@ components:
         board_serial:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorNetwork:
       type: object
@@ -1095,8 +1103,7 @@ components:
         netmask:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorInterface:
       type: object
@@ -1154,8 +1161,7 @@ components:
         state:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorProtocol:
       type: object
@@ -1172,8 +1178,7 @@ components:
           - enabled
           - disabled
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorOS:
       type: object
@@ -1212,8 +1217,7 @@ components:
         hostname:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorPackages:
       type: object
@@ -1247,8 +1251,7 @@ components:
         format:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorPorts:
       type: object
@@ -1290,8 +1293,7 @@ components:
         protocol:
           type: string
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
     SyscollectorProcess:
       type: object
@@ -1366,8 +1368,7 @@ components:
         tty:
           type: integer
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentId'
 
   securitySchemes:
     basicAuth:
@@ -1387,8 +1388,7 @@ components:
       description: Agent ID. All posible values since 000 onwards.
       required: true
       schema:
-        type: string
-        minLength: 3
+        $ref: '#/components/schemas/AgentId'
     agent_name:
       in: path
       name: agent_name
@@ -1396,12 +1396,14 @@ components:
       required: true
       schema:
         type: string
+        format: names
     benchmark:
       in: query
       name: benchmark
       description: Filters by benchmark type.
       schema:
         type: string
+        format: alphanumeric
     component:
       in: path
       name: component
@@ -1464,24 +1466,28 @@ components:
       required: true
       schema:
         type: string
+        format: names
     description:
       in: query
       name: description
       description: Filters by policy description.
       schema:
         type: string
+        format: alphanumeric
     directory:
       in: query
       name: directory
       description: Filters by directory.
       schema:
         type: string
+        format: paths
     download:
       in: query
       name: download
       description: Downloads the file
       schema:
         type: string
+        format: alphanumeric
     error:
       in: query
       name: error
@@ -1503,13 +1509,17 @@ components:
       name: fields
       description: List of fields affecting the operation.
       schema:
-        type: string
+        type: array
+        items:
+          type: string
+          format: names
     file:
       in: query
       name: file
       description: Filters by filename.
       schema:
         type: string
+        format: alphanumeric
     file_name:
       in: path
       name: file_name
@@ -1517,6 +1527,7 @@ components:
       required: true
       schema:
         type: string
+        format: alphanumeric
     format:
       in: query
       name: fromat
@@ -1535,19 +1546,35 @@ components:
       required: true
       schema:
         type: string
+        format: alphanumeric
     group_id:
       in: path
       name: group_id
       description: Group ID.
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/GroupId'
     hash:
       in: query
       name: hash
       description: Select algorithm to generate the sum.
       schema:
         type: string
+        enum:
+          - md5
+          - sha1
+          - sha224
+          - sha256
+          - sha384
+          - sha512
+          - blake2b
+          - blake2s
+          - sha3_224
+          - sha3_256
+          - sha3_384
+          - sha3_512
+          - shake_128
+          - shake_256
     limit:
       in: query
       name: limit
@@ -1565,7 +1592,7 @@ components:
       schema:
         type: array
         items:
-          type: integer
+          $ref: '#/components/schemas/AgentId'
     list_groups:
       in: query
       name: list_groups
@@ -1573,13 +1600,14 @@ components:
       schema:
         type: array
         items:
-          type: string
+          $ref: '#/components/schemas/GroupId'
     name:
       in: query
       name: name
       description: Filters by agent name.
       schema:
         type: string
+        format: alphanumeric
     notchecked:
       in: query
       name: notchecked
@@ -2364,8 +2392,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-security:
-    - jwt: []
+#security:
+#    - jwt: []
 
 paths:
   /active-response/{agent_id}:
@@ -3143,7 +3171,7 @@ paths:
                   description: List of agents ID.
                   type: array
                   items:
-                    type: string
+                    $ref: '#/components/schemas/AgentId'
       responses:
         '200':
           description: 'Add multiple agents to a group'
@@ -7563,7 +7591,7 @@ paths:
         - experimental
       summary: 'Get hardware info of all agents'
       description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
-      operationId: api.controllers.experimental_controller.get_hardware_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_hardware_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7635,7 +7663,7 @@ paths:
         - experimental
       summary: 'Get network address info of all agents'
       description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others  of all agents."
-      operationId: api.controllers.experimental_controller.get_network_address_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_network_address_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7691,7 +7719,7 @@ paths:
         - experimental
       summary: 'Get network interface info of all agents'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others  of all agents."
-      operationId: api.controllers.experimental_controller.get_network_interface_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_network_interface_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7782,7 +7810,7 @@ paths:
         - experimental
       summary: 'Get network protocol info of all agents'
       description: "Returns the agent's network protocol info. This information include interface, type protocol information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7836,7 +7864,7 @@ paths:
         - experimental
       summary: 'Get OS info of all agents'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_os_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7913,7 +7941,7 @@ paths:
         - experimental
       summary: 'Get packages info of all agents'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
-      operationId: api.controllers.experimental_controller.get_packages_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_packages_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7986,7 +8014,7 @@ paths:
         - experimental
       summary: 'Get ports info of all agents'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_ports_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_ports_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8064,7 +8092,7 @@ paths:
         - experimental
       summary: 'Get processes info of all agents'
       description: "Returns the agent's processes info."
-      operationId: api.controllers.experimental_controller.get_processes_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_processes_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8178,7 +8206,7 @@ paths:
         - syscollector
       summary: 'Get hardware info'
       description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others."
-      operationId: api.controllers.experimental_controller.get_hardware_info
+      operationId: api.controllers.syscollector_controller.get_hardware_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8218,7 +8246,7 @@ paths:
         - syscollector
       summary: 'Get network address info of an agent'
       description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
-      operationId: api.controllers.experimental_controller.get_network_address_info
+      operationId: api.controllers.syscollector_controller.get_network_address_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8274,7 +8302,7 @@ paths:
         - syscollector
       summary: 'Get network interface info of an agents'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
-      operationId: api.controllers.experimental_controller.get_network_interface_info
+      operationId: api.controllers.syscollector_controller.get_network_interface_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8364,7 +8392,7 @@ paths:
         - syscollector
       summary: 'Get network protocol info of an agents'
       description: "Returns the agent's network protocol info. This information include interface, type protocol information among others"
-      operationId: api.controllers.experimental_controller.get_network_protocol_info
+      operationId: api.controllers.syscollector_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8417,7 +8445,7 @@ paths:
         - syscollector
       summary: 'Get OS info'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_os_info
+      operationId: api.controllers.syscollector_controller.get_os_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8460,7 +8488,7 @@ paths:
         - syscollector
       summary: 'Get packages info'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
-      operationId: api.controllers.experimental_controller.get_packages_info
+      operationId: api.controllers.syscollector_controller.get_packages_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8532,7 +8560,7 @@ paths:
         - syscollector
       summary: 'Get ports info of an agents'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
-      operationId: api.controllers.experimental_controller.get_ports_info
+      operationId: api.controllers.syscollector_controller.get_ports_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8608,7 +8636,7 @@ paths:
         - syscollector
       summary: 'Get processes info'
       description: "Returns the agent's processes info."
-      operationId: api.controllers.experimental_controller.get_processes_info
+      operationId: api.controllers.syscollector_controller.get_processes_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
