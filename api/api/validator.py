@@ -107,6 +107,11 @@ def format_alphanumeric(value):
     return check_exp(value, _names)
 
 
+@draft4_format_checker.checks("hash")
+def format_hash(value):
+    return check_exp(value, _hashes)
+
+
 @draft4_format_checker.checks("names")
 def format_numbers(value):
     return check_exp(value, _names)
@@ -128,3 +133,28 @@ def format_path(relative_path):
         return False
 
     return check_exp(relative_path, _paths)
+
+
+@draft4_format_checker.checks("query")
+def format_query(value):
+    return check_exp(value, _query_param)
+
+
+@draft4_format_checker.checks("range")
+def format_range(value):
+    return check_exp(value, _ranges)
+
+
+@draft4_format_checker.checks("search")
+def format_search(value):
+    return check_exp(value, _search_param)
+
+
+@draft4_format_checker.checks("sort")
+def format_sort(value):
+    return check_exp(value, _sort_param)
+
+
+@draft4_format_checker.checks("timeframe")
+def format_timeframe(value):
+    return check_exp(value, _timeframe_type)

@@ -1410,10 +1410,8 @@ components:
       description: Selected agent's component.
       required: true
       schema:
-        type: array
-        items:
-          type: string
-          enum:
+        type: string
+        enum:
           - agent
           - agentless
           - analysis
@@ -1433,10 +1431,8 @@ components:
       description: Selected agent's configuration to read.
       required: true
       schema:
-        type: array
-        items:
-          type: string
-          enum:
+        type: string
+        enum:
           - client
           - buffer
           - labels
@@ -1554,6 +1550,12 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/GroupId'
+    agent_group:
+      in: query
+      name: group
+      description: Filters by group of agents.
+      schema:
+        $ref: '#/components/schemas/GroupId'
     hash:
       in: query
       name: hash
@@ -1575,6 +1577,13 @@ components:
           - sha3_512
           - shake_128
           - shake_256
+    ip:
+      in: query
+      name: ip
+      description: Filters by agent IP
+      schema:
+        type: string
+        format: alphanumeric
     limit:
       in: query
       name: limit
@@ -1601,6 +1610,13 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/GroupId'
+    manager_host:
+      in: query
+      name: manager
+      description: Filters by manager hostname which agents are connected to.
+      schema:
+        type: string
+        format: alphanumeric
     name:
       in: query
       name: name
@@ -1632,6 +1648,7 @@ components:
         Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
       schema:
         type: string
+        format: timeframe
     pass:
       in: query
       name: pass
@@ -1646,6 +1663,7 @@ components:
       description: Filters by path
       schema:
         type: string
+        format: path
     pretty:
       in: query
       name: pretty
@@ -1659,12 +1677,14 @@ components:
       description: Filters by process name.
       schema:
         type: string
+        format: alphanumeric
     profile:
       in: query
       name: profile
       description: Filters by evaluated profile.
       schema:
         type: string
+        format: alphanumeric
     policy_id:
       in: path
       name: policy_id
@@ -1672,6 +1692,7 @@ components:
       required: true
       schema:
         type: string
+        format: alphanumeric
     purge:
       in: query
       name: purge
@@ -1685,36 +1706,42 @@ components:
       description: Query to filter results by. For example q=&quot;status=Active&quot;
       schema:
         type: string
+        format: query
     rationale:
       in: query
       name: rationale
       description: Filters by rationale.
       schema:
         type: string
+        format: alphanumeric
     registry:
       in: query
       name: registry
       description: Filters by registry.
       schema:
         type: string
+        format: alphanumeric
     references:
       in: query
       name: references
       description: Filters by references.
       schema:
         type: string
+        format: alphanumeric
     remediation:
       in: query
       name: remediation
       description: Filters by remediation.
       schema:
         type: string
+        format: alphanumeric
     result:
       in: query
       name: result
       description: Filters by result.
       schema:
         type: string
+        format: alphanumeric
     score:
       in: query
       name: score
@@ -1729,6 +1756,7 @@ components:
       description: Looks for elements with the specified string
       schema:
         type: string
+        format: search
     select:
       in: query
       name: select
@@ -1737,6 +1765,7 @@ components:
         type: array
         items:
           type: string
+          format: names
     # It'd be more appropriate to be an array of strings, and separate the ascending or descending order in another param
     sort:
       in: query
@@ -1745,6 +1774,7 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
+        format: sort
     statusAgentParam:
       in: query
       name: agent_status
@@ -1778,6 +1808,7 @@ components:
       description: Filters by title.
       schema:
         type: string
+        format: alphanumeric
     type:
       in: query
       name: type
@@ -1797,12 +1828,14 @@ components:
       description: Filters by unknown results.
       schema:
         type: integer
+        format: int32
     version:
       in: query
       name: version
       description: Filters by agents version.
       schema:
         type: string
+        format: alphanumeric
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -1826,6 +1859,14 @@ components:
       required: true
       schema:
         type: string
+        format: names
+    node_name:
+      in: query
+      name: node_name
+      description: Filters by node name.
+      schema:
+        type: string
+        format: names
     section:
       in: query
       name: section
@@ -1863,12 +1904,14 @@ components:
       description: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
       schema:
         type: string
+        format: names
     date:
       in: query
       name: date
-      description: Selects the date for getting the statistical information. Format YYYYMMDD.
+      description: Selects the date for getting the statistical information. Format YYYY-MM-DD.
       schema:
         type: string
+        format: date
     category:
       in: query
       name: category
@@ -1927,31 +1970,35 @@ components:
       required: true
       schema:
         type: string
+        format: path
     overwrite:
       in: query
       name: overwrite
       description: If set to false, an exception will be raised when updating contents of an already existing filename.
       schema:
         type: boolean
+        default: false
     group:
       in: query
       name: group
       description: Filters by rule group.
       schema:
         type: string
+        format: alphanumeric
     level:
       in: query
       name: level
       description: Filters by rule level. Can be a single level (4) or an interval (2-4)
       schema:
         type: string
-        format: \d(?>-\d)?  # 4 or 4-5
+        format: range
     rule_path:
       in: query
       name: path
       description: Filters by rule path.
       schema:
         type: string
+        format: path
     rulestatus:
       in: query
       name: status
@@ -1968,12 +2015,14 @@ components:
       description: Filters by PCI requirement name.
       schema:
         type: string
+        format: alphanumeric
     gdpr:
       in: query
       name: gdpr
       description: Filters by GDPR requirement.
       schema:
         type: string
+        format: alphanumeric
     rule_id:
       in: path
       name: rule_id
@@ -1981,6 +2030,7 @@ components:
       required: true
       schema:
         type: integer
+        format: int32
     rootcheck_status:
       in: query
       name: status
@@ -1997,6 +2047,7 @@ components:
       description: Filters by CIS requirement.
       schema:
         type: string
+        format: alphanumeric
     filetype:
       in: query
       name: type
@@ -2012,30 +2063,38 @@ components:
       description: Returns a summary grouping by filename.
       schema:
         type: boolean
+        default: false
     md5:
       in: query
       name: md5
       description: Filters files with the specified MD5 checksum.
       schema:
         type: string
+        format: hash
     sha1:
       in: query
       name: sha1
       description: Filters files with the specified SHA1 checksum.
       schema:
         type: string
+        format: hash
     sha256:
       in: query
       name: sha256
       description: Filters files with the specified SHA256 checksum.
       schema:
         type: string
+        format: hash
     hashfilter:
       in: query
       name: hash
-      description: Filters files with the specified checksum (MD5, SHA256 or SHA1)
+      description: Filters files with the specified hash (md5, sha256 or sha1)
       schema:
         type: string
+        enum:
+          - md5
+          - sha256
+          - sha1
     ram_free:
       in: query
       name: ram_free
@@ -2074,54 +2133,63 @@ components:
       description: Filters by cpu_name.
       schema:
         type: string
+        format: alphanumeric
     board_serial:
       in: query
       name: board_serial
       description: Filters by board_serial.
       schema:
         type: string
+        format: alphanumeric
     proto:
       in: query
       name: proto
       description: Filters by IP protocol.
       schema:
         type: string
+        format: alphanumeric
     address:
       in: query
       name: address
       description: Filters by IP address.
       schema:
         type: string
+        format: alphanumeric
     broadcast:
       in: query
       name: broadcast
       description: Filters by broadcast direction.
       schema:
         type: string
+        format: alphanumeric
     netmask:
       in: query
       name: netmask
       description: Filters by netmask.
       schema:
         type: string
+        format: alphanumeric
     adapter:
       in: query
       name: adapter
       description: Filters by adapter.
       schema:
         type: string
+        format: alphanumeric
     state:
       in: query
       name: state
       description: Filters by state.
       schema:
         type: string
+        format: alphanumeric
     mtu:
       in: query
       name: mtu
       description: Filters by mtu.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_packets:
       in: query
@@ -2129,6 +2197,7 @@ components:
       description: Filters by tx_packets.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_packets:
       in: query
@@ -2136,6 +2205,7 @@ components:
       description: Filters by rx_packets.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_bytes:
       in: query
@@ -2143,6 +2213,7 @@ components:
       description: Filters by tx_bytes.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_bytes:
       in: query
@@ -2150,6 +2221,7 @@ components:
       description: Filters by rx_bytes.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_errors:
       in: query
@@ -2157,6 +2229,7 @@ components:
       description: Filters by tx_errors.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_errors:
       in: query
@@ -2164,6 +2237,7 @@ components:
       description: Filters by rx_errors.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_dropped:
       in: query
@@ -2171,6 +2245,7 @@ components:
       description: Filters by tx_dropped.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_dropped:
       in: query
@@ -2178,6 +2253,7 @@ components:
       description: Filters by rx_dropped.
       schema:
         type: integer
+        format: int32
         minimum: 0
     iface:
       in: query
@@ -2185,180 +2261,219 @@ components:
       description: Filters by network interface.
       schema:
         type: string
+        format: alphanumeric
     gateway:
       in: query
       name: gateway
       description: Filters by network gateway.
       schema:
         type: string
+        format: alphanumeric
     dhcp:
       in: query
       name: dhcp
       description: Filters by network dhcp (enabled or disabled).
       schema:
-        type: integer
+        type: string
+        enum:
+          - enabled
+          - disabled
     os_name:
       in: query
       name: os_name
       description: "Filters by os_name. Example: Ubuntu, Windows..."
       schema:
         type: string
+        format: alphanumeric
+    os_platform:
+      in: query
+      name: os_platform
+      description: Filters by OS platform.
+      schema:
+        type: string
+        format: alphanumeric
     architecture:
       in: query
       name: architecture
       description: Filters by architecture.
       schema:
         type: string
+        format: alphanumeric
     os_version:
       in: query
       name: os_version
       description: Filters by os_version.
       schema:
         type: string
+        format: alphanumeric
     release:
       in: query
       name: release
       description: Filters by release.
       schema:
-        type: integer
+        type: string
+        format: alphanumeric
     vendor:
       in: query
       name: vendor
       description: Filters by vendor.
       schema:
-        type: integer
+        type: string
+        format: alphanumeric
     pid:
       in: query
       name: pid
       description: Filters by pid.
       schema:
-        type: integer
+        type: string
+        format: numbers
     protocol:
       in: query
       name: protocol
       description: Filters by protocol.
       schema:
         type: string
+        format: alphanumeric
     local_ip:
       in: query
       name: local_ip
       description: Filters by Local IP.
       schema:
         type: string
+        format: alphanumeric
     local_port:
       in: query
       name: local_port
       description: Filters by Local Port.
       schema:
-        type: integer
+        type: string
+        format: numbers
     remote_ip:
       in: query
       name: remote_ip
       description: Filters by Remote IP.
       schema:
         type: string
+        format: alphanumeric
     tx_queue:
       in: query
       name: tx_queue
       description: Filters by tx_queue.
       schema:
-        type: integer
+        type: string
+        format: numbers
     process_pid:
       in: query
       name: process_pid
       description: Filters by process pid.
       schema:
-        type: integer
+        type: string
+        format: numbers
     process_state:
       in: query
       name: process_status
       description: Filters by process state.
       schema:
         type: string
+        format: alphanumeric
     ppid:
       in: query
       name: ppid
       description: Filters by process parent pid.
       schema:
-        type: integer
+        type: string
+        format: numbers
     egroup:
       in: query
       name: egroup
       description: Filters by process egroup.
       schema:
         type: string
+        format: alphanumeric
     euser:
       in: query
       name: euser
       description: Filters by process euser.
       schema:
         type: string
+        format: alphanumeric
     fgroup:
       in: query
       name: fgroup
       description: Filters by process fgroup.
       schema:
         type: string
+        format: alphanumeric
     process_name:
       in: query
       name: process_name
       description: Filters by process name.
       schema:
         type: string
+        format: alphanumeric
     nlwp:
       in: query
       name: nlwp
       description: Filters by process nlwp.
       schema:
-        type: integer
+        type: string
+        format: numbers
     pgrp:
       in: query
       name: pgrp
       description: Filters by process pgrp.
       schema:
-        type: integer
+        type: string
+        format: numbers
     priority:
       in: query
       name: priority
       description: Filters by process priority.
       schema:
-        type: integer
+        type: string
+        format: numbers
     rgroup:
       in: query
       name: rgroup
       description: Filters by process rgroup.
       schema:
         type: string
+        format: alphanumeric
     ruser:
       in: query
       name: ruser
       description: Filters by process ruser.
       schema:
         type: string
+        format: alphanumeric
     sgroup:
       in: query
       name: sgroup
       description: Filters by process sgroup.
       schema:
         type: string
+        format: alphanumeric
     suser:
       in: query
       name: suser
       description: Filters by process suser.
       schema:
         type: string
+        format: alphanumeric
     iface_name:
       in: query
       name: iface_name
       description: Filters by interface name.
       schema:
         type: string
+        format: alphanumeric
     package_version:
       in: query
       name: package_version
       description: Filters by version name.
       schema:
         type: string
+        format: alphanumeric
 
 tags:
   - name: active-response
@@ -2496,43 +2611,15 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
-        - in: query
-          name: os.platform
-          description: Filters by OS platform.
-          schema:
-            type: string
-        - in: query
-          name: os.version
-          description: Filters by OS version.
-          schema:
-            type: string
-        - in: query
-          name: os.name
-          description: Filters by OS name.
-          schema:
-            type: string
-        - in: query
-          name: manager
-          description: Filters by manager hostname to which agents are connected.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/os_platform'
+        - $ref: '#/components/parameters/os_version'
+        - $ref: '#/components/parameters/os_name'
+        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
-        - in: query
-          name: group
-          description: Filters by group of agents.
-          schema:
-            type: string
-        - in: query
-          name: node_name
-          description: Filters by node name.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
-        - in: query
-          name: ip
-          description: Filters by agent IP
-          schema:
-            type: string
+        - $ref: '#/components/parameters/ip'
       responses:
         '200':
           description: 'List of agents or error description'
@@ -2994,20 +3081,20 @@ paths:
           description: WPK repository.
           schema:
             type: string
+            format: paths
         - $ref: '#/components/parameters/version'
         - in: query
           name: use_http
           description: Use protocol http. If it's false use https. By default the value is set to false.
           schema:
             type: boolean
+            default: false
         - in: query
           name: force
           description: Force upgrade.
           schema:
-            type: integer
-            enum:
-              - "0"
-              - "1"
+            type: boolean
+            default: false
       responses:
         '200':
           description: 'Agent upgraded'
@@ -3039,11 +3126,13 @@ paths:
           description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
           schema:
             type: string
+            format: paths
         - in: query
           name: installer
           description: Installation script.
           schema:
             type: string
+            format: alphanumeric
       responses:
         '200':
           description: 'Agent upgraded'
@@ -3103,6 +3192,7 @@ paths:
           description: Seconds to wait for the agent to respond.
           schema:
             type: integer
+            format: int32
 
       responses:
         '200':
