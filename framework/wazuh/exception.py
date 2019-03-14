@@ -138,6 +138,8 @@ class WazuhException(Exception):
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
+        1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
+        1746: "Agent must belong to a group at least.",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
