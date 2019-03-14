@@ -3066,9 +3066,9 @@ paths:
                     registerIP: any
                     manager: manager
                     node_name: node02
-                    dateAdd: '2018-10-11 09:38:47'
+                    dateAdd: '2018-10-11T09:38:47-08:00'
                     version: Wazuh v3.8.0
-                    lastKeepAlive: '2018-10-11 13:58:08'
+                    lastKeepAlive: '2018-10-11T13:58:08-08:00'
                     os:
                       major: '16'
                       name: Ubuntu
@@ -3086,9 +3086,9 @@ paths:
                     registerIP: 127.0.0.1
                     manager: manager
                     node_name: node01
-                    dateAdd: '2018-10-11 09:37:23'
+                    dateAdd: '2018-10-11T09:37:23-08:00'
                     version: Wazuh v3.8.0
-                    lastKeepAlive: '9999-12-31 23:59:59'
+                    lastKeepAlive: '9999-12-31T23:59:59-08:00'
                     os:
                       major: '18'
                       name: Ubuntu
@@ -3101,21 +3101,21 @@ paths:
                       minor: '04'
                     id: '000'
                   - status: Never connected
-                    dateAdd: '2018-10-11 13:58:23'
+                    dateAdd: '2018-10-11T13:58:23-08:00'
                     name: NewHost_2
                     ip: 10.0.10.10
                     registerIP: any
                     id: '123'
                     node_name: unknown
                   - status: Never connected
-                    dateAdd: '2018-10-11 13:58:22'
+                    dateAdd: '2018-10-11T13:58:22-08:00'
                     name: NewHost
                     ip: 10.0.0.9
                     registerIP: 10.0.0.9
                     id: '007'
                     node_name: unknown
                   - status: Never connected
-                    dateAdd: '2018-10-11 13:58:10'
+                    dateAdd: '2018-10-11T13:58:10-08:00'
                     group:
                     - default
                     name: server001
@@ -3227,7 +3227,7 @@ paths:
               example:
                 error: 0
                 data:
-                    lastKeepAlive: '9999-12-31 23:59:59'
+                    lastKeepAlive: '9999-12-31T23:59:59-08:00'
                     ip: 127.0.0.1
                     registerIP: 127.0.0.1
                     manager: manager
@@ -3243,7 +3243,7 @@ paths:
                       version: 18.04.1 LTS
                     status: Active
                     version: Wazuh v3.8.0
-                    dateAdd: '2018-10-11 09:37:23'
+                    dateAdd: '2018-10-11T09:37:23-08:00'
                     name: manager
                     node_name: node01
                     id: '000'
@@ -3860,12 +3860,12 @@ paths:
                     group:
                       - default
                       - dmz
-                    lastKeepAlive: '2019-02-19 10:31:09'
+                    lastKeepAlive: '2019-02-19T10:31:09-08:00'
                     ip: 172.17.0.201
                     manager: manager
                     status: Active
                     version: Wazuh v3.8.2
-                    dateAdd: '2019-02-19 10:25:42'
+                    dateAdd: '2019-02-19T10:25:42-08:00'
                     name: agent-1
                     configSum: ab73af41699f13fdd81903b5f23d8d00
                     registerIP: 172.17.0.201
@@ -3875,18 +3875,18 @@ paths:
                   - group:
                     - default
                     - dmz
-                    lastKeepAlive: '10.0.0.62'
                     status: Never connected
-                    dateAdd: '2019-02-19 10:30:59'
+                    dateAdd: '2019-02-19T10:30:59-08:00'
                     name: server001
                     registerIP: 10.0.0.62
+                    ip: 10.0.0.62
                     node_name: unknown
                     id: '002'
                   - group:
                     - dmz
-                    lastKeepAlive: '10.0.0.15'
+                    ip: 10.0.0.15
                     status: Never connected
-                    dateAdd: '2019-02-19 10:31:00'
+                    dateAdd: '2019-02-19T10:31:00-08:00'
                     name: main_database
                     registerIP: 10.0.0.15
                     node_name: unknown
@@ -4246,7 +4246,7 @@ paths:
                 data:
                   ip: 10.0.0.9
                   status: Never connected
-                  dateAdd: "2019-02-19 10:31:12"
+                  dateAdd: "2019-02-19T10:31:12-08:00"
                   name: NewHost
                   registerIP: 10.0.0.9
                   node_name: unknown
@@ -4294,21 +4294,21 @@ paths:
                   items:
                     - ip: 10.0.0.20
                       status: Never connected
-                      dateAdd: "2019-02-19 10:31:00"
+                      dateAdd: "2019-02-19T10:31:00-08:00"
                       name: server002
                       registerIP: 10.0.0.20
                       node_name: unknown
                       id: "006"
                     - ip: 10.0.0.9
                       status: Never connected
-                      dateAdd: "2019-02-19 10:31:12"
+                      dateAdd: "2019-02-19T10:31:12-08:00"
                       name: NewHost
                       registerIP: 10.0.0.9
                       node_name: unknown
                       id: "007"
                     - ip: 10.0.10.10
                       status: Never connected
-                      dateAdd: "2019-02-19 10:31:13"
+                      dateAdd: "2019-02-19T10:31:13-08:00"
                       name: NewHost_2
                       registerIP: 10.0.10.10
                       node_name: unknown
@@ -4923,18 +4923,18 @@ paths:
                         totalActiveAgents: 5
                       status:
                         - type: "Agent status"
-                          date_start: "2019-01-11 18:52:57.72"
+                          date_start: "2019-01-11T18:52:57.72-08:00"
                           date_end: "2019-01-11 18:52:57.73"
                           synchronized_files: 4
                           free: true
                         - type: "Extra valid"
-                          date_start: "2019-01-11 18:52:57.72"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_start: "2019-01-11T18:52:57.72-08:00"
+                          date_end: "2019-01-11T18:52:57.73-08:00"
                           synchronized_files: 4
                           free: true
                         - type: "Integrity"
-                          date_start: "2019-01-11 18:52:57.72"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_start: "2019-01-11T18:52:57.72-08:00"
+                          date_end: "2019-01-11T18:52:57.73-08:00"
                           synchronized_files:
                             shared: 5
                             missing: 4
@@ -4942,8 +4942,8 @@ paths:
                             extra: 0
                           free: true
                         - type: "Last keep alive"
-                          date_start: "2019-01-11 18:52:57.72"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_start: "2019-01-11T18:52:57.72-08:00"
+                          date_end: "2019-01-11T18:52:57.73-08:00"
 
   /cluster/healthcheck/{node_id}:
     get:
@@ -5181,7 +5181,7 @@ paths:
                 data:
                   path: /var/ossec
                   version: v3.9.0
-                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  compilation_date: "2019-03-06T11:24:59-08:00"
                   type: manager
                   max_agents: 14000
                   openssl_support: yes
@@ -5729,15 +5729,15 @@ paths:
                 data:
                   totalItems: 3
                   items:
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17-08:00"
                       tag: ossec-syscheckd
                       level: info
                       description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17-08:00"
                       tag: ossec-syscheckd
                       level: info
                       description: Starting syscheck scan.
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17-08:00"
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
@@ -6149,7 +6149,7 @@ paths:
                 data:
                   path: /var/ossec
                   version: v3.9.0
-                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  compilation_date: "2019-03-06T11:24:59-08:00"
                   type: manager
                   max_agents: 14000
                   openssl_support: yes
@@ -6967,12 +6967,12 @@ paths:
                   totalItems: 2
                   items:
                     - status: outstanding
-                      readDay: "2019-03-08 09:20:05"
-                      oldDay: "2019-03-08 09:20:05"
+                      readDay: "2019-03-08T09:20:05-08:00"
+                      oldDay: "2019-03-08T09:20:05-08:00"
                       event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
                     - status: outstanding
-                      readDay: "2019-03-08 09:20:05"
-                      oldDay: "2019-03-08 09:20:05"
+                      readDay: "2019-03-08T09:20:05-08:00"
+                      oldDay: "2019-03-08T09:20:05-08:00"
                       pci: 2.2.4
                       event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
     put:
@@ -7130,8 +7130,8 @@ paths:
               example:
                 error: 0
                 data:
-                  end: "2019-03-08 10:35:21"
-                  start: "2019-03-08 10:34:56"
+                  end: "2019-03-08T10:35:21-08:00"
+                  start: "2019-03-08T10:34:56-08:00"
 
   /rules:
     get:
@@ -7502,8 +7502,8 @@ paths:
                   fail: 6
                   description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
                   policy_id: "system_audit_ssh"
-                  end_scan: "2019-03-06 10:12:02"
-                  start_scan: "2019-03-06 10:12:02"
+                  end_scan: "2019-03-06T10:12:02-08:00"
+                  start_scan: "2019-03-06T10:12:02-08:00"
                 - name: "CIS benchmark for Debian/Linux"
                   pass: 36
                   score: 87
@@ -7511,8 +7511,8 @@ paths:
                   fail: 5
                   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
                   policy_id: "cis_debian"
-                  end_scan: "2019-03-06 10:11:53"
-                  start_scan: "2019-03-06 10:11:53"
+                  end_scan: "2019-03-06T10:11:53-08:00"
+                  start_scan: "2019-03-06T10:11:53-08:00"
 
   /sca/{agent_id}/checks/{policy_id}:
     get:
@@ -7670,9 +7670,9 @@ paths:
                       inode: 946
                       perm: "100644"
                       gname: root
-                      mtime: "2019-01-15 15:49:39"
+                      mtime: "2019-01-15T15:49:39-08:00"
                       sha1: a2219a7fd0a77be7422a02049b8d27805c0250ba
-                      date: "2019-03-08 10:35:06"
+                      date: "2019-03-08T10:35:06-08:00"
                       uname: root
                       sha256: 303c346ece82ca4f6713ac176164285d0469f326b6f12a787e11f5d702529277
                       gid: 0
@@ -7684,14 +7684,14 @@ paths:
                       md5: f7bf238a3b0bf155c565454a9f819731
                       inode: 1579
                       uid: "0"
-                      date: "2019-03-08 10:35:01"
+                      date: "2019-03-08T10:35:01-08:00"
                       perm: 100644
                       type: file
                       gname: root
                       uname: root
                       size: 1580
                       gid: "0"
-                      mtime: "2018-11-05 11:51:29"
+                      mtime: "2018-11-05T11:51:29-08:00"
                       sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
     put:
       tags:
@@ -7765,8 +7765,8 @@ paths:
               example:
                 error: 0
                 data:
-                  end: "2019-03-08 10:35:21"
-                  start: "2019-03-08 10:34:56"
+                  end: "2019-03-08T10:35:21-08:00"
+                  start: "2019-03-08T10:34:56-08:00"
 
   /decoders:
     get:
@@ -8149,7 +8149,7 @@ paths:
                       usage: 87
                     scan:
                       id: 219248827
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14-08:00"
                     board_serial: "0"
                     agent_id: "000"
                   - cpu:
@@ -8162,7 +8162,7 @@ paths:
                       usage: 83
                     scan:
                       id: 257116304
-                      time: "2019/02/19 10:26:20"
+                      time: "2019-02-19T10:26:20-08:00"
                     board_serial: "0"
                     agent_id: "001"
 
@@ -8281,7 +8281,7 @@ paths:
                       packets: 43889
                     scan:
                       id: 1203337658
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14-08:00"
                     tx:
                       bytes: 843282
                       dropped: 0
@@ -8300,7 +8300,7 @@ paths:
                       packets: 0
                     scan:
                       id: 1203337658
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14-08:00"
                     tx:
                       bytes: 3874
                       dropped: 0
@@ -8420,7 +8420,7 @@ paths:
                       version: "18.04.1 LTS (Bionic Beaver)"
                     scan:
                       id: 651932304
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14-08:00"
                     release: "4.15.0-43-generic"
                     architecture: "x86_64"
                     version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
@@ -8436,7 +8436,7 @@ paths:
                       version: "18.04.1 LTS (Bionic Beaver)"
                     scan:
                       id: 780978297
-                      time: "2019/02/19 10:26:20"
+                      time: "2019-02-19T10:26:20-08:00"
                     release: "4.15.0-43-generic"
                     architecture: "x86_64"
                     version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
@@ -8490,7 +8490,7 @@ paths:
                   items:
                   - scan:
                       id: 1631140954
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14-08:00"
                     name: "acl"
                     section: "utils"
                     priority: "optional"
@@ -8504,7 +8504,7 @@ paths:
                     agent_id: "000"
                   - scan:
                       id: 1631140954
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14-08:00"
                     name: "accountsservice"
                     section: "admin"
                     priority: "optional"
@@ -8572,7 +8572,7 @@ paths:
                       port: 54550
                     scan:
                       id: 1672337392
-                      time: "2019/03/14 10:38:21"
+                      time: "2019-03-14T10:38:21-08:00"
                     state: established
                     protocol: tcp
                     rx_queue: 0
@@ -8586,7 +8586,7 @@ paths:
                       port: 0
                     scan:
                       id: 1672337392
-                      time: "2019/03/14 10:38:21"
+                      time: "2019-03-14T10:38:21-08:00"
                     state: listening
                     protocol: tcp6
                     rx_queue: 0
@@ -8648,7 +8648,7 @@ paths:
                   items:
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59-08:00"
                     fgroup: "root"
                     state: "S"
                     priority: 20
@@ -8678,7 +8678,7 @@ paths:
                     agent_id: "000"
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59-08:00"
                     fgroup: "root"
                     state: "S"
                     priority: 25
@@ -8744,7 +8744,7 @@ paths:
                     usage: 89
                   scan:
                     id: 599386135
-                    time: "2019/03/08 08:30:53"
+                    time: "2019-03-08T08:30:53-08:00"
                   board_serial: "0"
 
   /syscollector/{agent_id}/netaddr:
@@ -8863,7 +8863,7 @@ paths:
                       packets: 111792
                     scan:
                       id: 1478544824
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53-08:00"
                     tx:
                       bytes: 2408059
                       dropped: 0
@@ -8881,7 +8881,7 @@ paths:
                       packets: 0
                     scan:
                       id: 1478544824
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53-08:00"
                     tx:
                       bytes: 5312
                       dropped: 0
@@ -8982,7 +8982,7 @@ paths:
                     version: "18.04.1 LTS (Bionic Beaver)"
                   scan:
                     id: 242764188
-                    time: "2019/03/08 08:30:53"
+                    time: "2019-03-08T08:30:53-08:00"
                   architecture: "x86_64"
                   release: "4.15.0-43-generic"
                   version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
@@ -9036,7 +9036,7 @@ paths:
                   items:
                   - scan:
                       id: 520922172
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53-08:00"
                     vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
                     name: "base-files"
                     priority: "required"
@@ -9049,7 +9049,7 @@ paths:
                     multiarch: "foreign"
                   - scan:
                       id: 520922172
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53-08:00"
                     vendor: "Colin Watson <cjwatson@debian.org>"
                     name: "base-passwd"
                     priority: "required"
@@ -9116,7 +9116,7 @@ paths:
                       port: 54550
                     scan:
                       id: 1672337392
-                      time: "2019/03/14 10:38:21"
+                      time: "2019-03-14T10:38:21-08:00"
                     state: established
                     protocol: tcp
                     rx_queue: 0
@@ -9130,7 +9130,7 @@ paths:
                       port: 0
                     scan:
                       id: 1672337392
-                      time: "2019/03/14 10:38:21"
+                      time: "2019-03-14T10:38:21-08:00"
                     state: listening
                     protocol: tcp6
                     rx_queue: 0
@@ -9193,7 +9193,7 @@ paths:
                   items:
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59-08:00"
                     fgroup: "root"
                     state: "S"
                     priority: 20
@@ -9224,7 +9224,7 @@ paths:
                     tty: 0
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59-08:00"
                     fgroup: "root"
                     state: "I"
                     priority: 0
