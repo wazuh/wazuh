@@ -14,6 +14,7 @@ from wazuh import common
 _alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
+_base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
@@ -22,7 +23,7 @@ _hashes = re.compile(r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$')
 _ips = re.compile(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
 _names = re.compile(r'^[\w\-\.]+$')
 _numbers = re.compile(r'^\d+$')
-_ossec_key = re.compile(r'[a-zA-Z0-9]+$')
+_wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
 _paths = re.compile(r'^[\w\-\.\\\/:]+$')
 _query_param = re.compile(r'[\w ]+$')
 _ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
@@ -107,8 +108,18 @@ def format_alphanumeric(value):
     return check_exp(value, _names)
 
 
+@draft4_format_checker.checks("base64")
+def format_base64(value):
+    return check_exp(value, _base64)
+
+
+@draft4_format_checker.checks("hash")
+def format_hash(value):
+    return check_exp(value, _hashes)
+
+
 @draft4_format_checker.checks("names")
-def format_numbers(value):
+def format_names(value):
     return check_exp(value, _names)
 
 
@@ -128,3 +139,33 @@ def format_path(relative_path):
         return False
 
     return check_exp(relative_path, _paths)
+
+
+@draft4_format_checker.checks("query")
+def format_query(value):
+    return check_exp(value, _query_param)
+
+
+@draft4_format_checker.checks("range")
+def format_range(value):
+    return check_exp(value, _ranges)
+
+
+@draft4_format_checker.checks("search")
+def format_search(value):
+    return check_exp(value, _search_param)
+
+
+@draft4_format_checker.checks("sort")
+def format_sort(value):
+    return check_exp(value, _sort_param)
+
+
+@draft4_format_checker.checks("timeframe")
+def format_timeframe(value):
+    return check_exp(value, _timeframe_type)
+
+
+@draft4_format_checker.checks("wazuh_key")
+def format_wazuh_key(value):
+    return check_exp(value, _wazuh_key)

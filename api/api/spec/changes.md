@@ -19,6 +19,9 @@
 
 ### GET /agents
 * Parameter **status** renamed to **agent_status**
+* Parameter **os.name** renamed to **os_name**
+* Parameter **os.platform** renamed to **os_platform**
+* Parameter **os.version** renamed to **os_version**
 
 ### GET /agents/groups/{group_id}
 * Parameter **status** renamed to **agent_status**
@@ -37,12 +40,23 @@
 * Changed parameter **ids** name to **list_groups**
 * Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
 
+### PUT /agents/{agent_id}/upgrade
+* Changed parameter type **force** from integer to boolean
+
+### POST/agents/insert
+* Parameter **force** renamed to **force_after**
+
 ## Cache
 ### DELETE /cache (Clear group cache)
 * Changed path to **/cache/:group_id** because this path is used in other endpoint.
 
 ### GET /lists
 * Parameter **status** renamed to **list_status**
+
+## Cluster
+### GET /cluster/{node_id}/stats
+* Changed date format from YYYYMMDD to YYYY-MM-DD
+
 
 ## Experimental
 ### General
@@ -56,6 +70,16 @@
 * Parameter **pid** renamed to **process_pid**
 * Parameter **status** renamed to **process_status**
 * Parameter **name** renamed to **process_name**
+
+## Manager
+### GET /manager/stats
+* Changed date format from YYYYMMDD to YYYY-MM-DD
+
+### GET/manager/info
+* Parameter `openssl_support` is now a boolean.
+
+### GET/manager/stats/weekly
+* Parameter **hours** changed to **averages**.
 
 ## Syscollectior
 ### /syscollector/:agent_id/netaddr
