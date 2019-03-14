@@ -34,6 +34,7 @@ static char *wm_vuldet_provider_name(xml_node *node);
 static int wm_vuldet_provider_os_list(xml_node **node, vu_os_feed **feeds);
 static void wm_vuldet_free_update_node(update_node *update);
 static void wm_vuldet_set_port_to_url(char **url, int port);
+static int wm_vuldet_add_allow_os(update_node *update, char *os_tags);
 
 // Options
 static const char *XML_DISABLED = "disabled";
@@ -524,32 +525,10 @@ static int wm_vuldet_read_deprecated_feed_tag(const OS_XML *xml, xml_node *node,
                 return OS_INVALID;
             }
         } else if (!strcmp(chld_node[j]->element, XML_ALLOW)) {
-            int size;
-            char *found;
-            char *OS = chld_node[j]->content;
-
-            os_calloc(1, sizeof(char *), updates[os_index]->allowed_OS_list);
-            os_calloc(1, sizeof(char *), updates[os_index]->allowed_ver_list);
-
-            for (size = 0; (found = strchr(OS, ',')); size++) {
-                *(found++) = '\0';
-                os_realloc(updates[os_index]->allowed_OS_list, (size + 2)*sizeof(char *), updates[os_index]->allowed_OS_list);
-                os_realloc(updates[os_index]->allowed_ver_list, (size + 2)*sizeof(char *), updates[os_index]->allowed_ver_list);
-                if (format_os_version(OS, &updates[os_index]->allowed_OS_list[size], &updates[os_index]->allowed_ver_list[size])) {
-                    merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
-                    OS_ClearNode(chld_node);
-                    return OS_INVALID;
-                }
-                updates[os_index]->allowed_OS_list[size + 1] = NULL;
-                OS = found;
-            }
-            os_realloc(updates[os_index]->allowed_OS_list, (size + 2)*sizeof(char *), updates[os_index]->allowed_OS_list);
-            if (format_os_version(OS, &updates[os_index]->allowed_OS_list[size], &updates[os_index]->allowed_ver_list[size])) {
-                merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, OS);
+            if (wm_vuldet_add_allow_os(updates[os_index], chld_node[j]->content)) {
                 OS_ClearNode(chld_node);
                 return OS_INVALID;
             }
-            updates[os_index]->allowed_OS_list[size + 1] = NULL;
         } else if (!strcmp(chld_node[j]->element, XML_URL)) {
             os_strdup(chld_node[j]->content, updates[os_index]->url);
             if (chld_node[j]->attributes && !strcmp(*chld_node[j]->attributes, XML_PORT)) {
@@ -640,6 +619,10 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                     }  else if (!strcmp(chld_node[i]->attributes[j], XML_PORT)) {
                         port = strtol(chld_node[i]->values[j], NULL, 10);
                         wm_vuldet_set_port_to_url(&multi_url, port);
+                    } else if (!strcmp(chld_node[i]->attributes[j], XML_ALLOW)) {
+                        if (wm_vuldet_add_allow_os(updates[os_index], chld_node[i]->values[j])) {
+                            return OS_INVALID;
+                        }
                     } else {
                         mwarn("Invalid tag '%s' for '%s' option.", chld_node[i]->attributes[j], chld_node[i]->element);
                     }
@@ -857,6 +840,34 @@ void wm_vuldet_set_port_to_url(char **url, int port) {
     } else {
         wm_strcat(url, port_str, 0);
     }
+}
+
+int wm_vuldet_add_allow_os(update_node *update, char *os_tags) {
+    char *found;
+    size_t size;
+
+    os_calloc(1, sizeof(char *), update->allowed_OS_list);
+    os_calloc(1, sizeof(char *), update->allowed_ver_list);
+
+    for (size = 0; (found = strchr(os_tags, ',')); size++) {
+        *(found++) = '\0';
+        os_realloc(update->allowed_OS_list, (size + 2)*sizeof(char *), update->allowed_OS_list);
+        os_realloc(update->allowed_ver_list, (size + 2)*sizeof(char *), update->allowed_ver_list);
+        if (format_os_version(os_tags, &update->allowed_OS_list[size], &update->allowed_ver_list[size])) {
+            merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
+            return OS_INVALID;
+        }
+        update->allowed_OS_list[size + 1] = NULL;
+        os_tags = found;
+    }
+    os_realloc(update->allowed_OS_list, (size + 2)*sizeof(char *), update->allowed_OS_list);
+    if (format_os_version(os_tags, &update->allowed_OS_list[size], &update->allowed_ver_list[size])) {
+        merror("Invalid OS entered in %s: %s", WM_VULNDETECTOR_CONTEXT.name, os_tags);
+        return OS_INVALID;
+    }
+    update->allowed_OS_list[size + 1] = NULL;
+
+    return 0;
 }
 
 #endif
