@@ -227,6 +227,27 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length)
                 snprintf(nodename, OS_MAXSTR - 1, "#\"_node_name\":%s\n", node_name);
                 fprintf(fp, "%s", nodename);
 
+                /* Write agent's group to the agent-info file */
+                FILE * fp1;
+                char file [OS_SIZE_1024];
+
+                snprintf(file, OS_SIZE_1024, "%s/%s", GROUPS_DIR, key->id);
+
+                fp1 = fopen(file, "r");
+
+                if(fp1){
+                  char group_name [OS_SIZE_1024];
+
+                  fread(group_name, OS_MAXSTR, 99, fp1);
+
+                  char groupname[OS_MAXSTR];
+                  snprintf(groupname, OS_MAXSTR - 1, "#\"_agent_groups\":%s\n", group_name);
+                  fprintf(fp, "%s", groupname);
+
+                } else {
+                    merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));
+                }
+
                 fclose(fp);
             } else {
                 merror(FOPEN_ERROR, data->keep_alive, errno, strerror(errno));

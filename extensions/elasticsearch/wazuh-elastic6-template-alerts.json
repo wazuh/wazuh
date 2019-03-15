@@ -32,6 +32,10 @@
         },
         "agent": {
           "properties": {
+            "groups": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
             "ip": {
               "type": "keyword",
               "doc_values": "true"

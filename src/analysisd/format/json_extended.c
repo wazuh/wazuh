@@ -23,6 +23,7 @@ void W_ParseJSON(cJSON* root, const Eventinfo* lf)
     if(lf->full_log && lf->hostname) {
         W_JSON_ParseHostname(root, lf);
         W_JSON_ParseAgentIP(root, lf);
+        W_JSON_ParseAgentGroups(root, lf);
     }
     // Parse Location
     if(lf->location) {
@@ -375,7 +376,33 @@ void W_JSON_ParseAgentIP(cJSON* root, const Eventinfo* lf)
     }
 
     os_free(string);
-    
+
+}
+
+// Parse agent groups from labels
+void W_JSON_ParseAgentGroups(cJSON* root, const Eventinfo* lf)
+{
+    char *string = NULL;
+    char *groups;
+    cJSON *ind_groups = cJSON_CreateArray();
+    char *pnt;
+    cJSON *agent;
+
+    groups = labels_get(lf->labels, "_agent_groups");
+
+    if (groups && strcmp(groups, "")){
+
+      agent = cJSON_GetObjectItem(root, "agent");
+
+      pnt = strtok (groups,",");
+      for(int i=0; pnt != NULL; i++, pnt = strtok (NULL, ",")){
+        cJSON_AddItemToArray(ind_groups, cJSON_CreateString(pnt));
+      }
+      cJSON_AddItemToObject(agent, "groups", ind_groups);
+    }
+
+    os_free(string);
+
 }
 
 // The file location usually comes with more information about the alert (like hostname or ip) we will extract just the
