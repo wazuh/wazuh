@@ -67,7 +67,7 @@ class ActiveResponse(Model):
         self._command = command
 
     @property
-    def custom(self) -> str:
+    def custom(self) -> bool:
         """
         :return: Whether the specified command is a custom command or not
         :rtype: bool
