@@ -7,7 +7,6 @@ from xml.etree import ElementTree as ET
 import os
 import re
 from jsonschema import draft4_format_checker
-from typing import Dict, List
 
 from wazuh import common
 
@@ -36,7 +35,7 @@ _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
 
 
-def check_exp(exp: str, regex: str) -> bool:
+def check_exp(exp, regex):
     """
     Function to check if an expression matches a regex
     :param exp: Expression to check
