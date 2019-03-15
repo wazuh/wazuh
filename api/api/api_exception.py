@@ -26,8 +26,14 @@ class APIException(Exception):
                   'there is enough disk space and permission to write in '
                   f'WAZUH_PATH/{to_relative_path(SECURITY_PATH)}',
             2002: 'Error migrating configuration from old API version. '
+                  'Old configuration could not be loaded. '
                   'Default configuration will be applied',
-            2003: 'Error loading SSL/TLS certificates'
+            2003: 'Error loading SSL/TLS certificates. Please, ensure '
+                  'if path to certificates is correct in the configuration '
+                  f'file (WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})',
+            2004: 'API configuration file '
+                  f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}) '
+                  'could not be loaded'
         }
 
     def __str__(self):
