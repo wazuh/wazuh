@@ -353,6 +353,7 @@
 #define VU_MULTIPATH_ERROR          "(5535): Invalid multi_path '%s': %s."
 #define VU_REGEX_COMPILE_ERROR      "(5536): Cannot compile '%s' regular expression."
 #define VU_RH_REQ_FAIL_MAX          "(5541): The maximum number of failed requests has been reached."
+#define VU_WCPE_GET_TIMEST_ERROR    "(5542): Could not get the update date of the Wazuh CPE dictionary."
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
