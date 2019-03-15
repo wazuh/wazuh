@@ -511,12 +511,12 @@ int OS_CheckInternetConnection()
     PMIB_IPFORWARDTABLE pRoutingTable = NULL;
 
     /* Get the required buffer size */
-    if (ERROR_INSUFFICIENT_BUFFER == GetIpForwardTable(NULL, &dwBufferSize, false)) {
+    if (ERROR_INSUFFICIENT_BUFFER == GetIpForwardTable(NULL, &dwBufferSize, FALSE)) {
         os_malloc(dwBufferSize, pByte);
         pRoutingTable = (PMIB_IPFORWARDTABLE)pByte;
 
         /* Attempt to fill buffer with routing table information */
-        if (NO_ERROR == GetIpForwardTable(pRoutingTable, &dwBufferSize, false)) {
+        if (NO_ERROR == GetIpForwardTable(pRoutingTable, &dwBufferSize, FALSE)) {
             /* Look for default route to gateway */
             for (dwIndex = 0; dwIndex < pRoutingTable->dwNumEntries; dwIndex++)
             {
