@@ -5,7 +5,7 @@
 import os
 
 from api.constants import CONFIG_FILE_PATH, SECURITY_PATH
-from wazuh.common import ossec_path as OSSEC_PATH
+from wazuh.common import ossec_path as WAZUH_PATH
 
 
 class APIException(Exception):
@@ -23,10 +23,10 @@ class APIException(Exception):
         # show relative paths in exceptions
         self.exceptions = {
             2000: 'Some parameters are not expected in the configuration file '
-                  f'(OSSEC_PATH/{os.path.relpath(CONFIG_FILE_PATH, OSSEC_PATH)})',
+                  f'(WAZUH_PATH/{os.path.relpath(CONFIG_FILE_PATH, WAZUH_PATH)})',
             2001: 'Error creating or reading secrets file. Please, ensure '
                   'there is enough disk space and permission to write in '
-                  f'OSSEC_PATH/{os.path.relpath(SECURITY_PATH, OSSEC_PATH)}',
+                  f'WAZUH_PATH/{os.path.relpath(SECURITY_PATH, WAZUH_PATH)}',
             2002: 'Error migrating configuration from old API version. '
                   'Default configuration will be applied',
             2003: 'Error loading SSL/TLS certificates'
