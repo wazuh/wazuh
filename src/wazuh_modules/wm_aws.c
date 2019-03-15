@@ -148,7 +148,11 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
             cJSON_AddItemToArray(arr_buckets,buck);
         }
-        if (cJSON_GetArraySize(arr_buckets) > 0) cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
+        if (cJSON_GetArraySize(arr_buckets) > 0) {
+            cJSON_AddItemToObject(wm_aws,"buckets",arr_buckets);
+        } else {
+            cJSON_free(arr_buckets);
+        }
     }
     if (aws_config->services) {
         wm_aws_service *iter;
@@ -166,7 +170,11 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->regions) cJSON_AddStringToObject(service,"regions",iter->regions);
             cJSON_AddItemToArray(arr_services,service);
         }
-        if (cJSON_GetArraySize(arr_services) > 0) cJSON_AddItemToObject(wm_aws,"services",arr_services);
+        if (cJSON_GetArraySize(arr_services) > 0) {
+            cJSON_AddItemToObject(wm_aws,"services",arr_services);
+        } else {
+            cJSON_free(arr_services);
+        }
     }
     cJSON_AddItemToObject(root,"aws-s3",wm_aws);
 
@@ -276,6 +284,10 @@ void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     if (exec_bucket->iam_role_arn) {
         wm_strcat(&command, "--iam_role_arn", ' ');
         wm_strcat(&command, exec_bucket->iam_role_arn, ' ');
+    }
+    if (exec_bucket->aws_organization_id) {
+        wm_strcat(&command, "--aws_organization_id", ' ');
+        wm_strcat(&command, exec_bucket->aws_organization_id, ' ');
     }
     if (exec_bucket->aws_account_id) {
         wm_strcat(&command, "--aws_account_id", ' ');

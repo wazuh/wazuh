@@ -50,22 +50,16 @@ void WinevtInit(){
 char *replace_win_format(char *str){
     char *ret1 = NULL;
     char *ret2 = NULL;
-    char *ret3 = NULL;
-    char *ret4 = NULL;
-    char *ret5 = NULL;
     char *end = NULL;
     int spaces = 0;
 
     // Remove undesired characters from the string
-    ret1 = wstr_replace(str, "\\r", "");
-    ret2 = wstr_replace(ret1, "\\t", "");
-    ret3 = wstr_replace(ret2, "\\n", "");
-    ret4 = wstr_replace(ret3, "\\\"", "\"");
-    ret5 = wstr_replace(ret4, "\\\\", "\\");
+    ret1 = wstr_replace(str, "\\\"", "\"");
+    ret2 = wstr_replace(ret1, "\\\\", "\\");
 
     // Remove trailing spaces at the end of the string
-    end = ret5 + strlen(ret5) - 1;
-    while(end > ret5 && isspace((unsigned char)*end)) {
+    end = ret2 + strlen(ret2) - 1;
+    while(end > ret2 && isspace((unsigned char)*end)) {
         end--;
         spaces = 1;
     }
@@ -74,11 +68,8 @@ char *replace_win_format(char *str){
         end[1] = '\0';
 
     os_free(ret1);
-    os_free(ret2);
-    os_free(ret3);
-    os_free(ret4);
 
-    return ret5;
+    return ret2;
 }
 
 /* Special decoder for Windows eventchannel */
@@ -197,48 +188,51 @@ int DecodeWinevt(Eventinfo *lf){
                             if (!strcmp(child_attr[p]->element, "Provider")) {
                                 while(child_attr[p]->attributes[l]){
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")){
-                                        cJSON_AddStringToObject(json_system_in, "ProviderName", child_attr[p]->values[l]);
+                                        cJSON_AddStringToObject(json_system_in, "providerName", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
-                                        cJSON_AddStringToObject(json_system_in, "ProviderGuid", child_attr[p]->values[l]);
+                                        cJSON_AddStringToObject(json_system_in, "providerGuid", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "EventSourceName")){
-                                        cJSON_AddStringToObject(json_system_in, "EventSourceName", child_attr[p]->values[l]);
+                                        cJSON_AddStringToObject(json_system_in, "eventSourceName", child_attr[p]->values[l]);
                                     }
                                     l++;
                                 }
                             } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
                                 if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
-                                    cJSON_AddStringToObject(json_system_in, "SystemTime", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "systemTime", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Execution")) {
                                 if(!strcmp(child_attr[p]->attributes[0], "ProcessID")){
-                                    cJSON_AddStringToObject(json_system_in, "ProcessID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[0]);
                                 }
                                 if(!strcmp(child_attr[p]->attributes[1], "ThreadID")){
-                                    cJSON_AddStringToObject(json_system_in, "ThreadID", child_attr[p]->values[1]);
+                                    cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[1]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Channel")) {
-                                cJSON_AddStringToObject(json_system_in, "Channel", child_attr[p]->content);
+                                cJSON_AddStringToObject(json_system_in, "channel", child_attr[p]->content);
                                 if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "UserID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "userID", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Security")) {
                                 if(child_attr[p]->attributes && child_attr[p]->values && !strcmp(child_attr[p]->values[0], "UserID")){
-                                    cJSON_AddStringToObject(json_system_in, "SecurityUserID", child_attr[p]->values[0]);
+                                    cJSON_AddStringToObject(json_system_in, "securityUserID", child_attr[p]->values[0]);
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
                                 if (level){
                                     os_free(level);
                                 }
                                 os_strdup(child_attr[p]->content, level);
+                                *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Keywords")) {
                                 if (keywords){
                                     os_free(keywords);
                                 }
                                 os_strdup(child_attr[p]->content, keywords);
+                                *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Correlation")) {
                             } else {
+                                *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             }
 
@@ -248,6 +242,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0) {
                                         filtered_string = replace_win_format(child_attr[p]->content);
+                                        *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                         break;
@@ -255,6 +250,7 @@ int DecodeWinevt(Eventinfo *lf){
                                             && strcmp(child_attr[p]->content, "-") != 0){
                                         filtered_string = replace_win_format(child_attr[p]->content);
                                         mdebug2("Unexpected attribute at EventData (%s).", child_attr[p]->attributes[j]);
+                                        *child_attr[p]->values[l] = tolower(*child_attr[p]->values[l]);
                                         cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         os_free(filtered_string);
                                     }
@@ -274,6 +270,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     }
                                     os_strdup(join_data,join_data2);
                                 } else if (strcmp(child_attr[p]->element, "Data")){
+                                    *child_attr[p]->element = tolower(*child_attr[p]->element);
                                     cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->element, filtered_string);
                                 }
 
@@ -289,6 +286,7 @@ int DecodeWinevt(Eventinfo *lf){
                             while(extra_data_child && extra_data_child[h]){
                                 if(strcmp(extra_data_child[h]->content, "(NULL)") != 0 && strcmp(extra_data_child[h]->content, "-") != 0){
                                     filtered_string = replace_win_format(extra_data_child[h]->content);
+                                    *extra_data_child[h]->element = tolower(*extra_data_child[h]->element);
                                     cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);
                                     os_free(filtered_string);
                                 }
@@ -347,7 +345,7 @@ int DecodeWinevt(Eventinfo *lf){
                         category = "UNKNOWN";
                 }
 
-                cJSON_AddStringToObject(json_system_in, "SeverityValue", category);
+                cJSON_AddStringToObject(json_system_in, "severityValue", category);
             }
         }
         xml_init = 1;
@@ -393,7 +391,7 @@ int DecodeWinevt(Eventinfo *lf){
             memcpy(msg_from_prov, find_msg, num);
             msg_from_prov[num] = '\0';
             filtered_string = replace_win_format(msg_from_prov);
-            cJSON_AddStringToObject(json_system_in, "Message", filtered_string);
+            cJSON_AddStringToObject(json_system_in, "message", filtered_string);
             os_free(filtered_string);
 
             find_msg = NULL;
@@ -404,26 +402,38 @@ int DecodeWinevt(Eventinfo *lf){
         }
     } else {
         mdebug1("Malformed JSON output received. No 'Message' field found");
-        cJSON_AddStringToObject(json_system_in, "Message", "No message");
+        cJSON_AddStringToObject(json_system_in, "message", "No message");
     }
 
     if(json_system_in){
-        cJSON_AddItemToObject(json_event, "System", json_system_in);
+        cJSON_AddItemToObject(json_event, "system", json_system_in);
     }
 
     if (json_eventdata_in){
         if(strcmp(join_data,"")){
-            cJSON_AddStringToObject(json_eventdata_in, "Data", join_data);
+            cJSON_AddStringToObject(json_eventdata_in, "data", join_data);
         }
-        cJSON_AddItemToObject(json_event, "EventData", json_eventdata_in);
+
+        cJSON *element;
+        int n_elements=0;
+
+        cJSON_ArrayForEach(element, json_eventdata_in){
+            n_elements+=1;
+        }
+
+        if(n_elements > 0){
+            cJSON_AddItemToObject(json_event, "eventdata", json_eventdata_in);
+        }
+        cJSON_Delete(element);
     }
     if (extra){
+        *extra = tolower(*extra);
         cJSON_AddItemToObject(json_event, extra, json_extra_in);
     } else {
         cJSON_Delete(json_extra_in);
     }
 
-    cJSON_AddItemToObject(final_event, "EventChannel", json_event);
+    cJSON_AddItemToObject(final_event, "win", json_event);
 
     returned_event = cJSON_PrintUnformatted(final_event);
 

@@ -14,6 +14,8 @@
 #include "os_execd/execd.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_net/os_net.h"
+#include "wazuh_modules/wmodules.h"
+#include "wazuh_modules/wm_sca.h"
 #include "agentd.h"
 
 static const char * IGNORE_LIST[] = { SHAREDCFG_FILENAME, NULL };
@@ -69,7 +71,7 @@ void *receiver_thread(__attribute__((unused)) void *none)
         /* Wait with a timeout for any descriptor */
         recv_b = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
         if (recv_b == -1) {
-            merror(SELECT_ERROR, errno, strerror(errno));
+            merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
             sleep(30);
             continue;
         } else if (recv_b == 0) {
@@ -159,6 +161,16 @@ void *receiver_thread(__attribute__((unused)) void *none)
                     req_push(tmp_msg + strlen(HC_REQUEST), msg_length - strlen(HC_REQUEST) - 3);
                     continue;
                 }
+
+                else if (strncmp(tmp_msg,CFGA_DB_DUMP,strlen(CFGA_DB_DUMP)) == 0) {
+
+                    wm_sca_push_request_win(tmp_msg);
+                    continue;
+                }
+
+
+
+
 
                 /* Close any open file pointer if it was being written to */
                 if (fp) {

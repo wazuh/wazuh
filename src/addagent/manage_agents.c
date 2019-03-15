@@ -216,7 +216,6 @@ int add_agent(int json_output, int no_limit)
         if (!OS_IsValidIP(ip, &c_ip)) {
             printf(IP_ERROR, ip);
             _ip = NULL;
-            free(c_ip.ip);
             c_ip.ip = NULL;
         } else if (!authd_running && (id_exist = IPExist(ip))) {
             double antiquity = OS_AgentAntiquity_ID(id_exist);

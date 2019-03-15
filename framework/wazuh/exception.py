@@ -148,6 +148,10 @@ class WazuhException(Exception):
         1901: '\'execq\' socket has not been created',
         1902: 'Could not connect to \'execq\' socket',
         1903: 'Error deleting temporary file from API',
+        1904: 'Bad data from \'execq\'',
+        1905: 'File was not updated because it already exists',
+        1906: 'File does not exist',
+        1907: 'File could not be deleted',
 
         # Database:
         2000: 'No such database file',
@@ -181,7 +185,8 @@ class WazuhException(Exception):
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
         3020: 'Timeout sending request',
         3021: 'Timeout executing API request',
-        3022: 'Unknown node ID'
+        3022: 'Unknown node ID',
+        3023: 'Worker node is not connected to master'
 
         # > 9000: Authd
     }

@@ -368,7 +368,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         w_mutex_unlock(&mutex_table);
 
         // Delete node
-        free(buffer);
+        os_free(buffer);
         req_free(node);
     }
 

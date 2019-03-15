@@ -28,6 +28,7 @@ typedef struct _agent {
     int m_queue;
     int sock;
     int execdq;
+    int cfgadq;
     int rip_id;
     char *lip;
     int notify_time;

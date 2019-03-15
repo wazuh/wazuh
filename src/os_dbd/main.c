@@ -17,6 +17,8 @@
 
 /* Prototypes */
 static void print_db_info(void);
+static void cleanup();
+static void handler(int signum);
 static void help_dbd(void) __attribute__((noreturn));
 
 
@@ -155,6 +157,19 @@ int main(int argc, char **argv)
         goDaemon();
     }
 
+    // Signal manipulation
+    {
+        struct sigaction action = { .sa_handler = handler, .sa_flags = SA_RESTART };
+        sigaction(SIGTERM, &action, NULL);
+        sigaction(SIGHUP, &action, NULL);
+        sigaction(SIGINT, &action, NULL);
+
+        action.sa_handler = SIG_IGN;
+        sigaction(SIGPIPE, &action, NULL);
+    }
+
+    atexit(cleanup);
+
     /* Create pid */
     if (CreatePID(ARGV0, getpid()) < 0) {
         merror_exit(PID_ERROR);
@@ -251,4 +266,20 @@ int main(int argc, char **argv)
 
     /* The real daemon now */
     OS_DBD(&db_config);
+}
+
+void cleanup() {
+    DeletePID(ARGV0);
+}
+
+void handler(int signum) {
+    switch (signum) {
+    case SIGHUP:
+    case SIGINT:
+    case SIGTERM:
+        minfo(SIGNAL_RECV, signum, strsignal(signum));
+        break;
+    default:
+        merror("unknown signal (%d)", signum);
+    }
 }

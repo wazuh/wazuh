@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "3.9.0"
-!define REVISION "3901"
+!define REVISION "3908"
 !define NAME "Wazuh"
 !define SERVICE "OssecSvc"
 
@@ -176,11 +176,14 @@ Section "Wazuh Agent (required)" MainSec
     CreateDirectory "$INSTDIR\incoming"
     CreateDirectory "$INSTDIR\upgrade"
     CreateDirectory "$INSTDIR\wodles"
+    CreateDirectory "$INSTDIR\ruleset\"
+    CreateDirectory "$INSTDIR\ruleset\sca"
 
     ; install files
     File ossec-agent.exe
     File ossec-agent-eventchannel.exe
     File default-ossec.conf
+    File default-ossec-pre6.conf
     File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File ossec-rootcheck.exe
@@ -210,6 +213,7 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=wpk_root.pem ../../etc/wpk_root.pem
     File ../wazuh_modules/syscollector/syscollector_win_ext.dll
     File /oname=libwazuhext.dll ../libwazuhext.dll
+    File /oname=ruleset\sca\win_audit_rcl.yml ../../etc/sca/windows/win_audit_rcl.yml
     File VERSION
     File REVISION
 
@@ -292,7 +296,11 @@ Section "Wazuh Agent (required)" MainSec
     ConfInstallOSSEC:
         ClearErrors
         IfFileExists "$INSTDIR\ossec.conf" ConfPresentOSSEC
-        Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+        ${If} ${AtLeastWinVista}
+            Rename "$INSTDIR\default-ossec.conf" "$INSTDIR\ossec.conf"
+        ${Else}
+            Rename "$INSTDIR\default-ossec-pre6.conf" "$INSTDIR\ossec.conf"
+        ${EndIf}
         IfErrors ConfErrorOSSEC ConfPresentOSSEC
     ConfErrorOSSEC:
         MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
@@ -485,6 +493,8 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\syscollector_win_ext.dll"
     Delete "$INSTDIR\libwazuhext.dll"
+    Delete "$INSTDIR\ruleset\sca\*"
+    Delete "$INSTDIR\ruleset\*"
 
     ; remove shortcuts
     SetShellVarContext all
@@ -506,6 +516,8 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\upgrade"
 	RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
+    RMDir "$INSTDIR\ruleset\sca"
+    RMDir "$INSTDIR\ruleset"
     RMDir "$INSTDIR"
 SectionEnd
 

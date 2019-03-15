@@ -1,6 +1,8 @@
 {
   "order": 0,
-  "index_patterns": ["wazuh-alerts-3.x-*"],
+  "index_patterns": [
+    "wazuh-alerts-3.x-*"
+  ],
   "settings": {
     "index.refresh_interval": "5s",
     "index.number_of_shards": "3",
@@ -286,6 +288,18 @@
               "doc_values": "true"
             },
             "gpg13": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
+        "predecoder": {
+          "properties": {
+            "program_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "timestamp": {
               "type": "keyword",
               "doc_values": "true"
             }
@@ -652,8 +666,8 @@
                           "doc_values": "true"
                         },
                         "geoLocation": {
-                            "type": "geo_point",
-                            "doc_values": "true"
+                          "type": "geo_point",
+                          "doc_values": "true"
                         }
                       }
                     }
@@ -785,7 +799,7 @@
                 }
               }
             },
-            "os":{
+            "os": {
               "properties": {
                 "hostname": {
                   "type": "keyword",
@@ -1086,6 +1100,306 @@
                 "processor": {
                   "type": "long",
                   "doc_values": "true"
+                }
+              }
+            },
+            "sca": {
+              "properties": {
+                "type": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "scan_id": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "policy": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "name": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "file": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "description": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "passed": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "failed": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "score": {
+                  "type": "keyword",
+                  "doc_values": "true"
+                },
+                "check": {
+                  "properties": {
+                    "id": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "title": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "description": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "rationale": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "remediation": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "compliance": {
+                      "properties": {
+                        "cis": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "cis_csc": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        },
+                        "pci_dss": {
+                          "type": "keyword",
+                          "doc_values": "true"
+                        }
+                      }
+                    },
+                    "references": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "file": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "directory": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "registry": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "process": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "previous_result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                }
+              }
+            },
+            "win": {
+              "properties": {
+                "system": {
+                  "properties": {
+                    "providerName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "providerGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "eventSourceName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "securityUserID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "userID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "eventID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "version": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "level": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "task": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "opcode": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "keywords": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "systemTime": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "eventRecordID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "processID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "threadID": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "channel": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "computer": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "severityValue": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "message": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "eventdata": {
+                  "properties": {
+                    "subjectUserSid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subjectUserName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subjectDomainName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subjectLogonId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetUserSid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetUserName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetDomainName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "targetLogonId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "logonType": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "logonProcessName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "authenticationPackageName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "logonGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "keyLength": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "impersonationLevel": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "transactionId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "newState": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "resourceManager": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "processId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "processName": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "data": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "image": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "binary": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "parentImage": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
+                },
+                "rmSessionEvent" :{
+                  "properties": {
+                    "rmSessionId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "uTCStartTime": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    }
+                  }
                 }
               }
             }
