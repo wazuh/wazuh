@@ -1840,8 +1840,6 @@ class Agent:
             # check agent belongs to group group_id
             if group_id == 'default':
                 raise WazuhException(1745)
-            elif len(group_list) == 0:
-                raise WazuhException(1746)
             elif group_id not in group_list:
                 raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
             # remove group from group_list
