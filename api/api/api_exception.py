@@ -23,8 +23,8 @@ class APIException(Exception):
             2001: 'Error creating or reading secrets file. Please, ensure '
                   f'there is enough disk space and permission to write in {SECURITY_PATH}',
             2002: 'Error migrating configuration from old API version. '
-                  'Default configuration will be applied.',
-            2003: 'Error loading SSL/TLS certificates.'
+                  'Default configuration will be applied',
+            2003: 'Error loading SSL/TLS certificates'
         }
 
     def __str__(self):
