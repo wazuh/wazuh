@@ -10,8 +10,7 @@ from wazuh.cluster.dapi.dapi import DistributedAPI
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('agents_controller')
-logger.addHandler(logging.StreamHandler())
+logger = logging.getLogger('wazuh.agents_controller')
 
 
 def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, status=None, older_than=None):  # noqa: E501
@@ -54,7 +53,9 @@ def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, s
     return data, 200
 
 
-def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None, version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
+def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
+                   status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
+                   version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
     """Get all agents
 
     Returns a list with the available agents. # noqa: E501
