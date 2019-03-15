@@ -41,7 +41,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     """
     # check there aren't extra configuration values in user's configuration:
     if config.keys() - default.keys() != set():
-        raise APIException(2000, ', '.join(config.keys() - default.keys()))
+        raise APIException(2000, details=', '.join(config.keys() - default.keys()))
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
         config[k] = {**default[k], **config[k]}
@@ -62,7 +62,9 @@ def read_config(config_file=common.api_config_path) -> Dict:
         "https": {
             "enabled": False,
             "key": "api/configuration/ssl/server.key",
-            "cert": "api/configuration/ssl/server.crt"
+            "cert": "api/configuration/ssl/server.crt",
+            "use_ca": False,
+            "ca": "api/configuration/ssl/ca.crt"
         },
         "logs": {
             "level": "info",
@@ -79,8 +81,14 @@ def read_config(config_file=common.api_config_path) -> Dict:
         "experimental_features": False
     }
 
-    with open(config_file) as f:
-        configuration = yaml.safe_load(f)
+    if os.path.exists(common.api_config_path):
+        try:
+            with open(common.api_config_path) as f:
+                configuration = yaml.safe_load(f)
+        except IOError as e:
+            raise APIException(2004, details=e.strerror)
+    else:
+        configuration = None
 
     # if any value is missing from user's cluster configuration, add the default one:
     if configuration is None:
@@ -90,6 +98,6 @@ def read_config(config_file=common.api_config_path) -> Dict:
         configuration = fill_dict(default_configuration, configuration)
 
     # append ossec_path to all paths in configuration
-    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert')])
+    append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
 
     return configuration

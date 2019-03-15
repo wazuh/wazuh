@@ -23,7 +23,7 @@ install:
 	$(INSTALL_DIR) $(PREFIX)/api/configuration
 	$(INSTALL_RW_DIR) $(PREFIX)/api/configuration/security
 
-	$(INSTALL_FILE) api/configuration/api.yml ${PREFIX}/api/configuration
+	$(INSTALL_FILE) api/configuration/template-api.yml ${PREFIX}/api/configuration
 
 	# Install scripts/%.py on $(PREFIX)/bin/%
 	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) $(script) $(patsubst scripts/%.py,$(PREFIX)/bin/%,$(script));)

@@ -207,6 +207,11 @@ components:
           items:
             $ref: '#/components/schemas/AgentID'
 
+    AgentId:
+      type: string
+      format: numbers
+      minLength: 3
+
     AgentIdKey:
       type: object
       required:
