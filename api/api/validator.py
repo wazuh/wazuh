@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 import os
 import re
 from jsonschema import draft4_format_checker
+from typing import Dict, List
 
 from wazuh import common
 
@@ -35,7 +36,7 @@ _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
 
 
-def check_exp(exp, regex):
+def check_exp(exp: str, regex: str) -> bool:
     """
     Function to check if an expression matches a regex
     :param exp: Expression to check
@@ -47,7 +48,7 @@ def check_exp(exp, regex):
     return re.match(regex, exp)
 
 
-def check_xml(xml_string):
+def check_xml(xml_string: str) -> bool:
     """
     Function to check if a XML string is right
     :param xml_string: XML string to check
@@ -61,7 +62,7 @@ def check_xml(xml_string):
     return True
 
 
-def check_cdb_list(cdb_list):
+def check_cdb_list(cdb_list: str) -> bool:
     """
     Function to check if a CDB list is well formed
     :param cdb_list: CDB list to check
@@ -78,7 +79,7 @@ def check_cdb_list(cdb_list):
     return True
 
 
-def allowed_fields(filters):
+def allowed_fields(filters: Dict) -> List:
     """
     Returns a list with allowed fields
     :param filters: Dictionary with valid filters
@@ -87,7 +88,7 @@ def allowed_fields(filters):
     return [field for field in filters]
 
 
-def is_safe_path(path, basedir=common.ossec_path, follow_symlinks=True):
+def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: bool = True) -> bool:
     """
     Checks if a path is correct
     :param path: Path to be checked

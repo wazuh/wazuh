@@ -60,13 +60,19 @@ def check_old_config(config: Dict) -> bool:
     :param config: Dictionary with values of old configuration
     :return: True if old configuration is OK, False otherwise
     """
-    checks = {'host': 'ips', 'port': 'numbers', 'basic_auth': 'yes_no_boolean',
-              'BehindProxyServer': 'yes_no_boolean',
-              'https': 'yes_no_boolean', 'https_key': 'paths', 'https_cert': 'paths',
-              'logs': 'names', 'cors': 'yes_no_boolean',
-              'cache_enabled': 'yes_no_boolean', 'cache_debug': 'yes_no_boolean',
-              'cache_time': 'numbers', 'use_only_authd': 'boolean',
-              'drop_privileges': 'boolean', 'experimental_features': 'boolean'
+    checks = {'host': validator._ips, 'port': validator._numbers,
+              'basic_auth': validator._yes_no_boolean,
+              'BehindProxyServer': validator._yes_no_boolean,
+              'https': validator._yes_no_boolean,
+              'https_key': validator._paths, 'https_cert': validator._paths,
+              'logs': validator._names,
+              'cors': validator._yes_no_boolean,
+              'cache_enabled': validator._yes_no_boolean,
+              'cache_debug': validator._yes_no_boolean,
+              'cache_time': validator._numbers,
+              'use_only_authd': validator._boolean,
+              'drop_privileges': validator._boolean,
+              'experimental_features': validator._boolean
              }
 
     # check old configuration values
