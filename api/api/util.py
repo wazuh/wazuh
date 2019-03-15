@@ -214,3 +214,16 @@ def exception_handler(f):
             return _create_problem(e)
 
     return handle_exception
+
+
+def parse_search_param(search: str):
+    """Parses search str param coming from the API query into a dictionary the framework can process.
+
+    :param search: Search parameter coming from the API query
+    :return: A dictionary like {'value': 'ubuntu', 'negation': False}
+    """
+    if search is not None:
+        negation = search[0] == '-'
+        return {'negation': negation, 'value': search[1:] if negation else search}
+    else:
+        return None
