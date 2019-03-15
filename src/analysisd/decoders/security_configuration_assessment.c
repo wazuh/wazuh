@@ -1456,7 +1456,7 @@ int pm_send_db(char *msg, char *response, int *sock)
     switch (length)
     {
     case OS_SOCKTERR:
-        merror("at OS_RecvSecureTCP(): Got a message with invalid length.");
+        merror("OS_RecvSecureTCP(): response size is bigger than expected");
         break;
     case -1:
         merror("at OS_RecvSecureTCP(): %s (%d)", strerror(errno), errno);
