@@ -1835,25 +1835,22 @@ class Agent:
 
         # get agent's group
         group_name = Agent.get_agents_group_file(agent_id)
-        if group_name:
-            group_list = group_name.split(',')
-            # check agent belongs to group group_id
-            if group_id == 'default':
-                raise WazuhException(1745)
-            elif group_id not in group_list:
-                raise WazuhException(1734)
-            # remove group from group_list
-            group_list.remove(group_id)
-            if len(group_list) > 1:
-                multigroup_name = ','.join(group_list)
-                if not Agent.multi_group_exists(multigroup_name):
-                    Agent.create_multi_group(multigroup_name)
-            else:
-                multigroup_name = 'default' if not group_list else group_list[0]
-            Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
-            return f"Group '{group_id}' unset for agent '{agent_id}'."
+        group_list = group_name.split(',')
+        # check agent belongs to group group_id
+        if group_id not in group_list:
+            raise WazuhException(1734)
+        elif group_id == 'default' and len(group_list) == 1:
+            raise WazuhException(1745)
+        # remove group from group_list
+        group_list.remove(group_id)
+        if len(group_list) > 1:
+            multigroup_name = ','.join(group_list)
+            if not Agent.multi_group_exists(multigroup_name):
+                Agent.create_multi_group(multigroup_name)
         else:
-            raise WazuhException(1746)
+            multigroup_name = 'default' if not group_list else group_list[0]
+        Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+        return f"Group '{group_id}' unset for agent '{agent_id}'."
 
 
     @staticmethod

@@ -21,7 +21,8 @@ class AgentMock:
 @pytest.mark.parametrize('agent_groups, agent_id, group_id, expected_new_group', [
     ('dmz', '005', 'dmz', 'default'),
     ('dmz,webserver', '005', 'dmz', 'webserver'),
-    ('dmz,webserver,database', '005', 'dmz', 'webserver,database')
+    ('dmz,webserver,database', '005', 'dmz', 'webserver,database'),
+    ('dmz,default', '005', 'default', 'dmz')
 ])
 @patch('wazuh.agent.Agent.get_agents_group_file')
 @patch('wazuh.agent.Agent.create_multi_group')
@@ -48,8 +49,9 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
 
 
 @pytest.mark.parametrize('agent_groups, agent_id, group_id, expected_exception', [
-    ('', '005', 'dmz', 1746),
-    ('dmz', '005', 'default', 1745),
+    ('', '005', 'dmz', 1734),
+    ('dmz', '005', 'default', 1734),
+    ('default', '005', 'default', 1745),
     ('dmz', '005', 'webserver,database', 1734)
 ])
 @patch('wazuh.agent.Agent.get_agents_group_file')
