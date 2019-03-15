@@ -48,7 +48,7 @@ def test_sucessfully_remove_single_group_agent(agent_patch, unset_groups_patch, 
 
 
 @pytest.mark.parametrize('agent_groups, agent_id, group_id, expected_exception', [
-    ('', '005', 'dmz', 1734),
+    ('', '005', 'dmz', 1746),
     ('dmz', '005', 'default', 1745),
     ('dmz', '005', 'webserver,database', 1734)
 ])

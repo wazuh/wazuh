@@ -1841,7 +1841,7 @@ class Agent:
             if group_id == 'default':
                 raise WazuhException(1745)
             elif group_id not in group_list:
-                raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
+                raise WazuhException(1734)
             # remove group from group_list
             group_list.remove(group_id)
             if len(group_list) > 1:
@@ -1853,7 +1853,7 @@ class Agent:
             Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
             return f"Group '{group_id}' unset for agent '{agent_id}'."
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            raise WazuhException(1746)
 
 
     @staticmethod
@@ -1894,7 +1894,7 @@ class Agent:
 
             return "Group unset for agent '{0}'.".format(agent_id)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            raise WazuhException(1746)
 
 
     @staticmethod

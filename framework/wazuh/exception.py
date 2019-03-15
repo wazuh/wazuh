@@ -127,7 +127,7 @@ class WazuhException(Exception):
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
-        1734: 'Error unsetting agent group',
+        1734: 'Agent does not belong to the specified group',
         1735: 'Agent version is not compatible with this feature',
         1736: 'Error getting all groups',
         1737: 'Maximum number of groups per multigroup is 256',
@@ -139,6 +139,7 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
+        1746: "Agent doesn't belong to any group",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
