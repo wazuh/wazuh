@@ -40,7 +40,7 @@ components:
           format: int32
           minimum: 0
           description: Total elements available. It can be used to implement pagination over results.
-    
+
     ConfirmationMessage:
       type: object
       properties:
@@ -90,7 +90,7 @@ components:
       properties:
         older_than:
           type: string
-          pattern: ^(\d{1,}[d|h|m|s]?){1}$
+          format: timeframe
           default: 7d
           description: Returns older than parameter used. It can be the default value or the parameter send by the user.
         total_affected_items:
@@ -178,26 +178,20 @@ components:
       - name
       - configSum
       properties:
-        items:
-          type: array
-          items:
-            properties:
-              count:
-                type: integer
-                minimum: 0
-                description: Number of agents belonging to that group.
-              name:
-                type: string
-              mergedSum:
-                type: string
-                pattern: \w{32}
-                format: md5
-                description: MD5 checksum of all group shared files merged in a single one (merged.mg)
-              configSum:
-                type: string
-                pattern: \w{32}
-                format: md5
-                description: MD5 checksum of the group configuration file (agent.conf).
+        count:
+          type: integer
+          minimum: 0
+          description: Number of agents belonging to that group.
+        name:
+          type: string
+        mergedSum:
+          type: string
+          format: hash
+          description: MD5 checksum of all group shared files merged in a single one (merged.mg)
+        configSum:
+          type: string
+          format: hash
+          description: MD5 checksum of the group configuration file (agent.conf).
 
     AgentGroupDeleted:
       type: object
@@ -223,7 +217,6 @@ components:
           $ref: '#/components/schemas/AgentID'
         key:
           type: string
-          pattern: \w+=*
           format: base64
 
     AgentSimple:
@@ -316,6 +309,10 @@ components:
               items:
                 type: string
 
+    GroupId:
+      type: string
+      format: alphanumeric
+
     CacheConfig:
       type: object
       properties:
@@ -398,7 +395,7 @@ components:
         - $ref: '#/components/schemas/ClusterNodeBasic'
         - type: object
           properties:
-            node_name:
+            name:
               $ref: '#/components/schemas/ClusterNodeName'
         
     Healthcheck:
@@ -1219,16 +1216,14 @@ components:
       properties:
         sha1:
           type: string
-          pattern: \w{40}
-          format: sha1
+          format: hash
           description: SHA1 checksum of the file.
         file:
           type: string
           description: File name that raised the alert.
         md5:
           type: string
-          pattern: \w{32}
-          format: md5
+          format: hash
           description: MD5 checksum of the file.
         inode:
           type: integer
@@ -1236,7 +1231,7 @@ components:
           description: inode of the file. Only available in Linux agents.
         uid:
           type: string
-          pattern: \d+
+          format: numbers
           description: UID of the file.
         date:
           type: string
@@ -1244,7 +1239,7 @@ components:
           description: Date when the alert was raised.
         perm:
           type: string
-          pattern: \d+
+          format: numbers
           description: File permissions.
         type:
           type: string
@@ -1254,9 +1249,11 @@ components:
           - registry
         gname:
           type: string
+          format: names
           description: Group name. Only available in Linux agents.
         uname:
           type: string
+          format: names
           description: User name of the file.
         size:
           type: integer
@@ -1264,7 +1261,7 @@ components:
           description: File size in bytes.
         gid:
           type: string
-          pattern: \d+
+          format: numbers
           description: GID of the file. Only available in Linux agents.
         mtime:
           type: string
@@ -1272,8 +1269,7 @@ components:
           description: Last modification date of the file.
         sha256:
           type: string
-          pattern: \w{64}
-          format: sha256
+          format: hash
           description: SHA256 checksum of the file.
 
     # Decoders models
@@ -1459,15 +1455,19 @@ components:
           - ipv4
           - ipv6
         dhcp:
-          type: string
-          description: DHCP status.
-          enum:
-          - enabled
-          - disabled
-          - unknown
-          - BOOTP
+          $ref: '#/components/schemas/DHCPStatus'
         agent_id:
           $ref: '#/components/schemas/AgentID'
+
+    DHCPStatus:
+      type: string
+      description: DHCP status.
+      enum:
+        - enabled
+        - disabled
+        - unknown
+        - BOOTP
+
 
     SyscollectorOS:
       type: object
@@ -1630,6 +1630,7 @@ components:
           description: PID owner of the opened port.
         process:
           type: string
+          format: alphanumeric
           description: Name of the PID.
 
     SyscollectorProcess:
@@ -1764,8 +1765,7 @@ components:
       description: Agent ID. All posible values since 000 onwards.
       required: true
       schema:
-        type: string
-        minLength: 3
+        $ref: '#/components/schemas/AgentID'
     agent_name:
       in: path
       name: agent_name
@@ -1773,12 +1773,14 @@ components:
       required: true
       schema:
         type: string
+        format: names
     benchmark:
       in: query
       name: benchmark
       description: Filters by benchmark type.
       schema:
         type: string
+        format: alphanumeric
     component:
       in: path
       name: component
@@ -2004,24 +2006,28 @@ components:
       required: true
       schema:
         type: string
+        format: names
     description:
       in: query
       name: description
       description: Filters by policy description.
       schema:
         type: string
+        format: alphanumeric
     directory:
       in: query
       name: directory
       description: Filters by directory.
       schema:
         type: string
+        format: paths
     download:
       in: query
       name: download
       description: Downloads the specified file.
       schema:
         type: string
+        format: alphanumeric
     error:
       in: query
       name: error
@@ -2043,13 +2049,17 @@ components:
       name: fields
       description: List of fields affecting the operation.
       schema:
-        type: string
+        type: array
+        items:
+          type: string
+          format: names
     file:
       in: query
       name: file
       description: Filters by filename.
       schema:
         type: string
+        format: alphanumeric
     file_name:
       in: path
       name: file_name
@@ -2057,6 +2067,7 @@ components:
       required: true
       schema:
         type: string
+        format: alphanumeric
     format:
       in: query
       name: format
@@ -2075,19 +2086,48 @@ components:
       required: true
       schema:
         type: string
+        format: alphanumeric
     group_id:
       in: path
       name: group_id
       description: Group ID.
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/GroupId'
+    agent_group:
+      in: query
+      name: group
+      description: Filters by group of agents.
+      schema:
+        $ref: '#/components/schemas/GroupId'
     hash:
       in: query
       name: hash
       description: Select algorithm to generate the returned checksums.
       schema:
         type: string
+        enum:
+          - md5
+          - sha1
+          - sha224
+          - sha256
+          - sha384
+          - sha512
+          - blake2b
+          - blake2s
+          - sha3_224
+          - sha3_256
+          - sha3_384
+          - sha3_512
+          - shake_128
+          - shake_256
+    ip:
+      in: query
+      name: ip
+      description: Filters by agent IP
+      schema:
+        type: string
+        format: alphanumeric
     limit:
       in: query
       name: limit
@@ -2105,7 +2145,7 @@ components:
       schema:
         type: array
         items:
-          type: integer
+          $ref: '#/components/schemas/AgentID'
     list_groups:
       in: query
       name: list_groups
@@ -2113,13 +2153,21 @@ components:
       schema:
         type: array
         items:
-          type: string
+          $ref: '#/components/schemas/GroupId'
+    manager_host:
+      in: query
+      name: manager
+      description: Filters by manager hostname which agents are connected to.
+      schema:
+        type: string
+        format: alphanumeric
     name:
       in: query
       name: name
       description: Filters by agent name.
       schema:
         type: string
+        format: alphanumeric
     notchecked:
       in: query
       name: notchecked
@@ -2141,9 +2189,10 @@ components:
       in: query
       name: older_than
       description: |
-        Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. For example, `7d`, `10s` and `10` are valid values. When no time unit is specified, seconds are used.
+        Filters out agents which time lapse from last keep alive signal is longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. For example, `7d`, `10s` and `10` are valid values. When no time unit is specified, seconds are used.
       schema:
         type: string
+        format: timeframe
     pass:
       in: query
       name: pass
@@ -2158,6 +2207,7 @@ components:
       description: Filters by path
       schema:
         type: string
+        format: path
     pretty:
       in: query
       name: pretty
@@ -2171,12 +2221,14 @@ components:
       description: Filters by process name.
       schema:
         type: string
+        format: alphanumeric
     profile:
       in: query
       name: profile
       description: Filters by evaluated profile.
       schema:
         type: string
+        format: alphanumeric
     policy_id:
       in: path
       name: policy_id
@@ -2184,6 +2236,7 @@ components:
       required: true
       schema:
         type: string
+        format: alphanumeric
     purge:
       in: query
       name: purge
@@ -2197,36 +2250,42 @@ components:
       description: Query to filter results by. For example q=&quot;status=Active&quot;
       schema:
         type: string
+        format: query
     rationale:
       in: query
       name: rationale
       description: Filters by rationale.
       schema:
         type: string
+        format: alphanumeric
     registry:
       in: query
       name: registry
       description: Filters by registry.
       schema:
         type: string
+        format: alphanumeric
     references:
       in: query
       name: references
       description: Filters by references.
       schema:
         type: string
+        format: alphanumeric
     remediation:
       in: query
       name: remediation
       description: Filters by remediation.
       schema:
         type: string
+        format: alphanumeric
     result:
       in: query
       name: result
       description: Filters by result.
       schema:
         type: string
+        format: alphanumeric
     score:
       in: query
       name: score
@@ -2241,6 +2300,7 @@ components:
       description: Looks for elements with the specified string
       schema:
         type: string
+        format: search
     select:
       in: query
       name: select
@@ -2249,6 +2309,7 @@ components:
         type: array
         items:
           type: string
+          format: names
     # It'd be more appropriate to be an array of strings, and separate the ascending or descending order in another param
     sort:
       in: query
@@ -2257,6 +2318,7 @@ components:
             Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
       schema:
         type: string
+        format: sort
     statusAgentParam:
       in: query
       name: agent_status
@@ -2290,6 +2352,7 @@ components:
       description: Filters by title.
       schema:
         type: string
+        format: alphanumeric
     type:
       in: query
       name: type
@@ -2309,12 +2372,14 @@ components:
       description: Filters by unknown results.
       schema:
         type: integer
+        format: int32
     version:
       in: query
       name: version
       description: Filters by agents version.
       schema:
         type: string
+        format: alphanumeric
     wait_for_complete:
       in: query
       name: wait_for_complete
@@ -2338,6 +2403,14 @@ components:
       required: true
       schema:
         type: string
+        format: names
+    node_name:
+      in: query
+      name: node_name
+      description: Filters by node name.
+      schema:
+        type: string
+        format: names
     section:
       in: query
       name: section
@@ -2375,12 +2448,14 @@ components:
       description: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
       schema:
         type: string
+        format: names
     date:
       in: query
       name: date
-      description: Selects the date for getting the statistical information. Format YYYYMMDD.
+      description: Selects the date for getting the statistical information. Format YYYY-MM-DD.
       schema:
         type: string
+        format: date
     category:
       in: query
       name: category
@@ -2439,37 +2514,42 @@ components:
       required: true
       schema:
         type: string
+        format: path
     overwrite:
       in: query
       name: overwrite
       description: If set to false, an exception will be raised when updating contents of an already existing filename.
       schema:
         type: boolean
+        default: false
     group:
       in: query
       name: group
       description: Filters by rule group.
       schema:
         type: string
+        format: alphanumeric
     level:
       in: query
       name: level
       description: Filters by rule level. Can be a single level (4) or an interval (2-4)
       schema:
         type: string
-        format: \d(?>-\d)?  # 4 or 4-5
+        format: range
     pci:
       in: query
       name: pci
       description: Filters by PCI requirement name.
       schema:
         type: string
+        format: alphanumeric
     gdpr:
       in: query
       name: gdpr
       description: Filters by GDPR requirement.
       schema:
         type: string
+        format: alphanumeric
     rule_id:
       in: path
       name: rule_id
@@ -2477,6 +2557,7 @@ components:
       required: true
       schema:
         type: integer
+        format: int32
     rootcheck_status:
       in: query
       name: status
@@ -2493,6 +2574,7 @@ components:
       description: Filters by CIS requirement.
       schema:
         type: string
+        format: alphanumeric
     filetype:
       in: query
       name: type
@@ -2508,30 +2590,38 @@ components:
       description: Returns a summary grouping by filename.
       schema:
         type: boolean
+        default: false
     md5:
       in: query
       name: md5
       description: Filters files with the specified MD5 checksum.
       schema:
         type: string
+        format: hash
     sha1:
       in: query
       name: sha1
       description: Filters files with the specified SHA1 checksum.
       schema:
         type: string
+        format: hash
     sha256:
       in: query
       name: sha256
       description: Filters files with the specified SHA256 checksum.
       schema:
         type: string
+        format: hash
     hashfilter:
       in: query
       name: hash
-      description: Filters files with the specified checksum (MD5, SHA256 or SHA1)
+      description: Filters files with the specified hash (md5, sha256 or sha1)
       schema:
         type: string
+        enum:
+          - md5
+          - sha256
+          - sha1
     ram_free:
       in: query
       name: ram_free
@@ -2570,54 +2660,63 @@ components:
       description: Filters by cpu_name.
       schema:
         type: string
+        format: alphanumeric
     board_serial:
       in: query
       name: board_serial
       description: Filters by board_serial.
       schema:
         type: string
+        format: alphanumeric
     proto:
       in: query
       name: proto
       description: Filters by IP protocol.
       schema:
         type: string
+        format: alphanumeric
     address:
       in: query
       name: address
       description: Filters by IP address.
       schema:
         type: string
+        format: alphanumeric
     broadcast:
       in: query
       name: broadcast
       description: Filters by broadcast direction.
       schema:
         type: string
+        format: alphanumeric
     netmask:
       in: query
       name: netmask
       description: Filters by netmask.
       schema:
         type: string
+        format: alphanumeric
     adapter:
       in: query
       name: adapter
       description: Filters by adapter.
       schema:
         type: string
+        format: alphanumeric
     state:
       in: query
       name: state
       description: Filters by state.
       schema:
         type: string
+        format: alphanumeric
     mtu:
       in: query
       name: mtu
       description: Filters by mtu.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_packets:
       in: query
@@ -2625,6 +2724,7 @@ components:
       description: Filters by tx_packets.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_packets:
       in: query
@@ -2632,6 +2732,7 @@ components:
       description: Filters by rx_packets.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_bytes:
       in: query
@@ -2639,6 +2740,7 @@ components:
       description: Filters by tx_bytes.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_bytes:
       in: query
@@ -2646,6 +2748,7 @@ components:
       description: Filters by rx_bytes.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_errors:
       in: query
@@ -2653,6 +2756,7 @@ components:
       description: Filters by tx_errors.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_errors:
       in: query
@@ -2660,6 +2764,7 @@ components:
       description: Filters by rx_errors.
       schema:
         type: integer
+        format: int32
         minimum: 0
     tx_dropped:
       in: query
@@ -2667,6 +2772,7 @@ components:
       description: Filters by tx_dropped.
       schema:
         type: integer
+        format: int32
         minimum: 0
     rx_dropped:
       in: query
@@ -2674,6 +2780,7 @@ components:
       description: Filters by rx_dropped.
       schema:
         type: integer
+        format: int32
         minimum: 0
     iface:
       in: query
@@ -2681,180 +2788,216 @@ components:
       description: Filters by network interface.
       schema:
         type: string
+        format: alphanumeric
     gateway:
       in: query
       name: gateway
       description: Filters by network gateway.
       schema:
         type: string
+        format: alphanumeric
     dhcp:
       in: query
       name: dhcp
       description: Filters by network dhcp (enabled or disabled).
       schema:
-        type: integer
+        $ref: '#/components/schemas/DHCPStatus'
     os_name:
       in: query
       name: os_name
       description: "Filters by os_name. Example: Ubuntu, Windows..."
       schema:
         type: string
+        format: alphanumeric
+    os_platform:
+      in: query
+      name: os_platform
+      description: Filters by OS platform.
+      schema:
+        type: string
+        format: alphanumeric
     architecture:
       in: query
       name: architecture
       description: Filters by architecture.
       schema:
         type: string
+        format: alphanumeric
     os_version:
       in: query
       name: os_version
       description: Filters by os_version.
       schema:
         type: string
+        format: alphanumeric
     release:
       in: query
       name: release
       description: Filters by release.
       schema:
-        type: integer
+        type: string
+        format: alphanumeric
     vendor:
       in: query
       name: vendor
       description: Filters by vendor.
       schema:
-        type: integer
+        type: string
+        format: alphanumeric
     pid:
       in: query
       name: pid
       description: Filters by pid.
       schema:
-        type: integer
+        type: string
+        format: numbers
     protocol:
       in: query
       name: protocol
       description: Filters by protocol.
       schema:
         type: string
+        format: alphanumeric
     local_ip:
       in: query
       name: local_ip
       description: Filters by Local IP.
       schema:
         type: string
+        format: alphanumeric
     local_port:
       in: query
       name: local_port
       description: Filters by Local Port.
       schema:
-        type: integer
+        type: string
+        format: numbers
     remote_ip:
       in: query
       name: remote_ip
       description: Filters by Remote IP.
       schema:
         type: string
+        format: alphanumeric
     tx_queue:
       in: query
       name: tx_queue
       description: Filters by tx_queue.
       schema:
-        type: integer
+        type: string
+        format: numbers
     process_pid:
       in: query
       name: process_pid
       description: Filters by process pid.
       schema:
-        type: integer
+        type: string
+        format: numbers
     process_state:
       in: query
       name: process_status
       description: Filters by process state.
       schema:
         type: string
+        format: alphanumeric
     ppid:
       in: query
       name: ppid
       description: Filters by process parent pid.
       schema:
-        type: integer
+        type: string
+        format: numbers
     egroup:
       in: query
       name: egroup
       description: Filters by process egroup.
       schema:
         type: string
+        format: alphanumeric
     euser:
       in: query
       name: euser
       description: Filters by process euser.
       schema:
         type: string
+        format: alphanumeric
     fgroup:
       in: query
       name: fgroup
       description: Filters by process fgroup.
       schema:
         type: string
+        format: alphanumeric
     process_name:
       in: query
       name: process_name
       description: Filters by process name.
       schema:
         type: string
+        format: alphanumeric
     nlwp:
       in: query
       name: nlwp
       description: Filters by process nlwp.
       schema:
-        type: integer
+        type: string
+        format: numbers
     pgrp:
       in: query
       name: pgrp
       description: Filters by process pgrp.
       schema:
-        type: integer
+        type: string
+        format: numbers
     priority:
       in: query
       name: priority
       description: Filters by process priority.
       schema:
-        type: integer
+        type: string
+        format: numbers
     rgroup:
       in: query
       name: rgroup
       description: Filters by process rgroup.
       schema:
         type: string
+        format: alphanumeric
     ruser:
       in: query
       name: ruser
       description: Filters by process ruser.
       schema:
         type: string
+        format: alphanumeric
     sgroup:
       in: query
       name: sgroup
       description: Filters by process sgroup.
       schema:
         type: string
+        format: alphanumeric
     suser:
       in: query
       name: suser
       description: Filters by process suser.
       schema:
         type: string
+        format: alphanumeric
     iface_name:
       in: query
       name: iface_name
       description: Filters by interface name.
       schema:
         type: string
+        format: alphanumeric
     package_version:
       in: query
       name: package_version
       description: Filters by version name.
       schema:
         type: string
+        format: alphanumeric
 
 tags:
   - name: active-response
@@ -2912,7 +3055,7 @@ paths:
                     type: string
 
                   custom:
-                    description: Whether the specified command is a custom command or not. 
+                    description: Whether the specified command is a custom command or not.
                     type: boolean
                     default: false
 
@@ -2950,7 +3093,14 @@ paths:
         - $ref: '#/components/parameters/list_agents'
         - $ref: '#/components/parameters/purge'
         - $ref: '#/components/parameters/statusAgentParam'
-        - $ref: '#/components/parameters/olderThanParam'
+        - in: query
+          name: older_than
+          description: |
+            Consider only agents which last keep alive is older than the specified time frame. For never connected agents, register date is considered instead of last keep alive. For example, `7d`, `10s` and `10` are valid values. When no time unit is specified, seconds are assumed.
+          schema:
+            type: string
+            format: timeframe
+            default: 7d
       responses:
         '200':
           description: Delete agents
@@ -2989,48 +3139,26 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
-        - in: query
-          name: os.platform
-          description: Filters by OS platform.
-          schema:
-            type: string
-        - in: query
-          name: os.version
-          description: Filters by OS version.
-          schema:
-            type: string
-        - in: query
-          name: os.name
-          description: Filters by OS name.
-          schema:
-            type: string
-        - in: query
-          name: manager
-          description: Filters by manager hostname to which agents are connected.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/os_platform'
+        - $ref: '#/components/parameters/os_version'
+        - $ref: '#/components/parameters/os_name'
+        - $ref: '#/components/parameters/manager_host'
         - $ref: '#/components/parameters/version'
-        - in: query
-          name: group
-          description: Filters by group of agents.
-          schema:
-            type: string
-        - in: query
-          name: node_name
-          description: Filters by node name.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/name'
         - in: query
           name: ip
           description: Filters by the IP used by the agent to communicate with the manager. If it's not available, it will have the same value as registerIP.
           schema:
             type: string
+            format: alphanumeric
         - in: query
           name: registerIp
           description: Filters by the IP used when registering the agent.
           schema:
             type: string
+            format: alphanumeric
       responses:
         '200':
           description: 'List of agents or error description'
@@ -3168,7 +3296,7 @@ paths:
                 data:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
-  
+
   /agents/{agent_id}:
     delete:
       tags:
@@ -3227,12 +3355,12 @@ paths:
                 error: 0
                 data:
                   configSum: "ab73af41699f13fdd81903b5f23d8d00"
-                  dateAdd: "2019-03-14 09:43:51"
+                  dateAdd: '2018-10-11T09:37:23Z'
                   group:
                     - default
                   id: "002"
                   ip: "172.18.0.6"
-                  lastKeepAlive: "2019-03-14 11:36:55"
+                  lastKeepAlive: "2019-03-14T11:36:55Z"
                   manager: "9f393e777dfb"
                   mergedSum: "f8d49771911ed9d5c45b03a40babd065"
                   name: "176772c37776"
@@ -3318,7 +3446,7 @@ paths:
                         logformat: syslog
                         target:
                           - agent
-  
+
   /agents/{agent_id}/group:
     delete:
       tags:
@@ -3342,7 +3470,7 @@ paths:
               example:
                 error: 0
                 data: "Group unset for agent '004'."
-  
+
   /agents/{agent_id}/group/is_sync:
     get:
       tags:
@@ -3372,7 +3500,7 @@ paths:
                 error: 0
                 data:
                     synced: false
-  
+
   /agents/{agent_id}/group/{group_id}:
     delete:
       tags:
@@ -3425,7 +3553,7 @@ paths:
               example:
                 error: 0
                 data: "Group '004' already belongs to group 'dmz'."
-  
+
   /agents/{agent_id}/key:
     get:
       tags:
@@ -3453,7 +3581,7 @@ paths:
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
-  
+
   /agents/{agent_id}/restart:
     put:
       tags:
@@ -3483,7 +3611,7 @@ paths:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
-  
+
   /agents/{agent_id}/upgrade:
     put:
       tags:
@@ -3500,20 +3628,20 @@ paths:
           description: WPK repository.
           schema:
             type: string
+            format: paths
         - $ref: '#/components/parameters/version'
         - in: query
           name: use_http
           description: Use protocol http. If it's false use https. By default the value is set to false.
           schema:
             type: boolean
+            default: false
         - in: query
           name: force
           description: Force upgrade.
           schema:
-            type: integer
-            enum:
-              - "0"
-              - "1"
+            type: boolean
+            default: false
       responses:
         '200':
           description: 'Agent upgraded'
@@ -3526,7 +3654,7 @@ paths:
               example:
                 error: 0
                 data: "Upgrade procedure started"
-  
+
   /agents/{agent_id}/upgrade_custom:
     put:
       tags:
@@ -3543,11 +3671,13 @@ paths:
           description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
           schema:
             type: string
+            format: paths
         - in: query
           name: installer
           description: Installation script.
           schema:
             type: string
+            format: alphanumeric
       responses:
         '200':
           description: 'Agent upgraded'
@@ -3560,7 +3690,7 @@ paths:
               example:
                 error: 0
                 data: "Installation started"
-  
+
   /agents/{agent_name}:
     put:
       tags:
@@ -3589,7 +3719,7 @@ paths:
                 data:
                   id: "008"
                   key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
-  
+
   /agents/{agent_id}/upgrade_result:
     get:
       tags:
@@ -3606,6 +3736,7 @@ paths:
           description: Seconds to wait for the agent to respond.
           schema:
             type: integer
+            format: int32
 
       responses:
         '200':
@@ -3671,7 +3802,7 @@ paths:
                   description: List of agents ID.
                   type: array
                   items:
-                    type: string
+                    $ref: '#/components/schemas/AgentID'
       responses:
         '200':
           description: 'Add multiple agents to a group'
@@ -4183,18 +4314,20 @@ paths:
                     type: string
                     maxLength: 64
                     minLength: 64
-                    pattern: ^[a-zA-Z0-9]+$
-                    format: key
+                    format: wazuh_key
                     description: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
                   name:
                     description: Agent name.
                     type: string
+                    format: names
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-                  force:
+                    format: alphanumeric
+                  force_after:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
-                    type: boolean
+                    type: integer
+                    format: int32
               example:
                 name: NewHost_2
                 ip: 10.0.10.10
@@ -4217,7 +4350,7 @@ paths:
                 data:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
-  
+
   /agents/name/{agent_name}:
     get:
       tags:
@@ -4253,7 +4386,7 @@ paths:
                   registerIP: 10.0.0.9
                   node_name: unknown
                   id: "007"
-  
+
   /agents/no_group:
     get:
       tags:
@@ -4315,7 +4448,7 @@ paths:
                       registerIP: 10.0.10.10
                       node_name: unknown
                       id: "123"
-  
+
   /agents/outdated:
     get:
       tags:
@@ -4360,7 +4493,7 @@ paths:
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
-  
+
   /agents/restart:
     post:
       tags:
@@ -8102,7 +8235,7 @@ paths:
         - experimental
       summary: 'Get hardware info of all agents'
       description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others of all agents."
-      operationId: api.controllers.experimental_controller.get_hardware_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_hardware_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8174,7 +8307,7 @@ paths:
         - experimental
       summary: 'Get the IPv4 and IPv6 addresses associated all network interfaces'
       description: "Returns the agent's IPv4 and IPv6 addresses associated its network interfaces. This information include used IP protocol, interface, IP address  among others  of all agents."
-      operationId: api.controllers.experimental_controller.get_network_address_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_network_address_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8230,7 +8363,7 @@ paths:
         - experimental
       summary: 'Get all network interfaces from all agents.'
       description: "Returns the agent's network interfaces. This information include rx, scan, tx info and some network information among others  of all agents."
-      operationId: api.controllers.experimental_controller.get_network_interface_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_network_interface_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8321,7 +8454,7 @@ paths:
         - experimental
       summary: 'Get network protocol info of all agents'
       description: "Returns the agent's routing configuration for each network interface. This information include interface, type protocol information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_network_protocol_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8375,7 +8508,7 @@ paths:
         - experimental
       summary: 'Get OS info of all agents'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_os_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_os_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8452,7 +8585,7 @@ paths:
         - experimental
       summary: 'Get packages info of all agents'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others of all agents."
-      operationId: api.controllers.experimental_controller.get_packages_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_packages_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8525,7 +8658,7 @@ paths:
         - experimental
       summary: 'Get ports info of all agents'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_ports_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_ports_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8601,7 +8734,7 @@ paths:
         - experimental
       summary: 'Get processes info of all agents'
       description: "Returns the agent's processes info."
-      operationId: api.controllers.experimental_controller.get_processes_info_of_all_agents
+      operationId: api.controllers.experimental_controller.get_processes_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8715,7 +8848,7 @@ paths:
         - syscollector
       summary: 'Get hardware info'
       description: "Returns the agent's hardware info. This information include cpu, ram, scan info among others."
-      operationId: api.controllers.experimental_controller.get_hardware_info
+      operationId: api.controllers.syscollector_controller.get_hardware_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8755,7 +8888,7 @@ paths:
         - syscollector
       summary: 'Get network address info of an agent'
       description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others."
-      operationId: api.controllers.experimental_controller.get_network_address_info
+      operationId: api.controllers.syscollector_controller.get_network_address_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8811,7 +8944,7 @@ paths:
         - syscollector
       summary: 'Get network interface info of an agents'
       description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others."
-      operationId: api.controllers.experimental_controller.get_network_interface_info
+      operationId: api.controllers.syscollector_controller.get_network_interface_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8901,7 +9034,7 @@ paths:
         - syscollector
       summary: 'Get network protocol info of an agent'
       description: "Returns the agent's routing configuration for each network interface."
-      operationId: api.controllers.experimental_controller.get_network_protocol_info
+      operationId: api.controllers.syscollector_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8954,7 +9087,7 @@ paths:
         - syscollector
       summary: 'Get OS info'
       description: "Returns the agent's OS info. This information include os information, architecture information among others of all agents."
-      operationId: api.controllers.experimental_controller.get_os_info
+      operationId: api.controllers.syscollector_controller.get_os_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -8997,7 +9130,7 @@ paths:
         - syscollector
       summary: 'Get packages info'
       description: "Returns the agent's packages info. This information include name, section, size, priority information of all packages among others."
-      operationId: api.controllers.experimental_controller.get_packages_info
+      operationId: api.controllers.syscollector_controller.get_packages_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9069,7 +9202,7 @@ paths:
         - syscollector
       summary: 'Get ports info of an agents'
       description: "Returns the agent's ports info. This information include local IP, Remote IP, protocol information among others."
-      operationId: api.controllers.experimental_controller.get_ports_info
+      operationId: api.controllers.syscollector_controller.get_ports_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -9145,7 +9278,7 @@ paths:
         - syscollector
       summary: 'Get processes info'
       description: "Returns the agent's processes info."
-      operationId: api.controllers.experimental_controller.get_processes_info
+      operationId: api.controllers.syscollector_controller.get_processes_info
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

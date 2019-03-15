@@ -3,7 +3,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import argparse
-import logging
 import os
 import sys
 import ssl
@@ -12,6 +11,7 @@ import connexion
 from flask_cors import CORS
 
 from api import alogging, encoder, configuration, __path__ as api_path
+from api import validator  # To register custom validators (do not remove)
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
