@@ -4329,8 +4329,8 @@ paths:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
                     format: alphanumeric
-                  force_after:
-                    description: Remove the old agent with the same IP if disconnected since <force> seconds.
+                  force_time:
+                    description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
                     format: int32
               example:

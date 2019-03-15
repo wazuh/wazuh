@@ -1106,7 +1106,7 @@ class Agent:
 
 
     @staticmethod
-    def add_agent(name, ip='any', force=-1):
+    def add_agent(name, ip='any', force_time=-1):
         """
         Adds a new agent to OSSEC.
 
@@ -1119,7 +1119,7 @@ class Agent:
         if len(name) > 128:
             raise WazuhException(1738)
 
-        new_agent = Agent(name=name, ip=ip, force=force)
+        new_agent = Agent(name=name, ip=ip, force=force_time)
         return {'id': new_agent.id, 'key': new_agent.key}
 
     @staticmethod

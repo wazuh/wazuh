@@ -3,10 +3,12 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import connexion
 import logging
 
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from ..models.agent_added import AgentAdded
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
@@ -158,12 +160,76 @@ def restart_all_agents(wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
-def add_agent():
-    pass
+def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
+    """
+    Add a new agent into the cluster.
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param name: Agent name.
+    :type name: str
+    :param description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY"
+    :type description: str
+    :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
+    :type force_time: integer
+    
+    :rtype: dict
+    """
+
+    # get body parameters
+    if connexion.request.is_json:
+        agent_added_model = AgentAdded.from_dict(connexion.request.get_json())
+    else:
+        return 'ERROR', 400
+
+    f_kwargs = {**{}, **agent_added_model.to_dict()}
+
+    dapi = DistributedAPI(f=Agent.add_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def delete_agent():
-    pass
+def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):  # noqa: E501
+    """Get an agent
+
+    Returns various information from an agent.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param purge: Delete an agent from the key store
+    :type purge: bool
+
+    :rtype: Agent
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'purge': purge
+                }
+
+    dapi = DistributedAPI(f=Agent.remove_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
@@ -180,7 +246,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # 
     :param select: Select which fields to return (separated by comma)
     :type select: List[str]
 
-    :rtype: AgentData
+    :rtype: Agent
     """
     f_kwargs = {'agent_id': agent_id,
                 'select': select
