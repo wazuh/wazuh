@@ -36,7 +36,7 @@ def get_old_config() -> Dict:
                         # add element to old_config only if it is right
                         old_config[var_name] = parse_to_yaml_value(var_value)
     except IOError as e:
-        raise APIException(2002, f'Error loading {to_relative_path(old_config_path)} '
+        raise APIException(2002, details=f'Error loading {to_relative_path(old_config_path)} '
                            f'file: {e.strerror}')
 
     return rename_old_fields(old_config)
@@ -157,7 +157,7 @@ def write_into_yaml_file(config: Dict):
         os.chown(CONFIG_FILE_PATH, common.ossec_uid, common.ossec_gid)
         os.chmod(CONFIG_FILE_PATH, 0o640)
     except IOError as e:
-        raise APIException(2002, 'API configuration could not be written into '
+        raise APIException(2002, details='API configuration could not be written into '
                            f'{to_relative_path(CONFIG_FILE_PATH)} file: '
                            f'{e.strerror}')
 

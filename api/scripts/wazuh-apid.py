@@ -11,8 +11,10 @@ import connexion
 from flask_cors import CORS
 
 from api import alogging, encoder, configuration, __path__ as api_path
-from api.api_exception import APIException
 from api import validator  # To register custom validators (do not remove)
+from api.api_exception import APIException
+from api.constants import CONFIG_FILE_PATH
+from api.util import to_relative_path
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
@@ -84,8 +86,13 @@ if __name__ == '__main__':
                 ssl_context.verify_mode = ssl.CERT_REQUIRED
                 ssl_context.load_verify_locations(configuration['https']['ca'])
             ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
-        except IOError:
-            raise APIException(2003)
+        except ssl.SSLError as e:
+            raise APIException(2003, details='Private key does not match with the certificate')
+        except IOError as e:
+            raise APIException(2003, details='Please, ensure '
+                               'if path to certificates is correct in '
+                               'the configuration file '
+                               f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)})')
     else:
         ssl_context = None
 
