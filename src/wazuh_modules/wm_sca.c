@@ -689,7 +689,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
             }
             name = strdup(c_title->valuestring);
         } else {
-            name = NULL;
+            os_free(name);
         }
 
         /* Get condition */
@@ -705,7 +705,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         }
 
         if (name == NULL || condition == WM_SCA_COND_INV) {
-            merror(WM_SCA_INVALID_RKCL_NAME, name );
+            merror(WM_SCA_INVALID_RKCL_NAME, name);
             ret_val = 1;
             goto clean_return;
         }
@@ -1080,10 +1080,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
             if (!nbuf) {
                 goto clean_return;
             }
-
-            /* Clean up name */
-            os_free(name);
         }
+        /* Clean up name */
+        os_free(name);
+
         id_check_p++;
     }
 
