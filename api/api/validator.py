@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+from typing import Dict, List, Tuple
 from xml.etree import ElementTree as ET
 import os
 import re
