@@ -37,12 +37,22 @@
 * Changed parameter **ids** name to **list_groups**
 * Changed request parameters **ids** and **failed_ids** to **affected_groups** and **failed_groups**
 
+### POST/agents/insert
+* `force` parameter set to boolean.
+
 ## Cache
 ### DELETE /cache (Clear group cache)
 * Changed path to **/cache/:group_id** because this path is used in other endpoint.
 
 ### GET /lists
 * Parameter **status** renamed to **list_status**
+
+## Manager/Cluster
+### GET/manager/info
+* Parameter `openssl_support` is now a boolean.
+
+### GET/manager/stats/weekly
+* Parameter **hours** changed to **averages**.
 
 ## Experimental
 ### General

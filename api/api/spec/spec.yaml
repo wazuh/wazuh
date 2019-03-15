@@ -28,6 +28,7 @@ components:
           description: Result 0 (No error), other value (error).
         message:
           type: string
+          description: Error message. Only returned when error field is higher than 0.
 
     ListMetadata:
       type: object
@@ -38,6 +39,26 @@ components:
           type: integer
           format: int32
           minimum: 0
+          description: Total elements available. It can be used to implement pagination over results.
+    
+    ConfirmationMessage:
+      type: object
+      properties:
+        data:
+          type: string
+          description: Confirmation message.
+
+    ScanIdTime:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Scan ID.
+        time:
+          type: string
+          format: date-time
+          description: Date when the scan was performed.
 
     ItemAffected:
       type: object
@@ -47,12 +68,15 @@ components:
       properties:
         msg:
           type: string
+          description: Confirmation message.
         affected_items:
           type: array
+          description: Items that successfully applied the API call action.
           items:
             type: string
         failed_items:
           type: array
+          description: List of items that have failed when doing the requested operation. It's not returned when it's empty.
           items:
             type: string
 
@@ -66,50 +90,61 @@ components:
       properties:
         older_than:
           type: string
+          pattern: ^(\d{1,}[d|h|m|s]?){1}$
+          default: 7d
+          description: Returns older than parameter used. It can be the default value or the parameter send by the user.
         total_affected_items:
           type: integer
           format: int32
+          description: Number of items that have successfully did the requested operation.
         total_failed_items:
           type: integer
           format: int32
+          minimum: 1
+          description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
 
     ## Agents models
-    Agent:
+    ExtraAgentFields:
       type: object
       required:
       - ip
       - status
       - dateAdd
-      - name
       - node_name
-      - id
       properties:
         status:
           $ref: '#/components/schemas/AgentStatus'
         configSum:
           type: string
+          description: MD5 checksum of agent configuration file.
         group:
           type: array
+          description: List of groups that the agent belongs to.
           items:
             type: string
-        name:
-          type: string
         mergedSum:
           type: string
+          description: MD5 checksum of all agent shared configuration files merged.
         ip:
           type: string
+          description: IP where the agent communicates with the manager. If the manager can't get this information, it will be the same as registerIP field.
+        registerIP:
+          type: string
+          description: IP used at agent registration process.
         manager:
           type: string
+          description: Hostname of the manager where the agent is reporting to.
         node_name:
           type: string
+          description: Node ID where the agent is reporting to.
         dateAdd:
           type: string
           format: date-time
-        version:
-          type: string
+          description: Date when the agent was registered.
         lastKeepAlive:
           type: string
           format: date-time
+          description: Date when the last keep alive was received from the agent.
         os:
           type: object
           properties:
@@ -129,8 +164,12 @@ components:
               type: string
             minor:
               type: string
-        id:
-          type: string
+          description: Agent OS information.
+
+    Agent:
+      allOf:
+      - $ref: '#/components/schemas/AgentSimple'
+      - $ref: '#/components/schemas/ExtraAgentFields'
 
     AgentGroup:
       type: object
@@ -139,40 +178,40 @@ components:
       - name
       - configSum
       properties:
-        count:
-          type: integer
-        name:
-          type: string
-        mergedSum:
-          type: string
-          pattern: \w{32}
-          format: md5
-        configSum:
-          type: string
-          pattern: \w{32}
-          format: md5
+        items:
+          type: array
+          items:
+            properties:
+              count:
+                type: integer
+                minimum: 0
+                description: Number of agents belonging to that group.
+              name:
+                type: string
+              mergedSum:
+                type: string
+                pattern: \w{32}
+                format: md5
+                description: MD5 checksum of all group shared files merged in a single one (merged.mg)
+              configSum:
+                type: string
+                pattern: \w{32}
+                format: md5
+                description: MD5 checksum of the group configuration file (agent.conf).
 
     AgentGroupDeleted:
       type: object
       required:
-      - msg
-      - affected_groups
       - affected_agents
+      - msg
       properties:
         msg:
           type: string
-        affected_groups:
-          type: array
-          items:
-            type: string
-        failed_groups:
-          type: array
-          items:
-            type: string
         affected_agents:
           type: array
+          description: List of agents which belonged to the group but were moved to the default one.
           items:
-            type: string
+            $ref: '#/components/schemas/AgentID'
 
     AgentIdKey:
       type: object
@@ -181,7 +220,7 @@ components:
         - key
       properties:
         id:
-          type: string
+          $ref: '#/components/schemas/AgentID'
         key:
           type: string
           pattern: \w+=*
@@ -190,16 +229,17 @@ components:
     AgentSimple:
       type: object
       required:
-      - version
       - id
       - name
       properties:
         version:
           type: string
+          description: Wazuh version the agent has intalled.
         id:
-          type: string
+          $ref: '#/components/schemas/AgentID'
         name:
           type: string
+          description: Agent name used at registration process.
 
     AgentStatus:
       type: string
@@ -208,43 +248,32 @@ components:
       - pending
       - neverconnected
       - disconnected
+      description: Agent status. It is calculated based on the last keep alive and the Wazuh version.
+
+    AgentID:
+      type: string
+      minLength: 3
+      description: Agent ID.
 
     AgentConfiguration:
       type: object
-      required:
-        - configuration
-      properties:
-        configuration:
-          type: array
-          items:
-            required:
-              - logformat
-              - target
-            properties:
-              file:
-                type: string
-              logformat:
-                type: string
-              command:
-                type: string
-              alias:
-                type: string
-              target:
-                type: array
-                items:
-                  type: string
-              frequency:
-                type: integer
+      description: Configuration the agent is currently using. The output of this API call depends on the component requested and the agent configuration.
 
     CDBList:
-      type: array
-      items:
-        type: object
-        properties:
-          key:
-            type: string
-          value:
-            type: string
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              value:
+                type: string
+        path:
+          type: string
+          description: Filepath that contains the returned CDB definitions.
 
     GroupConfiguration:
       type: object
@@ -257,17 +286,16 @@ components:
           properties:
             os:
               type: string
+              description: OS family where the configuration is being applied.
+            name:
+              type: string
+              description: The name of the agent where that configuration is being applied.
+            profile:
+              type: string
+              description: Profile name. Any agent configured to use the defined profile may use the block.
         config:
           type: object
-          properties:
-            localfile:
-              type: array
-              items:
-                properties:
-                  location:
-                    type: string
-                  log_format:
-                    type: string
+          description: Group configuration. The fields on this object depend on the actual group configuration.
 
     ## Cache models
     GroupCache:
@@ -312,73 +340,91 @@ components:
       properties:
         profile:
           type: string
+          description: CIS-CAT profile scanned.
         score:
           type: integer
+          format: int32
+          description: Percentage of passed checks.
         error:
           type: integer
+          format: int32
+          description: "Number of checks that CIS-CAT wasn't able to run."
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         fail:
           type: integer
+          format: int32
+          description: Number of failed checks. If this number is higher than 0 the host will probably have a vulnerability.
         benchmark:
-          type: integer
+          type: string
+          description: CIS-CAT benchmark where the profile is defined.
         pass:
           type: integer
+          format: int32
+          description: Number of passed checks.
         notchecked:
           type: integer
+          format: int32
+          description: Number of not passed checks.
         unknown:
           type: integer
+          format: int32
+          description: Number of checks which status CIS-CAT wasn't able to determine.
 
     ## Cluster models
-    ClusterNode:
+    ClusterNodeBasic:
       type: object
       properties:
-        name:
-          type: string
         type:
           type: string
           enum:
           - worker
           - master
+          description: Node type.
         version:
           type: string
           format: \d+\.\d+\.\d+
+          description: Wazuh version installed in the node.
         ip:
           type: string
+          description: IP the node is using to communicate with other nodes in the cluster.
 
+    ClusterNodeName:
+      type: string
+      description: Node ID.
+
+    ClusterNode:
+      allOf:
+        - $ref: '#/components/schemas/ClusterNodeBasic'
+        - type: object
+          properties:
+            node_name:
+              $ref: '#/components/schemas/ClusterNodeName'
+        
     Healthcheck:
       type: object
       properties:
         name:
-          type: string
+          $ref: '#/components/schemas/ClusterNodeName'
         info:
-          type: object
-          properties:
-            ip:
-              type: string
-            version:
-              type: string
-              format: \d+\.\d+\.\d+
-            type:
-              type: string
-              enum:
-              - worker
-              - master
-            totalActiveAgents:
-              type: integer
+          allOf:
+            - $ref: '#/components/schemas/ClusterNodeBasic'
+            - type: object
+              properties:
+                totalActiveAgents:
+                  type: integer
+                  format: int32
+                  minimum: 0
+                  description: Number of agents currently reporting to that node.
         status:
           type: array
+          description: Field only available in worker nodes. Shows information regarding synchronized data with the master node.
           items:
             type: object
             properties:
               type:
                 type: string
+                description: Type of synchronization.
                 enum:
                   - Agent status
                   - Extra valid
@@ -387,13 +433,18 @@ components:
               date_start:
                 type: string
                 format: date-time
+                description: Date when the synchronization process started.
               date_end:
                 type: string
                 format: date-time
+                description: Date when the synchronization process finished.
               synchronized_files:
                 type: integer
+                format: int32
+                description: Number of synchronized files.
               free:
                 type: boolean
+                description: Whether there is a synchronization process in progress or not.
 
     DaemonStatus:
       type: string
@@ -441,19 +492,25 @@ components:
       properties:
         path:
           type: string
+          description: Wazuh install path.
         version:
           type: string
+          description: Wazuh version.
         compilation_date:
           type: string
+          format: date-time
         type:
           type: string
+          description: "Wazuh install type. Since the API can only be installed in managers, this value will always return that."
+          enum:
+          - manager
         max_agents:
           type: integer
+          format: int32
+          minimum: 0
+          description: Maximum number of agents that can be registered. This variable is defined at compilation time.
         openssl_support:
-          type: string
-          enum:
-          - yes
-          - no
+          type: boolean
         ruleset_version:
           type: string
         tz_offset:
@@ -526,6 +583,8 @@ components:
         properties:
           hour:
             type: integer
+            format: int32
+            description: Hour of the day in 24h format.
           alerts:
             type: array
             items:
@@ -533,30 +592,48 @@ components:
               properties:
                 sigid:
                   type: integer
+                  format: int32
+                  description: Rule ID that matched the event.
                 level:
                   type: integer
+                  format: int32
+                  minimum: 3
+                  maximum: 15
+                  description: Alert level
                 times:
                   type: integer
+                  format: int32
+                  description: Number of times the alert was raised during the specified hour.
           totalAlerts:
             type: integer
+            format: int32
+            description: Number of alerts raised during the specified hour.
           events:
             type: integer
+            format: int32
+            description: Number of events procesed during the specified hour.
           syscheck:
             type: integer
+            format: int32
+            description: Number of syscheck alerts raised during the specified hour.
           firewall:
             type: integer
+            format: int32
+            description: Number of firewall alerts raised during the specified hour.
 
     WazuhHourlyStats:
       type: object
       properties:
         averages:
           type: array
+          maxLength: 24
+          minLength: 24
+          description: Array containing the number of alerts for every hour.
           items:
             type: integer
-          minItems: 24
-          maxItems: 24
         iterations:
           type: integer
+          format: int32
 
     WazuhWeeklyStats:
       type: object
@@ -581,124 +658,234 @@ components:
       properties:
         total_events_decoded:
           type: integer
+          format: int32
+          description: Total events decoded in the last 5 seconds. This number is not accumulative, the number in the following 5 seconds can be lower than the previous one.
         syscheck_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for FIM events.
         syscheck_edps:
           type: integer
+          format: int32
+          description: FIM events decoded per second (EDPS = Events Decoded Per Second).
         syscollector_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for system inventory events.
         syscollector_edps:
           type: integer
+          format: int32
+          description: System inventory events decoded per second.
         rootcheck_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for rootcheck events.
         rootcheck_edps:
           type: integer
+          format: int32
+          description: Rootcheck events decoded per second.
         sca_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for policy monitoring events.
         sca_edps:
           type: integer
+          format: int32
+          description: Policy monitoring events decoded per second.
         hostinfo_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for hostinfo events.
         hostinfo_edps:
           type: integer
+          format: int32
+          description: Hostinfo events decoded per second.
         winevt_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for Windows events.
         winevt_edps:
           type: integer
+          format: int32
+          description: Windows events decoded per second.
         other_events_decoded:
           type: integer
+          format: int32
+          description: Same as `total_events_decoded` but for non catalogued events.
         other_events_edps:
           type: integer
+          format: int32
+          description: Non catalogued events decoded per second.
         events_processed:
           type: integer
+          format: int32
+          description: Total of events processed (i.e. matched against Wazuh ruleset) in the last 5 seconds.
         events_edps:
           type: integer
+          format: int32
+          description: Same as `events_processed` but per second.
         events_received:
           type: integer
+          format: int32
+          description: Events received in `analysisd` from the rest of modules in the last 5 seconds.
         events_dropped:
           type: integer
+          format: int32
+          description: "Discarded events because they didn't match any rule in the ruleset."
         alerts_written:
           type: integer
+          format: int32
+          description: Total of alerts written in disk during the last 5 seconds.
         firewall_written:
           type: integer
+          format: int32
+          description: Same as `alerts_written` but focusing in firewall alerts.
         fts_written:
           type: integer
+          format: int32
+          description: "Same as `alerts_written` but focusing in [FTS alerts](https://documentation.wazuh.com/current/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts#fts)."
         syscheck_queue_usage:
           type: integer
+          format: int32
+          description: Percentage of use in the syscheck events queue pending to be decoded. Events are discarded when the queue is full.
         syscheck_queue_size:
           type: integer
+          format: int32
+          description: Syscheck events queue size.
         syscollector_queue_usage:
           type: integer
+          format: int32
+          description: Same as `syscheck_queue_usage` but for system inventory events.
         syscollector_queue_size:
           type: integer
+          format: int32
+          description: System inventory events queue size.
         rootcheck_queue_usage:
           type: integer
+          format: int32
+          description: Same as `syscheck_queue_usage` but for rootcheck events.
         rootcheck_queue_size:
           type: integer
+          format: int32
+          description: Rootcheck events queue size.
         sca_queue_usage:
           type: integer
+          format: int32
+          description: Same as `syscheck_queue_usage` but for policy monitoring events.
         sca_queue_size:
           type: integer
+          format: int32
+          description: Policy monitoring events queue size.
         hostinfo_queue_usage:
           type: integer
+          format: int32
+          description: Same as `syscheck_queue_usage` but for hostinfo events.
         hostinfo_queue_size:
           type: integer
+          format: int32
+          description: Hostinfo events queue size.
         winevt_queue_usage:
           type: integer
+          format: int32
+          description: Same as `syscheck_queue_usage` but for Windows events.
         winevt_queue_size:
           type: integer
+          format: int32
+          description: Windows events queue size.
         event_queue_usage:
           type: integer
+          format: int32
+          description: Same as `syscheck_queue_usage` but for events not catalogued in any of the previously mentioned queues.
         event_queue_size:
           type: integer
+          format: int32
+          description: Non catalogued events queue size.
         rule_matching_queue_usage:
           type: integer
+          format: int32
+          description: After decoding, events are pushed to a _pending to process_ queue which will match the events against the Wazuh ruleset to raise alerts. This variable shows usage of that queue.
         rule_matching_queue_size:
           type: integer
+          format: int32
+          description: Pending to process events queue size.
         alerts_queue_usage:
           type: integer
+          format: int32
+          description: If an event matches a rule, an alert is raised. The alerts are pushed to a _pending to write in disk alerts_ queue. This variable shows usage of that queue.
         alerts_queue_size:
           type: integer
+          format: int32
+          description: Pending to write in disk alerts queue size.
         firewall_queue_usage:
           type: integer
+          format: int32
+          description: Percentage of use in the queue of events to write in the firewall log.
         firewall_queue_size:
           type: integer
+          format: int32
+          description: _Events to write in the firewall log_ queue size.
         statistical_queue_usage:
           type: integer
+          format: int32
+          description: Stats log queue usage.
         statistical_queue_size:
           type: integer
+          format: int32
+          description: Stats log queue size.
         archives_queue_usage:
           type: integer
+          format: int32
+          description: _Events to write in the archives.log_ queue usage.
         archives_queue_size:
           type: integer
+          format: int32
+          description: _Events to write in the archives.log_ queue size.
 
     WazuhRemotedStats:
       type: object
       properties:
         queue_size:
           type: integer
+          format: int32
+          description: Usage of the queue to storage events from agents.
         total_queue_size:
           type: integer
+          format: int32
+          description: Total queue size to store events from agents.
         tcp_sessions:
           type: integer
+          format: int32
+          description: Number of TCP active sessions during the last five seconds.
         evt_count:
           type: integer
+          format: int32
+          description: Number of events sent to Analysisd during the last five seconds.
         ctrl_msg_count:
           type: integer
+          format: int32
+          description: Number of control messages received from all agents during the last five seconds.
         discarded_count:
           type: integer
+          format: int32
+          description: Number of discarded events received from agents during the last five seconds.
         msg_sent:
           type: integer
+          format: int32
+          description: Number of messages sent to the agents during the last five seconds.
         recv_bytes:
           type: integer
+          format: int32
+          description: Number of received bytes from all agents during the last five seconds.
 
     WazuhLogs:
       type: object
       properties:
         timestamp:
           type: string
+          format: date-time
         tag:
           type: string
+          description: Wazuh component that logged the event.
           enum:
           - ossec-analysisd
           - ossec-remoted
@@ -732,6 +919,7 @@ components:
           - ossec-reportd
         level:
           type: string
+          description: Log level.
           enum:
           - error
           - info
@@ -741,22 +929,35 @@ components:
           - critical
         description:
           type: string
+          description: Log message.
 
     LogSummary:
       type: object
       properties:
         info:
           type: integer
+          format: int32
+          minimum: 0
         all:
           type: integer
+          format: int32
+          minimum: 0
         critical:
           type: integer
+          format: int32
+          minimum: 0
         error:
           type: integer
+          format: int32
+          minimum: 0
         debug:
           type: integer
+          format: int32
+          minimum: 0
         warning:
           type: integer
+          format: int32
+          minimum: 0
 
     WazuhLogsSummary:
       type: object
@@ -827,11 +1028,13 @@ components:
       properties:
         status:
           type: string
+          description: "Configuration status. If the returned value is KO, the configuration isn't valid."
           enum:
           - OK
           - KO
         details:
           type: array
+          description: "Errors found reading the configuration. If the status is `OK` this field isn't returned."
           items:
             type: string
 
@@ -841,21 +1044,27 @@ components:
       properties:
         status:
           type: string
+          description: Status of the check, respecting to the previous scan.
           enum:
           - outstanding
           - solved
         readDay:
           type: string
           format: date-time
+          description: Lastest scan date.
         oldDay:
           type: string
           format: date-time
+          description: Previous scan date.
         pci:
           type: string
+          description: PCI DSS requirement level.
         cis:
           type: string
+          description: CIS compliance requirement level.
         event:
           type: string
+          description: Brief description of what is being checked.
 
     LastScan:
       type: object
@@ -863,9 +1072,11 @@ components:
         end:
           type: string
           format: date-time
+          description: 'Date when the latest scan finished. If it is in progress, "n/a" will be returned.'
         start:
           type: string
           format: date-time
+          description: 'Date when the latest scan started. If no scans have been run, "n/a" will be returned.'
 
     # Rules models
     RulesFiles:
@@ -873,10 +1084,13 @@ components:
       properties:
         file:
           type: string
+          description: Filename where the rule is defined.
         path:
           type: string
+          description: Path where the file defining the rule is located. The path is relative to the Wazuh install path.
         status:
           type: string
+          description: Rule status.
           enum:
           - enabled
           - disabled
@@ -888,26 +1102,35 @@ components:
           properties:
             id:
               type: integer
+              format: int32
+              description: Rule ID.
             level:
               type: integer
+              format: int32
               minimum: 0
               maximum: 15
+              description: Rule level.
             description:
               type: string
+              description: Rule description. This description is shown when an alert matching the rule is raised.
             groups:
               type: array
+              description: Groups the rule belongs to.
               items:
                 type: string
             pci:
               type: array
+              description: PCI DSS checks the rule is checking.
               items:
                 type: string
             gdpr:
               type: array
+              description: GDPR checks the rule is checking.
               items:
                 type: string
             details:
               type: object
+              description: Rule definition details.
 
     # SCA models
     SCAChecks:
@@ -915,28 +1138,41 @@ components:
       properties:
         file:
           type: string
+          description: Analyzed file path.
         policy_id:
           type: string
+          description: Scanned policy ID.
         id:
           type: integer
+          format: int32
+          description: Policy check ID. A policy contains multiple checks.
         title:
           type: string
+          description: A brief description of what is being checked.
         description:
           type: string
+          description: A description of what is being checked.
         rationale:
           type: string
+          description: Explains why this check is necessary.
         remediation:
           type: string
+          description: Explains how to fix the check, this field is very useful in case the check failed.
         process:
           type: string
+          description: Checks whether a process is running or not. It's only returned when the checked process it's running.
         directory:
           type: string
+          description: Analyzed directories.
         registry:
           type: string
+          description: Analyzed registry.
         references:
           type: string
+          description: A link to a documentation page about the check.
         result:
           type: string
+          description: Check result.
           enum:
             - "passed"
             - "failed"
@@ -946,24 +1182,36 @@ components:
       properties:
         policy_id:
           type: string
+          description: Policy ID. This value must be used in `GET/sca/{agent_id}/checks/{policy_id}` API call.
         name:
           type: string
+          description: Policy name.
         description:
           type: string
+          description: Brief description of what the policy is checking.
         references:
           type: string
+          description: A link to a documentation page about the policy.
         pass:
           type: integer
+          format: int32
+          description: Number of passed checks.
         fail:
           type: integer
+          format: int32
+          description: Number of failed checks. If this number is higher than 0 the host has a vulnerability.
         score:
           type: integer
+          format: int32
+          description: Percentage of passed checks.
         end_scan:
           type: string
           format: date-time
+          description: When the last scan finished.
         start_scan:
           type: string
           format: date-time
+          description: When the last scan started.
 
     # Syscheck models
     SyscheckDatabase:
@@ -971,43 +1219,62 @@ components:
       properties:
         sha1:
           type: string
-          format: \w{40}
+          pattern: \w{40}
+          format: sha1
+          description: SHA1 checksum of the file.
         file:
           type: string
+          description: File name that raised the alert.
         md5:
           type: string
-          format: \w{32}
+          pattern: \w{32}
+          format: md5
+          description: MD5 checksum of the file.
         inode:
           type: integer
+          format: int32
+          description: inode of the file. Only available in Linux agents.
         uid:
           type: string
-          format: \d+
+          pattern: \d+
+          description: UID of the file.
         date:
           type: string
           format: date-time
+          description: Date when the alert was raised.
         perm:
           type: string
-          format: \d+
+          pattern: \d+
+          description: File permissions.
         type:
           type: string
+          description: File type. Registry type only available in Windows agents.
           enum:
           - file
           - registry
         gname:
           type: string
+          description: Group name. Only available in Linux agents.
         uname:
           type: string
+          description: User name of the file.
         size:
           type: integer
+          format: int64
+          description: File size in bytes.
         gid:
           type: string
-          format: \d+
+          pattern: \d+
+          description: GID of the file. Only available in Linux agents.
         mtime:
           type: string
           format: date-time
+          description: Last modification date of the file.
         sha256:
           type: string
-          format: \w{64}
+          pattern: \w{64}
+          format: sha256
+          description: SHA256 checksum of the file.
 
     # Decoders models
     Decoder:
@@ -1016,11 +1283,16 @@ components:
         - $ref: '#/components/schemas/DecoderFile'
       properties:
         name:
-          type: integer
-        position:
           type: string
+          description: Decoder name
+        position:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Position of this decoder in the decoder file. The parent decoder will have position 0, the following defined decoder will have position 1, and so on.
         details:
           type: object
+          description: Decoder definition fields.
           properties:
             program_name:
               type: string
@@ -1029,7 +1301,7 @@ components:
             prematch:
               type: string
             regex:
-              type: integer
+              type: string
             order:
               type: string
 
@@ -1041,10 +1313,12 @@ components:
       properties:
         file:
           type: string
+          description: Filename containing decoder definitions.
         status:
           type: string
+          description: Whether the decoders defined in that file are used by Wazuh or not.
 
-  # Syscollector models
+    # Syscollector models
     SyscollectorHardware:
       type: object
       properties:
@@ -1053,127 +1327,147 @@ components:
           properties:
             cores:
               type: integer
+              format: int32
+              minimum: 0
+              description: Number of cores the CPU has.
             mhz:
               type: number
               format: float
+              minimum: 0
+              description: Mhz the CPU has.
             name:
               type: string
+              description: CPU name.
         ram:
           type: object
           properties:
             free:
               type: integer
+              format: int32
+              minimum: 0
+              description: Current free RAM memory.
             total:
               type: integer
+              format: int32
+              minimum: 0
+              description: Total RAM memory.
             usage:
               type: integer
+              format: int32
+              minimum: 0
+              maximum: 100
+              description: RAM memory currently used.
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         board_serial:
           type: string
+          description: Motherboard serial number. This value will be empty in virtual machines.
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorNetwork:
       type: object
       properties:
-        cpu:
-          type: string
         iface:
           type: string
+          description: Network interface name.
         scan_id:
           type: integer
+          format: int64
+          description: Scan ID.
         address:
           type: string
+          description: IP address associated with the network interface.
         netmask:
           type: string
+          description: Netmask associated with the network interface.
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
+
+    NetworkInterfacePackets:
+      type: object
+      properties:
+        bytes:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of bytes in the network interface.
+        dropped:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of dropped packages in the network interface.
+        error:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of packages containing any error in the network interface.
+        packets:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of packages in the network interface.
 
     SyscollectorInterface:
       type: object
       properties:
         rx:
-          type: object
-          properties:
-            bytes:
-              type: integer
-              minimum: 0
-            dropped:
-              type: integer
-              format: int32
-              minimum: 0
-            error:
-              type: integer
-              format: int32
-              minimum: 0
-            packets:
-              type: integer
-              minimum: 0
+          description: Information related to received packets in the network interface.
+          $ref: '#/components/schemas/NetworkInterfacePackets'
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         tx:
-          type: object
-          properties:
-            bytes:
-              type: integer
-              minimum: 0
-            dropped:
-              type: integer
-              format: int32
-              minimum: 0
-            error:
-              type: integer
-              format: int32
-              minimum: 0
-            packets:
-              type: integer
-              minimum: 0
+          description: Information related to sent packets in the network interface.
+          $ref: '#/components/schemas/NetworkInterfacePackets'
         mac:
           type: string
+          description: MAC Address of the network interface.
         name:
           type: string
+          description: Network interface name.
         type:
           type: string
+          description: Network interface type.
         mtu:
           type: integer
+          format: int32
+          minimum: 0
+          description: "Network interface's Maximum Transfer Unit"
         state:
           type: string
+          description: Network interface state.
+          enum:
+          - up
+          - down
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorProtocol:
       type: object
       properties:
         iface:
+          description: Network interface name.
           type: string
         scan_id:
           type: integer
+          format: int64
+          description: Scan ID.
         type:
           type: string
+          description: Protocol of the interface data
+          enum:
+          - ipv4
+          - ipv6
         dhcp:
           type: string
+          description: DHCP status.
           enum:
           - enabled
           - disabled
+          - unknown
+          - BOOTP
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorOS:
       type: object
@@ -1183,191 +1477,274 @@ components:
           properties:
             codename:
               type: string
+              description: OS version codename.
             major:
               type: string
+              description: Major release version.
             minor:
               type: string
+              description: Minor release version
             name:
               type: string
+              description: OS name.
             platform:
               type: string
+              description: OS platform name.
             version:
               type: string
+              description: Full version name.
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         release:
           type: string
+          description: Release name.
         architecture:
           type: string
+          description: OS arquitecture.
         version:
           type: string
+          description: Release version.
         sysname:
           type: string
+          description: System name.
         hostname:
           type: string
+          description: Machine's hostname.
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
     SyscollectorPackages:
       type: object
       properties:
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         name:
           type: string
+          description: Package name.
         section:
           type: string
+          description: Package section.
         priority:
           type: string
+          description: Package priority.
         size:
           type: string
+          description: Installed package size in bytes.
         description:
           type: string
+          description: Brief package description.
         architecture:
           type: string
+          description: Package architecture.
         multiarch:
           type: string
+          description: Whether the package has multiarchitecture support.
+          enum:
+          - allowed
+          - same
+          - foreign
         vendor:
           type: string
+          description: Vendor name.
         version:
           type: string
+          description: Release version installed.
         format:
           type: string
+          description: Package format.
+          enum:
+          - deb
+          - rpm
+          - win
+          - pkg
         agent_id:
+          $ref: '#/components/schemas/AgentID'
+
+    PortInfo:
+      type: object
+      properties:
+        ip:
           type: string
-          minLength: 3
+          description: Bind IP.
+        port:
+          type: integer
+          minimum: 0
+          format: int32
+          description: Port used.
 
     SyscollectorPorts:
       type: object
       properties:
         local:
-          type: object
-          properties:
-            ip:
-              type: string
-            port:
-              type: integer
-              minimum: 0
+          $ref: '#/components/schemas/PortInfo'
+          description: Information regarding local opened port.
         remote:
-          type: object
-          properties:
-            ip:
-              type: string
-            port:
-              type: integer
-              minimum: 0
+          $ref: '#/components/schemas/PortInfo'
+          description: Information regarding the remote port the machine is connected to.
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         state:
           type: string
+          description: Communication status.
+          enum:
+          - established
+          - syn_sent
+          - syn_recv
+          - fin_wait1
+          - fin_wait2
+          - time_wait
+          - close
+          - close_wait
+          - last_ack
+          - listening
+          - closing
+          - delete_tcp
+          - unknown
         tx_queue:
           type: integer
+          format: int32
           minimum: 0
+          description: Packets pending to be transmitted.
         rx_queue:
           type: integer
+          format: int32
           minimum: 0
+          description: Packets at the receiver queue.
         inode:
           type: integer
+          format: int64
+          description: Port inode.
         protocol:
           type: string
+          description: Protocol used in the communication.
+          enum:
+          - tcp
+          - udp
+          - tcp6
+          - udp6
         agent_id:
+          $ref: '#/components/schemas/AgentID'
+        pid:
+          type: integer
+          format: int32
+          description: PID owner of the opened port.
+        process:
           type: string
-          minLength: 3
+          description: Name of the PID.
 
     SyscollectorProcess:
       type: object
       properties:
         scan:
-          type: object
-          properties:
-            id:
-              type: integer
-            time:
-              type: string
-              format: date-time
+          $ref: '#/components/schemas/ScanIdTime'
         fgroup:
           type: string
+          description: Filesystem group name.
         state:
           type: string
+          description: Process state.
         priority:
           type: integer
+          format: int32
+          description: Kernel scheduling priority.
         suser:
           type: string
+          description: Saved-set user.
         ppid:
           type: integer
+          format: int32
           minimum: 0
+          description: Process parent PID.
         vm_size:
           type: integer
+          format: int32
           minimum: 0
+          description: Total VM size (KB)
         session:
           type: integer
+          format: int32
+          description: Process session.
         pid:
           type: string
+          description: Process PID.
         nlwp:
           type: integer
+          format: int32
+          description: Number of light weight processes.
         name:
           type: string
+          description: Process name.
         euser:
           type: string
+          description: Effective user.
         sgroup:
           type: string
+          description: Saved-set group
         size:
           type: integer
+          format: int32
           minimum: 0
+          description: Process size in bytes.
         stime:
           type: integer
+          format: int32
           minimum: 0
+          description: Time spent executing system code.
         nice:
           type: integer
+          format: int32
+          description: Nice value of the process
         argvs:
           type: string
+          description: Process received arguments.
         share:
           type: integer
+          format: int32
           minimum: 0
+          description: Shared memory.
         processor:
           type: integer
+          format: int32
+          minimum: 0
+          description: Processor number which is running the process.
         ruser:
           type: string
+          description: Real user.
         cmd:
           type: string
+          description: Executed command.
         egroup:
           type: string
+          description: Effective group.
         rgroup:
           type: string
+          description: Real group.
         pgrp:
           type: integer
+          format: int32
+          description: Process group.
         resident:
           type: integer
+          format: int32
+          description: Process resident size in bytes.
         utime:
           type: integer
+          format: int32
+          description: Time spent executing user code.
         tgid:
           type: integer
+          format: int32
+          description: Thread Group ID.
         start_time:
           type: integer
+          format: int64
+          description: Time when the process started.
         tty:
           type: integer
+          format: int32
+          description: Process TTY number.
         agent_id:
-          type: string
-          minLength: 3
+          $ref: '#/components/schemas/AgentID'
 
   securitySchemes:
     basicAuth:
@@ -1392,7 +1769,7 @@ components:
     agent_name:
       in: path
       name: agent_name
-      description: Agent name.
+      description: Agent name used when the agent was registered.
       required: true
       schema:
         type: string
@@ -1408,55 +1785,218 @@ components:
       description: Selected agent's component.
       required: true
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - agent
-          - agentless
-          - analysis
-          - auth
-          - com
-          - csyslog
-          - integrator
-          - logcollector
-          - mail
-          - monitor
-          - request
-          - syscheck
-          - wmodules
+        type: string
+        enum:
+        - agent
+        - agentless
+        - analysis
+        - auth
+        - com
+        - csyslog
+        - integrator
+        - logcollector
+        - mail
+        - monitor
+        - request
+        - syscheck
+        - wmodules
     configuration:
       in: path
       name: configuration
-      description: Selected agent's configuration to read.
+      description: |
+        <p>Selected agent's configuration to read. The configuration to read depends on the selected component. The following table shows all available combinations of component and configuration values:</p>
+        <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+        <th>Component</th>
+        <th>Configuration</th>
+        <th>Tag</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+        <td>agent</td>
+        <td>client</td>
+        <td><code>&lt;client&gt;</code></td>
+        </tr>
+        <tr>
+        <td>agent</td>
+        <td>buffer</td>
+        <td><code>&lt;client_buffer&gt;</code></td>
+        </tr>
+        <tr>
+        <td>agent</td>
+        <td>labels</td>
+        <td><code>&lt;labels&gt;</code></td>
+        </tr>
+        <tr>
+        <td>agent</td>
+        <td>internal</td>
+        <td>agent, monitord, remoted</td>
+        </tr>
+        <tr>
+        <td>agentless</td>
+        <td>agentless</td>
+        <td><code>&lt;agentless&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>global</td>
+        <td><code>&lt;global&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>active_response</td>
+        <td><code>&lt;active-response&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>alerts</td>
+        <td><code>&lt;alerts&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>command</td>
+        <td><code>&lt;command&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>rules</td>
+        <td><code>&lt;rule&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>decoders</td>
+        <td><code>&lt;decoder&gt;</code></td>
+        </tr>
+        <tr>
+        <td>analysis</td>
+        <td>internal</td>
+        <td>analysisd</td>
+        </tr>
+        <tr>
+        <td>auth</td>
+        <td>auth</td>
+        <td><code>&lt;auth&gt;</code></td>
+        </tr>
+        <tr>
+        <td>com</td>
+        <td>active-response</td>
+        <td><code>&lt;active-response&gt;</code></td>
+        </tr>
+        <tr>
+        <td>com</td>
+        <td>internal</td>
+        <td>execd</td>
+        </tr>
+        <tr>
+        <td>com</td>
+        <td>cluster</td>
+        <td>cluster</td>
+        </tr>
+        <tr>
+        <td>csyslog</td>
+        <td>csyslog</td>
+        <td><code>&lt;csyslog_output&gt;</code></td>
+        </tr>
+        <tr>
+        <td>integrator</td>
+        <td>integration</td>
+        <td><code>&lt;integration&gt;</code></td>
+        </tr>
+        <tr>
+        <td>logcollector</td>
+        <td>localfile</td>
+        <td><code>&lt;localfile&gt;</code></td>
+        </tr>
+        <tr>
+        <td>logcollector</td>
+        <td>socket</td>
+        <td><code>&lt;socket&gt;</code></td>
+        </tr>
+        <tr>
+        <td>logcollector</td>
+        <td>internal</td>
+        <td>logcollector</td>
+        </tr>
+        <tr>
+        <td>mail</td>
+        <td>global</td>
+        <td><code>&lt;global&gt;&lt;email...&gt;</code></td>
+        </tr>
+        <tr>
+        <td>mail</td>
+        <td>alerts</td>
+        <td><code>&lt;email_alerts&gt;</code></td>
+        </tr>
+        <tr>
+        <td>mail</td>
+        <td>internal</td>
+        <td>maild</td>
+        </tr>
+        <tr>
+        <td>monitor</td>
+        <td>internal</td>
+        <td>monitord</td>
+        </tr>
+        <tr>
+        <td>request</td>
+        <td>remote</td>
+        <td><code>&lt;remote&gt;</code></td>
+        </tr>
+        <tr>
+        <td>request</td>
+        <td>internal</td>
+        <td>remoted</td>
+        </tr>
+        <tr>
+        <td>syscheck</td>
+        <td>syscheck</td>
+        <td><code>&lt;syscheck&gt;</code></td>
+        </tr>
+        <tr>
+        <td>syscheck</td>
+        <td>rootcheck</td>
+        <td><code>&lt;rootcheck&gt;</code></td>
+        </tr>
+        <tr>
+        <td>syscheck</td>
+        <td>internal</td>
+        <td>syscheck, rootcheck</td>
+        </tr>
+        <tr>
+        <td>wmodules</td>
+        <td>wmodules</td>
+        <td><code>&lt;wodle&gt;</code></td>
+        </tr>
+        </tbody>
+        </table>
       required: true
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - client
-          - buffer
-          - labels
-          - internal
-          - agentless
-          - global
-          - active_response
-          - alerts
-          - command
-          - rules
-          - decoders
-          - auth
-          - active-response
-          - cluster
-          - csyslog
-          - integration
-          - localfile
-          - socket
-          - remote
-          - syscheck
-          - rootcheck
-          - wmodules
+        type: string
+        enum:
+        - client
+        - buffer
+        - labels
+        - internal
+        - agentless
+        - global
+        - active_response
+        - alerts
+        - command
+        - rules
+        - decoders
+        - auth
+        - active-response
+        - cluster
+        - csyslog
+        - integration
+        - localfile
+        - socket
+        - remote
+        - syscheck
+        - rootcheck
+        - wmodules
     decoder_name:
       in: path
       name: decoder_name
@@ -1479,7 +2019,7 @@ components:
     download:
       in: query
       name: download
-      description: Downloads the file
+      description: Downloads the specified file.
       schema:
         type: string
     error:
@@ -1519,8 +2059,8 @@ components:
         type: string
     format:
       in: query
-      name: fromat
-      description: Optional. Output format (JSON, XML).
+      name: format
+      description: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
       schema:
         type: array
         items:
@@ -1545,7 +2085,7 @@ components:
     hash:
       in: query
       name: hash
-      description: Select algorithm to generate the sum.
+      description: Select algorithm to generate the returned checksums.
       schema:
         type: string
     limit:
@@ -1601,7 +2141,7 @@ components:
       in: query
       name: older_than
       description: |
-        Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date.
+        Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. For example, `7d`, `10s` and `10` are valid values. When no time unit is specified, seconds are used.
       schema:
         type: string
     pass:
@@ -1918,22 +2458,6 @@ components:
       schema:
         type: string
         format: \d(?>-\d)?  # 4 or 4-5
-    rule_path:
-      in: query
-      name: path
-      description: Filters by rule path.
-      schema:
-        type: string
-    rulestatus:
-      in: query
-      name: status
-      description: Filters by rule status.
-      schema:
-        type: string
-        enum:
-        - enabled
-        - disabled
-        - all
     pci:
       in: query
       name: pci
@@ -2340,7 +2864,7 @@ tags:
   - name: cache
     description: 'API cache management'
   - name: ciscat
-    description: 'Retrieve information from CIS-CAT scans'
+    description: 'Retrieve information from CIS-CAT scans.'
   - name: cluster
     description: 'Wazuh cluster and nodes management'
   - name: sca
@@ -2384,11 +2908,11 @@ paths:
               schema:
                 properties:
                   command:
-                    description: Command running in the agent.
+                    description: Command running in the agent. If this value starts by `!`, then it refers to a script name instead of a command name.
                     type: string
 
                   custom:
-                    description: Custom.
+                    description: Whether the specified command is a custom command or not. 
                     type: boolean
                     default: false
 
@@ -2407,10 +2931,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
                 example:
                   data: "Command sent."
                   error: 0
@@ -2502,7 +3023,12 @@ paths:
         - $ref: '#/components/parameters/name'
         - in: query
           name: ip
-          description: Filters by agent IP
+          description: Filters by the IP used by the agent to communicate with the manager. If it's not available, it will have the same value as registerIP.
+          schema:
+            type: string
+        - in: query
+          name: registerIp
+          description: Filters by the IP used when registering the agent.
           schema:
             type: string
       responses:
@@ -2536,11 +3062,12 @@ paths:
                     name: agent1
                     mergedSum: f1a9e24e02ba4cc5ea80a9d3feb3bb9a
                     ip: 192.168.185.7
+                    registerIP: any
                     manager: manager
                     node_name: node02
-                    dateAdd: '2018-10-11 09:38:47'
+                    dateAdd: '2018-10-11T09:38:47Z'
                     version: Wazuh v3.8.0
-                    lastKeepAlive: '2018-10-11 13:58:08'
+                    lastKeepAlive: '2018-10-11T13:58:08Z'
                     os:
                       major: '16'
                       name: Ubuntu
@@ -2555,11 +3082,12 @@ paths:
                   - status: Active
                     name: manager
                     ip: 127.0.0.1
+                    registerIP: 127.0.0.1
                     manager: manager
                     node_name: node01
-                    dateAdd: '2018-10-11 09:37:23'
+                    dateAdd: '2018-10-11T09:37:23Z'
                     version: Wazuh v3.8.0
-                    lastKeepAlive: '9999-12-31 23:59:59'
+                    lastKeepAlive: '9999-12-31T23:59:59Z'
                     os:
                       major: '18'
                       name: Ubuntu
@@ -2572,23 +3100,26 @@ paths:
                       minor: '04'
                     id: '000'
                   - status: Never connected
-                    dateAdd: '2018-10-11 13:58:23'
+                    dateAdd: '2018-10-11T13:58:23Z'
                     name: NewHost_2
                     ip: 10.0.10.10
+                    registerIP: any
                     id: '123'
                     node_name: unknown
                   - status: Never connected
-                    dateAdd: '2018-10-11 13:58:22'
+                    dateAdd: '2018-10-11T13:58:22Z'
                     name: NewHost
                     ip: 10.0.0.9
+                    registerIP: 10.0.0.9
                     id: '007'
                     node_name: unknown
                   - status: Never connected
-                    dateAdd: '2018-10-11 13:58:10'
+                    dateAdd: '2018-10-11T13:58:10Z'
                     group:
                     - default
                     name: server001
                     ip: 10.0.0.62
+                    registerIP: any
                     id: '002'
                     node_name: unknown
     post:
@@ -2605,12 +3136,13 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
                   name:
                     description: Agent name.
                     type: string
                   ip:
-                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
+                    description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY"
                     type: string
                   force_time:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
@@ -2636,11 +3168,12 @@ paths:
                 data:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
+  
   /agents/{agent_id}:
     delete:
       tags:
         - agents
-      summary: 'Delete an agent'
+      summary: 'Removes an agent'
       description: 'Removes an agent.'
       operationId: api.controllers.agents_controller.delete_agent
       parameters:
@@ -2693,31 +3226,36 @@ paths:
               example:
                 error: 0
                 data:
-                    lastKeepAlive: '9999-12-31 23:59:59'
-                    ip: 127.0.0.1
-                    manager: manager
-                    os:
-                      arch: x86_64
-                      codename: Bionic Beaver
-                      major: '18'
-                      minor: '04'
-                      name: Ubuntu
-                      platform: ubuntu
-                      uname: Linux |manager |4.15.0-36-generic |#39-Ubuntu SMP Mon Sep 24 16:19:09
-                        UTC 2018 |x86_64
-                      version: 18.04.1 LTS
-                    status: Active
-                    version: Wazuh v3.8.0
-                    dateAdd: '2018-10-11 09:37:23'
-                    name: manager
-                    node_name: node01
-                    id: '000'
+                  configSum: "ab73af41699f13fdd81903b5f23d8d00"
+                  dateAdd: "2019-03-14 09:43:51"
+                  group:
+                    - default
+                  id: "002"
+                  ip: "172.18.0.6"
+                  lastKeepAlive: "2019-03-14 11:36:55"
+                  manager: "9f393e777dfb"
+                  mergedSum: "f8d49771911ed9d5c45b03a40babd065"
+                  name: "176772c37776"
+                  node_name: "worker1"
+                  os:
+                    arch: "x86_64"
+                    codename: "Bionic Beaver"
+                    major: "18"
+                    minor: "04"
+                    name: "Ubuntu"
+                    platform: "ubuntu"
+                    uname: "Linux |176772c37776 |4.15.0-46-generic |#49~16.04.1-Ubuntu SMP Tue Feb 12 17:45:24 UTC 2019 |x86_64"
+                    version: "18.04.2 LTS"
+                  registerIP: "172.18.0.6"
+                  status: "Active"
+                  version: "Wazuh v3.8.2"
+
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
       tags:
         - agents
       summary: 'Get active configuration'
-      description: 'Returns the active configuration in JSON format.'
+      description: 'Returns the active configuration the agent is currently using. This can be different from the configuration present in the configuration file, if it has been modified and the agent has not been restarted yet.'
       operationId: api.controllers.agents_controller.get_agent_config
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -2780,6 +3318,7 @@ paths:
                         logformat: syslog
                         target:
                           - agent
+  
   /agents/{agent_id}/group:
     delete:
       tags:
@@ -2799,19 +3338,17 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
-                example:
-                  error: 0
-                  data: "Group unset for agent '004'."
+                - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Group unset for agent '004'."
+  
   /agents/{agent_id}/group/is_sync:
     get:
       tags:
         - agents
-      summary: 'Get sync status of agent'
-      description: 'Returns the sync status in JSON format.'
+      summary: 'Get agent configuration sync status'
+      description: 'Returns whether the agent configuration has been synchronized with the agent or not. This can be useful to check after updating a group configuration.'
       operationId: api.controllers.agents_controller.get_sync_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -2831,11 +3368,11 @@ paths:
                         properties:
                           syncef:
                             type: boolean
-
               example:
                 error: 0
                 data:
                     synced: false
+  
   /agents/{agent_id}/group/{group_id}:
     delete:
       tags:
@@ -2856,13 +3393,10 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
-                example:
-                  error: 0
-                  data: "Group 'dmz' unset for agent '004'."
+                - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Group 'dmz' unset for agent '004'."
     put:
       tags:
         - agents
@@ -2887,13 +3421,11 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-                example:
-                  error: 0
-                  data: "Group '004' already belongs to group 'dmz'."
+                  - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Group '004' already belongs to group 'dmz'."
+  
   /agents/{agent_id}/key:
     get:
       tags:
@@ -2917,10 +3449,11 @@ paths:
                     properties:
                       data:
                         type: string
-
+                        description: Agent key.
               example:
                 error: 0
                 data: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
+  
   /agents/{agent_id}/restart:
     put:
       tags:
@@ -2950,6 +3483,7 @@ paths:
                     msg: All selected agents were restarted
                     affected_agents:
                       - "007"
+  
   /agents/{agent_id}/upgrade:
     put:
       tags:
@@ -2988,19 +3522,17 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Upgrade procedure started"
+  
   /agents/{agent_id}/upgrade_custom:
     put:
       tags:
         - agents
-      summary: 'Upgrade agent using online repository'
-      description: 'Upgrade the agent using a WPK file from online repository.'
+      summary: 'Upgrade agent using a custom file'
+      description: 'Upgrade the agent using a local WPK file.'
       operationId: api.controllers.agents_controller.put_upgrade_custom_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3024,19 +3556,17 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Installation started"
+  
   /agents/{agent_name}:
     put:
       tags:
         - agents
       summary: 'Add agent (quick method)'
-      description: 'Adds a new agent with name :agent_name. This agent will use ANY as IP.'
+      description: 'Adds a new agent with name `agent_name`. This agent will use `any` as IP.'
       operationId: api.controllers.agents_controller.put_new_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3059,12 +3589,13 @@ paths:
                 data:
                   id: "008"
                   key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
+  
   /agents/{agent_id}/upgrade_result:
     get:
       tags:
         - agents
       summary: 'Get upgrade result from agent'
-      description: 'Returns the upgrade result from an agent.'
+      description: 'Returns the upgrade result after updating an agent.'
       operationId: api.controllers.agents_controller.get_agent_upgrade
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3084,20 +3615,17 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
-
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Agent upgraded successfully
+
   /agents/group/{group_id}:
     delete:
       tags:
         - agents
-      summary: 'Remove a single group of multiple agents'
-      description: 'Remove a list of agents of a group.'
+      summary: 'Remove multiple agents from a specified group.'
+      description: 'Remove multiple agents from a specified group.'
       operationId: api.controllers.agents_controller.delete_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3126,8 +3654,8 @@ paths:
     post:
       tags:
         - agents
-      summary: 'Add a list of agents to a group'
-      description: 'Adds a list of agents to the specified group.'
+      summary: 'Add multiple agents to a group'
+      description: 'Adds multiple agents to the specified group.'
       operationId: api.controllers.agents_controller.post_multiple_agent_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3167,7 +3695,8 @@ paths:
     delete:
       tags:
         - agents
-      summary: 'Delete a list of groups'
+      summary: 'Removes a list of groups'
+      description: Removes multiple groups.
       operationId: api.controllers.agents_controller.delete_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3184,7 +3713,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroupDeleted'
+                      $ref: '#/components/schemas/AllItemsAffected'
               example:
                 error: 0
                 data:
@@ -3199,8 +3728,8 @@ paths:
     get:
       tags:
         - agents
-      summary: 'Get groups'
-      description: 'Returns the list of existing agent groups.'
+      summary: 'Get all groups'
+      description: 'Returns a list containing basic information about each agent group such as number of agents belonging to the group and the checksums of the configuration and shared files.'
       operationId: api.controllers.agents_controller.get_list_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3268,7 +3797,9 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AgentGroupDeleted'
+                      allOf:
+                        - $ref: '#/components/schemas/ItemAffected'
+                        - $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 error: 0
                 data:
@@ -3276,11 +3807,13 @@ paths:
                   affected_groups:
                   - 'dmz'
                   affected_agents:
+                  - '001'
+                  - '002'
     get:
       tags:
         - agents
       summary: 'Get agents in a group'
-      description: 'Returns the list of agents in a group.'
+      description: 'Returns the list of agents that belongs to the specified group.'
       operationId: api.controllers.agents_controller.get_agent_in_group
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3329,12 +3862,12 @@ paths:
                     group:
                       - default
                       - dmz
-                    lastKeepAlive: '2019-02-19 10:31:09'
+                    lastKeepAlive: '2019-02-19T10:31:09Z'
                     ip: 172.17.0.201
                     manager: manager
                     status: Active
                     version: Wazuh v3.8.2
-                    dateAdd: '2019-02-19 10:25:42'
+                    dateAdd: '2019-02-19T10:25:42Z'
                     name: agent-1
                     configSum: ab73af41699f13fdd81903b5f23d8d00
                     registerIP: 172.17.0.201
@@ -3344,18 +3877,18 @@ paths:
                   - group:
                     - default
                     - dmz
-                    lastKeepAlive: '10.0.0.62'
                     status: Never connected
-                    dateAdd: '2019-02-19 10:30:59'
+                    dateAdd: '2019-02-19T10:30:59Z'
                     name: server001
                     registerIP: 10.0.0.62
+                    ip: 10.0.0.62
                     node_name: unknown
                     id: '002'
                   - group:
                     - dmz
-                    lastKeepAlive: '10.0.0.15'
+                    ip: 10.0.0.15
                     status: Never connected
-                    dateAdd: '2019-02-19 10:31:00'
+                    dateAdd: '2019-02-19T10:31:00Z'
                     name: main_database
                     registerIP: 10.0.0.15
                     node_name: unknown
@@ -3378,19 +3911,17 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        type: string
+                  - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Group 'pciserver' created"
+
   /agents/groups/{group_id}/configuration:
     get:
       tags:
         - agents
       summary: 'Get group configuration'
-      description: 'Returns the group configuration (agent.conf).'
+      description: 'Returns the group configuration defined in the `agent.conf` file.'
       operationId: api.controllers.agents_controller.get_group_config
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3431,8 +3962,8 @@ paths:
     post:
       tags:
         - agents
-      summary: 'Put configuration file (agent.conf) into a group'
-      description: 'Upload the group configuration (agent.conf).'
+      summary: 'Update group configuration'
+      description: Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.
       operationId: api.controllers.agents_controller.post_group_config
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3456,19 +3987,17 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Agent configuration was updated successfully
+
   /agents/groups/{group_id}/files:
     get:
       tags:
         - agents
       summary: 'Get group files'
-      description: 'Returns the files belonging to the group.'
+      description: 'Return the files placed under the group directory.'
       operationId: api.controllers.agents_controller.get_group_files
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3555,12 +4084,13 @@ paths:
                       hash: 92d8011facc8b921ece301ea4ce6a616
                     - filename: win_malware_rcl.txt
                       hash: 6a8d3c63a0e77dea35aaed3ee2cca3a1
+
   /agents/groups/{group_id}/files/{file_name}:
     get:
       tags:
         - agents
       summary: 'Get a file in group'
-      description: 'Returns the specified file belonging to the group parsed to JSON.'
+      description: 'Returns the contents of the specified group file parsed to JSON.'
       operationId: api.controllers.agents_controller.get_group_file
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3583,31 +4113,22 @@ paths:
                       allOf:
                         - $ref: '#/components/schemas/ListMetadata'
                         - type: object
-                          properties:
-                            controls:
-                              type: array
-                              items:
-                                properties:
-                                  condition:
-                                    type: string
-                                  name:
-                                    type: string
-                                  reference:
-                                    type: string
-                                  checks:
-                                    type: array
-                                    items:
-                                      type: string
+                          description: "The output format depends on the type of file that has been requested: rootkit file, rootkit trojans or rcl."
               example:
                 error: 0
                 data:
+                  vars:
                   controls:
-                    - ...: ...
                     - condition: all required
                       name: CIS - Testing against the CIS Debian Linux Benchmark v1
                       reference: CIS_Debian_Benchmark_v1.0pdf
                       checks:
                         - f:/etc/debian_version
+                    - name: "CIS - Debian Linux - 1.4 - Robust partition scheme - /tmp is not on its own partition"
+                      condition: "any"
+                      reference: "https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf"
+                      checks:
+                        - "f:/etc/fstab -> !r:/tmp;"
     post:
       tags:
         - agents
@@ -3636,19 +4157,16 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Agent configuration was updated successfully
-  /agents/groups/insert:
+  /agents/insert:
     post:
       tags:
         - agents
-      summary: 'Get a file in group'
-      description: 'Returns the specified file belonging to the group parsed to JSON.'
+      summary: 'Add an agent specifying all its basic properties'
+      description: 'Adds an agent specifying its name, ID and IP. If an agent with the same ID already exists, replace it using `force` parameter.'
       operationId: api.controllers.agents_controller.insert_agent
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -3657,26 +4175,31 @@ paths:
         content:
           application/json:
               schema:
+                type: object
                 properties:
+                  id:
+                    $ref: '#/components/schemas/AgentID'
+                  key:
+                    type: string
+                    maxLength: 64
+                    minLength: 64
+                    pattern: ^[a-zA-Z0-9]+$
+                    format: key
+                    description: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
                   name:
                     description: Agent name.
                     type: string
-
                   ip:
                     description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
                     type: string
-
-                  id:
-                    description: Agent ID.
-                    type: string
-
-                  key:
-                    description: "Agent key. Minimum length: 64 characters. Allowed values: ^[a-zA-Z0-9]+$"
-                    type: string
-
                   force:
                     description: Remove the old agent with the same IP if disconnected since <force> seconds.
-                    type: integer
+                    type: boolean
+              example:
+                name: NewHost_2
+                ip: 10.0.10.10
+                id: 123
+                key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
       responses:
         '200':
           description: 'Get group file'
@@ -3694,6 +4217,7 @@ paths:
                 data:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
+  
   /agents/name/{agent_name}:
     get:
       tags:
@@ -3724,11 +4248,12 @@ paths:
                 data:
                   ip: 10.0.0.9
                   status: Never connected
-                  dateAdd: "2019-02-19 10:31:12"
+                  dateAdd: "2019-02-19T10:31:12Z"
                   name: NewHost
                   registerIP: 10.0.0.9
                   node_name: unknown
                   id: "007"
+  
   /agents/no_group:
     get:
       tags:
@@ -3771,25 +4296,26 @@ paths:
                   items:
                     - ip: 10.0.0.20
                       status: Never connected
-                      dateAdd: "2019-02-19 10:31:00"
+                      dateAdd: "2019-02-19T10:31:00Z"
                       name: server002
                       registerIP: 10.0.0.20
                       node_name: unknown
                       id: "006"
                     - ip: 10.0.0.9
                       status: Never connected
-                      dateAdd: "2019-02-19 10:31:12"
+                      dateAdd: "2019-02-19T10:31:12Z"
                       name: NewHost
                       registerIP: 10.0.0.9
                       node_name: unknown
                       id: "007"
                     - ip: 10.0.10.10
                       status: Never connected
-                      dateAdd: "2019-02-19 10:31:13"
+                      dateAdd: "2019-02-19T10:31:13Z"
                       name: NewHost_2
                       registerIP: 10.0.10.10
                       node_name: unknown
                       id: "123"
+  
   /agents/outdated:
     get:
       tags:
@@ -3834,6 +4360,7 @@ paths:
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
+  
   /agents/restart:
     post:
       tags:
@@ -3890,9 +4417,11 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                example:
-                  error: 0
-                  data: "Restarting all agents"
+                - $ref: '#/components/schemas/ConfirmationMessage'
+              example:
+                error: 0
+                data: "Restarting all agents"
+
   /agents/stats/distinct:
     get:
       tags:
@@ -3951,6 +4480,7 @@ paths:
                         platform: ubuntu
                       count: 2
                     - count: 5
+
   /agents/summary:
     get:
       tags:
@@ -3991,6 +4521,7 @@ paths:
                   Disconnected: 0
                   Never connected: 5
                   Pending: 0
+
   /agents/summary/os:
     get:
       tags:
@@ -4022,6 +4553,7 @@ paths:
                         - type: object
                           properties:
                             items:
+                              description: List of Operating system platforms.
                               type: array
                               items:
                                 type: string
@@ -4207,7 +4739,7 @@ paths:
                     error: 0
                     scan:
                       id: 1406741147
-                      time: "2018-09-06T07:50:15.632-07:00"
+                      time: "2018-09-06T07:50:15.632Z"
                     fail: 79
                     benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
                     pass: 104
@@ -4218,7 +4750,7 @@ paths:
                     error: 0
                     scan:
                       id: 1406741147
-                      time: "2018-09-06T07:50:52.630-07:00"
+                      time: "2018-09-06T07:50:52.630Z"
                     fail: 53
                     benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
                     pass: 96
@@ -4248,10 +4780,13 @@ paths:
                     data:
                       properties:
                         node:
+                          description: Node name.
                           type: string
                         cluster:
+                          description: Cluster name the node belongs to.
                           type: string
                         type:
+                          description: Node type.
                           type: string
               example:
                 error: 0
@@ -4390,18 +4925,18 @@ paths:
                         totalActiveAgents: 5
                       status:
                         - type: "Agent status"
-                          date_start: "2019-01-11 18:52:57.72"
+                          date_start: "2019-01-11T18:52:57.72Z"
                           date_end: "2019-01-11 18:52:57.73"
                           synchronized_files: 4
                           free: true
                         - type: "Extra valid"
-                          date_start: "2019-01-11 18:52:57.72"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_start: "2019-01-11T18:52:57.72Z"
+                          date_end: "2019-01-11T18:52:57.73Z"
                           synchronized_files: 4
                           free: true
                         - type: "Integrity"
-                          date_start: "2019-01-11 18:52:57.72"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_start: "2019-01-11T18:52:57.72Z"
+                          date_end: "2019-01-11T18:52:57.73Z"
                           synchronized_files:
                             shared: 5
                             missing: 4
@@ -4409,8 +4944,8 @@ paths:
                             extra: 0
                           free: true
                         - type: "Last keep alive"
-                          date_start: "2019-01-11 18:52:57.72"
-                          date_end: "2019-01-11 18:52:57.73"
+                          date_start: "2019-01-11T18:52:57.72Z"
+                          date_end: "2019-01-11T18:52:57.73Z"
 
   /cluster/healthcheck/{node_id}:
     get:
@@ -4491,11 +5026,13 @@ paths:
                     data:
                       properties:
                         enabled:
+                          description: Whether the cluster is enabled in the Wazuh configuration.
                           type: string
                           enum:
                           - yes
                           - no
                         running:
+                          description: Whether the cluster daemon is running.
                           type: string
                           enum:
                           - yes
@@ -4529,27 +5066,36 @@ paths:
                     data:
                       properties:
                         name:
+                          description: Cluster name.
                           type: string
                         node_name:
+                          description: Node name.
                           type: string
                         node_type:
+                          description: Node type.
                           type: string
                           enum:
                           - master
                           - worker
                         key:
+                          description: Cluster key used to encrypt messages.
                           type: string
                         port:
+                          description: Port used by the **master** node to communicate with workers.
                           type: integer
                         bind_addr:
+                          description: Network interface used by the **master** to listen to incoming connections.
                           type: string
                         nodes:
+                          description: List of cluster master nodes. This list is used by **worker** nodes to connect to the master.
                           type: array
                           items:
                             type: string
                         hidden:
+                          description: Whether to hide the cluster information in the alerts.
                           type: string
                         disabled:
+                          description: Whether the cluster is enabled or not.
                           type: boolean
               example:
                 error: 0
@@ -4637,7 +5183,7 @@ paths:
                 data:
                   path: /var/ossec
                   version: v3.9.0
-                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  compilation_date: "2019-03-06T11:24:59Z"
                   type: manager
                   max_agents: 14000
                   openssl_support: yes
@@ -5185,15 +5731,15 @@ paths:
                 data:
                   totalItems: 3
                   items:
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: "Syscheck scan frequency: 43200 seconds"
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-syscheckd
                       level: info
                       description: Starting syscheck scan.
-                    - timestamp: "2019-03-07 11:21:17"
+                    - timestamp: "2019-03-07T11:21:17Z"
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
@@ -5270,6 +5816,7 @@ paths:
                 - type: object
                   properties:
                     data:
+                      description: File contents.
                       type: string
               example:
                 error: 0
@@ -5294,10 +5841,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File updated successfully.
@@ -5320,10 +5864,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File was deleted.
@@ -5346,10 +5887,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Restarting cluster.
@@ -5373,10 +5911,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Restarting manager.
@@ -5473,17 +6008,32 @@ paths:
                     data:
                       allOf:
                         - $ref: '#/components/schemas/ListMetadata'
-                        - $ref: '#/components/schemas/CDBList'
+                        - type: object
+                          properties:
+                            items:
+                              type: array
+                              items:
+                                $ref: '#/components/schemas/CDBList'
                 example:
                   error: 0
                   data:
-                    totalItems: 1
+                    totalItems: 2
                     items:
-                      -
+                      - path: etc/lists/amazon/aws-eventnames
+                        items:
+                        - key: AttachLoadBalancers
+                          value: Autoscaling
+                        - key: TerminateInstanceInAutoScalingGroup
+                          value: Autoscaling
+                        - key: CreateStack
+                          value: Cloudformation
+                      - path: etc/lists/audit-keys
+                        items:
                         - key: audit-wazuh-w
                           value: write
-                        - key: audit-wazuh-r
-                          value: read
+                        - key: audit-wazuh-a
+                          value: attribute
+
 
   /lists/files:
     get:
@@ -5510,10 +6060,17 @@ paths:
                         - $ref: '#/components/schemas/ListMetadata'
                         - type: object
                           properties:
-                            name:
-                              type: string
-                            path:
-                              type: string
+                            items:
+                              type: array
+                              items:
+                                type: object
+                                properties:
+                                  name:
+                                    description: Name of the CDB list file.
+                                    type: string
+                                  path:
+                                    description: Path where the CDB list file is stored. This path is relative to the Wazuh installation path.
+                                    type: string
                 example:
                   error: 0
                   data:
@@ -5594,7 +6151,7 @@ paths:
                 data:
                   path: /var/ossec
                   version: v3.9.0
-                  compilation_date: Wed Mar  6 11:42:59 UTC 2019
+                  compilation_date: "2019-03-06T11:24:59Z"
                   type: manager
                   max_agents: 14000
                   openssl_support: yes
@@ -6218,6 +6775,7 @@ paths:
                 - type: object
                   properties:
                     data:
+                      description: File contents.
                       type: string
               example:
                 error: 0
@@ -6241,10 +6799,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File updated successfully.
@@ -6266,10 +6821,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: File was deleted.
@@ -6292,10 +6844,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Restarting manager.
@@ -6349,10 +6898,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck on all agents"
@@ -6373,10 +6919,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Rootcheck database deleted"
@@ -6426,12 +6969,12 @@ paths:
                   totalItems: 2
                   items:
                     - status: outstanding
-                      readDay: "2019-03-08 09:20:05"
-                      oldDay: "2019-03-08 09:20:05"
+                      readDay: "2019-03-08T09:20:05Z"
+                      oldDay: "2019-03-08T09:20:05Z"
                       event: "System Audit: SSH Hardening - 3: Root can log in. File: /etc/ssh/sshd_config. Reference: 3 ."
                     - status: outstanding
-                      readDay: "2019-03-08 09:20:05"
-                      oldDay: "2019-03-08 09:20:05"
+                      readDay: "2019-03-08T09:20:05Z"
+                      oldDay: "2019-03-08T09:20:05Z"
                       pci: 2.2.4
                       event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
     put:
@@ -6452,10 +6995,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck locally"
@@ -6477,10 +7017,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Rootcheck database deleted"
@@ -6595,8 +7132,8 @@ paths:
               example:
                 error: 0
                 data:
-                  end: "2019-03-08 10:35:21"
-                  start: "2019-03-08 10:34:56"
+                  end: "2019-03-08T10:35:21Z"
+                  start: "2019-03-08T10:34:56Z"
 
   /rules:
     get:
@@ -6615,8 +7152,8 @@ paths:
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rule_path'
-        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/pathFilter'
+        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
       responses:
@@ -6876,9 +7413,9 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/rule_path'
+        - $ref: '#/components/parameters/pathFilter'
         - $ref: '#/components/parameters/file'
-        - $ref: '#/components/parameters/rulestatus'
+        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/download'
       responses:
         '200':
@@ -6967,8 +7504,8 @@ paths:
                   fail: 6
                   description: "Guidance for establishing a secure configuration for SSH service vulnerabilities."
                   policy_id: "system_audit_ssh"
-                  end_scan: "2019-03-06 10:12:02"
-                  start_scan: "2019-03-06 10:12:02"
+                  end_scan: "2019-03-06T10:12:02Z"
+                  start_scan: "2019-03-06T10:12:02Z"
                 - name: "CIS benchmark for Debian/Linux"
                   pass: 36
                   score: 87
@@ -6976,8 +7513,8 @@ paths:
                   fail: 5
                   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned."
                   policy_id: "cis_debian"
-                  end_scan: "2019-03-06 10:11:53"
-                  start_scan: "2019-03-06 10:11:53"
+                  end_scan: "2019-03-06T10:11:53Z"
+                  start_scan: "2019-03-06T10:11:53Z"
 
   /sca/{agent_id}/checks/{policy_id}:
     get:
@@ -7030,21 +7567,35 @@ paths:
                 data:
                   totalItems: 2
                   items:
-                  - result: "passed"
-                    title: "Web exploits (uncommon file name inside htdocs) - Possible compromise"
-                    directory:  "/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www"
-                    id: 1008
-                    policy_id: "system_audit"
+                  - remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
+                    rationale: "Since the /var directory may contain world-writable files and directories, there is a risk of resource exhaustion if it is not bound to a separate partition."
+                    title: "Ensure separate partition exists for /var"
+                    policy_id: cis_debian
+                    file: /etc/fstab
+                    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
+                    id: 5003
+                    result: failed
+                    references: "https://tldp.org/HOWTO/LVM-HOWTO/"
                     compliance:
-                    - key: "pci_dss"
-                      value: "6.5, 6.6, 11.4"
-                  - file: "/etc/php.ini"
-                    result: "passed"
-                    title: "PHP - Displaying of errors is enabled"
-                    id: 1003
-                    policy_id: "system_audit"
+                    - key: cis
+                      value: "1.1.6"
+                    - key: cis_csc
+                      value: "5"
+                  - remediation: "Run the following commands to remove exim: # apt-get remove exim4; # apt-get purge exim4"
+                    rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface."
+                    title: "Ensure IMAP and POP3 server is not enabled (POP3)"
+                    policy_id: cis_debian
+                    file: /etc/inetd.conf
+                    description: exim is an open source IMAP and POP3 server for Linux based systems.
+                    id: 5022
+                    result: passed
                     compliance:
-                    -
+                    - key: cis
+                      value: "2.2.11"
+                    - key: cis_csc
+                      value: "9"
+                    - key: pci_dss
+                      value: "2.2.2"
 
   /syscheck:
     put:
@@ -7064,10 +7615,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck on all agents"
@@ -7124,9 +7672,9 @@ paths:
                       inode: 946
                       perm: "100644"
                       gname: root
-                      mtime: "2019-01-15 15:49:39"
+                      mtime: "2019-01-15T15:49:39Z"
                       sha1: a2219a7fd0a77be7422a02049b8d27805c0250ba
-                      date: "2019-03-08 10:35:06"
+                      date: "2019-03-08T10:35:06Z"
                       uname: root
                       sha256: 303c346ece82ca4f6713ac176164285d0469f326b6f12a787e11f5d702529277
                       gid: 0
@@ -7138,14 +7686,14 @@ paths:
                       md5: f7bf238a3b0bf155c565454a9f819731
                       inode: 1579
                       uid: "0"
-                      date: "2019-03-08 10:35:01"
+                      date: "2019-03-08T10:35:01Z"
                       perm: 100644
                       type: file
                       gname: root
                       uname: root
                       size: 1580
                       gid: "0"
-                      mtime: "2018-11-05 11:51:29"
+                      mtime: "2018-11-05T11:51:29Z"
                       sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
     put:
       tags:
@@ -7165,10 +7713,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Restarting Syscheck/Rootcheck locally"
@@ -7190,10 +7735,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: "Syscheck database deleted"
@@ -7225,8 +7767,8 @@ paths:
               example:
                 error: 0
                 data:
-                  end: "2019-03-08 10:35:21"
-                  start: "2019-03-08 10:34:56"
+                  end: "2019-03-08T10:35:21Z"
+                  start: "2019-03-08T10:34:56Z"
 
   /decoders:
     get:
@@ -7479,10 +8021,7 @@ paths:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      type: string
+                - $ref: '#/components/schemas/ConfirmationMessage'
               example:
                 error: 0
                 data: Syscheck database deleted
@@ -7539,7 +8078,7 @@ paths:
                     error: 0
                     scan:
                       id: 1406741147
-                      time: "2018-09-06T07:50:52.630-07:00"
+                      time: "2018-09-06T07:50:52.630Z"
                     fail: 53
                     benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
                     pass: 96
@@ -7550,7 +8089,7 @@ paths:
                     error: 0
                     scan:
                       id: 1406741147
-                      time: "2018-09-06T07:50:15.632-07:00"
+                      time: "2018-09-06T07:50:15.632Z"
                     fail: 79
                     benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
                     pass: 104
@@ -7612,7 +8151,7 @@ paths:
                       usage: 87
                     scan:
                       id: 219248827
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14Z"
                     board_serial: "0"
                     agent_id: "000"
                   - cpu:
@@ -7625,7 +8164,7 @@ paths:
                       usage: 83
                     scan:
                       id: 257116304
-                      time: "2019/02/19 10:26:20"
+                      time: "2019-02-19T10:26:20Z"
                     board_serial: "0"
                     agent_id: "001"
 
@@ -7633,8 +8172,8 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get network address info of all agents'
-      description: "Returns the agent's network address info. This information include used IP protocol, interface, IP address  among others  of all agents."
+      summary: 'Get the IPv4 and IPv6 addresses associated all network interfaces'
+      description: "Returns the agent's IPv4 and IPv6 addresses associated its network interfaces. This information include used IP protocol, interface, IP address  among others  of all agents."
       operationId: api.controllers.experimental_controller.get_network_address_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7689,8 +8228,8 @@ paths:
     get:
       tags:
         - experimental
-      summary: 'Get network interface info of all agents'
-      description: "Returns the agent's network interface info. This information include rx, scan, tx info and some network information among others  of all agents."
+      summary: 'Get all network interfaces from all agents.'
+      description: "Returns the agent's network interfaces. This information include rx, scan, tx info and some network information among others  of all agents."
       operationId: api.controllers.experimental_controller.get_network_interface_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7744,7 +8283,7 @@ paths:
                       packets: 43889
                     scan:
                       id: 1203337658
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14Z"
                     tx:
                       bytes: 843282
                       dropped: 0
@@ -7763,7 +8302,7 @@ paths:
                       packets: 0
                     scan:
                       id: 1203337658
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14Z"
                     tx:
                       bytes: 3874
                       dropped: 0
@@ -7781,7 +8320,7 @@ paths:
       tags:
         - experimental
       summary: 'Get network protocol info of all agents'
-      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others of all agents."
+      description: "Returns the agent's routing configuration for each network interface. This information include interface, type protocol information among others of all agents."
       operationId: api.controllers.experimental_controller.get_network_protocol_info_of_all_agents
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -7883,7 +8422,7 @@ paths:
                       version: "18.04.1 LTS (Bionic Beaver)"
                     scan:
                       id: 651932304
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14Z"
                     release: "4.15.0-43-generic"
                     architecture: "x86_64"
                     version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
@@ -7899,7 +8438,7 @@ paths:
                       version: "18.04.1 LTS (Bionic Beaver)"
                     scan:
                       id: 780978297
-                      time: "2019/02/19 10:26:20"
+                      time: "2019-02-19T10:26:20Z"
                     release: "4.15.0-43-generic"
                     architecture: "x86_64"
                     version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
@@ -7953,7 +8492,7 @@ paths:
                   items:
                   - scan:
                       id: 1631140954
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14Z"
                     name: "acl"
                     section: "utils"
                     priority: "optional"
@@ -7967,7 +8506,7 @@ paths:
                     agent_id: "000"
                   - scan:
                       id: 1631140954
-                      time: "2019/02/19 10:22:14"
+                      time: "2019-02-19T10:22:14Z"
                     name: "accountsservice"
                     section: "admin"
                     priority: "optional"
@@ -8028,20 +8567,19 @@ paths:
                   totalItems: 18
                   items:
                   - local:
-                      ip: "::"
-                      port: 22
+                      ip: 172.17.0.100
+                      port: 1516
                     remote:
-                      ip: "::"
-                      port: 0
+                      ip: 172.17.0.101
+                      port: 54550
                     scan:
-                      id: 2112182802
-                      time: "2019/03/08 08:30:59"
-                    state: "listening"
-                    tx_queue: 0
+                      id: 1672337392
+                      time: "2019-03-14T10:38:21Z"
+                    state: established
+                    protocol: tcp
                     rx_queue: 0
-                    inode: 19354
-                    protocol: "tcp6"
-                    agent_id: "000"
+                    tx_queue: 0
+                    inode: 321208
                   - local:
                       ip: "::"
                       port: 55000
@@ -8049,14 +8587,13 @@ paths:
                       ip: "::"
                       port: 0
                     scan:
-                      id: 2112182802
-                      time: "2019/03/08 08:30:59"
-                    state: "listening"
-                    tx_queue: 0
+                      id: 1672337392
+                      time: "2019-03-14T10:38:21Z"
+                    state: listening
+                    protocol: tcp6
                     rx_queue: 0
-                    inode: 258878
-                    protocol: "tcp6"
-                    agent_id: "000"
+                    inode: 18153
+                    tx_queue: 0
 
   /experimental/syscollector/processes:
     get:
@@ -8113,7 +8650,7 @@ paths:
                   items:
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59Z"
                     fgroup: "root"
                     state: "S"
                     priority: 20
@@ -8143,7 +8680,7 @@ paths:
                     agent_id: "000"
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59Z"
                     fgroup: "root"
                     state: "S"
                     priority: 25
@@ -8209,7 +8746,7 @@ paths:
                     usage: 89
                   scan:
                     id: 599386135
-                    time: "2019/03/08 08:30:53"
+                    time: "2019-03-08T08:30:53Z"
                   board_serial: "0"
 
   /syscollector/{agent_id}/netaddr:
@@ -8328,7 +8865,7 @@ paths:
                       packets: 111792
                     scan:
                       id: 1478544824
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53Z"
                     tx:
                       bytes: 2408059
                       dropped: 0
@@ -8346,7 +8883,7 @@ paths:
                       packets: 0
                     scan:
                       id: 1478544824
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53Z"
                     tx:
                       bytes: 5312
                       dropped: 0
@@ -8362,8 +8899,8 @@ paths:
     get:
       tags:
         - syscollector
-      summary: 'Get network protocol info of an agents'
-      description: "Returns the agent's network protocol info. This information include interface, type protocol information among others"
+      summary: 'Get network protocol info of an agent'
+      description: "Returns the agent's routing configuration for each network interface."
       operationId: api.controllers.experimental_controller.get_network_protocol_info
       parameters:
         - $ref: '#/components/parameters/pretty'
@@ -8447,7 +8984,7 @@ paths:
                     version: "18.04.1 LTS (Bionic Beaver)"
                   scan:
                     id: 242764188
-                    time: "2019/03/08 08:30:53"
+                    time: "2019-03-08T08:30:53Z"
                   architecture: "x86_64"
                   release: "4.15.0-43-generic"
                   version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
@@ -8501,7 +9038,7 @@ paths:
                   items:
                   - scan:
                       id: 520922172
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53Z"
                     vendor: "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>"
                     name: "base-files"
                     priority: "required"
@@ -8514,7 +9051,7 @@ paths:
                     multiarch: "foreign"
                   - scan:
                       id: 520922172
-                      time: "2019/03/08 08:30:53"
+                      time: "2019-03-08T08:30:53Z"
                     vendor: "Colin Watson <cjwatson@debian.org>"
                     name: "base-passwd"
                     priority: "required"
@@ -8571,36 +9108,36 @@ paths:
               example:
                 error: 0
                 data:
-                  totalItems: 6
+                  totalItems: 18
                   items:
                   - local:
-                      ip: "0.0.0.0"
-                      port: 1515
-                    remote:
-                      ip: "0.0.0.0"
-                      port: 0
-                    scan:
-                      id: 2112182802
-                      time: "2019/03/08 08:30:59"
-                    state: "listening"
-                    tx_queue: 0
-                    rx_queue: 0
-                    inode: 255211
-                    protocol: "tcp"
-                  - local:
-                      ip: "0.0.0.0"
+                      ip: 172.17.0.100
                       port: 1516
                     remote:
-                      ip: "0.0.0.0"
+                      ip: 172.17.0.101
+                      port: 54550
+                    scan:
+                      id: 1672337392
+                      time: "2019-03-14T10:38:21Z"
+                    state: established
+                    protocol: tcp
+                    rx_queue: 0
+                    tx_queue: 0
+                    inode: 321208
+                  - local:
+                      ip: "::"
+                      port: 55000
+                    remote:
+                      ip: "::"
                       port: 0
                     scan:
-                      id: 2112182802
-                      time: "2019/03/08 08:30:59"
-                    state: "listening"
-                    tx_queue: 0
+                      id: 1672337392
+                      time: "2019-03-14T10:38:21Z"
+                    state: listening
+                    protocol: tcp6
                     rx_queue: 0
-                    inode: 256005
-                    protocol: "tcp"
+                    inode: 18153
+                    tx_queue: 0
 
   /syscollector/{agent_id}/processes:
     get:
@@ -8658,7 +9195,7 @@ paths:
                   items:
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59Z"
                     fgroup: "root"
                     state: "S"
                     priority: 20
@@ -8689,7 +9226,7 @@ paths:
                     tty: 0
                   - scan:
                       id: 225991434
-                      time: "2019/03/08 08:30:59"
+                      time: "2019-03-08T08:30:59Z"
                     fgroup: "root"
                     state: "I"
                     priority: 0
