@@ -62,12 +62,12 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 #endif
 
     if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
-        char c_sum[OS_SIZE_4096 + 1];
+        char c_sum[OS_MAXSTR + 1];
         size_t c_sum_size;
 
         buf = s_node->checksum;
         c_sum[0] = '\0';
-        c_sum[OS_SIZE_4096] = '\0';
+        c_sum[OS_MAXSTR] = '\0';
 
         // If it returns < 0, we've already alerted the deleted file
         if (c_read_file(path, buf, c_sum, evt) < 0) {
