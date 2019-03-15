@@ -53,6 +53,10 @@
 ### GET /lists
 * Parameter **status** renamed to **list_status**
 
+## CIS-CAT
+### GET/ciscat/{agent_id}/results
+* Changed parameter `pass` to `passed`.
+
 ## Cluster
 ### GET /cluster/{node_id}/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD

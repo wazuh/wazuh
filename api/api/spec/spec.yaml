@@ -2195,7 +2195,7 @@ components:
         format: timeframe
     pass:
       in: query
-      name: pass
+      name: passed
       description: Filters by passed checks.
       schema:
         type: integer
