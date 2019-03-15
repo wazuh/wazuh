@@ -41,7 +41,7 @@ def fill_dict(default: Dict, config: Dict) -> Dict:
     """
     # check there aren't extra configuration values in user's configuration:
     if config.keys() - default.keys() != set():
-        raise APIException(2000, ', '.join(config.keys() - default.keys()))
+        raise APIException(2000, details=', '.join(config.keys() - default.keys()))
 
     for k, val in filter(lambda x: isinstance(x[1], dict), config.items()):
         config[k] = {**default[k], **config[k]}
@@ -85,8 +85,8 @@ def read_config(config_file=common.api_config_path) -> Dict:
         try:
             with open(common.api_config_path) as f:
                 configuration = yaml.safe_load(f)
-        except IOError:
-            raise APIException(2000, "Error reading 'config.yml' file")
+        except IOError as e:
+            raise APIException(2004, details=e.strerror)
     else:
         configuration = None
 

@@ -8,5 +8,5 @@ from wazuh import common
 
 API_PATH = os.path.join(common.ossec_path, 'api')
 CONFIG_PATH = os.path.join(API_PATH, 'configuration')
-CONFIG_FILE_PATH = os.path.join(API_PATH, 'configuration', 'api.yml')
+CONFIG_FILE_PATH = os.path.join(CONFIG_PATH, 'api.yml')
 SECURITY_PATH = os.path.join(CONFIG_PATH, 'security')

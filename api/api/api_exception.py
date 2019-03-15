@@ -27,7 +27,10 @@ class APIException(Exception):
                   f'WAZUH_PATH/{to_relative_path(SECURITY_PATH)}',
             2002: 'Error migrating configuration from old API version. '
                   'Default configuration will be applied',
-            2003: 'Error loading SSL/TLS certificates'
+            2003: 'Error loading SSL/TLS certificates',
+            2004: 'API configuration file '
+                  f'(WAZUH_PATH/{to_relative_path(CONFIG_FILE_PATH)}) '
+                  'could not be loaded'
         }
 
     def __str__(self):

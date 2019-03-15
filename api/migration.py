@@ -9,6 +9,8 @@ import re
 import yaml
 
 from api.api_exception import APIException
+from api.constants import CONFIG_FILE_PATH
+from api.util import to_relative_path
 from wazuh import common
 
 from api import validator
@@ -33,8 +35,9 @@ def get_old_config() -> Dict:
                     if check_old_config({var_name: var_value}):
                         # add element to old_config only if it is right
                         old_config[var_name] = parse_to_yaml_value(var_value)
-    except IOError:
-        raise APIException(2002)
+    except IOError as e:
+        raise APIException(2002, details=f'Error loading {to_relative_path(old_config_path)} '
+                           f'file: {e.strerror}')
 
     return rename_old_fields(old_config)
 
@@ -148,13 +151,15 @@ def write_into_yaml_file(config: Dict):
     """
     json_config = json.dumps(config)
     try:
-        with open(common.api_config_path, 'w') as output_file:
+        with open(CONFIG_FILE_PATH, 'w') as output_file:
             yaml.dump(json.loads(json_config), output_file, default_flow_style=False, allow_unicode=True)
         # change group and permissions from config.yml file
-        os.chown(common.api_config_path, common.ossec_uid, common.ossec_gid)
-        os.chmod(common.api_config_path, 0o640)
-    except IOError:
-        raise APIException(2002)
+        os.chown(CONFIG_FILE_PATH, common.ossec_uid, common.ossec_gid)
+        os.chmod(CONFIG_FILE_PATH, 0o640)
+    except IOError as e:
+        raise APIException(2002, details='API configuration could not be written into '
+                           f'{to_relative_path(CONFIG_FILE_PATH)} file: '
+                           f'{e.strerror}')
 
 
 if __name__ == '__main__':
