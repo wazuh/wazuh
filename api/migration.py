@@ -8,6 +8,7 @@ import os
 import re
 import yaml
 
+from api.api_exception import APIException
 from wazuh import common
 
 from api import validator
@@ -33,7 +34,7 @@ def get_old_config() -> Dict:
                         # add element to old_config only if it is right
                         old_config[var_name] = parse_to_yaml_value(var_value)
     except IOError:
-        raise
+        raise APIException(2002)
 
     return rename_old_fields(old_config)
 
@@ -145,7 +146,7 @@ def write_into_yaml_file(config: Dict):
         os.chown(common.api_config_path, common.ossec_uid, common.ossec_gid)
         os.chmod(common.api_config_path, 0o640)
     except IOError:
-        raise
+        raise APIException(2002)
 
 
 if __name__ == '__main__':

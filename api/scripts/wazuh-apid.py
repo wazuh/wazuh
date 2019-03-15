@@ -12,6 +12,7 @@ import connexion
 from flask_cors import CORS
 
 from api import alogging, encoder, configuration, __path__ as api_path
+from api.api_exception import APIException
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
@@ -84,7 +85,7 @@ if __name__ == '__main__':
                 ssl_context.load_verify_locations(configuration['https']['ca'])
             ssl_context.load_cert_chain(certfile=configuration['https']['cert'], keyfile=configuration['https']['key'])
         except IOError:
-            raise
+            raise APIException(2003)
     else:
         ssl_context = None
 
