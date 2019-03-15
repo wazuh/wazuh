@@ -4,6 +4,7 @@
 * Changed parameter **agent_id** type *integer* to *string* with minLength=3
 * Changed all return parameters **agent_id** type *integer* to *string*
 * Deleted all return parameters **path**, new API don't show any absolute path in responses.
+* Changed search negation from `!` to `-`.
 
 ## Active Response
 ### /active-response/:agent_id
