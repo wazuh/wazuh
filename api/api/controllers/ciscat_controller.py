@@ -11,7 +11,7 @@ from wazuh.cluster.dapi.dapi import DistributedAPI
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('wazuh.ciscat_controller')
+logger = logging.getLogger('wazuh')
 
 
 def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, 
