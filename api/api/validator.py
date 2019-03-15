@@ -3,76 +3,52 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
-import json
 from xml.etree import ElementTree as ET
 import os
 import re
+from jsonschema import draft4_format_checker
+from typing import Dict, List
 
 from wazuh import common
 
 
-regex_dict = {'alphanumeric_param': r'^[\w,\-\.\+\s\:]+$',
-              'array_numbers': r'^\d+(,\d+)*$',
-              'array_names': r'^[\w\-\.]+(,[\w\-\.]+)*$',
-              'boolean': r'^true$|^false$',
-              'cdb_list': r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$',
-              'dates': r'^\d{8}$',
-              'empty_boolean': r'^$|(^true$|^false$)',
-              'hashes': r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$',
-              'ips': r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$',
-              'names': r'^[\w\-\.]+$',
-              'numbers': r'^\d+$',
-              'ossec_key': r'[a-zA-Z0-9]+$',
-              'paths': r'^[\w\-\.\\\/:]+$',
-              'query_param': r'[\w ]+$',
-              'ranges': r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$',
-              'relative_paths': r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$',
-              'search_param': r'^[^;\|&\^*>]+$',
-              'select_param': r'^[\w\,\.]+$',
-              'sort_param': r'^[\w_\-\,\s\+\.]+$',
-              'timeframe_type': r'^(\d{1,}[d|h|m|s]?){1}$',
-              'type_format': r'^xml$|^json$',
-              'yes_no_boolean': r'^yes$|^no$'
-             }
+_alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
+_array_numbers = re.compile(r'^\d+(,\d+)*$')
+_array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
+_base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
+_boolean = re.compile(r'^true$|^false$')
+_cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
+_dates = re.compile(r'^\d{8}$')
+_empty_boolean = re.compile(r'^$|(^true$|^false$)')
+_hashes = re.compile(r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$')
+_ips = re.compile(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
+_names = re.compile(r'^[\w\-\.]+$')
+_numbers = re.compile(r'^\d+$')
+_wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
+_paths = re.compile(r'^[\w\-\.\\\/:]+$')
+_query_param = re.compile(r'[\w ]+$')
+_ranges = re.compile(r'[\d]+$|^[\d]{1,2}\-[\d]{1,2}$')
+_relative_paths = re.compile(r'(^etc\/ossec.conf$)|((^etc\/rules\/|^etc\/decoders\/)[\w\-\/]+\.{1}xml$|(^etc\/lists\/)[\w\-\.\/]+)$')
+_search_param = re.compile(r'^[^;\|&\^*>]+$')
+_sort_param = re.compile(r'^[\w_\-\,\s\+\.]+$')
+_timeframe_type = re.compile(r'^(\d{1,}[d|h|m|s]?){1}$')
+_type_format = re.compile(r'^xml$|^json$')
+_yes_no_boolean = re.compile(r'^yes$|^no$')
 
 
-def check_params(parameters, filters):
-    """
-    Function to check multiple parameters
-    :param parameters: Dictionary with parameters to be checked
-    :param filters: Dictionary with filters for checking parameters
-    :return: True if parameters are OK, False otherwise
-    """
-    for key in parameters:
-        if key not in filters or not check_exp(parameters[key], filters[key]):
-            return False
-
-    return True
-
-
-def check_exp(exp, regex_name):
+def check_exp(exp: str, regex: str) -> bool:
     """
     Function to check if an expression matches a regex
     :param exp: Expression to check
-    :param regex_name: Name of regular expression to do the matching
+    :param regex: regular expression to do the matching
     :return: True if expression is matched, False otherwise
     """
-    return True if re.match(regex_dict[regex_name], exp) else False
+    if not isinstance(exp, str):
+        return True
+    return re.match(regex, exp)
 
 
-def check_path(relative_path):
-    """
-    Function to check if a relative path is allowed (for uploading files)
-    :param relative_path: XML string to check
-    :return: True if XML is OK, False otherwise
-    """
-    if not is_safe_path(relative_path):
-        return False
-
-    return check_exp(relative_path, 'relative_paths')
-
-
-def check_xml(xml_string):
+def check_xml(xml_string: str) -> bool:
     """
     Function to check if a XML string is right
     :param xml_string: XML string to check
@@ -86,25 +62,24 @@ def check_xml(xml_string):
     return True
 
 
-def check_cdb_list(cdb_list):
+def check_cdb_list(cdb_list: str) -> bool:
     """
     Function to check if a CDB list is well formed
     :param cdb_list: CDB list to check
     :return: True if CDB list is OK, False otherwise
     """
     cdb_list_splitted = cdb_list.split('\n')
-    regex = re.compile(regex_dict['cdb_list'])
     line = 1
 
     for elem in cdb_list_splitted:
-        if not regex.match(elem):
+        if not _cdb_list.match(elem):
             return False
         line += 1
     
     return True
 
 
-def allowed_fields(filters):
+def allowed_fields(filters: Dict) -> List:
     """
     Returns a list with allowed fields
     :param filters: Dictionary with valid filters
@@ -113,7 +88,7 @@ def allowed_fields(filters):
     return [field for field in filters]
 
 
-def is_safe_path(path, basedir=common.ossec_path, follow_symlinks=True):
+def is_safe_path(path: str, basedir: str = common.ossec_path, follow_symlinks: bool = True) -> bool:
     """
     Checks if a path is correct
     :param path: Path to be checked
@@ -128,3 +103,70 @@ def is_safe_path(path, basedir=common.ossec_path, follow_symlinks=True):
 
     return os.path.abspath(path).startswith(basedir)
 
+
+@draft4_format_checker.checks("alphanumeric")
+def format_alphanumeric(value):
+    return check_exp(value, _names)
+
+
+@draft4_format_checker.checks("base64")
+def format_base64(value):
+    return check_exp(value, _base64)
+
+
+@draft4_format_checker.checks("hash")
+def format_hash(value):
+    return check_exp(value, _hashes)
+
+
+@draft4_format_checker.checks("names")
+def format_names(value):
+    return check_exp(value, _names)
+
+
+@draft4_format_checker.checks("numbers")
+def format_numbers(value):
+    return check_exp(value, _numbers)
+
+
+@draft4_format_checker.checks("path")
+def format_path(relative_path):
+    """
+    Function to check if a relative path is allowed (for uploading files)
+    :param relative_path: XML string to check
+    :return: True if XML is OK, False otherwise
+    """
+    if not is_safe_path(relative_path):
+        return False
+
+    return check_exp(relative_path, _paths)
+
+
+@draft4_format_checker.checks("query")
+def format_query(value):
+    return check_exp(value, _query_param)
+
+
+@draft4_format_checker.checks("range")
+def format_range(value):
+    return check_exp(value, _ranges)
+
+
+@draft4_format_checker.checks("search")
+def format_search(value):
+    return check_exp(value, _search_param)
+
+
+@draft4_format_checker.checks("sort")
+def format_sort(value):
+    return check_exp(value, _sort_param)
+
+
+@draft4_format_checker.checks("timeframe")
+def format_timeframe(value):
+    return check_exp(value, _timeframe_type)
+
+
+@draft4_format_checker.checks("wazuh_key")
+def format_wazuh_key(value):
+    return check_exp(value, _wazuh_key)
