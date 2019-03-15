@@ -60,11 +60,13 @@ def check_old_config(config: Dict) -> bool:
     :param config: Dictionary with values of old configuration
     :return: True if old configuration is OK, False otherwise
     """
-    checks = {'host': validator._ips, 'port': validator._numbers,
+    checks = {'host': validator._ips,
+              'port': validator._numbers,
               'basic_auth': validator._yes_no_boolean,
               'BehindProxyServer': validator._yes_no_boolean,
               'https': validator._yes_no_boolean,
-              'https_key': validator._paths, 'https_cert': validator._paths,
+              'https_key': validator._paths,
+              'https_cert': validator._paths,
               'logs': validator._names,
               'cors': validator._yes_no_boolean,
               'cache_enabled': validator._yes_no_boolean,
