@@ -1680,7 +1680,7 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
-        message = f'All selected agents were removed to group {group_id}'
+        message = f'All selected agents were removed from group {group_id}'
         for agent_id in agent_id_list:
             try:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
