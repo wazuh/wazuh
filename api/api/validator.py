@@ -36,7 +36,7 @@ _type_format = re.compile(r'^xml$|^json$')
 _yes_no_boolean = re.compile(r'^yes$|^no$')
 
 
-def check_exp(exp, regex):
+def check_exp(exp: str, regex: str) -> bool:
     """
     Function to check if an expression matches a regex
     :param exp: Expression to check
