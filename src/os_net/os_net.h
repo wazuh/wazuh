@@ -66,6 +66,11 @@ int OS_SendUnix(int socket, const char *msg, int size) __attribute__((nonnull));
 
 int OS_SendUDPbySize(int socket, int size, const char *msg) __attribute__((nonnull));
 
+/* OS_CheckInternetConnection
+ * Checks for the presence of the default route 0.0.0.0 in the routing table
+ */
+int OS_CheckInternetConnection();
+
 /* OS_GetHost
  * Calls gethostbyname
  */

@@ -499,6 +499,82 @@ int OS_SendUnix(int socket, const char *msg, int size)
 }
 #endif
 
+/* Checks for the presence of the default route 0.0.0.0 in the routing table */
+int OS_CheckInternetConnection()
+{
+    int internet = 0;
+
+#ifdef WIN32
+    DWORD dwIndex = 0;
+    DWORD dwBufferSize = 0;
+    BYTE *pByte = NULL;
+    PMIB_IPFORWARDTABLE pRoutingTable = NULL;
+
+    /* Get the required buffer size */
+    if (ERROR_INSUFFICIENT_BUFFER == GetIpForwardTable(NULL, &dwBufferSize, false)) {
+        os_malloc(dwBufferSize, pByte);
+        pRoutingTable = (PMIB_IPFORWARDTABLE)pByte;
+
+        /* Attempt to fill buffer with routing table information */
+        if (NO_ERROR == GetIpForwardTable(pRoutingTable, &dwBufferSize, false)) {
+            /* Look for default route to gateway */
+            for (dwIndex = 0; dwIndex < pRoutingTable->dwNumEntries; dwIndex++)
+            {
+                /* Default route designated by 0.0.0.0 in table */
+                if (pRoutingTable->table[dwIndex].dwForwardDest == 0)
+                {
+                    internet = 1;
+                    break;
+                }
+            }
+        }
+
+        free(pByte);
+    }
+#else
+    FILE *route_fp = NULL;
+    char buf[OS_BUFFER_SIZE + 1] = {'\0'};
+    const char *routing_table_path = "/proc/net/route";
+
+    char dest_str[32] = {'\0'};
+    char flags_str[8] = {'\0'};
+
+    unsigned long line = 0;
+
+    /* Open routing table */
+    route_fp = fopen(routing_table_path, "r");
+    if (route_fp != NULL) {
+        /* Read file contents, line per line */
+        while(fgets(buf, OS_BUFFER_SIZE, route_fp) != NULL) {
+            /* Skip first line and empty lines */
+            if (line == 0 || isspace(buf[0])) {
+                line++;
+                continue;
+            }
+
+            /* Read destination and flags from the current line */
+            if (sscanf(buf, "%*s %s %*s %s", dest_str, flags_str) == 2) {
+                /* Convert strings to integers */
+                uint32_t dest = (uint32_t)strtoul(dest_str, NULL, 16);
+                uint16_t flags = (uint16_t)strtoul(flags_str, NULL, 16);
+
+                /* Check if the current destination is 0.0.0.0 and if the interface is up */
+                if (dest == 0 && (flags & 0x0001)) {
+                    internet = 1;
+                    break;
+                }
+            }
+
+            line++;
+        }
+
+        fclose(route_fp);
+    }
+#endif
+
+    return (internet);
+}
+
 /* Calls gethostbyname (tries x attempts) */
 char *OS_GetHost(const char *host, unsigned int attempts)
 {

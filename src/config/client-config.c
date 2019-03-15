@@ -77,6 +77,15 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         } else if (strcmp(node[i]->element, xml_client_hostname) == 0) {
             mwarn("The <%s> tag is deprecated, please use <server><address> instead.", xml_client_hostname);
 
+            while(1) {
+                if (!OS_CheckInternetConnection()) {
+                    mwarn("No internet connection available to resolve \"%s\". Retrying...", node[i]->content);
+                    sleep(5);
+                } else {
+                    break;
+                }
+            }
+            
             if (s_ip = OS_GetHost(node[i]->content, 5), !s_ip) {
                 merror(AG_INV_HOST, node[i]->content);
                 return (OS_INVALID);
@@ -233,13 +242,24 @@ int Read_Client_Server(XML_NODE node, agent * logr)
 
             if (OS_IsValidIP(node[j]->content, NULL) == 1) {
                 rip = node[j]->content;
-            } else if (s_ip = OS_GetHost(node[j]->content, 5), s_ip) {
-                snprintf(f_ip, sizeof(f_ip), "%s/%s", node[j]->content, s_ip);
-                rip = f_ip;
-                free(s_ip);
             } else {
-                merror(AG_INV_HOST, node[j]->content);
-                return (OS_INVALID);
+                while(1) {
+                    if (!OS_CheckInternetConnection()) {
+                        mwarn("No internet connection available to resolve \"%s\". Retrying...", node[j]->content);
+                        sleep(5);
+                    } else {
+                        break;
+                    }
+                }
+                
+                if (s_ip = OS_GetHost(node[j]->content, 5), s_ip) {
+                    snprintf(f_ip, sizeof(f_ip), "%s/%s", node[j]->content, s_ip);
+                    rip = f_ip;
+                    free(s_ip);
+                } else {
+                    merror(AG_INV_HOST, node[j]->content);
+                    return (OS_INVALID);
+                }
             }
         } else if (strcmp(node[j]->element, xml_client_port) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
