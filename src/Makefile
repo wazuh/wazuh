@@ -590,6 +590,7 @@ endif
 winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
+	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
@@ -1581,7 +1582,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc clean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
-	-cd ${EXTERNAL_LIBYAML} && ${MAKE} clean
+	-cd ${EXTERNAL_LIBYAML} && ${MAKE} distclean
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
@@ -1647,6 +1648,7 @@ clean-windows:
 	rm -f win32/internal_options.conf
 	rm -f win32/default-local_internal_options.conf
 	rm -f win32/default-ossec.conf
+	rm -f win32/default-ossec-pre6.conf
 	rm -f win32/restart-ossec.cmd
 	rm -f win32/route-null.cmd
 	rm -f win32/route-null-2012.cmd

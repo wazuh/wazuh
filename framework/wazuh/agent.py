@@ -1680,24 +1680,21 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
+        message = f'All selected agents were removed from group {group_id}'
         for agent_id in agent_id_list:
             try:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
                 affected_agents.append(agent_id)
             except Exception as e:
-                failed_ids.append(agent_id)
-
-            if not failed_ids:
-                message = 'All selected agents were removed to group ' + group_id
-            else:
-                message = 'Some agents were not removed to group ' + group_id
-
-            final_dict = {}
+                failed_ids.append(create_exception_dic(agent_id, e))
 
             if failed_ids:
-                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
-            else:
-                final_dict = {'msg': message, 'affected_agents': affected_agents}
+                message = f'Some agents were not removed from group {group_id}'
+
+        if failed_ids:
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+        else:
+            final_dict = {'msg': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1838,23 +1835,25 @@ class Agent:
 
         # get agent's group
         group_name = Agent.get_agents_group_file(agent_id)
-        if group_name:
-            group_list = group_name.split(',')
-            # check agent belongs to group group_id
-            if group_id not in group_list:
-                raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
-            # remove group from group_list
-            group_list.remove(group_id)
-            if len(group_list) > 1:
-                multigroup_name = ','.join(group_list)
-                if not Agent.multi_group_exists(multigroup_name):
-                    Agent.create_multi_group(multigroup_name)
-            else:
-                multigroup_name = 'default' if not group_list else group_list[0]
-            Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
-            return "Group '{}' unset for agent '{}'.".format(group_id, agent_id)
+        group_list = group_name.split(',')
+        # check agent belongs to group group_id
+        if group_id not in group_list:
+            raise WazuhException(1734)
+        elif group_id == 'default' and len(group_list) == 1:
+            raise WazuhException(1745)
+        # remove group from group_list
+        group_list.remove(group_id)
+        if len(group_list) > 1:
+            multigroup_name = ','.join(group_list)
+            if not Agent.multi_group_exists(multigroup_name):
+                Agent.create_multi_group(multigroup_name)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            multigroup_name = 'default' if not group_list else group_list[0]
+
+        Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+
+        return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
+               f"Agent {agent_id} set to group default."
 
 
     @staticmethod
@@ -1895,7 +1894,7 @@ class Agent:
 
             return "Group unset for agent '{0}'.".format(agent_id)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            raise WazuhException(1746)
 
 
     @staticmethod
