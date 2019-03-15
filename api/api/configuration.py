@@ -86,7 +86,7 @@ def read_config(config_file=common.api_config_path) -> Dict:
             with open(common.api_config_path) as f:
                 configuration = yaml.safe_load(f)
         except IOError:
-            raise APIException(2000, "Error reading 'config.yml' file")
+            raise APIException(2004)
     else:
         configuration = None
 
