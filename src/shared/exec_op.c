@@ -84,6 +84,10 @@ wfd_t * wpopenv(const char * path, char * const * argv, int flags) {
             CloseHandle(hPipe[1]);
         }
 
+        if(lpCommandLine) {
+            free(lpCommandLine);
+        }
+
         return NULL;
     }
 

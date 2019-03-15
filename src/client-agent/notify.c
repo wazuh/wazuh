@@ -73,9 +73,6 @@ void run_notify()
     char *shared_files;
     os_md5 md5sum;
     time_t curr_time;
-    int sock;
-    char label_ip[50];
-    int i;
 
     keep_alive_random[0] = '\0';
     curr_time = time(0);
@@ -135,21 +132,26 @@ void run_notify()
 
 #ifdef __linux__
     char *agent_ip;
+    int sock;
+    char label_ip[50];
+    int i;
     os_calloc(16,sizeof(char),agent_ip);
 
     for (i = SOCK_ATTEMPTS; i > 0; --i) {
         if (sock = control_check_connection(), sock >= 0) {
-            if (OS_SendUnix(sock, agent_ip, 16) < 0) {
+            if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
                 merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
             }
             else{
-                if(OS_RecvUnix(sock, 16, agent_ip) == 0){
+                if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
                     merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
                 }
                 else{
                     snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
                 }
             }
+
+            close(sock);
             break;
         } else {
             mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
@@ -162,7 +164,7 @@ void run_notify()
     }
 
     /* Create message */
-    if(agent_ip){
+    if(strcmp(agent_ip,"Err")){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",

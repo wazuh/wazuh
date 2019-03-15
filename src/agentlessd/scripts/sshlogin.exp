@@ -30,4 +30,7 @@ expect {
     "*#" {
         send_user "\nINFO: Started.\n"
     }
+    "*>" {
+        send_user "\nINFO: Started.\n"
+    }
 }

@@ -50,6 +50,7 @@ USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
 USE_FRAMEWORK_LIB=no
+MINGW_HOST=unknown
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -247,6 +248,7 @@ ifneq (,$(filter ${TARGET},winagent winagent-x64))
         # Check for 32-bit cross-compilers
         ifneq (,$(shell which i586-mingw32msvc-gcc))
             MING_BASE:=i586-mingw32msvc-
+            MINGW_HOST="i586-mingw32msvc"
             ifneq (,$(wildcard /usr/i586-mingw32msvc/lib/libwinpthread-1.dll))
                 WIN_PTHREAD_LIB:=/usr/i586-mingw32msvc/lib/libwinpthread-1.dll
             else
@@ -257,6 +259,7 @@ ifneq (,$(filter ${TARGET},winagent winagent-x64))
         else
             ifneq (,$(shell which i686-pc-mingw32-gcc))
                 MING_BASE:=i686-pc-mingw32-
+                MINGW_HOST="i686-pc-mingw32"
                 ifneq (,$(wildcard /usr/i686-pc-mingw32/lib/libwinpthread-1.dll))
                     WIN_PTHREAD_LIB:=/usr/i686-pc-mingw32/lib/libwinpthread-1.dll
                 else
@@ -267,6 +270,7 @@ ifneq (,$(filter ${TARGET},winagent winagent-x64))
             else
                 ifneq (,$(shell which i686-w64-mingw32-gcc))
                     MING_BASE:=i686-w64-mingw32-
+                    MINGW_HOST="i686-w64-mingw32"
                     ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
                         WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
                     else
@@ -283,6 +287,7 @@ ifneq (,$(filter ${TARGET},winagent winagent-x64))
         # Check for 64-bit cross-compilers
         ifneq (,$(shell which amd64-mingw32msvc-gcc))
             MING_BASE:=amd64-mingw32msvc-
+            MINGW_HOST="amd64-mingw32msvc"
             ifneq (,$(wildcard /usr/amd64-mingw32msvc/lib/libwinpthread-1.dll))
                 WIN_PTHREAD_LIB:=/usr/amd64-mingw32msvc/lib/libwinpthread-1.dll
             else
@@ -293,6 +298,7 @@ ifneq (,$(filter ${TARGET},winagent winagent-x64))
         else
             ifneq (,$(shell which x86_64-pc-mingw32-gcc))
                 MING_BASE:=x86_64-pc-mingw32-
+                MINGW_HOST="x86_64-pc-mingw32"
                 ifneq (,$(wildcard /usr/x86_64-pc-mingw32/lib/libwinpthread-1.dll))
                     WIN_PTHREAD_LIB:=/usr/x86_64-pc-mingw32/lib/libwinpthread-1.dll
                 else
@@ -303,6 +309,7 @@ ifneq (,$(filter ${TARGET},winagent winagent-x64))
             else
                 ifneq (,$(shell which x86_64-w64-mingw32-gcc))
                     MING_BASE:=x86_64-w64-mingw32-
+                    MINGW_HOST="x86_64-w64-mingw32"
                     ifneq (,$(wildcard /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll))
                         WIN_PTHREAD_LIB:=/usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll
                     else
@@ -627,7 +634,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -655,6 +662,7 @@ winagent-x64: winagent
 winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
+	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
@@ -688,11 +696,11 @@ LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifeq (,$(filter ${TARGET},winagent winagent-x64))
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB) $(LIBFFI_LIB)
+EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
@@ -804,7 +812,11 @@ ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
 
 $(EXTERNAL_LIBYAML)Makefile:
-	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
+ifneq (,$(filter ${TARGET},winagent winagent-x64))
+	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
+else
+	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
+endif
 
 #### curl ##########
 
@@ -1502,10 +1514,11 @@ install_framework:
 
 CFLAGS_TEST = -g -O0 --coverage
 
-LIBS_TEST = -lcheck -lm -lrt -lsubunit
+# LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 ifdef TEST
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
+	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 endif #TEST
@@ -1516,7 +1529,7 @@ test: build_tests
 	${MAKE} run_tests
 
 run_tests:
-	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=yes --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
+	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
 
 build_tests: external
 	${MAKE} DEBUG=1 TEST=1 ${test_programs}
@@ -1527,22 +1540,22 @@ test_o := $(test_c:.c=.o)
 tests/%.o: tests/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-test_os_zlib: tests/test_os_zlib.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_xml: tests/test_os_xml.o ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_regex: tests/test_os_regex.c ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+tap_os_crypto: tests/tap_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
+tap_os_net: tests/tap_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_os_zlib: tests/tap_os_zlib.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests
@@ -1647,7 +1660,7 @@ ifneq ($(wildcard external/*/*),)
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc clean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
-	-cd ${EXTERNAL_LIBYAML} && ${MAKE} clean
+	-cd ${EXTERNAL_LIBYAML} && ${MAKE} distclean
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
@@ -1713,6 +1726,7 @@ clean-windows:
 	rm -f win32/internal_options.conf
 	rm -f win32/default-local_internal_options.conf
 	rm -f win32/default-ossec.conf
+	rm -f win32/default-ossec-pre6.conf
 	rm -f win32/restart-ossec.cmd
 	rm -f win32/route-null.cmd
 	rm -f win32/route-null-2012.cmd

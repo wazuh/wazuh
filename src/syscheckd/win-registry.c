@@ -338,7 +338,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
     } else if (fullkey_name && syscheck.registry_ignore_regex) {
         i = 0;
         while (syscheck.registry_ignore_regex[i].regex != NULL) {
-            if (syscheck.registry_ignore[i].arch == arch &&
+            if (syscheck.registry_ignore_regex[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
                 mdebug1("Ignoring registry '%s' ignore '%s', continuing...", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);

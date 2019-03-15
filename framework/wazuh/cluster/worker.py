@@ -405,3 +405,7 @@ class Worker(client.AbstractClientManager):
     def add_tasks(self):
         return super().add_tasks() + [(self.client.sync_integrity, tuple()), (self.client.sync_agent_info, tuple()),
                                       (self.dapi.run, tuple())]
+
+    def get_node(self) -> Dict:
+        return {'type': self.configuration['node_type'], 'cluster': self.configuration['name'],
+                'node': self.configuration['node_name']}

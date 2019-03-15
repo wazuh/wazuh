@@ -16,7 +16,7 @@
 #define WM_DOCKER_LOGTAG ARGV0 ":docker-listener"
 #define WM_DOCKER_SCRIPT_PATH WM_DEFAULT_DIR "/docker/DockerListener"
 
-#define WM_DOCKER_DEF_INTERVAL 600
+#define WM_DOCKER_DEF_INTERVAL 60
 
 typedef struct wm_docker_flags_t {
     unsigned int enabled:1;

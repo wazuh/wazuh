@@ -85,7 +85,6 @@ int main(int argc, char **argv)
             printf("+OS_Match2      : %s\n", string);
         }
 
-        w_FreeArray(regex.d_sub_strings);
         free(string);
     }
 

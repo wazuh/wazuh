@@ -52,6 +52,7 @@ void SyscollectorInit(){
 int DecodeSyscollector(Eventinfo *lf,int *socket)
 {
     cJSON *logJSON;
+    cJSON *json_type;
     char *msg_type = NULL;
 
     lf->decoder_info = sysc_decoder;
@@ -81,8 +82,8 @@ int DecodeSyscollector(Eventinfo *lf,int *socket)
     }
 
     // Detect message type
-    msg_type = cJSON_GetObjectItem(logJSON, "type")->valuestring;
-    if (!msg_type) {
+    json_type = cJSON_GetObjectItem(logJSON, "type");
+    if (!(json_type && (msg_type = json_type->valuestring))) {
         mdebug1("Invalid message. Type not found.");
         cJSON_Delete (logJSON);
         return (0);

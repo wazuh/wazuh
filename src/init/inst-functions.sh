@@ -34,6 +34,8 @@ CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detector.manager.template"
 
+SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE="./etc/templates/config/generic/sca_generic.template"
+
 ##########
 # WriteSyscheck()
 ##########
@@ -175,6 +177,22 @@ WriteCISCAT()
 }
 
 ##########
+# WriteConfigurationAssessment()
+##########
+WriteConfigurationAssessment()
+{
+    # Adding to the config file
+    if [ "X$SECURITY_CONFIGURATION_ASSESSMENT" = "Xyes" ]; then
+      SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      if [ "$SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+        SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE=$(GetTemplate "sca_generic.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+      fi
+      cat ${SECURITY_CONFIGURATION_ASSESSMENT_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+}
+
+##########
 # InstallOpenSCAPFiles()
 ##########
 InstallOpenSCAPFiles()
@@ -192,6 +210,34 @@ InstallOpenSCAPFiles()
                 ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../wodles/oscap/content/$file ${PREFIX}/wodles/oscap/content
             else
                 echo "ERROR: SCAP security policy not found: ./wodles/oscap/content/$file"
+            fi
+        done
+    fi
+}
+
+##########
+# InstallSecurityConfigurationAssessmentFiles()
+##########
+InstallSecurityConfigurationAssessmentFiles()
+{
+
+    cd ..
+    if [ "X$1" = "Xmanager" ]; then
+        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    else
+        CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    fi
+    cd ./src
+    if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
+        echo "SCA policies not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
+    else
+        echo "Installing SCA policies..."
+        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_FILES_PATH)
+        for file in $CONFIGURATION_ASSESSMENT_FILES; do
+            if [ -f "../etc/sca/$file" ]; then
+                ${INSTALL} -v -m 0640 -o root -g ${OSSEC_GROUP} ../etc/sca/$file ${PREFIX}/ruleset/sca
+            else
+                echo "ERROR: SCA policy not found: ./etc/sca/$file"
             fi
         done
     fi
@@ -371,6 +417,9 @@ WriteAgent()
     # Syscollector configuration
     WriteSyscollector "agent"
 
+    # Configuration assessment configuration
+    WriteConfigurationAssessment
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -470,6 +519,9 @@ WriteManager()
 
     # Syscollector configuration
     WriteSyscollector "manager"
+
+    # Configuration assessment
+    WriteConfigurationAssessment
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -732,6 +784,9 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/diff
   ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/queue/agents
 
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
+  ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/sca
+
   ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/wodles
   ${INSTALL} -d -m 0770 -o root -g ${OSSEC_GROUP} ${PREFIX}/var/wodles
 
@@ -842,7 +897,6 @@ InstallLocal()
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${PREFIX}/bin/
 
     ${INSTALL} -d -m 0750 -o ${OSSEC_USER} -g ${OSSEC_GROUP} ${PREFIX}/stats
-    ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/decoders
     ${INSTALL} -d -m 0750 -o root -g ${OSSEC_GROUP} ${PREFIX}/ruleset/rules
 
@@ -850,6 +904,8 @@ InstallLocal()
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/rules/*.xml ${PREFIX}/ruleset/rules
     ${INSTALL} -m 0640 -o root -g ${OSSEC_GROUP} -b ../etc/decoders/*.xml ${PREFIX}/ruleset/decoders
     ${INSTALL} -m 0660 -o root -g ${OSSEC_GROUP} rootcheck/db/*.txt ${PREFIX}/etc/rootcheck
+
+    InstallSecurityConfigurationAssessmentFiles "manager"
 
     # Build SQLite library for CentOS 6
     if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ]) && [ ${DIST_VER} -le 6 ]; then
@@ -981,6 +1037,8 @@ InstallAgent()
 {
 
     InstallCommon
+
+    InstallSecurityConfigurationAssessmentFiles "agent"
 
     ${INSTALL} -m 0750 -o root -g 0 ossec-agentd ${PREFIX}/bin
     ${INSTALL} -m 0750 -o root -g 0 agent-auth ${PREFIX}/bin

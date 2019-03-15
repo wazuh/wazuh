@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/var/ossec/python/bin/python3
 
  ###
  # Integration of Wazuh agent with Microsoft Azure

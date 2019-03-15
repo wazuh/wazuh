@@ -1,24 +1,12 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
- * Copyright (C) 2014 Trend Micro Inc.
- * All rights reserved.
- *
- * This program is a free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
- */
-
-#include <check.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "../os_regex/os_regex.h"
 #include "../os_regex/os_regex_internal.h"
+#include "tap.h"
 
-Suite *test_suite(void);
-
-
-START_TEST(test_success_match1)
-{
+int test_success_match() {
 
     int i;
     const char *tests[][3] = {
@@ -54,15 +42,12 @@ START_TEST(test_success_match1)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_Match2(tests[i][0], tests[i][1]),
-                      "%s should have OS_Match2 true with %s: Ref: %s",
-                      tests[i][0], tests[i][1], tests[i][1]);
+        w_assert_int_eq(OS_Match2(tests[i][0], tests[i][1]), 1);
     }
+    return 1;
 }
-END_TEST
 
-START_TEST(test_fail_match1)
-{
+int test_fail_match() {
 
     int i;
     const char *tests[][3] = {
@@ -83,15 +68,12 @@ START_TEST(test_fail_match1)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_Match2(tests[i][0], tests[i][1]),
-                      "%s should have OS_Match2 false with %s: Ref: %s",
-                      tests[i][0], tests[i][1], tests[i][2]);
+        w_assert_int_ne(OS_Match2(tests[i][0], tests[i][1]), 1);
     }
+    return 1;
 }
-END_TEST
 
-START_TEST(test_success_regex1)
-{
+int test_success_regex() {
 
     int i;
     /*
@@ -157,15 +139,12 @@ START_TEST(test_success_regex1)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_Regex(tests[i][0], tests[i][1]),
-                      "%s should have OS_Regex true with %s: Ref: %s",
-                      tests[i][0], tests[i][1], tests[i][2]);
+        w_assert_int_eq(OS_Regex(tests[i][0], tests[i][1]), 1);
     }
+    return 1;
 }
-END_TEST
 
-START_TEST(test_fail_regex1)
-{
+int test_fail_regex() {
 
     int i;
     /*
@@ -197,17 +176,14 @@ START_TEST(test_fail_regex1)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_Regex(tests[i][0], tests[i][1]),
-                      "%s should have OS_Regex false with %s: Ref: %s",
-                      tests[i][0], tests[i][1], tests[i][2]);
+        w_assert_int_ne(OS_Regex(tests[i][0], tests[i][1]), 1);
     }
+    return 1;
 }
-END_TEST
 
-START_TEST(test_success_wordmatch)
-{
+int test_success_wordmatch() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -221,18 +197,14 @@ START_TEST(test_success_wordmatch)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_WordMatch(tests[i][0], tests[i][1]),
-                      "%s should match positive with %s by OS_WordMatch",
-                      tests[i][0], tests[i][1]);
+        w_assert_int_eq(OS_WordMatch(tests[i][0], tests[i][1]), 1);
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_fail_wordmatch)
-{
+int test_fail_wordmatch() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -246,18 +218,14 @@ START_TEST(test_fail_wordmatch)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_WordMatch(tests[i][0], tests[i][1]),
-                      "%s should not match positive with %s by OS_WordMatch",
-                      tests[i][0], tests[i][1]);
+        w_assert_int_ne(OS_WordMatch(tests[i][0], tests[i][1]), 1);
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_success_strisnum)
-{
+int test_success_strisnum() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -268,18 +236,14 @@ START_TEST(test_success_strisnum)
     };
 
     for (i = 0; tests[i] != NULL ; i++) {
-        ck_assert_msg(OS_StrIsNum(tests[i]),
-                      "%s should match positive by OS_StrIsNum",
-                      tests[i]);
+        w_assert_int_eq(OS_StrIsNum(tests[i]), 1);
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_fail_strisnum)
-{
+int test_fail_strisnum() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -292,18 +256,14 @@ START_TEST(test_fail_strisnum)
     };
 
     for (i = 0; tests[i] != NULL ; i++) {
-        ck_assert_msg(!OS_StrIsNum(tests[i]),
-                      "%s should not match positive by OS_StrIsNum",
-                      tests[i]);
+        w_assert_int_ne(OS_StrIsNum(tests[i]), 1);
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_strhowclosedmatch)
-{
+int test_success_strhowclosedmatch() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -317,15 +277,14 @@ START_TEST(test_strhowclosedmatch)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_uint_eq(OS_StrHowClosedMatch(tests[i][0], tests[i][1])
+        w_assert_uint_eq(OS_StrHowClosedMatch(tests[i][0], tests[i][1])
                           , (unsigned) atoi(tests[i][2]));
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_strbreak)
-{
+int test_strbreak() {
+
     int i;
 
     /*
@@ -347,16 +306,16 @@ START_TEST(test_strbreak)
 
         int j = 3;
         if (tests[i][j] == NULL) {
-            ck_assert_ptr_eq(result, NULL);
+            w_assert_ptr_eq(result, NULL);
             continue;
         }
 
         int k;
         for (k = 0; tests[i][j] != NULL; j++, k++) {
-            ck_assert_ptr_ne(result[k], NULL);
-            ck_assert_str_eq(result[k], tests[i][j]);
+            w_assert_ptr_ne(result[k], NULL);
+            w_assert_str_eq(result[k], tests[i][j]);
         }
-        ck_assert_ptr_eq(result[k], NULL);
+        w_assert_ptr_eq(result[k], NULL);
 
         k = 0;
         while (result[k]) {
@@ -364,12 +323,10 @@ START_TEST(test_strbreak)
         }
         free(result);
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexextraction)
-{
+int test_regex_extraction() {
 
     int i;
     /*
@@ -387,8 +344,8 @@ START_TEST(test_regexextraction)
 
     for (i = 0; tests[i][0] != NULL; i++) {
         OSRegex reg;
-        ck_assert_int_eq(OSRegex_Compile(tests[i][0], &reg, OS_RETURN_SUBSTRING), 1);
-        ck_assert_ptr_ne((void *)OSRegex_Execute(tests[i][1], &reg), NULL);
+        w_assert_int_eq(OSRegex_Compile(tests[i][0], &reg, OS_RETURN_SUBSTRING), 1);
+        w_assert_ptr_ne((void *)OSRegex_Execute(tests[i][1], &reg), NULL);
 
 
 
@@ -397,18 +354,18 @@ START_TEST(test_regexextraction)
         int j;
         int k;
         for (j = 2, k = 0; tests[i][j] != NULL; j++, k++) {
-            ck_assert_ptr_ne(result[k], NULL);
-            ck_assert_str_eq(result[k], tests[i][j]);
+            w_assert_ptr_ne(result[k], NULL);
+            w_assert_str_eq(result[k], tests[i][j]);
         }
-        ck_assert_ptr_eq(result[k], NULL);
+        w_assert_ptr_eq(result[k], NULL);
 
         OSRegex_FreePattern(&reg);
     }
+    return 1;
 }
-END_TEST
 
-START_TEST(test_hostnamemap)
-{
+int test_hostname_map() {
+
     unsigned char test = 0;
 
     while (1) {
@@ -418,67 +375,59 @@ START_TEST(test_hostnamemap)
                 || test == '(' || test == ')' || test == '-'
                 || test == '.' || test == '@' || test == '/'
                 || test == '_') {
-            ck_assert_msg(isValidChar(test) == 1, "char %d should be a valid hostname char", test);
+            w_assert_int_eq(isValidChar(test), 1);
         } else {
-            ck_assert_msg(isValidChar(test) != 1, "char %d should not be a valid hostname char", test);
+            w_assert_int_ne(isValidChar(test), 1);
         }
-
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_caseinsensitivecharmap)
-{
+int test_case_insensitive_char_map() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test >= 65 && test <= 90) { // A-Z
-            ck_assert_msg(charmap[test] == test + 32, "char %d should resolve to lowercase version %d and not to %d", test, test + 32, charmap[test]);
+            w_assert_int_eq(charmap[test], test+32);
         } else {
-            ck_assert_msg(charmap[test] == test, "char %d should resolve to itself and not to %d", test, charmap[test]);
+            w_assert_int_eq(charmap[test], test);
         }
-
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_digit)
-{
+int test_regexmap_digit() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test >= '0' && test <= '9') {
-            ck_assert_msg(regexmap[1][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[1][test], 1);
         } else {
-            ck_assert_msg(regexmap[1][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[1][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_word)
-{
+int test_regexmap_word() {
+
     unsigned char test = 0;
 
     while (1) {
@@ -487,44 +436,40 @@ START_TEST(test_regexmap_word)
                 || (test >= '0' && test <= '9')
                 || test == '-' || test == '@'
                 || test == '_') {
-            ck_assert_msg(regexmap[2][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[2][test], 1);
         } else {
-            ck_assert_msg(regexmap[2][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[2][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_space)
-{
+int test_regexmap_space() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == ' ') {
-            ck_assert_msg(regexmap[3][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[3][test], 1);
         } else {
-            ck_assert_msg(regexmap[3][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[3][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_punctuation)
-{
+int test_regexmap_punctuation() {
+
     unsigned char test = 0;
 
     while (1) {
@@ -537,108 +482,97 @@ START_TEST(test_regexmap_punctuation)
                 || test == '.' || test == ';' || test == '='
                 || test == '[' || test == ']' || test == '{'
                 || test == '}') {
-            ck_assert_msg(regexmap[4][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[4][test], 1);
         } else {
-            ck_assert_msg(regexmap[4][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[4][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_lparenthesis)
-{
+int test_regexmap_lparenthesis() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == '(') {
-            ck_assert_msg(regexmap[5][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[5][test], 1);
         } else {
-            ck_assert_msg(regexmap[5][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[5][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_rparenthesis)
-{
+int test_regexmap_rparenthesis() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == ')') {
-            ck_assert_msg(regexmap[6][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[6][test], 1);
         } else {
-            ck_assert_msg(regexmap[6][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[6][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_backslash)
-{
+int test_regexmap_backslash() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == '\\') {
-            ck_assert_msg(regexmap[7][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[7][test], 1);
         } else {
-            ck_assert_msg(regexmap[7][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[7][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
+int test_regexmap_nondigit() {
 
-START_TEST(test_regexmap_nondigit)
-{
     unsigned char test = 0;
 
     while (1) {
         if (!(test >= '0' && test <= '9')) {
-            ck_assert_msg(regexmap[8][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[8][test], 1);
         } else {
-            ck_assert_msg(regexmap[8][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[8][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_nonword)
-{
+int test_regexmap_nonword() {
+
     unsigned char test = 0;
 
     while (1) {
@@ -647,147 +581,133 @@ START_TEST(test_regexmap_nonword)
                 || (test >= '0' && test <= '9')
                 || test == '-' || test == '@'
                 || test == '_')) {
-            ck_assert_msg(regexmap[9][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[9][test], 1);
         } else {
-            ck_assert_msg(regexmap[9][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[9][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_nonspace)
-{
+
+int test_regexmap_nonspace() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test != ' ') {
-            ck_assert_msg(regexmap[10][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[10][test], 1);
         } else {
-            ck_assert_msg(regexmap[10][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[10][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_all)
-{
+int test_regexmap_all() {
+
     unsigned char test = 0;
 
     while (1) {
-        ck_assert_msg(regexmap[11][test] == 1, "char %d should match", test);
-
+        w_assert_int_eq(regexmap[11][test], 1);
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_tab)
-{
+int test_regexmap_tab() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == '\t') {
-            ck_assert_msg(regexmap[12][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[12][test], 1);
         } else {
-            ck_assert_msg(regexmap[12][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[12][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_dollar)
-{
+int test_regexmap_dollar() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == '$') {
-            ck_assert_msg(regexmap[13][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[13][test], 1);
         } else {
-            ck_assert_msg(regexmap[13][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[13][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_or)
-{
+int test_regexmap_or() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == '|') {
-            ck_assert_msg(regexmap[14][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[14][test], 1);
         } else {
-            ck_assert_msg(regexmap[14][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[14][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_regexmap_lt)
-{
+int test_regexmap_lt() {
+
     unsigned char test = 0;
 
     while (1) {
         if (test == '<') {
-            ck_assert_msg(regexmap[15][test] == 1, "char %d should match", test);
+            w_assert_int_eq(regexmap[15][test], 1);
         } else {
-            ck_assert_msg(regexmap[15][test] != 1, "char %d should not match", test);
+            w_assert_int_ne(regexmap[15][test], 1);
         }
-
 
         if (test == 255) {
             break;
         }
         test++;
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_success_strstartswith)
-{
+int test_success_str_starts_with() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -800,18 +720,14 @@ START_TEST(test_success_strstartswith)
     };
 
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(OS_StrStartsWith(tests[i][0], tests[i][1]),
-                      "%s should match positive with %s by OS_StrStartsWith",
-                      tests[i][0], tests[i][1]);
+        w_assert_int_eq(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
     }
-
+    return 1;
 }
-END_TEST
 
-START_TEST(test_fail_strstartswith)
-{
+int test_fail_str_starts_with() {
+
     int i;
-
     /*
      * Please note that all strings are \ escaped
      */
@@ -821,95 +737,109 @@ START_TEST(test_fail_strstartswith)
         {NULL, NULL},
     };
 
+
     for (i = 0; tests[i][0] != NULL ; i++) {
-        ck_assert_msg(!OS_StrStartsWith(tests[i][0], tests[i][1]),
-                      "%s should not match positive with %s by OS_StrStartsWith",
-                      tests[i][0], tests[i][1]);
+        w_assert_int_ne(OS_StrStartsWith(tests[i][0], tests[i][1]), 1);
     }
-
-}
-END_TEST
-
-Suite *test_suite(void)
-{
-    Suite *s = suite_create("os_regex");
-
-    /* Core test case */
-    TCase *tc_match = tcase_create("Match");
-    TCase *tc_regex = tcase_create("Regex");
-    TCase *tc_wordmatch = tcase_create("WordMatch");
-    TCase *tc_strisnum = tcase_create("StrIsNum");
-    TCase *tc_strhowclosedmatch = tcase_create("StrHowClosedMatch");
-    TCase *tc_strbreak = tcase_create("StrBreak");
-    TCase *tc_regexextraction = tcase_create("RegexExtraction");
-    TCase *tc_hostnamemap = tcase_create("HostnameMap");
-    TCase *tc_caseinsensitivecharmap = tcase_create("CaseInsensitiveCharmap");
-    TCase *tc_regexmap = tcase_create("RegexMap");
-    TCase *tc_strstartswith = tcase_create("StrStartsWith");
-
-    tcase_add_test(tc_match, test_success_match1);
-    tcase_add_test(tc_match, test_fail_match1);
-
-    tcase_add_test(tc_regex, test_success_regex1);
-    tcase_add_test(tc_regex, test_fail_regex1);
-
-    tcase_add_test(tc_wordmatch, test_success_wordmatch);
-    tcase_add_test(tc_wordmatch, test_fail_wordmatch);
-
-    tcase_add_test(tc_strisnum, test_success_strisnum);
-    tcase_add_test(tc_strisnum, test_fail_strisnum);
-
-    tcase_add_test(tc_strhowclosedmatch, test_strhowclosedmatch);
-
-    tcase_add_test(tc_strbreak, test_strbreak);
-
-    tcase_add_test(tc_regexextraction, test_regexextraction);
-
-    tcase_add_test(tc_hostnamemap, test_hostnamemap);
-
-    tcase_add_test(tc_caseinsensitivecharmap, test_caseinsensitivecharmap);
-
-    tcase_add_test(tc_regexmap, test_regexmap_digit);
-    tcase_add_test(tc_regexmap, test_regexmap_word);
-    tcase_add_test(tc_regexmap, test_regexmap_space);
-    tcase_add_test(tc_regexmap, test_regexmap_punctuation);
-    tcase_add_test(tc_regexmap, test_regexmap_lparenthesis);
-    tcase_add_test(tc_regexmap, test_regexmap_rparenthesis);
-    tcase_add_test(tc_regexmap, test_regexmap_backslash);
-    tcase_add_test(tc_regexmap, test_regexmap_nondigit);
-    tcase_add_test(tc_regexmap, test_regexmap_nonword);
-    tcase_add_test(tc_regexmap, test_regexmap_nonspace);
-    tcase_add_test(tc_regexmap, test_regexmap_all);
-    tcase_add_test(tc_regexmap, test_regexmap_tab);
-    tcase_add_test(tc_regexmap, test_regexmap_dollar);
-    tcase_add_test(tc_regexmap, test_regexmap_or);
-    tcase_add_test(tc_regexmap, test_regexmap_lt);
-
-    tcase_add_test(tc_strstartswith, test_success_strstartswith);
-    tcase_add_test(tc_strstartswith, test_fail_strstartswith);
-
-    suite_add_tcase(s, tc_match);
-    suite_add_tcase(s, tc_regex);
-    suite_add_tcase(s, tc_wordmatch);
-    suite_add_tcase(s, tc_strisnum);
-    suite_add_tcase(s, tc_strhowclosedmatch);
-    suite_add_tcase(s, tc_strbreak);
-    suite_add_tcase(s, tc_regexextraction);
-    suite_add_tcase(s, tc_hostnamemap);
-    suite_add_tcase(s, tc_caseinsensitivecharmap);
-    suite_add_tcase(s, tc_regexmap);
-    suite_add_tcase(s, tc_strstartswith);
-
-    return (s);
+    return 1;
 }
 
-int main(void)
-{
-    Suite *s = test_suite();
-    SRunner *sr = srunner_create(s);
-    srunner_run_all(sr, CK_NORMAL);
-    int number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
+int main(void) {
+    printf("\n\n    STARTING TEST - OS_REGEX   \n\n");
 
-    return ((number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE);
+    // Match strings with patterns using OS_Match
+    TAP_TEST_MSG(test_success_match(), "Matching strings with patterns using OS_Match2 test.");
+
+    // Don't match strings with patterns using OS_Match
+    TAP_TEST_MSG(test_fail_match(), "Not matching strings with patterns using OS_Regex test.");
+
+    // Match strings with patterns using OS_Regex
+    TAP_TEST_MSG(test_success_regex(), "Matching strings with patterns using OS_Regex test.");
+
+    // Don't match strings with patterns using OS_Regex
+    TAP_TEST_MSG(test_fail_regex(), "Not matching strings with patterns using OS_Regex test.");
+
+    // Match strings with patterns using OS_WordMatch
+    TAP_TEST_MSG(test_success_wordmatch(), "Matching strings with patterns using OS_WordMatch test.");
+
+    // Don't match strings with patterns using OS_WordMatch
+    TAP_TEST_MSG(test_fail_wordmatch(), "Not matching strings with patterns using OS_WordMatch test.");
+
+    // Match strings with patterns using OS_StrIsNum
+    TAP_TEST_MSG(test_success_strisnum(), "Matching strings with patterns using OS_StrIsNum test.");
+
+    // Don't match strings with patterns using OS_StrIsNum
+    TAP_TEST_MSG(test_fail_strisnum(), "Not matching strings with patterns using OS_StrIsNum test.");
+
+    // Match strings with patterns using OS_StrHowClosedMatch
+    TAP_TEST_MSG(test_success_strhowclosedmatch(), "Matching strings with patterns using OS_StrHowClosedMatch test.");
+
+    // Match strings with patterns using OS_StrBreak
+    TAP_TEST_MSG(test_strbreak(), "OS_StrBreak test.");
+
+    // Match strings with patterns using OSRegex_Execute
+    TAP_TEST_MSG(test_regex_extraction(), "OSRegex_Execute test.");
+
+    // Validate the characters of a hostname
+    TAP_TEST_MSG(test_hostname_map(), "Validate the characters of a hostname.");
+
+    // Validate case insensitive char map test
+    TAP_TEST_MSG(test_case_insensitive_char_map(), "Validate case insensitive char map test.");
+
+    // Validate back slash char test
+    TAP_TEST_MSG(test_regexmap_backslash(), "Validate back slash char test.");
+
+    // Validate \d charset
+    TAP_TEST_MSG(test_regexmap_digit(), "Validate charset from '\\d'.");
+
+    // Validate \w charset
+    TAP_TEST_MSG(test_regexmap_word(), "Validate charset from '\\w' test.");
+
+    // Using spaces inside regex test
+    TAP_TEST_MSG(test_regexmap_space(), "Validate charset from '\\s' test.");
+
+    // Validate puncuation characters test
+    TAP_TEST_MSG(test_regexmap_punctuation(), "Validate charset from '\\p' test.");
+
+    // Validate non-digit charmap test
+    TAP_TEST_MSG(test_regexmap_nondigit(), "Validate charset from '\\D' test.");
+
+    // Validate non-word charmap test
+    TAP_TEST_MSG(test_regexmap_nonword(), "Validate charset from '\\W' test.");
+
+    // Validate non-space charmap test
+    TAP_TEST_MSG(test_regexmap_nonspace(), "Validate charset from '\\S' test.");
+
+    // Validate anything charmap test
+    TAP_TEST_MSG(test_regexmap_all(), "Validate charset from '\\.' test.");
+
+    // Validate tab charmap test
+    TAP_TEST_MSG(test_regexmap_tab(), "Validate charset from '\\t' test.");
+
+    // Validate left parenthesis char test
+    TAP_TEST_MSG(test_regexmap_lparenthesis(), "Validate left parenthesis '(' char test.");
+
+    // Validate right parenthesis char test
+    TAP_TEST_MSG(test_regexmap_rparenthesis(), "Validate right parenthesis ')' char test.");
+
+    // Validate dollar char test
+    TAP_TEST_MSG(test_regexmap_dollar(), "Validate dollar '$' char test.");
+
+    // Validate OR char test
+    TAP_TEST_MSG(test_regexmap_or(), "Validate OR '|' char test.");
+
+    // Validate < char test
+    TAP_TEST_MSG(test_regexmap_lt(), "Validate less than '<' char test.");
+
+    // Validate string starts with substring test
+    TAP_TEST_MSG(test_success_str_starts_with(), "Validate string starts with substring test.");
+
+    // Not matching substring at the beginning of string
+    TAP_TEST_MSG(test_fail_str_starts_with(), "Not matching substring at the beginning of string.");
+
+
+    TAP_PLAN;
+    TAP_SUMMARY;
+    printf("\n    ENDING TEST  - OS_REGEX   \n\n");
+    return 0;
 }

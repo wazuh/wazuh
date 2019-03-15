@@ -2,46 +2,38 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime
-from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
-from wazuh.exception import WazuhException
-from wazuh.utils import load_wazuh_xml
-from wazuh import common
-from datetime import datetime
-import time
-from os.path import exists, join
-from glob import glob
-import hashlib
+import json
+import random
 import re
 import socket
-import struct
 import subprocess
-from os.path import exists
 import time
+from collections import OrderedDict
+from datetime import datetime
+from glob import glob
+from os import remove, chmod
+from os.path import exists, join
+from shutil import move, Error
+from xml.dom.minidom import parseString
+from xml.parsers.expat import ExpatError
+from typing import Dict
 
 from wazuh import common
 from wazuh.exception import WazuhException
-from wazuh.utils import execute, previous_month, cut_array, sort_array, search_array, tail
-from xml.dom.minidom import parseString
-from xml.parsers.expat import ExpatError
-from shutil import move, Error
-import socket
-from os import remove, chmod
-import random
+from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+
+_re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 
-re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(.*)$")
-
-def status():
+def status() -> Dict:
     """
     Returns the Manager processes that are running.
-    :return: Array of dictionaries (keys: status, daemon).
+    :return: Dictionary (keys: status, daemon).
     """
 
-    processes = ['ossec-monitord', 'ossec-logcollector', 'ossec-remoted',
-                 'ossec-syscheckd', 'ossec-analysisd', 'ossec-maild',
-                 'ossec-execd', 'wazuh-modulesd', 'ossec-authd',
-                 'wazuh-clusterd']
+    processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
+                 'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
 
     data = {}
     for process in processes:
@@ -62,15 +54,16 @@ def status():
 
     return data
 
+
 def __get_ossec_log_fields(log):
     regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
 
     match = re.search(regex_category, log)
 
     if match:
-        date        = match.group(1)
-        category    = match.group(2)
-        type_log    = match.group(3)
+        date = match.group(1)
+        category = match.group(2)
+        type_log = match.group(3)
         description = match.group(4)
 
         if "rootcheck" in category:  # Unify rootcheck category
@@ -131,7 +124,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             else:
                 continue
         else:
-            if logs != []:
+            if logs:
                 logs[-1]['description'] += "\n" + line
 
     if search:
@@ -188,31 +181,44 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(tmp_file, path, content_type):
+def upload_file(tmp_file, path, content_type, overwrite=False):
     """
     Updates a group file
 
-    :param file: Relative path of file name from origin
+    :param tmp_file: Relative path of file name from origin
     :param path: Path of destination of the new file
+    :param content_type: Content type of file from origin
+    :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
     """
     try:
-        with open(join(common.ossec_path, tmp_file)) as f:
-            file_data = f.read()
-    except IOError:
-        raise WazuhException(1005)
-    except Exception:
-        raise WazuhException(1000)
+        # if file already exists and overwrite is False, raise exception
+        if not overwrite and exists(join(common.ossec_path, path)):
+            raise WazuhException(1905)
 
-    if len(file_data) == 0:
-        raise WazuhException(1112)
+        try:
+            with open(join(common.ossec_path, tmp_file)) as f:
+                file_data = f.read()
+        except IOError:
+            raise WazuhException(1005)
+        except Exception:
+            raise WazuhException(1000)
 
-    if content_type == 'application/xml':
-        return upload_xml(file_data, path)
-    elif content_type == 'application/octet-stream':
-        return upload_list(file_data, path)
-    else:
-        raise WazuhException(1016)
+        if len(file_data) == 0:
+            raise WazuhException(1112)
+
+        if content_type == 'application/xml':
+            return upload_xml(file_data, path)
+        elif content_type == 'application/octet-stream':
+            return upload_list(file_data, path)
+        else:
+            raise WazuhException(1016)
+    finally:
+        # delete temporary file from API
+        try:
+            remove(join(common.ossec_path, tmp_file))
+        except OSError:
+            raise WazuhException(1903)
 
 
 def upload_xml(xml_file, path):
@@ -229,13 +235,13 @@ def upload_xml(xml_file, path):
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString('<root>' +  xml_file + '</root>')
+            xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"",)\
-                                   .replace("&gt;", ">").replace('&apos', "'")
+            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
+                .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
@@ -243,7 +249,7 @@ def upload_xml(xml_file, path):
     except ExpatError:
         raise WazuhException(1113)
     except Exception as e:
-        raise WazuhException(1000)
+        raise WazuhException(1000, str(e))
 
     try:
         # check xml format
@@ -258,7 +264,7 @@ def upload_xml(xml_file, path):
             move(tmp_file_path, new_conf_path)
         except Error:
             raise WazuhException(1016)
-        except Exception :
+        except Exception:
             raise WazuhException(1000)
 
         return 'File updated successfully'
@@ -311,7 +317,6 @@ def get_file(path):
     """
 
     file_path = join(common.ossec_path, path)
-    output = {}
 
     try:
         with open(file_path) as f:
@@ -322,6 +327,28 @@ def get_file(path):
         raise WazuhException(1000)
 
     return output
+
+
+def delete_file(path):
+    """
+    Deletes a file.
+
+    Returns a confirmation message if success, otherwise it raises
+    a WazuhException
+    :param path: Relative path of the file to be deleted
+    :return: string Confirmation message
+    """
+    full_path = join(common.ossec_path, path)
+
+    if exists(full_path):
+        try:
+            remove(full_path)
+        except IOError:
+            raise WazuhException(1907)
+    else:
+        raise WazuhException(1906)
+
+    return 'File was deleted'
 
 
 def restart():
@@ -365,13 +392,14 @@ def _check_wazuh_xml(files):
             subprocess.check_output(['{}/bin/verify-agent-conf'.format(common.ossec_path), '-f', f],
                                     stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
-            # extract error message from output.
-            # Example of raw output
-            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207): Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n
-            # Example of desired output:
-            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
+            # extract error message from output. Example of raw output 2019/01/08 14:51:09 verify-agent-conf: ERROR:
+            # (1230): Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf:
+            # ERROR: (1207): Syscheck remote configuration in
+            # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.\n\n Example of desired output:
+            # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in
+            # '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                                r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
+                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             raise WazuhException(1114, ' '.join(output_regex))
         except Exception as e:
             raise WazuhException(1743, str(e))
@@ -438,20 +466,32 @@ def validation():
         if exists(api_socket_path):
             remove(api_socket_path)
 
-    errors = _extract_logstest_errors(buffer.decode('utf-8'))
+    try:
+        response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+    except (KeyError, json.decoder.JSONDecodeError):
+        raise WazuhException(1904)
 
-    if len(errors) > 0:
-        return {'status': 'KO', 'details': errors}
+    return response
+
+
+def _parse_execd_output(output: str) -> Dict:
+    """
+    Parses output from execd socket to fetch log message and remove log date, log daemon, log level, etc.
+    :param output: Raw output from execd
+    :return: Cleaned log message in a dictionary structure
+    """
+    json_output = json.loads(output)
+    error_flag = json_output['error']
+    if error_flag != 0:
+        errors = []
+        log_lines = json_output['message'].splitlines(keepends=False)
+        for line in log_lines:
+            match = _re_logtest.match(line)
+            if match:
+                errors.append(match.group(1))
+        errors = list(OrderedDict.fromkeys(errors))
+        response = {'status': 'KO', 'details': errors}
     else:
-        return {'status': 'OK'}
+        response = {'status': 'OK'}
 
-
-def _extract_logstest_errors(output):
-    log_lines = output.splitlines(keepends=False)
-    errors = []
-    for line in log_lines:
-        match = re_logtest.match(line)
-        if match:
-            errors.append(match.group(1))
-
-    return errors
+    return response

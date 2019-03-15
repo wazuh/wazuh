@@ -31,7 +31,7 @@ const wm_context WM_CONTROL_CONTEXT = {
 
 char* getPrimaryIP(){
      /* Get Primary IP */
-    char * agent_ip = "";
+    char * agent_ip = NULL;
     char **ifaces_list;
     struct ifaddrs *ifaddr, *ifa;
     int size;
@@ -40,6 +40,7 @@ char* getPrimaryIP(){
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
+        return agent_ip;
     }
     else {
         for (ifa = ifaddr; ifa; ifa = ifa->ifa_next){
@@ -55,7 +56,7 @@ char* getPrimaryIP(){
             free(ifaces_list);
             return agent_ip;
         }
-    }    
+    }
 
     for (i=0; i<size; i++) {
         cJSON *object = cJSON_CreateObject();
@@ -67,12 +68,13 @@ char* getPrimaryIP(){
             if (gateway) {
                 cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
                 if (metric && metric->valueint < min_metric) {
-
                     cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                     cJSON *address = cJSON_GetArrayItem(addresses,0);
+                    if(agent_ip != NULL){
+                        free(agent_ip);
+                    }
                     os_strdup(address->valuestring, agent_ip);
                     min_metric = metric->valueint;
-
                 }
             }
         }
@@ -158,8 +160,8 @@ void *send_ip(){
             continue;
         }
 
-        os_calloc(OS_MAXSTR, sizeof(char), buffer);
-        switch (length = OS_RecvUnix(peer, OS_MAXSTR, buffer), length) {
+        os_calloc(IPSIZE, sizeof(char), buffer);
+        switch (length = OS_RecvUnix(peer, IPSIZE - 1, buffer), length) {
         case -1:
             mterror(WM_CONTROL_LOGTAG, "At send_ip(): OS_RecvUnix(): %s", strerror(errno));
             break;
@@ -175,8 +177,14 @@ void *send_ip(){
             break;
 
         default:
-            OS_SendUnix(peer, getPrimaryIP(), 0);
-            free(response);
+            response = getPrimaryIP();
+            if(response){
+                OS_SendUnix(peer, response, 0);
+                free(response);
+            }
+            else{
+                OS_SendUnix(peer,"Err",4);
+            }
             close(peer);
         }
         free(buffer);

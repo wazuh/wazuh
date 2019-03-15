@@ -722,7 +722,7 @@ next_it:
     return writted;
 error:
     if (perm_type) {
-        cJSON_free(perm_type);
+        cJSON_Delete(perm_type);
     }
     os_free(account_name);
     mdebug1("The file permissions could not be decoded: '%s'", raw_perm);

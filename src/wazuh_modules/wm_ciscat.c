@@ -485,6 +485,7 @@ void wm_ciscat_run(wm_ciscat_eval *eval, char *path, int id, const char * java_p
 
     free(output);
     free(command);
+    free(ciscat_script);
 }
 
 #else

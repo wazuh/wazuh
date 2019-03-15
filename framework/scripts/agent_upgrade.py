@@ -71,7 +71,7 @@ def main():
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
-    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.ip)
+    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
     if not os.path.isfile(agent_info):
         raise WazuhException(1720)
 
@@ -81,8 +81,9 @@ def main():
         if not pattern.match(args.version):
             raise WazuhException(1733, "Version received: {0}".format(args.version))
 
-    if args.chunk_size is not None and args.chunk_size < 1 or args.chunk_size > 64000:
-        raise WazuhException(1744, "Chunk defined: {0}".format(args.chunk_size))
+    if args.chunk_size is not None:
+        if args.chunk_size < 1 or args.chunk_size > 64000:
+            raise WazuhException(1744, "Chunk defined: {0}".format(args.chunk_size))
 
     # Custom WPK file
     if args.file:

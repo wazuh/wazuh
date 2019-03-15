@@ -1,23 +1,12 @@
-/* Copyright (C) 2015-2019, Wazuh Inc.
- * Copyright (C) 2014 Trend Micro Inc.
- * All rights reserved.
- *
- * This program is a free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation
-*/
-
-#include <check.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "../headers/custom_output_search.h"
+#include "tap.h"
 
-Suite *test_suite(void);
+int test_search_and_replace(){
 
-
-START_TEST(test_searchAndReplace)
-{
     int i;
     const char *tests[][4] = {
         {"testMe", "nomatch", "", "testMe"},
@@ -37,31 +26,20 @@ START_TEST(test_searchAndReplace)
 
     for (i = 0; tests[i][0] != NULL ; i++) {
         char *result = searchAndReplace(tests[i][0], tests[i][1], tests[i][2]);
-        ck_assert_str_eq(result, tests[i][3]);
+        w_assert_str_eq(result, tests[i][3]);
         free(result);
     }
-}
-END_TEST
-
-Suite *test_suite(void)
-{
-    Suite *s = suite_create("shared");
-
-    TCase *tc_searchAndReplace = tcase_create("searchAndReplace");
-    tcase_add_test(tc_searchAndReplace, test_searchAndReplace);
-
-    suite_add_tcase(s, tc_searchAndReplace);
-
-    return (s);
+    return 1;
 }
 
-int main(void)
-{
-    Suite *s = test_suite();
-    SRunner *sr = srunner_create(s);
-    srunner_run_all(sr, CK_NORMAL);
-    int number_failed = srunner_ntests_failed(sr);
-    srunner_free(sr);
+int main(void) {
+    printf("\n\n   STARTING TEST - OS_SHARED   \n\n");
 
-    return ((number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE);
+    // Search and replace strings test
+    TAP_TEST_MSG(test_search_and_replace(), "Search and replace strings test.");
+
+    TAP_PLAN;
+    TAP_SUMMARY;
+    printf("\n   ENDING TEST  - OS_SHARED   \n\n");
+    return 0;
 }
