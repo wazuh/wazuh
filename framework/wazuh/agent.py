@@ -1849,8 +1849,11 @@ class Agent:
                 Agent.create_multi_group(multigroup_name)
         else:
             multigroup_name = 'default' if not group_list else group_list[0]
+
         Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
-        return f"Group '{group_id}' unset for agent '{agent_id}'."
+
+        return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
+               f"Agent {agent_id} set to group default."
 
 
     @staticmethod
