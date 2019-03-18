@@ -5978,7 +5978,7 @@ paths:
           text/plain:
             schema:
               type: string
-              format: binary
+              format: base64
           application/octet-stream:
             schema:
               type: string

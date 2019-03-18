@@ -7,7 +7,6 @@ import connexion
 import logging
 
 from api.util import remove_nones_to_dict
-from api.models.cluster_model import Cluster as ClusterModel
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
@@ -477,26 +476,27 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
 
     Replaces file contents with the data contained in the API request in a specified cluster node.
 
-    :param node_id: Cluster node name.
-    :param path: Filepath to upload the new file.
+    :param body: Body request with the content of the file to be uploaded
+    :param node_id: Cluster node name
+    :param path: Filepath to upload the new file
     :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
+    # get content-type from headers
+    try:
+        content_type = connexion.request.headers['Content-type']
+    except KeyError:
+        return 'Content-type header is mandatory', 400
+
     # parse body to utf-8
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
         return 'Error parsing body request to UTF-8', 400
 
-    # get content-type from headers
-    try:
-        content_type = connexion.request.headers['content-type']
-    except KeyError:
-        return 'Content-type is wrong', 400
-
     f_kwargs = {'node_id': node_id, 'path': path, 'overwrite': overwrite,
-                'content': body.decode('utf-8'), 'content_type': content_type}
+                'content': body, 'content_type': content_type}
 
     dapi = DistributedAPI(f=manager.upload_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
