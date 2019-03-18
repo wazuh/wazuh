@@ -296,11 +296,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
                             mdebug2("Follow symbolic links disabled.");
-                            free(alert_msg);
-                            free(wd_sum);
+                            os_free(alert_msg);
+                            os_free(wd_sum);
                             return 0;
                         } else {
-                            free(alert_msg);
+                            os_free(alert_msg);
                             os_free(wd_sum);
                             return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
@@ -728,7 +728,7 @@ end:
     if (sid) {
         LocalFree(sid);
     }
-    free(str_perm);
+    os_free(str_perm);
 #endif
     return 0;
 }
@@ -895,7 +895,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         read_file(f_name, dir_position, evt, max_depth);
     }
 
-    free(f_name);
+    os_free(f_name);
     closedir(dp);
     return (0);
 }

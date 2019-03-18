@@ -394,8 +394,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #endif
         // Delete from hash table
         if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-            free(s_node->checksum);
-            free(s_node);
+            os_free(s_node->checksum);
+            os_free(s_node);
         }
 #ifndef WIN32
         os_free(w_inode);
