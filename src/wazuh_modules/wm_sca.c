@@ -106,8 +106,12 @@ void * wm_sca_main(wm_sca_t * data) {
         minfo("Module started.");
     } else {
         minfo("Module disabled. Exiting.");
+            }
+
+    if (!data->profile || data->profile[0] == NULL) {
+        minfo("No policies defined. Exiting.");
         pthread_exit(NULL);
-    }
+    }     
 
     data->msg_delay = 1000000 / wm_max_eps;
     data->summary_delay = 3; /* Seconds to wait for summary sending */
