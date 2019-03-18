@@ -44,7 +44,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index);  // Do scan
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
-static int wm_sca_check_policy(cJSON *policy);
+static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
@@ -414,8 +414,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON *requirements = cJSON_GetObjectItem(object, "requirements");
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
-            if(wm_sca_check_policy(policy)) {
-                merror("Reading 'policy' section of file: '%s'. Skipping it.", path);
+            if(wm_sca_check_policy(policy, profiles)) {
+                merror("Validating policy file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -527,12 +527,15 @@ static void wm_sca_read_files(wm_sca_t * data) {
     }
 }
 
-static int wm_sca_check_policy(cJSON *policy) {
-    int retval;
+static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
+    int retval, i;
     cJSON *id;
     cJSON *name;
     cJSON *file;
     cJSON *description;
+    cJSON *check;
+    cJSON *check_id;
+    int * read_id;
 
     retval = 1;
 
@@ -542,46 +545,83 @@ static int wm_sca_check_policy(cJSON *policy) {
 
     id = cJSON_GetObjectItem(policy, "id");
     if(!id) {
-        merror("Field 'id' not found on policy.");
+        merror("Field 'id' not found in policy header.");
         return retval;
     }
 
     if(!id->valuestring){
-        merror("Field 'id' must be a string.");
+        merror("Invalid format for field 'id'.");
         return retval;
     }
 
     name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
-        merror("Field 'name' not found on policy.");
+        merror("Field 'name' not found in policy header.");
         return retval;
     }
 
     if(!name->valuestring){
-        merror("Field 'name' must be a string.");
+        merror("Invalid format for field 'name'.");
         return retval;
     }
 
     file = cJSON_GetObjectItem(policy, "file");
     if(!file) {
-        merror("Field 'file' not found on policy.");
+        merror("Field 'file' not found in policy header.");
         return retval;
     }
 
     if(!file->valuestring){
-        merror("Field 'file' must be a string.");
+        merror("Invalid format for field 'file'.");
         return retval;
     }
 
     description = cJSON_GetObjectItem(policy, "description");
     if(!description) {
-        merror("Field 'description' not found on policy.");
+        merror("Field 'description' not found in policy header.");
         return retval;
     }
 
     if(!description->valuestring) {
-        merror("Field 'description' must be a string.");
+        merror("Invalid format for field 'description'.");
         return retval;
+    }
+
+    // Check for policy rules with duplicated IDs */
+    if (!profiles) {
+        merror("Section 'checks' not found.");
+        return retval;
+    } else {
+        os_calloc(1, sizeof(int), read_id);
+        read_id[0] = 0;
+        cJSON_ArrayForEach(check, profiles){
+
+            check_id = cJSON_GetObjectItem(check, "id");
+
+            if (check_id == NULL) {
+                merror("Check ID not found.");
+                free(read_id);
+                return retval;
+            } else if (check_id->valueint <= 0) {
+                // Invalid ID
+                merror("Invalid check ID: %d", check_id->valueint);
+                free(read_id);
+                return retval;
+            }
+
+            for (i = 0; read_id[i] != 0; i++) {
+                if (check_id->valueint == read_id[i]) {
+                    // Duplicated ID
+                    merror("Duplicated check ID: %d", check_id->valueint);
+                    free(read_id);
+                    return retval;
+                }
+            }
+            read_id = (int *) realloc(read_id, sizeof(int) * (i + 2));
+            read_id[i] = check_id->valueint;
+            read_id[i + 1] = 0;
+        }
+        free(read_id);
     }
 
     retval = 0;
