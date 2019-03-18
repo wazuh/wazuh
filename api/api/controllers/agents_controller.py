@@ -174,7 +174,7 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
     :type force_time: integer
     
-    :rtype: dict
+    :rtype: AgentKey
     """
 
     # get body parameters
@@ -213,7 +213,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False): 
     :param purge: Delete an agent from the key store
     :type purge: bool
 
-    :rtype: Agent
+    :rtype: AgentDeleted
     """
     f_kwargs = {'agent_id': agent_id,
                 'purge': purge
@@ -303,28 +303,186 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
     return data, 200
 
 
-def delete_agent_group():
-    pass
+def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Remove all agent groups.
+
+    Removes the group of the agent. The agent will automatically revert to the "default" group.  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=Agent.unset_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def get_sync_agent():
-    pass
+def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Get agent configuration sync status.
+
+    Returns whether the agent configuration has been synchronized with the agent 
+    or not. This can be useful to check after updating a group configuration.  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+
+    :rtype: AgentSync
+    """
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=Agent.get_sync_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def delete_agent_single_group():
-    pass
+def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Remove a single group of an agent.
+
+    Remove the group of the agent but will leave the rest of its group if it belongs to a multigroup.  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param group_id: Group ID.
+    :type group_id: str
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'group_id': group_id}
+
+    dapi = DistributedAPI(f=Agent.unset_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def put_agent_single_group():
-    pass
+def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Add agent group.
+
+    Adds an agent to the specified group.  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param group_id: Group ID.
+    :type group_id: str
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'group_id': group_id,
+                'replace': force_single_group}
+
+    dapi = DistributedAPI(f=Agent.set_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def get_agent_key():
-    pass
+def get_agent_key(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Get agent key.
+
+    Returns the key of an agent.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+
+    :rtype: AgentKey
+    """
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=Agent.get_agent_key,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def put_restart_agent():
-    pass
+def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Restart an agent.
+
+    Restarts the specified agent.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+
+    :rtype: 
+    """
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=Agent.restart_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def put_upgrade_agent():
@@ -367,8 +525,33 @@ def get_agent_in_group():
     pass
 
 
-def put_group():
-    pass
+def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Create a group.
+
+    Creates a new group.  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'group_id': group_id}
+
+    dapi = DistributedAPI(f=Agent.create_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_group_config():

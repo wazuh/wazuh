@@ -89,6 +89,6 @@ class AgentAdded(Model):
     @force_time.setter
     def force_time(self, force_time):
         """Limit time to disconnect an agent with the same IP.
-        :param force_time_time: Agents limit disconnection time. 
+        :param force_time: Agents limit disconnection time. 
         """
         self._force_time = force_time

@@ -1,7 +1,10 @@
 import datetime
+import os
 
 import six
 import typing
+
+from wazuh.common import ossec_path as WAZUH_PATH
 
 
 def _deserialize(data, klass):
@@ -149,3 +152,14 @@ def remove_nones_to_dict(dct):
     """
     return {k: v if not isinstance(v, dict) else remove_nones_to_dict(v)
             for k, v in dct.items() if v is not None}
+
+
+def to_relative_path(full_path):
+    """Returns a relative path from Wazuh base directory
+
+    :param full_path: Full path
+    :type path: str
+    :return: Relative path
+    :rtype: str
+    """
+    return os.path.relpath(full_path, WAZUH_PATH)
