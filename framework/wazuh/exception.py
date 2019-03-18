@@ -153,7 +153,7 @@ class WazuhException(Exception):
         1906: 'File does not exist',
         1907: 'File could not be deleted',
         1908: '\'path\' parameter is empty',
-        1909: 'Invalid content-type',
+        1909: 'Invalid content-type in request header',
 
         # Database:
         2000: 'No such database file',

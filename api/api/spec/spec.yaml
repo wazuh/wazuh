@@ -5975,10 +5975,6 @@ paths:
         description: Content of the file to be uploaded
         required: true
         content:
-          text/plain:
-            schema:
-              type: string
-              format: base64
           application/octet-stream:
             schema:
               type: string
