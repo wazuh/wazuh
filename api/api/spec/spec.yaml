@@ -2026,13 +2026,6 @@ components:
       schema:
         type: string
         format: paths
-    download:
-      in: query
-      name: download
-      description: Downloads the specified file.
-      schema:
-        type: string
-        format: alphanumeric
     error:
       in: query
       name: error
@@ -2998,6 +2991,14 @@ components:
       in: query
       name: package_version
       description: Filters by version name.
+      schema:
+        type: string
+        format: alphanumeric
+    download:
+      in: query
+      name: file
+      required: True
+      description: File name to download.
       schema:
         type: string
         format: alphanumeric
@@ -7552,7 +7553,6 @@ paths:
         - $ref: '#/components/parameters/pathFilter'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/download'
       responses:
         '200':
           description: 'SCA database elements'
@@ -8039,7 +8039,6 @@ paths:
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/pathFilter'
         - $ref: '#/components/parameters/statusRLDParam'
-        - $ref: '#/components/parameters/download'
       responses:
         '200':
           description: 'List of decoders files'
@@ -8085,6 +8084,32 @@ paths:
                     status: enabled
                   - file: 0345-unbound_decoders.xml
                     status: enabled
+
+  /decoders/download:
+    get:
+      tags:
+      - decoders
+      summary: Download an specified decoder file.
+      description: Download an specified decoder file.
+      operationId: api.controllers.decoders_controller.download_file
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/download'
+      responses:
+        '200':
+          description: Decoder contents.
+          content:
+            application/xml:
+              schema:
+                type: object
+        '404':
+          description: 'File not found'
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
 
   /decoders/parents:
     get:

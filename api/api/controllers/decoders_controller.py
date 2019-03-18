@@ -4,8 +4,10 @@
 
 import asyncio
 import logging
+import os
 
 from wazuh.decoder import Decoder
+from wazuh import common
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from ..util import remove_nones_to_dict
 
@@ -114,7 +116,24 @@ def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, of
     return data, 200
 
 
-    pass
+def download_file(file: str, pretty: bool = False, wait_for_complete: bool = False):
+    """Download an specified decoder file.
+
+    Download an specified decoder file.
+
+    :param file: File name to download.
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :return:
+    """
+    data, _ = get_decoders_files(file=file, pretty=pretty, wait_for_complete=wait_for_complete)
+    if len(data['data']['items']) > 0:
+        full_path = os.path.join(common.ossec_path, data['data']['items'][0]['path'], file)
+        with open(full_path) as f:
+            file_content = f.read()
+        return file_content, 200
+    else:
+        return {'error': 404, 'message': 'File not found'}, 404
 
 
 def get_decoders_parents():
