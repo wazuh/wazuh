@@ -2,11 +2,13 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
-from wazuh import common
-from api import configuration, APIException
-import pytest
 import copy
+from unittest.mock import patch
+
+import pytest
+
+from api import configuration, api_exception
+from wazuh import common
 
 # Valid configurations
 default_api_configuration = {
@@ -105,5 +107,5 @@ def test_read_configuration(read_config):
 def test_read_wrong_configuration(read_config):
     with patch('api.configuration.yaml.safe_load') as m:
         m.return_value = copy.deepcopy(read_config)
-        with pytest.raises(APIException.APIException, match='.* 2000 .*'):
+        with pytest.raises(api_exception.APIException, match='.* 2000 .*'):
             configuration.read_config()

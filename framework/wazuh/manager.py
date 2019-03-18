@@ -181,12 +181,11 @@ def ossec_log_summary(months=3):
     return categories
 
 
-def upload_file(path='', content_type='application/xml', content='', overwrite=False):
+def upload_file(path='', content='', overwrite=False):
     """
     Updates a group file
 
     :param path: Path of destination of the new file
-    :param content_type: Content type of file from origin
     :param content: Content of the file to be uploaded
     :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
@@ -194,19 +193,17 @@ def upload_file(path='', content_type='application/xml', content='', overwrite=F
     if not path:
         raise WazuhException(1908)
 
+    if not content:
+        raise WazuhException(1112)
+
     # if file already exists and overwrite is False, raise exception
     if not overwrite and exists(join(common.ossec_path, path)):
         raise WazuhException(1905)
     
-    if not content:
-        raise WazuhException(1112)
-    
-    if content_type == 'application/xml':
+    if path.split('/')[1] in ('rules', 'decoders'):
         return upload_xml(content, path)
-    elif content_type == 'application/octet-stream':
-        return upload_list(content, path)
     else:
-        raise WazuhException(1909)
+        return upload_list(content, path)
 
 
 def upload_xml(xml_file, path):
