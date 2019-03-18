@@ -1361,13 +1361,20 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
 }
 
 static void PushDumpRequest(char * agent_id, char * policy_id) {
+    int result;
     char request_db[OS_SIZE_4096 + 1] = {0};
 
     snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s",agent_id,policy_id);
     char *msg = NULL;
 
     os_strdup(request_db,msg);
-    queue_push_ex(request_queue,msg);
+    
+    result = queue_push_ex(request_queue,msg);
+
+    if (result < 0) {
+        mwarn("SCA request queue is full.");
+        free(msg);
+    }
 }
 
 int pm_send_db(char *msg, char *response, int *sock)
