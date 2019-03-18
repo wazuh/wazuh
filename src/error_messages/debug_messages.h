@@ -71,5 +71,6 @@
 #define VU_INDEX_TIME         "(5538): It took %ld seconds to %s vulnerabilities."
 #define VU_UPDATING_RH_YEAR   "(5539): Synchronizing the page %d from the vulnerability database..."
 #define VU_INS_RH_SEC         "(5540): Inserting Red Hat section..."
+#define VU_OSINFO_DISABLED    "(5542): The agent %s does not have os_info scan activated."
 
 #endif
