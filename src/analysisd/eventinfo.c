@@ -211,7 +211,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -431,7 +431,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -619,7 +619,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
