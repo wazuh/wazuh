@@ -93,7 +93,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             azure->timeout = atol(nodes[i]->content);
 
-            if (azure->timeout == 0 || azure->timeout == UINT_MAX) {
+            if (azure->timeout <= 0 || azure->timeout >= UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -101,7 +101,7 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             char *endptr;
             azure->interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (azure->interval == 0 || azure->interval == UINT_MAX) {
+            if (azure->interval <= 0 || azure->interval >= UINT_MAX) {
                 merror("At module '%s': Invalid interval.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -132,8 +132,8 @@ int wm_azure_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             if (azure->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds.", WM_AZURE_CONTEXT.name);
-                return OS_INVALID;
+                merror("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_AZURE_CONTEXT.name);
+                azure->interval = 60;
             }
         } else if (!strcmp(nodes[i]->element, XML_RUN_DAY)) {
             if (!OS_StrIsNum(nodes[i]->content)) {
@@ -423,7 +423,7 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
             char *endptr;
             unsigned int offset = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (offset == 0 || offset == UINT_MAX) {
+            if (offset <= 0 || offset >= UINT_MAX) {
                 merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -445,7 +445,7 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             request->timeout = atol(nodes[i]->content);
 
-            if (request->timeout == 0 || request->timeout == UINT_MAX) {
+            if (request->timeout <= 0 || request->timeout >= UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -649,7 +649,7 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
             char *endptr;
             unsigned int offset = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (offset == 0 || offset == UINT_MAX) {
+            if (offset <= 0 || offset >= UINT_MAX) {
                 merror("At module '%s': Invalid time offset.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -664,7 +664,7 @@ int wm_azure_container_read(XML_NODE nodes, wm_azure_container_t * container) {
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
             container->timeout = atol(nodes[i]->content);
 
-            if (container->timeout == 0 || container->timeout == UINT_MAX) {
+            if (container->timeout <= 0 || container->timeout >= UINT_MAX) {
                 merror("At module '%s': Invalid timeout.", WM_AZURE_CONTEXT.name);
                 return OS_INVALID;
             }
