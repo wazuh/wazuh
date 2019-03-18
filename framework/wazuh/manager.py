@@ -206,7 +206,7 @@ def upload_file(path='', content_type='application/xml', content='', overwrite=F
     elif content_type == 'application/octet-stream':
         return upload_list(content, path)
     else:
-        raise WazuhException(1016)
+        raise WazuhException(1909)
 
 
 def upload_xml(xml_file, path):

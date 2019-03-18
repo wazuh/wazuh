@@ -483,7 +483,20 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id, 'path': path, 'overwrite': overwrite, 'content': body.decode('utf-8'), 'content_type': connexion.request.headers['Content-type']}
+    # parse body to utf-8
+    try:
+        body = body.decode('utf-8')
+    except UnicodeDecodeError:
+        return 'Error parsing body request to UTF-8', 400
+
+    # get content-type from headers
+    try:
+        content_type = connexion.request.headers['content-type']
+    except KeyError:
+        return 'Content-type is wrong', 400
+
+    f_kwargs = {'node_id': node_id, 'path': path, 'overwrite': overwrite,
+                'content': body.decode('utf-8'), 'content_type': content_type}
 
     dapi = DistributedAPI(f=manager.upload_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
