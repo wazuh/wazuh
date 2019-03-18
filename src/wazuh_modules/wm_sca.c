@@ -2377,7 +2377,10 @@ void wm_sca_push_request_win(char * msg){
                         unsigned int *policy_index;
                         os_calloc(1, sizeof(unsigned int), policy_index);
                         *policy_index = i;
-                        queue_push_ex(request_queue,policy_index);
+                        if(queue_push_ex(request_queue,policy_index) < 0) {
+                            os_free(policy_index);
+                            mdebug1("Could not push policy index to queue");
+                        }
                         break;
                     }
                 }
