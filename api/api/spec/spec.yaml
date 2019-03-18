@@ -5971,6 +5971,18 @@ paths:
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/path'
         - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: Content of the file to be uploaded
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              format: binary
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         '200':
           description: 'Confirmation message'
