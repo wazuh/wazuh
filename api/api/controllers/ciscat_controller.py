@@ -8,7 +8,7 @@ from typing import List
 
 import wazuh.ciscat as ciscat
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from ..util import remove_nones_to_dict, parse_search_param
+from ..util import remove_nones_to_dict, parse_api_param
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -43,8 +43,8 @@ def get_agents_cistat_results(agent_id: str, pretty: bool = False, wait_for_comp
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': sort,
-                'search': parse_search_param(search),
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'select': select,
                 'agent_id': agent_id,
                 'filters': {
