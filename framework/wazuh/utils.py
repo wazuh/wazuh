@@ -717,9 +717,9 @@ class WazuhDBQuery(object):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
 
-            select_fields['fields'] = set_select_fields
+            select_fields = set_select_fields
         else:
-            select_fields = {'fields': set(self.fields.keys())}
+            select_fields = self.fields.keys()
 
         return select_fields
 
@@ -823,11 +823,11 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select | self.min_select_fields))), self.request)
 
 
     def _format_data_into_dictionary(self):
-        return {'items': [{key:value for key,value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+        return {'items': [{key:value for key,value in zip(self.select | self.min_select_fields, db_tuple)
                            if value is not None} for db_tuple in self.conn], 'totalItems': self.total_items}
 
 
@@ -874,7 +874,7 @@ class WazuhDBQuery(object):
         """
         self.query = self._default_query()
         self.query_filters = []
-        self.select['fields'] -= self.extra_fields
+        self.select -= self.extra_fields
 
 
     def _default_query(self):
@@ -903,17 +903,17 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
 
     def _default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select['fields'])))
+        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select)))
 
 
     def _add_filters_to_query(self):
         WazuhDBQuery._add_filters_to_query(self)
         self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
-        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select['fields']])
+        self.query += ' AND '.join(["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
 
 
     def _add_select_to_query(self):
-        if len(self.select['fields']) > 1:
+        if len(self.select) > 1:
             raise WazuhException(1410)
 
         WazuhDBQuery._add_select_to_query(self)
@@ -938,7 +938,7 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _get_total_items(self):
         # take total items without grouping, and add the group by clause just after getting total items
         WazuhDBQuery._get_total_items(self)
-        self.select['fields'].add('count')
+        self.select.add('count')
         self.inverse_fields['COUNT(*)'] = 'count'
         self.fields['count'] = 'COUNT(*)'
         self.query += ' GROUP BY ' + ','.join(map(lambda x: self.fields[x], self.filter_fields['fields']))
@@ -947,4 +947,4 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     def _add_select_to_query(self):
         WazuhDBQuery._add_select_to_query(self)
         self.filter_fields = self._parse_select_filter(self.filter_fields)
-        self.select['fields'] = self.select['fields'] & self.filter_fields['fields']
+        self.select = self.select & self.filter_fields['fields']
