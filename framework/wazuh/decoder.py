@@ -171,16 +171,16 @@ class Decoder:
 
         decoders = list(all_decoders)
         for d in all_decoders:
-            if path and path != d.path:
+            if path and path != d['path']:
                 decoders.remove(d)
                 continue
-            if file and file != d.file:
+            if file and file != d['file']:
                 decoders.remove(d)
                 continue
-            if name and name != d.name:
+            if name and name != d['name']:
                 decoders.remove(d)
                 continue
-            if parents and 'parent' in d.details:
+            if parents and 'parent' in d['details']:
                 decoders.remove(d)
                 continue
 
@@ -220,7 +220,7 @@ class Decoder:
                     for xml_decoder_tags in xml_decoder.getchildren():
                         decoder.add_detail(xml_decoder_tags.tag.lower(), xml_decoder_tags.text)
 
-                    decoders.append(decoder)
+                    decoders.append(decoder.to_dict())
         except Exception as e:
             raise WazuhException(1501, "{0}. Error: {1}".format(decoder_file, str(e)))
 

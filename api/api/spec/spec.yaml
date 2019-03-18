@@ -2327,7 +2327,7 @@ components:
     statusAgentParam:
       in: query
       name: agent_status
-      description: Filters by agent status. Use commas to enter multiple statuses.
+      description: Filters by agent status.
       schema:
         type: array
         items:
@@ -2340,16 +2340,14 @@ components:
         minItems: 1
     statusRLDParam:
       in: query
-      name: list_status
+      name: status
       description: Filters by list status. Use commas to enter multiple statuses.
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - enabled
-          - disabled
-          - all
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
         minItems: 1
     title:
       in: query
