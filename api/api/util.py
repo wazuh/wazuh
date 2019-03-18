@@ -216,14 +216,34 @@ def exception_handler(f):
     return handle_exception
 
 
-def parse_search_param(search: str):
+def parse_api_param(param: [str, None], param_type: str) -> [typing.Dict, None]:
+    """Parses an str parameter from the API query and returns a dictionary the framework can process
+
+    :param param: Str parameter coming from the API.
+    :param param_type: Type of parameter -> search or sort
+    :return: A dictionary
+    """
+    if param is not None:
+        return parse_search_param(param) if param_type == 'search' else parse_sort_param(param)
+    else:
+        return None
+
+
+def parse_search_param(search: str) -> typing.Dict:
     """Parses search str param coming from the API query into a dictionary the framework can process.
 
     :param search: Search parameter coming from the API query
     :return: A dictionary like {'value': 'ubuntu', 'negation': False}
     """
-    if search is not None:
-        negation = search[0] == '-'
-        return {'negation': negation, 'value': search[1:] if negation else search}
-    else:
-        return None
+    negation = search[0] == '-'
+    return {'negation': negation, 'value': search[1:] if negation else search}
+
+
+def parse_sort_param(sort: str) -> [typing.Dict, None]:
+    """Parses sort str param coming from the API query into a dictionary the framework can process.
+
+    :param sort: Sort parameter coming from the API query
+    :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
+    """
+    sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
+    return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
