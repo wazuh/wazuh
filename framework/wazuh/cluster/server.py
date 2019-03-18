@@ -157,11 +157,11 @@ class AbstractServer:
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
-            select = {'fields': default_fields}
+            select = default_fields
         else:
-            if not set(select['fields']).issubset(default_fields):
+            if not set(select).issubset(default_fields):
                 raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
-                    ', '.join(default_fields), ', '.join(set(select['fields']) - default_fields)))
+                    ', '.join(default_fields), ', '.join(set(select) - default_fields)))
 
         if filter_type != 'all' and filter_type not in {'worker', 'master'}:
             raise exception.WazuhException(1728, "Valid types are 'worker' and 'master'.")
@@ -180,7 +180,7 @@ class AbstractServer:
         if search is not None:
             res = utils.search_array(array=res, text=search['value'], negation=search['negation'])
 
-        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select['fields']} for v in res],
+        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select} for v in res],
                                                                  offset, limit)}
 
     async def check_clients_keepalive(self):

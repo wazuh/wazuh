@@ -45,7 +45,7 @@ async def get_agents(filter_node=None, filter_status=None):
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
                       'limit': None,
                       'wait_for_complete': False,
-                      'select': {'fields': list(select_fields)}
+                      'select': select_fields
                       },
                   'from_cluster': False
                   }

@@ -115,14 +115,14 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+        agent_items = [{field: value for field, value in zip(self.select | self.min_select_fields, db_tuple)
                         if value is not None} for db_tuple in self.conn]
 
         today = datetime.today()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
-        selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
+        selected_fields = self.select - self.extra_fields if self.remove_extra_fields else self.select
         selected_fields |= {'id'}
         agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
                         for key, value in item.items() if key in selected_fields} for item in agent_items]
@@ -329,8 +329,8 @@ class Agent:
         Gets public attributes of existing agent.
         """
         self._load_info_from_DB(select)
-        fields = set(self.fields.keys()) & set(select['fields']) if select is not None \
-                                                                 else set(self.fields.keys()) - {'internal_key'}
+        fields = set(self.fields.keys()) & set(select) if select is not None \
+                                                       else set(self.fields.keys()) - {'internal_key'}
         return {field:getattr(self,field) for field in map(lambda x: x.split('.')[0], fields) if getattr(self,field)}
 
 
@@ -894,7 +894,7 @@ class Agent:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         db_query = WazuhDBQueryDistinctAgents(offset=offset, limit=limit, sort=sort, search=search,
-                                              select={'fields':['os.platform']}, count=True, get_data=True,
+                                              select=['os.platform'], count=True, get_data=True,
                                               default_sort_field='os_platform', query=q, min_select_fields=set())
         return db_query.run()
 
@@ -1231,7 +1231,7 @@ class Agent:
         :param search: Looks for items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
-        db_query = WazuhDBQueryDistinct(offset=offset, limit=limit, sort=sort, search=search, select={'fields':['name']},
+        db_query = WazuhDBQueryDistinct(offset=offset, limit=limit, sort=sort, search=search, select=['name'],
                                         fields={'name':'`group`'}, count=True, get_data=True,
                                         db_path=common.database_path_global, default_sort_field='`group`', table='agent')
         db_query.run()
@@ -1324,7 +1324,7 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhException(1722)
 
-        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select={'fields':['group']},
+        db_query = WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=['group'],
                                       query="group="+group_id, count=True, get_data=False)
         db_query.run()
 
@@ -1911,7 +1911,7 @@ class Agent:
         manager = Agent(id=0)
         manager._load_info_from_DB()
 
-        select = {'fields':['version','id','name']} if select is None else select
+        select = ['version','id','name'] if select is None else select
         db_query = WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
                                       query="version<{};id!=0".format(manager.version) + ('' if not q else ';'+q),
                                       get_data=True, count=True)
