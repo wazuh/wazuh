@@ -78,7 +78,6 @@
 #define FIM_NATTR 11
 // Number of options in checksum hash table
 #define FIM_NOPTS 10
-
 /* Fields for rules */
 typedef enum sk_syscheck {
     SK_FILE,
@@ -90,10 +89,10 @@ typedef enum sk_syscheck {
     SK_SHA1,
     SK_UNAME,
     SK_GNAME,
+    SK_MTIME,
     SK_INODE,
     SK_SHA256,
     SK_ATTRS,
-    SK_MTIME,
     SK_CHFIELDS,
     SK_USER_ID,
     SK_USER_NAME,

@@ -193,8 +193,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #else
     char str_owner[50], str_group[50], str_perm[50];
     char *hash_file_name;
-    char *file_inode;
-    char *inode;
 #endif
 
 
@@ -210,11 +208,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     /* Win32 does not have lstat */
     if (stat(file_name, &statbuf) < 0)
 #else
-    if (evt && evt->inode) {
-        if (file_inode = OSHash_Get_ex(syscheck.inode_hash, evt->inode), file_inode) {
-            file_name = file_inode;
-        }
-    }
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
@@ -230,17 +223,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
             send_syscheck_msg(alert_msg);
 
+#ifndef WIN32
+            fim_delete_hashes(strdup(file_name));
+#else
             // Delete from hash table
             if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
                 os_free(s_node->checksum);
                 os_free(s_node);
-            }
-#ifndef WIN32
-            // Delete from inode hash table
-            if (evt && evt->inode) {
-                if (inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), inode) {
-                    os_free(inode);
-                }
             }
 #endif
             os_free(alert_msg);
@@ -307,11 +296,11 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
                             mdebug2("Follow symbolic links disabled.");
-                            free(alert_msg);
-                            free(wd_sum);
+                            os_free(alert_msg);
+                            os_free(wd_sum);
                             return 0;
                         } else {
-                            free(alert_msg);
+                            os_free(alert_msg);
                             os_free(wd_sum);
                             return (read_dir(file_name, dir_position, NULL, max_depth-1, 1));
                         }
@@ -461,18 +450,14 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 *str_mtime = '\0';
             }
 
-            if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
+            if (opts & CHECK_FOLLOW) {
+                if (S_ISLNK(statbuf.st_mode)) {
+                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
                 } else {
                     sprintf(str_inode,"%ld",(long)statbuf.st_ino);
                 }
             } else {
-                *str_inode = '\0';
+                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
             }
 
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
@@ -496,7 +481,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     opts & CHECK_OWNER ? get_user(file_name, S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_uid : statbuf.st_uid, NULL) : "",
                     opts & CHECK_GROUP ? get_group(S_ISLNK(statbuf.st_mode) ? statbuf_lnk.st_gid : statbuf.st_gid) : "",
                     str_mtime,
-                    str_inode,
+                    opts & CHECK_INODE ? str_inode : "",
                     opts & CHECK_SHA256SUM ? sf256_sum : "",
                     0);
 #endif
@@ -513,23 +498,28 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifndef WIN32
             hash_file_name = strdup(file_name);
             int ret = OSHash_Add_ex(syscheck.inode_hash, str_inode, hash_file_name);
+            char * inode_path;
+
             switch (ret) {
             case 0:
-                free(hash_file_name);
+                os_free(hash_file_name);
                 mdebug2("Not enough memory to add inode to db: %s (%s) ", file_name, str_inode);
                 break;
             case 1:
-                free(hash_file_name);
-                mdebug2("Inode already added to db: %s (%s) ", file_name, str_inode);
-                syscheck_node *data;
-                if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
-                    os_free(data->checksum);
-                    os_free(data);
+                if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
+                    if(strcmp(inode_path, file_name)) {
+                        mdebug2("Updating path '%s' in inode hash table: %s (%s) ", file_name, inode_path, str_inode);
+                        OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
+                        read_file(inode_path, dir_position, evt, max_depth);
+                        os_free(inode_path);
+                    }
+                    else {
+                        os_free(hash_file_name);
+                    }
                 }
-                os_free(alert_msg);
-                os_free(alertdump);
-                os_free(wd_sum);
-                return 0;
+                else {
+                    os_free(hash_file_name);
+                }
             }
 #endif
             /* Send the new checksum to the analysis server */
@@ -744,13 +734,20 @@ end:
     if (sid) {
         LocalFree(sid);
     }
-    free(str_perm);
+    os_free(str_perm);
 #endif
     return 0;
 }
 
 int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
 {
+    char *f_name;
+    short is_nfs;
+    DIR *dp;
+    struct dirent *entry;
+    int opts;
+    size_t dir_size;
+
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
@@ -773,15 +770,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     }
 #endif
 
-    int opts;
-    size_t dir_size;
-    char *f_name;
-    short is_nfs;
     os_calloc(PATH_MAX + 2, sizeof(char), f_name);
-
-    DIR *dp;
-    struct dirent *entry;
-
     opts = syscheck.opts[dir_position];
 
     /* Directory should be valid */
@@ -865,11 +854,6 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         free(f_name);
         return (-1);
     }
-    else if (evt) {
-        free(f_name);
-        closedir(dp);
-        return (0);
-    }
 
     /* Check for real time flag */
     if (opts & CHECK_REALTIME || opts & CHECK_WHODATA) {
@@ -917,7 +901,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         read_file(f_name, dir_position, evt, max_depth);
     }
 
-    free(f_name);
+    os_free(f_name);
     closedir(dp);
     return (0);
 }
@@ -927,9 +911,8 @@ int run_dbcheck()
     unsigned int i = 0;
     char *alert_msg = NULL;
     OSHash *last_backup;
-    OSHashNode *curr_node;
-    syscheck_node *data;
     int pos;
+
     os_calloc(OS_SIZE_6144, sizeof(char), alert_msg);
 
     __counter = 0;
@@ -959,24 +942,24 @@ int run_dbcheck()
         w_mutex_unlock(&lastcheck_mutex);
 
         // Send messages for deleted files
-        for (i = 0; i <= last_backup->rows; i++) {
-            curr_node = last_backup->table[i];
-            if(curr_node && curr_node->key) {
-                do{
-                    pos = find_dir_pos(curr_node->key, 1, 0, 0);
-                    mdebug2("Sending delete msg for file: %s", curr_node->key);
-                    snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
-                    send_syscheck_msg(alert_msg);
-                    OSHash_Delete_ex(syscheck.last_check, curr_node->key);
-                    if (data = OSHash_Delete_ex(syscheck.fp, curr_node->key), data) {
-                        free(data->checksum);
-                        free(data);
-                    }
-                    curr_node=curr_node->next;
-                }
-                while(curr_node && curr_node->key);
-            }
+        OSHashNode *curr_node;
+        unsigned int *i;
+
+        os_calloc(1, sizeof(unsigned int), i);
+
+        for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
+            pos = find_dir_pos(curr_node->key, 1, 0, 0);
+
+            mdebug2("Sending delete msg for file: %s", curr_node->key);
+            snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
+            send_syscheck_msg(alert_msg);
+#ifndef WIN32
+            fim_delete_hashes(strdup(curr_node->key));
+#endif
+            OSHash_Delete_ex(syscheck.last_check, curr_node->key);
         }
+        os_free(i);
+
         last_backup->free_data_function = NULL;
         OSHash_Free(last_backup);
 
@@ -1228,4 +1211,49 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
     free(dir_name_full);
     return 0;
 }
+
+int fim_delete_hashes(char *file_name) {
+    char *checksum_inode;
+    char *inode_str;
+    char *w_inode;
+    OSHashNode *s_inode;
+    char * inode_path;
+    syscheck_node *data;
+
+    if (data = OSHash_Delete_ex(syscheck.fp, file_name), data) {
+        os_strdup(data->checksum, checksum_inode);
+
+        if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0') {
+            unsigned int *inode_it;
+            os_calloc(1, sizeof(unsigned int), inode_it);
+
+            //Looking for inode if check_inode = no
+            for (s_inode = OSHash_Begin(syscheck.inode_hash, inode_it); s_inode && s_inode->data; s_inode = OSHash_Next(syscheck.inode_hash, inode_it, s_inode)) {
+                if(!strcmp(s_inode->data, file_name)){
+                    inode_str = s_inode->key;
+                    break;
+                }
+            }
+            os_free(inode_it);
+        }
+
+        if(inode_str) {
+            if (inode_path = OSHash_Get_ex(syscheck.inode_hash, inode_str), inode_path) {
+                if(!strcmp(inode_path, file_name)) {
+                    if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
+                        os_free(w_inode);
+                    }
+                }
+            }
+        }
+
+        os_free(checksum_inode);
+        os_free(data->checksum);
+        os_free(data);
+    }
+    os_free(file_name);
+
+    return 0;
+}
+
 #endif
