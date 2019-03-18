@@ -513,6 +513,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                         read_file(inode_path, dir_position, evt, max_depth);
                         os_free(inode_path);
                     }
+                    else {
+                        os_free(hash_file_name);
+                    }
+                }
+                else {
+                    os_free(hash_file_name);
                 }
             }
 #endif
