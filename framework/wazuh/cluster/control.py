@@ -19,9 +19,9 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit, sor
     return result
 
 
-async def get_node(filter_node=None):
+async def get_node(filter_node=None, select=None):
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': None, 'search': None,
-                 'select': None, 'filter_type': 'all'}
+                 'select': select, 'filter_type': 'all'}
     node_info_array = json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
                                                             wait_for_complete=False))
     if len(node_info_array['items']) > 0:

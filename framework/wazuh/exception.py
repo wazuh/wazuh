@@ -152,6 +152,8 @@ class WazuhException(Exception):
         1905: 'File was not updated because it already exists',
         1906: 'File does not exist',
         1907: 'File could not be deleted',
+        1908: '\'path\' parameter is empty',
+        1909: 'Invalid content-type',
 
         # Database:
         2000: 'No such database file',
