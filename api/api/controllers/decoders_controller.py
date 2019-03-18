@@ -136,5 +136,31 @@ def download_file(file: str, pretty: bool = False, wait_for_complete: bool = Fal
         return {'error': 404, 'message': 'File not found'}, 404
 
 
-def get_decoders_parents():
-    pass
+def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
+                         sort: str = None, search: str = None):
+    """Get decoders by name
+
+    Returns information about decoders with a specified name. This information include decoder's route, decoder's name,
+    decoder's file among others.
+
+    :param pretty: Show results in human-readable format
+    :param wait_for_complete: Disable timeout response
+    :param offset: First element to return in the collection
+    :param limit: Maximum number of elements to return
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+                 ascending or descending order.
+    :param search: Looks for elements with the specified string
+    """
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search, 'parents': True}
+
+    dapi = DistributedAPI(f=Decoder.get_decoders,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
