@@ -86,14 +86,6 @@ os_info *get_win_version()
                 info->os_name = strdup(temp);
             }
 
-            dwRet = RegQueryValueEx(RegistryKey, TEXT("ReleaseId"), NULL, NULL, (LPBYTE)value, &dwCount);
-            if (dwRet != ERROR_SUCCESS) {
-                merror("Error reading 'ReleaseId' from Windows registry. (Error %u)",(unsigned int)dwRet);
-                info->os_release = strdup("undefined");
-            }
-            else {
-                info->os_release = strdup(value);
-            }
             RegCloseKey(RegistryKey);
         }
 
@@ -133,6 +125,17 @@ os_info *get_win_version()
                     info->os_build = strdup(vn_temp);
                 }
             }
+
+            dwCount = vsize;
+            dwRet = RegQueryValueEx(RegistryKey, TEXT("ReleaseId"), NULL, NULL, (LPBYTE)value, &dwCount);
+            if (dwRet != ERROR_SUCCESS) {
+                merror("Error reading 'ReleaseId' from Windows registry. (Error %u)",(unsigned int)dwRet);
+                info->os_release = strdup("undefined");
+            }
+            else {
+                info->os_release = strdup(value);
+            }
+
             RegCloseKey(RegistryKey);
         }
         // Windows 6.2 or 6.3
@@ -231,6 +234,7 @@ os_info *get_win_version()
     // Read Service Pack
     if(!info->os_release) {
         DWORD service_pack = 0;
+        dwCount = sizeof(DWORD);
         snprintf(subkey, vsize - 1, "%s", "SYSTEM\\CurrentControlSet\\Control\\Windows");
 
         if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
@@ -264,6 +268,7 @@ os_info *get_win_version()
                     info->os_release = strdup("sp6");
                     break;
                 default:
+                    merror("Uncontrolled service pack: %lu.", service_pack);
                     info->os_release = strdup("undefined");
                 }
             }
