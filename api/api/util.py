@@ -1,7 +1,10 @@
 import datetime
+import os
 
 import six
 import typing
+
+from wazuh.common import ossec_path as WAZUH_PATH
 
 
 def _deserialize(data, klass):
@@ -182,3 +185,14 @@ def parse_sort_param(sort: str) -> [typing.Dict, None]:
     """
     sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
+
+
+def to_relative_path(full_path):
+    """Returns a relative path from Wazuh base directory
+
+    :param full_path: Full path
+    :type path: str
+    :return: Relative path
+    :rtype: str
+    """
+    return os.path.relpath(full_path, WAZUH_PATH)
