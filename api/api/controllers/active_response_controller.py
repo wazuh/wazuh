@@ -61,5 +61,5 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
     #data = ConfirmationMessage(loop.run_until_complete(dapi.distribute_function()))
     confirmation_message = ConfirmationMessage.from_dict(loop.run_until_complete(dapi.distribute_function()))
 
-    return data, 200
+    return confirmation_message, 200
 
