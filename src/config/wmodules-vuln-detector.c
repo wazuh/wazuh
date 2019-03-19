@@ -39,7 +39,7 @@ static int wm_vuldet_add_allow_os(update_node *update, char *os_tags);
 
 // Options
 static const char *XML_DISABLED = "disabled";
-static const char *XML_ENABLE = "enable";
+static const char *XML_ENABLED = "enabled";
 static const char *XML_INTERVAL = "interval";
 static const char *XML_NAME = "name";
 static const char *XML_OS = "os";
@@ -53,6 +53,7 @@ static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
 static const char *XML_PATCH_SCAN = "patch_scan";
+static const char *XML_PERMISSIVE_SCAN = "permissive_scan";
 static const char *XML_MULTI_PATH = "multi_path";
 static const char *XML_MULTI_URL = "multi_url";
 static const char *XML_START = "start";
@@ -331,7 +332,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
         if (!nodes[i]->element) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
-        } else if (!strcmp(nodes[i]->element, XML_ENABLE)) {
+        } else if (!strcmp(nodes[i]->element, XML_ENABLED)) {
             if (!strcmp(nodes[i]->content, "yes"))
                 vuldet->flags.enabled = 1;
             else if (!strcmp(nodes[i]->content, "no")) {
@@ -341,7 +342,7 @@ int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2) {
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_DISABLED)) {
-            mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name, XML_ENABLE);
+            mwarn("'%s' option at module '%s' is deprecated. Use '%s' instead.", nodes[i]->element, WM_VULNDETECTOR_CONTEXT.name, XML_ENABLED);
             if (!strcmp(nodes[i]->content, "yes"))
                 vuldet->flags.enabled = 0;
             else if (!strcmp(nodes[i]->content, "no")) {
@@ -441,6 +442,7 @@ static int wm_vuldet_read_deprecated_multifeed_tag(xml_node *node, update_node *
                     }
                 } else {
                     merror("Invalid attribute '%s' for '%s'.", node->attributes[j], XML_UPDATE_UBUNTU_OVAL);
+                    return OS_INVALID;
                 }
             }
         }
@@ -636,6 +638,16 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
                 if (!strcmp(chld_node[i]->content, "yes")) {
                     flags->patch_scan = 1;
+                    for (j = 0; chld_node[i]->attributes && chld_node[i]->attributes[j]; j++) {
+                        if (!strcmp(chld_node[i]->attributes[j], XML_PERMISSIVE_SCAN)) {
+                            if (!strcmp(chld_node[i]->values[j], "yes")) {
+                                flags->permissive_patch_scan = 1;
+                            }
+                        } else {
+                            mwarn("Invalid tag '%s' for '%s' option.", chld_node[i]->attributes[j], chld_node[i]->element);
+                            return OS_INVALID;
+                        }
+                    }
                 } else {
                     flags->patch_scan = 0;
                 }
@@ -661,6 +673,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
                         wm_vuldet_set_port_to_url(&multi_url, port);
                     } else {
                         mwarn("Invalid tag '%s' for '%s' option.", chld_node[i]->attributes[j], chld_node[i]->element);
+                        return OS_INVALID;
                     }
                 }
                 if (strstr(multi_url, NVD_MULTI_URL_TAG) && (start == -1 || end == -1)) {
@@ -674,7 +687,7 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             if (!allow_os) {
                 os_strdup(chld_node[i]->content, allow_os);
             }
-        } else if (strcmp(chld_node[i]->element, XML_OS) && strcmp(chld_node[i]->element, XML_DISABLED)) {
+        } else if (strcmp(chld_node[i]->element, XML_OS) && strcmp(chld_node[i]->element, XML_ENABLED)) {
             merror("Invalid option in %s section for module %s: %s.", XML_PROVIDER, WM_VULNDETECTOR_CONTEXT.name, chld_node[i]->element);
             return OS_INVALID;
         }
@@ -767,13 +780,13 @@ int wm_vuldet_provider_enable(xml_node **node) {
     int i;
 
     for (i = 0; node[i]; i++) {
-        if (!strcmp(node[i]->element, XML_ENABLE)) {
+        if (!strcmp(node[i]->element, XML_ENABLED)) {
             if (!strcmp(node[i]->content, "yes")) {
                 return 1;
             } else if (!strcmp(node[i]->content, "no")) {
                 return 0;
             } else {
-                merror("Invalid content '%s' for tag '%s' at module '%s'.", node[i]->content, XML_ENABLE, WM_VULNDETECTOR_CONTEXT.name);
+                merror("Invalid content '%s' for tag '%s' at module '%s'.", node[i]->content, XML_ENABLED, WM_VULNDETECTOR_CONTEXT.name);
                 break;
             }
         } else if (!strcmp(node[i]->element, XML_DISABLED)) {
