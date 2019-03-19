@@ -6,8 +6,6 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from api.models.base_model_ import Model
-from api.models.agent_os import AgentOs  # noqa: F401,E501
-from api.models.agent_status import AgentStatus  # noqa: F401,E501
 from api import util
 
 
@@ -32,8 +30,7 @@ class ApiResponse(Model):
         }
 
         self._error = error
-        if message:
-            self._message = message
+        self._message = message
 
     @classmethod
     def from_dict(cls, dikt) -> Dict:
