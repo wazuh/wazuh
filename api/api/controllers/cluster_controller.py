@@ -563,7 +563,8 @@ def put_restart(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          broadcasting=True
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
