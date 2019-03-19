@@ -128,3 +128,65 @@ def test_get_agents_overview_search(test_data, search, totalItems):
 
         agents = Agent.get_agents_overview(search=search)
         assert len(agents['items']) == totalItems
+
+
+@pytest.mark.parametrize('select', [
+    None,
+    {'fields': ['ip', 'id', 'status']},
+])
+@pytest.mark.parametrize('a_id, a_ip, a_status', [
+    ('000', '127.0.0.1', 'Active'),
+    ('001', '172.17.0.202', 'Active'),
+    ('003', 'any', 'Never connected')
+])
+def test_get_basic_information(test_data, select, a_id, a_ip, a_status):
+    """
+    Tests get_basic_information function
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        agent_info = Agent(a_id).get_basic_information(select=select)
+        if select is not None:
+            assert agent_info.keys() == set(select['fields'])
+
+        assert agent_info['id'] == a_id
+        assert agent_info['ip'] == a_ip
+        assert agent_info['status'] == a_status
+
+
+@pytest.mark.parametrize('fields, expected_items', [
+    ({'fields': ['os.platform']}, [{'os': {'platform': 'ubuntu'}, 'count': 3}, {'count': 2}]),
+    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2}, {'count': 2}]),
+    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 2}, {'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}])
+])
+def test_get_distinct_agents(test_data, fields, expected_items):
+    """
+    Tests get_distinct_agents function.
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        distinct = Agent.get_distinct_agents(fields=fields)
+        assert distinct['items'] == expected_items
+
+
+def test_get_agents_summary(test_data):
+    """
+    Tests get_agents_summary function
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        summary = Agent.get_agents_summary()
+        assert summary['Active'] == 3
+        assert summary['Never connected'] == 1
+        assert summary['Pending'] == 1
+        assert summary['Disconnected'] == 0
+
+
+def test_get_os_summary(test_data):
+    """
+    Tests get_os_summary function
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        summary = Agent.get_os_summary()
+        assert summary['items'] == ['ubuntu']

@@ -939,6 +939,9 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
     def _get_data(self):
         return [db_tuple[0] for db_tuple in self.conn]
 
+    def _format_data_into_dictionary(self):
+        return WazuhDBQuery._format_data_into_dictionary(self)
+
 
 class WazuhDBQueryGroupBy(WazuhDBQuery):
     """
