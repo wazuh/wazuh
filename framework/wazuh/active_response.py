@@ -38,14 +38,16 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
     :return: Message.
     """
     if not command:
-        raise WazuhException(1650, "Command not specified")
+        raise ValueError("Command cannot be None")
 
     if not agent_id:
-        raise WazuhException(1650, "Agent ID not specified")
+        raise ValueError("Agent ID cannot be None")
 
     commands = get_commands()
     if not custom and command not in commands:
-        raise WazuhException(1650, "Command not available")
+        raise WazuhException(1650,
+                             extra_message=f"Command {command} is not custom, "
+                                           f"so it must be one of the following: {', '.join(commands)}")
 
     # Create message
     msg_queue = command

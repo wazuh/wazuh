@@ -9,8 +9,10 @@ import logging
 
 import wazuh.active_response as active_response
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhException
 from api.models.active_response_model import ActiveResponse
 from api.models.api_response_model import ApiResponse
+from api.models.api_response_data_model import ApiResponseData
 from api.models.confirmation_message_model import ConfirmationMessage
 from api.util import remove_nones_to_dict
 
@@ -48,18 +50,26 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
 
-    dapi = DistributedAPI(f=active_response.run_command,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          pretty=pretty,
-                          logger=logger
-                          )
+    try:
+        dapi = DistributedAPI(f=active_response.run_command,
+                            f_kwargs=remove_nones_to_dict(f_kwargs),
+                            request_type='distributed_master',
+                            is_async=False,
+                            wait_for_complete=wait_for_complete,
+                            pretty=pretty,
+                            logger=logger
+                            )
+    except ValueError:
+        return 'Value error', 400
+    except WazuhException:
+        return 'Wazuh Exception', 400
 
     data = loop.run_until_complete(dapi.distribute_function())
-    confirmation_message = ConfirmationMessage.from_dict(data)
-    api_response = ApiResponse.from_dict(data)
+    api_response = ApiResponse(data)
+    confirmation_message = ConfirmationMessage(data)
 
-    return {**confirmation_message.to_dict(), **api_response.to_dict()}, 200
+    api_response_data = ApiResponseData(api_response=api_response,
+                                        confirmation_message=confirmation_message)
+
+    return api_response_data.to_dict(), 200
 
