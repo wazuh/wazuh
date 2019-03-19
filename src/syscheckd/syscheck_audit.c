@@ -212,18 +212,20 @@ int add_audit_rules_syscheck(void) {
                 int found = search_audit_rule(syscheck.dir[i], "wa", AUDIT_KEY);
                 if (found == 0) {
                     if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
-                        mdebug1("Added audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
                         w_mutex_lock(&audit_rules_mutex);
-                        W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
+                        if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
+                            mdebug1("Added audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                        }
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
                         merror("Error adding audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
                     }
                 } else if (found == 1) {
-                    mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
+                    if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
+                        mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
+                    }
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {

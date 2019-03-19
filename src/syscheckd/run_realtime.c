@@ -251,11 +251,14 @@ int realtime_start()
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
     if (whodata && audit_thread_active) {
-        mdebug1("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
-        W_Vector_insert(audit_added_dirs, dir);
+
+        if(!W_Vector_insert_unique(audit_added_dirs, dir)){
+            mdebug1("Monitoring with Audit: '%s'.", dir);
+        }
+
         w_mutex_unlock(&audit_mutex);
 
     } else {
