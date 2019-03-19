@@ -17,6 +17,8 @@ class Model(object):
     # value is json key in definition.
     attribute_map = {}
 
+    all_of = []
+
     @classmethod
     def from_dict(cls: typing.Type[T], dikt) -> T:
         """Returns the dict as a model"""
@@ -46,6 +48,9 @@ class Model(object):
                 ))
             else:
                 result[attr] = value
+
+        for model in self.all_of:
+            result.update(model.to_dict())
 
         return result
 

@@ -21,18 +21,11 @@ class ApiResponseData(Model):
         :param confirmation_message: Confirmation message
         :type confirmation_essage: ConfirmationMessage 
         """
-        self.swagger_types = {
-            'api_response': ApiResponse,
-            'confirmation_message': ConfirmationMessage
-        }
-
-        self.attribute_map = {
-            'api_response': 'api_response',
-            'confirmation_message': 'confirmation_message'
-        }
 
         self._api_response = api_response
         self._confirmation_message = confirmation_message
+
+        self.all_of = [self._api_response, self._confirmation_message]
 
     @classmethod
     def from_dict(cls, dikt) -> Dict:
