@@ -2812,6 +2812,11 @@ int wm_vuldet_db_empty() {
     sqlite3_stmt *stmt = NULL;
     int result;
 
+    if (wm_vuldet_check_db()) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
+        return OS_INVALID;
+    }
+
     if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         return wm_vuldet_sql_error(db, NULL);
     }
