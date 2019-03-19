@@ -142,7 +142,7 @@ class WazuhDBConnection:
         if 'count' not in query_lower:
             lim = 0
             if 'limit' in query_lower:
-                lim  = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
+                lim = int(re.compile(r".* limit (\d+)").match(query_lower).group(1))
                 query_lower = query_lower.replace(" limit {}".format(lim), "")
 
             regex = re.compile(r"\w+ \d+? sql select ([A-Z a-z0-9,*_` \.\-%\(\):\']+) from")
@@ -150,7 +150,7 @@ class WazuhDBConnection:
             countq = query_lower.replace(select, "count(*)", 1)
             total = list(self._send(countq)[0].values())[0]
 
-            limit = lim if lim != 0 else total
+            limit = min(lim, total) if lim != 0 else total
 
             response = []
             step = limit if limit < self.request_slice and limit > 0  else self.request_slice
