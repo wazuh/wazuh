@@ -1,7 +1,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+from math import ceil
 from unittest.mock import patch
 import pytest
 import itertools
@@ -58,23 +58,38 @@ def test_receive_long_message(socket_mock):
     assert len(socket_mock.mock_calls) == 5 + 3 * 8
 
 
+@pytest.mark.parametrize('lim_query', [
+    "",
+    " limit 500 offset 0"
+])
+@pytest.mark.parametrize('total_elements', [
+    1000,
+    10,
+    300
+])
 @patch('socket.socket')
-def test_slice_message(socket_mock):
+def test_slice_message(socket_mock, total_elements, lim_query):
     """
     Tests receiving a message so big it can't be sliced the first time, but after requesting half of elements
     its correctly returned
     """
-    socket_mock.return_value.recv.side_effect = itertools.chain([b'0001 ', b'ok [{"count(*)":1000}]',
+    socket_mock.return_value.recv.side_effect = itertools.chain([b'0001 ', b'ok [{"count(*)": %d}]' % total_elements,
                                                                  b'1234', b'ok [{"long": "long"'],
                                                                 itertools.cycle([b'1234', b'ok [{"long": "long"}]']))
 
     mywdb = WazuhDBConnection()
-    received = mywdb.execute("agent 000 sql select * from test")
+    received = mywdb.execute("agent 000 sql select * from test" + lim_query)
+
+    # when there are more elements than requested (total > limit), the total elements returned will be the
+    # specified limit.
+    total_elements = total_elements if not lim_query or total_elements < 500 else 500
+
     # 1000 elements / 180 step -> 5.5 -> 6 + 1 element from the double failed request (the one returning the
     # incomplete JSON).
-    assert received == [{"long": "long"}]*7
+    sliced_requests = ceil(total_elements / 180)
+    assert received == [{"long": "long"}] * (sliced_requests + 1)
 
     # 5 calls to setup the socket (create object, connect, make count(*) request...) +
     # 6 requests (1000 elements sliced in 180 items per request) + 1 failed request
     # + 2 extra request consequence of the failed one
-    assert len(socket_mock.mock_calls) == 5 + (6 + 2) * 3
+    assert len(socket_mock.mock_calls) == 5 + (sliced_requests + 2) * 3
