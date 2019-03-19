@@ -20,17 +20,20 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 def get_fake_sca_data(*args, **kwargs):
     assert(isinstance(args[0], str))
     query = re.search(r'^agent \d{3} sql (.+)$', args[0]).group(1)
+    sca_db = sqlite3.connect(':memory:')
     try:
-        conn = sqlite3.connect(os.path.join(test_data_path, '000.db'))
-        conn.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
+        cur = sca_db.cursor()
+        with open(os.path.join(test_data_path, 'schema_sca_test.sql')) as f:
+            cur.executescript(f.read())
+        sca_db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
         import logging
         logging.error(query)
-        rows = conn.execute(query).fetchall()
+        rows = sca_db.execute(query).fetchall()
         if len(rows) > 0 and 'COUNT(*)' in rows[0]:
             return rows[0]['COUNT(*)']
         return rows
     finally:
-        conn.close()
+        sca_db.close()
 
 
 # Aliases and ` are lost when sqlite db answers...
@@ -42,19 +45,7 @@ cols_returned_from_db_sca_check = [field.replace('`', '').replace('sca.', '') fo
 class TestPolicyMonitoring(TestCase):
 
     @patch('socket.socket')
-    def test_wazuhdbquerysca(self, mock):
-        """
-        Checks exception is raised when db not found
-        """
-        with patch('wazuh.common.wdb_path', '/do/not/exists'):
-            with self.assertRaises(WazuhException):
-                WazuhDBQuerySCA('000', 0, 500, None, None, None, '', True, True)
-        with patch('wazuh.common.wdb_path', test_data_path):
-            query = WazuhDBQuerySCA('000', 0, 500, None, None, None, '', True, True)
-            assert(isinstance(query, WazuhDBQuerySCA))
-
-    @patch('socket.socket')
-    @patch('wazuh.common.wdb_path', test_data_path)
+    @patch('wazuh.security_configuration_assessment.glob', lambda x: ['/queue/db/000.db'])
     def test_get_sca_list(self, mock):
         """
         Checks data are properly loaded from database
@@ -72,7 +63,7 @@ class TestPolicyMonitoring(TestCase):
             assert(set(sca.keys()) == set(cols_returned_from_db_sca))
 
     @patch('socket.socket')
-    @patch('wazuh.common.wdb_path', test_data_path)
+    @patch('wazuh.security_configuration_assessment.glob', lambda x: ['/queue/db/000.db'])
     def test_get_sca_list_select_param(self, mock):
         """
         Checks only selected fields are loaded from database
@@ -91,7 +82,7 @@ class TestPolicyMonitoring(TestCase):
             assert (set(sca.keys()) == set(fields['fields']))
 
     @patch('socket.socket')
-    @patch('wazuh.common.wdb_path', test_data_path)
+    @patch('wazuh.security_configuration_assessment.glob', lambda x: ['/queue/db/000.db'])
     def test_get_sca_list_search_param(self, mock):
         """
         Checks only selected fields are loaded from database
@@ -123,7 +114,7 @@ class TestPolicyMonitoring(TestCase):
             assert (len(result['items']) > 0)
 
     @patch('socket.socket')
-    @patch('wazuh.common.wdb_path', test_data_path)
+    @patch('wazuh.security_configuration_assessment.glob', lambda x: ['/queue/db/000.db'])
     def test_get_sca_checks(self, mock):
         """
         Checks sca checks data are properly loaded from database

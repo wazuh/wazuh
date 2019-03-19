@@ -54,13 +54,10 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         self._default_query_str = default_query
         self.count_field = count_field
         Agent(agent_id).get_basic_information()  # check if the agent exists
-        db_path = glob('{0}/{1}.db'.format(common.wdb_path, agent_id))
-        if not db_path:
-            raise WazuhException(1600)
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
                               search=search, select=select, fields=fields, default_sort_field=default_sort_field,
-                              default_sort_order='DESC', filters=filters, query=query, db_path=db_path[0],
+                              default_sort_order='DESC', filters=filters, query=query, db_path=None,
                               min_select_fields=set(), count=count, get_data=get_data,
                               date_fields={'end_scan', 'start_scan'})
         self.conn = WazuhDBConnection()
