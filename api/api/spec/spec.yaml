@@ -92,7 +92,6 @@ components:
         - total_affected_items
       allOf:
         - $ref: '#/components/schemas/ItemAffected'
-        - type: object
           properties:
             older_than:
               type: string
