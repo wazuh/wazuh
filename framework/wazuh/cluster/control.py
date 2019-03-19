@@ -4,7 +4,7 @@
 from wazuh.cluster import local_client
 from wazuh import common, exception
 from wazuh.agent import Agent
-from wazuh.cluster.dapi.dapi import CallableEncoder
+from wazuh.cluster.dapi.dapi import WazuhJSONEncoder
 import json
 
 
@@ -51,7 +51,7 @@ async def get_agents(filter_node=None, filter_status=None):
                   }
 
     result = json.loads(await local_client.execute(command=b'dapi',
-                                                   data=json.dumps(input_json, cls=CallableEncoder).encode(),
+                                                   data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
                                                    wait_for_complete=False))
     if result['error'] > 0:
         raise Exception(result['message'])

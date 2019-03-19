@@ -1,10 +1,13 @@
 import datetime
 import os
+import typing
+from functools import wraps
 
 import six
-import typing
+from connexion import problem
 
 from wazuh.common import ossec_path as WAZUH_PATH
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 
 
 def _deserialize(data, klass):
@@ -163,3 +166,27 @@ def to_relative_path(full_path):
     :rtype: str
     """
     return os.path.relpath(full_path, WAZUH_PATH)
+
+
+def _create_problem(exc):
+    if isinstance(exc, (WazuhInternalError, WazuhException)):
+        return problem(500, 'Wazuh Internal Error', exc.message, ext={'remediation': exc.remediation})
+    elif isinstance(exc, WazuhError):
+        return problem(400, 'Wazuh Error', exc.message, ext={'remediation': exc.remediation})
+    raise exc
+
+
+def exception_handler(f):
+
+    @wraps(f)
+    def handle_exception(*args, **kwargs):
+        try:
+            result = f(*args, **kwargs)
+            if isinstance(result, tuple) or isinstance(result, list):
+                if len(result) > 0:
+                    if isinstance(result[0], Exception):
+                        raise result[0]
+        except Exception as e:
+            return _create_problem(e)
+
+    return handle_exception

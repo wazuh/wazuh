@@ -2121,13 +2121,6 @@ components:
           - sha3_512
           - shake_128
           - shake_256
-    ip:
-      in: query
-      name: ip
-      description: Filters by agent IP
-      schema:
-        type: string
-        format: alphanumeric
     limit:
       in: query
       name: limit

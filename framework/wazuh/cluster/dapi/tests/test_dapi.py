@@ -3,7 +3,7 @@ import json
 from wazuh import Wazuh
 from wazuh.agent import Agent
 from wazuh.manager import status
-from wazuh.cluster.dapi.dapi import CallableEncoder, as_callable
+from wazuh.cluster.dapi.dapi import WazuhJSONEncoder, as_wazuh_object
 
 obj_to_encode_1 = {'foo': 'bar',
                    'foo2': 3,
@@ -24,7 +24,7 @@ obj_to_encode_3 = {'foo': 'bar',
 def test_encoder_decoder():
 
     # Encoding first object
-    encoded = json.dumps(obj_to_encode_1, cls=CallableEncoder)
+    encoded = json.dumps(obj_to_encode_1, cls=WazuhJSONEncoder)
     encoded_dict = json.loads(encoded)
     assert(isinstance(encoded_dict, dict))
     assert('mycallable' in encoded_dict)
@@ -37,11 +37,11 @@ def test_encoder_decoder():
     assert ('__module__' in callable)
 
     # Decoding first object
-    obj_1_again = json.loads(encoded, object_hook=as_callable)
+    obj_1_again = json.loads(encoded, object_hook=as_wazuh_object)
     assert(obj_1_again == obj_to_encode_1)
 
     # Encoding second object
-    encoded = json.dumps(obj_to_encode_2, cls=CallableEncoder)
+    encoded = json.dumps(obj_to_encode_2, cls=WazuhJSONEncoder)
     encoded_dict = json.loads(encoded)
     assert (isinstance(encoded_dict, dict))
     assert ('mycallable' in encoded_dict)
@@ -53,11 +53,11 @@ def test_encoder_decoder():
     assert ('__module__' in callable)
 
     # Decoding second object
-    obj_2_again = json.loads(encoded, object_hook=as_callable)
+    obj_2_again = json.loads(encoded, object_hook=as_wazuh_object)
     assert(obj_2_again == obj_to_encode_2)
 
     # Encoding third object
-    encoded = json.dumps(obj_to_encode_3, cls=CallableEncoder)
+    encoded = json.dumps(obj_to_encode_3, cls=WazuhJSONEncoder)
     encoded_dict = json.loads(encoded)
     assert (isinstance(encoded_dict, dict))
     assert ('mycallable' in encoded_dict)
@@ -69,7 +69,7 @@ def test_encoder_decoder():
     assert ('__module__' in callable)
 
     # Decoding third object
-    obj_3_again = json.loads(encoded, object_hook=as_callable)
+    obj_3_again = json.loads(encoded, object_hook=as_wazuh_object)
     assert(obj_3_again == obj_to_encode_3)
 
 
