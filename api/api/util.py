@@ -154,7 +154,7 @@ def remove_nones_to_dict(dct):
             for k, v in dct.items() if v is not None}
 
 
-def parse_api_param(param: [str, None], param_type: str) -> [typing.Dict, None]:
+def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
     """Parses an str parameter from the API query and returns a dictionary the framework can process
 
     :param param: Str parameter coming from the API.
@@ -162,12 +162,14 @@ def parse_api_param(param: [str, None], param_type: str) -> [typing.Dict, None]:
     :return: A dictionary
     """
     if param is not None:
-        return parse_search_param(param) if param_type == 'search' else parse_sort_param(param)
+        my_func = f'_parse_{param_type}_param'
+        parser = globals().get(my_func, lambda x: x)
+        return parser(param)
     else:
-        return None
+        return param
 
 
-def parse_search_param(search: str) -> typing.Dict:
+def _parse_search_param(search: str) -> typing.Dict:
     """Parses search str param coming from the API query into a dictionary the framework can process.
 
     :param search: Search parameter coming from the API query
@@ -177,7 +179,7 @@ def parse_search_param(search: str) -> typing.Dict:
     return {'negation': negation, 'value': search[1:] if negation else search}
 
 
-def parse_sort_param(sort: str) -> [typing.Dict, None]:
+def _parse_sort_param(sort: str) -> [typing.Dict, None]:
     """Parses sort str param coming from the API query into a dictionary the framework can process.
 
     :param sort: Sort parameter coming from the API query
