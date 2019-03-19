@@ -56,3 +56,4 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
