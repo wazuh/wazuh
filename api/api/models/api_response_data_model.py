@@ -61,3 +61,19 @@ class ApiResponseData(Model):
         """
         self._api_response = api_response
 
+    @property
+    def confirmation_message(self) -> ConfirmationMessage:
+        """
+        :return: Confirmation message
+        :rtype: ConfirmationMessage
+        """
+        return self._confirmation_message
+
+    @confirmation_message.setter
+    def confirmation_message(self, confirmation_message: ConfirmationMessage):
+        """Setter for confirmation_message variable
+
+        :param confirmation_message: Confirmation message
+        """
+        self._confirmation_message = confirmation_message
+
