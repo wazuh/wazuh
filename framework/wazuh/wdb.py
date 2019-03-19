@@ -153,7 +153,7 @@ class WazuhDBConnection:
             limit = min(lim, total) if lim != 0 else total
 
             response = []
-            step = limit if limit < self.request_slice and limit > 0  else self.request_slice
+            step = limit if self.request_slice > limit > 0 else self.request_slice
             try:
                 for off in range(offset, limit+offset, step):
                     send_request_to_wdb(query_lower, step, off, response)
