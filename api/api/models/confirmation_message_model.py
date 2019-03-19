@@ -16,7 +16,7 @@ class ConfirmationMessage(Model):
     def __init__(self, data: str = ''):
         """ApiResponse body model
 
-        :param data: Error code
+        :param data: Message to return
         :type data: str
         """
         self.swagger_types = {
@@ -43,16 +43,16 @@ class ConfirmationMessage(Model):
     @property
     def data(self) -> str:
         """
-        :return: Error code
+        :return: Message to return
         :rtype: str
         """
         return self._data
 
     @data.setter
     def data(self, data: str):
-        """Error code
+        """Message to return
 
-        :param error: Error code
+        :param data: Message to return
         """
         self._data = data
 
