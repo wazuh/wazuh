@@ -57,9 +57,9 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
                           logger=logger
                           )
 
-    #data = loop.run_until_complete(dapi.distribute_function())
-    #data = ConfirmationMessage(loop.run_until_complete(dapi.distribute_function()))
-    confirmation_message = ConfirmationMessage.from_dict(loop.run_until_complete(dapi.distribute_function()))
+    data = loop.run_until_complete(dapi.distribute_function())
+    confirmation_message = ConfirmationMessage.from_dict(data)
+    api_response = ApiResponse.from_dict(data)
 
-    return confirmation_message, 200
+    return {**confirmation_message.to_dict(), **api_response.to_dict()}, 200
 

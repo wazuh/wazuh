@@ -32,7 +32,8 @@ class ApiResponse(Model):
         }
 
         self._error = error
-        self._message = message
+        if message:
+            self._message = message
 
     @classmethod
     def from_dict(cls, dikt) -> Dict:
