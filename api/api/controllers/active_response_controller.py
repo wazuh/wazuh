@@ -9,8 +9,10 @@ import logging
 
 import wazuh.active_response as active_response
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from ..models.active_response_model import ActiveResponse
-from ..util import remove_nones_to_dict
+from api.models.active_response_model import ActiveResponse
+from api.models.api_response_model import ApiResponse
+from api.models.confirmation_message_model import ConfirmationMessage
+from api.util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh.active_response_controller')
@@ -40,7 +42,9 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
     if connexion.request.is_json:
         active_response_model = ActiveResponse.from_dict(connexion.request.get_json())
     else:
-        return 'ERROR', 400
+        return ('Error getting body parameters. Please, '
+                'follow our guide: https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response',
+                400)
 
     f_kwargs = {**{'agent_id': agent_id}, **active_response_model.to_dict()}
 
@@ -53,7 +57,8 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    #data = loop.run_until_complete(dapi.distribute_function())
+    data = ConfirmationMessage(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
