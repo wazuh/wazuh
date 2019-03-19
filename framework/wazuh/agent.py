@@ -115,21 +115,18 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                        if value is not None} for db_tuple in self.conn]
-
         today = datetime.today()
 
         # compute 'status' field, format id with zero padding and remove non-user-requested fields.
         # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
-                        for key, value in item.items() if key in selected_fields} for item in agent_items]
+        self._data = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+                        for key, value in item.items() if key in selected_fields} for item in self._data]
 
-        agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
+        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in self._data]
 
-        return {'items': agent_items, 'totalItems': self.total_items}
+        return super()._format_data_into_dictionary()
 
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
