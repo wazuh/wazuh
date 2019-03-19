@@ -48,7 +48,7 @@ class ConfirmationMessage(Model):
         """
         return self._data
 
-    @error.setter
+    @data.setter
     def data(self, data: str):
         """Error code
 
