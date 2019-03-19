@@ -360,7 +360,7 @@ components:
         benchmark:
           type: string
           description: CIS-CAT benchmark where the profile is defined.
-        pass:
+        passed:
           type: integer
           format: int32
           description: Number of passed checks.
