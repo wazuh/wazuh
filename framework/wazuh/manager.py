@@ -200,10 +200,10 @@ def upload_file(path='', content='', overwrite=False):
     if not overwrite and exists(join(common.ossec_path, path)):
         raise WazuhException(1905)
     
-    if path.split('/')[1] in ('rules', 'decoders'):
-        return upload_xml(content, path)
-    else:
+    if path.split('/')[1] == 'rules':
         return upload_list(content, path)
+    else:
+        return upload_xml(content, path)
 
 
 def upload_xml(xml_file, path):
