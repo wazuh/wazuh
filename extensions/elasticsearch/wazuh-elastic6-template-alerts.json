@@ -293,6 +293,18 @@
             }
           }
         },
+        "predecoder": {
+          "properties": {
+            "program_name": {
+              "type": "keyword",
+              "doc_values": "true"
+            },
+            "timestamp": {
+              "type": "keyword",
+              "doc_values": "true"
+            }
+          }
+        },
         "decoder": {
           "properties": {
             "parent": {

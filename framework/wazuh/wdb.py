@@ -11,6 +11,7 @@ import re
 import json
 import struct
 
+
 class WazuhDBConnection:
     """
     Represents a connection to the wdb socket
@@ -28,7 +29,6 @@ class WazuhDBConnection:
             self.__conn.connect(self.socket_path)
         except OSError as e:
             raise WazuhException(2005, e)
-
 
     def __query_input_validation(self, query):
         """
@@ -50,7 +50,6 @@ class WazuhDBConnection:
             if not check:
                 raise WazuhException(2004, error_text)
 
-
     def _send(self, msg):
         """
         Sends a message to the wdb socket
@@ -67,8 +66,7 @@ class WazuhDBConnection:
         if data[0] == "err":
             raise WazuhException(2003, data[1])
         else:
-            return json.loads(data[1])
-
+            return json.loads(data[1], object_hook=lambda dct: {k: v for k, v in dct.items() if v != "(null)"})
 
     def __query_lower(self, query):
         """
@@ -91,8 +89,6 @@ class WazuhDBConnection:
                 to_lower = True
 
         return new_query
-
-
 
     def execute(self, query, count=False, delete=False, update=False):
         """

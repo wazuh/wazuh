@@ -164,7 +164,7 @@ void run_notify()
     }
 
     /* Create message */
-    if(*agent_ip){
+    if(strcmp(agent_ip,"Err")){
         if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
                 (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",

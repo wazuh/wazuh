@@ -158,6 +158,8 @@ cJSON *getLocalfileConfig(void) {
 
     if (cJSON_GetArraySize(localfiles) > 0) {
         cJSON_AddItemToObject(root,"localfile",localfiles);
+    } else {
+        cJSON_free(localfiles);
     }
 
     return root;
@@ -190,6 +192,8 @@ cJSON *getSocketConfig(void) {
 
     if (cJSON_GetArraySize(targets) > 0) {
         cJSON_AddItemToObject(root,"target",targets);
+    } else {
+        cJSON_free(targets);
     }
 
     return root;

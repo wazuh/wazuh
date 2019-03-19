@@ -20,7 +20,7 @@ class InitManager:
         Sets up necessary environment to test manager functions
         """
         # path for temporary API files
-        self.api_tmp_path = os.path.join(os.getcwd(), 'tests/data/tmp')
+        self.api_tmp_path = os.path.join(test_data_path, 'tmp')
         # rules
         self.input_rules_file = 'test_rules.xml'
         self.output_rules_file = 'uploaded_test_rules.xml'
@@ -86,7 +86,8 @@ def test_restart_ok(test_manager):
 @patch('random.randint', return_value=0)
 @patch('wazuh.manager.chmod')
 @patch('wazuh.manager.move')
-def test_upload_file(move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
+@patch('wazuh.manager.remove')
+def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
@@ -103,6 +104,7 @@ def test_upload_file(move_mock, chmod_mock, mock_rand, mock_time, test_manager, 
     m.assert_any_call(os.path.join(test_data_path, input_file))
     move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
                                       os.path.join(test_data_path, output_file))
+    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
 
 @patch('wazuh.manager.exists', return_value=False)

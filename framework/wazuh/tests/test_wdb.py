@@ -41,6 +41,22 @@ def test_wrong_character_encodings_wdb(socket_mock):
 
 
 @patch('socket.socket')
+def test_null_values_are_removed(socket_mock):
+    """
+    Tests '(null)' values are removed from the resulting dictionary
+    """
+    def recv_mock(size_to_receive):
+        nulls_string = b' {"a": "a", "b": "(null)", "c": [1, 2, 3], "d": {"e": "(null)"}}'
+        return bytes(len(nulls_string)) if size_to_receive == 4 else nulls_string
+
+    socket_mock.return_value.recv.side_effect = recv_mock
+
+    mywdb = WazuhDBConnection()
+    received = mywdb._send("test")
+    assert received == {"a": "a", "c": [1, 2, 3], "d": {}}
+
+
+@patch('socket.socket')
 def test_receive_long_message(socket_mock):
     """
     Tests receiving a message so big it can't be sliced and, therefore an exception will be raised.

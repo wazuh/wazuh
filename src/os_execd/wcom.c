@@ -568,7 +568,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;
@@ -579,7 +579,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;
@@ -590,7 +590,7 @@ size_t wcom_getconfig(const char * section, char ** output) {
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;
@@ -679,6 +679,10 @@ void * wcom_main(__attribute__((unused)) void * arg) {
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            merror("At wcom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+
         case -1:
             merror("At wcom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;

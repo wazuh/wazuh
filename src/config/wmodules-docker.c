@@ -50,7 +50,7 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
             char *endptr;
             docker->interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (docker->interval == 0 || docker->interval == UINT_MAX) {
+            if (docker->interval <= 0 || docker->interval >= UINT_MAX) {
                 merror("At module '%s': Invalid interval.", WM_DOCKER_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -81,9 +81,9 @@ int wm_docker_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
         } else if (!strcmp(nodes[i]->element, XML_ATTEMPTS)) {
-            docker->attempts = strtoul(nodes[i]->content, NULL, 0);
+            docker->attempts = atol(nodes[i]->content);
 
-            if (docker->attempts < 0 || docker->attempts == INT_MAX) {
+            if (docker->attempts <= 0 || docker->attempts >= INT_MAX) {
                 merror("At module '%s': Invalid content for tag '%s'.", WM_DOCKER_CONTEXT.name, XML_ATTEMPTS);
                 return OS_INVALID;
             }

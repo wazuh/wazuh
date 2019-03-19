@@ -212,18 +212,20 @@ int add_audit_rules_syscheck(void) {
                 int found = search_audit_rule(syscheck.dir[i], "wa", AUDIT_KEY);
                 if (found == 0) {
                     if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
-                        mdebug1("Added audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
                         w_mutex_lock(&audit_rules_mutex);
-                        W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
+                        if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
+                            mdebug1("Added audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                        }
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
                         merror("Error adding audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
                     }
                 } else if (found == 1) {
-                    mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
                     w_mutex_lock(&audit_rules_mutex);
-                    W_Vector_insert_unique(audit_added_rules, syscheck.dir[i]);
+                    if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
+                        mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
+                    }
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {
@@ -689,9 +691,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (filterpath_audit_events(w_evt->path)) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (w_evt->inode) {
+                            if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -725,9 +725,7 @@ void audit_parse(char *buffer) {
                             free(file_path);
                             w_evt->path = real_path;
 
-                            if (filterpath_audit_events(w_evt->path)) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (w_evt->inode) {
+                            if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -758,9 +756,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (filterpath_audit_events(w_evt->path)) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (w_evt->inode) {
+                            if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -800,9 +796,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (filterpath_audit_events(w_evt->path)) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (w_evt->inode) {
+                            if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -828,9 +822,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (filterpath_audit_events(w_evt->path)) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (w_evt->inode) {
+                            if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -864,9 +856,7 @@ void audit_parse(char *buffer) {
                                 (w_evt->path)?w_evt->path:"",
                                 (w_evt->process_name)?w_evt->process_name:"");
 
-                            if (filterpath_audit_events(w_evt->path)) {
-                                realtime_checksumfile(w_evt->path, w_evt);
-                            } else if (w_evt->inode) {
+                            if (w_evt->inode) {
                                 if (inode_temp = OSHash_Get_ex(syscheck.inode_hash, w_evt->inode), inode_temp) {
                                     realtime_checksumfile(inode_temp, w_evt);
                                 } else {
@@ -1272,24 +1262,6 @@ exit_err:
     hc_thread_active = 0;
     return -1;
 
-}
-
-
-int filterpath_audit_events(char *path) {
-    int i = 0;
-    char *dir_path;
-
-    for(i = 0; i < W_Vector_length(audit_added_dirs); i++) {
-        os_strdup(W_Vector_get(audit_added_dirs, i), dir_path);
-        wm_strcat(&dir_path, "/", '\0');
-        if (strstr(path, dir_path)) {
-            mdebug2("Found '%s' in '%s'", dir_path, path);
-            free(dir_path);
-            return 1;
-        }
-        free(dir_path);
-    }
-    return 0;
 }
 
 #endif
