@@ -53,7 +53,6 @@ static const char *XML_ALLOW = "allow";
 static const char *XML_UPDATE_FROM_YEAR = "update_from_year";
 static const char *XML_PROVIDER = "provider";
 static const char *XML_PATCH_SCAN = "patch_scan";
-static const char *XML_PERMISSIVE_SCAN = "permissive_scan";
 static const char *XML_MULTI_PATH = "multi_path";
 static const char *XML_MULTI_URL = "multi_url";
 static const char *XML_START = "start";
@@ -638,16 +637,9 @@ int wm_vuldet_read_provider(const OS_XML *xml, xml_node *node, update_node **upd
             if (strcasestr(pr_name, vu_feed_tag[FEED_NVD])) {
                 if (!strcmp(chld_node[i]->content, "yes")) {
                     flags->patch_scan = 1;
-                    for (j = 0; chld_node[i]->attributes && chld_node[i]->attributes[j]; j++) {
-                        if (!strcmp(chld_node[i]->attributes[j], XML_PERMISSIVE_SCAN)) {
-                            if (!strcmp(chld_node[i]->values[j], "yes")) {
-                                flags->permissive_patch_scan = 1;
-                            }
-                        } else {
-                            mwarn("Invalid tag '%s' for '%s' option.", chld_node[i]->attributes[j], chld_node[i]->element);
-                            return OS_INVALID;
-                        }
-                    }
+                } if (!strcmp(chld_node[i]->content, "permissive")) {
+                    flags->patch_scan = 1;
+                    flags->permissive_patch_scan = 1;
                 } else {
                     flags->patch_scan = 0;
                 }
