@@ -19,7 +19,7 @@ import wazuh.stats as stats
 
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('cluster_controller')
+logger = logging.getLogger('wazuh')
 
 
 def get_cluster_node(pretty=False, wait_for_complete=False):
@@ -277,17 +277,15 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     :param node_id: Cluster node name.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
-    :param date: Selects the date for getting the statistical information. Format YYYYMMDD.
+    :param date: Selects the date for getting the statistical information. Format YYYY-MM-DD.
     """
     if date:
-        year = date[0:4]
-        month = date[4:6]
-        day = date[6:8]
+        year, month, day = date.split('-')
     else:
-        today = datetime.datetime.now().strftime('%Y%m%d')
-        year = today[0:4]
-        month = today[4:6]
-        day = today[6:8]
+        today = datetime.datetime.now()
+        year = str(today.year)
+        month = str(today.month)
+        day = str(today.day)
 
     f_kwargs = {'node_id': node_id, 'year': year, 'month': month, 'day': day}
 
@@ -611,7 +609,8 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,
-                          logger=logger
+                          logger=logger,
+                          broadcasting=True
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
