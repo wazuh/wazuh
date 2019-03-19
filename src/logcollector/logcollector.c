@@ -20,6 +20,8 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 static void files_lock_init(void);
+static int is_ascii_utf8(char * file);
+static void check_text_only();
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
 #endif
@@ -95,6 +97,9 @@ void LogCollectorStart()
 
     check_pattern_expand(1);
 
+    /* Check for ASCII, UTF-8 */
+    check_text_only();
+
     /* Set the files mutexes */
     w_set_file_mutexes();
 #else
@@ -115,6 +120,9 @@ void LogCollectorStart()
     if (isVista) {
         win_read_vista_sec();
     }
+
+    /* Check for ASCII, UTF-8 */
+    check_text_only();
 
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
@@ -581,6 +589,9 @@ void LogCollectorStart()
                 }
             }
 #endif
+            /* Check for ASCII, UTF-8 */
+            check_text_only();
+
             w_rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
@@ -1530,4 +1541,160 @@ void files_lock_init()
 
     w_rwlock_init(&files_update_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
+}
+
+/* Check if the file is ASCII or UTF-8 encoded */
+static int is_ascii_utf8(char * file) {
+    int is_ascii = 1;
+    int retval = 0;
+    char *buffer = NULL;
+    fpos_t begin; 
+    FILE *fp;
+
+    fp = fopen(file,"r");
+
+    if(!fp) {
+        mdebug1(OPEN_UNABLE, file);
+        retval = 1;
+        goto end;
+    }
+
+    fgetpos(fp,&begin);
+
+    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+
+    /* ASCII */
+    while(fgets(buffer, OS_MAXSTR, fp)) {
+        int i;
+        unsigned char *c = (unsigned char *)buffer;
+
+        for(i = 0; i < OS_MAXSTR; i++){
+            if( c[i] >= 0x80 ) {
+                is_ascii = 0;
+                break;
+            }
+        }
+
+        if(!is_ascii){
+            break;
+        }
+    }
+
+    if(is_ascii) {
+        goto end;
+    }
+
+    /* UTF-8 */
+    fsetpos(fp,&begin);
+
+    while(fgets(buffer, OS_MAXSTR, fp)) {
+
+        unsigned char *c = (unsigned char *)buffer;
+        unsigned int count = 0;
+
+        while(*c) {
+            
+            if(count > OS_MAXSTR) {
+                goto end;
+            }
+
+            /* Check for UTF-8 BOM */
+            if(count <= (OS_MAXSTR - 3) && *c == 0xEF && c[1] == 0xBB && c[2] == 0xBF) {
+                count += 3;
+                c += 3;
+                continue;
+            }
+
+            /* Valid ASCII */
+            if(*c == 0 || *c <= 0x80) {
+                c++;
+                count++;
+                continue;
+            }
+
+            /* Two bytes UTF-8 */
+            if(*c >= 0xC2 && *c <= 0xDF) {
+                if(c[1] >= 0x80 && c[1] <= 0xBF) {
+                    c += 2;
+                    count += 2;
+                    continue;
+                }
+            } 
+
+            /* Three bytes UTF-8 */
+            if(*c >= 0xE1 && *c <= 0xEC) {
+                if(c[1] >= 0x80 && c[1] <= 0xBF) {
+                    if(c[2] >= 0x80 && c[2] <= 0xBF) {
+                        c += 3;
+                        count += 3;
+                        continue;
+                    }
+                } 
+            } 
+
+            /* Four bytes UTF-8 */
+            if(*c >= 0xF0 && *c <= 0xF7) {
+                if(c[1] >= 0x80 && c[1] <= 0xBF) {
+                    if(c[2] >= 0x80 && c[2] <= 0xBF) {
+                        if(c[3] >= 0x80 && c[3] <= 0xBF) {
+                            c += 4;
+                            count += 4;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            retval = 1;
+            goto end;
+        }
+    }
+
+end:
+    if(fp) {
+        fclose(fp);
+    }
+    os_free(buffer);
+
+    return retval;
+}
+
+static void check_text_only() {
+    int i, j;
+
+    IT_control f_control = 0;
+    logreader *current;
+    char file_name[PATH_MAX];
+
+    for (i = 0, j = -1;; i++) {
+        if (f_control = update_current(&current, &i, &j), f_control) {
+            if (f_control == NEXT_IT) {
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        /* Check for files to exclude */
+        if(current->file && !current->command && current->only) {
+            snprintf(file_name, PATH_MAX, "%s", current->file);
+
+            if(is_ascii_utf8(current->file)) {
+                int result = 0;
+                if (j < 0) {
+                    result = Remove_Localfile(&logff, i, 0, 1);
+                } else {
+                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0);
+                }
+
+                if (result) {
+                    merror_exit(REM_ERROR, file_name);
+                } else {
+                    mdebug2(NON_TEXT_FILE, file_name);
+                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                }
+                i--;
+            }
+        }
+    }
 }

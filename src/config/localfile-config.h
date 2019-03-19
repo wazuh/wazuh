@@ -69,6 +69,7 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
+    char *only;
     outformat ** out_format;
     char **target;
     logtarget * log_target;
