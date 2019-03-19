@@ -280,7 +280,10 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     :param date: Selects the date for getting the statistical information. Format YYYY-MM-DD.
     """
     if date:
-        year, month, day = date.split('-')
+        try:
+            year, month, day = date.split('-')
+        except ValueError:
+            return 'Date format is wrong', 400
     else:
         today = datetime.datetime.now()
         year = str(today.year)
