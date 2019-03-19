@@ -823,7 +823,7 @@ class WazuhDBQuery(object):
         parameters by itself.
         """
         for k, v in self.request.items():
-            self.query = self.query.replace(f':{k}', f"'{v}'")
+            self.query = self.query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
 
     def _get_total_items(self):
         if self.backend == 'sqlite3':
@@ -841,6 +841,9 @@ class WazuhDBQuery(object):
                 if value is not None} for db_tuple in self.conn]
 
     def _execute_data_query(self):
+        if self.backend == 'wdb':
+            self._substitute_params()
+
         query_with_select_fields = self.query.format(','.join(map(lambda x: self.fields[x],
                                                                   self.select['fields'] | self.min_select_fields)))
 
@@ -848,7 +851,6 @@ class WazuhDBQuery(object):
             self.conn.execute(query_with_select_fields, self.request)
             self._data = self._get_data()
         else:
-            self._substitute_params()
             self._data = self.conn.execute(f'agent {self.agent_id} sql {query_with_select_fields}')
 
     def _format_data_into_dictionary(self):

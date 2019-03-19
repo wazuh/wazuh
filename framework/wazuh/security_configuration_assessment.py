@@ -47,9 +47,10 @@ default_query_sca_check = 'SELECT {0} FROM sca_check LEFT JOIN sca_check_complia
 
 class WazuhDBQuerySCA(WazuhDBQuery):
 
-    def __init__(self, agent_id, offset, limit, sort, search, select, query, count,
-                 get_data, default_sort_field='policy_id', filters={}, fields=fields_translation_sca,
-                 count_field='policy_id'):
+    def __init__(self, agent_id, offset, limit, sort, search, select, query, count, get_data,
+                 default_query=default_query_sca, default_sort_field='policy_id', filters={},
+                 fields=fields_translation_sca, count_field='policy_id'):
+        self.default_query = default_query
         self.count_field = count_field
 
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
@@ -58,7 +59,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
                               date_fields={'end_scan', 'start_scan'}, backend='wdb', db_path=None, agent_id=agent_id)
 
     def _default_query(self):
-        return default_query_sca
+        return self.default_query
 
     def _default_count_query(self):
         return f"COUNT(DISTINCT {self.count_field})"
