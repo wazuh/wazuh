@@ -65,10 +65,10 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
         return 'Wazuh Exception', 400
 
     data = loop.run_until_complete(dapi.distribute_function())
-    api_response = ApiResponse(data)
-    confirmation_message = ConfirmationMessage(data)
+    api_response = ApiResponse.from_dict(data)
+    confirmation_message = ConfirmationMessage.from_dict(data)
 
-    api_response_data = ApiResponseData(api_response=api_response,
+    api_response_data = ApiResponseData.from_dict(api_response=api_response,
                                         confirmation_message=confirmation_message)
 
     return api_response_data.to_dict(), 200
