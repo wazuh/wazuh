@@ -5966,6 +5966,14 @@ paths:
         - $ref: '#/components/parameters/node_id'
         - $ref: '#/components/parameters/path'
         - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: Content of the file to be uploaded
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         '200':
           description: 'Confirmation message'
@@ -6924,6 +6932,14 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/path'
         - $ref: '#/components/parameters/overwrite'
+      requestBody:
+        description: Content of the file to be uploaded
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
       responses:
         '200':
           description: 'Confirmation message'

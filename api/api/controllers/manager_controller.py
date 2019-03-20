@@ -300,6 +300,7 @@ def post_files(body, path, overwrite=False, pretty=False, wait_for_complete=Fals
 
     Replaces file contents with the data contained in the API request.
 
+    :param body: Body request with the content of the file to be uploaded
     :param path: Filepath to return.
     :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
     :param pretty: Show results in human-readable format
@@ -316,6 +317,8 @@ def post_files(body, path, overwrite=False, pretty=False, wait_for_complete=Fals
         body = body.decode('utf-8')
     except UnicodeDecodeError:
         return 'Error parsing body request to UTF-8', 400
+    except AttributeError:
+        return 'Body is empty', 400
 
     f_kwargs = {'path': path, 'overwrite': overwrite, 'content': body}
 
