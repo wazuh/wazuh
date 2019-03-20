@@ -85,7 +85,7 @@ class ActiveResponse(Model):
         :return: Command arguments
         :rtype: List[str]
         """
-        return self._command
+        return self._arguments
 
     @arguments.setter
     def arguments(self, arguments: List[str]):
