@@ -2693,58 +2693,55 @@ int is_ascii_utf8(const char * file) {
 
     /* UTF-8 */
     fsetpos(fp, &begin);
+    unsigned char b[4] = {0};
+    size_t nbytes = 0;
 
-    while (fread(buffer,sizeof(char),1,fp)) {
-        size_t nbytes = 0;
-        unsigned char *c = (unsigned char *)buffer;
-        unsigned char b[3] = {0};
-
-        nbytes += fread(&b,sizeof(char),3,fp);
-
+    while (nbytes = fread(b,sizeof(char),4,fp), nbytes) {
+        
         /* Check for UTF-8 BOM */
-        if (*c == 0xEF && b[0] == 0xBB && b[1] == 0xBF) {
+        if (b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
             if (fseek(fp,-1,SEEK_CUR) < 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
-            continue;
+            goto next;
         }
 
         /* Valid ASCII */
-        if (*c == 0 || *c <= 0x80) {
-            if (fseek(fp,-nbytes,SEEK_CUR) < 0) {
+        if (b[0] == 0 || b[0] <= 0x80) {
+            if (fseek(fp,-nbytes + 1,SEEK_CUR) < 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
-            continue;
+            goto next;
         }
 
         /* Two bytes UTF-8 */
-        if (*c >= 0xC2 && *c <= 0xDF) {
-            if (b[0] >= 0x80 && b[0] <= 0xBF) {
+        if (b[0] >= 0xC2 && b[0] <= 0xDF) {
+            if (b[1] >= 0x80 && b[1] <= 0xBF) {
                 if (fseek(fp,-2,SEEK_CUR) < 0) {
                     merror(FSEEK_ERROR, file, errno, strerror(errno));
                 }
-                continue;
+                goto next;
             }
         } 
 
         /* Three bytes UTF-8 */
-        if (*c >= 0xE1 && *c <= 0xEC) {
-            if (b[0] >= 0x80 && b[0] <= 0xBF) {
-                if (b[1] >= 0x80 && b[1] <= 0xBF) {
+        if (b[0] >= 0xE1 && b[0] <= 0xEC) {
+            if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
                     if (fseek(fp,-1,SEEK_CUR) < 0 ) {
                         merror(FSEEK_ERROR, file, errno, strerror(errno));
                     }
-                    continue;
+                    goto next;
                 }
             } 
         } 
 
         /* Four bytes UTF-8 */
-        if (*c >= 0xF0 && *c <= 0xF7) {
-            if (b[0] >= 0x80 && b[0] <= 0xBF) {
-                if (b[1] >= 0x80 && b[1] <= 0xBF) {
-                    if (b[2] >= 0x80 && b[2] <= 0xBF) {
-                        continue;
+        if (b[0] >= 0xF0 && b[0] <= 0xF7) {
+            if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (b[3] >= 0x80 && b[3] <= 0xBF) {
+                        goto next;
                     }
                 }
             }
@@ -2752,6 +2749,10 @@ int is_ascii_utf8(const char * file) {
 
         retval = 1;
         goto end;
+
+next:
+        memset(b,0,4);
+        continue;
     }
 
 end:
