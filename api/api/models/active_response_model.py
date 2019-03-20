@@ -11,7 +11,7 @@ from api import util
 
 class ActiveResponse(Model):
 
-    def __init__(self, command='', custom=False, arguments=''):
+    def __init__(self, command: str = '', custom: bool = False, arguments: str = ''):
         """ActiveResponse body model
 
         :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
@@ -57,7 +57,7 @@ class ActiveResponse(Model):
         return self._command
 
     @command.setter
-    def command(self, command):
+    def command(self, command: str):
         """Command running in the agent.
 
         :param command: Command to run in the agent
@@ -73,7 +73,7 @@ class ActiveResponse(Model):
         return self._custom
 
     @custom.setter
-    def custom(self, custom):
+    def custom(self, custom: bool):
         """
         :param command: Whether the specified command is a custom command or not
         """
@@ -88,7 +88,7 @@ class ActiveResponse(Model):
         return self._command
 
     @arguments.setter
-    def arguments(self, arguments):
+    def arguments(self, arguments: str):
         """Command running in the agent.
 
         :param arguments: Command arguments
