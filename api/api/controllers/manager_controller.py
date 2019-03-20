@@ -3,25 +3,20 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import connexion
+import datetime
 import logging
 
-from wazuh import manager
+import wazuh.configuration as configuration
+import wazuh.manager as manager
+import wazuh.stats as stats
+from api.util import remove_nones_to_dict
+from wazuh import common
+from wazuh import Wazuh
 from wazuh.cluster.dapi.dapi import DistributedAPI
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('agents_controller')
-logger.addHandler(logging.StreamHandler())
-
-
-def get_config(pretty=False, wait_for_complete=False):
-    """Get cluster configuration 
-
-    Returns the current cluster configuration
-
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    """
-    pass
+logger = logging.getLogger('manager_controller')
 
 
 def get_status(pretty=False, wait_for_complete=False):
@@ -32,7 +27,19 @@ def get_status(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.status,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_info(pretty=False, wait_for_complete=False):
@@ -43,7 +50,19 @@ def get_info(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=Wazuh(common.ossec_path).get_ossec_init,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_configuration(pretty=False, wait_for_complete=False, section=None, field=None):
@@ -56,7 +75,19 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
     :param section: Indicates the wazuh configuration section
     :param field: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=configuration.get_ossec_conf,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_stats(pretty=False, wait_for_complete=False, date=None):
@@ -68,7 +99,30 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
     :param wait_for_complete: Disable timeout response
     :param date: Selects the date for getting the statistical information. Format YYYYMMDD.
     """
-    pass
+    if date:
+        try:
+            year, month, day = date.split('-')
+        except ValueError:
+            return 'Date format is wrong', 400
+    else:
+        today = datetime.datetime.now()
+        year = str(today.year)
+        month = str(today.month)
+        day = str(today.day)
+
+    f_kwargs = {'year': year, 'month': month, 'day': day}
+
+    dapi = DistributedAPI(f=stats.totals,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_stats_hourly(pretty=False, wait_for_complete=False):
@@ -79,7 +133,19 @@ def get_stats_hourly(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.hourly,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_stats_weekly(pretty=False, wait_for_complete=False):
@@ -90,7 +156,19 @@ def get_stats_weekly(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.weekly,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_stats_analysisd(pretty=False, wait_for_complete=False):
@@ -101,7 +179,19 @@ def get_stats_analysisd(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.analysisd,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_stats_remoted(pretty=False, wait_for_complete=False):
@@ -112,7 +202,19 @@ def get_stats_remoted(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=stats.remoted,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
@@ -130,7 +232,20 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
     """
-    pass
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
+                'search':search, 'category': category, 'type_log': type_log}
+
+    dapi = DistributedAPI(f=manager.ossec_log,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_log_summary(pretty=False, wait_for_complete=False):
@@ -141,7 +256,19 @@ def get_log_summary(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.ossec_log_summary,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_files(path, pretty=False, wait_for_complete=False):
@@ -153,10 +280,22 @@ def get_files(path, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {'path': path}
+
+    dapi = DistributedAPI(f=manager.get_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def post_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+def post_files(body, path, overwrite=False, pretty=False, wait_for_complete=False):
     """Updates file contents.
 
     Replaces file contents with the data contained in the API request.
@@ -166,9 +305,33 @@ def post_files(path, overwrite=False, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    # get content-type from headers
+    try:
+        content_type = connexion.request.headers['Content-type']
+    except KeyError:
+        return 'Content-type header is mandatory', 400
 
-def delete_files(path, overwrite=False, pretty=False, wait_for_complete=False):
+    # parse body to utf-8
+    try:
+        body = body.decode('utf-8')
+    except UnicodeDecodeError:
+        return 'Error parsing body request to UTF-8', 400
+
+    f_kwargs = {'path': path, 'overwrite': overwrite, 'content': body}
+
+    dapi = DistributedAPI(f=manager.upload_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+def delete_files(path, pretty=False, wait_for_complete=False):
     """Removes a file.
 
     Removes a specified file.
@@ -177,7 +340,19 @@ def delete_files(path, overwrite=False, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {'path': path}
+
+    dapi = DistributedAPI(f=manager.delete_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 def put_restart(pretty=False, wait_for_complete=False):
     """Restarts the wazuh manager.
@@ -187,7 +362,19 @@ def put_restart(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.restart,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_conf_validation(pretty=False, wait_for_complete=False):
@@ -198,4 +385,17 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    pass
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.validation,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
