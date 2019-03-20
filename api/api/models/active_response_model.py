@@ -11,7 +11,7 @@ from api import util
 
 class ActiveResponse(Model):
 
-    def __init__(self, command: str = '', custom: bool = False, arguments: str = ''):
+    def __init__(self, command: str=None, custom: bool=False, arguments: str=None):
         """ActiveResponse body model
 
         :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
