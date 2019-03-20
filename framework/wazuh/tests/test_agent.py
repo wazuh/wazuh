@@ -130,6 +130,21 @@ def test_get_agents_overview_search(test_data, search, totalItems):
         assert len(agents['items']) == totalItems
 
 
+@pytest.mark.parametrize("sort, first_id", [
+    ({'fields': ['dateAdd'], 'order': 'asc'}, '000'),
+    ({'fields': ['dateAdd'], 'order': 'desc'}, '003')
+])
+def test_get_agents_overview_sort(test_data, sort, first_id):
+    """
+    Tests sorting
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        agents = Agent.get_agents_overview(sort=sort, select={'fields': ['dateAdd']})
+        assert agents['items'][0]['id'] == first_id
+
+
 @pytest.mark.parametrize('select', [
     None,
     {'fields': ['ip', 'id', 'status']},
