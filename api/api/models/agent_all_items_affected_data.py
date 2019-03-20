@@ -7,21 +7,22 @@ from typing import List, Dict  # noqa: F401
 
 from api.models.base_model_ import Model
 from api.models.api_response import ApiResponse
+from api.models.all_item_affected import AllItemsAffected
 from api import util
 
 
-class CommonResponse(Model):
+class AgentAllItemsAffected(Model):
 
-    def __init__(self, api_response: ApiResponse=None, data=''):
-        """CommonResponse body model
-        :param api_response: The ApiResponse of this CommonResponse
+    def __init__(self, api_response: ApiResponse=None, data: AllItemsAffected=None):
+        """AgentAllItemsAffected body model
+        :param api_response: The ApiResponse of this AgentAllItemsAffected
         :type api_response: ApiResponse
-        :param data: The data of this CommonResponse.  # noqa: E501
-        :type data: str
+        :param data: The data of this AgentAllItemsAffected.  # noqa: E501
+        :type data: AllItemsAffected
         """
         self.swagger_types = {
             'api_response': ApiResponse,
-            'data': str
+            'data': AllItemsAffected
         }
 
         self.attribute_map = {
@@ -33,11 +34,11 @@ class CommonResponse(Model):
         self._data = data
 
     @classmethod
-    def from_dict(cls, dikt) -> CommonResponse:
+    def from_dict(cls, dikt) -> AgentAllItemsAffected:
         """Returns the dict as a model
         :param dikt: A dict.
         :type: dict
-        :return: The CommonResponse of this CommonResponse.
+        :return: The AgentAllItemsAffected of this AgentAllItemsAffected.
         :rtype: dict
         """
         return util.deserialize_model(dikt, cls)
@@ -45,7 +46,7 @@ class CommonResponse(Model):
     @property
     def api_response(self) -> ApiResponse:
         """
-        :return: The api_response of this CommonResponse
+        :return: The api_response of this AgentAllItemsAffected
         :rtype: ApiResponse
         """
         return self._api_response
@@ -53,21 +54,21 @@ class CommonResponse(Model):
     @api_response.setter
     def api_response(self, api_response):
         """
-        :param api_response: The api_response of this CommonResponse.
+        :param api_response: The api_response of this AgentAllItemsAffected.
         """
         self._api_response = api_response
 
     @property
-    def data(self) -> str:
+    def data(self) -> AllItemsAffected:
         """
-        :return: The data of this CommonResponse.
-        :rtype: str
+        :return: The data of this AgentAllItemsAffected.
+        :rtype: AllItemsAffected
         """
         return self._data
 
     @data.setter
     def data(self, data):
         """
-        :param data: The data of this CommonResponse.
+        :param data: The data of this AgentAllItemsAffected.
         """
         self._data = data

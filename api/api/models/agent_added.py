@@ -15,12 +15,12 @@ class AgentAdded(Model):
 
     def __init__(self, name='', ip='any', force_time=-1):
         """AgentAdded body model
-        :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
-        :type command: str
-        :param custom: Whether the specified command is a custom command or not
-        :type custom: bool
-        :param arguments: Command arguments
-        :type arguments: str
+        :param name: Agent name.
+        :type name: str
+        :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
+        :type ip: str
+        :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
+        :type force_time: int
         """
         self.swagger_types = {
             'name': str,

@@ -8,14 +8,16 @@ import logging
 
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhException
 from ..models.agent_added import AgentAdded
+from ..models.agent_list_model import AgentList
 from ..util import remove_nones_to_dict
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh.agents_controller')
 
 
-def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, status=None, older_than=None):  # noqa: E501
+def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=None, status=None, older_than=None):  # noqa: E501
     """Delete agents
 
     Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.  # noqa: E501
@@ -24,8 +26,8 @@ def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, s
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
-    :param ids: Array of agent ID’s
-    :type ids: List[str]
+    :param list_agents: Array of agent ID’s
+    :type list_agents: List[str]
     :param purge: Delete an agent from the key store
     :type purge: bool
     :param status: Filters by agent status. Use commas to enter multiple statuses.
@@ -36,7 +38,7 @@ def delete_agents(pretty=False, wait_for_complete=False, ids=None, purge=None, s
     :rtype: AgentDeletedData
     """
 
-    f_kwargs = {'list_agent_ids': ids,
+    f_kwargs = {'list_agent_ids': list_agents,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than
@@ -169,10 +171,10 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     :type wait_for_complete: bool
     :param name: Agent name.
     :type name: str
-    :param description: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY"
-    :type description: str
+    :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
+    :type ip: str
     :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
-    :type force_time: integer
+    :type force_time: int
     
     :rtype: AgentKey
     """
@@ -455,7 +457,7 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):  # noqa: E50
 
     return data, 200
 
-
+#Not work
 def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Restart an agent.
 
@@ -493,24 +495,166 @@ def put_upgrade_custom_agent():
     pass
 
 
-def put_new_agent():
-    pass
+def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Add agent (quick method)
+
+    Adds a new agent with name `agent_name`. This agent will use `any` as IP.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_name: Agent name used when the agent was registered.
+    :type agent_name: str
+
+    :rtype: 
+    """
+    f_kwargs = {'name': agent_name}
+
+    dapi = DistributedAPI(f=Agent.add_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Not work
+def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Get upgrade result from agent.
+
+    Returns the upgrade result after updating an agent.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param timeout: Seconds to wait for the agent to respond.
+    :type timeout: int
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'timeout': timeout}
+
+    dapi = DistributedAPI(f=Agent.get_upgrade_result,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def get_agent_upgrade():
-    pass
+def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Remove multiple agents from a specified group. 
+    
+    # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param list_agents: Array of agent's IDs.
+    :type list_agents: List[str]
+    :param group_id: Group ID.
+    :type group_id: str
+
+    :rtype: 
+    """
+    f_kwargs = {'agent_id_list': list_agents,
+                'group_id': group_id}
+
+    dapi = DistributedAPI(f=Agent.unset_group_list,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def delete_multiple_agent_group():
-    pass
+def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Add multiple agents to a group
+    
+    Adds multiple agents to the specified group.    # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    :param agent_id_list: List of agents ID.
+    :type agent_id_list: List[str]
+
+    :rtype: 
+    """
+    # get body parameters
+    if connexion.request.is_json:
+        agent_list_model = AgentList.from_dict(connexion.request.get_json())
+    else:
+        return 'ERROR', 400
+    
+    f_kwargs = {**{'group_id': group_id}, **agent_list_model.to_dict()}
 
 
-def post_multiple_agent_group():
-    pass
+    dapi = DistributedAPI(f=Agent.set_group_list,
+                        f_kwargs=remove_nones_to_dict(f_kwargs),
+                        request_type='local_master',
+                        is_async=False,
+                        wait_for_complete=wait_for_complete,
+                        pretty=pretty,
+                        logger=logger
+                        )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def delete_list_group():
-    pass
+def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Removes a list of groups. 
+    
+    # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param list_groups: Array of group's IDs.
+    :type list_groups: List[str]
+
+    :rtype: 
+    """
+    f_kwargs = {'group_id': list_groups}
+
+    dapi = DistributedAPI(f=Agent.remove_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_list_group():

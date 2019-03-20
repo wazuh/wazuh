@@ -198,10 +198,9 @@ components:
       type: object
       required:
       - affected_agents
-      - msg
+      allOf:
+        - $ref: '#/components/schemas/ItemAffected'
       properties:
-        msg:
-          type: string
         affected_agents:
           type: array
           description: List of agents which belonged to the group but were moved to the default one.
@@ -3849,7 +3848,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      $ref: '#/components/schemas/AllItemsAffected'
+                      $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 error: 0
                 data:
@@ -3933,9 +3932,7 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/ItemAffected'
-                        - $ref: '#/components/schemas/AgentGroupDeleted'
+                      $ref: '#/components/schemas/AgentGroupDeleted'
               example:
                 error: 0
                 data:
