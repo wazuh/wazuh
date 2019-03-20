@@ -1553,7 +1553,7 @@ static int is_ascii_utf8(char * file) {
 
     fp = fopen(file,"r");
 
-    if(!fp) {
+    if (!fp) {
         mdebug1(OPEN_UNABLE, file);
         retval = 1;
         goto end;
@@ -1564,94 +1564,96 @@ static int is_ascii_utf8(char * file) {
     os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
 
     /* ASCII */
-    while(fgets(buffer, OS_MAXSTR, fp)) {
+    while (fgets(buffer, OS_MAXSTR, fp)) {
         int i;
         unsigned char *c = (unsigned char *)buffer;
 
-        for(i = 0; i < OS_MAXSTR; i++){
+        for (i = 0; i < OS_MAXSTR; i++) {
             if( c[i] >= 0x80 ) {
                 is_ascii = 0;
                 break;
             }
         }
 
-        if(!is_ascii){
+        if (!is_ascii) {
             break;
         }
     }
 
-    if(is_ascii) {
+    if (is_ascii) {
         goto end;
     }
 
     /* UTF-8 */
-    fsetpos(fp,&begin);
+    fsetpos(fp, &begin);
 
-    while(fgets(buffer, OS_MAXSTR, fp)) {
-
+    while (fread(buffer,sizeof(char),1,fp)) {
+        size_t nbytes = 0;
         unsigned char *c = (unsigned char *)buffer;
-        unsigned int count = 0;
+        unsigned char b2 = 0;
+        unsigned char b3 = 0;
+        unsigned char b4 = 0;
 
-        while(*c) {
-            
-            if(count > OS_MAXSTR) {
-                goto end;
+        nbytes += fread(&b2,sizeof(char),1,fp);
+        nbytes += fread(&b3,sizeof(char),1,fp);
+        nbytes += fread(&b4,sizeof(char),1,fp);
+
+
+        /* Check for UTF-8 BOM */
+        if (*c == 0xEF && b2 == 0xBB && b3 == 0xBF) {
+            if (fseek(fp,-1,SEEK_CUR) < 0) {
+                merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
+            continue;
+        }
 
-            /* Check for UTF-8 BOM */
-            if(count <= (OS_MAXSTR - 3) && *c == 0xEF && c[1] == 0xBB && c[2] == 0xBF) {
-                count += 3;
-                c += 3;
+        /* Valid ASCII */
+        if (*c == 0 || *c <= 0x80) {
+            if (fseek(fp,-nbytes,SEEK_CUR) < 0) {
+                merror(FSEEK_ERROR, file, errno, strerror(errno));
+            }
+            continue;
+        }
+
+        /* Two bytes UTF-8 */
+        if (*c >= 0xC2 && *c <= 0xDF) {
+            if (b2 >= 0x80 && b2 <= 0xBF) {
+                if (fseek(fp,-2,SEEK_CUR) < 0) {
+                    merror(FSEEK_ERROR, file, errno, strerror(errno));
+                }
                 continue;
             }
+        } 
 
-            /* Valid ASCII */
-            if(*c == 0 || *c <= 0x80) {
-                c++;
-                count++;
-                continue;
-            }
-
-            /* Two bytes UTF-8 */
-            if(*c >= 0xC2 && *c <= 0xDF) {
-                if(c[1] >= 0x80 && c[1] <= 0xBF) {
-                    c += 2;
-                    count += 2;
+        /* Three bytes UTF-8 */
+        if (*c >= 0xE1 && *c <= 0xEC) {
+            if (b2 >= 0x80 && b2 <= 0xBF) {
+                if (b3 >= 0x80 && b3 <= 0xBF) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
                     continue;
                 }
             } 
+        } 
 
-            /* Three bytes UTF-8 */
-            if(*c >= 0xE1 && *c <= 0xEC) {
-                if(c[1] >= 0x80 && c[1] <= 0xBF) {
-                    if(c[2] >= 0x80 && c[2] <= 0xBF) {
-                        c += 3;
-                        count += 3;
+        /* Four bytes UTF-8 */
+        if (*c >= 0xF0 && *c <= 0xF7) {
+            if (b2 >= 0x80 && b2 <= 0xBF) {
+                if (b3 >= 0x80 && b3 <= 0xBF) {
+                    if (b4 >= 0x80 && b4 <= 0xBF) {
                         continue;
-                    }
-                } 
-            } 
-
-            /* Four bytes UTF-8 */
-            if(*c >= 0xF0 && *c <= 0xF7) {
-                if(c[1] >= 0x80 && c[1] <= 0xBF) {
-                    if(c[2] >= 0x80 && c[2] <= 0xBF) {
-                        if(c[3] >= 0x80 && c[3] <= 0xBF) {
-                            c += 4;
-                            count += 4;
-                            continue;
-                        }
                     }
                 }
             }
-
-            retval = 1;
-            goto end;
         }
+
+        retval = 1;
+        goto end;
     }
 
 end:
-    if(fp) {
+    if (fp) {
         fclose(fp);
     }
     os_free(buffer);
