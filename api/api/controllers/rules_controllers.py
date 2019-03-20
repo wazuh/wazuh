@@ -2,6 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
+import connexion
+import logging
+
+from api.util import remove_nones_to_dict
+from wazuh.cluster import cluster
+from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.rule import Rule
+
+loop = asyncio.get_event_loop()
+logger = logging.getLogger('rules_controllers')
 
 def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
               search=None, status=None, group=None, level=None, file=None, path=None,
@@ -34,7 +45,23 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :param gdpr: Filters by GDPR requirement.
     :type gdpr: str
     """
-    pass
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
+                'search': search, 'status': status, 'group': group,
+                'level': level, 'file': file, 'path': path,
+                'pci': pci, 'gdpr': gdpr}
+
+    dapi = DistributedAPI(f=Rule.get_rules,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
 
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
                      search=None):
@@ -52,7 +79,20 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
     :param search: Looks for elements with the specified string
     :type search: str
     """
-    pass
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
+                'search': search}
+
+    dapi = DistributedAPI(f=Rule.get_groups,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
@@ -71,7 +111,20 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
     :param search: Looks for elements with the specified string
     :type search: str
     """
-    pass
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
+                'search': search}
+
+    dapi = DistributedAPI(f=Rule.get_pci,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
@@ -90,7 +143,20 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param search: Looks for elements with the specified string
     :type search: str
     """
-    pass
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
+                'search': search}
+
+    dapi = DistributedAPI(f=Rule.get_gdpr,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
@@ -117,7 +183,22 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :param download: Download the specified file.
     :type download: str
     """
-    pass
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
+                'search': search, 'status': status, 'file':file,
+                'path': path, 'download': download}
+
+    dapi = DistributedAPI(f=Rule.get_rules_files,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
 
 def get_rules_id(rule_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
                  search=None):
