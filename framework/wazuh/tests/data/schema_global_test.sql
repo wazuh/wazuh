@@ -42,8 +42,8 @@ INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_cod
                    version, manager_host, node_name, date_add, last_keepalive, status, `group`) VALUES
                    (0,'master','127.0.0.1','Ubuntu','18.04.1 LTS','18','04','Bionic Beaver','ubuntu',
                    'Linux |master |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.9.0','master','node01',datetime(CURRENT_TIMESTAMP, 'localtime'),'9999-12-31 23:59:59',
-                    'updated',NULL);
+                   'Wazuh v3.9.0','master','node01',datetime(CURRENT_TIMESTAMP, '-10 days', 'localtime'),
+                    '9999-12-31 23:59:59', 'updated',NULL);
 
 -- Connected agent with IP and Registered IP filled
 INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
@@ -53,7 +53,8 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'Bionic Beaver','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
-                   'node01',datetime(CURRENT_TIMESTAMP, 'localtime'),datetime(CURRENT_TIMESTAMP, 'localtime'),'updated');
+                   'node01', datetime(CURRENT_TIMESTAMP, '-1 minute', 'localtime'),
+                    datetime(CURRENT_TIMESTAMP, '-1 minute', 'localtime'),'updated');
 
 -- Connected agent with just Registered IP filled
 INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
@@ -63,14 +64,16 @@ INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_
                    'Xenial','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
-                   'node01',datetime(CURRENT_TIMESTAMP, 'localtime'),datetime(CURRENT_TIMESTAMP, 'localtime'),'updated');
+                   'node01',datetime(CURRENT_TIMESTAMP, '-5 minutes', 'localtime'),
+                    datetime(CURRENT_TIMESTAMP, '-5 minutes', 'localtime'),'updated');
 
 -- Never connected agent
 INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`) VALUES (3,'nc-agent','any',
                    'f304f582f2417a3fddad69d9ae2b4f3b6e6fda788229668af9a6934d454ef44d',
-                   datetime(CURRENT_TIMESTAMP, 'localtime'), NULL);
+                   datetime(CURRENT_TIMESTAMP, '-30 seconds', 'localtime'), NULL);
 
 -- Pending agent
 INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, last_keepalive, `group`) VALUES
                   (4,'pending-agent', 'any', '2855bcf49273c759ef5b116829cc582f153c6c199df7676e53d5937855ff5902', '',
-                   datetime(CURRENT_TIMESTAMP, 'localtime'), datetime(CURRENT_TIMESTAMP, 'localtime'), NULL);
+                   datetime(CURRENT_TIMESTAMP, '-2 minutes', 'localtime'),
+                   datetime(CURRENT_TIMESTAMP, '-2 minutes', 'localtime'), NULL);
