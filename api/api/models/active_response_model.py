@@ -11,7 +11,7 @@ from api import util
 
 class ActiveResponse(Model):
 
-    def __init__(self, command: str=None, custom: bool=False, arguments: str=None):
+    def __init__(self, command: str=None, custom: bool=False, arguments: List[str]=None):
         """ActiveResponse body model
 
         :param command: Command running in the agent. If this value starts by !, then it refers to a script name instead of a command name
@@ -24,7 +24,7 @@ class ActiveResponse(Model):
         self.swagger_types = {
             'command': str,
             'custom': bool,
-            'arguments': str
+            'arguments': List[str]
         }
 
         self.attribute_map = {
@@ -38,7 +38,7 @@ class ActiveResponse(Model):
         self._arguments = arguments
 
     @classmethod
-    def from_dict(cls, dikt) -> Dict:
+    def from_dict(cls, dikt) -> 'ActiveResponse':
         """Returns the dict as a model
 
         :param dikt: A dict.
@@ -80,15 +80,15 @@ class ActiveResponse(Model):
         self._custom = custom
 
     @property
-    def arguments(self) -> str:
+    def arguments(self) -> List[str]:
         """
         :return: Command arguments
-        :rtype: str
+        :rtype: List[str]
         """
         return self._command
 
     @arguments.setter
-    def arguments(self, arguments: str):
+    def arguments(self, arguments: List[str]):
         """Command running in the agent.
 
         :param arguments: Command arguments
