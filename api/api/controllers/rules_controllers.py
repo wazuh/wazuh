@@ -221,7 +221,7 @@ def get_rules_id(rule_id, pretty=False, wait_for_complete=False, offset=0, limit
     f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search}
 
-    dapi = DistributedAPI(f=Rule.get_rules_files,
+    dapi = DistributedAPI(f=Rule.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
