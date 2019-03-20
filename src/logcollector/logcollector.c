@@ -941,6 +941,13 @@ void set_read(logreader *current, int i, int j) {
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
     } else {
+#ifdef WIN32
+        if(current->ucs2){
+            mdebug1("FILE %s IS UCS2",current->file);
+            current->read = read_ucs2;
+            return;
+        }
+#endif
         current->read = read_syslog;
     }
 }
@@ -1563,6 +1570,15 @@ static void check_text_only() {
             snprintf(file_name, PATH_MAX, "%s", current->file);
 
             if(is_ascii_utf8(current->file)) {
+                #ifdef WIN32
+
+                    int ucs2 = is_usc2(current->file);
+                    if(ucs2) {
+                        current->ucs2 = ucs2;
+                        continue;
+                    }
+
+                #endif
                 int result = 0;
                 if (j < 0) {
                     result = Remove_Localfile(&logff, i, 0, 1);

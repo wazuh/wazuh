@@ -48,6 +48,11 @@ void close_file(logreader * lf);
 /* Read syslog file */
 void *read_syslog(logreader *lf, int *rc, int drop_it);
 
+#ifdef WIN32
+/* Read ucs2 file */
+void *read_ucs2(logreader *lf, int *rc, int drop_it);
+#endif
+
 /* Read snort full file */
 void *read_snortfull(logreader *lf, int *rc, int drop_it);
 

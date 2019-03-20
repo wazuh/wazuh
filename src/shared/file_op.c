@@ -2763,3 +2763,45 @@ end:
 
     return retval;
 }
+
+int is_usc2(const char * file) {
+    int retval = 0;
+    FILE *fp;
+
+    fp = fopen(file,"r");
+
+    if (!fp) {
+        mdebug1(OPEN_UNABLE, file);
+        retval = 1;
+        goto end;
+    }
+
+    /* UCS-2 */
+    unsigned char b[2] = {0};
+    size_t nbytes = 0;
+
+    while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
+        
+        /* Check for UCS-2 LE BOM */
+        if (b[0] == 0xFF && b[1] == 0xFE) {
+            retval = UCS2_LE;
+            goto end;
+        }
+
+        /* Check for UCS-2 BE BOM */
+        if (b[0] == 0xFE && b[1] == 0xFF) {
+            retval = UCS2_BE;
+            goto end;
+        }
+
+        retval = 0;
+        goto end;
+    }
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
+}

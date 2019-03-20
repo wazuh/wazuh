@@ -19,6 +19,8 @@
 #include <external/cJSON/cJSON.h>
 
 #define OS_PIDFILE  "/var/run"
+#define UCS2_LE 1
+#define UCS2_BE 2
 
 #ifdef WIN32
 typedef uint64_t wino_t;
@@ -133,5 +135,6 @@ int w_remove_line_from_file(char *file, int line);
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 int is_ascii_utf8(const char * file);
+int is_usc2(const char * file);
 
 #endif /* __FILE_H */
