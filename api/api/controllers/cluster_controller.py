@@ -506,6 +506,8 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
         body = body.decode('utf-8')
     except UnicodeDecodeError:
         return 'Error parsing body request to UTF-8', 400
+    except AttributeError:
+        return 'Body is empty', 400
 
     f_kwargs = {'node_id': node_id, 'path': path, 'overwrite': overwrite,
                 'content': body}
