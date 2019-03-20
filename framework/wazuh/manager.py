@@ -310,7 +310,7 @@ def get_file(path):
     except Exception:
         raise WazuhException(1000)
 
-return output
+    return output
 
 
 def delete_file(path):
