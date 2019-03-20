@@ -7,12 +7,12 @@ import connexion
 import logging
 
 from api.util import remove_nones_to_dict
-from wazuh.cluster import cluster
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('rules_controllers')
+
 
 def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
               search=None, status=None, group=None, level=None, file=None, path=None,
@@ -218,4 +218,17 @@ def get_rules_id(rule_id, pretty=False, wait_for_complete=False, offset=0, limit
     :param search: Looks for elements with the specified string
     :type search: str
     """
-    pass
+    f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': sort,
+                'search': search}
+
+    dapi = DistributedAPI(f=Rule.get_rules_files,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
