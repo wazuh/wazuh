@@ -52,17 +52,17 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000'):
 
     try:
         dapi = DistributedAPI(f=active_response.run_command,
-                            f_kwargs=remove_nones_to_dict(f_kwargs),
-                            request_type='distributed_master',
-                            is_async=False,
-                            wait_for_complete=wait_for_complete,
-                            pretty=pretty,
-                            logger=logger
-                            )
-    except ValueError:
-        return 'Value error', 400
-    except WazuhException:
-        return 'Wazuh Exception', 400
+                              f_kwargs=remove_nones_to_dict(f_kwargs),
+                              request_type='distributed_master',
+                              is_async=False,
+                              wait_for_complete=wait_for_complete,
+                              pretty=pretty,
+                              logger=logger
+                              )
+    except ValueError as e:
+        return connexion.problem(400, 'Bad parameters', str(e), ext={'input_parameters': {'agent_id': agent_id, 'command': active_response_model.command}})
+    except WazuhException as e:
+        return connexion.problem(400, 'Bad command', e.message, ext={'input_parameters': {'command': active_response_model.command}})
 
     data = loop.run_until_complete(dapi.distribute_function())
     api_response = ApiResponse.from_dict(data)
