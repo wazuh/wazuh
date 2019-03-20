@@ -20,7 +20,6 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 static void files_lock_init(void);
-static int is_ascii_utf8(char * file);
 static void check_text_only();
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
@@ -1541,124 +1540,6 @@ void files_lock_init()
 
     w_rwlock_init(&files_update_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
-}
-
-/* Check if the file is ASCII or UTF-8 encoded */
-static int is_ascii_utf8(char * file) {
-    int is_ascii = 1;
-    int retval = 0;
-    char *buffer = NULL;
-    fpos_t begin; 
-    FILE *fp;
-
-    fp = fopen(file,"r");
-
-    if (!fp) {
-        mdebug1(OPEN_UNABLE, file);
-        retval = 1;
-        goto end;
-    }
-
-    fgetpos(fp,&begin);
-
-    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
-
-    /* ASCII */
-    while (fgets(buffer, OS_MAXSTR, fp)) {
-        int i;
-        unsigned char *c = (unsigned char *)buffer;
-
-        for (i = 0; i < OS_MAXSTR; i++) {
-            if( c[i] >= 0x80 ) {
-                is_ascii = 0;
-                break;
-            }
-        }
-
-        if (!is_ascii) {
-            break;
-        }
-    }
-
-    if (is_ascii) {
-        goto end;
-    }
-
-    /* UTF-8 */
-    fsetpos(fp, &begin);
-
-    while (fread(buffer,sizeof(char),1,fp)) {
-        size_t nbytes = 0;
-        unsigned char *c = (unsigned char *)buffer;
-        unsigned char b2 = 0;
-        unsigned char b3 = 0;
-        unsigned char b4 = 0;
-
-        nbytes += fread(&b2,sizeof(char),1,fp);
-        nbytes += fread(&b3,sizeof(char),1,fp);
-        nbytes += fread(&b4,sizeof(char),1,fp);
-
-
-        /* Check for UTF-8 BOM */
-        if (*c == 0xEF && b2 == 0xBB && b3 == 0xBF) {
-            if (fseek(fp,-1,SEEK_CUR) < 0) {
-                merror(FSEEK_ERROR, file, errno, strerror(errno));
-            }
-            continue;
-        }
-
-        /* Valid ASCII */
-        if (*c == 0 || *c <= 0x80) {
-            if (fseek(fp,-nbytes,SEEK_CUR) < 0) {
-                merror(FSEEK_ERROR, file, errno, strerror(errno));
-            }
-            continue;
-        }
-
-        /* Two bytes UTF-8 */
-        if (*c >= 0xC2 && *c <= 0xDF) {
-            if (b2 >= 0x80 && b2 <= 0xBF) {
-                if (fseek(fp,-2,SEEK_CUR) < 0) {
-                    merror(FSEEK_ERROR, file, errno, strerror(errno));
-                }
-                continue;
-            }
-        } 
-
-        /* Three bytes UTF-8 */
-        if (*c >= 0xE1 && *c <= 0xEC) {
-            if (b2 >= 0x80 && b2 <= 0xBF) {
-                if (b3 >= 0x80 && b3 <= 0xBF) {
-                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
-                        merror(FSEEK_ERROR, file, errno, strerror(errno));
-                    }
-                    continue;
-                }
-            } 
-        } 
-
-        /* Four bytes UTF-8 */
-        if (*c >= 0xF0 && *c <= 0xF7) {
-            if (b2 >= 0x80 && b2 <= 0xBF) {
-                if (b3 >= 0x80 && b3 <= 0xBF) {
-                    if (b4 >= 0x80 && b4 <= 0xBF) {
-                        continue;
-                    }
-                }
-            }
-        }
-
-        retval = 1;
-        goto end;
-    }
-
-end:
-    if (fp) {
-        fclose(fp);
-    }
-    os_free(buffer);
-
-    return retval;
 }
 
 static void check_text_only() {

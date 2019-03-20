@@ -2649,3 +2649,116 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 
     return 0;
 }
+
+/* Check if the file is ASCII or UTF-8 encoded */
+int is_ascii_utf8(const char * file) {
+    int is_ascii = 1;
+    int retval = 0;
+    char *buffer = NULL;
+    fpos_t begin; 
+    FILE *fp;
+
+    fp = fopen(file,"r");
+
+    if (!fp) {
+        mdebug1(OPEN_UNABLE, file);
+        retval = 1;
+        goto end;
+    }
+
+    fgetpos(fp,&begin);
+
+    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+
+    /* ASCII */
+    while (fgets(buffer, OS_MAXSTR, fp)) {
+        int i;
+        unsigned char *c = (unsigned char *)buffer;
+
+        for (i = 0; i < OS_MAXSTR; i++) {
+            if( c[i] >= 0x80 ) {
+                is_ascii = 0;
+                break;
+            }
+        }
+
+        if (!is_ascii) {
+            break;
+        }
+    }
+
+    if (is_ascii) {
+        goto end;
+    }
+
+    /* UTF-8 */
+    fsetpos(fp, &begin);
+
+    while (fread(buffer,sizeof(char),1,fp)) {
+        size_t nbytes = 0;
+        unsigned char *c = (unsigned char *)buffer;
+        unsigned char b[3] = {0};
+
+        nbytes += fread(&b,sizeof(char),3,fp);
+
+        /* Check for UTF-8 BOM */
+        if (*c == 0xEF && b[0] == 0xBB && b[1] == 0xBF) {
+            if (fseek(fp,-1,SEEK_CUR) < 0) {
+                merror(FSEEK_ERROR, file, errno, strerror(errno));
+            }
+            continue;
+        }
+
+        /* Valid ASCII */
+        if (*c == 0 || *c <= 0x80) {
+            if (fseek(fp,-nbytes,SEEK_CUR) < 0) {
+                merror(FSEEK_ERROR, file, errno, strerror(errno));
+            }
+            continue;
+        }
+
+        /* Two bytes UTF-8 */
+        if (*c >= 0xC2 && *c <= 0xDF) {
+            if (b[0] >= 0x80 && b[0] <= 0xBF) {
+                if (fseek(fp,-2,SEEK_CUR) < 0) {
+                    merror(FSEEK_ERROR, file, errno, strerror(errno));
+                }
+                continue;
+            }
+        } 
+
+        /* Three bytes UTF-8 */
+        if (*c >= 0xE1 && *c <= 0xEC) {
+            if (b[0] >= 0x80 && b[0] <= 0xBF) {
+                if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
+                    continue;
+                }
+            } 
+        } 
+
+        /* Four bytes UTF-8 */
+        if (*c >= 0xF0 && *c <= 0xF7) {
+            if (b[0] >= 0x80 && b[0] <= 0xBF) {
+                if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                    if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                        continue;
+                    }
+                }
+            }
+        }
+
+        retval = 1;
+        goto end;
+    }
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
+    os_free(buffer);
+
+    return retval;
+}

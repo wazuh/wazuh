@@ -132,5 +132,6 @@ int w_remove_line_from_file(char *file, int line);
 // To compress an decompress a file in gzip
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
+int is_ascii_utf8(const char * file);
 
 #endif /* __FILE_H */
