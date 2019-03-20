@@ -11,7 +11,7 @@ from api import util
 
 class ApiResponse(Model):
 
-    def __init__(self, error: str = '', message: str = ''):
+    def __init__(self, error: str=None, message: str=None):
         """ApiResponse body model
 
         :param error: Error code

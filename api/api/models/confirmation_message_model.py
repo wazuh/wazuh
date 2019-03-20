@@ -11,7 +11,7 @@ from api import util
 
 class ConfirmationMessage(Model):
 
-    def __init__(self, data: str = ''):
+    def __init__(self, data: str=None):
         """ApiResponse body model
 
         :param data: Message to return
