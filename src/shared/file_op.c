@@ -2805,3 +2805,25 @@ end:
 
     return retval;
 }
+
+#ifdef WIN32
+DWORD FileSizeWin(const char * file) {
+    HANDLE h1;
+    BY_HANDLE_FILE_INFORMATION lpFileInfo;
+
+    h1 = CreateFile(file, GENERIC_READ,
+                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h1 == INVALID_HANDLE_VALUE) {
+        merror(FILE_ERROR, file);
+    } else if (GetFileInformationByHandle(h1, &lpFileInfo) == 0) {
+        CloseHandle(h1);
+        merror(FILE_ERROR, file);
+    } else {
+        CloseHandle(h1);
+        return lpFileInfo.nFileSizeHigh + lpFileInfo.nFileSizeLow;
+    }
+
+    return -1;
+}
+#endif

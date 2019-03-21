@@ -59,7 +59,6 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             }
         }
 
-#ifdef WIN32
         char * p;
 
         if ((p = strrchr((char *)str, '\r')) != NULL) {
@@ -77,8 +76,6 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             fgetpos(lf->fp, &fp_pos);
             continue;
         }
-
-#endif
 
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, (char * )str, rbytes > sample_log_length ? "..." : "");
 
@@ -120,7 +117,7 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
                 rbytes = w_ftell(lf->fp) - offset;
 
                 /* Get the last occurrence of \n */
-                if (str[rbytes - 1] == '\n') {
+                if (str[rbytes - 2] == '\n') {
                     break;
                 }
             }

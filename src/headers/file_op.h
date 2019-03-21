@@ -137,4 +137,8 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 int is_ascii_utf8(const char * file);
 int is_usc2(const char * file);
 
+#ifdef WIN32
+DWORD FileSizeWin(const char * file);
+#endif
+
 #endif /* __FILE_H */

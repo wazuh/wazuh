@@ -942,6 +942,16 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_audit;
     } else {
 #ifdef WIN32
+        if (current->only) {
+            /* If the file is empty, set it to UCS-2 LE */
+            if (FileSizeWin(current->file) == 0) {
+                current->ucs2 = UCS2_LE;
+                current->read = read_ucs2_le;
+                mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                return;
+            }
+        }
+
         if(current->ucs2 == UCS2_LE){
             mdebug1("File '%s' is UCS-2 LE",current->file);
             current->read = read_ucs2_le;
@@ -1442,23 +1452,30 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     #endif
 
 #ifdef WIN32
+                int ucs2 = is_usc2(current->file);
+                if (ucs2) {
+                    current->ucs2 = ucs2;
 
-            int ucs2 = is_usc2(current->file);
-            if (ucs2) {
-                current->ucs2 = ucs2;
+                    if (current->ucs2 == UCS2_LE) {
+                        mdebug1("File '%s' is UCS-2 LE",current->file);
+                        current->read = read_ucs2_le;
+                    }
 
-                if (current->ucs2 == UCS2_LE) {
-                    mdebug1("File '%s' is UCS-2 LE",current->file);
-                    current->read = read_ucs2_le;
+                    if (current->ucs2 == UCS2_BE) {
+                        mdebug1("File '%s' is UCS-2 BE",current->file);
+                        current->read = read_ucs2_be;
+                    }
                 }
 
-                if (current->ucs2 == UCS2_BE) {
-                    mdebug1("File '%s' is UCS-2 BE",current->file);
-                    current->read = read_ucs2_be;
+                if (current->only) {
+                    /* If the file is empty, set it to UCS-2 LE */
+                    if (FileSizeWin(current->file) == 0) {
+                        current->ucs2 = UCS2_LE;
+                        current->read = read_ucs2_le;
+                        mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                    }
                 }
-            }
 #endif
-
                 /* Finally, send to the function pointer to read it */
                 current->read(current, &r, 0);
                 /* Check for error */

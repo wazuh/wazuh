@@ -60,7 +60,6 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             }
         }
 
-#ifdef WIN32
         char * p;
 
         if ((p = strrchr(str, '\r')) != NULL) {
@@ -78,7 +77,6 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
             fgetpos(lf->fp, &fp_pos);
             continue;
         }
-#endif
 
         mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
 
