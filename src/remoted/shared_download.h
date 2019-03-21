@@ -32,6 +32,7 @@
 typedef struct _file{
     char *name;
     char *url;
+    int ignored;
 } file;
 
 typedef struct _remote_files_group{

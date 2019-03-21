@@ -32,6 +32,8 @@ typedef struct group_t {
     file_sum **f_sum;
 } group_t;
 
+static OSHash *invalid_files;
+
 /* Internal functions prototypes */
 static void read_controlmsg(const char *agent_id, char *msg);
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum,char *sharedcfg_dir);
@@ -338,7 +340,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     }
     else{
         // Merge ar.conf always
-
+        struct tm *modified;
+        int ignored = 0;
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
             // First call, truncate merged file
@@ -352,8 +355,36 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
 
-            if (!logr.nocmerged) {
-                MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
+            if(modified = (struct tm *) OSHash_Get(invalid_files,DEFAULTAR)){
+                struct stat attrib;
+                struct tm *last_modify;
+
+                stat(DEFAULTAR, &attrib);
+                last_modify = gmtime(&(attrib.st_mtime));
+                if( modified != last_modify){
+                    if(checkBinaryFile(DEFAULTAR)){
+                        OSHash_Update(invalid_files, DEFAULTAR, last_modify);
+                        ignored = 1;
+                    }
+                    else{
+                        OSHash_Delete(invalid_files, DEFAULTAR);
+                    }
+                }
+            } else {
+                if(checkBinaryFile(DEFAULTAR)){
+                    struct stat attrib;
+                    struct tm *last_modify;
+
+                    stat(DEFAULTAR, &attrib);
+                    last_modify = gmtime(&(attrib.st_mtime));
+                    OSHash_Add(invalid_files, DEFAULTAR, last_modify);
+                    ignored = 1;
+                    merror("File ar.conf was detected as an invalid file");
+                }
+            }
+            
+            if (!logr.nocmerged && !ignored) {
+                    MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
             }
 
             f_size++;
@@ -367,6 +398,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             if (files[i][0] == '.' || !strncmp(files[i], SHAREDCFG_FILENAME, strlen(SHAREDCFG_FILENAME))) {
                 continue;
             }
+            ignored = 0;
 
             snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
 
@@ -380,8 +412,36 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             os_calloc(1, sizeof(file_sum), f_sum[f_size]);
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(files[i], f_sum[f_size]->name);
+            
+            if(modified = (struct tm *) OSHash_Get(invalid_files,file)){
+                struct stat attrib;
+                struct tm *last_modify;
 
-            if (!logr.nocmerged) {
+                stat(file, &attrib);
+                last_modify = gmtime(&(attrib.st_mtime));
+                if( modified != last_modify){
+                    if(checkBinaryFile(file)){
+                        OSHash_Add(invalid_files, file, last_modify);
+                        ignored = 1;
+                    }
+                    else{
+                        OSHash_Delete(invalid_files, file);
+                    }
+                }
+            }
+            else {
+                if(checkBinaryFile(file)){
+                    struct stat attrib;
+                    struct tm *last_modify;
+
+                    stat(file, &attrib);
+                    last_modify = gmtime(&(attrib.st_mtime));
+                    OSHash_Add(invalid_files, file, last_modify);
+                    ignored = 1;
+                    merror("File %s was detected as an invalid file",file);
+                }
+            }
+            if (!logr.nocmerged && !ignored) {
                 MergeAppendFile(merged_tmp, file, NULL, -1);
             }
 
@@ -455,6 +515,8 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
             }
 
             unsigned int i;
+            struct tm *modified;
+            int ignored;
             for (i = 0; files[i]; ++i) {
                 /* Ignore hidden files  */
                 /* Leave the shared config file for later */
@@ -463,20 +525,26 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
                     continue;
                 }
 
+                ignored = 0;
+
                 char destination_path[PATH_MAX + 1] = {0};
                 char source_path[PATH_MAX + 1] = {0};
                 char agent_conf_chunck_message[PATH_MAX + 1]= {0};
 
                 snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
-
-                /* If the file is agent.conf, append */
-                if(strcmp(files[i],"agent.conf") == 0){
-                    snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
-                    w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
+                if(modified = (struct tm *) OSHash_Get(invalid_files,source_path)){
+                   ignored = 1;
                 }
-                else {
-                    w_copy_file(source_path,destination_path,'c',NULL,1);
+                if(!ignored) {
+                    /* If the file is agent.conf, append */
+                    if(strcmp(files[i],"agent.conf") == 0){
+                        snprintf(agent_conf_chunck_message,PATH_MAX + 1,"<!-- Source file: %s/agent.conf -->\n",group);
+                        w_copy_file(source_path,destination_path,'a',agent_conf_chunck_message,1);
+                    }
+                    else {
+                        w_copy_file(source_path,destination_path,'c',NULL,1);
+                    }
                 }
 
             }
@@ -1259,6 +1327,7 @@ void manager_init()
     _stime = time(0);
     _clean_time = time(0);
     m_hash = OSHash_Create();
+    invalid_files = OSHash_Create();
     mdebug1("Running manager_init");
     c_files();
     w_yaml_create_groups();

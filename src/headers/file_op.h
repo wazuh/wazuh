@@ -133,4 +133,6 @@ int w_remove_line_from_file(char *file, int line);
 int w_compress_gzfile(const char *filesrc, const char *filedst);
 int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 
+int checkBinaryFile(const char *f_name);
+
 #endif /* __FILE_H */
