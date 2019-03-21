@@ -234,15 +234,13 @@ def upload_xml(xml_file, path):
     # create temporary file for parsing xml input
     try:
         with open(tmp_file_path, 'w') as tmp_file:
-            # beauty xml file
-            xml = parseString('<root>' + xml_file + '</root>')
-            # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            # check xml file
+            parseString('<root>' + xml_file + '</root>')
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
-            pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
+            xml_file = xml_file.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
                 .replace("&gt;", ">").replace('&apos', "'")
-            tmp_file.write(pretty_xml)
+            tmp_file.write(xml_file)
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
