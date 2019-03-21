@@ -565,7 +565,7 @@ int main_analysisd(int argc, char **argv)
                 rulesfiles = Config.includes;
                 while (rulesfiles && *rulesfiles) {
                     if (!test_config) {
-                        minfo("Reading rules file: '%s'", *rulesfiles);
+                        mdebug1("Reading rules file: '%s'", *rulesfiles);
                     }
                     if (Rules_OP_ReadRules(*rulesfiles) < 0) {
                         merror_exit(RULES_ERROR, *rulesfiles);
