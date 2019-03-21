@@ -16,10 +16,10 @@
 
 
 /* Read ucs2 files */
-void *read_ucs2(logreader *lf, int *rc, int drop_it) {
+void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
     int __ms = 0;
     int __ms_reported = 0;
-    char str[OS_MAXSTR + 1];
+    wchar_t str[OS_MAXSTR + 1];
     fpos_t fp_pos;
     int lines = 0;
     long offset;
@@ -31,18 +31,19 @@ void *read_ucs2(logreader *lf, int *rc, int drop_it) {
     /* Get initial file location */
     fgetpos(lf->fp, &fp_pos);
 
-    for (offset = w_ftell(lf->fp); fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
+    for (offset = w_ftell(lf->fp); fgetws(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines); offset += rbytes) {
         rbytes = w_ftell(lf->fp) - offset;
         lines++;
+        mdebug2("Bytes read from '%s': %ld bytes",lf->file,rbytes);
 
         /* Get the last occurrence of \n */
-        if (str[rbytes - 1] == '\n') {
-            str[rbytes - 1] = '\0';
+        if (str[rbytes - 2] == '\n') {
+            str[rbytes - 2] = '\0';
         }
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
          */
-        else if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
+        if (rbytes == OS_MAXSTR - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             __ms = 1;
             str[rbytes - 1] = '\0';
@@ -52,7 +53,7 @@ void *read_ucs2(logreader *lf, int *rc, int drop_it) {
              */
             if (lf->ucs2 == UCS2_LE && feof(lf->fp)) {
                 /* Message not complete. Return. */
-                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+                mdebug2("Message not complete from '%s'. Trying again: '%.*s'%s", lf->file, sample_log_length,(char* ) str, rbytes > sample_log_length ? "..." : "");
                 fsetpos(lf->fp, &fp_pos);
                 break;
             }
@@ -61,12 +62,12 @@ void *read_ucs2(logreader *lf, int *rc, int drop_it) {
 #ifdef WIN32
         char * p;
 
-        if ((p = strrchr(str, '\r')) != NULL) {
+        if ((p = strrchr((char *)str, '\r')) != NULL) {
             *p = '\0';
         }
 
         /* Look for empty string (only on Windows) */
-        if (rbytes <= 2) {
+        if (rbytes <= 4) {
             fgetpos(lf->fp, &fp_pos);
             continue;
         }
@@ -76,9 +77,10 @@ void *read_ucs2(logreader *lf, int *rc, int drop_it) {
             fgetpos(lf->fp, &fp_pos);
             continue;
         }
+
 #endif
 
-        mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, str, rbytes > sample_log_length ? "..." : "");
+        mdebug2("Reading syslog message: '%.*s'%s", sample_log_length, (char * )str, rbytes > sample_log_length ? "..." : "");
 
         /* Send message to queue */
         if (drop_it == 0) {
@@ -86,20 +88,11 @@ void *read_ucs2(logreader *lf, int *rc, int drop_it) {
             long int utf8_bytes = 0;
             char *utf8_string = NULL;
 
-            /* If the file is Big Endian, swap every byte */
-            if (lf->ucs2 == UCS2_BE) {
-                int i;
-                for (i = 0; i < (OS_MAXSTR / 2); i+=2) {
-                    char c = str[i];
-                    str[i] = str[i+1];
-                    str[i+1] = c;
-                }
-            }
-
-            if (utf8_bytes = WideCharToMultiByte(CP_UTF8, 0, str, -1, NULL, 0, NULL, NULL), utf8_bytes > 0) {
+            if (utf8_bytes = WideCharToMultiByte(CP_UTF8, 0, (wchar_t *)str, -1, NULL, 0, NULL, NULL), utf8_bytes > 0) {
                 os_calloc(utf8_bytes + 1, sizeof(char), utf8_string);
-                utf8_bytes = WideCharToMultiByte(CP_UTF8, 0, str, -1, utf8_string, utf8_bytes, NULL, NULL);
+                utf8_bytes = WideCharToMultiByte(CP_UTF8, 0, (wchar_t *)str, -1, utf8_string, utf8_bytes, NULL, NULL);
                 utf8_string[utf8_bytes] = '\0';
+                mdebug2("Line converted to UTF-8 is %ld bytes",utf8_bytes);
             }
 
             if (!utf8_bytes) {
@@ -117,10 +110,10 @@ void *read_ucs2(logreader *lf, int *rc, int drop_it) {
             // truncate str before logging to ossec.log
 
             if (!__ms_reported) {
-                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                merror("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);
                 __ms_reported = 1;
             } else {
-                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, str);
+                mdebug2("Large message size from file '%s' (length = %ld): '%.*s'...", lf->file, rbytes, sample_log_length, (char* ) str);
             }
 
             for (offset += rbytes; fgetws(str, OS_MAXSTR - 2, lf->fp) != NULL; offset += rbytes) {

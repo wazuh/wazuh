@@ -942,9 +942,15 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_audit;
     } else {
 #ifdef WIN32
-        if(current->ucs2){
-            mdebug1("FILE %s IS UCS2",current->file);
-            current->read = read_ucs2;
+        if(current->ucs2 == UCS2_LE){
+            mdebug1("File '%s' is UCS-2 LE",current->file);
+            current->read = read_ucs2_le;
+            return;
+        }
+
+        if(current->ucs2 == UCS2_BE){
+            mdebug1("File '%s' is UCS-2 BE",current->file);
+            current->read = read_ucs2_be;
             return;
         }
 #endif
@@ -1434,6 +1440,24 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 /* If it is not EOF, we need to return the read character */
                 ungetc(r, current->fp);
     #endif
+
+#ifdef WIN32
+
+            int ucs2 = is_usc2(current->file);
+            if (ucs2) {
+                current->ucs2 = ucs2;
+
+                if (current->ucs2 == UCS2_LE) {
+                    mdebug1("File '%s' is UCS-2 LE",current->file);
+                    current->read = read_ucs2_le;
+                }
+
+                if (current->ucs2 == UCS2_BE) {
+                    mdebug1("File '%s' is UCS-2 BE",current->file);
+                    current->read = read_ucs2_be;
+                }
+            }
+#endif
 
                 /* Finally, send to the function pointer to read it */
                 current->read(current, &r, 0);

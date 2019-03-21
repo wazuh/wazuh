@@ -49,8 +49,11 @@ void close_file(logreader * lf);
 void *read_syslog(logreader *lf, int *rc, int drop_it);
 
 #ifdef WIN32
-/* Read ucs2 file */
-void *read_ucs2(logreader *lf, int *rc, int drop_it);
+/* Read ucs2 LE file*/
+void *read_ucs2_le(logreader *lf, int *rc, int drop_it);
+
+/* Read ucs2 BE file */
+void *read_ucs2_be(logreader *lf, int *rc, int drop_it);
 #endif
 
 /* Read snort full file */
