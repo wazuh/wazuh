@@ -68,7 +68,7 @@ static void send_sk_db(int first_start)
     }
 
     log_realtime_status(2);
-    minfo("Starting syscheck scan.");
+    minfo("File integrity monitoring scan started.");
 
     /* Send first start scan control message */
     if(first_start) {
@@ -96,7 +96,8 @@ static void send_sk_db(int first_start)
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
     }
-    minfo("Ending syscheck scan. Database completed.");
+
+    minfo("File integrity monitoring scan ended. Database completed.");
 }
 
 /* Periodically run the integrity checker */
@@ -164,7 +165,7 @@ void start_daemon()
     /* Printing syscheck properties */
 
     if (!syscheck.disabled) {
-        minfo("Syscheck scan frequency: %d seconds", syscheck.time);
+        minfo("File integrity monitoring scan frequency: %d seconds", syscheck.time);
         /* Will create the db to store syscheck data */
         if (syscheck.scan_on_start) {
             send_sk_db(first_start);
@@ -625,19 +626,19 @@ void log_realtime_status(int next) {
     switch (status) {
     case 0:
         if (next == 1) {
-            minfo("Starting syscheck real-time monitoring.");
+            minfo("Real-time file integrity monitoring started.");
             status = next;
         }
         break;
     case 1:
         if (next == 2) {
-            minfo("Pausing syscheck real-time monitoring.");
+            minfo("Real-time file integrity monitoring paused.");
             status = next;
         }
         break;
     case 2:
         if (next == 1) {
-            minfo("Resuming syscheck real-time monitoring.");
+            minfo("Real-time file integrity monitoring resumed.");
             status = next;
         }
     }

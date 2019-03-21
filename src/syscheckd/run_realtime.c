@@ -225,7 +225,7 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
 /* Start real time monitoring using inotify */
 int realtime_start()
 {
-    minfo("Initializing real time file monitoring engine.");
+    minfo("Initializing real-time file integrity monitoring engine.");
 
     syscheck.realtime = (rtfim *) calloc(1, sizeof(rtfim));
     if (syscheck.realtime == NULL) {
@@ -280,7 +280,7 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                 	return(-1);
                 }
                 else {
-                    mdebug2("syscheck.skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
+                    mdebug2("FIM skip_nfs=%d, %s::is_nfs=%d", syscheck.skip_nfs, dir, is_nfs);
                 }
             }
 
@@ -448,7 +448,7 @@ void free_win32rtfim_data(win32rtfim *data) {
 
 int realtime_start()
 {
-    minfo("Initializing real time file monitoring engine.");
+    minfo("Initializing real-time file integrity monitoring engine.");
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();

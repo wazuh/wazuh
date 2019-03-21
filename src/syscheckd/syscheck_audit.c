@@ -377,7 +377,7 @@ int audit_init(void) {
             return -1;
         }
     } else {
-        minfo("Audit health check is disabled. Whodata could not work correctly.");
+        minfo("Audit health check is disabled. Real-time Whodata could not work correctly.");
     }
 
     // Add Audit rules
@@ -393,7 +393,7 @@ int audit_init(void) {
     auid_err_reported = 0;
 
     // Start audit thread
-    minfo("Starting FIM Whodata engine...");
+    minfo("Starting file integrity monitoring real-time Whodata engine.");
     w_cond_init(&audit_thread_started, NULL);
     w_cond_init(&audit_db_consistency, NULL);
     w_create_thread(audit_main, &audit_socket);
@@ -957,7 +957,7 @@ void * audit_main(int *audit_sock) {
     // Start rules reloading thread
     w_create_thread(audit_reload_thread, NULL);
 
-    minfo("FIM Whodata engine started.");
+    minfo("File integrity monitoring real-time Whodata engine started.");
 
     // Read events
     audit_read_events(audit_sock, READING_MODE);

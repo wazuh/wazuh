@@ -1005,8 +1005,6 @@ int create_db()
         return (-1);
     }
 
-    minfo("Starting syscheck database (pre-scan).");
-
     /* Read all available directories */
     __counter = 0;
     do {
@@ -1043,11 +1041,6 @@ int create_db()
     syscheck.last_check = OSHash_Duplicate(syscheck.fp);
     w_mutex_unlock(&lastcheck_mutex);
 
-#if defined (INOTIFY_ENABLED) || defined (WIN32)
-    if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-        minfo("Real time file monitoring engine started.");
-    }
-#endif
 #ifdef WIN_WHODATA
     if (enable_who_scan && !run_whodata_scan()) {
         minfo("Whodata auditing engine started.");
@@ -1056,7 +1049,7 @@ int create_db()
         }
     }
 #endif
-    minfo("Finished creating syscheck database (pre-scan completed).");
+
     return (0);
 }
 

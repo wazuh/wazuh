@@ -831,7 +831,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
 
             if (exists) {
                 if (!(d_status->status & WD_STATUS_EXISTS)) {
-                    minfo("'%s' has been re-added. It will be monitored in Whodata mode.", syscheck.dir[i]);
+                    minfo("'%s' has been re-added. It will be monitored in real-time Whodata mode.", syscheck.dir[i]);
                     if (set_winsacl(syscheck.dir[i], i)) {
                         merror("Unable to add directory to whodata monitoring: '%s'.", syscheck.dir[i]);
                         continue;
@@ -851,7 +851,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                         }
                     } else {
                         if (check_object_sacl(syscheck.dir[i], (d_status->object_type == WD_STATUS_FILE_TYPE) ? 1 : 0)) {
-                            minfo("The SACL of '%s' has been modified and it is not valid for the Whodata mode. Real-time mode will be activated for this file.", syscheck.dir[i]);
+                            minfo("The SACL of '%s' has been modified and it is not valid for the real-time Whodata mode. Whodata will not be available for this file.", syscheck.dir[i]);
                             // Mark the directory to prevent its children from sending partial whodata alerts
                             syscheck.wdata.dirs_status[i].status |= WD_CHECK_REALTIME;
                             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_WHODATA;
@@ -867,7 +867,7 @@ long unsigned int WINAPI state_checker(__attribute__((unused)) void *_void) {
                     }
                 }
             } else {
-                minfo("'%s' has been deleted. It will not be monitored in Whodata mode.", syscheck.dir[i]);
+                minfo("'%s' has been deleted. It will not be monitored in real-time Whodata mode.", syscheck.dir[i]);
                 d_status->status &= ~WD_STATUS_EXISTS;
                 d_status->object_type = WD_STATUS_UNK_TYPE;
             }
@@ -885,10 +885,10 @@ whodata_event_node *whodata_list_add(char *id) {
     if (syscheck.wlist.current_size < syscheck.wlist.max_size) {
         if (!syscheck.wlist.alerted && syscheck.wlist.alert_threshold < syscheck.wlist.current_size) {
             syscheck.wlist.alerted = 1;
-            mwarn("Whodata events queue for Windows has more than %d elements.", syscheck.wlist.alert_threshold);
+            mwarn("Real-time Whodata events queue for Windows has more than %d elements.", syscheck.wlist.alert_threshold);
         }
     } else {
-        mdebug1("Whodata events queue for Windows is full. Removing the first %d...", syscheck.wlist.max_remove);
+        mdebug1("Real-time Whodata events queue for Windows is full. Removing the first %d...", syscheck.wlist.max_remove);
         whodata_list_remove_multiple(syscheck.wlist.max_remove);
     }
     os_calloc(sizeof(whodata_event_node), 1, node);

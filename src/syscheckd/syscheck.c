@@ -142,7 +142,7 @@ int Start_win32_Syscheck()
         }
         syscheck.registry[0].entry = NULL;
 
-        minfo("Syscheck disabled.");
+        minfo("File integrity monitoring disabled.");
     }
 
     /* Rootcheck config */
@@ -161,7 +161,7 @@ int Start_win32_Syscheck()
             if (syscheck.opts[r] & CHECK_WHODATA) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
-                    minfo("Whodata mode is not compatible with this version of Windows.");
+                    minfo("Real-time Whodata mode is not compatible with this version of Windows.");
                 }
                 syscheck.opts[r] &= ~CHECK_WHODATA;
                 syscheck.opts[r] |= CHECK_REALTIME;
@@ -345,7 +345,7 @@ int main(int argc, char **argv)
         }
 
         if (!test_config) {
-            minfo("Syscheck disabled.");
+            minfo("File integrity monitoring disabled.");
         }
     }
 
