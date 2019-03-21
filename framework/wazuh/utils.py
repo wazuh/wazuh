@@ -844,8 +844,9 @@ class WazuhDBQuery(object):
         if self.backend == 'wdb':
             self._substitute_params()
 
-        query_with_select_fields = self.query.format(','.join(map(lambda x: f'{self.fields[x]} as {x}',
-                                                                  self.select['fields'] | self.min_select_fields)))
+        query_with_select_fields = self.query.format(','.join(
+            map(lambda x: f'{self.fields[x]} as {x}' if self.backend == 'wdb' else self.fields[x],
+                self.select['fields'] | self.min_select_fields)))
 
         if self.backend == 'sqlite3':
             self.conn.execute(query_with_select_fields, self.request)
