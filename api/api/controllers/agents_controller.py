@@ -7,6 +7,7 @@ import connexion
 import logging
 
 from wazuh.agent import Agent
+import wazuh.configuration as configuration
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhException
 from ..models.agent_added import AgentAdded
@@ -35,7 +36,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. 
     :type older_than: str
 
-    :rtype: AgentDeletedData
+    :rtype: AgentAllItemsAffected
     """
 
     f_kwargs = {'list_agent_ids': list_agents,
@@ -148,7 +149,7 @@ def restart_all_agents(wait_for_complete=False):  # noqa: E501
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
 
-    :rtype: AgentRestarted
+    :rtype: CommonResponse
     """
     dapi = DistributedAPI(f=Agent.restart_agents,
                           f_kwargs={'restart_all': True},
@@ -176,7 +177,7 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
     :type force_time: int
     
-    :rtype: AgentKey
+    :rtype: AgentIdKeyData
     """
 
     # get body parameters
@@ -215,7 +216,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False): 
     :param purge: Delete an agent from the key store
     :type purge: bool
 
-    :rtype: AgentDeleted
+    :rtype: AgentItemsAffected
     """
     f_kwargs = {'agent_id': agent_id,
                 'purge': purge
@@ -507,7 +508,7 @@ def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E
     :param agent_name: Agent name used when the agent was registered.
     :type agent_name: str
 
-    :rtype: 
+    :rtype: AgentIdKeyData
     """
     f_kwargs = {'name': agent_name}
 
@@ -570,7 +571,7 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
     :param group_id: Group ID.
     :type group_id: str
 
-    :rtype: 
+    :rtype: AgentItemsAffected
     """
     f_kwargs = {'agent_id_list': list_agents,
                 'group_id': group_id}
@@ -602,7 +603,7 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False): 
     :param agent_id_list: List of agents ID.
     :type agent_id_list: List[str]
 
-    :rtype: 
+    :rtype: AgentItemsAffected
     """
     # get body parameters
     if connexion.request.is_json:
@@ -639,7 +640,7 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
     :param list_groups: Array of group's IDs.
     :type list_groups: List[str]
 
-    :rtype: 
+    :rtype: AgentGroupDeleted
     """
     f_kwargs = {'group_id': list_groups}
 
@@ -656,17 +657,130 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
 
     return data, 200
 
+#Incomplete rtype
+def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
+    """Get all groups. 
+    
+    Returns a list containing basic information about each agent group such as number of agents belonging to the group and the checksums of the configuration and shared files.     # noqa: E501
 
-def get_list_group():
-    pass
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    ::param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param hash: Select algorithm to generate the returned checksums.
+    :type hash: str
+
+    :rtype: 
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit, 
+                'sort': sort, 
+                'search': search, 
+                'hash_algorithm': hash}
+
+    dapi = DistributedAPI(f=Agent.get_all_groups,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def delete_group():
-    pass
+def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+    """Remove group. 
+    
+    Removes the group. Agents that were assigned to the removed group will automatically revert to the "default" group.     # noqa: E501
 
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
 
-def get_agent_in_group():
-    pass
+    :rtype: AgentGroupDeleted
+    """
+    f_kwargs = {'group_id': group_id}
+
+    dapi = DistributedAPI(f=Agent.remove_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Incomplete rtype
+def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, status=None, q=''):  # noqa: E501
+    """Remove group. 
+    
+    Removes the group. Agents that were assigned to the removed group will automatically revert to the "default" group.     # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param select: Select which fields to return (separated by comma)
+    :type select: List[str]
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param status: Filters by agent status. Use commas to enter multiple statuses.
+    :type status: List[str]
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :type q: str
+
+    :rtype: 
+    """
+    f_kwargs = {'group_id': group_id,
+                'offset': offset,
+                'limit': limit,
+                'sort': sort,
+                'search': search,
+                'select': select,
+                'filters': {
+                    'status': status,
+                    },
+                'q': q}
+
+    dapi = DistributedAPI(f=Agent.get_agent_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -697,21 +811,155 @@ def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
 
     return data, 200
 
+#Incomplete rtype
+def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
+    """Get group configuration. 
+    
+    Returns the group configuration defined in the `agent.conf` file.     # noqa: E501
 
-def get_group_config():
-    pass
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
 
+    :rtype: 
+    """
+    f_kwargs = {'group_id': group_id,
+                'offset': offset,
+                'limit': limit}
 
-def post_group_config():
-    pass
+    dapi = DistributedAPI(f=configuration.get_agent_conf,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
 
+    data = loop.run_until_complete(dapi.distribute_function())
 
-def get_group_files():
-    pass
+    return data, 200
 
+#Incomplete
+def post_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
+    """Update group configuration. 
+    
+    Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.     # noqa: E501
 
-def get_group_file():
-    pass
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'group_id': group_id}
+
+    dapi = DistributedAPI(f=configuration.upload_group_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Incomplete rtype
+def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
+    """Get group file. 
+    
+    Return the files placed under the group directory.     # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    ::param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param hash: Select algorithm to generate the returned checksums.
+    :type hash: str
+
+    :rtype: 
+    """
+    f_kwargs = {'group_id': group_id,
+                'offset': offset,
+                'limit': limit, 
+                'sort': sort, 
+                'search': search, 
+                'hash_algorithm': hash}
+
+    dapi = DistributedAPI(f=Agent.get_group_files,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Incomplete rtype
+def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, type=None, format=None):  # noqa: E501
+    """Get group file. 
+    
+    Return the files placed under the group directory.     # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    ::param file_name: Filename
+    :type file_name: int
+    :param type: Type of file.
+    :type type: str
+    :param format: Select output format to return the file. JSON will format the file in JSON format and XML will return the XML raw file in a string.
+    :type format: str
+
+    :rtype: 
+    """
+    f_kwargs = {'group_id': group_id,
+                'filename': file_name,
+                'type_conf': type, 
+                'return_format': format}
+
+    dapi = DistributedAPI(f=configuration.get_file_conf,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def post_group_file():

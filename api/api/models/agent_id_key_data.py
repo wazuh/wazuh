@@ -7,21 +7,22 @@ from typing import List, Dict  # noqa: F401
 
 from api.models.base_model_ import Model
 from api.models.api_response import ApiResponse
+from api.models.agent_id_key import AgentIdKey
 from api import util
 
 
-class AgentKey(Model):
+class AgentIdKeyData(Model):
 
-    def __init__(self, api_response: ApiResponse=None, data=''):
+    def __init__(self, api_response: ApiResponse=None, data: AgentIdKey=None):
         """AgentKey body model
         :param api_response: The ApiResponse of this AgentKey
         :type api_response: ApiResponse
-        :param data: The data of this AgentKey.  # noqa: E501
-        :type data: str
+        :param data: The AgentIdKey of this AgentKey.  # noqa: E501
+        :type data: AgentIdKey
         """
         self.swagger_types = {
             'api_response': ApiResponse,
-            'data': str
+            'data': AgentIdKey
         }
 
         self.attribute_map = {
@@ -58,10 +59,10 @@ class AgentKey(Model):
         self._api_response = api_response
 
     @property
-    def data(self) -> str:
+    def data(self) -> AgentIdKey:
         """
         :return: The data of this AgentKey.
-        :rtype: str
+        :rtype: AgentIdKey
         """
         return self._data
 
