@@ -290,7 +290,10 @@ def upload_list(list_file, path):
         with open(tmp_file_path, 'w') as tmp_file:
             # write json in tmp_file_path
             for element in list_file.split('\n')[:-1]:
-                tmp_file.write(element + '\n')
+                # skip empty lines
+                if not element:
+                    continue
+                tmp_file.write(element.strip() + '\n')
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
