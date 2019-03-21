@@ -36,9 +36,10 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
         lines++;
         mdebug2("Bytes read from '%s': %ld bytes",lf->file,rbytes);
 
+        wchar_t * n;
         /* Get the last occurrence of \n */
-        if (str[rbytes - 2] == '\n') {
-            str[rbytes - 2] = '\0';
+        if ((n = wcsrchr(str, L'\n')) != NULL) {
+            *n = '\0';
         }
         /* If we didn't get the new line, because the
          * size is large, send what we got so far.
@@ -59,9 +60,9 @@ void *read_ucs2_le(logreader *lf, int *rc, int drop_it) {
             }
         }
 
-        char * p;
+        wchar_t * p;
 
-        if ((p = strrchr((char *)str, '\r')) != NULL) {
+        if ((p = wcsrchr(str, L'\r')) != NULL) {
             *p = '\0';
         }
 
