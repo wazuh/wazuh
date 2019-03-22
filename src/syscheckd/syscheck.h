@@ -136,6 +136,10 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
+#ifdef WIN_WHODATA
+int update_sacl(char *obj_path);
+#endif
+
 int print_hash_table();
 int fim_delete_hashes(char *file_name);
 

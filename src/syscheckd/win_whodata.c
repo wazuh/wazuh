@@ -730,7 +730,7 @@ add_whodata_evt:
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
-                                read_dir(w_evt->path, pos, NULL, depth, 0);
+                                read_dir(w_evt->path, pos, w_evt, depth, 0);
                             }
 
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
@@ -1198,4 +1198,141 @@ void notify_SACL_change(char *dir) {
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
+
+int w_update_sacl(char *obj_path) {
+    SYSTEM_AUDIT_ACE *ace = NULL;
+    SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
+    HANDLE hdle;
+    PSECURITY_DESCRIPTOR security_descriptor = NULL;
+    PACL old_sacl = NULL;
+    PACL new_sacl = NULL;
+    long unsigned result;
+    unsigned long new_sacl_size;
+    int retval = OS_INVALID;
+    int privilege_enabled = 0;
+    ACL_SIZE_INFORMATION old_sacl_info;
+    PVOID entry_access_it = NULL;
+    unsigned int i;
+
+    if (!everyone_sid) {
+        if (!AllocateAndInitializeSid(&world_auth, 1, SECURITY_WORLD_RID, 0, 0, 0, 0, 0, 0, 0, &everyone_sid)) {
+            merror("Could not obtain the sid of Everyone. Error '%lu'.", GetLastError());
+            goto end;
+        }
+    }
+
+    if (!ev_sid_size) {
+        ev_sid_size = GetLengthSid(everyone_sid);
+    }
+
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &hdle)) {
+        merror("OpenProcessToken() failed. Error '%lu'.", GetLastError());
+        goto end;
+    }
+
+    if (set_privilege(hdle, priv, TRUE)) {
+        merror("The privilege could not be activated. Error: '%ld'.", GetLastError());
+        goto end;
+    }
+
+    privilege_enabled = 1;
+
+    if (result = GetNamedSecurityInfo(obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, &old_sacl, &security_descriptor), result != ERROR_SUCCESS) {
+        merror("GetNamedSecurityInfo() failed. Error '%ld'", result);
+        goto end;
+    }
+
+    ZeroMemory(&old_sacl_info, sizeof(ACL_SIZE_INFORMATION));
+    // Get SACL size
+    if (old_sacl && !GetAclInformation(old_sacl, (LPVOID)&old_sacl_info, sizeof(ACL_SIZE_INFORMATION), AclSizeInformation)) {
+        merror("The size of the '%s' SACL could not be obtained.", obj_path);
+        goto end;
+    }
+
+    // Set the new ACL size
+    new_sacl_size = (old_sacl ? old_sacl_info.AclBytesInUse : sizeof(ACL)) + sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size;
+
+    if (new_sacl = (PACL)win_alloc(new_sacl_size), !new_sacl) {
+        merror("No memory could be reserved for the new SACL of '%s'.", obj_path);
+        goto end;
+    }
+
+    if (!InitializeAcl(new_sacl, new_sacl_size, ACL_REVISION)) {
+        merror("The new SACL for '%s' could not be created. Error: '%ld'.", obj_path, GetLastError());
+        goto end;
+    }
+
+    if (ace = (SYSTEM_AUDIT_ACE *)win_alloc(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD)), !ace) {
+        merror("No memory could be reserved for the new ACE of '%s'. Error: '%ld'.", obj_path, GetLastError());
+        goto end;
+    }
+
+    ace->Header.AceType  = SYSTEM_AUDIT_ACE_TYPE;
+    ace->Header.AceFlags = FAILED_ACCESS_ACE_FLAG;
+    ace->Header.AceSize  = LOWORD(sizeof(SYSTEM_AUDIT_ACE) + ev_sid_size - sizeof(DWORD));
+    ace->Mask            = 0;
+
+    if (!CopySid(ev_sid_size, &ace->SidStart, everyone_sid)) {
+        merror("Could not copy the everyone SID for '%s'. Error: '%d-%ld'.", obj_path, ev_sid_size, GetLastError());
+        goto end;
+    }
+
+    if (old_sacl) {
+        if (old_sacl_info.AceCount) {
+            for (i = 0; i < old_sacl_info.AceCount; i++) {
+               if (!GetAce(old_sacl, i, &entry_access_it)) {
+                   merror("The ACE number %i for '%s' could not be obtained.", i, obj_path);
+                   goto end;
+               }
+
+               if (!AddAce(new_sacl, ACL_REVISION, MAXDWORD, entry_access_it, ((PACE_HEADER)entry_access_it)->AceSize)) {
+                   merror("The ACE number %i of '%s' could not be copied to the new ACL.", i, obj_path);
+                   goto end;
+               }
+           }
+        }
+    }
+
+    // Add the new ACE
+    if (!AddAce(new_sacl, ACL_REVISION, 0, (LPVOID)ace, ace->Header.AceSize)) {
+        merror("The new ACE could not be added to '%s'. Error: '%ld'.", obj_path, GetLastError());
+        goto end;
+    }
+
+    if (result = SetNamedSecurityInfo((char *) obj_path, SE_FILE_OBJECT, SACL_SECURITY_INFORMATION, NULL, NULL, NULL, new_sacl), result != ERROR_SUCCESS) {
+        merror("SetNamedSecurityInfo() failed. Error: '%lu'", result);
+        goto end;
+    }
+
+    w_update_sacl(obj_path);
+    retval = 0;
+end:
+    if (privilege_enabled && set_privilege(hdle, priv, FALSE)) {
+        merror("The privilege could not be activated. Error: '%ld'.", GetLastError());
+        goto end;
+    }
+
+    if (security_descriptor) {
+        LocalFree((HLOCAL)security_descriptor);
+    }
+
+    if (old_sacl) {
+        LocalFree((HLOCAL)old_sacl);
+    }
+
+    if (new_sacl) {
+        LocalFree((HLOCAL)old_sacl);
+    }
+
+    if (hdle) {
+        CloseHandle(hdle);
+    }
+
+    if (ace) {
+        LocalFree((HLOCAL)ace);
+    }
+
+    return retval;
+}
+
 #endif
