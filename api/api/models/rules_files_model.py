@@ -64,6 +64,21 @@ class RulesFiles(Model):
         self._file = file
 
     @property
+    def path(self) -> str:
+        """
+        :return:
+        :rtype: str
+        """
+        return self._path
+
+    @path.setter
+    def path(self, path: str):
+        """
+        :param path:
+        """
+        self._path = path
+
+    @property
     def status(self) -> str:
         """
         :return: 
