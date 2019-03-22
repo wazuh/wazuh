@@ -43,7 +43,7 @@ class Rules(Model):
             'pci': List[str],
             'gdpr': List[str],
             'details': Dict
-        },
+        }
 
         self.attribute_map = {
             'rules_files': 'rules_files',
