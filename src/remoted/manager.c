@@ -363,7 +363,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 last_modify = gmtime(&(attrib.st_mtime));
                 if( modified != last_modify){
                     if(checkBinaryFile(DEFAULTAR)){
-                        OSHash_Update(invalid_files, DEFAULTAR, last_modify);
+                        OSHash_Set(invalid_files, DEFAULTAR, last_modify);
                         ignored = 1;
                     }
                     else{
@@ -421,7 +421,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 last_modify = gmtime(&(attrib.st_mtime));
                 if( modified != last_modify){
                     if(checkBinaryFile(file)){
-                        OSHash_Add(invalid_files, file, last_modify);
+                        OSHash_Set(invalid_files, file, last_modify);
                         ignored = 1;
                     }
                     else{
@@ -556,7 +556,7 @@ next:
         }
     }
 
-    /* Open de multi-group files and generate merged */
+    /* Open the multi-group files and generate merged */
     dp = opendir(MULTIGROUPS_DIR);
 
     if (!dp) {
