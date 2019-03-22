@@ -70,7 +70,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
         rules = Rule.from_dict({**rule, **rules_files})
         rules_list.append(rules)
 
-    return rule_list, 200
+    return rules_list, 200
 
 
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
