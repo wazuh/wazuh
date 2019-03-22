@@ -67,7 +67,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     for rule in data['data']['items']:
         rule = rule.to_dict()
         rules_files = RulesFiles.from_dict(rule)
-        rules = Rule.from_dict({**rule, **rules_files})
+        rules = Rule.from_dict({**rule, **{'rules_files': rules_files}})
         rules_list.append(rules)
 
     return rules_list, 200
