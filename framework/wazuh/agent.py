@@ -133,7 +133,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
-            self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
+            if self.legacy_filters['older_than'] is not None:
+                self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
 
