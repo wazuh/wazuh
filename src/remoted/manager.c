@@ -410,7 +410,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                     last_modify = gmtime(&(attrib.st_mtime));
                     OSHash_Add(invalid_files, file, last_modify);
                     ignored = 1;
-                    merror("File %s was detected as an invalid file",file);
+                    merror("Ivalid shared file %s in group %s. Ignoring it.",files[i],group);
                 }
             }
             if (!logr.nocmerged && !ignored) {
