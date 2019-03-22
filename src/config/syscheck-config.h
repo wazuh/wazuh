@@ -189,10 +189,13 @@ typedef struct _config {
     char *scan_time;                /* run syscheck at this time */
 
     char **ignore;                  /* list of files/dirs to ignore */
-    OSMatch **ignore_regex;         /* regex of files/dirs to ignore */
+    OSMatch **ignore_sregex;         /* sregex of files/dirs to ignore */
+    OSRegex **ignore_osregex;       /* OR regex of files/dirs to ignore */
 
     char **nodiff;                  /* list of files/dirs to never output diff */
-    OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
+    OSMatch **nodiff_sregex;         /* sregex of files/dirs to never output diff */
+    OSRegex **nodiff_osregex;       /* OR regex of files/dirs to never output diff */
+
 
     char **dir;                     /* array of directories to be scanned */
     OSMatch **filerestrict;

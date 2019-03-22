@@ -1042,26 +1042,59 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         (strcmp(node[i]->values[0], "sregex") == 0)) {
                     OSMatch *mt_pt;
 
-                    if (!syscheck->ignore_regex) {
-                        os_calloc(2, sizeof(OSMatch *), syscheck->ignore_regex);
-                        syscheck->ignore_regex[0] = NULL;
-                        syscheck->ignore_regex[1] = NULL;
+                    if (!syscheck->ignore_sregex) {
+                        os_calloc(2, sizeof(OSMatch *), syscheck->ignore_sregex);
+                        syscheck->ignore_sregex[0] = NULL;
+                        syscheck->ignore_sregex[1] = NULL;
                     } else {
-                        while (syscheck->ignore_regex[ign_size] != NULL) {
+                        while (syscheck->ignore_sregex[ign_size] != NULL) {
                             ign_size++;
                         }
 
-                        os_realloc(syscheck->ignore_regex,
+                        os_realloc(syscheck->ignore_sregex,
                                    sizeof(OSMatch *) * (ign_size + 2),
-                                   syscheck->ignore_regex);
-                        syscheck->ignore_regex[ign_size + 1] = NULL;
+                                   syscheck->ignore_sregex);
+                        syscheck->ignore_sregex[ign_size + 1] = NULL;
                     }
                     os_calloc(1, sizeof(OSMatch),
-                              syscheck->ignore_regex[ign_size]);
+                              syscheck->ignore_sregex[ign_size]);
 
                     if (!OSMatch_Compile(node[i]->content,
-                                         syscheck->ignore_regex[ign_size], 0)) {
-                        mt_pt = (OSMatch *)syscheck->ignore_regex[ign_size];
+                                         syscheck->ignore_sregex[ign_size], 0)) {
+                        mt_pt = (OSMatch *)syscheck->ignore_sregex[ign_size];
+                        merror(REGEX_COMPILE, node[i]->content,
+                               mt_pt->error);
+                        return (0);
+                    }
+                }
+            /* Check for type=regex */
+                else if (node[i]->attributes[0] && node[i]->values[0] &&
+                        (strcmp(node[i]->attributes[0], "type") == 0) &&
+                        (strcmp(node[i]->values[0], "regex") == 0)) {
+                    mdebug2("wally found type=regex");
+
+                    OSRegex *mt_pt;
+
+                    if (!syscheck->ignore_osregex) {
+                        os_calloc(2, sizeof(OSRegex *), syscheck->ignore_osregex);
+                        syscheck->ignore_osregex[0] = NULL;
+                        syscheck->ignore_osregex[1] = NULL;
+                    } else {
+                        while (syscheck->ignore_osregex[ign_size] != NULL) {
+                            ign_size++;
+                        }
+
+                        os_realloc(syscheck->ignore_osregex,
+                                   sizeof(OSRegex *) * (ign_size + 2),
+                                   syscheck->ignore_osregex);
+                        syscheck->ignore_osregex[ign_size + 1] = NULL;
+                    }
+                    os_calloc(1, sizeof(OSRegex),
+                              syscheck->ignore_osregex[ign_size]);
+
+                    if (!OSRegex_Compile(node[i]->content,
+                                         syscheck->ignore_osregex[ign_size], 0)) {
+                        mt_pt = (OSRegex *)syscheck->ignore_osregex[ign_size];
                         merror(REGEX_COMPILE, node[i]->content,
                                mt_pt->error);
                         return (0);
@@ -1159,38 +1192,70 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             str_lowercase(new_nodiff);
             node[i]->content = new_nodiff;
 #endif
-            /* Add if regex */
+            /* Add if sregex */
             if (node[i]->attributes && node[i]->values) {
                 if (node[i]->attributes[0] && node[i]->values[0] &&
                         (strcmp(node[i]->attributes[0], "type") == 0) &&
                         (strcmp(node[i]->values[0], "sregex") == 0)) {
                     OSMatch *mt_pt;
-                    if (!syscheck->nodiff_regex) {
-                        os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_regex);
-                        syscheck->nodiff_regex[0] = NULL;
-                        syscheck->nodiff_regex[1] = NULL;
+                    if (!syscheck->nodiff_sregex) {
+                        os_calloc(2, sizeof(OSMatch *), syscheck->nodiff_sregex);
+                        syscheck->nodiff_sregex[0] = NULL;
+                        syscheck->nodiff_sregex[1] = NULL;
                     } else {
-                        while (syscheck->nodiff_regex[nodiff_size] != NULL) {
+                        while (syscheck->nodiff_sregex[nodiff_size] != NULL) {
                             nodiff_size++;
                         }
 
-                        os_realloc(syscheck->nodiff_regex,
+                        os_realloc(syscheck->nodiff_sregex,
                                    sizeof(OSMatch *) * (nodiff_size + 2),
-                                   syscheck->nodiff_regex);
-                        syscheck->nodiff_regex[nodiff_size + 1] = NULL;
+                                   syscheck->nodiff_sregex);
+                        syscheck->nodiff_sregex[nodiff_size + 1] = NULL;
                     }
                     os_calloc(1, sizeof(OSMatch),
-                              syscheck->nodiff_regex[nodiff_size]);
-                    mdebug1("Found nodiff regex node %s", node[i]->content);
+                              syscheck->nodiff_sregex[nodiff_size]);
+                    mdebug1("Found nodiff sregex node %s", node[i]->content);
                     if (!OSMatch_Compile(node[i]->content,
-                                         syscheck->nodiff_regex[nodiff_size], 0)) {
-                        mt_pt = (OSMatch *)syscheck->nodiff_regex[nodiff_size];
+                                         syscheck->nodiff_sregex[nodiff_size], 0)) {
+                        mt_pt = (OSMatch *)syscheck->nodiff_sregex[nodiff_size];
                         merror(REGEX_COMPILE, node[i]->content,
                                mt_pt->error);
                         return (0);
                     }
-                    mdebug1("Found nodiff regex node %s OK?", node[i]->content);
-                    mdebug1("Found nodiff regex size %d", nodiff_size);
+                    mdebug1("Found nodiff sregex node %s OK?", node[i]->content);
+                    mdebug1("Found nodiff sregex size %d", nodiff_size);
+                }
+                else if (node[i]->attributes[0] && node[i]->values[0] &&
+                             (strcmp(node[i]->attributes[0], "type") == 0) &&
+                             (strcmp(node[i]->values[0], "regex") == 0)) {
+                        OSRegex *mt_pt;
+                        if (!syscheck->nodiff_osregex) {
+                           os_calloc(2, sizeof(OSRegex *),syscheck->nodiff_osregex);
+                           syscheck->nodiff_osregex[0] = NULL;
+                           syscheck->nodiff_osregex[1] = NULL;
+                        } else {
+                            while (syscheck->nodiff_osregex[nodiff_size] != NULL) {
+                                nodiff_size++;
+                            }
+
+                            os_realloc(syscheck->nodiff_osregex,
+                                       sizeof(OSRegex *) * (nodiff_size + 2),
+                                       syscheck->nodiff_osregex);
+                            syscheck->nodiff_osregex[nodiff_size + 1] = NULL;
+                       }
+                       os_calloc(1, sizeof(OSRegex),
+                                 syscheck->nodiff_osregex[nodiff_size]) ;
+                       mdebug1("Found nodiff regex node %s", node[i]->content);
+                       if(!OSRegex_Compile(node[i]->content,
+                                         syscheck->ignore_osregex[nodiff_size], 0)) {
+                           mt_pt = (OSRegex *) syscheck->ignore_osregex[nodiff_size];
+                           merror(REGEX_COMPILE, node[i]->content,
+                              mt_pt->error);
+                           return (0);
+                       }
+                       mdebug1("Found nodiff regex node %s OK?", node[i]->content);
+                       mdebug1("Found nodiff regex size %d", nodiff_size);
+
                 } else {
                     merror(SK_INV_ATTR, node[i]->attributes[0]);
                     return (OS_INVALID);
@@ -1416,21 +1481,33 @@ void Free_Syscheck(syscheck_config * config) {
             }
             free(config->ignore);
         }
-        if (config->ignore_regex) {
-            for (i=0; config->ignore_regex[i] != NULL; i++) {
-                OSMatch_FreePattern(config->ignore_regex[i]);
+        if (config->ignore_sregex) {
+            for (i=0; config->ignore_sregex[i] != NULL; i++) {
+                OSMatch_FreePattern(config->ignore_sregex[i]);
             }
-            free(config->ignore_regex);
+            free(config->ignore_sregex);
         }
+        if (config->ignore_osregex) {
+            for (i=0; config->ignore_osregex[i] != NULL; i++) {
+                OSRegex_FreePattern(config->ignore_osregex[i]);
+            }
+            free(config->ignore_osregex);
+        }
+
         if (config->nodiff) {
             for (i=0; config->nodiff[i] != NULL; i++) {
                 free(config->nodiff[i]);
             }
             free(config->nodiff);
         }
-        if (config->nodiff_regex) {
-            for (i=0; config->nodiff_regex[i] != NULL; i++) {
-                OSMatch_FreePattern(config->nodiff_regex[i]);
+        if (config->nodiff_sregex) {
+            for (i=0; config->nodiff_sregex[i] != NULL; i++) {
+                OSMatch_FreePattern(config->nodiff_sregex[i]);
+            }
+        }
+        if (config->nodiff_osregex) {
+            for (i=0; config->nodiff_osregex[i] != NULL; i++) {
+                OSRegex_FreePattern(config->nodiff_osregex[i]);
             }
         }
         if (config->dir) {

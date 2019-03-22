@@ -1118,18 +1118,31 @@ int fim_check_ignore (const char *file_name) {
         }
     }
 
-    /* Check in the regex entry */
-    if (syscheck.ignore_regex) {
+    /* Check in the regex entry (sregex) */
+    if (syscheck.ignore_sregex) {
         int i = 0;
-        while (syscheck.ignore_regex[i] != NULL) {
-            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug1("Ignoring file '%s' sregex '%s', continuing...", file_name, syscheck.ignore_regex[i]->raw);
+        while (syscheck.ignore_sregex[i] != NULL) {
+            if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_sregex[i])) {
+                mdebug1("Ignoring file '%s' sregex '%s', continuing...", file_name, syscheck.ignore_sregex[i]->raw);
                 return (1);
             }
             i++;
         }
     }
 
+    /* Check in the OS/OR regex entry (regex) */
+    if(syscheck.ignore_osregex) {
+        int i = 0;
+        mdebug2("Checking file %s against OS regex.", file_name);
+        while (syscheck.ignore_osregex[i] != NULL) {
+            OSRegex *checkReg = syscheck.ignore_osregex[i];
+            if (OSRegex_Execute(file_name, checkReg) ) {
+                mdebug1("Ignoring file '%s' regex '%s', continuing...", file_name, syscheck.ignore_osregex[i]->raw);
+                return (1);
+            }
+            i++;
+        }
+    }
     return (0);
 }
 
