@@ -355,36 +355,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(DEFAULTAR_FILE, f_sum[f_size]->name);
 
-            if(modified = (struct tm *) OSHash_Get(invalid_files,DEFAULTAR)){
-                struct stat attrib;
-                struct tm *last_modify;
-
-                stat(DEFAULTAR, &attrib);
-                last_modify = gmtime(&(attrib.st_mtime));
-                if( modified != last_modify){
-                    if(checkBinaryFile(DEFAULTAR)){
-                        OSHash_Set(invalid_files, DEFAULTAR, last_modify);
-                        ignored = 1;
-                    }
-                    else{
-                        OSHash_Delete(invalid_files, DEFAULTAR);
-                    }
-                }
-            } else {
-                if(checkBinaryFile(DEFAULTAR)){
-                    struct stat attrib;
-                    struct tm *last_modify;
-
-                    stat(DEFAULTAR, &attrib);
-                    last_modify = gmtime(&(attrib.st_mtime));
-                    OSHash_Add(invalid_files, DEFAULTAR, last_modify);
-                    ignored = 1;
-                    merror("File ar.conf was detected as an invalid file");
-                }
-            }
-            
-            if (!logr.nocmerged && !ignored) {
-                    MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
+            if (!logr.nocmerged) {
+                MergeAppendFile(merged_tmp, DEFAULTAR, NULL, -1);
             }
 
             f_size++;
@@ -413,7 +385,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             strncpy(f_sum[f_size]->sum, md5sum, 32);
             os_strdup(files[i], f_sum[f_size]->name);
             
-            if(modified = (struct tm *) OSHash_Get(invalid_files,file)){
+            if(modified = (struct tm *) OSHash_Get(invalid_files,file), modified){
                 struct stat attrib;
                 struct tm *last_modify;
 
@@ -533,7 +505,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
                 snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
-                if(modified = (struct tm *) OSHash_Get(invalid_files,source_path)){
+                if(modified = (struct tm *) OSHash_Get(invalid_files,source_path), modified){
                    ignored = 1;
                 }
                 if(!ignored) {
