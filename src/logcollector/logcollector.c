@@ -53,6 +53,8 @@ static pthread_mutexattr_t win_el_mutex_attr;
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
 
+static OSHash *excluded_files = NULL;
+
 static char *rand_keepalive_str(char *dst, int size)
 {
     static const char text[] = "abcdefghijklmnopqrstuvwxyz"
@@ -85,6 +87,12 @@ void LogCollectorStart()
 
     total_files = 0;
     current_files = 0;
+
+    /* Create store data */
+    excluded_files = OSHash_Create();
+    if (!excluded_files) {
+        merror_exit(LIST_ERROR);
+    }
 
     set_sockets();
     w_rwlock_init(&files_update_rwlock, NULL);
@@ -981,7 +989,12 @@ int check_pattern_expand(int do_seek) {
                 }
                 if (!found) {
                     retval = 1;
-                    minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                    char *ex_file = OSHash_Get(excluded_files,g.gl_pathv[glob_offset]);
+
+                    if(!ex_file) {
+                        minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                    }
+                   
                     os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
                     if (i) {
                         memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
@@ -1065,6 +1078,14 @@ void check_pattern_expand_excluded() {
                         if (result) {
                             merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
                         } else {
+
+                            /* Add the excluded file to the hash table */
+                            char *file = OSHash_Get(excluded_files,g.gl_pathv[glob_offset]);
+
+                            if(!file) {
+                                OSHash_Add(excluded_files,g.gl_pathv[glob_offset],(void *)1);
+                            }
+
                             mdebug2(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
                         }
