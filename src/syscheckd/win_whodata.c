@@ -662,7 +662,7 @@ add_whodata_evt:
                                 }
 
                                 if (!compare_timestamp(&w_dir->timestamp, &system_time)) {
-                                    mdebug2("The '%s' directory has been scanned at 'd'. It does not need to do it again.", path);
+                                    mdebug2("The '%s' directory has been scanned. It does not need to do it again.", path);
                                     w_evt->scan_directory = 3;
                                     break;
                                 }

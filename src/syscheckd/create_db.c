@@ -156,7 +156,7 @@ void remove_local_diff(){
         if (curr_node_local && curr_node_local->key) {
             do{
                 internal_node = curr_node_local->next;
-                mdebug1("Deleting '%s'. Not monitored anymore.", curr_node_local->key);
+                mdebug1("Deleting backup '%s'. Not monitored anymore.", curr_node_local->key);
                 if (rmdir_ex(curr_node_local->key) != 0) {
                     mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
                 }
@@ -220,6 +220,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         case ENOTDIR:
             /*Deletion message sending*/
+            mdebug2("Sending delete msg for file: %s", file_name);
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
             send_syscheck_msg(alert_msg);
 
@@ -748,7 +749,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     int opts;
     size_t dir_size;
 
-    if(max_depth < 0){
+    if(max_depth < 0) {
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
     }
@@ -784,11 +785,9 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     dp = opendir(dir_name);
 
     /* Should we check for NFS? */
-    if (syscheck.skip_nfs && dp)
-    {
+    if (syscheck.skip_nfs && dp) {
         is_nfs = IsNFS(dir_name);
-        if (is_nfs != 0)
-        {
+        if (is_nfs != 0) {
             // Error will be -1, and 1 means skipped
             free(f_name);
             closedir(dp);
@@ -798,13 +797,10 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 
     if (!dp) {
         if (errno == ENOTDIR || errno == ENOENT) {
-
             if (read_file(dir_name, dir_position, evt, max_depth) == 0) {
-
                 free(f_name);
                 return (0);
             }
-
         }
 
 #ifdef WIN32
@@ -818,37 +814,26 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
             "C:\\WINDOWS/System32/Tasks",
             NULL
         };
+
         while (defaultfilesn[di] != NULL) {
             if (strcmp(defaultfilesn[di], dir_name) == 0) {
                 break;
             }
             di++;
         }
+
 #ifdef WIN_WHODATA
         if (defaultfilesn[di] == NULL && !(evt && evt->ignore_not_exist)) {
 #else
         if (defaultfilesn[di] == NULL) {
 #endif
-            switch (errno) {
-            case ENOENT:
-                mdebug2("Cannot open '%s': it was removed during scan.", dir_name);
-                break;
-            default:
-                mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
-            }
-
+            mdebug1("Cannot open '%s': %s ", dir_name, strerror(errno));
         } else {
             free(f_name);
             return 0;
         }
 #else
-        switch (errno) {
-        case ENOENT:
-            mdebug2("Cannot open '%s': it was removed during scan.", dir_name);
-            break;
-        default:
-            mwarn("Cannot open '%s': %s ", dir_name, strerror(errno));
-        }
+        mdebug1("Cannot open '%s': %s ", dir_name, strerror(errno));
 
 #endif /* WIN32 */
         free(f_name);

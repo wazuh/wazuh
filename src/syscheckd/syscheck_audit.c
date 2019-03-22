@@ -1114,8 +1114,7 @@ void audit_read_events(int *audit_sock, int mode) {
                 free(cache_id);
                 cache_id = id;
             } else {
-                merror("Couldn't get event ID from Audit message.");
-                mdebug1("Line: '%s'", line);
+                merror("Couldn't get event ID from Audit message. Line: '%s'", line);
             }
 
             line = endline + 1;
