@@ -54,7 +54,7 @@ INSERT INTO agent (id, name, ip, register_ip, internal_key, os_name, os_version,
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
                    'Wazuh v3.8.2','ab73af41699f13fdd81903b5f23d8d00','f8d49771911ed9d5c45b03a40babd065','master',
                    'node01',datetime(CURRENT_TIMESTAMP, '-4 days', 'localtime'),
-                    datetime(CURRENT_TIMESTAMP, '-3 seconds', 'localtime'),'updated');
+                    datetime(CURRENT_TIMESTAMP, '-5 seconds', 'localtime'),'updated');
 
 -- Connected agent with just Registered IP filled
 INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_major, os_minor, os_codename,
@@ -75,7 +75,7 @@ INSERT INTO agent (id, name, register_ip, internal_key, date_add, `group`) VALUE
 -- Pending agent
 INSERT INTO agent (id, name, register_ip, internal_key, manager_host, date_add, last_keepalive, `group`) VALUES
                   (4,'pending-agent', 'any', '2855bcf49273c759ef5b116829cc582f153c6c199df7676e53d5937855ff5902', '',
-                   datetime(CURRENT_TIMESTAMP, '-1 minute', 'localtime'), datetime(CURRENT_TIMESTAMP, 'localtime'), NULL);
+                   datetime(CURRENT_TIMESTAMP, '-1 minute', 'localtime'), datetime(CURRENT_TIMESTAMP, '-10 seconds', 'localtime'), NULL);
 
 
 -- Disconnected agent

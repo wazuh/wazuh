@@ -116,8 +116,7 @@ def test_get_agents_overview_query(test_data, query):
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        agents = Agent.get_agents_overview(q=query, select={'fields':['status', 'lastKeepAlive']})
-        print(agents)
+        agents = Agent.get_agents_overview(q=query)
         assert len(agents['items']) == 1
 
 
@@ -137,3 +136,20 @@ def test_get_agents_overview_search(test_data, search, totalItems):
 
         agents = Agent.get_agents_overview(search=search)
         assert len(agents['items']) == totalItems
+
+
+@pytest.mark.parametrize("status, older_than, totalItems", [
+    ('active', '9m', 1),
+    ('all', '1s', 5),
+    ('pending,neverconnected', '30m', 1)
+])
+def test_get_agents_overview_status_olderthan(test_data, status, older_than, totalItems):
+    """
+    Test filtering by status
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+
+        agents = Agent.get_agents_overview(filters={'status': status, 'older_than': older_than},
+                                           select={'fields': ['name', 'id', 'status', 'lastKeepAlive', 'dateAdd']})
+        assert agents['totalItems'] == totalItems
