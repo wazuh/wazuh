@@ -12,12 +12,6 @@
  #define _INFO_MESSAGES__H
 
 /* File integrity monitoring info messages*/
-#define SK_NO_DIR
-#define FIM_RT_RESUMED                  STARTUP_MSG
-#define FIM_RT_RESUMED                  SK_NO_DIR
-#define FIM_RT_RESUMED                  SK_NO_DIR
-#define FIM_RT_RESUMED                  STARTUP_MSG
-
 #define FIM_DAEMON_STARTED                         "(6001): Starting daemon..."
 #define FIM_DISABLED                               "(6002): File integrity monitoring disabled."
 #define FIM_MONITORING_REGISTRY                    "(6003): Monitoring registry entry: '%s%s'."
