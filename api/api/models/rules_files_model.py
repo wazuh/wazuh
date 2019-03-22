@@ -26,7 +26,7 @@ class RulesFiles(Model):
             'file': str,
             'path': str,
             'status': str
-        },
+        }
 
         self.attribute_map = {
             'file': 'file',
