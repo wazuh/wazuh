@@ -6,6 +6,9 @@ import asyncio
 import connexion
 import logging
 
+from api.models.list_metadata import ListMetadata
+from api.models.rules_files_model import RulesFiles
+from api.models.rules_model import Rules
 from api.util import remove_nones_to_dict
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
@@ -60,7 +63,14 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
-    return data, 200
+    rules_list = []
+    for rule in data['data']['items']:
+        rule = rule.to_dict()
+        rules_files = RulesFiles.from_dict(rule)
+        rules = Rule.from_dict({**rule, **rules_files})
+        rules_list.append(rules)
+
+    return rule_list, 200
 
 
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
