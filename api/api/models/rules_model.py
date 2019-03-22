@@ -15,7 +15,7 @@ class Rules(Model):
     def __init__(self, rules_files: RulesFiles=None, id: int=None,
                  level: int=None, description: str=None, 
                  groups: List[str]=None, pci: List[str]=None,
-                 gdpr: List[str]=None, details: Dict=None):
+                 gdpr: List[str]=None, details: Dict[str,str]=None):
         """Rules body model
         :param rules_files: 
         :type RulesFiles: RulesFiles
@@ -42,7 +42,7 @@ class Rules(Model):
             'groups': List[str],
             'pci': List[str],
             'gdpr': List[str],
-            'details': Dict
+            'details': Dict[str,str]
         }
 
         self.attribute_map = {
@@ -181,7 +181,7 @@ class Rules(Model):
         self._gdpr = gdpr
 
     @property
-    def details(self) -> Dict:
+    def details(self) -> Dict[str,str]:
         """
         :return: Details
         :rtype: str
@@ -189,7 +189,7 @@ class Rules(Model):
         return self._details
 
     @details.setter
-    def details(self, details: Dict):
+    def details(self, details: Dict[str,str]):
         """
         :param details: Details 
         """

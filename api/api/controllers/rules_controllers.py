@@ -8,7 +8,7 @@ import logging
 
 from api.models.list_metadata import ListMetadata
 from api.models.rules_files_model import RulesFiles
-from api.models.rules_model import Rules
+from api.models.rules_model import Rules as RulesModel
 from api.util import remove_nones_to_dict
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
@@ -69,7 +69,8 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
         rules_files = RulesFiles.from_dict(rule)
         rule['rules_files'] = rules_files
         try:
-            rules = Rules.from_dict(rule)
+            rules = RulesModel.from_dict(rule)
+            #rules_files = RulesFiles.from_dict(rule)
         except Exception as e:
             return str(e)
         return rules, 200
