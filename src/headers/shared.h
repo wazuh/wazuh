@@ -233,6 +233,7 @@ extern const char *__local_name;
 
 #include "error_messages/error_messages.h"
 #include "error_messages/debug_messages.h"
+#include "error_messages/info_messages.h"
 #include "custom_output_search.h"
 #include "url.h"
 #include "yaml2json.h"
