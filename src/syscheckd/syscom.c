@@ -28,14 +28,14 @@ size_t syscom_dispatch(char * command, char ** output){
     if (strcmp(rcv_comm, "getconfig") == 0){
         // getconfig section
         if (!rcv_args){
-            mdebug1("SYSCOM getconfig needs arguments.");
+            mdebug1(FIM_SYSCOM_ARGUMENTS);
             *output = strdup("err SYSCOM getconfig needs arguments");
             return strlen(*output);
         }
         return syscom_getconfig(rcv_args, output);
 
     } else {
-        mdebug1("SYSCOM Unrecognized command '%s'.", rcv_comm);
+        mdebug1(FIM_SYSCOM_UNRECOGNIZED_COMMAND, rcv_comm);
         *output = strdup("err Unrecognized command");
         return strlen(*output);
     }
@@ -83,7 +83,7 @@ size_t syscom_getconfig(const char * section, char ** output) {
         goto error;
     }
 error:
-    mdebug1("At SYSCOM getconfig: Could not get '%s' section", section);
+    mdebug1(FIM_SYSCOM_FAIL_GETCONFIG, section);
     *output = strdup("err Could not get requested section");
     return strlen(*output);
 }
@@ -98,10 +98,10 @@ void * syscom_main(__attribute__((unused)) void * arg) {
     ssize_t length;
     fd_set fdset;
 
-    mdebug1("Local requests thread ready");
+    mdebug1(FIM_SYSCOM_REQUEST_READY);
 
     if (sock = OS_BindUnixDomain(DEFAULTDIR SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", SYS_LOCAL_SOCK, errno, strerror(errno));
+        merror(FIM_ERROR_SYSCOM_BIND_SOCKET, SYS_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -125,7 +125,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At syscom_main(): accept(): %s", strerror(errno));
+                merror(FIM_ERROR_SYSCOM_ACCEPT, strerror(errno));
             }
 
             continue;
@@ -134,20 +134,20 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror("At syscom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            merror(FIM_ERROR_SYSCOM_RECV_TOOLONG);
             break;
 
         case -1:
-            merror("At syscom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
+            merror(FIM_ERROR_SYSCOM_RECV, strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mdebug1(FIM_SYSCOM_EMPTY_MESSAGE);
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            merror(FIM_ERROR_SYSCOM_RECV_MAXLEN, MAX_DYN_STR);
             close(peer);
             break;
 
@@ -160,7 +160,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         free(buffer);
     }
 
-    mdebug1("Local server thread finished.");
+    mdebug1(FIM_SYSCOM_THREAD_FINISED);
 
     close(sock);
     return NULL;

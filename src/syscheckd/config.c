@@ -60,7 +60,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    mdebug2("Reading Client Configuration [%s]", cfgfile);
+    mdebug2(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
     modules |= CAGENT_CONFIG;

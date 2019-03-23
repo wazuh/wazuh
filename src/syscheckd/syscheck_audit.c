@@ -122,7 +122,7 @@ int set_auditd_config(void) {
         }
 
         if (syscheck.restart_audit) {
-            minfo("No socket found at '%s'. Restarting Auditd service.", AUDIT_SOCKET);
+            minfo(FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
             return audit_restart();
         } else {
             mwarn("Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled.", AUDIT_SOCKET);
@@ -130,7 +130,7 @@ int set_auditd_config(void) {
         }
     }
 
-    minfo("Generating Auditd socket configuration file: %s", AUDIT_CONF_FILE);
+    minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
     fp = fopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
@@ -171,7 +171,7 @@ int set_auditd_config(void) {
     }
 
     if (syscheck.restart_audit) {
-        minfo("Audit plugin configuration (%s) was modified. Restarting Auditd service.", AUDIT_CONF_FILE);
+        minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
         return audit_restart();
     } else {
         mwarn("Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled.");
@@ -185,7 +185,7 @@ int init_auditd_socket(void) {
     int sfd;
 
     if (sfd = OS_ConnectUnixDomain(AUDIT_SOCKET, SOCK_STREAM, OS_MAXSTR), sfd < 0) {
-        merror("Cannot connect to socket %s", AUDIT_SOCKET);
+        merror(FIM_ERROR_WHODATA_SOCKET_CONNECT, AUDIT_SOCKET);
         return (-1);
     }
 
@@ -202,7 +202,7 @@ int add_audit_rules_syscheck(void) {
     audit_close(fd);
 
     if (!res) {
-        merror("Could not read audit loaded rules.");
+        merror(FIM_ERROR_WHODATA_READ_RULE);
     }
 
     while (syscheck.dir[i] != NULL) {
@@ -214,25 +214,25 @@ int add_audit_rules_syscheck(void) {
                     if (retval = audit_add_rule(syscheck.dir[i], AUDIT_KEY), retval > 0) {
                         w_mutex_lock(&audit_rules_mutex);
                         if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
-                            mdebug1("Added audit rule for monitoring directory: '%s'.", syscheck.dir[i]);
+                            mdebug1(FIM_AUDIT_NEWRULE, syscheck.dir[i]);
                         }
                         w_mutex_unlock(&audit_rules_mutex);
                         rules_added++;
                     } else {
-                        merror("Error adding audit rule for directory (%i): %s .",retval, syscheck.dir[i]);
+                        merror(FIM_ERROR_WHODATA_ADD_RULE,retval, syscheck.dir[i]);
                     }
                 } else if (found == 1) {
                     w_mutex_lock(&audit_rules_mutex);
                     if(!W_Vector_insert_unique(audit_added_rules, syscheck.dir[i])) {
-                        mdebug1("Audit rule for monitoring directory '%s' already added.", syscheck.dir[i]);
+                        mdebug1(FIM_AUDIT_RULEDUP, syscheck.dir[i]);
                     }
                     w_mutex_unlock(&audit_rules_mutex);
                     rules_added++;
                 } else {
-                    merror("Error checking Audit rules list.");
+                    merror(FIM_ERROR_WHODATA_CHECK_RULE);
                 }
             } else {
-                merror("Unable to monitor who-data for directory: '%s' - Maximum size permitted (%d).", syscheck.dir[i], syscheck.max_audit_entries);
+                merror(FIM_ERROR_WHODATA_MAXNUM_WATCHES, syscheck.dir[i], syscheck.max_audit_entries);
             }
         }
         i++;
@@ -247,87 +247,87 @@ int init_regex(void) {
 
     static const char *pattern_uid = " uid=([0-9]*) ";
     if (regcomp(&regexCompiled_uid, pattern_uid, REG_EXTENDED)) {
-        merror("Cannot compile uid regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "uid");
         return -1;
     }
     static const char *pattern_gid = " gid=([0-9]*) ";
     if (regcomp(&regexCompiled_gid, pattern_gid, REG_EXTENDED)) {
-        merror("Cannot compile gid regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "gid");
         return -1;
     }
     static const char *pattern_auid = " auid=([0-9]*) ";
     if (regcomp(&regexCompiled_auid, pattern_auid, REG_EXTENDED)) {
-        merror("Cannot compile auid regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "auid");
         return -1;
     }
     static const char *pattern_euid = " euid=([0-9]*) ";
     if (regcomp(&regexCompiled_euid, pattern_euid, REG_EXTENDED)) {
-        merror("Cannot compile euid regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "euid");
         return -1;
     }
     static const char *pattern_pid = " pid=([0-9]*) ";
     if (regcomp(&regexCompiled_pid, pattern_pid, REG_EXTENDED)) {
-        merror("Cannot compile pid regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pid");
         return -1;
     }
     static const char *pattern_ppid = " ppid=([0-9]*) ";
     if (regcomp(&regexCompiled_ppid, pattern_ppid, REG_EXTENDED)) {
-        merror("Cannot compile ppid regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "ppid");
         return -1;
     }
     static const char *pattern_inode = " item=[0-9] name=.* inode=([0-9]*)";
     if (regcomp(&regexCompiled_inode, pattern_inode, REG_EXTENDED)) {
-        merror("Cannot compile inode regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "inode");
         return -1;
     }
     static const char *pattern_pname = " exe=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_pname, pattern_pname, REG_EXTENDED)) {
-        merror("Cannot compile pname regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "pname");
         return -1;
     }
     static const char *pattern_cwd = " cwd=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_cwd, pattern_cwd, REG_EXTENDED)) {
-        merror("Cannot compile cwd regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "cwd");
         return -1;
     }
     static const char *pattern_path0 = " item=0 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path0, pattern_path0, REG_EXTENDED)) {
-        merror("Cannot compile path0 regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path0");
         return -1;
     }
     static const char *pattern_path1 = " item=1 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path1, pattern_path1, REG_EXTENDED)) {
-        merror("Cannot compile path1 regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path1");
         return -1;
     }
     static const char *pattern_path2 = " item=2 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path2, pattern_path2, REG_EXTENDED)) {
-        merror("Cannot compile path2 regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path2");
         return -1;
     }
     static const char *pattern_path3 = " item=3 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path3, pattern_path3, REG_EXTENDED)) {
-        merror("Cannot compile path3 regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path3");
         return -1;
     }
     static const char *pattern_path4 = " item=4 name=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_path4, pattern_path4, REG_EXTENDED)) {
-        merror("Cannot compile path4 regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "path4");
         return -1;
     }
     static const char *pattern_items = " items=([0-9]*) ";
     if (regcomp(&regexCompiled_items, pattern_items, REG_EXTENDED)) {
-        merror("Cannot compile items regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "items");
         return -1;
     }
     static const char *pattern_dir = " dir=\"([^ ]*)\"";
     if (regcomp(&regexCompiled_dir, pattern_dir, REG_EXTENDED)) {
-        merror("Cannot compile dir regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "dir");
         return -1;
     }
     static const char *pattern_syscall = " syscall=([0-9]*)";
     if (regcomp(&regexCompiled_syscall, pattern_syscall, REG_EXTENDED)) {
-        merror("Cannot compile syscall regular expression.");
+        merror(FIM_ERROR_WHODATA_COMPILE_REGEX, "syscall");
         return -1;
     }
     return 0;
@@ -343,14 +343,14 @@ int audit_init(void) {
     // Check if auditd is installed and running.
     int aupid = check_auditd_enabled();
     if (aupid <= 0) {
-        mdebug1("Auditd is not running.");
+        mdebug1(FIM_AUDIT_NORUNNING);
         return (-1);
     }
 
     // Check audit socket configuration
     switch (set_auditd_config()) {
     case -1:
-        mdebug1("Cannot apply Audit config.");
+        mdebug1(FIM_AUDIT_NOCONF);
         return (-1);
     case 0:
         break;
@@ -373,11 +373,11 @@ int audit_init(void) {
     // Perform Audit healthcheck
     if (syscheck.audit_healthcheck) {
         if(audit_health_check(audit_socket)) {
-            merror("Audit health check couldn't be completed correctly.");
+            merror(FIM_ERROR_WHODATA_HEALTHCHECK_START);
             return -1;
         }
     } else {
-        minfo("Audit health check is disabled. Real-time Whodata could not work correctly.");
+        minfo(FIM_AUDIT_HEALTHCHECK_DISABLE);
     }
 
     // Add Audit rules
@@ -385,7 +385,7 @@ int audit_init(void) {
     audit_added_dirs = W_Vector_init(20);
     int rules_added = add_audit_rules_syscheck();
     if (rules_added < 1){
-        mdebug1("No rules added. Audit events reader thread will not start.");
+        mdebug1(FIM_AUDIT_NORULES);
         return (-1);
     }
 
@@ -393,7 +393,7 @@ int audit_init(void) {
     auid_err_reported = 0;
 
     // Start audit thread
-    minfo("Starting file integrity monitoring real-time Whodata engine.");
+    minfo(FIM_WHODATA_STARTING);
     w_cond_init(&audit_thread_started, NULL);
     w_cond_init(&audit_db_consistency, NULL);
     w_create_thread(audit_main, &audit_socket);
@@ -531,7 +531,7 @@ void audit_parse(char *buffer) {
             }
 
             if (p_dir && *p_dir != '\0') {
-                minfo("Monitored directory '%s' was removed: Audit rule removed.", p_dir);
+                minfo(FIM_AUDIT_REMOVE_RULE, p_dir);
                 // Send alert
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
@@ -592,7 +592,7 @@ void audit_parse(char *buffer) {
                 snprintf (auid, match_size +1, "%.*s", match_size, buffer + match[1].rm_so);
                 if (strcmp(auid, "4294967295") == 0) { // Invalid auid (-1)
                     if (!auid_err_reported) {
-                        minfo("Audit: Invalid 'auid' value readed. Check Audit configuration (PAM).");
+                        minfo(FIM_AUDIT_INVALID_AUID);
                         auid_err_reported = 1;
                     }
                     w_evt->audit_name = NULL;
@@ -680,7 +680,7 @@ void audit_parse(char *buffer) {
                     if (cwd && path0) {
                         if (file_path = gen_audit_path(cwd, path0, NULL), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                            mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
@@ -705,7 +705,7 @@ void audit_parse(char *buffer) {
                     if (cwd && path0 && path1) {
                         if (file_path = gen_audit_path(cwd, path0, path1), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                            mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
@@ -718,7 +718,7 @@ void audit_parse(char *buffer) {
 
                             os_calloc(PATH_MAX + 2, sizeof(char), real_path);
                             if (realpath(w_evt->path, real_path), !real_path) {
-                                mdebug1("Error checking realpath() of link '%s'", w_evt->path);
+                                mdebug1(FIM_CHECK_LINK_REALPATH, w_evt->path);
                                 break;
                             }
 
@@ -745,7 +745,7 @@ void audit_parse(char *buffer) {
                     if (cwd && path1 && path2) {
                         if (file_path = gen_audit_path(cwd, path1, path2), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                            mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
@@ -785,7 +785,7 @@ void audit_parse(char *buffer) {
                         char *file_path1;
                         if (file_path1 = gen_audit_path(cwd, path0, path2), file_path1) {
                             w_evt->path = file_path1;
-                            mdebug2("audit_event_1/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                            mdebug2(FIM_AUDIT_EVENT1
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
@@ -811,7 +811,7 @@ void audit_parse(char *buffer) {
                         char *file_path2;
                         if (file_path2 = gen_audit_path(cwd, path1, path3), file_path2) {
                             w_evt->path = file_path2;
-                            mdebug2("audit_event_2/2: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                            mdebug2(FIM_AUDIT_EVENT2
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
@@ -845,7 +845,7 @@ void audit_parse(char *buffer) {
                         char *file_path;
                         if (file_path = gen_audit_path(cwd, path1, path4), file_path) {
                             w_evt->path = file_path;
-                            mdebug2("audit_event: uid=%s, auid=%s, euid=%s, gid=%s, pid=%i, ppid=%i, inode=%s, path=%s, pname=%s",
+                            mdebug2(FIM_AUDIT_EVENT
                                 (w_evt->user_name)?w_evt->user_name:"",
                                 (w_evt->audit_name)?w_evt->audit_name:"",
                                 (w_evt->effective_name)?w_evt->effective_name:"",
@@ -885,7 +885,7 @@ void audit_parse(char *buffer) {
                 // x86_64: 257 openat
                 // i686: 5 open
                 // i686: 295 openat
-                mdebug2("Whodata health-check: Detected file creation event (%s).", syscall);
+                mdebug2(FIM_HEALTHCHECK_CREATE, syscall);
                 audit_health_check_creation = 1;
             } else if(!strcmp(syscall, "87") || !strcmp(syscall, "263")
                 || !strcmp(syscall, "10") || !strcmp(syscall, "301")) {
@@ -893,10 +893,10 @@ void audit_parse(char *buffer) {
                 // x86_64: 263 unlinkat
                 // i686: 10 unlink
                 // i686: 301 unlinkat
-                mdebug2("Whodata health-check: Detected file deletion event (%s).", syscall);
+                mdebug2(FIM_HEALTHCHECK_DELETE, syscall);
                 audit_health_check_deletion = 1;
             } else {
-                mdebug2("Whodata health-check: Unrecognized event (%s)", syscall);
+                mdebug2(FIM_HEALTHCHECK_UNRECOGNIZED_EVENT, syscall);
             }
             free(syscall);
         }
@@ -905,9 +905,9 @@ void audit_parse(char *buffer) {
 
 
 void audit_reload_rules(void) {
-    mdebug1("Reloading Audit rules...");
+    mdebug1(FIM_AUDIT_RELOADING_RULES);
     int rules_added = add_audit_rules_syscheck();
-    mdebug1("Audit rules reloaded: %i", rules_added);
+    mdebug1(FIM_AUDIT_RELOADED_RULES, rules_added);
 }
 
 
@@ -931,11 +931,11 @@ void *audit_healthcheck_thread(int *audit_sock) {
     w_cond_signal(&audit_hc_started);
     w_mutex_unlock(&audit_hc_mutex);
 
-    mdebug2("Whodata health-check: Reading thread active.");
+    mdebug2(FIM_HEALTHCHECK_THREAD_ATIVE);
 
     audit_read_events(audit_sock, HEALTHCHECK_MODE);
 
-    mdebug2("Whodata health-check: Reading thread finished.");
+    mdebug2(FIM_HEALTHCHECK_THREAD_FINISED);
 
     return NULL;
 }
@@ -957,13 +957,13 @@ void * audit_main(int *audit_sock) {
     // Start rules reloading thread
     w_create_thread(audit_reload_thread, NULL);
 
-    minfo("File integrity monitoring real-time Whodata engine started.");
+    minfo(FIM_WHODATA_STARTED);
 
     // Read events
     audit_read_events(audit_sock, READING_MODE);
 
     // Auditd is not runnig or socket closed.
-    mdebug1("Audit thread finished.");
+    mdebug1(FIM_AUDIT_THREAD_STOPED);
     close(*audit_sock);
 
     regfree(&regexCompiled_uid);
@@ -1055,15 +1055,15 @@ void audit_read_events(int *audit_sock, int mode) {
             // Reconnect
             conn_retries = 0;
             sleep(1);
-            minfo("Audit: reconnecting... (%i)", ++conn_retries);
+            minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
             *audit_sock = init_auditd_socket();
             while (conn_retries < MAX_CONN_RETRIES && *audit_sock < 0) {
-                minfo("Audit: reconnecting... (%i)", ++conn_retries);
+                minfo(FIM_AUDIT_RECONNECT, ++conn_retries);
                 sleep(1);
                 *audit_sock = init_auditd_socket();
             }
             if (*audit_sock >= 0) {
-                minfo("Audit: connected.");
+                minfo(FIM_AUDIT_CONNECT);
                 // Reload rules
                 audit_reload_rules();
                 continue;
@@ -1108,13 +1108,13 @@ void audit_read_events(int *audit_sock, int mode) {
                     cache[cache_i++] = '\n';
                     cache[cache_i] = '\0';
                 } else {
-                    merror("Caching Audit message: event too long.");
+                    merror(FIM_ERROR_WHODATA_EVENT_TOOLONG);
                 }
 
                 free(cache_id);
                 cache_id = id;
             } else {
-                merror("Couldn't get event ID from Audit message. Line: '%s'", line);
+                merror(FIM_ERROR_WHODATA_GETID, line);
             }
 
             line = endline + 1;
@@ -1143,7 +1143,7 @@ void clean_rules(void) {
     audit_thread_active = 0;
 
     if (audit_added_rules) {
-        mdebug2("Deleting Audit rules...");
+        mdebug2(FIM_AUDIT_DELETE_RULE);
         for (i = 0; i < W_Vector_length(audit_added_rules); i++) {
             audit_delete_rule(W_Vector_get(audit_added_rules, i), AUDIT_KEY);
         }
@@ -1161,13 +1161,13 @@ int filterkey_audit_events(char *buffer) {
 
     snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_KEY);
     if (strstr(buffer, logkey1)) {
-        mdebug2("Match audit_key: '%s'", logkey1);
+        mdebug2(FIM_AUDIT_MATCH_KEY, logkey1);
         return 1;
     }
 
     snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", AUDIT_HEALTHCHECK_KEY);
     if (strstr(buffer, logkey1)) {
-        mdebug2("Match audit_key: '%s'", logkey1);
+        mdebug2(FIM_AUDIT_MATCH_KEY, logkey1);
         return 3;
     }
 
@@ -1175,7 +1175,7 @@ int filterkey_audit_events(char *buffer) {
         snprintf(logkey1, OS_SIZE_256, "key=\"%s\"", syscheck.audit_key[i]);
         snprintf(logkey2, OS_SIZE_256, "key=%s", syscheck.audit_key[i]);
         if (strstr(buffer, logkey1) || strstr(buffer, logkey2)) {
-            mdebug2("Match audit_key: '%s'", logkey1);
+            mdebug2(FIM_AUDIT_MATCH_KEY, logkey1);
             return 2;
         }
         i++;
@@ -1193,11 +1193,11 @@ int audit_health_check(int audit_socket) {
     unsigned int timer = 10;
 
     if(retval = audit_add_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
-        mdebug1("Couldn't add audit health check rule.");
+        mdebug1(FIM_AUDIT_HEALTHCHECK_RULE);
         goto exit_err;
     }
 
-    mdebug1("Whodata health-check: Starting...");
+    mdebug1(FIM_AUDIT_HEALTHCHECK_START);
 
     w_cond_init(&audit_hc_started, NULL);
 
@@ -1213,12 +1213,12 @@ int audit_health_check(int audit_socket) {
     fp = fopen(AUDIT_HEALTHCHECK_FILE, "w");
 
     if(!fp) {
-        mdebug1("Couldn't create audit health check file.");
+        mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);
         goto exit_err;
     }
 
     fclose(fp);
-    mdebug2("Whodata health-check: Waiting creation event...");
+    mdebug2(FIM_HEALTHCHECK_WAIT_CREATE);
 
     while (!audit_health_check_creation && timer > 0) {
         sleep(1);
@@ -1228,8 +1228,8 @@ int audit_health_check(int audit_socket) {
         goto exit_err;
     }
 
-    mdebug2("Whodata health-check: Creation event received.");
-    mdebug2("Whodata health-check: Waiting deletion event...");
+    mdebug2(FIM_HEALTHCHECK_CREATE_RECEIVE);
+    mdebug2(FIM_HEALTHCHECK_WAIT_DELETE);
 
     // Delete that file
     unlink(AUDIT_HEALTHCHECK_FILE);
@@ -1243,14 +1243,14 @@ int audit_health_check(int audit_socket) {
         goto exit_err;
     }
 
-    mdebug2("Whodata health-check: Deletion event received.");
+    mdebug2(FIM_HEALTHCHECK_DELETE_RECEIVE);
 
     if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
         mdebug1("Couldn't delete audit health check rule.");
     }
     hc_thread_active = 0;
 
-    mdebug2("Whodata health-check: Success.");
+    mdebug2(FIM_HEALTHCHECK_SUCCESS);
 
     return 0;
 

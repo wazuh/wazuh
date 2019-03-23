@@ -89,7 +89,7 @@ static int read_dir_diff(char *dir_name) {
             memset(file_name, 0, strlen(file_name));
             memmove(file_name, f_name, strlen(f_name) - strlen(s_name) - 1);
             if (ret_add = OSHash_Add(syscheck.local_hash, file_name, NULL), ret_add != 2) {
-                merror("Unable to add file to db: %s", file_name);
+                merror(FIM_ERROR_ADD_FILE, file_name);
             }
         } else {
             read_dir_diff(f_name);
@@ -141,7 +141,7 @@ void remove_local_diff(){
                 wm_strcat(&full_path, curr_node_fp->key, '\0');
 #endif
                 if (!OSHash_Get_ex(syscheck.local_hash, full_path)) {
-                    mdebug2("Deleting '%s' from local hash table.", full_path);
+                    mdebug2(FIM_LOCALDIFF_DELETE, full_path);
                     OSHash_Delete_ex(syscheck.local_hash, full_path);
                 }
                 curr_node_fp=curr_node_fp->next;
@@ -156,7 +156,7 @@ void remove_local_diff(){
         if (curr_node_local && curr_node_local->key) {
             do{
                 internal_node = curr_node_local->next;
-                mdebug1("Deleting backup '%s'. Not monitored anymore.", curr_node_local->key);
+                mdebug1(FIM_LOCAL_DIFF_DELETE, curr_node_local->key);
                 if (rmdir_ex(curr_node_local->key) != 0) {
                     mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
                 }
@@ -215,12 +215,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         switch (errno) {
         case ENOENT:
-            mdebug2("Cannot access '%s': it was removed during scan.", file_name);
+            mdebug2(FIM_CANNOT_ACCESS_FILE, file_name);
             /* Fallthrough */
 
         case ENOTDIR:
             /*Deletion message sending*/
-            mdebug2("Sending delete msg for file: %s", file_name);
+            mdebug2(FIM_FILE_MSG_DELETE, file_name);
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
             send_syscheck_msg(alert_msg);
 
@@ -238,7 +238,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             return (0);
 
         default:
-            merror("Error accessing '%s': %s (%d)", file_name, strerror(errno), errno);
+            merror(FIM_ERROR_ACCESING, file_name, strerror(errno), errno);
             os_free(alert_msg);
             os_free(wd_sum);
             return (-1);
@@ -262,7 +262,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
-        mdebug1("Ingnoring file '%s' for a restriction...", file_name);
+        mdebug1(FIM_FILE_IGNORE_RESTRICT, file_name);
         os_free(wd_sum);
         os_free(alert_msg);
         return (0);
@@ -277,7 +277,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        mdebug2("File '%s'", file_name);
+        mdebug2(FIM_SCANNING_FILE, file_name);
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -296,7 +296,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
-                            mdebug2("Follow symbolic links disabled.");
+                            mdebug2(FIM_SIMBOLIC_LINK_DISABLE);
                             os_free(alert_msg);
                             os_free(wd_sum);
                             return 0;
@@ -344,7 +344,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 int error;
                 char perm_unescaped[OS_SIZE_6144 + 1];
                 if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-                    merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+                    merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
                 } else {
                     str_perm = escape_perm_sum(perm_unescaped);
                 }
@@ -494,7 +494,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (OSHash_Add_ex(syscheck.fp, file_name, s_node) != 2) {
                 os_free(s_node->checksum);
                 os_free(s_node);
-                merror("Unable to add file to db: %s", file_name);
+                merror(FIM_ERROR_ADD_FILE, file_name);
             }
 #ifndef WIN32
             hash_file_name = strdup(file_name);
@@ -504,12 +504,12 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             switch (ret) {
             case 0:
                 os_free(hash_file_name);
-                mdebug2("Not enough memory to add inode to db: %s (%s) ", file_name, str_inode);
+                mdebug2(FIM_HASH_ADD_FAIL, file_name, str_inode);
                 break;
             case 1:
                 if (inode_path = OSHash_Get_ex(syscheck.inode_hash, str_inode), inode_path) {
                     if(strcmp(inode_path, file_name)) {
-                        mdebug2("Updating path '%s' in inode hash table: %s (%s) ", file_name, inode_path, str_inode);
+                        mdebug2(FIM_HASH_UPDATE, file_name, inode_path, str_inode);
                         OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
                         read_file(inode_path, dir_position, evt, max_depth);
                         os_free(inode_path);
@@ -528,7 +528,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
             /* Extract the whodata sum here to not include it in the hash table */
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
             }
 
 #ifdef WIN32
@@ -685,7 +685,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                    merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                    merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
                 }
                 // Update database
                 snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -723,7 +723,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
         __counter++;
     } else {
-        mdebug2("IRREG File: '%s'", file_name);
+        mdebug2(FIM_SCANNING_IRREGFILE, file_name);
     }
 
 
@@ -750,7 +750,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     size_t dir_size;
 
     if(max_depth < 0) {
-        mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
+        mdebug2(FIM_MAX_RECURSION_LEVEL, dir_name);
         return 0;
     }
 
@@ -758,11 +758,11 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
 #ifndef WIN32
     switch(read_links(dir_name, dir_position, max_depth, is_link)) {
     case 2:
-        mdebug2("Discarding symbolic link '%s' is already added in the configuration.",
+        mdebug2(FIM_SYMBOLIC_LINK_DISCARDED
                 dir_name);
         return 0;
     case 1:
-        mdebug2("Directory added to FIM configuration by link '%s'", dir_name);
+        mdebug2(FIM_SYMBOLIC_LINK_ADD, dir_name);
         return 0;
     case 0:
         break;
@@ -907,9 +907,9 @@ int run_dbcheck()
             // At this point the directories in whodata mode that have been deconfigured are added to realtime
             syscheck.wdata.dirs_status[i].status &= ~WD_CHECK_REALTIME;
             if (realtime_adddir(syscheck.dir[i], 0) != 1) {
-                merror("The '%s' directory could not be added to realtime mode.", syscheck.dir[i]);
+                merror(FIM_ERROR_REALTIME_ADDDIR_FAILED, syscheck.dir[i]);
             } else {
-                mdebug1("The '%s' directory starts to be monitored in real-time mode", syscheck.dir[i]);
+                mdebug1(FIM_REALTIME_MONITORING, syscheck.dir[i]);
             }
         }
 #endif
@@ -935,7 +935,7 @@ int run_dbcheck()
         for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
             pos = find_dir_pos(curr_node->key, 1, 0, 0);
 
-            mdebug2("Sending delete msg for file: %s", curr_node->key);
+            mdebug2(FIM_FILE_MSG_DELETE, curr_node->key);
             snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
             send_syscheck_msg(alert_msg);
 #ifndef WIN32
@@ -986,7 +986,7 @@ int create_db()
 #endif
 
     if ((syscheck.dir == NULL) || (syscheck.dir[0] == NULL)) {
-        merror("No directories to check.");
+        merror(FIM_ERROR_NOTHING_TOCKECK);
         return (-1);
     }
 
@@ -994,7 +994,7 @@ int create_db()
     __counter = 0;
     do {
         if (read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0) == 0) {
-            mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
+            mdebug2(FIM_FREQUENCY_DIRECTORY, syscheck.dir[i]);
         }
 #ifdef WIN32
         if (syscheck.opts[i] & CHECK_WHODATA) {
@@ -1028,9 +1028,9 @@ int create_db()
 
 #ifdef WIN_WHODATA
     if (enable_who_scan && !run_whodata_scan()) {
-        minfo("Whodata auditing engine started.");
+        minfo(FIM_WHODATA_START);
         if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror("Could not create the Whodata check thread.");
+            merror(FIM_ERROR_CHECK_THREAD);
         }
     }
 #endif
@@ -1089,7 +1089,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore[i] != NULL) {
             if (strncasecmp(syscheck.ignore[i], file_name, strlen(syscheck.ignore[i])) == 0) {
-                mdebug1("Ignoring file '%s' ignore '%s', continuing...", file_name, syscheck.ignore[i]);
+                mdebug1(FIM_IGNORE_ENTRY, "file", file_name, syscheck.ignore[i]);
                 return (1);
             }
             i++;
@@ -1101,7 +1101,7 @@ int fim_check_ignore (const char *file_name) {
         int i = 0;
         while (syscheck.ignore_regex[i] != NULL) {
             if (OSMatch_Execute(file_name, strlen(file_name), syscheck.ignore_regex[i])) {
-                mdebug1("Ignoring file '%s' sregex '%s', continuing...", file_name, syscheck.ignore_regex[i]->raw);
+                mdebug1(FIM_IGNORE_SREGEX, "file", file_name, syscheck.ignore_regex[i]->raw);
                 return (1);
             }
             i++;
@@ -1134,7 +1134,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 
     if (is_link) {
         if (realpath(dir_name, real_path) == NULL) {
-            mwarn("Error checking realpath() of link '%s'", dir_name);
+            mdebug1(FIM_CHECK_LINK_REALPATH, dir_name);
             free(real_path);
             free(dir_name_full);
             return -1;

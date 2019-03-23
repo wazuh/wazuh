@@ -89,7 +89,7 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 
     if (!magic) {
         const char *err = magic_error(cookie);
-        merror("magic_buffer: %s", err ? err : "unknown");
+        merror(FIM_ERROR_LIBMAGIC_BUFFER, err ? err : "unknown");
         return (1); // TODO default to true?
     } else {
         if (strncmp(magic, "text/", 5) == 0) {
@@ -158,7 +158,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     fp = fopen(path, "rb");
     if (!fp) {
-        merror("Unable to generate diff alert.");
+        merror(FIM_ERROR_GENDIFF_OPEN);
         return (NULL);
     }
 
@@ -168,7 +168,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     switch (n) {
     case 0:
-        merror("Unable to generate diff alert (fread).");
+        merror(FIM_ERROR_GENDIFF_READ);
         return (NULL);
     case OS_MAXSTR - OS_SK_HEADER - 1:
         buf[n] = '\0';
@@ -187,7 +187,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     diff_str = strchr(buf, '\n');
 
     if (!diff_str) {
-        merror("Unable to find second line of alert string.");
+        merror(FIM_ERROR_GENDIFF_SECONDLINE_MISSING);
         return NULL;
     }
 
@@ -244,7 +244,7 @@ static int seechanges_dupfile(const char *old, const char *current)
         buf[n] = '\0';
 
         if (fwrite(buf, 1, n, fpw) != n) {
-            merror("Unable to write data on file '%s'", current);
+            merror(FIM_ERROR_GENDIFF_WRITING_DATA, current);
             break;
         }
     } while ((n = fread(buf, 1, 2048, fpr)) > 0);
@@ -272,7 +272,7 @@ static int seechanges_createpath(const char *filename)
     tmpstr = strtok(buffer + PATH_OFFSET, "/");
 #endif
     if (!tmpstr) {
-        merror("Invalid path name: '%s'", filename);
+        merror(FIM_ERROR_GENDIFF_INVALID_PATH, filename);
         free(buffer);
         return (0);
     }
@@ -390,7 +390,7 @@ char *seechanges_addfile(const char *filename)
     }
 
     if (seechanges_dupfile(filename, old_location) != 1) {
-        merror("Unable to create snapshot for %s", filename);
+        merror(FIM_ERROR_GENDIFF_CREATE_SNAPSHOT, filename);
         return (NULL);
     }
 
@@ -416,12 +416,12 @@ char *seechanges_addfile(const char *filename)
         char* nodiff_message = "<Diff truncated because nodiff option>";
         fdiff = fopen(diff_location, "wb");
         if (!fdiff){
-            merror("Unable to open file for writing `%s`", diff_location);
+            merror(FIM_ERROR_GENDIFF_OPEN_FILE, diff_location);
             goto cleanup;
         }
 
         if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
-            merror("Unable to write data on file '%s'", diff_location);
+            merror(FIM_ERROR_GENDIFF_WRITING_DATA, diff_location);
         }
         fclose(fdiff);
         /* Success */
@@ -434,7 +434,7 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            mdebug1("Diff execution skipped for containing insecure characters.");
+            mdebug1(FIM_DIFF_SKIPPED);
             goto cleanup;
         }
 
@@ -457,7 +457,7 @@ char *seechanges_addfile(const char *filename)
         int pstatus = system(diff_cmd);
         if (pstatus < 0 || pstatus > 1) {
 #endif
-            merror("Unable to run `%s`", diff_cmd);
+            merror(FIM_ERROR_GENDIFF_COMMAND, diff_cmd);
             goto cleanup;
         }
 

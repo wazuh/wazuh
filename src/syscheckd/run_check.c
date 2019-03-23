@@ -68,7 +68,7 @@ static void send_sk_db(int first_start)
     }
 
     log_realtime_status(2);
-    minfo("File integrity monitoring scan started.");
+    minfo(FIM_FREQUENCY_STARTED);
 
     /* Send first start scan control message */
     if(first_start) {
@@ -97,7 +97,7 @@ static void send_sk_db(int first_start)
         send_syscheck_msg(HC_FIM_DB_ES);
     }
 
-    minfo("File integrity monitoring scan ended. Database completed.");
+    minfo(FIM_FREQUENCY_ENDED);
 }
 
 /* Periodically run the integrity checker */
@@ -143,11 +143,11 @@ void start_daemon()
     pri.sched_priority = 0;
     status = sched_setscheduler(0, SCHED_BATCH, &pri);
 
-    mdebug1("Setting SCHED_BATCH returned: %d", status);
+    mdebug1(FIM_SCHED_BATCH, status);
 #endif
 
 #ifdef DEBUG
-    minfo("Starting daemon...");
+    minfo(FIM_DAEMON_STARTED);
 #endif
 
     /* Some time to settle */
@@ -165,7 +165,7 @@ void start_daemon()
     /* Printing syscheck properties */
 
     if (!syscheck.disabled) {
-        minfo("File integrity monitoring scan frequency: %d seconds", syscheck.time);
+        minfo(FIM_FREQUENCY_TIME, syscheck.time);
         /* Will create the db to store syscheck data */
         if (syscheck.scan_on_start) {
             send_sk_db(first_start);
@@ -281,7 +281,7 @@ void start_daemon()
             run_now = select(syscheck.realtime->fd + 1, &rfds,
                              NULL, NULL, &selecttime);
             if (run_now < 0) {
-                merror("Select failed (for realtime fim).");
+                merror(FIM_ERROR_SELECT);
                 sleep(SYSCHECK_WAIT);
             } else if (run_now == 0) {
                 /* Timeout */
@@ -295,7 +295,7 @@ void start_daemon()
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             log_realtime_status(1);
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror("WaitForSingleObjectEx failed (for realtime fim).");
+                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
                 sleep(SYSCHECK_WAIT);
             } else {
                 sleep(syscheck.tsleep);
@@ -350,7 +350,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
         // Extract the whodata sum here to not include it in the hash table
         if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-            merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+            merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
         }
 
         /* Find tag position for the evaluated file name */
@@ -573,7 +573,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         int error;
         char perm_unescaped[OS_SIZE_6144 + 1];
         if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-            merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+            merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
         } else {
             str_perm = escape_perm_sum(perm_unescaped);
         }
@@ -626,19 +626,19 @@ void log_realtime_status(int next) {
     switch (status) {
     case 0:
         if (next == 1) {
-            minfo("Real-time file integrity monitoring started.");
+            minfo(FIM_REALTIME_STARTED);
             status = next;
         }
         break;
     case 1:
         if (next == 2) {
-            minfo("Real-time file integrity monitoring paused.");
+            minfo(FIM_REALTIME_PAUSED);
             status = next;
         }
         break;
     case 2:
         if (next == 1) {
-            minfo("Real-time file integrity monitoring resumed.");
+            minfo(FIM_REALTIME_RESUMED);
             status = next;
         }
     }

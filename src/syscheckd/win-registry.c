@@ -330,7 +330,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
     if (fullkey_name && syscheck.registry_ignore) {
         while (syscheck.registry_ignore[i].entry != NULL) {
             if (syscheck.registry_ignore[i].arch == arch && strcasecmp(syscheck.registry_ignore[i].entry, fullkey_name) == 0) {
-                mdebug1("Ignoring registry '%s' ignore '%s', continuing...", fullkey_name, syscheck.registry_ignore[i].entry);
+                mdebug1(FIM_IGNORE_ENTRY, "registry", fullkey_name, syscheck.registry_ignore[i].entry);
                 return;
             }
             i++;
@@ -341,7 +341,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
             if (syscheck.registry_ignore_regex[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
-                mdebug1("Ignoring registry '%s' ignore '%s', continuing...", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
+                mdebug1(FIM_IGNORE_ENTRY_REGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
                 return;
             }
             i++;
@@ -365,7 +365,7 @@ void os_winreg_check()
     char *rk;
 
     /* Debug entries */
-    mdebug1("Starting os_winreg_check");
+    mdebug1(FIM_WINREGISTRY_START);
 
     /* Zero ig_count before checking */
     ig_count = 1;
@@ -391,7 +391,7 @@ void os_winreg_check()
         }
 
         /* Read syscheck registry entry */
-        mdebug1("Attempt to read: %s%s", syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
+        mdebug1(FIM_READING_REGISTRY, syscheck.registry[i].arch == ARCH_64BIT ? "[x64] " : "", syscheck.registry[i].entry);
 
         rk = os_winreg_sethkey(syscheck.registry[i].entry);
         if (sub_tree == NULL) {
