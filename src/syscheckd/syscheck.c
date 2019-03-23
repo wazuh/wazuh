@@ -123,10 +123,10 @@ int Start_win32_Syscheck()
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         /* Disabled */
         if (!syscheck.dir) {
-            minfo(SK_NO_DIR);
+            minfo(FIM_DIRECTORY_NOPROVIDED);
             dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
-            minfo(SK_NO_DIR);
+            minfo(FIM_DIRECTORY_NOPROVIDED);
         }
 
         syscheck.dir[0] = NULL;
@@ -191,7 +191,7 @@ int Start_win32_Syscheck()
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE, "file", syscheck.ignore[r]);
+                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
@@ -201,7 +201,7 @@ int Start_win32_Syscheck()
         /* Print registry ignores. */
         if(syscheck.registry_ignore)
             for (r = 0; syscheck.registry_ignore[r].entry != NULL; r++)
-                minfo(FIM_PRINT_IGNORE, "registry", syscheck.registry_ignore[r].entry);
+                minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.registry_ignore[r].entry);
 
         /* Print sregex registry ignores. */
         if(syscheck.registry_ignore_regex)
@@ -327,12 +327,12 @@ int main(int argc, char **argv)
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         if (!syscheck.dir) {
             if (!test_config) {
-                minfo(SK_NO_DIR);
+                minfo(FIM_DIRECTORY_NOPROVIDED);
             }
             dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
-                minfo(SK_NO_DIR);
+                minfo(FIM_DIRECTORY_NOPROVIDED);
             }
         }
 

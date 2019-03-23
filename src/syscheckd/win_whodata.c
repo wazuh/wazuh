@@ -471,7 +471,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[0].Type != EvtVarTypeUInt16) {
-            merror(INV_WDATA_PAR, buffer[0].Type, "event_id");
+            merror(FIM_WHODATA_PARAMETER, buffer[0].Type, "event_id");
             goto clean;
         }
         event_id = buffer[0].Int16Val;
@@ -481,7 +481,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             if (event_id == 4658 || event_id == 4660) {
                 path = NULL;
             } else {
-                merror(INV_WDATA_PAR, buffer[2].Type, "path");
+                merror(FIM_WHODATA_PARAMETER, buffer[2].Type, "path");
                 goto clean;
             }
         }  else {
@@ -497,14 +497,14 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[1].Type != EvtVarTypeString) {
-            mwarn(INV_WDATA_PAR, buffer[1].Type, "user_name");
+            mwarn(FIM_WHODATA_PARAMETER, buffer[1].Type, "user_name");
             user_name = NULL;
         } else {
             user_name = convert_windows_string(buffer[1].XmlVal);
         }
 
         if (buffer[3].Type != EvtVarTypeString) {
-            mwarn(INV_WDATA_PAR, buffer[3].Type, "process_name");
+            mwarn(FIM_WHODATA_PARAMETER, buffer[3].Type, "process_name");
             process_name = NULL;
         } else {
             process_name = convert_windows_string(buffer[3].XmlVal);
@@ -517,7 +517,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             } else if (buffer[4].Type == EvtVarTypeHexInt32) {
                 process_id = (unsigned __int64) buffer[4].UInt32Val;
             } else {
-                mwarn(INV_WDATA_PAR, buffer[4].Type, "process_id");
+                mwarn(FIM_WHODATA_PARAMETER, buffer[4].Type, "process_id");
                 process_id = 0;
             }
         } else {
@@ -531,7 +531,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             } else if (buffer[5].Type == EvtVarTypeHexInt32) {
                 handle_id = (unsigned __int64) buffer[5].UInt32Val;
             } else {
-                merror(INV_WDATA_PAR, buffer[5].Type, "handle_id");
+                merror(FIM_WHODATA_PARAMETER, buffer[5].Type, "handle_id");
                 goto clean;
             }
         } else {
@@ -542,7 +542,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             if (event_id == 4658 || event_id == 4660) {
                 mask = 0;
             } else {
-                merror(INV_WDATA_PAR, buffer[6].Type, "mask");
+                merror(FIM_WHODATA_PARAMETER, buffer[6].Type, "mask");
                 goto clean;
             }
         } else {
@@ -550,7 +550,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
         }
 
         if (buffer[7].Type != EvtVarTypeSid) {
-            mwarn(INV_WDATA_PAR, buffer[7].Type, "user_id");
+            mwarn(FIM_WHODATA_PARAMETER, buffer[7].Type, "user_id");
             user_id = NULL;
         } else if (!ConvertSidToStringSid(buffer[7].SidVal, &user_id)) {
             mdebug1(FIM_WHODATA_INVALID_UID, user_name);
@@ -627,7 +627,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 add_whodata_evt:
                 if (result = whodata_hash_add(syscheck.wdata.fd, hash_id, w_evt, "whodata"), result != 2) {
                     if (result == 1) {
-                        mdebug1(FIM_HANDLE_UPDATE, hash_id);
+                        mdebug1(FIM_WHODATA_HANDLE_UPDATE, hash_id);
                         whodata_evt *w_evtdup;
                         if (w_evtdup = OSHash_Delete_ex(syscheck.wdata.fd, hash_id), w_evtdup) {
                             free_win_whodata_evt(w_evtdup);
@@ -652,7 +652,7 @@ add_whodata_evt:
                             if (w_dir = OSHash_Get_ex(syscheck.wdata.directories, path), w_dir) {
                                 // Get the event time
                                 if (buffer[8].Type != EvtVarTypeFileTime) {
-                                    merror(INV_WDATA_PAR, buffer[8].Type, "event_time");
+                                    merror(FIM_WHODATA_PARAMETER, buffer[8].Type, "event_time");
                                     w_evt->scan_directory = 2;
                                     goto clean;
                                 }

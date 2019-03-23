@@ -341,7 +341,7 @@ void os_winreg_open_key(char *subkey, char *fullkey_name, int arch, const char *
             if (syscheck.registry_ignore_regex[i].arch == arch &&
                 OSMatch_Execute(fullkey_name, strlen(fullkey_name),
                                 syscheck.registry_ignore_regex[i].regex)) {
-                mdebug1(FIM_IGNORE_ENTRY_REGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
+                mdebug1(FIM_IGNORE_SREGEX, "registry", fullkey_name, syscheck.registry_ignore_regex[i].regex->raw);
                 return;
             }
             i++;

@@ -154,7 +154,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
         case -1:
             return (-1);
         case 0:
-            merror(SK_INV_MSG);
+            merror(FIM_INVALID_MESSAGE);
             return (-1);
         default:
             return(0);
