@@ -3,41 +3,15 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from unittest.mock import patch
-import sqlite3
-import os
 import pytest
-import re
+from .util import InitWDBSocketMock, test_data_path
 
 from wazuh import syscollector
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
-
-
-class InitSyscollector:
-    def __init__(self):
-        self.__conn = self.init_db()
-
-    def init_db(self):
-        sys_db = sqlite3.connect(':memory:')
-        cur = sys_db.cursor()
-        with open(os.path.join(test_data_path, 'schema_syscollector_000.sql')) as f:
-            cur.executescript(f.read())
-        sys_db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-
-        return sys_db
-
-    def execute(self, sql):
-        query = re.search(r'^agent \d{3} sql (.+)$', sql).group(1)
-        self.__conn.execute(query)
-        rows = self.__conn.execute(query).fetchall()
-        if len(rows) > 0 and 'COUNT(*)' in rows[0]:
-            return rows[0]['COUNT(*)']
-        return rows
 
 
 @pytest.fixture(scope='module')
 def test_data():
-    return InitSyscollector()
+    return InitWDBSocketMock(sql_schema_file='schema_syscollector_000.sql')
 
 
 @pytest.mark.parametrize('func, totalItems, single_agent, sort, search, first_item', [
@@ -63,7 +37,7 @@ def test_data():
 @patch('socket.socket')
 def test_print_db(socket_mock, agent_mock, test_data, func, totalItems, single_agent, sort, search, first_item):
     """
-    Tests print_db function with default parameters
+    Tests getting syscollector database with sort and search parameters
     """
     agent_mock.return_value.os_name = 'Linux'
     agent_mock.get_agents_overview.return_value = {'totalItems': 1, 'items': [{'id': '001'}]}
