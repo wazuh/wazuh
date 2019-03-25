@@ -1179,7 +1179,7 @@ class Agent:
 
 
     @staticmethod
-    def insert_agent(name, id, key, ip='any', force=-1):
+    def insert_agent(name, id, key, ip='any', force_time=-1):
         """
         Create a new agent providing the id, name, ip and key to the Manager.
 
@@ -1187,11 +1187,11 @@ class Agent:
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
         :param key: name of the new agent.
-        :param force: Remove old agent with same IP if disconnected since <force> seconds.
+        :param force: Remove old agent with same IP if disconnected since <force_time> seconds.
         :return: Agent ID.
         """
 
-        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force)
+        new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force_time)
         return {'id': new_agent.id, 'key': new_agent.compute_key()}
 
 

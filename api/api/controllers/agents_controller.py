@@ -11,6 +11,7 @@ import wazuh.configuration as configuration
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhException
 from ..models.agent_added import AgentAdded
+from ..models.agent_inserted import AgentInserted
 from ..models.agent_list_model import AgentList
 from ..util import remove_nones_to_dict
 
@@ -57,7 +58,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
 
     return data, 200
 
-
+#Don't Work
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
                    status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
                    version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
@@ -1033,9 +1034,51 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
 def post_group_file():
     pass
 
+#Not work
+def insert_agent(pretty=False, wait_for_complete=False, name=None, ip=None, id=None, key=None, force_time=None):  # noqa: E501
+    """Get group file. 
+    
+    Return the files placed under the group directory.     # noqa: E501
 
-def insert_agent():
-    pass
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param name: Agent name.
+    :type name: str
+    ::param ip: "If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option config.BehindProxyServer to yes at config.js. Allowed values: IP, IP/NET, ANY"
+    :type ip: int
+    :param id: Agent ID. All posible values since 000 onwards.
+    :type id: str
+    :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
+    :type key: str
+    :param force_time: Remove the old agent with the same IP if disconnected since <force_time> seconds.
+    :type force_time: int
+
+    :rtype: 
+    """
+
+    # get body parameters
+    if connexion.request.is_json:
+        return connexion.request.get_json()
+        agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
+    else:
+        return 'ERROR', 400
+
+    f_kwargs = {**{}, **agent_inserted_model.to_dict()}
+
+    dapi = DistributedAPI(f=Agent.insert_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 #Incomplete model
 def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
