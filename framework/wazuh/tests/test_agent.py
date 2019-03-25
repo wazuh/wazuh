@@ -7,6 +7,7 @@ from unittest.mock import patch
 import sqlite3
 import os
 import pytest
+from wazuh.exception import WazuhException
 
 from wazuh.agent import Agent
 
@@ -138,18 +139,24 @@ def test_get_agents_overview_search(test_data, search, totalItems):
         assert len(agents['items']) == totalItems
 
 
-@pytest.mark.parametrize("status, older_than, totalItems", [
-    ('active', '9m', 1),
-    ('all', '1s', 5),
-    ('pending,neverconnected', '30m', 1)
+@pytest.mark.parametrize("status, older_than, totalItems, exception", [
+    ('active', '9m', 1, None),
+    ('all', '1s', 5, None),
+    ('pending,neverconnected', '30m', 1, None),
+    (55, '30m', 0, 1729)
 ])
-def test_get_agents_overview_status_olderthan(test_data, status, older_than, totalItems):
+def test_get_agents_overview_status_olderthan(test_data, status, older_than, totalItems, exception):
     """
     Test filtering by status
     """
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
+        kwargs = {'filters': {'status': status, 'older_than': older_than},
+                  'select': {'fields': ['name', 'id', 'status', 'lastKeepAlive', 'dateAdd']}}
 
-        agents = Agent.get_agents_overview(filters={'status': status, 'older_than': older_than},
-                                           select={'fields': ['name', 'id', 'status', 'lastKeepAlive', 'dateAdd']})
-        assert agents['totalItems'] == totalItems
+        if exception is None:
+            agents = Agent.get_agents_overview(**kwargs)
+            assert agents['totalItems'] == totalItems
+        else:
+            with pytest.raises(WazuhException, match=f'.* {exception} .*'):
+                Agent.get_agents_overview(**kwargs)

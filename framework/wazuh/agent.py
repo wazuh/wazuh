@@ -59,7 +59,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
-        status_filter['value'] = status_filter['value'].lower()
+        # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
+        status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
         result = datetime.now() - timedelta(seconds=common.limit_seconds)
         self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
