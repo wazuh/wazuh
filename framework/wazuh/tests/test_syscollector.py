@@ -40,28 +40,28 @@ def test_data():
     return InitSyscollector()
 
 
-@pytest.mark.parametrize('func, totalItems, single_agent, sort', [
-    (syscollector.get_os_agent, None, True, None),
-    (syscollector.get_hardware_agent, None, True, None),
-    (syscollector.get_packages_agent, 4, True, {'fields': ['name'], 'order': 'asc'}),
-    (syscollector.get_processes_agent, 4, True, {'fields': ['ppid'], 'order': 'asc'}),
-    (syscollector.get_ports_agent, 4, True, {'fields': ['local_port'], 'order': 'asc'}),
-    (syscollector.get_netaddr_agent, 4, True, {'fields': ['address'], 'order': 'asc'}),
-    (syscollector.get_netproto_agent, 4, True, {'fields': ['type'], 'order': 'asc'}),
-    (syscollector.get_netiface_agent, 2, True, {'fields': ['tx_packets'], 'order': 'asc'}),
-    (syscollector.get_os, 1, False, {'fields': ['os_name'], 'order': 'asc'}),
-    (syscollector.get_hardware, 1, False, {'fields': ['cpu_cores'], 'order': 'asc'}),
-    (syscollector.get_packages, 4, False, {'fields': ['name'], 'order': 'asc'}),
-    (syscollector.get_processes, 4, False, {'fields': ['ppid'], 'order': 'asc'}),
-    (syscollector.get_ports, 4, False, {'fields': ['local_port'], 'order': 'asc'}),
-    (syscollector.get_netaddr, 4, False, {'fields': ['address'], 'order': 'asc'}),
-    (syscollector.get_netproto, 4, False, {'fields': ['type'], 'order': 'asc'}),
-    (syscollector.get_netiface, 2, False, {'fields': ['rx_packets'], 'order': 'asc'})
+@pytest.mark.parametrize('func, totalItems, single_agent, sort, search, first_item', [
+    (syscollector.get_os_agent, None, True, None, None, None),
+    (syscollector.get_hardware_agent, None, True, None, None, None),
+    (syscollector.get_packages_agent, 2, True, {'fields': ['name'], 'order': 'asc'}, {'value': 'lib', 'negation': 0}, 'libnewt0.52'),
+    (syscollector.get_processes_agent, 2, True, {'fields': ['ppid'], 'order': 'asc'}, {'value': 'root', 'negation': 0}, 0),
+    (syscollector.get_ports_agent, 1, True, {'fields': ['local_port'], 'order': 'asc'}, {'value': '.2.2', 'negation': 0}, 22),
+    (syscollector.get_netaddr_agent, 2, True, {'fields': ['address'], 'order': 'asc'}, {'value': 's3', 'negation': 0}, '10.0.2.15'),
+    (syscollector.get_netproto_agent, 2, True, {'fields': ['type'], 'order': 'asc'}, {'value': 's3', 'negation': 0}, 'ipv4'),
+    (syscollector.get_netiface_agent, 1, True, {'fields': ['rx_packets'], 'order': 'asc'}, {'value': 's3', 'negation': 0}, 95186),
+    (syscollector.get_os, 1, False, {'fields': ['os_name'], 'order': 'asc'}, {'value': 'ubuntu', 'negation': 0}, 'Ubuntu'),
+    (syscollector.get_hardware, 1, False, {'fields': ['cpu_cores'], 'order': 'asc'}, {'value': 'intel', 'negation': 0}, 2),
+    (syscollector.get_packages, 2, False, {'fields': ['name'], 'order': 'asc'}, {'value': 'lib', 'negation': 0}, 'libnewt0.52'),
+    (syscollector.get_processes, 2, False, {'fields': ['ppid'], 'order': 'asc'}, {'value': 'root', 'negation': 0}, 0),
+    (syscollector.get_ports, 1, False, {'fields': ['local_port'], 'order': 'asc'}, {'value': '.2.2', 'negation': 0}, 22),
+    (syscollector.get_netaddr, 2, False, {'fields': ['address'], 'order': 'asc'}, {'value': 's3', 'negation': 0}, '10.0.2.15'),
+    (syscollector.get_netproto, 2, False, {'fields': ['type'], 'order': 'asc'}, {'value': 's3', 'negation': 0}, 'ipv4'),
+    (syscollector.get_netiface, 1, False, {'fields': ['rx_packets'], 'order': 'asc'}, {'value': 's3', 'negation': 0}, 95186)
 ])
 @patch('wazuh.syscollector.Agent')
 @patch('wazuh.common.wdb_path', test_data_path)
 @patch('socket.socket')
-def test_print_db(socket_mock, agent_mock, test_data, func, totalItems, single_agent, sort):
+def test_print_db(socket_mock, agent_mock, test_data, func, totalItems, single_agent, sort, search, first_item):
     """
     Tests print_db function with default parameters
     """
@@ -71,9 +71,16 @@ def test_print_db(socket_mock, agent_mock, test_data, func, totalItems, single_a
         mock_db.return_value = test_data
 
         if single_agent:
-            agent_info = func(agent_id='001', sort=sort)
+            agent_info = func(agent_id='001', sort=sort, search=search)
         else:
-            agent_info = func(sort=sort)
+            agent_info = func(sort=sort, search=search)
 
         if 'totalItems' in agent_info:
             assert agent_info['totalItems'] == totalItems
+
+        if 'items' in agent_info:
+            if '_' not in sort['fields'][0]:
+                assert agent_info['items'][0][sort['fields'][0]] == first_item
+            else:
+                field, subfield = sort['fields'][0].split('_')
+                assert agent_info['items'][0][field][subfield] == first_item
