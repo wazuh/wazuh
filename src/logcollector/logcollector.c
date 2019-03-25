@@ -448,6 +448,29 @@ void LogCollectorStart()
                         current->fp = NULL;
                         merror(FILE_ERROR, current->file);
                     }
+
+                    if(current->exists==1){
+                        minfo(FORGET_FILE, current->file);
+                        current->exists = 0;
+                    }
+                    current->ign++;
+
+                    if (!current->fp) {
+                        // Only expanded files that have been deleted will be forgotten
+                        if (j >= 0) {
+                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                merror(REM_ERROR, current->file);
+                            } else {
+                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                i--;
+                                continue;
+                            }
+                        } else if (open_file_attempts) {
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        } else {
+                            mdebug1(OPEN_UNABLE, current->file);
+                        }
+                    }
 #endif
 
 #ifdef WIN32
@@ -522,6 +545,49 @@ void LogCollectorStart()
                         current->size = tmp_stat.st_size;
 #endif
                     }
+                } else {
+#ifdef WIN32
+                    HANDLE h1;
+
+                    h1 = CreateFile(current->file, GENERIC_READ,
+                                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                    if (h1 == INVALID_HANDLE_VALUE) {
+                        if (current->h) {
+                            CloseHandle(current->h);
+                        }
+                        merror(FILE_ERROR, current->file);
+                    } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
+                        if (current->h) {
+                            CloseHandle(current->h);
+                        }
+                        merror(FILE_ERROR, current->file);
+                    }
+
+                    if (current->exists==1) {
+                        minfo(FORGET_FILE, current->file);
+                        current->exists = 0;
+                    };
+                        
+                    current->ign++;
+
+                    CloseHandle(h1);
+
+                    // Only expanded files that have been deleted will be forgotten
+                    if (j >= 0) {
+                        if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                            merror(REM_ERROR, current->file);
+                        } else {
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            i--;
+                            continue;
+                        }
+                    } else if (open_file_attempts) {
+                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                    } else {
+                        mdebug1(OPEN_UNABLE, current->file);
+                    }
+#endif
                 }
 
                 /* If open_file_attempts is at 0 the files aren't forgotted ever*/
