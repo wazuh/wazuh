@@ -242,6 +242,7 @@ def upload_xml(xml_file, path):
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
                 .replace("&gt;", ">").replace('&apos', "'")
+            # delete two first spaces of each line
             re.sub(r'^  ', '', pretty_xml)
             tmp_file.write(pretty_xml)
         chmod(tmp_file_path, 0o640)
