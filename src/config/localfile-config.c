@@ -308,6 +308,36 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     /* Deploy glob entries */
     if (!logf[pl].command) {
+#ifdef WIN32
+        if (strchr(logf[pl].file, '*') ||
+            strchr(logf[pl].file, '?')) {
+
+            WIN32_FIND_DATA ffd;
+            HANDLE hFind = INVALID_HANDLE_VALUE;
+
+            hFind = FindFirstFile(logf[pl].file, &ffd);
+
+            if (INVALID_HANDLE_VALUE == hFind) {
+                merror(GLOB_ERROR, logf[pl].file);
+            } else {
+                os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
+                os_strdup(logf[pl].file, log_config->globs[gl].gpath);
+                memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
+                os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
+                memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+                log_config->globs[gl].gfiles->file = NULL;
+            }
+
+            if (Remove_Localfile(&logf, pl, 0, 0)) {
+                merror(REM_ERROR, logf[pl].file);
+                FindClose(hFind);
+                return (OS_INVALID);
+            }
+            log_config->config = logf;
+            FindClose(hFind);
+            return 0;
+        }
+#endif
 #ifndef WIN32
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?') ||

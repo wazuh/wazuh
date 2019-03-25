@@ -22,6 +22,8 @@ static void set_sockets();
 static void files_lock_init(void);
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
+#else 
+static int check_pattern_expand(int do_seek);
 #endif
 
 /* Global variables */
@@ -118,6 +120,8 @@ void LogCollectorStart()
 
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
+
+    check_pattern_expand(1);
 #endif
 
     mdebug1("Entering LogCollectorStart().");
@@ -561,7 +565,6 @@ void LogCollectorStart()
                 }
             }
 
-#ifndef WIN32
             // Check for new files to be expanded
             if (check_pattern_expand(0)) {
                 /* Remove duplicate entries */
@@ -580,7 +583,7 @@ void LogCollectorStart()
                     }
                 }
             }
-#endif
+
             w_rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
@@ -1002,6 +1005,94 @@ int check_pattern_expand(int do_seek) {
     }
 
     w_mutexattr_destroy(&attr);
+
+    return retval;
+}
+#else
+int check_pattern_expand(int do_seek) {
+    int found;
+    int i, j;
+    int retval = 0;
+
+    WIN32_FIND_DATA ffd;
+    HANDLE hFind = INVALID_HANDLE_VALUE;
+
+    if (globs) {
+        for (j = 0; globs[j].gpath; j++) {
+
+            if (current_files >= maximum_files) {
+                break;
+            }
+
+            hFind = FindFirstFile(globs[j].gpath, &ffd);
+
+            if (INVALID_HANDLE_VALUE == hFind) {
+                mdebug1(GLOB_ERROR,globs[j].gpath);
+                continue;
+            }
+
+            do {
+
+                if (current_files >= maximum_files) {
+                    mwarn(FILE_LIMIT, maximum_files);
+                    break;
+                }
+
+                if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    continue;
+                } else {
+
+                    char *global_path = NULL;
+                    char *p;
+                    os_strdup(globs[j].gpath,global_path);
+
+                    p = strrchr(global_path,'\\');
+
+                    if (p) {
+
+                        p++;
+                        *p = '\0';
+
+                        char full_path[PATH_MAX] = {0};
+                        snprintf(full_path,PATH_MAX,"%s%s",global_path,ffd.cFileName);
+
+                        found = 0;
+                        for (i = 0; globs[j].gfiles[i].file; i++) {
+                            if (!strcmp(globs[j].gfiles[i].file, full_path)) {
+                                found = 1;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            retval = 1;
+                            minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                            if (i) {
+                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                            }
+                         
+                            os_strdup(full_path, globs[j].gfiles[i].file);
+                            w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
+                            globs[j].gfiles[i].fp = NULL;
+                            globs[j].gfiles[i].exists = 1;
+                            globs[j].gfiles[i + 1].file = NULL;
+                            globs[j].gfiles[i + 1].target = NULL;
+                            current_files++;
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            if  (!i && !globs[j].gfiles[i].read) {
+                                set_read(&globs[j].gfiles[i], i, j);
+                            } else {
+                                handle_file(i, j, do_seek, 1);
+                            }
+                        }
+                    }
+                    os_free(global_path);
+                }
+            } while (FindNextFile(hFind, &ffd) != 0);
+            FindClose(hFind);
+        }
+    }
 
     return retval;
 }
