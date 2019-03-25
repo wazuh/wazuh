@@ -444,7 +444,7 @@ def merge_agent_info(merge_type, node_name, files=None, file_type="", time_limit
 
 def unmerge_agent_info(merge_type, path_file, filename):
     src_agent_info_path = path.abspath("{}/{}".format(path_file, filename))
-    dst_agent_info_path = "queue/{}".format(merge_type)
+    dst_agent_info_path = os.path.join("queue", merge_type)
 
     bytes_read = 0
     total_bytes = os.stat(src_agent_info_path).st_size
