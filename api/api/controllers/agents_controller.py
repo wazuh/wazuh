@@ -487,13 +487,81 @@ def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa:
 
     return data, 200
 
+#Not work
+def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False, force=False ):  # noqa: E501
+    """Upgrade agent using online repository.
 
-def put_upgrade_agent():
-    pass
+    Upgrade the agent using a WPK file from online repository.  # noqa: E501
 
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param wpk_repo: WPK repository.
+    :type wpk_repo: str
+    :param version: Filters by agents version.
+    :type version: str
+    :param use_http: Use protocol http. If it's false use https. By default the value is set to false.
+    :type use_http: bool
+    :param version: Force upgrade.
+    :type version: bool
 
-def put_upgrade_custom_agent():
-    pass
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'wpk_repo': wpk_repo,
+                'version': version,
+                'use_http': use_http,
+                'force': force}
+
+    dapi = DistributedAPI(f=Agent.upgrade_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Not work
+def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):  # noqa: E501
+    """Upgrade agent using a custom file.
+
+    Upgrade the agent using a local WPK file.'  # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id: Agent ID. All posible values since 000 onwards.
+    :type agent_id: str
+    :param file_path: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
+    :type file_path: str
+    :param installer: Installation script.
+    :type installer: str
+
+    :rtype: CommonResponse
+    """
+    f_kwargs = {'agent_id': agent_id,
+                'file_path': file_path,
+                'installer': installer}
+
+    dapi = DistributedAPI(f=Agent.upgrade_agent_custom,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -969,34 +1037,271 @@ def post_group_file():
 def insert_agent():
     pass
 
+#Incomplete model
+def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
+    """Get an agent by its name
+    
+    Returns various information from an agent called :agent_name.     # noqa: E501
 
-def get_agent_by_name():
-    pass
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_name: Agent name used when the agent was registered.
+    :type agent_name: str
+    :param select: Select which fields to return (separated by comma)
+    :type select: List[str]
+
+    :rtype: 
+    """
+    f_kwargs = {'agent_name': agent_name,
+                'select': select}
+    
+    dapi = DistributedAPI(f=Agent.get_agent_by_name,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Incomplete model
+def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, q=''):
+    """Get agents without group.
+
+    Returns a list with the available agents without group. # noqa: E501
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param select: Select which fields to return (separated by comma)
+    :type select: List[str]
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :type q: str
+
+    :rtype: 
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': sort,
+                'search': search,
+                'q': q}
+    
+    dapi = DistributedAPI(f=Agent.get_agents_without_group,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Incomplete model
+def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, q=''):
+    """Get outdated agents.
+
+    Returns the list of outdated agents. # noqa: E501
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :type q: str
+
+    :rtype: 
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort': sort,
+                'q': q}
+    
+    dapi = DistributedAPI(f=Agent.get_outdated_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Not Work
+def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
+    """Restart a list of agents.
+    
+    # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param agent_id_list: List of agents ID.
+    :type agent_id_list: List[str]
+
+    :rtype: AgentItemsAffected
+    """
+    # get body parameters
+    if connexion.request.is_json:
+        agent_list_model = AgentList.from_dict(connexion.request.get_json())
+    else:
+        return 'ERROR', 400
+    
+    f_kwargs = {**{'restart_all': False}, **agent_list_model.to_dict()}
+
+    dapi = DistributedAPI(f=Agent.restart_agents,
+                        f_kwargs=remove_nones_to_dict(f_kwargs),
+                        request_type='distributed_master',
+                        is_async=False,
+                        wait_for_complete=wait_for_complete,
+                        pretty=pretty,
+                        logger=logger
+                        )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
+
+#Not Work with a field parameter
+def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, fields=None, q=''):
+    """Get distinct fields in agents.
+
+    Returns all the different combinations that agents have for the selected fields. It also indicates the total number of agents that have each combination. # noqa: E501
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param select: Select which fields to return (separated by comma)
+    :type select: List[str]
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param fields: List of fields affecting the operation.
+    :type fields: List[str]
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :type q: str
+
+    :rtype: 
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': sort,
+                'search': search,
+                'fields': fields,
+                'q': q}
+
+    dapi = DistributedAPI(f=Agent.get_distinct_agents,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+    
+    return data, 200
+
+#Incomplete model
+def get_agent_summary(pretty=False, wait_for_complete=False,):  # noqa: E501
+    """Get agents summary.
+
+    Returns a summary of the available agents. # noqa: E501
+
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+
+    :rtype: 
+    """
+    
+    dapi = DistributedAPI(f=Agent.get_agents_summary,
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
-def get_agent_no_group():
-    pass
+def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, q=''):
+    """Get OS summary.
 
+    Returns a summary of the OS. # noqa: E501
 
-def get_agent_outdated():
-    pass
+    :param pretty: Show results in human-readable format 
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response 
+    :type wait_for_complete: bool
+    :param offset: First element to return in the collection
+    :type offset: int
+    :param limit: Maximum number of elements to return
+    :type limit: int
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :type sort: str
+    :param search: Looks for elements with the specified string
+    :type search: str
+    :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
+    :type q: str
 
+    :rtype: 
+    """
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort': sort,
+                'search': search,
+                'q': q}
 
-def restart_list_agents():
-    pass
+    dapi = DistributedAPI(f=Agent.get_os_summary,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
 
-
-def restart_all_agents():
-    pass
-
-
-def get_agent_fields():
-    pass
-
-
-def get_agent_summary():
-    pass
-
-
-def get_agent_summary_os():
-    pass
+    data = loop.run_until_complete(dapi.distribute_function())
+    
+    return data, 200
