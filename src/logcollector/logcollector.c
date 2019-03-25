@@ -1418,6 +1418,8 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         /* Ignore file */
                         if((c_currenttime.tv_sec - current->age) >= tmp_stat.st_mtime) {
                             mdebug1("Ignoring file '%s' due to modification time",current->file);
+                            fclose(current->fp);
+                            current->fp = NULL;
                             w_mutex_unlock(&current->mutex);
                             w_rwlock_unlock(&files_update_rwlock);
                             continue;
@@ -1441,7 +1443,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
 
 #ifdef WIN32
             if(current->age) {
-                if ((GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
+                if (current->h && (GetFileInformationByHandle(current->h, &lpFileInformation) == 0)) {
                     merror("Unable to get file information by handle.");
                     w_mutex_unlock(&current->mutex);
                     w_rwlock_unlock(&files_update_rwlock);
@@ -1458,6 +1460,10 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     /* Ignore file */
                     if((c_currenttime - current->age) >= file_currenttime) {
                         mdebug1("Ignoring file '%s' due to modification time",current->file);
+                        fclose(current->fp);
+                        CloseHandle(current->h);
+                        current->fp = NULL;
+                        current->h = NULL;
                         w_mutex_unlock(&current->mutex);
                         w_rwlock_unlock(&files_update_rwlock);
                         continue;
