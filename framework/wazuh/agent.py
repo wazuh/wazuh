@@ -272,55 +272,6 @@ class Agent:
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
 
-    def _load_info_from_agent_db(self, table, select, filters={}, or_filters={}, count=False, offset=0, limit=common.database_limit, sort={}, search={}):
-        """
-        Make a request to agent's database using Wazuh DB
-
-        :param table: DB table to retrieve data from
-        :param select: DB fields to retrieve
-        :param filters: filter conditions
-        :param or_filters: filter conditions using or operator.
-        :param sort: Dictionary of form {'fields':[], 'order':'asc'}/{'fields':[], 'order':'desc'}
-        :param search: Dictionary of form {'value': '', 'negation':false, 'fields': []}
-        """
-        self.get_basic_information()  # check if the agent exists
-
-        wdb_conn = WazuhDBConnection()
-
-        query = "agent {} sql select {} from {}".format(self.id, ','.join(select), table)
-
-        if filters:
-            query += " and (" + " and ".join(["{} = '{}'".format(key, value) for key, value in filters.items()]) + ")"
-        if or_filters:
-            query += " or (" + " or ".join(["{} = '{}'".format(key, value) for key, value in or_filters.items()]) + ")"
-
-        if search:
-            query += " and not" if bool(search['negation']) else " and "
-            query += '(' + " or ".join("{} like '%{}%'".format(x, search['value']) for x in select) + ')'
-
-        if "from {} and".format(table) in query:
-            query = query.replace("from {} and".format(table), "from {} where".format(table))
-        elif "from {} or".format(table) in query:
-            query = query.replace("from {} or".format(table), "from {} where".format(table))
-
-        if limit:
-            if limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(limit))
-            query += ' limit {} offset {}'.format(limit, offset)
-        elif limit == 0:
-            raise WazuhException(1406)
-
-        if sort and sort['fields']:
-            str_order = "desc" if sort['order'] == 'asc' else "asc"
-            order_str_fields = []
-            for field in sort['fields']:
-                order_str_field = '{0} {1}'.format(field, str_order)
-                order_str_fields.append(order_str_field)
-            query += ' order by ' + ','.join(order_str_fields)
-
-        return wdb_conn.execute(query, count)
-
-
     def get_basic_information(self, select=None):
         """
         Gets public attributes of existing agent.
