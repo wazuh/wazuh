@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+from typing import Dict
+
 from wazuh.cluster import client, cluster
 import uvloop
 from wazuh import common, exception
@@ -99,7 +101,7 @@ class LocalClient(client.AbstractClientManager):
             _, code, message = result.split(' ', 2)
             raise exception.WazuhException(int(code), message)
         elif result == 'There are no connected worker nodes':
-            request_result = '{}'
+            request_result = {}
         else:
             if self.command == b'dapi' or self.command == b'dapi_forward' or self.command == b'send_file' or \
                     result == 'Sent request to master node':
@@ -112,17 +114,16 @@ class LocalClient(client.AbstractClientManager):
                     raise exception.WazuhException(3020)
             else:
                 request_result = result
-        return request_result
+        return json.loads(request_result)
 
 
-async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> str:
+async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> Dict:
     lc = LocalClient(command, data, wait_for_complete)
     await lc.start()
     return await lc.send_api_request()
 
 
-async def send_file(path: str, node_name: str = None) -> str:
+async def send_file(path: str, node_name: str = None) -> Dict:
     lc = LocalClient(b'send_file', "{} {}".format(path, node_name).encode(), False)
     await lc.start()
-    return (await lc.send_api_request()).encode()
-
+    return await lc.send_api_request()
