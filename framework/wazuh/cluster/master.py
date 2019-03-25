@@ -359,7 +359,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
                                                                                       decompressed_files_path,
                                                                                       data['merge_name']):
-                        full_unmerged_name = common.ossec_path + file_path
+                        full_unmerged_name = os.path.join(common.ossec_path, file_path)
                         tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
                         try:
                             if is_agent_info:

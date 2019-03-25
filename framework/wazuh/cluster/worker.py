@@ -319,7 +319,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     raise WazuhException(3011)
 
                 for name, content, _ in cluster.unmerge_agent_info('agent-groups', zip_path, filename):
-                    full_unmerged_name = common.ossec_path + name
+                    full_unmerged_name = os.path.join(common.ossec_path, name)
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
                         f.write(content)
