@@ -359,9 +359,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     for file_path, file_data, file_time in cluster.unmerge_agent_info(data['merge_type'],
                                                                                       decompressed_files_path,
                                                                                       data['merge_name']):
+                        full_unmerged_name = common.ossec_path + file_path
+                        tmp_unmerged_path = os.path.join(common.ossec_path, 'queue/cluster', self.name, os.path.basename(file_path))
                         try:
-                            full_unmerged_name = common.ossec_path + file_path
-                            tmp_unmerged_path = full_unmerged_name + '.tmp'
                             if is_agent_info:
                                 agent_name_re = re.match(r'(^.+)-(.+)$', os.path.basename(file_path))
                                 agent_name = agent_name_re.group(1) if agent_name_re else os.path.basename(file_path)
@@ -404,7 +404,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             os.chmod(tmp_unmerged_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                             os.rename(tmp_unmerged_path, full_unmerged_name)
                         except Exception as e:
-                            self.logger.debug2("Error updating agent group/status: {}".format(e))
+                            self.logger.error("Error updating agent group/status ({}): {}".format(tmp_unmerged_path, e))
                             if is_agent_info:
                                 self.sync_agent_info_status['total_agent_info'] -= 1
                             else:
