@@ -66,14 +66,14 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     rules_list = []
     for rule in data['data']['items']:
         rule = rule.to_dict()
+        #rule['rules_files'] = {'file': 'file', 'path': 'path', 'status': 'status'}
         rules_files = RulesFiles.from_dict(rule)
-        rule['rules_files'] = rules_files
+        #return rules_files, 200
         try:
             rules = RulesModel.from_dict(rule)
-            #rules_files = RulesFiles.from_dict(rule)
         except Exception as e:
             return str(e)
-        return rules, 200
+        return {**rules_files.to_dict(), **rules.to_dict()}, 200
 
     return rules_list, 200
 
