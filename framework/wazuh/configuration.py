@@ -276,11 +276,11 @@ def _rcl2json(filepath):
     data = {'vars': {}, 'controls': []}
     # [Application name] [any or all] [reference]
     # type:<entry name>;
-    regex_comment = re.compile("^\s*#")
-    regex_title = re.compile("^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
-    regex_name_groups = re.compile("(\{\w+:\s+\S+\s*\S*\})")
-    regex_check = re.compile("^\s*(\w:.+)")
-    regex_var = re.compile("^\s*\$(\w+)=(.+)")
+    regex_comment = re.compile(r"^\s*#")
+    regex_title = re.compile(r"^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
+    regex_name_groups = re.compile(r"(\{\w+:\s+\S+\s*\S*\})")
+    regex_check = re.compile(r"^\s*(\w:.+)")
+    regex_var = re.compile(r"^\s*\$(\w+)=(.+)")
 
     try:
         item = {}
@@ -365,8 +365,8 @@ def _rootkit_files2json(filepath):
     data = []
 
     # file_name ! Name ::Link to it
-    regex_comment = re.compile("^\s*#")
-    regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
+    regex_comment = re.compile(r"^\s*#")
+    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
 
     try:
         with open(filepath) as f:
@@ -395,9 +395,9 @@ def _rootkit_trojans2json(filepath):
     data = []
 
     # file_name !string_to_search!Description
-    regex_comment = re.compile("^\s*#")
-    regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
-    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!")
+    regex_comment = re.compile(r"^\s*#")
+    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
+    regex_binary_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!")
 
     try:
         with open(filepath) as f:
