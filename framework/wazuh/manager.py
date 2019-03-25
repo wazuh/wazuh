@@ -289,7 +289,7 @@ def upload_list(list_file, path):
         # create temporary file
         with open(tmp_file_path, 'w') as tmp_file:
             # write json in tmp_file_path
-            for element in list_file.split('\n')[:-1]:
+            for element in list_file.splitlines()[:-1]:
                 # skip empty lines
                 if not element:
                     continue
