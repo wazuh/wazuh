@@ -10,14 +10,16 @@ from operator import itemgetter
 
 class WazuhDBQuerySyscollector(WazuhDBQuery):
 
-    def __init__(self, array, *args, **kwargs):
+    def __init__(self, array, nested, *args, **kwargs):
         super().__init__(backend='wdb', default_sort_field='scan_id', db_path=None, query='', get_data=True, count=True,
                          *args, **kwargs)
         self.array = array
+        self.nested = nested
 
     def _format_data_into_dictionary(self):
-        fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['scan', 'os'], '_')
-        self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['scan', 'os'], '_') for d in self._data]
+        if self.nested:
+            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['scan', 'os'], '_')
+            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['scan', 'os'], '_') for d in self._data]
 
         return super()._format_data_into_dictionary() if self.array else self._data[0]
 
@@ -26,7 +28,7 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
                    table, array=False, nested=True):
     db_query = WazuhDBQuerySyscollector(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search,
                                         sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                        array=array)
+                                        array=array, nested=nested)
     return db_query.run()
 
 
