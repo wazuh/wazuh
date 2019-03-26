@@ -22,6 +22,8 @@ static void set_sockets();
 static void files_lock_init(void);
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
+#else 
+static int check_pattern_expand(int do_seek);
 #endif
 
 /* Global variables */
@@ -118,6 +120,8 @@ void LogCollectorStart()
 
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
+
+    check_pattern_expand(1);
 #endif
 
     mdebug1("Entering LogCollectorStart().");
@@ -236,6 +240,15 @@ void LogCollectorStart()
 
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
+#endif
+        } else {
+            /* On Windows we need to forward the seek for wildcard files */
+#ifdef WIN32
+            set_read(current, i, j);
+
+            if (current->fp) {
+                current->read(current, &r, 1);
+            }
 #endif
         }
 
@@ -444,6 +457,29 @@ void LogCollectorStart()
                         current->fp = NULL;
                         merror(FILE_ERROR, current->file);
                     }
+
+                    if(current->exists==1){
+                        minfo(FORGET_FILE, current->file);
+                        current->exists = 0;
+                    }
+                    current->ign++;
+
+                    if (!current->fp) {
+                        // Only expanded files that have been deleted will be forgotten
+                        if (j >= 0) {
+                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                merror(REM_ERROR, current->file);
+                            } else {
+                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                i--;
+                                continue;
+                            }
+                        } else if (open_file_attempts) {
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                        } else {
+                            mdebug1(OPEN_UNABLE, current->file);
+                        }
+                    }
 #endif
 
 #ifdef WIN32
@@ -518,6 +554,49 @@ void LogCollectorStart()
                         current->size = tmp_stat.st_size;
 #endif
                     }
+                } else {
+#ifdef WIN32
+                    HANDLE h1;
+
+                    h1 = CreateFile(current->file, GENERIC_READ,
+                                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                    if (h1 == INVALID_HANDLE_VALUE) {
+                        if (current->h) {
+                            CloseHandle(current->h);
+                        }
+                        merror(FILE_ERROR, current->file);
+                    } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
+                        if (current->h) {
+                            CloseHandle(current->h);
+                        }
+                        merror(FILE_ERROR, current->file);
+                    }
+
+                    if (current->exists==1) {
+                        minfo(FORGET_FILE, current->file);
+                        current->exists = 0;
+                    };
+                        
+                    current->ign++;
+
+                    CloseHandle(h1);
+
+                    // Only expanded files that have been deleted will be forgotten
+                    if (j >= 0) {
+                        if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                            merror(REM_ERROR, current->file);
+                        } else {
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            i--;
+                            continue;
+                        }
+                    } else if (open_file_attempts) {
+                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
+                    } else {
+                        mdebug1(OPEN_UNABLE, current->file);
+                    }
+#endif
                 }
 
                 /* If open_file_attempts is at 0 the files aren't forgotted ever*/
@@ -561,7 +640,6 @@ void LogCollectorStart()
                 }
             }
 
-#ifndef WIN32
             // Check for new files to be expanded
             if (check_pattern_expand(0)) {
                 /* Remove duplicate entries */
@@ -580,7 +658,7 @@ void LogCollectorStart()
                     }
                 }
             }
-#endif
+
             w_rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
@@ -1002,6 +1080,94 @@ int check_pattern_expand(int do_seek) {
     }
 
     w_mutexattr_destroy(&attr);
+
+    return retval;
+}
+#else
+int check_pattern_expand(int do_seek) {
+    int found;
+    int i, j;
+    int retval = 0;
+
+    WIN32_FIND_DATA ffd;
+    HANDLE hFind = INVALID_HANDLE_VALUE;
+
+    if (globs) {
+        for (j = 0; globs[j].gpath; j++) {
+
+            if (current_files >= maximum_files) {
+                break;
+            }
+
+            hFind = FindFirstFile(globs[j].gpath, &ffd);
+
+            if (INVALID_HANDLE_VALUE == hFind) {
+                mdebug1(GLOB_ERROR,globs[j].gpath);
+                continue;
+            }
+
+            do {
+
+                if (current_files >= maximum_files) {
+                    mwarn(FILE_LIMIT, maximum_files);
+                    break;
+                }
+
+                if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                    continue;
+                } else {
+
+                    char *global_path = NULL;
+                    char *p;
+                    os_strdup(globs[j].gpath,global_path);
+
+                    p = strrchr(global_path,'\\');
+
+                    if (p) {
+
+                        p++;
+                        *p = '\0';
+
+                        char full_path[PATH_MAX] = {0};
+                        snprintf(full_path,PATH_MAX,"%s%s",global_path,ffd.cFileName);
+
+                        found = 0;
+                        for (i = 0; globs[j].gfiles[i].file; i++) {
+                            if (!strcmp(globs[j].gfiles[i].file, full_path)) {
+                                found = 1;
+                                break;
+                            }
+                        }
+
+                        if (!found) {
+                            retval = 1;
+                            minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                            if (i) {
+                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                            }
+                         
+                            os_strdup(full_path, globs[j].gfiles[i].file);
+                            w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
+                            globs[j].gfiles[i].fp = NULL;
+                            globs[j].gfiles[i].exists = 1;
+                            globs[j].gfiles[i + 1].file = NULL;
+                            globs[j].gfiles[i + 1].target = NULL;
+                            current_files++;
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                            if  (!i && !globs[j].gfiles[i].read) {
+                                set_read(&globs[j].gfiles[i], i, j);
+                            } else {
+                                handle_file(i, j, do_seek, 1);
+                            }
+                        }
+                    }
+                    os_free(global_path);
+                }
+            } while (FindNextFile(hFind, &ffd) != 0);
+            FindClose(hFind);
+        }
+    }
 
     return retval;
 }
