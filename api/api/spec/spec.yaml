@@ -207,11 +207,6 @@ components:
           items:
             $ref: '#/components/schemas/AgentID'
 
-    AgentId:
-      type: string
-      format: numbers
-      minLength: 3
-
     AgentIdKey:
       type: object
       required:
@@ -2021,7 +2016,7 @@ components:
       description: Filters by directory.
       schema:
         type: string
-        format: paths
+        format: path
     download:
       in: query
       name: download
@@ -2208,7 +2203,7 @@ components:
       description: Filters by path
       schema:
         type: string
-        format: path
+        format: etc_path
     pretty:
       in: query
       name: pretty
@@ -2515,7 +2510,7 @@ components:
       required: true
       schema:
         type: string
-        format: path
+        format: etc_path
     overwrite:
       in: query
       name: overwrite
@@ -3632,7 +3627,7 @@ paths:
           description: WPK repository.
           schema:
             type: string
-            format: paths
+            format: path
         - $ref: '#/components/parameters/version'
         - in: query
           name: use_http
@@ -3675,7 +3670,7 @@ paths:
           description: Path to the WPK file. The file must be on a folder on the Wazuh's installation directory (by default, <code>/var/ossec</code>).
           schema:
             type: string
-            format: paths
+            format: path
         - in: query
           name: installer
           description: Installation script.

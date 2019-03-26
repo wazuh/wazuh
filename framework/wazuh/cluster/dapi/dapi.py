@@ -23,15 +23,18 @@ class DistributedAPI:
     """
     def __init__(self, f: Callable, logger: logging.Logger, f_kwargs: Dict = {}, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
-                 wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False):
+                 wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
+                 broadcasting: bool = False):
         """
         Class constructor
 
-        :param input_json: JSON containing information/arguments about the request.
+        :param f: function to be executed
+        :param f_kwargs: arguments to be passed to function `f`
         :param logger: Logging logger to use
         :param node: Asyncio protocol object to use when sending requests to other nodes
         :param debug: Enable debug messages and raise exceptions.
         :param pretty: Return request result with pretty indent
+        :param wait_for_complete: false to disable timeout, true otherwise
         """
         self.logger = logger
         self.f = f
@@ -46,6 +49,7 @@ class DistributedAPI:
         self.wait_for_complete = wait_for_complete
         self.from_cluster = from_cluster
         self.is_async = is_async
+        self.broadcasting = broadcasting
 
     async def distribute_function(self) -> str:
         """
@@ -236,7 +240,7 @@ class DistributedAPI:
                              itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
                 # add non existing ids in the master's dictionary entry
-                non_existent_ids = list(set(self.input_json['arguments']['agent_id']) -
+                non_existent_ids = list(set(self.f_kwargs['agent_id']) -
                                         set(map(operator.itemgetter('id'), agents)))
                 if non_existent_ids:
                     if self.node_info['node'] in node_name:
@@ -258,7 +262,7 @@ class DistributedAPI:
             return {node_id: []}
 
         else:
-            if 'cluster' in self.input_json['function']:
+            if self.broadcasting:
                 node_name = {'fw_all_nodes': [], self.node_info['node']: []}
             else:
                 # agents, syscheck, rootcheck and syscollector
@@ -353,14 +357,14 @@ class APIRequestQueue:
             request = json.loads(request, object_hook=as_callable)
             names = names.split('*', 1)
             name_2 = '' if len(names) == 1 else names[1] + ' '
-            node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             self.logger.info("Receiving request: {} from {}".format(
                 request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
             try:
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
                                               node=node).distribute_function()
-                task_id = await node.send_string(result.encode())
+                task_id = await node.send_string(json.dumps(result).encode())
             except Exception as e:
                 self.logger.error("Error in distributed API: {}".format(e))
                 task_id = b'Error in distributed API: ' + str(e).encode()
