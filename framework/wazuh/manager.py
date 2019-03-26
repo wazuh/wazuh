@@ -314,22 +314,43 @@ def upload_list(list_file, path):
 
 def get_file(path):
     """
-    Returns a file as dictionary.
+    Returns the content of a file.
     :param path: Relative path of file from origin
-    :return: File as string.
+    :return: Content file.
     """
 
-    file_path = join(common.ossec_path, path)
+    full_path = join(common.ossec_path, path)
+
+    # validate CDB lists files
+    if re.match(r'^etc/lists', path) and not validate_cdb_list(path):
+        raise WazuhException(1800, {'path': path})
 
     try:
-        with open(file_path) as f:
+        with open(full_path) as f:
             output = f.read()
     except IOError:
         raise WazuhException(1005)
-    except Exception:
-        raise WazuhException(1000)
 
     return output
+
+
+def validate_cdb_list(path):
+    """
+    Validates a CDB list
+    :param path: Relative path of file from origin
+    :return: Content file.
+    """
+    full_path = join(common.ossec_path, path)
+    regex_cdb = re.compile(r'^[^:]+:[^:]*$|^$')
+    try:
+        with open(full_path) as f:
+            for line in f:
+                if not re.match(regex_cdb, line):
+                    return False
+    except IOError:
+        raise WazuhException(1005)
+
+    return True
 
 
 def delete_file(path):
