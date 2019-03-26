@@ -117,8 +117,6 @@ lock()
 
 unlock()
 {
-    rm -f ${DIR}/var/run/*.start
-    rm -f ${DIR}/var/run/.restart
     rm -rf ${LOCK}
 }
 
@@ -261,6 +259,8 @@ testconfig()
             if [ ! -f ${DIR}/var/run/.restart ]; then
                 touch ${DIR}/var/run/${i}.failed
             fi
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
             unlock;
             exit 1;
         fi
@@ -352,6 +352,8 @@ start()
                 fi
                 rm -f ${DIR}/var/run/${i}.start
                 touch ${DIR}/var/run/${i}.failed
+                rm -f ${DIR}/var/run/*.start
+                rm -f ${DIR}/var/run/.restart
                 unlock;
                 exit 1;
             fi

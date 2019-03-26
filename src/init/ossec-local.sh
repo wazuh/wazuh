@@ -94,8 +94,6 @@ lock() {
 
 unlock()
 {
-    rm -f ${DIR}/var/run/*.start
-    rm -f ${DIR}/var/run/.restart
     rm -rf ${LOCK}
 }
 
@@ -207,6 +205,8 @@ testconfig()
                 touch ${DIR}/var/run/${i}.failed
             fi
             echo "${i}: Configuration error. Exiting"
+            rm -f ${DIR}/var/run/*.start
+            rm -f ${DIR}/var/run/.restart
             unlock;
             exit 1;
         fi
@@ -242,6 +242,8 @@ start()
                 echo "${i} did not start correctly.";
                 rm -f ${DIR}/var/run/${i}.start
                 touch ${DIR}/var/run/${i}.failed
+                rm -f ${DIR}/var/run/*.start
+                rm -f ${DIR}/var/run/.restart
                 unlock;
                 exit 1;
             fi
