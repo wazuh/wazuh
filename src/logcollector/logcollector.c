@@ -23,9 +23,11 @@ static void files_lock_init(void);
 static void check_text_only();
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
+static void check_pattern_expand_excluded();
 #else 
 static int check_pattern_expand(int do_seek);
 #endif
+
 
 /* Global variables */
 int loop_timeout;
@@ -55,6 +57,8 @@ static pthread_mutexattr_t win_el_mutex_attr;
 
 /* Multiple readers / one write mutex */
 static pthread_rwlock_t files_update_rwlock;
+
+static OSHash *excluded_files = NULL;
 
 static char *rand_keepalive_str(char *dst, int size)
 {
@@ -89,6 +93,12 @@ void LogCollectorStart()
     total_files = 0;
     current_files = 0;
 
+    /* Create store data */
+    excluded_files = OSHash_Create();
+    if (!excluded_files) {
+        merror_exit(LIST_ERROR);
+    }
+
     set_sockets();
     files_lock_init();
 
@@ -98,9 +108,12 @@ void LogCollectorStart()
 
     check_pattern_expand(1);
 
+
+    check_pattern_expand_excluded();
+
     /* Check for ASCII, UTF-8 */
     check_text_only();
-
+   
     /* Set the files mutexes */
     w_set_file_mutexes();
 #else
@@ -666,8 +679,13 @@ void LogCollectorStart()
                 }
             }
 
+#ifndef WIN32
+            /* Check for excluded files */
+            check_pattern_expand_excluded();
+#endif
             /* Check for ASCII, UTF-8 */
             check_text_only();
+
 
             w_rwlock_unlock(&files_update_rwlock);
 
@@ -1087,7 +1105,12 @@ int check_pattern_expand(int do_seek) {
                 }
                 if (!found) {
                     retval = 1;
-                    minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                    char *ex_file = OSHash_Get(excluded_files,g.gl_pathv[glob_offset]);
+
+                    if(!ex_file) {
+                        minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+                    }
+                   
                     os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
                     if (i) {
                         memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
@@ -1116,6 +1139,82 @@ int check_pattern_expand(int do_seek) {
 
     return retval;
 }
+
+void check_pattern_expand_excluded() {
+    glob_t g;
+    int err;
+    int glob_offset;
+    int found;
+    int i, j;
+
+    IT_control f_control = 0;
+    logreader *current;
+
+    if (globs) {
+        for (i = 0, j = -1;; i++) {
+            if (f_control = update_current(&current, &i, &j), f_control) {
+                if (f_control == NEXT_IT) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            
+            /* Check for files to exclude */
+            if(current->file && !current->command && current->exclude) {
+                glob_offset = 0;
+                if (err = glob(current->exclude, 0, NULL, &g), err) {
+                    if (err == GLOB_NOMATCH) {
+                        mdebug1(GLOB_NFOUND, current->exclude);
+                    } else {
+                        mdebug1(GLOB_ERROR, current->exclude);
+                    }
+                    continue;
+                }
+                while (g.gl_pathv[glob_offset] != NULL) {
+                    found = 0;
+                    int k;
+                    for (k = 0; globs[j].gfiles[k].file; k++) {
+                        if (!strcmp(globs[j].gfiles[k].file, g.gl_pathv[glob_offset])) {
+                            found = 1;
+                            break;
+                        }
+                    }
+
+                    /* Excluded file found, remove it completely */
+                    if(found) {
+                        int result;
+
+                        if (j < 0) {
+                            result = Remove_Localfile(&logff, k, 0, 1);
+                        } else {
+                            result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
+                        }
+                            
+                        if (result) {
+                            merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
+                        } else {
+
+                            /* Add the excluded file to the hash table */
+                            char *file = OSHash_Get(excluded_files,g.gl_pathv[glob_offset]);
+
+                            if(!file) {
+                                OSHash_Add(excluded_files,g.gl_pathv[glob_offset],(void *)1);
+                            }
+
+                            mdebug2(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
+                            mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        }
+                    }
+                    glob_offset++;
+                }
+                globfree(&g);
+            }
+            current = NULL;
+        }
+    }
+}
+
 #else
 int check_pattern_expand(int do_seek) {
     int found;
@@ -1205,6 +1304,7 @@ int check_pattern_expand(int do_seek) {
     return retval;
 }
 #endif
+
 
 static IT_control remove_duplicates(logreader *current, int i, int j) {
     IT_control d_control = CONTINUE_IT;
@@ -1670,7 +1770,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     }
                 }
             }
-            
+
             int ucs2 = is_usc2(current->file);
             if (ucs2) {
                 current->ucs2 = ucs2;

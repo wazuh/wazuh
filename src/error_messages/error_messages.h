@@ -194,6 +194,7 @@
 #define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
 #define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
+#define EXCLUDE_FILE    "(1965): File excluded: '%s'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."
