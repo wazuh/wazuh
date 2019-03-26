@@ -201,6 +201,7 @@ testconfig()
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
+            touch ${DIR}/var/run/${i}.failed
             echo "${i}: Configuration error. Exiting"
             unlock;
             exit 1;
@@ -215,6 +216,7 @@ start()
     echo $TEST
     if [ ! -z "$TEST" ]; then
         echo "ossec-analysisd: Configuration error. Exiting."
+        touch ${DIR}/var/run/${i}.failed
         exit 1;
     fi
 
@@ -229,9 +231,12 @@ start()
     for i in ${SDAEMONS}; do
         pstatus ${i};
         if [ $? = 0 ]; then
+            touch ${DIR}/var/run/${i}.start
             ${DIR}/bin/${i} ${DEBUG_CLI};
             if [ $? != 0 ]; then
                 echo "${i} did not start correctly.";
+                rm -f ${DIR}/var/run/${i}.start
+                touch ${DIR}/var/run/${i}.failed
                 unlock;
                 exit 1;
             fi
@@ -253,6 +258,8 @@ start()
     fi
 
     echo "Completed."
+    rm -f ${DIR}/var/run/${i}.start
+    rm -f ${DIR}/var/run/${i}.failed
 }
 
 pstatus()

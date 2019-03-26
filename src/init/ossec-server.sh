@@ -251,6 +251,7 @@ testconfig()
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
+            touch ${DIR}/var/run/${i}.failed
             if [ $USE_JSON = true ]; then
                 echo -n '{"error":20,"message":"'${i}': Configuration error."}'
             else
@@ -278,6 +279,7 @@ start()
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
+        touch ${DIR}/var/run/${i}.failed
         exit 1;
     fi
 
@@ -330,6 +332,8 @@ start()
 
         pstatus ${i};
         if [ $? = 0 ]; then
+            ## Create starting flag
+            touch ${DIR}/var/run/${i}.start
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
@@ -341,6 +345,8 @@ start()
                 else
                     echo "${i} did not start correctly.";
                 fi
+                rm -f ${DIR}/var/run/${i}.start
+                touch ${DIR}/var/run/${i}.failed
                 unlock;
                 exit 1;
             fi
@@ -370,6 +376,8 @@ start()
     else
         echo "Completed."
     fi
+    rm -f ${DIR}/var/run/${i}.start
+    rm -f ${DIR}/var/run/${i}.failed
 }
 
 pstatus()
@@ -504,6 +512,7 @@ stop)
     unlock
     ;;
 restart)
+    touch ${DIR}/var/run/.restart
     testconfig
     lock
     if [ $USE_JSON = true ]; then
@@ -513,6 +522,7 @@ restart)
     fi
     buildCDB
     start
+    rm -f ${DIR}/var/run/.restart
     unlock
     ;;
 reload)
