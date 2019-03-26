@@ -52,7 +52,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 #endif
     syscheck.prefilter_cmd  = NULL;
 
-    mdebug2("Reading Configuration [%s]", cfgfile);
+    mdebug1("Reading Configuration [%s]", cfgfile);
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &syscheck, NULL) < 0) {
@@ -60,7 +60,7 @@ int Read_Syscheck_Config(const char *cfgfile)
     }
 
 #ifdef CLIENT
-    mdebug2(FIM_CLIENT_CONFIGURATION, cfgfile);
+    mdebug1(FIM_CLIENT_CONFIGURATION, cfgfile);
 
     /* Read shared config */
     modules |= CAGENT_CONFIG;

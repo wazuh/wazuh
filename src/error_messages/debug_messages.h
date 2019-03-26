@@ -151,4 +151,6 @@
 #define FIM_SYSCOM_EMPTY_MESSAGE            "(6285): Empty message from local client."
 #define FIM_SYSCOM_THREAD_FINISED           "(6286): Local server thread finished."
 
+#define FIM_HEALTHCHECK_CHECK_RULE          "(6287): Couldn't delete audit health check rule.
+
 #endif

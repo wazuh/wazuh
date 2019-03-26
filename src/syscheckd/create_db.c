@@ -156,7 +156,7 @@ void remove_local_diff(){
         if (curr_node_local && curr_node_local->key) {
             do{
                 internal_node = curr_node_local->next;
-                mdebug1(FIM_LOCAL_DIFF_DELETE, curr_node_local->key);
+                mdebug2(FIM_LOCAL_DIFF_DELETE, curr_node_local->key);
                 if (rmdir_ex(curr_node_local->key) != 0) {
                     mwarn(FIM_WARN_DELETE, curr_node_local->key);
                 }
@@ -220,7 +220,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         case ENOTDIR:
             /*Deletion message sending*/
-            mdebug2(FIM_FILE_MSG_DELETE, file_name);
+            mdebug1(FIM_FILE_MSG_DELETE, file_name);
             snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
             send_syscheck_msg(alert_msg);
 
@@ -277,7 +277,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     if (S_ISREG(statbuf.st_mode) || S_ISLNK(statbuf.st_mode))
 #endif
     {
-        mdebug2(FIM_SCANNING_FILE, file_name);
+        mdebug1(FIM_SCANNING_FILE, file_name);
         os_md5 mf_sum = {'\0'};
         os_sha1 sf_sum = {'\0'};
         os_sha256 sf256_sum = {'\0'};
@@ -723,7 +723,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
         __counter++;
     } else {
-        mdebug2(FIM_SCANNING_IRREGFILE, file_name);
+        mdebug1(FIM_SCANNING_IRREGFILE, file_name);
     }
 
 
@@ -750,7 +750,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
     size_t dir_size;
 
     if(max_depth < 0) {
-        mdebug2(FIM_MAX_RECURSION_LEVEL, dir_name);
+        mdebug1(FIM_MAX_RECURSION_LEVEL, dir_name);
         return 0;
     }
 
@@ -762,7 +762,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
                 dir_name);
         return 0;
     case 1:
-        mdebug2(FIM_SYMBOLIC_LINK_ADD, dir_name);
+        mdebug1(FIM_SYMBOLIC_LINK_ADD, dir_name);
         return 0;
     case 0:
         break;
@@ -935,7 +935,7 @@ int run_dbcheck()
         for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
             pos = find_dir_pos(curr_node->key, 1, 0, 0);
 
-            mdebug2(FIM_FILE_MSG_DELETE, curr_node->key);
+            mdebug1(FIM_FILE_MSG_DELETE, curr_node->key);
             snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
             send_syscheck_msg(alert_msg);
 #ifndef WIN32

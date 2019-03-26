@@ -1246,7 +1246,7 @@ int audit_health_check(int audit_socket) {
     mdebug2(FIM_HEALTHCHECK_DELETE_RECEIVE);
 
     if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
-        mdebug1("Couldn't delete audit health check rule.");
+        mdebug1(FIM_HEALTHCHECK_CHECK_RULE);
     }
     hc_thread_active = 0;
 
@@ -1256,7 +1256,7 @@ int audit_health_check(int audit_socket) {
 
 exit_err:
     if(retval = audit_delete_rule(AUDIT_HEALTHCHECK_DIR, AUDIT_HEALTHCHECK_KEY), retval <= 0){
-        mdebug1("Couldn't delete audit health check rule.");
+        mdebug1(FIM_HEALTHCHECK_CHECK_RULE);
     }
     hc_thread_active = 0;
     return -1;
