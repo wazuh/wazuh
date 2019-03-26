@@ -391,13 +391,14 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
 
                 stat(file, &attrib);
                 last_modify = gmtime(&(attrib.st_mtime));
+                ignored = 1;
                 if( modified != last_modify){
                     if(checkBinaryFile(file)){
                         OSHash_Set(invalid_files, file, last_modify);
-                        ignored = 1;
                     }
                     else{
                         OSHash_Delete(invalid_files, file);
+                        ignored = 0;
                     }
                 }
             }
