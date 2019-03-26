@@ -24,15 +24,16 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
         return super()._format_data_into_dictionary() if self.array else self._data[0]
 
 
-def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields,
+def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, query,
                    table, array=False, nested=True):
     db_query = WazuhDBQuerySyscollector(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search,
                                         sort=sort, filters=filters, fields=valid_select_fields, table=table,
-                                        array=array, nested=nested)
+                                        array=array, nested=nested, query=query)
     return db_query.run()
 
 
-def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                 nested=True):
     """
     Get info about an agent's OS
     """
@@ -52,10 +53,11 @@ def get_os_agent(agent_id, offset=0, limit=common.database_limit, select={}, sea
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, nested=nested,
                           search=search, sort=sort, filters=filters, valid_select_fields=valid_select_fields,
-                          table='sys_osinfo')
+                          table='sys_osinfo', query=q)
 
 
-def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
     """
     Get info about an agent's OS
     """
@@ -65,10 +67,11 @@ def get_hardware_agent(agent_id, offset=0, limit=common.database_limit, select={
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, nested=nested,
                           search=search, sort=sort, filters=filters, valid_select_fields=valid_select_fields,
-                          table='sys_hwinfo')
+                          table='sys_hwinfo', query=q)
 
 
-def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
     """
     Get info about an agent's programs
     """
@@ -80,10 +83,11 @@ def get_packages_agent(agent_id, offset=0, limit=common.database_limit, select={
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, nested=nested,
                           search=search, sort=sort, filters=filters, valid_select_fields=valid_select_fields,
-                          table='sys_programs', array=True)
+                          table='sys_programs', array=True, query=q)
 
 
-def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={},
+                        q='', nested=True):
     """
     Get info about an agent's processes
     """
@@ -97,10 +101,11 @@ def get_processes_agent(agent_id, offset=0, limit=common.database_limit, select=
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, nested=nested,
                           search=search, sort=sort, filters=filters, valid_select_fields=valid_select_fields,
-                          table='sys_processes', array=True)
+                          table='sys_processes', array=True, query=q)
 
 
-def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                    nested=True):
     """
     Get info about an agent's ports
     """
@@ -111,10 +116,11 @@ def get_ports_agent(agent_id, offset=0, limit=common.database_limit, select={}, 
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_ports', array=True,
-                          nested=nested)
+                          nested=nested, query=q)
 
 
-def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                      nested=True):
     """
     Get info about an agent's network address
     """
@@ -123,10 +129,11 @@ def get_netaddr_agent(agent_id, offset=0, limit=common.database_limit, select={}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_netaddr', array=True,
-                          nested=nested)
+                          nested=nested, query=q)
 
 
-def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
     """
     Get info about an agent's network protocol
     """
@@ -134,10 +141,11 @@ def get_netproto_agent(agent_id, offset=0, limit=common.database_limit, select={
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_netproto', array=True,
-                          nested=nested)
+                          nested=nested, query=q)
 
 
-def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, nested=True):
+def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={}, q='',
+                       nested=True):
     """
     Get info about an agent's network interface
     """
@@ -149,17 +157,17 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table='sys_netiface', array=True,
-                          nested=nested)
+                          nested=nested, query=q)
 
 
-def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False):
+def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False, query=''):
     agents, result = Agent.get_agents_overview(select={'fields': ['id']})['items'], []
 
     total = 0
 
     for agent in agents:
         items = func(agent_id=agent['id'], select=select, filters=filters, limit=limit, offset=offset, search=search,
-                     sort=sort, nested=False)
+                     sort=sort, nested=False, q=query)
         if items == {}:
             continue
 
@@ -181,41 +189,41 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
     return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested), result)), 'totalItems': total}
 
 
-def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
+def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}, q=''):
     return _get_agent_items(func=get_packages_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
+def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}, q=''):
     return _get_agent_items(func=get_os_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, query=q)
 
 
-def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
     return _get_agent_items(func=get_hardware_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort)
+                            filters=filters, search=search, sort=sort, query=q)
 
 
-def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
     return _get_agent_items(func=get_processes_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_ports(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_ports(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
     return _get_agent_items(func=get_ports_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_netaddr(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_netaddr(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
     return _get_agent_items(func=get_netaddr_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_netproto(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_netproto(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
     return _get_agent_items(func=get_netproto_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
 
 
-def get_netiface(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
+def get_netiface(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}, q=''):
     return _get_agent_items(func=get_netiface_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
