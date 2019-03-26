@@ -17,12 +17,14 @@ from shutil import move, Error
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 from typing import Dict
+import fcntl
 
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
+execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
 
 
 def status() -> Dict:
@@ -33,24 +35,24 @@ def status() -> Dict:
 
     processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
                  'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db']
 
-    data = {}
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
     for process in processes:
-        data[process] = 'stopped'
-
-        process_pid_files = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
-
-        for pid_file in process_pid_files:
-            m = re.match(r'.+\-(\d+)\.pid$', pid_file)
-
-            pid = "NA"
-            if m and m.group(1):
-                pid = m.group(1)
-
-            if exists(pid_file) and exists('/proc/{0}'.format(pid)):
-                data[process] = 'running'
-                break
+        pidfile = glob(join(run_dir, f"{process}-*.pid"))
+        if exists(join(run_dir, f'{process}.failed')):
+            data[process] = 'failed'
+        elif exists(join(run_dir, f'.restart')):
+            data[process] = 'restarting'
+        elif exists(join(run_dir, f'{process}.start')):
+            data[process] = 'starting'
+        elif pidfile:
+            process_pid = pidfile_regex.match(pidfile[0]).group(1)
+            # if a pidfile exists but the process is not running, it means the process crashed and
+            # wasn't able to remove its own pidfile.
+            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
+        else:
+            data[process] = 'stopped'
 
     return data
 
@@ -404,25 +406,31 @@ def restart():
 
     :return: Confirmation message.
     """
-    # execq socket path
-    socket_path = common.EXECQ
-    # msg for restarting Wazuh manager
-    msg = 'restart-wazuh '
-    # initialize socket
-    if exists(socket_path):
-        try:
-            conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            conn.connect(socket_path)
-        except socket.error:
-            raise WazuhException(1902)
-    else:
-        raise WazuhException(1901)
-
+    lock_file = open(execq_lockfile, 'a+')
+    fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        conn.send(msg.encode())
-        conn.close()
-    except socket.error:
-        raise WazuhException(1014)
+        # execq socket path
+        socket_path = common.EXECQ
+        # msg for restarting Wazuh manager
+        msg = 'restart-wazuh '
+        # initialize socket
+        if exists(socket_path):
+            try:
+                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                conn.connect(socket_path)
+            except socket.error:
+                raise WazuhException(1902)
+        else:
+            raise WazuhException(1901)
+
+        try:
+            conn.send(msg.encode())
+            conn.close()
+        except socket.error as e:
+            raise WazuhException(1014, str(e))
+    finally:
+        fcntl.lockf(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
     return "Restarting manager"
 
@@ -458,65 +466,71 @@ def validation():
 
     :return: Confirmation message.
     """
-    # sockets path
-    api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
-    execq_socket_path = common.EXECQ
-    # msg for checking Wazuh configuration
-    execq_msg = 'check-manager-configuration '
-
-    # remove api_socket if exists
+    lock_file = open(execq_lockfile, 'a+')
+    fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        remove(api_socket_path)
-    except OSError:
-        if exists(api_socket_path):
-            raise WazuhException(1014)
+        # sockets path
+        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+        execq_socket_path = common.EXECQ
+        # msg for checking Wazuh configuration
+        execq_msg = 'check-manager-configuration '
 
-    # up API socket
-    try:
-        api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        api_socket.bind(api_socket_path)
-        # timeout
-        api_socket.settimeout(5)
-    except socket.error:
-        raise WazuhException(1013)
-
-    # connect to execq socket
-    if exists(execq_socket_path):
+        # remove api_socket if exists
         try:
-            execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            execq_socket.connect(execq_socket_path)
+            remove(api_socket_path)
+        except OSError as e:
+            if exists(api_socket_path):
+                raise WazuhException(1014, str(e))
+
+        # up API socket
+        try:
+            api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            api_socket.bind(api_socket_path)
+            # timeout
+            api_socket.settimeout(5)
         except socket.error:
             raise WazuhException(1013)
-    else:
-        raise WazuhException(1901)
 
-    # send msg to execq socket
-    try:
-        execq_socket.send(execq_msg.encode())
-        execq_socket.close()
-    except socket.error:
-        raise WazuhException(1014)
+        # connect to execq socket
+        if exists(execq_socket_path):
+            try:
+                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                execq_socket.connect(execq_socket_path)
+            except socket.error:
+                raise WazuhException(1013)
+        else:
+            raise WazuhException(1901)
+
+        # send msg to execq socket
+        try:
+            execq_socket.send(execq_msg.encode())
+            execq_socket.close()
+        except socket.error as e:
+            raise WazuhException(1014, str(e))
+        finally:
+            execq_socket.close()
+
+        # if api_socket receives a message, configuration is OK
+        try:
+            buffer = bytearray()
+            # receive data
+            datagram = api_socket.recv(4096)
+            buffer.extend(datagram)
+        except socket.timeout as e:
+            raise WazuhException(1014, str(e))
+        finally:
+            api_socket.close()
+            # remove api_socket
+            if exists(api_socket_path):
+                remove(api_socket_path)
+
+        try:
+            response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+        except (KeyError, json.decoder.JSONDecodeError) as e:
+            raise WazuhException(1904, str(e))
     finally:
-        execq_socket.close()
-
-    # if api_socket receives a message, configuration is OK
-    try:
-        buffer = bytearray()
-        # receive data
-        datagram = api_socket.recv(4096)
-        buffer.extend(datagram)
-    except socket.timeout:
-        raise WazuhException(1014)
-    finally:
-        api_socket.close()
-        # remove api_socket
-        if exists(api_socket_path):
-            remove(api_socket_path)
-
-    try:
-        response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-    except (KeyError, json.decoder.JSONDecodeError):
-        raise WazuhException(1904)
+        fcntl.lockf(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
     return response
 

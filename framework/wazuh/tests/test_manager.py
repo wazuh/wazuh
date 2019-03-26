@@ -41,7 +41,10 @@ def test_manager():
 
 @pytest.mark.parametrize('process_status', [
     'running',
-    'stopped'
+    'stopped',
+    'failed',
+    'restarting',
+    'starting'
 ])
 @patch('wazuh.manager.exists')
 @patch('wazuh.manager.glob')
@@ -53,14 +56,21 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
     :param manager_glob: mock of glob.glob function
     :param manager_exists: mock of os.path.exists function
     :param test_manager: pytest fixture
-    :param process_status: status to test (valid values: running/stopped).
+    :param process_status: status to test (valid values: running/stopped/failed/restarting).
     :return:
     """
     def mock_glob(path_to_check):
         return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
 
+    def mock_exists(path_to_check):
+        if path_to_check == '/proc/0234':
+            return process_status == 'running'
+        else:
+            return path_to_check.endswith(f'.{process_status.replace("ing","").replace("re", "")}') or \
+                   path_to_check.endswith(f'.{process_status.replace("ing","")}')
+
     manager_glob.side_effect = mock_glob
-    manager_exists.return_value = True
+    manager_exists.side_effect = mock_exists
     manager_status = status()
     assert isinstance(manager_status, dict)
     assert all(process_status == x for x in manager_status.values())
