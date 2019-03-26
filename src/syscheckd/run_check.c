@@ -63,6 +63,11 @@ int send_rootcheck_msg(const char *msg)
 /* Send syscheck db to the server */
 static void send_sk_db(int first_start)
 {
+#ifdef WIN_WHODATA
+    HANDLE t_hdle;
+    long unsigned int t_id;
+#endif
+
     if (!syscheck.dir[0]) {
         return;
     }
@@ -75,29 +80,44 @@ static void send_sk_db(int first_start)
         send_syscheck_msg(HC_FIM_DB_SFS);
         sleep(syscheck.tsleep * 5);
         create_db();
+        minfo(FIM_FREQUENCY_ENDED);
     } else {
         send_syscheck_msg(HC_FIM_DB_SS);
         sleep(syscheck.tsleep * 5);
         run_dbcheck();
+        minfo(FIM_FREQUENCY_ENDED);
     }
     sleep(syscheck.tsleep * 5);
 #ifdef WIN32
     /* Check for registry changes on Windows */
+    minfo(FIM_WINREGISTRY_START);
     os_winreg_check();
     sleep(syscheck.tsleep * 5);
+    minfo(FIM_WINREGISTRY_ENDED);
 #endif
 
     /* Send end scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
+
+        // Running whodata-audit
 #ifdef ENABLE_AUDIT
         audit_set_db_consistency();
 #endif
+
+        // Running whodata-windows
+#ifdef WIN_WHODATA
+    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+        minfo(FIM_WHODATA_START);
+        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+            merror(FIM_ERROR_CHECK_THREAD);
+        }
+    }
+#endif
+
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
     }
-
-    minfo(FIM_FREQUENCY_ENDED);
 }
 
 /* Periodically run the integrity checker */

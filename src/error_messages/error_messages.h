@@ -323,19 +323,19 @@
 #define VU_UNC_SEVERITY             "(5500): Uncontrolled severity has been found: '%s'."
 
 
-/* fim error messages*/
+/* File integrity monitoring error messages*/
 #define FIM_ERROR_ADD_FILE                          "(6600): Unable to add file to db: '%s'"
 #define FIM_ERROR_ACCESING                          "(6601): Error accessing '%s': '%s' (%d)"
 #define FIM_ERROR_EXTRACT_PERM                      "(6602): It was not possible to extract the permissions of '%s'. Error: '%d'."
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
 #define FIM_ERROR_NOTHING_TOCKECK                   "(6604): No directories to check."
 #define FIM_ERROR_CHECK_THREAD                      "(6605): Could not create the Whodata check thread."
-#define FIM_ERROR_SELECT                            "(6606): Select failed (for real time fim)."
+#define FIM_ERROR_SELECT                            "(6606): Select failed (for real time file integrity monitoring)."
 
 #define FIM_ERROR_INOTIFY_INITIALIZE                "(6607): Unable to initialize inotify."
 #define FIM_ERROR_NFS_INOTIFY                       "(6608): '%s' NFS Directories do not support iNotify."
 #define FIM_ERROR_INOTIFY_ADD_WATCH                 "(6609): Unable to add inotify watch to real time monitoring: '%s'. '%d' '%d'"
-#define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time fim)."
+#define FIM_ERROR_REALTIME_WAITSINGLE_OBJECT        "(6610): WaitForSingleObjectEx failed (for real time file integrity monitoring)."
 #define FIM_ERROR_REALTIME_ADDDIR_FAILED            "(6611): 'realtime_adddir' failed, the directory '%s'could't be added to real time mode."
 #define FIM_ERROR_REALTIME_READ_BUFFER              "(6612): Unable to read from real time buffer."
 #define FIM_ERROR_REALTIME_WINDOWS_CALLBACK         "(6613): Real time Windows callback process: '%s' (%lx)."

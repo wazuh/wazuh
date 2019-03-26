@@ -22,7 +22,7 @@
 #define FIM_PRINT_IGNORE_SREGEX             "(6207): Ignore '%s' sregex '%s'"
 
 #define FIM_FREQUENCY_STARTED               "(6008): File integrity monitoring scan started."
-#define FIM_FREQUENCY_ENDED                 "(6009): File integrity monitoring scan ended. Database completed."
+#define FIM_FREQUENCY_ENDED                 "(6009): File integrity monitoring scan ended."
 #define FIM_FREQUENCY_TIME                  "(6010): File integrity monitoring scan frequency: %d seconds"
 
 #define FIM_REALTIME_STARTING               "(6011): Initializing real time file monitoring engine."
@@ -48,5 +48,7 @@
 #define FIM_AUDIT_RECONNECT                 "(6029): Audit: reconnecting... (%i)"
 #define FIM_AUDIT_CONNECT                   "(6030): Audit: connected."
 
+#define FIM_WINREGISTRY_START               "(6231): Registry integrity monitoring scan started"
+#define FIM_WINREGISTRY_ENDED               "(6232): Registry integrity monitoring scan ended"
 
 #endif

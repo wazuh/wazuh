@@ -960,11 +960,6 @@ int run_dbcheck()
 int create_db()
 {
     int i = 0;
-#ifdef WIN_WHODATA
-    int enable_who_scan = 0;
-    HANDLE t_hdle;
-    long unsigned int t_id;
-#endif
 
     if (!syscheck.fp) {
         merror_exit("Unable to create syscheck database. Exiting.");
@@ -1000,8 +995,8 @@ int create_db()
         if (syscheck.opts[i] & CHECK_WHODATA) {
 #ifdef WIN_WHODATA
             realtime_adddir(syscheck.dir[i], i + 1);
-            if (!enable_who_scan) {
-                enable_who_scan = 1;
+            if (!syscheck.wdata.whodata_setup) {
+                syscheck.wdata.whodata_setup = 1;
             }
 #endif
         } else if (syscheck.opts[i] & CHECK_REALTIME) {
@@ -1025,15 +1020,6 @@ int create_db()
     /* Duplicate hash table to check for deleted files */
     syscheck.last_check = OSHash_Duplicate(syscheck.fp);
     w_mutex_unlock(&lastcheck_mutex);
-
-#ifdef WIN_WHODATA
-    if (enable_who_scan && !run_whodata_scan()) {
-        minfo(FIM_WHODATA_START);
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror(FIM_ERROR_CHECK_THREAD);
-        }
-    }
-#endif
 
     return (0);
 }
