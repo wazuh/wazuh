@@ -11,15 +11,16 @@ from operator import itemgetter
 class WazuhDBQuerySyscollector(WazuhDBQuery):
 
     def __init__(self, array, nested, *args, **kwargs):
-        super().__init__(backend='wdb', default_sort_field='scan_id', db_path=None, query='', get_data=True, count=True,
+        super().__init__(backend='wdb', default_sort_field='scan_id', db_path=None, get_data=True, count=True,
                          *args, **kwargs)
         self.array = array
         self.nested = nested
+        self.nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote', 'tx', 'rx']
 
     def _format_data_into_dictionary(self):
         if self.nested:
-            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['scan', 'os'], '_')
-            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['scan', 'os'], '_') for d in self._data]
+            fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), self.nested_fields, '_')
+            self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, self.nested_fields, '_') for d in self._data]
 
         return super()._format_data_into_dictionary() if self.array else self._data[0]
 
