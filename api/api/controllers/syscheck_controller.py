@@ -2,6 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
+import logging
+
+from api.util import remove_nones_to_dict
+from wazuh.cluster.dapi.dapi import DistributedAPI
+import wazuh.syscheck as syscheck
+
+
+loop = asyncio.get_event_loop()
+logger = logging.getLogger('syscheck')
+
 def put_syscheck(pretty=False, wait_for_complete=False):
     """
 
@@ -51,7 +62,24 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     :param hash: Filters files with the specified checksum (MD5, SHA256 or SHA1)
     :type md5: str
     """
-    pass
+    filters = {'type': type, 'md5': md5, 'sha1': sha1, 'sha256': sha256,
+               'hash': hash, 'file': file}
+
+    f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
+                'select': select, 'sort': sort, 'search': search,
+                'summary': summary, 'filters': filters}
+
+    dapi = DistributedAPI(f=syscheck.files,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def put_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
@@ -64,7 +92,19 @@ def put_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID
     :type agent_id: str
     """
-    pass
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=syscheck.run,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
@@ -77,7 +117,19 @@ def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID
     :type agent_id: str
     """
-    pass
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=syscheck.clear,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
     """
@@ -89,4 +141,16 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
     :param agent_id: Agent ID
     :type agent_id: str
     """
-    pass
+    f_kwargs = {'agent_id': agent_id}
+
+    dapi = DistributedAPI(f=syscheck.last_scan,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
