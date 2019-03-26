@@ -137,7 +137,7 @@ size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
 
 #ifdef WIN_WHODATA
-int update_sacl(char *obj_path);
+int w_update_sacl(const char *obj_path);
 #endif
 
 int print_hash_table();

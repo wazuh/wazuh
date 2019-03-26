@@ -326,7 +326,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
             char * alertdump = NULL;
-
  #ifdef WIN_WHODATA
             if (evt && evt->scan_directory == 1) {
                 if (w_update_sacl(file_name)) {
@@ -674,6 +673,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(alert_msg);
             os_free(alertdump);
         } else {
+#ifdef WIN_WHODATA
+            // This scan is only to find new files
+            // Modified files will be reported by the whodata flow
+            if (evt && evt->scan_directory == 1) {
+                goto end;
+            }
+#endif
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
             os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
 
@@ -1069,11 +1075,8 @@ int create_db()
 
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
     int retval = 0;
-#ifdef WIN_WHODATA
-    if (!evt || evt->scan_directory == 1) {
-#else
+
     if (!evt) {
-#endif
         if (snprintf(wd_sum, size, "::::::::::") >= size) {
             retval = 1;
         }
