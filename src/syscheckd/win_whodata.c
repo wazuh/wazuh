@@ -79,6 +79,7 @@ void free_win_whodata_evt(whodata_evt *evt);
 // Get volumes and paths of Windows system
 int get_volume_names();
 int get_drive_names(PWCHAR volume_name, char *device);
+int replace_device_path(char * path);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -492,6 +493,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             if (path = convert_windows_string(buffer[2].XmlVal), !path) {
                 goto clean;
             }
+
+            // Replace in string path \device\harddiskvolumeX\ by drive letter
+            replace_device_path(path);
+
             str_lowercase(path);
             if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
                 // The file has been marked as ignored
@@ -1299,9 +1304,9 @@ int get_drive_names(PWCHAR volume_name, char *device) {
     PWCHAR names = NULL;
     PWCHAR nameit = NULL;
     unsigned long char_count = MAX_PATH + 1;
+    unsigned int device_it;
     size_t success = -1;
     size_t retval = -1;
-    unsigned int device_it;
 
     while (1) {
         // Allocate a buffer to hold the paths.
@@ -1328,7 +1333,7 @@ int get_drive_names(PWCHAR volume_name, char *device) {
     }
 
     if (success) {
-        // Save information in whodata structure
+        // Save information in FIM whodata structure
         os_calloc(MAX_PATH, sizeof(char), convert_name);
 
         for (nameit = names; nameit[0] != L'\0'; nameit += wcslen(nameit) + 1) {
@@ -1367,6 +1372,30 @@ int get_drive_names(PWCHAR volume_name, char *device) {
         os_free(convert_name);
     }
     os_free(names);
+
+    return 0;
+}
+
+int replace_device_path(char * path) {
+    char *new_path;
+    unsigned int iterator = 0;
+
+    while (syscheck.wdata.device[iterator]) {
+        minfo("Find device '%s' in path '%s'", syscheck.wdata.device[iterator], path);
+
+        if (strstr(path, syscheck.wdata.device[iterator]) != NULL) {
+            os_strdup(syscheck.wdata.drive[iterator], new_path);
+
+            if (wm_strcat(&new_path, path + strlen(syscheck.wdata.device[iterator]), '\0') == 0) {
+                minfo("Replacing '%s' to '%s'", path, new_path);
+                os_free(path);
+                path = new_path;
+            }
+            break;
+        } 
+
+        iterator++;
+    }
 
     return 0;
 }
