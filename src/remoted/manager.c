@@ -379,12 +379,6 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 continue;
             }
 
-            os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
-            *_f_sum = f_sum;
-            os_calloc(1, sizeof(file_sum), f_sum[f_size]);
-            strncpy(f_sum[f_size]->sum, md5sum, 32);
-            os_strdup(files[i], f_sum[f_size]->name);
-            
             if(modified = (struct tm *) OSHash_Get(invalid_files,file), modified){
                 struct stat attrib;
                 struct tm *last_modify;
@@ -411,14 +405,23 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                     last_modify = gmtime(&(attrib.st_mtime));
                     OSHash_Add(invalid_files, file, last_modify);
                     ignored = 1;
-                    merror("Ivalid shared file %s in group %s. Ignoring it.",files[i],group);
+                    merror("Invalid shared file %s in group %s. Ignoring it.",files[i],group);
                 }
             }
-            if (!logr.nocmerged && !ignored) {
-                MergeAppendFile(merged_tmp, file, NULL, -1);
-            }
 
-            f_size++;
+            if(!ignored){
+                os_realloc(f_sum, (f_size + 2) * sizeof(file_sum *), f_sum);
+                *_f_sum = f_sum;
+                os_calloc(1, sizeof(file_sum), f_sum[f_size]);
+                strncpy(f_sum[f_size]->sum, md5sum, 32);
+                os_strdup(files[i], f_sum[f_size]->name);
+                
+                if (!logr.nocmerged) {
+                    MergeAppendFile(merged_tmp, file, NULL, -1);
+                }
+
+                f_size++;
+            }
         }
 
         f_sum[f_size] = NULL;
