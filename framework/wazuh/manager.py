@@ -37,8 +37,6 @@ def status() -> Dict:
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
     for process in processes:
-        data[process] = 'stopped'
-
         pidfile = glob(join(run_dir, f"{process}-*.pid"))
         if pidfile:
             process_pid = pidfile_regex.match(pidfile[0]).group(1)
@@ -47,8 +45,12 @@ def status() -> Dict:
             data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
         elif exists(join(run_dir, f'{process}.failed')):
             data[process] = 'failed'
+        elif exists(join(run_dir, f'.restart')):
+            data[process] = 'restarting'
         elif exists(join(run_dir, f'{process}.start')):
-            data[process] = 'starting' if not exists(join(run_dir, f'.restart')) else 'restarting'
+            data[process] = 'starting'
+        else:
+            data[process] = 'stopped'
 
     return data
 
