@@ -23,11 +23,11 @@ static void files_lock_init(void);
 static void check_text_only();
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
-static void check_pattern_expand_excluded();
 #else 
 static int check_pattern_expand(int do_seek);
 #endif
 
+static void check_pattern_expand_excluded();
 
 /* Global variables */
 int loop_timeout;
@@ -1957,3 +1957,98 @@ static void check_text_only() {
         }
     }
 }
+
+#ifdef WIN32
+void check_pattern_expand_excluded() {
+    int found;
+    int i, j;
+
+    WIN32_FIND_DATA ffd;
+    HANDLE hFind = INVALID_HANDLE_VALUE;
+
+    IT_control f_control = 0;
+    logreader *current;
+
+    if (globs) {
+        for (i = 0, j = -1;; i++) {
+            if (f_control = update_current(&current, &i, &j), f_control) {
+                if (f_control == NEXT_IT) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+            
+            /* Check for files to exclude */
+            if(current->file && !current->command && current->exclude) {
+                hFind = FindFirstFile(current->exclude, &ffd);
+
+                if (INVALID_HANDLE_VALUE == hFind) {
+                    mdebug1(GLOB_ERROR,current->exclude);
+                    continue;
+                }
+
+                do {
+                    if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                        continue;
+                    } else {
+
+                        char *global_path = NULL;
+                        char *p;
+                        os_strdup(current->exclude,global_path);
+
+                        p = strrchr(global_path,'\\');
+
+                        if (p) {
+
+                            p++;
+                            *p = '\0';
+
+                            char full_path[PATH_MAX] = {0};
+                            snprintf(full_path,PATH_MAX,"%s%s",global_path,ffd.cFileName);
+
+                            found = 0;
+                            int k;
+                            for (k = 0; globs[j].gfiles[k].file; k++) {
+                                if (!strcmp(globs[j].gfiles[k].file, full_path)) {
+                                    found = 1;
+                                    break;
+                                }
+                            }
+
+                            /* Excluded file found, remove it completely */
+                            if(found) {
+                                int result;
+
+                                if (j < 0) {
+                                    result = Remove_Localfile(&logff, k, 0, 1);
+                                } else {
+                                    result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
+                                }
+                                    
+                                if (result) {
+                                    merror_exit(REM_ERROR,full_path);
+                                } else {
+
+                                    /* Add the excluded file to the hash table */
+                                    char *file = OSHash_Get(excluded_files,full_path);
+
+                                    if(!file) {
+                                        OSHash_Add(excluded_files,full_path,(void *)1);
+                                    }
+
+                                    mdebug2(EXCLUDE_FILE,full_path);
+                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                }
+                            }
+                        }
+                        os_free(global_path);
+                    }
+                } while (FindNextFile(hFind, &ffd) != 0);
+                FindClose(hFind);
+            }
+            current = NULL;
+        }
+    }
+}
+#endif
