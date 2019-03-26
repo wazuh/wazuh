@@ -340,7 +340,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     }
     else{
         // Merge ar.conf always
-        struct tm *modified;
+        time_t modified;
         int ignored = 0;
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
@@ -379,19 +379,21 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 continue;
             }
 
-            if(modified = (struct tm *) OSHash_Get(invalid_files,file), modified){
+            if(modified = (time_t) OSHash_Get(invalid_files,file), modified){
                 struct stat attrib;
-                struct tm *last_modify;
+                time_t last_modify;
 
                 stat(file, &attrib);
-                last_modify = gmtime(&(attrib.st_mtime));
+                last_modify = attrib.st_mtime;
                 ignored = 1;
                 if( modified != last_modify){
                     if(checkBinaryFile(file)){
                         OSHash_Set(invalid_files, file, last_modify);
+                        mdebug1("File %s in group %s changed but it is still invalid.", file, group);
                     }
                     else{
                         OSHash_Delete(invalid_files, file);
+                        mdebug1("File %s in group %s is valid now. Added to the merged.md", file, group);
                         ignored = 0;
                     }
                 }
@@ -399,13 +401,13 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             else {
                 if(checkBinaryFile(file)){
                     struct stat attrib;
-                    struct tm *last_modify;
+                    time_t last_modify;
 
                     stat(file, &attrib);
-                    last_modify = gmtime(&(attrib.st_mtime));
+                    last_modify = attrib.st_mtime;
                     OSHash_Add(invalid_files, file, last_modify);
                     ignored = 1;
-                    merror("Invalid shared file %s in group %s. Ignoring it.",files[i],group);
+                    merror("Invalid shared file %s in group %s. Ignoring it.",files[i], group);
                 }
             }
 
