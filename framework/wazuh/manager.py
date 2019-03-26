@@ -312,7 +312,7 @@ def upload_list(list_file, path):
     return 'File updated successfully'
 
 
-def get_file(path):
+def get_file(path, validation=False):
     """
     Returns the content of a file.
     :param path: Relative path of file from origin
@@ -322,8 +322,12 @@ def get_file(path):
     full_path = join(common.ossec_path, path)
 
     # validate CDB lists files
-    if re.match(r'^etc/lists', path) and not validate_cdb_list(path):
+    if validation and re.match(r'^etc/lists', path) and not validate_cdb_list(path):
         raise WazuhException(1800, {'path': path})
+
+    # validate XML files
+    if validation and not validate_xml(path):
+        raise WazuhException(1113)
 
     try:
         with open(full_path) as f:
@@ -333,18 +337,37 @@ def get_file(path):
 
     return output
 
+def validate_xml(path):
+    """
+    Validates a XML file
+    :param path: Relative path of file from origin
+    :return: True if XML is OK, False otherwise
+    """
+    full_path = join(common.ossec_path, path)
+    try:
+        with open(full_path) as f:
+            parseString('<root>' + f.read() + '</root>')
+    except IOError:
+        raise WazuhException(1005)
+    except ExpatError:
+        return False
+
+    return True
 
 def validate_cdb_list(path):
     """
     Validates a CDB list
     :param path: Relative path of file from origin
-    :return: Content file.
+    :return: True if CDB list is OK, False otherwise
     """
     full_path = join(common.ossec_path, path)
-    regex_cdb = re.compile(r'^[^:]+:[^:]*$|^$')
+    regex_cdb = re.compile(r'^[^:]+:[^:]*$')
     try:
         with open(full_path) as f:
             for line in f:
+                # skip empty lines
+                if not line.strip():
+                    continue
                 if not re.match(regex_cdb, line):
                     return False
     except IOError:
