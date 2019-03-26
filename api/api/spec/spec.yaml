@@ -1761,7 +1761,7 @@ components:
       description: Agent ID. All posible values since 000 onwards.
       required: true
       schema:
-        $ref: '#/components/schemas/AgentId'
+        $ref: '#/components/schemas/AgentID'
     agent_name:
       in: path
       name: agent_name
@@ -2141,7 +2141,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentId'
+          $ref: '#/components/schemas/AgentID'
     list_groups:
       in: query
       name: list_groups
@@ -3801,7 +3801,7 @@ paths:
                   description: List of agents ID.
                   type: array
                   items:
-                    $ref: '#/components/schemas/AgentId'
+                    $ref: '#/components/schemas/AgentID'
       responses:
         '200':
           description: 'Add multiple agents to a group'
