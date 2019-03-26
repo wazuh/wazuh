@@ -311,9 +311,9 @@ int run_whodata_scan() {
     // Set the system audit policies
     if (result = set_policies(), result) {
         if (result == 2) {
-            mwarn("Audit policies could not be auto-configured due to the Windows version. Check if they are correct for whodata mode.");
+            mwarn(FIM_WARN_WHODATA_AUTOCONF);
         } else {
-            mwarn("Local audit policies could not be configured.");
+            mwarn(FIM_WARN_WHODATA_LOCALPOLICIES);
             return 1;
         }
     }
@@ -885,7 +885,7 @@ whodata_event_node *whodata_list_add(char *id) {
     if (syscheck.wlist.current_size < syscheck.wlist.max_size) {
         if (!syscheck.wlist.alerted && syscheck.wlist.alert_threshold < syscheck.wlist.current_size) {
             syscheck.wlist.alerted = 1;
-            mwarn("Real-time Whodata events queue for Windows has more than %d elements.", syscheck.wlist.alert_threshold);
+            mwarn(FIM_WARN_WHODATA_EVENT_OVERFLOW, syscheck.wlist.alert_threshold);
         }
     } else {
         mdebug1(FIM_WHODATA_FULLQUEUE, syscheck.wlist.max_remove);

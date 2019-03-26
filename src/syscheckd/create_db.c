@@ -58,7 +58,7 @@ static int read_dir_diff(char *dir_name) {
             retval = 0;
             goto end;
         } else {
-            mwarn("Accessing to '%s': [(%d) - (%s)]", dir_name, errno, strerror(errno));
+            mwarn(FIM_WARN_ACCESS, dir_name, errno, strerror(errno));
             goto end;
         }
     }
@@ -158,11 +158,11 @@ void remove_local_diff(){
                 internal_node = curr_node_local->next;
                 mdebug1(FIM_LOCAL_DIFF_DELETE, curr_node_local->key);
                 if (rmdir_ex(curr_node_local->key) != 0) {
-                    mwarn("Could not delete of filesystem '%s'", curr_node_local->key);
+                    mwarn(FIM_WARN_DELETE, curr_node_local->key);
                 }
                 remove_empty_folders(curr_node_local->key);
                 if (OSHash_Delete_ex(syscheck.local_hash, curr_node_local->key) != 0) {
-                    mwarn("Could not delete from hash table '%s'", curr_node_local->key);
+                    mwarn(FIM_WARN_DELETE_HASH_TABLE, curr_node_local->key);
                 }
                 curr_node_local = internal_node;
             }
@@ -249,7 +249,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #ifdef WIN32
         /* Directory links are not supported */
         if (GetFileAttributes(file_name) & FILE_ATTRIBUTE_REPARSE_POINT) {
-            mwarn("Links are not supported: '%s'", file_name);
+            mwarn(FIM_WARN_SYMLINKS_UNSUPPORTED, file_name);
             os_free(wd_sum);
             os_free(alert_msg);
             return (-1);
@@ -308,7 +308,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     }
                 } else {
                     if (opts & CHECK_FOLLOW) {
-                        mwarn("Error in stat() function: %s. This may be caused by a broken symbolic link (%s).", strerror(errno), file_name);
+                        mwarn(FIM_WARN_STAT_BROKEN_LINK, strerror(errno), file_name);
                     }
                     os_free(wd_sum);
                     os_free(alert_msg);
@@ -846,7 +846,7 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         realtime_adddir(dir_name, opts & CHECK_WHODATA);
 #else
 #ifndef WIN32
-        mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
+        mwarn(FIM_WARN_REALTIME_UNSUPPORTED, dir_name);
 #endif
 #endif
     }
@@ -1011,7 +1011,7 @@ int create_db()
 #ifndef INOTIFY_ENABLED
         // Realtime mode on Linux requires inotify
         if (syscheck.opts[i] & CHECK_REALTIME) {
-            mwarn("realtime monitoring request on unsupported system for '%s'", syscheck.dir[i]);
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, syscheck.dir[i]);
         }
 #endif
 #endif
@@ -1176,7 +1176,7 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 #ifdef INOTIFY_ENABLED
             realtime_adddir(real_path, opts & CHECK_WHODATA);
 #else
-            mwarn("realtime monitoring request on unsupported system for '%s'", dir_name);
+            mwarn(FIM_WARN_REALTIME_UNSUPPORTED, dir_name);
 #endif
         }
 

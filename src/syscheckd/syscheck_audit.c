@@ -125,7 +125,7 @@ int set_auditd_config(void) {
             minfo(FIM_AUDIT_NOSOCKET, AUDIT_SOCKET);
             return audit_restart();
         } else {
-            mwarn("Audit socket (%s) does not exist. You need to restart Auditd. Who-data will be disabled.", AUDIT_SOCKET);
+            mwarn(FIM_WARN_AUDIT_SOCKET_NOEXIST, AUDIT_SOCKET);
             return 1;
         }
     }
@@ -174,7 +174,7 @@ int set_auditd_config(void) {
         minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
         return audit_restart();
     } else {
-        mwarn("Audit plugin configuration was modified. You need to restart Auditd. Who-data will be disabled.");
+        mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
         return 1;
     }
 }
@@ -537,7 +537,7 @@ void audit_parse(char *buffer) {
                 snprintf(msg_alert, 512, "ossec: Audit: Monitored directory was removed: Audit rule removed");
                 SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
             } else {
-                mwarn("Detected Audit rules manipulation: Audit rules removed.");
+                mwarn(FIM_WARN_AUDIT_RULES_MODIFIED);
                 // Send alert
                 char msg_alert[512 + 1];
                 snprintf(msg_alert, 512, "ossec: Audit: Detected rules manipulation: Audit rules removed");
@@ -1051,7 +1051,7 @@ void audit_read_events(int *audit_sock, int mode) {
 
         if (byteRead = recv(*audit_sock, buffer + buffer_i, BUF_SIZE - buffer_i - 1, 0), !byteRead) {
             // Connection closed
-            mwarn("Audit: connection closed.");
+            mwarn(FIM_WARN_AUDIT_CONNECTION_CLOSED);
             // Reconnect
             conn_retries = 0;
             sleep(1);

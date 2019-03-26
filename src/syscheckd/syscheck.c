@@ -447,7 +447,7 @@ int main(int argc, char **argv)
   #elif defined(WIN32)
                 minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
   #else
-                mwarn("Ignoring flag for real time monitoring on directory: '%s'.", syscheck.dir[r]);
+                mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
   #endif
             }
             r++;
@@ -467,7 +467,7 @@ int main(int argc, char **argv)
 #ifdef ENABLE_AUDIT
         int out = audit_init();
         if (out < 0)
-            mwarn("Audit events reader thread not started.");
+            mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
 #else
         merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif

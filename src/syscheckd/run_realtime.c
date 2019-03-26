@@ -387,7 +387,7 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
     TCHAR finalfile[MAX_PATH];
 
     if (dwBytes == 0) {
-        mwarn("Real time process: no data. Probably buffer overflow.");
+        mwarn(FIM_WARN_REALTIME_OVERFLOW);
     }
 
     if (dwerror != ERROR_SUCCESS) {
@@ -510,7 +510,7 @@ int realtime_adddir(const char *dir, int whodata)
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_FILE_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status |= WD_STATUS_EXISTS;
         } else {
-            mwarn("'%s' does not exist. Monitoring discarded.", dir);
+            mwarn(FIM_WARN_REALTIME_OPENFAIL, dir);
             syscheck.wdata.dirs_status[whodata - 1].object_type = WD_STATUS_UNK_TYPE;
             syscheck.wdata.dirs_status[whodata - 1].status &= ~WD_STATUS_EXISTS;
             return 0;

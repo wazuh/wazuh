@@ -207,7 +207,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     );
 
     if (w_compress_gzfile(filename, compressed_file) != 0) {
-        mwarn("Cannot create a snapshot of file '%s'", filename);
+        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
     }
 
     return (strdup(diff_str));
@@ -350,7 +350,7 @@ char *seechanges_addfile(const char *filename)
     if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
         seechanges_createpath(old_location);
         if (w_compress_gzfile(filename, compressed_file) != 0) {
-            mwarn("Cannot create a snapshot of file '%s'", filename);
+            mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
         }
         return (NULL);
     }
