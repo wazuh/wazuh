@@ -35,22 +35,20 @@ def status() -> Dict:
                  'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
                  'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
 
-    data = {}
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
     for process in processes:
         data[process] = 'stopped'
 
-        process_pid_files = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
-
-        for pid_file in process_pid_files:
-            m = re.match(r'.+\-(\d+)\.pid$', pid_file)
-
-            pid = "NA"
-            if m and m.group(1):
-                pid = m.group(1)
-
-            if exists(pid_file) and exists('/proc/{0}'.format(pid)):
-                data[process] = 'running'
-                break
+        pidfile = glob(join(run_dir, f"{process}-*.pid"))
+        if pidfile:
+            process_pid = pidfile_regex.match(pidfile[0]).group(1)
+            # if a pidfile exists but the process is not running, it means the process crashed and
+            # wasn't able to remove its own pidfile.
+            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
+        elif exists(join(run_dir, f'{process}.failed')):
+            data[process] = 'failed'
+        elif exists(join(run_dir, f'{process}.start')):
+            data[process] = 'starting' if not exists(join(run_dir, f'.restart')) else 'restarting'
 
     return data
 
