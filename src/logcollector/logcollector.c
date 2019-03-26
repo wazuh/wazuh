@@ -241,6 +241,15 @@ void LogCollectorStart()
             /* Mutexes are not previously initialized under Windows*/
             w_mutex_init(&current->mutex, &win_el_mutex_attr);
 #endif
+        } else {
+            /* On Windows we need to forward the seek for wildcard files */
+#ifdef WIN32
+            set_read(current, i, j);
+
+            if (current->fp) {
+                current->read(current, &r, 1);
+            }
+#endif
         }
 
         if (current->alias) {
