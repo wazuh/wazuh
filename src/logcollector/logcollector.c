@@ -1473,6 +1473,15 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         current->ucs2 = UCS2_LE;
                         current->read = read_ucs2_le;
                         mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                    } else {
+
+                        if (!ucs2) {
+                            if (!strcmp("syslog", current->logformat) || !strcmp("generic", current->logformat)) {
+                                current->read = read_syslog;
+                            } else if (!strcmp("multi-line", current->logformat)) {
+                                current->read = read_multiline;
+                            }
+                        }
                     }
                 }
 #endif
