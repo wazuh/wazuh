@@ -65,6 +65,7 @@ void audit_restore();
 int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
+int whodata_path_filter(char *path);
 
 // Whodata list operations
 whodata_event_node *whodata_list_add(char *id);
@@ -489,9 +490,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 goto clean;
             }
             str_lowercase(path);
-            if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
-                // The file has been marked as ignored
-                mdebug2("The file '%s' has been marked as ignored. It will be discarded.", path);
+            if (whodata_path_filter(path)) {
                 goto clean;
             }
         }
@@ -1198,4 +1197,20 @@ void notify_SACL_change(char *dir) {
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
+
+int whodata_path_filter(char *path) {
+    if (strstr(path, ":\\$recycle.bin")) {
+        mdebug2("File '%s' is in the recycle bin. It will be discarded.", path);
+        return 1;
+    }
+
+    if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
+        // The file has been marked as ignored
+        mdebug2("The file '%s' has been marked as ignored. It will be discarded.", path);
+        return 1;
+    }
+
+    return 0;
+}
+
 #endif
