@@ -117,6 +117,8 @@ lock()
 
 unlock()
 {
+    rm -f ${DIR}/var/run/*.start
+    rm -f ${DIR}/var/run/.restart
     rm -rf ${LOCK}
 }
 
@@ -251,11 +253,13 @@ testconfig()
     for i in ${SDAEMONS}; do
         ${DIR}/bin/${i} -t ${DEBUG_CLI};
         if [ $? != 0 ]; then
-            touch ${DIR}/var/run/${i}.failed
             if [ $USE_JSON = true ]; then
                 echo -n '{"error":20,"message":"'${i}': Configuration error."}'
             else
                 echo "${i}: Configuration error. Exiting"
+            fi
+            if [ ! -f ${DIR}/var/run/.restart ]; then
+                touch ${DIR}/var/run/${i}.failed
             fi
             unlock;
             exit 1;
@@ -279,7 +283,7 @@ start()
         else
             echo "OSSEC analysisd: Testing rules failed. Configuration error. Exiting."
         fi
-        touch ${DIR}/var/run/${i}.failed
+        touch ${DIR}/var/run/ossec-analysisd.failed
         exit 1;
     fi
 
@@ -333,6 +337,7 @@ start()
         pstatus ${i};
         if [ $? = 0 ]; then
             ## Create starting flag
+            rm -f ${DIR}/var/run/${i}.failed
             touch ${DIR}/var/run/${i}.start
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
@@ -376,8 +381,7 @@ start()
     else
         echo "Completed."
     fi
-    rm -f ${DIR}/var/run/${i}.start
-    rm -f ${DIR}/var/run/${i}.failed
+    rm -f ${DIR}/var/run/*.start
 }
 
 pstatus()
