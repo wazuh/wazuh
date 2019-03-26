@@ -142,7 +142,8 @@ const char *vu_severities[] = {
     "Critical",
     "None",
     "Negligible",
-    "Untriaged"
+    "Untriaged",
+    "-"
 };
 
 const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
@@ -2840,7 +2841,7 @@ int wm_vuldet_db_empty() {
 
 const char *wm_vuldet_get_unified_severity(char *severity) {
     if (!severity || strcasestr(severity, vu_severities[VU_UNKNOWN]) || strcasestr(severity, vu_severities[VU_UNTR])) {
-        return vu_severities[VU_UNKNOWN];
+        return vu_severities[VU_UNDEFINED_SEV];
     } else if (strcasestr(severity, vu_severities[VU_LOW]) || strcasestr(severity, vu_severities[VU_NEGL])) {
         return vu_severities[VU_LOW];
     } else if (strcasestr(severity, vu_severities[VU_MEDIUM]) || strcasestr(severity, vu_severities[VU_MODERATE])) {
@@ -2868,7 +2869,7 @@ const char *wm_vuldet_get_unified_severity(char *severity) {
             sev_count++;
         }
     }
-    return vu_severities[VU_UNKNOWN];
+    return vu_severities[VU_UNDEFINED_SEV];
 }
 
 #endif
