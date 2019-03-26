@@ -11,6 +11,7 @@ from typing import Dict, Union, Tuple
 from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh.cluster.dapi import requests_list as rq
 from wazuh import exception, agent, common, utils
+from wazuh import manager
 import logging
 import os
 import time
@@ -92,6 +93,25 @@ class DistributedAPI:
                 raise
             return self.print_json(data=str(e), error=1000)
 
+    def check_wazuh_status(self):
+        """
+        There are some services that are required for wazuh to correctly process API requests. If any of those services
+        is not running, the API must raise an exception indicating that:
+            * It's not ready yet to process requests if services are restarting
+            * There's an error in any of those services that must be adressed before using the API if any service is
+              in failed status.
+            * Wazuh must be started before using the API is the services are stopped.
+
+        The basic services wazuh needs to be running are: wazuh-modulesd, ossec-remoted, ossec-analysisd, ossec-execd and wazuh-db
+        """
+        if self.input_json['function'] == '/manager/status' or self.input_json['function'] == '/cluster/:node_id/status':
+            return
+        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+        status = operator.itemgetter(*basic_services)(manager.status())
+        for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
+            if status_name in status:
+                raise exception.WazuhException(exc_code, status)
+
     def print_json(self, data: Union[Dict, str], error: int = 0) -> str:
         def encode_json(o):
             try:
@@ -115,6 +135,8 @@ class DistributedAPI:
             return data
         try:
             before = time.time()
+
+            self.check_wazuh_status()
 
             timeout = None if self.input_json['arguments']['wait_for_complete'] \
                            else self.cluster_items['intervals']['communication']['timeout_api_exe']

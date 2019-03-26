@@ -33,7 +33,7 @@ def status() -> Dict:
 
     processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
                  'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db']
 
     data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
     for process in processes:
@@ -377,8 +377,8 @@ def restart():
     try:
         conn.send(msg.encode())
         conn.close()
-    except socket.error:
-        raise WazuhException(1014)
+    except socket.error as e:
+        raise WazuhException(1014, str(e))
 
     return "Restarting manager"
 
@@ -423,9 +423,9 @@ def validation():
     # remove api_socket if exists
     try:
         remove(api_socket_path)
-    except OSError:
+    except OSError as e:
         if exists(api_socket_path):
-            raise WazuhException(1014)
+            raise WazuhException(1014, str(e))
 
     # up API socket
     try:
@@ -450,8 +450,8 @@ def validation():
     try:
         execq_socket.send(execq_msg.encode())
         execq_socket.close()
-    except socket.error:
-        raise WazuhException(1014)
+    except socket.error as e:
+        raise WazuhException(1014, str(e))
     finally:
         execq_socket.close()
 
@@ -461,8 +461,8 @@ def validation():
         # receive data
         datagram = api_socket.recv(4096)
         buffer.extend(datagram)
-    except socket.timeout:
-        raise WazuhException(1014)
+    except socket.timeout as e:
+        raise WazuhException(1014, str(e))
     finally:
         api_socket.close()
         # remove api_socket
@@ -471,8 +471,8 @@ def validation():
 
     try:
         response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-    except (KeyError, json.decoder.JSONDecodeError):
-        raise WazuhException(1904)
+    except (KeyError, json.decoder.JSONDecodeError) as e:
+        raise WazuhException(1904, str(e))
 
     return response
 
