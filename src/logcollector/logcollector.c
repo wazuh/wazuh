@@ -135,13 +135,17 @@ void LogCollectorStart()
         win_read_vista_sec();
     }
 
+    check_pattern_expand(1);
+
+    check_pattern_expand_excluded();
+
     /* Check for ASCII, UTF-8 */
     check_text_only();
 
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
 
-    check_pattern_expand(1);
+
 #endif
 
     mdebug1("Entering LogCollectorStart().");
@@ -679,10 +683,9 @@ void LogCollectorStart()
                 }
             }
 
-#ifndef WIN32
             /* Check for excluded files */
             check_pattern_expand_excluded();
-#endif
+
             /* Check for ASCII, UTF-8 */
             check_text_only();
 
