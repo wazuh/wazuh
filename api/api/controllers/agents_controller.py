@@ -5,6 +5,8 @@
 import asyncio
 import connexion
 import logging
+#import pydevd
+#pydevd.settrace('172.19.0.2', port=12345, stdoutToServer=True, stderrToServer=True)
 
 from wazuh.agent import Agent
 import wazuh.configuration as configuration
@@ -58,7 +60,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
 
     return data, 200
 
-#Don't Work
+
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
                    status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
                    version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
@@ -459,7 +461,7 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):  # noqa: E50
 
     return data, 200
 
-#Not work
+
 def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Restart an agent.
 
@@ -1057,10 +1059,8 @@ def insert_agent(pretty=False, wait_for_complete=False, name=None, ip=None, id=N
 
     :rtype: 
     """
-
     # get body parameters
     if connexion.request.is_json:
-        return connexion.request.get_json()
         agent_inserted_model = AgentInserted.from_dict(connexion.request.get_json())
     else:
         return 'ERROR', 400
@@ -1218,8 +1218,8 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     else:
         return 'ERROR', 400
     
-    f_kwargs = {**{'restart_all': False}, **agent_list_model.to_dict()}
-
+    f_kwargs = {**{}, **agent_list_model.to_dict()}
+    #return f_kwargs
     dapi = DistributedAPI(f=Agent.restart_agents,
                         f_kwargs=remove_nones_to_dict(f_kwargs),
                         request_type='distributed_master',
