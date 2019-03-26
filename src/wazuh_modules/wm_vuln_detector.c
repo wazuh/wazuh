@@ -1554,7 +1554,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                             double_condition = 0;
                         }
                     } else {
-                        if (strstr(node[i]->values[j], pending_state)) {
+                        if (wstr_end(node[i]->values[j], pending_state)) {
                             parsed_oval->vulnerabilities->pending = 1;
                         } else {
                             parsed_oval->vulnerabilities->pending = 0;
