@@ -389,11 +389,11 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 if( modified != last_modify){
                     if(checkBinaryFile(file)){
                         OSHash_Set(invalid_files, file, last_modify);
-                        mdebug1("File %s in group %s changed but it is still invalid.", file, group);
+                        mdebug1("File %s in group %s changed but it is still invalid.", files[i], group);
                     }
                     else{
                         OSHash_Delete(invalid_files, file);
-                        mdebug1("File %s in group %s is valid now. Added to the merged.md", file, group);
+                        mdebug1("File %s in group %s is valid now. Added to the merged.md", files[i], group);
                         ignored = 0;
                     }
                 }
