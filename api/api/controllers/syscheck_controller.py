@@ -21,7 +21,19 @@ def put_syscheck(pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
     """
-    pass
+    f_kwargs = {'all_agents': True}
+
+    dapi = DistributedAPI(f=syscheck.run,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, 
