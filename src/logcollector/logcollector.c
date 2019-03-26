@@ -20,6 +20,7 @@ static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 static void files_lock_init(void);
+static void check_text_only();
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
 #else 
@@ -97,6 +98,9 @@ void LogCollectorStart()
 
     check_pattern_expand(1);
 
+    /* Check for ASCII, UTF-8 */
+    check_text_only();
+
     /* Set the files mutexes */
     w_set_file_mutexes();
 #else
@@ -117,6 +121,9 @@ void LogCollectorStart()
     if (isVista) {
         win_read_vista_sec();
     }
+
+    /* Check for ASCII, UTF-8 */
+    check_text_only();
 
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
@@ -659,6 +666,9 @@ void LogCollectorStart()
                 }
             }
 
+            /* Check for ASCII, UTF-8 */
+            check_text_only();
+
             w_rwlock_unlock(&files_update_rwlock);
 
             if (f_reload >= reload_interval) {
@@ -1009,6 +1019,29 @@ void set_read(logreader *current, int i, int j) {
     } else if (strcmp("audit", current->logformat) == 0) {
         current->read = read_audit;
     } else {
+#ifdef WIN32
+        if (current->only) {
+            /* If the file is empty, set it to UCS-2 LE */
+            if (FileSizeWin(current->file) == 0) {
+                current->ucs2 = UCS2_LE;
+                current->read = read_ucs2_le;
+                mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                return;
+            }
+        }
+
+        if(current->ucs2 == UCS2_LE){
+            mdebug1("File '%s' is UCS-2 LE",current->file);
+            current->read = read_ucs2_le;
+            return;
+        }
+
+        if(current->ucs2 == UCS2_BE){
+            mdebug1("File '%s' is UCS-2 BE",current->file);
+            current->read = read_ucs2_be;
+            return;
+        }
+#endif
         current->read = read_syslog;
     }
 }
@@ -1637,6 +1670,30 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     }
                 }
             }
+            
+            int ucs2 = is_usc2(current->file);
+            if (ucs2) {
+                current->ucs2 = ucs2;
+
+                if (current->ucs2 == UCS2_LE) {
+                    mdebug1("File '%s' is UCS-2 LE",current->file);
+                    current->read = read_ucs2_le;
+                }
+
+                if (current->ucs2 == UCS2_BE) {
+                    mdebug1("File '%s' is UCS-2 BE",current->file);
+                    current->read = read_ucs2_be;
+                }
+            }
+
+            if (current->only) {
+                /* If the file is empty, set it to UCS-2 LE */
+                if (FileSizeWin(current->file) == 0) {
+                    current->ucs2 = UCS2_LE;
+                    current->read = read_ucs2_le;
+                    mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                }
+            }
 #endif
                 /* Finally, send to the function pointer to read it */
                 current->read(current, &r, 0);
@@ -1750,4 +1807,53 @@ void files_lock_init()
 
     w_rwlock_init(&files_update_rwlock, &attr);
     pthread_rwlockattr_destroy(&attr);
+}
+
+static void check_text_only() {
+    int i, j;
+
+    IT_control f_control = 0;
+    logreader *current;
+    char file_name[PATH_MAX];
+
+    for (i = 0, j = -1;; i++) {
+        if (f_control = update_current(&current, &i, &j), f_control) {
+            if (f_control == NEXT_IT) {
+                continue;
+            } else {
+                break;
+            }
+        }
+
+        /* Check for files to exclude */
+        if(current->file && !current->command && current->only) {
+            snprintf(file_name, PATH_MAX, "%s", current->file);
+
+            if(is_ascii_utf8(current->file)) {
+                #ifdef WIN32
+
+                    int ucs2 = is_usc2(current->file);
+                    if(ucs2) {
+                        current->ucs2 = ucs2;
+                        continue;
+                    }
+
+                #endif
+                int result = 0;
+                if (j < 0) {
+                    result = Remove_Localfile(&logff, i, 0, 1);
+                } else {
+                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0);
+                }
+
+                if (result) {
+                    merror_exit(REM_ERROR, file_name);
+                } else {
+                    mdebug2(NON_TEXT_FILE, file_name);
+                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                }
+                i--;
+            }
+        }
+    }
 }
