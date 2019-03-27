@@ -366,7 +366,7 @@ int SendMSG(__attribute__((unused)) int queue, const char *message, const char *
         if (dwWaitResult != WAIT_OBJECT_0) {
             switch (dwWaitResult) {
                 case WAIT_TIMEOUT:
-                    merror("Error waiting mutex (timeout).");
+                    mdebug2("Sending mutex timeout.");
                     sleep(5);
                     continue;
                 case WAIT_ABANDONED:
@@ -520,7 +520,7 @@ int StartMQ(__attribute__((unused)) const char *path, __attribute__((unused)) sh
 }
 
 char *get_win_agent_ip(){
-    
+
     typedef char* (*CallFunc)(PIP_ADAPTER_ADDRESSES pCurrAddresses, int ID, char * timestamp);
 
     char *agent_ip = NULL;
@@ -652,6 +652,11 @@ char *get_win_agent_ip(){
             }
         }
     }
+
+    if (pAddresses) {
+        win_free((HLOCAL)pAddresses);
+    }
+
     return agent_ip;
 }
 
@@ -725,6 +730,8 @@ void send_win32_info(time_t curr_time)
         } else {
             snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n", __win32_uname, tmp_labels, __win32_shared, label_ip);
         }
+
+        free(agent_ip);
     }
     else{
         if (File_DateofChange(AGENTCONFIGINT) > 0) {

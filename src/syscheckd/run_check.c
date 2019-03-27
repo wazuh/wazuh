@@ -324,7 +324,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     char *str_perm = NULL;
     char *user;
 #else
-    char *w_inode;
+    char *w_inode = NULL;
     char str_owner[50], str_group[50], str_perm[50];
 #endif
 
@@ -345,6 +345,13 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         char alert_msg[OS_SIZE_6144 + 1];
         char wd_sum[OS_SIZE_6144 + 1];
 
+#ifdef WIN_WHODATA
+        // If this flag is enable, the remove event will be notified at another point
+        if (evt && evt->ignore_remove_event) {
+            mdebug2("The '%s' file does not exist, but this will be notified when the corresponding event is received.", file_name);
+            return 0;
+        }
+#endif
         alert_msg[sizeof(alert_msg) - 1] = '\0';
 
         // Extract the whodata sum here to not include it in the hash table
@@ -362,9 +369,7 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 
 #ifndef WIN32
         if(evt && evt->inode) {
-            if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode), w_inode) {
-                free(w_inode);
-            }
+            w_inode = OSHash_Delete_ex(syscheck.inode_hash, evt->inode);
         }
         else {
             if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), s_node) {
@@ -372,10 +377,23 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
                 char *checksum_inode;
 
                 os_strdup(s_node->checksum, checksum_inode);
-                inode_str = get_attr_from_checksum(checksum_inode, SK_INODE);
-                
-                if (w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str), w_inode) {
-                    free(w_inode);
+                if(inode_str = get_attr_from_checksum(checksum_inode, SK_INODE), !inode_str || *inode_str == '\0') {
+                    OSHashNode *s_inode;
+                    unsigned int *i;
+                    os_calloc(1, sizeof(unsigned int), i);
+
+                    for (s_inode = OSHash_Begin(syscheck.inode_hash, i); s_inode; s_inode = OSHash_Next(syscheck.inode_hash, i, s_inode)) {
+                        if(s_inode && s_inode->data){
+                            if(!strcmp(s_inode->data, file_name)) {
+                                inode_str = s_inode->key;
+                                break;
+                            }
+                        }
+                    }
+                    os_free(i);
+                }
+                if(inode_str){
+                    w_inode = OSHash_Delete_ex(syscheck.inode_hash, inode_str);
                 }
                 os_free(checksum_inode);
             }
@@ -383,9 +401,12 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
 #endif
         // Delete from hash table
         if (s_node = OSHash_Delete_ex(syscheck.fp, file_name), s_node) {
-            free(s_node->checksum);
-            free(s_node);
+            os_free(s_node->checksum);
+            os_free(s_node);
         }
+#ifndef WIN32
+        os_free(w_inode);
+#endif
 
         struct timeval timeout = {0, syscheck.rt_delay * 1000};
         select(0, NULL, NULL, NULL, &timeout);

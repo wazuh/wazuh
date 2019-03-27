@@ -29,6 +29,9 @@ class WazuhException(Exception):
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
+        1017: 'Wazuh is restarting',
+        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
+        1019: 'There is a failed process. Review that before using the API.',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -127,7 +130,7 @@ class WazuhException(Exception):
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
-        1734: 'Error unsetting agent group',
+        1734: 'Agent does not belong to the specified group',
         1735: 'Agent version is not compatible with this feature',
         1736: 'Error getting all groups',
         1737: 'Maximum number of groups per multigroup is 256',
@@ -138,6 +141,7 @@ class WazuhException(Exception):
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
+        1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

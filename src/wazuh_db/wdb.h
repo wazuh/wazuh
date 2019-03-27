@@ -107,6 +107,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_SCAN_INFO_DELETE,
     WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
+    WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_SIZE
 } wdb_stmt;
 
@@ -204,7 +205,7 @@ int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
 
 /* Update a configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int pm_id);
+int wdb_sca_update(wdb_t * wdb, char * result, int pm_id,int scan_id);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
 int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
@@ -237,7 +238,7 @@ int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan
 int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output);
 
 /* Gets the result of all checks in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
-int wdb_sca_checks_get_result(wdb_t * wdb, int scan_id, char * output);
+int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output);
 
 /* Insert policy entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references);
@@ -256,6 +257,9 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id);
 
 /* Delete a configuration assessment check compliances. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_compliances_delete(wdb_t * wdb);
+
+/* Delete distinct configuration assessment check. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);

@@ -722,7 +722,7 @@ next_it:
     return writted;
 error:
     if (perm_type) {
-        cJSON_free(perm_type);
+        cJSON_Delete(perm_type);
     }
     os_free(account_name);
     mdebug1("The file permissions could not be decoded: '%s'", raw_perm);
@@ -1004,7 +1004,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
         goto end;
     }
 
-    if (!has_dacl) {
+    if (!has_dacl || !f_acl) {
         mdebug1("'%s' has no DACL, so no permits can be extracted.", file_path);
         goto end;
     }
