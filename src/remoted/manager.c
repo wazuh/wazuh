@@ -532,7 +532,7 @@ static void c_files()
     char *key = NULL;
     char *data = NULL;
     os_sha256 multi_group_hash;
-    char _hash[9] = {0};
+    char * _hash = NULL;
 
     mdebug2("Updating shared files sums.");
 
@@ -693,8 +693,12 @@ static void c_files()
             }
 
             OS_SHA256_String(groups_info,multi_group_hash);
-            strncpy(_hash,multi_group_hash,8);
-            if(OSHash_Add_ex(m_hash, groups_info, strdup(_hash)) != 2){
+
+            os_calloc(9, sizeof(char), _hash);
+            snprintf(_hash, 8, "%s", multi_group_hash);
+
+            if(OSHash_Add_ex(m_hash, groups_info, _hash) != 2){
+                os_free(_hash);
                 mdebug2("Couldn't add multigroup '%s' to hash table 'm_hash'", groups_info);
             }
         }
