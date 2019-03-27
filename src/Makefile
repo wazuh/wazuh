@@ -790,18 +790,17 @@ $(EXTERNAL_AUDIT)Makefile:
 
 	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
-#### msgoack #########
+#### msgpack #########
 
-msgpack_c := $(wildcard $(EXTERNAL_MSGPACK)/src/*.c)
+msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
 msgpack_o := $(msgpack_c:.c=.o)
+
+${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
-
-$(EXTERNAL_MSGPACK)src/%.o: $(EXTERNAL_MSGPACK)src/%.c
-	$(OSSEC_CC) $(OSSEC_CFLAGS) -fPIC -c $^ -o $@
-
 
 ################################
 #### External dependencies  ####

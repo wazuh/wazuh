@@ -35,13 +35,13 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
         os_calloc(1, sizeof(wm_fluent_t), fluent);
         fluent->enabled = 1;
         fluent->tag = NULL;
-        fluent->socket_path = NULL;
+        fluent->sock_path = NULL;
         fluent->address = "localhost";
         fluent->port = 24224;
         fluent->shared_key = NULL;
-        fluent->ca_file = NULL;
-        fluent->user = NULL;
-        fluent->password = NULL;
+        fluent->certificate = NULL;
+        fluent->user_name = NULL;
+        fluent->user_pass = NULL;
         module->context = &WM_FLUENT_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = fluent;
@@ -92,7 +92,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            os_strdup(nodes[i]->content,fluent->socket_path);
+            os_strdup(nodes[i]->content,fluent->sock_path);
         }
         else if (!strcmp(nodes[i]->element, XML_ADDRESS))
         {
@@ -141,7 +141,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            os_strdup(nodes[i]->content,fluent->ca_file);
+            os_strdup(nodes[i]->content,fluent->certificate);
         }
         else if (!strcmp(nodes[i]->element, XML_USER))
         {
@@ -153,7 +153,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            os_strdup(nodes[i]->content,fluent->user);
+            os_strdup(nodes[i]->content,fluent->user_name);
         }
         else if (!strcmp(nodes[i]->element, XML_PASSWORD))
         {
@@ -165,37 +165,12 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 return OS_INVALID;
             }
 
-            os_strdup(nodes[i]->content,fluent->password);
+            os_strdup(nodes[i]->content,fluent->user_pass);
         }
         else
         {
             mwarn("No such tag <%s> at module '%s'.", nodes[i]->element, WM_FLUENT_CONTEXT.name);
         }
-    }
-
-    // Validate parameters
-
-    /* Tag is required */
-    if (fluent->tag == NULL) {
-        merror("Empty or missing tag at module '%s'", WM_FLUENT_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    /* Socket path required */
-    if (fluent->socket_path == NULL) {
-        merror("Empty or missing socket path at module '%s'", WM_FLUENT_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    /* Password required if user is defined */
-    if ( fluent->user && fluent->password == NULL ) {
-        merror("Empty or missing password at module '%s'", WM_FLUENT_CONTEXT.name);
-        return OS_INVALID;
-    }
-
-    /* TLS */
-    if ( fluent->shared_key ) {
-        minfo("Using secure mode as shared key defined at module '%s'",WM_FLUENT_CONTEXT.name);
     }
 
     return 0;
