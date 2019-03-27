@@ -1,17 +1,27 @@
-    # coding: utf-8
+# coding: utf-8
 
 from __future__ import absolute_import
-from datetime import date, datetime  # noqa: F401
+from datetime import date, datetime
 
-from typing import List, Dict  # noqa: F401
+from typing import List, Dict
 
 from api.models.base_model_ import Model
+from api.models.agent_os import AgentOs  # noqa: F401,E501
+from api.models.agent_status import AgentStatus  # noqa: F401,E501
 from api import util
+
+#from __future__ import absolute_import
+#from datetime import date, datetime  # noqa: F401
+
+#from typing import List, Dict  # noqa: F401
+
+#from api.models.base_model_ import Model
+#from api import util
 
 
 class AgentInserted(Model):
 
-    def __init__(self, name='', ip='any', force_time=-1):
+    def __init__(self, name='', ip='any', id='', key='', force_time=-1):
         """AgentAdded body model
         :param name: Agent name.
         :type name: str
@@ -48,7 +58,6 @@ class AgentInserted(Model):
 
     @classmethod
     def from_dict(cls, dikt) -> Dict:
-        return "OK"
         """Returns the dict as a model
         :param dikt: A dict.
         :type: dict

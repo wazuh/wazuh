@@ -11,20 +11,20 @@ from api import util
 
 class AgentList(Model):
 
-    def __init__(self, agent_id: List[str]=None):
+    def __init__(self, ids: List[str]=None):
         """AgentList body model
-        :param agent_id: List of agents ID.
-        :type agent_id: List[str]
+        :param ids: List of agents ID.
+        :type ids: List[str]
         """
         self.swagger_types = {
-            'agent_id': List[str]
+            'ids': List[str]
         }
 
         self.attribute_map = {
-            'agent_id': 'agent_id'
+            'ids': 'ids'
         }
 
-        self._agent_id = agent_id
+        self._ids = ids
 
     @classmethod
     def from_dict(cls, dikt) -> 'AgentList':
@@ -38,16 +38,16 @@ class AgentList(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def agent_id(self) -> List[str]:
+    def ids(self) -> List[str]:
         """
         :return: List of agents ID
         :rtype: List[str]
         """
-        return self._agent_id
+        return self._ids
 
-    @agent_id.setter
-    def agent_id(self, agent_id):
+    @ids.setter
+    def ids(self, ids):
         """
-        :param agent_id: List of agents ID
+        :param ids: List of agents ID
         """
-        self._agent_id = agent_id
+        self._ids = ids

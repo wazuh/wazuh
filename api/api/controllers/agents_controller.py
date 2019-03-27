@@ -5,8 +5,9 @@
 import asyncio
 import connexion
 import logging
+
 #import pydevd
-#pydevd.settrace('172.19.0.2', port=12345, stdoutToServer=True, stderrToServer=True)
+#pydevd.settrace('172.18.0.2', port=12345, stdoutToServer=True, stderrToServer=True)
 
 from wazuh.agent import Agent
 import wazuh.configuration as configuration
@@ -595,7 +596,7 @@ def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E
 
     return data, 200
 
-#Not work
+
 def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get upgrade result from agent.
 
@@ -728,7 +729,7 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
 
     return data, 200
 
-#Incomplete rtype
+
 def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
     """Get all groups. 
     
@@ -800,7 +801,7 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
 
     return data, 200
 
-#Incomplete rtype
+
 def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, status=None, q=''):  # noqa: E501
     """Remove group. 
     
@@ -882,7 +883,7 @@ def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
 
     return data, 200
 
-#Incomplete rtype
+
 def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Get group configuration. 
     
@@ -948,7 +949,7 @@ def post_group_config(group_id, pretty=False, wait_for_complete=False, offset=0,
 
     return data, 200
 
-#Incomplete rtype
+
 def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
     """Get group file. 
     
@@ -993,7 +994,7 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
 
     return data, 200
 
-#Incomplete rtype
+
 def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, type=None, format=None):  # noqa: E501
     """Get group file. 
     
@@ -1036,8 +1037,8 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
 def post_group_file():
     pass
 
-#Not work
-def insert_agent(pretty=False, wait_for_complete=False, name=None, ip=None, id=None, key=None, force_time=None):  # noqa: E501
+
+def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     """Get group file. 
     
     Return the files placed under the group directory.     # noqa: E501
@@ -1080,7 +1081,7 @@ def insert_agent(pretty=False, wait_for_complete=False, name=None, ip=None, id=N
 
     return data, 200
 
-#Incomplete model
+
 def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
     """Get an agent by its name
     
@@ -1113,7 +1114,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
 
     return data, 200
 
-#Incomplete model
+
 def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, q=''):
     """Get agents without group.
 
@@ -1158,7 +1159,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=No
 
     return data, 200
 
-#Incomplete model
+
 def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, q=''):
     """Get outdated agents.
 
@@ -1197,7 +1198,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
 
     return data, 200
 
-#Not Work
+
 def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     """Restart a list of agents.
     
@@ -1207,8 +1208,8 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     :type pretty: bool
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
-    :param agent_id_list: List of agents ID.
-    :type agent_id_list: List[str]
+    :param ids: List of agents ID.
+    :type ids: List[str]
 
     :rtype: AgentItemsAffected
     """
@@ -1218,7 +1219,10 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     else:
         return 'ERROR', 400
     
-    f_kwargs = {**{}, **agent_list_model.to_dict()}
+    dict = agent_list_model.to_dict()
+    dict['agent_id'] = dict.pop('ids')
+    
+    f_kwargs = {**{}, **dict}
     #return f_kwargs
     dapi = DistributedAPI(f=Agent.restart_agents,
                         f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1281,7 +1285,7 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
     
     return data, 200
 
-#Incomplete model
+
 def get_agent_summary(pretty=False, wait_for_complete=False,):  # noqa: E501
     """Get agents summary.
 

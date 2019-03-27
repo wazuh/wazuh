@@ -711,7 +711,7 @@ class WazuhDBQuery(object):
 
     def _parse_select_filter(self, select_fields):
         if select_fields:
-            set_select_fields = set(select_fields['fields'])
+            set_select_fields = set(select_fields)
             set_fields_keys = set(self.fields.keys()) - self.extra_fields
             if not set_select_fields.issubset(set_fields_keys):
                 raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
