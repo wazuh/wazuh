@@ -208,7 +208,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
-    return final, 200
+    return data, 200
 
 
 def get_rules_id(rule_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
