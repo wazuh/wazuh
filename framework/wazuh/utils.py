@@ -503,6 +503,12 @@ def load_wazuh_xml(xml_path):
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
+    # replace \< by &lt;
+    data = re.sub(r'\\<', '&lt;', data)
+
+    # replace \> by &gt;
+    data = re.sub(r'\\>', '&gt;', data)
+
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
 
