@@ -773,7 +773,7 @@ class WazuhDBQuery(object):
         Parses legacy filters.
         """
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else [value]
+        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
                                   for name, value in self.legacy_filters.items()}
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
