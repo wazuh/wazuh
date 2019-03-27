@@ -1427,7 +1427,7 @@ endif
 
 install_python:
 	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
-	ln -fs ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
+	ln -f ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
 
 python_dependencies := requirements.txt
 
