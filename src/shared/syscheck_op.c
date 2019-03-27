@@ -581,7 +581,7 @@ const char *get_group(int gid) {
     }
 }
 
-int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_array) {
+int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJSON *perm_obj) {
     int writted = 0;
     int size;
     char *perm_it = NULL;
@@ -589,7 +589,6 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
     char *account_name = NULL;
     static char *str_a = "allowed";
     static char *str_d = "denied";
-    static char *str_n = "name";
     cJSON *perm_type = NULL;
     cJSON *json_it;
     char a_type;
@@ -626,17 +625,16 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
             mask = strtol(base_it, NULL, 10);
         }
 
-        if (perm_array) {
+        if (perm_obj) {
             cJSON *a_found = NULL;
             char *perm_type_str;
 
 
             perm_type_str = (a_type == '0') ? str_a : str_d;
-            for (json_it = perm_array->child; json_it; json_it = json_it->next) {
-                cJSON *obj;
-                if (obj = cJSON_GetObjectItem(json_it, str_n), obj) {
-                    if (!strcmp(obj->valuestring, account_name)) {
-                        if (obj = cJSON_GetObjectItem(json_it, perm_type_str), obj) {
+            for (json_it = perm_obj->child; json_it; json_it = json_it->next) {
+                if (json_it->string) {
+                    if (!strcmp(json_it->string, account_name)) {
+                        if (cJSON_GetObjectItem(json_it->child, perm_type_str)) {
                             mdebug2("ACL [%s] fragmented. All permissions may not be displayed.", raw_perm);
                             goto next_it;
                         }
@@ -674,8 +672,7 @@ int decode_win_permissions(char *str, int str_size, char *raw_perm, char seq, cJ
                 if (a_found = cJSON_CreateObject(), !a_found) {
                     goto error;
                 }
-                cJSON_AddStringToObject(a_found, str_n, account_name);
-                cJSON_AddItemToArray(perm_array, a_found);
+                cJSON_AddItemToObject(perm_obj, account_name, a_found);
             }
 
             cJSON_AddItemToObject(a_found, perm_type_str, perm_type);
@@ -731,17 +728,17 @@ error:
 }
 
 cJSON *perm_to_json(char *permissions) {
-    cJSON *perm_array;
+    cJSON *perm_obj;
 
-    if (perm_array = cJSON_CreateArray(), !perm_array) {
+    if (perm_obj = cJSON_CreateObject(), !perm_obj) {
         return NULL;
     }
 
-    if (!decode_win_permissions(NULL, 0, permissions, 0, perm_array)) {
-        os_free(perm_array);
+    if (!decode_win_permissions(NULL, 0, permissions, 0, perm_obj)) {
+        os_free(perm_obj);
     }
 
-    return perm_array;
+    return perm_obj;
 }
 
 cJSON *attrs_to_json(unsigned int attributes) {
