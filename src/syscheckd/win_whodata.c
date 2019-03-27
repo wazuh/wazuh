@@ -773,13 +773,19 @@ add_whodata_evt:
                                 last_mdir_tm + WHODATA_DIR_REMOVE_INTERVAL < now) {
                                 if (w_evt->path) {
                                     char *dir_path;
+                                    char *saved_path;
+
+                                    saved_path = w_evt->path;
+
+                                    os_calloc(strlen(w_evt->path) + 2, sizeof(char), dir_path);
+                                    snprintf(dir_path, strlen(w_evt->path) + 2, "%s\\", w_evt->path);
+                                    w_evt->path = dir_path;
 
                                     // Notify removed files
-                                    os_calloc(strlen(w_evt->path) + 2, sizeof(char), dir_path);
-                                    snprintf(dir_path, strlen(w_evt->path) + 2, "%s/", dir_path);
-                                    mdebug1("Directory %s has been moved or removed.", dir_path);
+                                    mdebug1("Directory '%s' has been moved or removed.", dir_path);
                                     OSHash_It_ex(syscheck.fp, (void *) w_evt, whodata_remove_folder);
                                     free(dir_path);
+                                    w_evt->path = saved_path;
 
                                     // Find new files
                                     read_dir(syscheck.dir[w_evt->dir_position], w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0);
