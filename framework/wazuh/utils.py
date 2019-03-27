@@ -504,10 +504,10 @@ def load_wazuh_xml(xml_path):
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt
-    data = re.sub(r'\\\<', '&lt', data)
+    data = re.sub(r'\\<', '&lt', data)
 
     # replace \> by &gt
-    data = re.sub(r'\\\>', '&gt', data)
+    data = re.sub(r'\\>', '&gt', data)
 
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
