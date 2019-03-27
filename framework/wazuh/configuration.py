@@ -96,6 +96,10 @@ conf_sections = {
     'labels': {
         'type': 'duplicate',
         'list_options': ['label']
+    },
+    'sca': {
+       'type': 'merge',
+       'list_options': ['policies']
     }
 }
 
@@ -185,6 +189,8 @@ def _read_option(section_name, opt):
         opt_value = {'value': opt.text}
         for a in opt.attrib:
             opt_value[a] = opt.attrib[a]
+    elif section_name == 'sca' and opt_name == 'policies':
+        opt_value = [child.text for child in opt]
     else:
         if opt.attrib:
             opt_value = {}
