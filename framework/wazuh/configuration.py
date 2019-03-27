@@ -183,14 +183,13 @@ def _read_option(section_name, opt):
             json_path = json_attribs.copy()
             json_path['path'] = path.strip()
             opt_value.append(json_path)
-    elif section_name == 'cluster' and opt_name == 'nodes':
+    elif (section_name == 'cluster' and opt_name == 'nodes') or \
+        (section_name == 'sca' and opt_name == 'policies'):
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
         for a in opt.attrib:
             opt_value[a] = opt.attrib[a]
-    elif section_name == 'sca' and opt_name == 'policies':
-        opt_value = [child.text for child in opt]
     else:
         if opt.attrib:
             opt_value = {}
