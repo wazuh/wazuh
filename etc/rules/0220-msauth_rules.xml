@@ -488,7 +488,7 @@
 
   <rule id="18217" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+\p*S-1-5-32-544</regex>
+    <regex> ID:\s+\p*S-1-5-32-544\s</regex>
     <description>Windows: Administrators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -496,7 +496,7 @@
 
   <rule id="18218" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-1-0}| ID:\s+S-1-1-0</regex>
+    <regex> ID:\s+%{S-1-1-0}| ID:\s+S-1-1-0\s</regex>
     <description>Windows: Everyone Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -504,7 +504,7 @@
 
   <rule id="18219" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-9}| ID:\s+S-1-5-9</regex>
+    <regex> ID:\s+%{S-1-5-9}| ID:\s+S-1-5-9\s</regex>
     <description>Windows: Enterprise Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -512,7 +512,7 @@
 
   <rule id="18220" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-11}| ID:\s+S-1-5-11</regex>
+    <regex> ID:\s+%{S-1-5-11}| ID:\s+S-1-5-11\s</regex>
     <description>Windows: Authenticated Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -520,7 +520,7 @@
 
   <rule id="18221" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-13}| ID:\s+S-1-5-13</regex>
+    <regex> ID:\s+%{S-1-5-13}| ID:\s+S-1-5-13\s</regex>
     <description>Windows: Terminal Server Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -528,7 +528,7 @@
 
   <rule id="18222" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-512}| ID:\s+S-1-5-21\S+-512</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-512}| ID:\s+S-1-5-21\S+-512\s</regex>
     <description>Windows: Domain Admins Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -536,7 +536,7 @@
 
   <rule id="18223" level="5">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-513}| ID:\s+S-1-5-21\S+-513</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-513}| ID:\s+S-1-5-21\S+-513\s</regex>
     <description>Windows: Domain Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -551,7 +551,7 @@
 
   <rule id="18225" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-514}| ID:\s+S-1-5-21\S+-514</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-514}| ID:\s+S-1-5-21\S+-514\s</regex>
     <description>Windows: Domain Guests Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -559,7 +559,7 @@
 
   <rule id="18226" level="5">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-515}| ID:\s+S-1-5-21\S+-515</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-515}| ID:\s+S-1-5-21\S+-515\s</regex>
     <description>Windows: Domain Computers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -567,7 +567,7 @@
 
   <rule id="18227" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-516}| ID:\s+S-1-5-21\S+-516</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-516}| ID:\s+S-1-5-21\S+-516\s</regex>
     <description>Windows: Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -575,7 +575,7 @@
 
   <rule id="18228" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-517}| ID:\s+S-1-5-21\S+-517</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-517}| ID:\s+S-1-5-21\S+-517\s</regex>
     <description>Windows: Cert Publishers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -583,15 +583,15 @@
 
   <rule id="18229" level="12">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\.+-518}| ID:\s+S-1-5-21\.+-518</regex>
+    <regex> ID:\s+%{S-1-5-21\.+-518}| ID:\s+S-1-5-21\.+-518\s</regex>
     <description>Windows: Schema Admins Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
   </rule>
 
   <rule id="18230" level="12">
-    <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-519}| ID:\s+S-1-5-21\S+-519</regex>
+    <if_sid>18213,18214</if_sid>
+    <regex> ID:\s+%{S-1-5-21\S+-519}| ID:\s+S-1-5-21\S+-519\s</regex>
     <description>Windows: Enterprise Admins Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -599,7 +599,7 @@
 
   <rule id="18231" level="10">
     <if_sid>18203,18204</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-520}| ID:\s+S-1-5-21\S+-520</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-520}| ID:\s+S-1-5-21\S+-520\s</regex>
     <description>Windows: Group Policy Creator Owners Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -607,7 +607,7 @@
 
   <rule id="18232" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-21\S+-553}| ID:\s+S-1-5-21\S+-553</regex>
+    <regex> ID:\s+%{S-1-5-21\S+-553}| ID:\s+S-1-5-21\S+-553\s</regex>
     <description>Windows: RAS and IAS Servers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -615,7 +615,7 @@
 
   <rule id="18233" level="5">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-545}| ID:\s+S-1-5-32-545</regex>
+    <regex> ID:\s+%{S-1-5-32-545}| ID:\s+S-1-5-32-545\s</regex>
     <description>Windows: Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -623,7 +623,7 @@
 
   <rule id="18234" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-546}| ID:\s+S-1-5-32-546</regex>
+    <regex> ID:\s+%{S-1-5-32-546}| ID:\s+S-1-5-32-546\s</regex>
     <description>Windows: Guests Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -631,7 +631,7 @@
 
   <rule id="18235" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-547}| ID:\s+S-1-5-32-547</regex>
+    <regex> ID:\s+%{S-1-5-32-547}| ID:\s+S-1-5-32-547\s</regex>
     <description>Windows: Power Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -639,7 +639,7 @@
 
   <rule id="18236" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-548}| ID:\s+S-1-5-32-548</regex>
+    <regex> ID:\s+%{S-1-5-32-548}| ID:\s+S-1-5-32-548\s</regex>
     <description>Windows: Account Operators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -647,7 +647,7 @@
 
   <rule id="18237" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-549}| ID:\s+S-1-5-32-549</regex>
+    <regex> ID:\s+%{S-1-5-32-549}| ID:\s+S-1-5-32-549\s</regex>
     <description>Windows: Server Operators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -655,7 +655,7 @@
 
   <rule id="18238" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-550}| ID:\s+S-1-5-32-550</regex>
+    <regex> ID:\s+%{S-1-5-32-550}| ID:\s+S-1-5-32-550\s</regex>
     <description>Windows: Print Operators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -663,7 +663,7 @@
 
   <rule id="18239" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-551}| ID:\s+S-1-5-32-551</regex>
+    <regex> ID:\s+%{S-1-5-32-551}| ID:\s+S-1-5-32-551\s</regex>
     <description>Windows: Backup Operators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -671,7 +671,7 @@
 
   <rule id="18240" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-552}| ID:\s+S-1-5-32-552</regex>
+    <regex> ID:\s+%{S-1-5-32-552}| ID:\s+S-1-5-32-552\s</regex>
     <description>Windows: Replicators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -679,7 +679,7 @@
 
   <rule id="18241" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-554}| ID:\s+S-1-5-32-554</regex>
+    <regex> ID:\s+%{S-1-5-32-554}| ID:\s+S-1-5-32-554\s</regex>
     <description>Pre-Windows 2000 Compatible Access Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -687,7 +687,7 @@
 
   <rule id="18242" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-555}| ID:\s+S-1-5-32-555</regex>
+    <regex> ID:\s+%{S-1-5-32-555}| ID:\s+S-1-5-32-555\s</regex>
     <description>Windows: Remote Desktop Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -695,7 +695,7 @@
 
   <rule id="18243" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-556}| ID:\s+S-1-5-32-556</regex>
+    <regex> ID:\s+%{S-1-5-32-556}| ID:\s+S-1-5-32-556\s</regex>
     <description>Windows: Network Configuration Operators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -703,7 +703,7 @@
 
   <rule id="18244" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-557}| ID:\s+S-1-5-32-557</regex>
+    <regex> ID:\s+%{S-1-5-32-557}| ID:\s+S-1-5-32-557\s</regex>
     <description>Windows: Incoming Forest Trust Builders Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -711,7 +711,7 @@
 
   <rule id="18245" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-558}| ID:\s+S-1-5-32-558</regex>
+    <regex> ID:\s+%{S-1-5-32-558}| ID:\s+S-1-5-32-558\s</regex>
     <description>Windows: Performance Monitor Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -719,7 +719,7 @@
 
   <rule id="18246" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-559}| ID:\s+S-1-5-32-559</regex>
+    <regex> ID:\s+%{S-1-5-32-559}| ID:\s+S-1-5-32-559\s</regex>
     <description>Windows: Performance Log Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -727,7 +727,7 @@
 
   <rule id="18247" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-560}| ID:\s+S-1-5-32-560</regex>
+    <regex> ID:\s+%{S-1-5-32-560}| ID:\s+S-1-5-32-560\s</regex>
     <description>Windows Authorization Access Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -735,7 +735,7 @@
 
   <rule id="18248" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-561}| ID:\s+S-1-5-32-561</regex>
+    <regex> ID:\s+%{S-1-5-32-561}| ID:\s+S-1-5-32-561\s</regex>
     <description>Windows: Terminal Server License Servers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -743,7 +743,7 @@
 
   <rule id="18249" level="8">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-562}| ID:\s+S-1-5-32-562</regex>
+    <regex> ID:\s+%{S-1-5-32-562}| ID:\s+S-1-5-32-562\s</regex>
     <description>Windows: Distributed COM Users Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -751,7 +751,7 @@
 
   <rule id="18250" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-498}| ID:\s+S-1-5-\s*21\.+\s*-498</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-498}| ID:\s+S-1-5-\s*21\.+\s*-498\s</regex>
     <description>Windows: Enterprise Read-only Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -759,7 +759,7 @@
 
   <rule id="18251" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-529}| ID:\s+S-1-5-\s*21\.+\s*-529</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-529}| ID:\s+S-1-5-\s*21\.+\s*-529\s</regex>
     <description>Windows: Read-only Domain Controllers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -767,7 +767,7 @@
 
   <rule id="18252" level="12">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-569}| ID:\s+S-1-5-32-569</regex>
+    <regex> ID:\s+%{S-1-5-32-569}| ID:\s+S-1-5-32-569\s</regex>
     <description>Windows: Cryptographic Operators Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -775,7 +775,7 @@
 
   <rule id="18253" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-571}| ID:\s+S-1-5-\s*21\.+\s*-571</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-571}| ID:\s+S-1-5-\s*21\.+\s*-571\s</regex>
     <description>Windows: Allowed RODC Password Replication Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -783,7 +783,7 @@
 
   <rule id="18254" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-572}| ID:\s+S-1-5-\s*21\.+\s*-572</regex>
+    <regex> ID:\s+%{S-1-5-\s*21\.+\s*-572}| ID:\s+S-1-5-\s*21\.+\s*-572\s</regex>
     <description>Windows: Denied RODC Password Replication Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -791,7 +791,7 @@
 
   <rule id="18255" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-573}| ID:\s+S-1-5-32-573</regex>
+    <regex> ID:\s+%{S-1-5-32-573}| ID:\s+S-1-5-32-573\s</regex>
     <description>Windows: Event Log Readers Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -799,7 +799,7 @@
 
   <rule id="18256" level="10">
     <if_sid>18207,18208</if_sid>
-    <regex> ID:\s+%{S-1-5-32-574}| ID:\s+S-1-5-32-574</regex>
+    <regex> ID:\s+%{S-1-5-32-574}| ID:\s+S-1-5-32-574\s</regex>
     <description>Windows: Certificate Service DCOM Access Group Changed</description>
     <group>group_changed,win_group_changed,pci_dss_8.1.2,pci_dss_10.2.5,gpg13_7.10,gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
     <info type="link">https://support.microsoft.com/kb/243330</info>
@@ -817,11 +817,12 @@
   <!--
   2016 Nov 18 10:37:26 WinEvtLog: Application: INFORMATION(302): ESENT: (no user): no domain: BNC-O9020: Music.UI (25428) {87E550B7-AD4D-40F7-BE5E-263C3D44C124}: The database engine has successfully completed recovery steps.
   2018 Aug 16 21:01:50 WinEvtLog: Application: INFORMATION(300): ESENT: (no user): no domain: Dan.domain.ca: lsass (500) The database engine is initiating recovery steps.
-  -->
+  2018 Oct 23 12:23:57 WinEvtLog: System: INFORMATION(302): Microsoft-Windows-FailoverClustering-SoftwareStorageBusTarget: SYSTEM: NT AUTHORITY: O-VH06-PTP.domain.org: A missing flash device has reappeared. This hybrid disk will resume serving IO.    Disk GUID: {200747AA-2332-F910-0751-DFCEAFCEF3D3}  Disk number: 8  Manufacturer: SEAGATE   Product ID: ST8000NM0195      Serial: ZA17YH2A    Enclosure location:  Enclosure slot: 4294967295  Enclosure manufacturer:    Enclosure product ID:    Enclosure serial:      Guidance:  This is the culmination of the preceding event 301. No further action is necessary.
+   -->
   <rule id="18270" level="0">
     <if_sid>18257</if_sid>
-    <match>The database engine has successfully completed recovery steps|The database engine is initiating recovery steps</match>
-    <description>Ignore rule 18257: TS Gateway login success</description>
+    <match> ESENT: | Microsoft-Windows-FailoverClustering-SoftwareStorageBusTarget: </match>
+    <description>Ignore rule 18257: not related to TS Gateway</description>
   </rule>
 
   <rule id="18258" level="5">
