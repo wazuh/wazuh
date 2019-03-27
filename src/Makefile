@@ -792,6 +792,7 @@ $(EXTERNAL_AUDIT)Makefile:
 
 #### msgpack #########
 
+ifneq (${TARGET},winagent)
 msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
 msgpack_o := $(msgpack_c:.c=.o)
 
@@ -801,6 +802,7 @@ ${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
 $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+endif
 
 ################################
 #### External dependencies  ####
