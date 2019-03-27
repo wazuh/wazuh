@@ -58,7 +58,7 @@ def status() -> Dict:
 
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
+    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(.*):\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):\s(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -71,8 +71,6 @@ def __get_ossec_log_fields(log):
         if "rootcheck" in category:  # Unify rootcheck category
             category = "ossec-rootcheck"
 
-        if "(" in category:  # Remove ()
-            category = re.sub(r"\(\d\d\d\d\)", "", category)
     else:
         return None
 
