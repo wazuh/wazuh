@@ -202,7 +202,7 @@ class Decoder:
 
             root = load_wazuh_xml(os.path.join(common.ossec_path, decoder_path, decoder_file))
 
-            for xml_decoder in root.getchildren():
+            for xml_decoder in list(root):
                 # New decoder
                 if xml_decoder.tag.lower() == "decoder":
                     decoder          = Decoder()
