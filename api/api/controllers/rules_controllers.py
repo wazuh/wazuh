@@ -63,19 +63,15 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
+    # get rules as dict
     rules_list = []
     for rule in data['data']['items']:
         rule = rule.to_dict()
-        #rule['rules_files'] = {'file': 'file', 'path': 'path', 'status': 'status'}
-        rules_files = RulesFiles.from_dict(rule)
-        #return rules_files, 200
-        try:
-            rules = RulesModel.from_dict(rule)
-        except Exception as e:
-            return str(e)
-        return {**rules_files.to_dict(), **rules.to_dict()}, 200
+        rules_list.append(rule)
 
-    return rules_list, 200
+    data['data']['items'] = rules_list
+
+    return data, 200
 
 
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
