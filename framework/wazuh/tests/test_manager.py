@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import patch, mock_open
 
 from wazuh.exception import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file
+from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -179,3 +179,34 @@ def test_delete_file(test_manager):
     with patch('wazuh.manager.exists', return_value=False):
         with pytest.raises(WazuhException, match='.* 1906 .*'):
             delete_file('/test/file')
+
+
+ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
+2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
+2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
+2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
+2019/03/26 19:49:15 ossec-execd: ERROR: (1210): Queue '/var/ossec/queue/alerts/execa' not accessible: 'No such file or directory'.
+2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'"""
+
+
+@pytest.mark.parametrize('category, type_log, totalItems', [
+    ('all', 'all', 6),
+    ('wazuh-modulesd:database', 'all', 2),
+    ('wazuh-modulesd:syscollector', 'all', 1),
+    ('wazuh-modulesd:aws-s3', 'all', 1),
+    ('ossec-execd', 'all', 1),
+    ('ossec-csyslogd', 'all', 1),
+    ('random', 'all', 0),
+    ('all', 'info', 2),
+    ('all', 'error', 2),
+    ('all', 'debug', 2),
+    ('all', 'random', 0)
+])
+def test_ossec_log(test_manager, category, type_log, totalItems):
+    """
+    Tests reading ossec.log file contents
+    """
+    with patch('wazuh.manager.tail') as tail_patch:
+        tail_patch.return_value = ossec_log_file.splitlines()
+        logs = ossec_log(category=category, type_log=type_log)
+        assert logs['totalItems'] == totalItems
