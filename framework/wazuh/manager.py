@@ -58,7 +58,7 @@ def status() -> Dict:
 
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(.*):\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):\s(.*)$")
+    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
     match = re.search(regex_category, log)
 
