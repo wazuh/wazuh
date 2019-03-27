@@ -1032,10 +1032,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
                 continue;
             }
         }
-        *permissions = '\0';
-        retval = -3;
-        mdebug1("The parameters of ACE number %d could not be extracted. %d bytes remaining.", i, perm_size);
-        goto end;
+        mdebug1("The parameters of ACE number %d from '%s' could not be extracted. %d bytes remaining.", i, file_path, perm_size);
     }
 
     mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
@@ -1074,8 +1071,13 @@ int copy_ace_info(void *ace, char *perm, int perm_size) {
 		return 0;
 	}
 
+
     if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
         mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
+        /*if (!ConvertSidToStringSid(sid, &sid_str)) {
+            mdebug2("Could not extract the SID.");
+            goto end;
+        }*/
         goto end;
     }
 
