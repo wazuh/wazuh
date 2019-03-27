@@ -90,7 +90,8 @@ def test_get_agents_overview_default(test_data):
     ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', '2h', 0),
     ({'id', 'ip', 'lastKeepAlive'}, 'all', '15m', 2),
     ({'id', 'ip', 'lastKeepAlive'}, 'Active', '15m', 0),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', '15m', 1)
+    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', '15m', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, ['Active', 'Pending'], '15m', 1)
 ])
 def test_get_agents_overview_select(test_data, select, status, older_than, offset):
     """
