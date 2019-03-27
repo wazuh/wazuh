@@ -340,8 +340,6 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
     }
     else{
         // Merge ar.conf always
-        time_t modified;
-        int ignored = 0;
         if (!logr.nocmerged) {
             snprintf(merged_tmp, PATH_MAX + 1, "%s.tmp", merged);
             // First call, truncate merged file
@@ -362,6 +360,8 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
             f_size++;
         }
 
+        int ignored;
+
         /* Read directory */
         for (i = 0; files[i]; ++i) {
             /* Ignore hidden files  */
@@ -371,6 +371,7 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 continue;
             }
             ignored = 0;
+            time_t *modify_time = NULL;
 
             snprintf(file, PATH_MAX + 1, "%s/%s/%s", sharedcfg_dir, group, files[i]);
 
@@ -379,35 +380,48 @@ void c_group(const char *group, char ** files, file_sum ***_f_sum,char * sharedc
                 continue;
             }
 
-            if(modified = (time_t) OSHash_Get(invalid_files,file), modified){
+            if(modify_time = (time_t*) OSHash_Get(invalid_files,file), modify_time != NULL){
                 struct stat attrib;
                 time_t last_modify;
 
                 stat(file, &attrib);
                 last_modify = attrib.st_mtime;
                 ignored = 1;
-                if( modified != last_modify){
+
+                if( *modify_time != last_modify) {
+
+                    *modify_time = last_modify;
                     if(checkBinaryFile(file)){
-                        OSHash_Set(invalid_files, file, last_modify);
-                        mdebug1("File %s in group %s changed but it is still invalid.", files[i], group);
+                        OSHash_Set(invalid_files, file, modify_time);
+                        mdebug1("File '%s' in group '%s' modified but still invalid.", files[i], group);
                     }
                     else{
+                        os_free(modify_time);
                         OSHash_Delete(invalid_files, file);
-                        mdebug1("File %s in group %s is valid now. Added to the merged.md", files[i], group);
+                        minfo("File '%s' in group '%s' is valid after last modification.", files[i], group);
                         ignored = 0;
                     }
                 }
-            }
-            else {
+            } else {
+
                 if(checkBinaryFile(file)){
                     struct stat attrib;
-                    time_t last_modify;
+
+                    os_calloc(1, sizeof(time_t), modify_time);
 
                     stat(file, &attrib);
-                    last_modify = attrib.st_mtime;
-                    OSHash_Add(invalid_files, file, last_modify);
-                    ignored = 1;
-                    merror("Invalid shared file %s in group %s. Ignoring it.",files[i], group);
+                    *modify_time = attrib.st_mtime;
+                    int ret_val;
+
+                    if (ret_val = OSHash_Add(invalid_files, file, modify_time), ret_val != 2) {
+                        os_free(modify_time);
+                        if (ret_val == 0) {
+                            merror("Unable to add file '%s' to hash table of invalid files.", files[i]);
+                        }
+                    } else {
+                        ignored = 1;
+                        merror("Invalid shared file '%s' in group '%s'. Ignoring it.",files[i], group);
+                    }
                 }
             }
 
@@ -493,7 +507,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
             }
 
             unsigned int i;
-            struct tm *modified;
+            time_t *modify_time = NULL;
             int ignored;
             for (i = 0; files[i]; ++i) {
                 /* Ignore hidden files  */
@@ -511,7 +525,7 @@ void c_multi_group(char *multi_group,file_sum ***_f_sum,char *hash_multigroup) {
 
                 snprintf(source_path, PATH_MAX + 1, "%s/%s/%s", SHAREDCFG_DIR, group, files[i]);
                 snprintf(destination_path, PATH_MAX + 1, "%s/%s/%s", MULTIGROUPS_DIR, hash_multigroup, files[i]);
-                if(modified = (struct tm *) OSHash_Get(invalid_files,source_path), modified){
+                if(modify_time = (time_t*) OSHash_Get(invalid_files,source_path), modify_time != NULL){
                    ignored = 1;
                 }
                 if(!ignored) {
