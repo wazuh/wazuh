@@ -113,7 +113,7 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
                 return (OS_INVALID);
             } else {
                 fluent->port = atoi(nodes[i]->content);
-                if (fluent->port < 1 || fluent->port > 65535) {
+                if (fluent->port < 1 || fluent->port > 65534) {
                     merror(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
                     return (OS_INVALID);
                 }

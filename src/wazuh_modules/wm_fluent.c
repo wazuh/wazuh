@@ -725,13 +725,13 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
 
     cJSON_AddStringToObject(wm_wd, "enabled", fluent->enabled ? "yes" : "no");
     if (fluent->tag) cJSON_AddStringToObject(wm_wd, "tag", fluent->tag);
-    if (fluent->socket_path)cJSON_AddStringToObject(wm_wd, "socket_path", fluent->sock_path);
+    if (fluent->sock_path)cJSON_AddStringToObject(wm_wd, "socket_path", fluent->sock_path);
     if (fluent->address) cJSON_AddStringToObject(wm_wd, "address", fluent->address);
     if (fluent->port) cJSON_AddNumberToObject(wm_wd, "port", fluent->port);
     if (fluent->shared_key) cJSON_AddStringToObject(wm_wd, "shared_key", fluent->shared_key);
-    if (fluent->ca_file) cJSON_AddStringToObject(wm_wd, "ca_file", fluent->certificate);
-    if (fluent->user) cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
-    if (fluent->password) cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
+    if (fluent->certificate) cJSON_AddStringToObject(wm_wd, "ca_file", fluent->certificate);
+    if (fluent->user_name) cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
+    if (fluent->user_pass) cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
 
     cJSON_AddItemToObject(root,"fluent_forward",wm_wd);
 
