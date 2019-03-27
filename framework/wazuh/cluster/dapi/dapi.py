@@ -239,7 +239,7 @@ class DistributedAPI:
             if isinstance(self.input_json['arguments']['agent_id'], list):
                 agents = agent.Agent.get_agents_overview(select=select_node, limit=None,
                                                          filters={'id': self.input_json['arguments']['agent_id']},
-                                                         sort={'fields': ['node'], 'order': 'desc'})['items']
+                                                         sort={'fields': ['node_name'], 'order': 'desc'})['items']
                 node_name = {k: list(map(operator.itemgetter('id'), g)) for k, g in
                              itertools.groupby(agents, key=operator.itemgetter('node_name'))}
 
