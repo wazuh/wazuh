@@ -6,6 +6,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation
 */
+#ifndef WIN32
 
 #include "wazuh_modules/wmodules.h"
 #include <stdio.h>
@@ -185,3 +186,4 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
 
     return 0;
 }
+#endif

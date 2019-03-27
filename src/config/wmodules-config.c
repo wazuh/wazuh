@@ -218,6 +218,7 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
     return 0;
 }
 
+#ifndef WIN32
 int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 {
     wmodule **wmodules = (wmodule**)d1;
@@ -272,6 +273,7 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
     OS_ClearNode(children);
     return 0;
 }
+#endif
 
 int Test_WModule(const char * path) {
     int fail = 0;

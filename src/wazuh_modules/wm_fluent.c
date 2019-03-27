@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#ifndef WIN32
 
 #include "wmodules.h"
 #include <os_net/os_net.h>
@@ -745,3 +746,4 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
 
     return root;
 }
+#endif
