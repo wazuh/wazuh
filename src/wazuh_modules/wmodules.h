@@ -37,7 +37,7 @@
 #define AZ_WM_NAME "azure-logs"
 #define KEY_WM_NAME "agent-key-polling"
 #define SCA_WM_NAME "sca"
-#define FLUENT_WM_NAME "fluent-forwarder"
+#define FLUENT_WM_NAME "fluent_forward"
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
 #define WM_DEF_INTERVAL     86400           // Default cycle interval (1 day)

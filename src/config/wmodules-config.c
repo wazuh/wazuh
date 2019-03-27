@@ -263,7 +263,7 @@ int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
 
     // Fluent Forwarder Module
     if (!strcmp(node->element, WM_FLUENT_CONTEXT.name)) {
-        if (wm_fluent_read(xml,children, cur_wmodule) < 0) {
+        if (wm_fluent_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
