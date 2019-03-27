@@ -217,7 +217,7 @@ class Decoder:
                         if k != 'name':
                             decoder.details[k] = xml_decoder.attrib[k]
 
-                    for xml_decoder_tags in xml_decoder.getchildren():
+                    for xml_decoder_tags in list(xml_decoder):
                         decoder.add_detail(xml_decoder_tags.tag.lower(), xml_decoder_tags.text)
 
                     decoders.append(decoder)
