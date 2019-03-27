@@ -17,6 +17,7 @@
 /* Node structure */
 typedef struct _OSHashNode {
     struct _OSHashNode *next;
+    struct _OSHashNode *prev;
 
     char *key;
     void *data;
@@ -27,7 +28,7 @@ typedef struct _OSHash {
     unsigned int initial_seed;
     unsigned int constant;
     pthread_rwlock_t mutex;
-    
+
     void (*free_data_function)(void *data);
     OSHashNode **table;
 } OSHash;
@@ -77,5 +78,8 @@ OSHash *OSHash_Duplicate_ex(const OSHash *hash) __attribute__((nonnull));
 OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
 OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
+
+void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
+void OSHash_It_ex(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 
 #endif

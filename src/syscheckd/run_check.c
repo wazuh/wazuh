@@ -345,6 +345,13 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         char alert_msg[OS_SIZE_6144 + 1];
         char wd_sum[OS_SIZE_6144 + 1];
 
+#ifdef WIN_WHODATA
+        // If this flag is enable, the remove event will be notified at another point
+        if (evt && evt->ignore_remove_event) {
+            mdebug2("The '%s' file does not exist, but this will be notified when the corresponding event is received.", file_name);
+            return 0;
+        }
+#endif
         alert_msg[sizeof(alert_msg) - 1] = '\0';
 
         // Extract the whodata sum here to not include it in the hash table
