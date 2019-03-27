@@ -19,6 +19,7 @@ static const char *XML_SHARED_KEY = "shared_key";
 static const char *XML_CA_FILE= "ca_file";
 static const char *XML_USER = "user";
 static const char *XML_PASSWORD = "password";
+static const char *XML_TIMEOUT = "timeout";
 
 static short eval_bool(const char *str)
 {
@@ -166,6 +167,15 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
             }
 
             os_strdup(nodes[i]->content,fluent->user_pass);
+        }
+        else if (!strcmp(nodes[i]->element, XML_TIMEOUT))
+        {
+            fluent->timeout = atoi(nodes[i]->content);
+
+            if (fluent->timeout < 0 || fluent->timeout >= INT_MAX) {
+                merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
+                return OS_INVALID;
+            }
         }
         else
         {

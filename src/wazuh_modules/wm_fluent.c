@@ -709,6 +709,14 @@ static int wm_fluent_check_config(wm_fluent_t * fluent) {
         }
     }
 
+    /* Password required if user is defined. */
+
+    if (filled_string(fluent->user_name) && !filled_string(fluent->user_pass)) {
+        merror("Password required because user is defined");
+        return -1;
+    }
+
+
     /* Timeout */
 
     if (fluent->timeout < 0) {
