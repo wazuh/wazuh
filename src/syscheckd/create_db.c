@@ -325,9 +325,16 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
 
         if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name), !s_node) {
-            os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
-
             char * alertdump = NULL;
+ #ifdef WIN_WHODATA
+            if (evt && evt->scan_directory == 1) {
+                if (w_update_sacl(file_name)) {
+                    mdebug1("Could not refresh the SACL of '%s'. Its event will not be reported.", file_name);
+                    goto end;
+                }
+            }
+#endif
+            os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
 
             if (opts & CHECK_SEECHANGES) {
                 alertdump = seechanges_addfile(file_name);
@@ -524,7 +531,6 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 #endif
             /* Send the new checksum to the analysis server */
             alert_msg[OS_MAXSTR] = '\0';
-
             /* Extract the whodata sum here to not include it in the hash table */
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
@@ -667,6 +673,13 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             os_free(alert_msg);
             os_free(alertdump);
         } else {
+#ifdef WIN_WHODATA
+            // This scan is only to find new files
+            // Modified files will be reported by the whodata flow
+            if (evt && evt->scan_directory == 1) {
+                goto end;
+            }
+#endif
             os_calloc(OS_MAXSTR + 1, sizeof(char), alert_msg);
             os_calloc(OS_MAXSTR + 1, sizeof(char), c_sum);
 
@@ -1062,7 +1075,12 @@ int create_db()
 
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
     int retval = 0;
+
+#ifndef WIN_WHODATA
     if (!evt) {
+#else
+    if (!evt || evt->scan_directory) {
+#endif
         if (snprintf(wd_sum, size, "::::::::::") >= size) {
             retval = 1;
         }
