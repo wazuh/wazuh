@@ -74,8 +74,8 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :param score: Filters by final score
     :type score: int
     """
-    # get pass query parameter
-    pass_ = connexion.request.args['pass']
+    # get pass parameter from query
+    pass_ = connexion.request.args.get('pass', None)
 
     filters = {'benchmark': benchmark, 'profile': profile,
                'fail': fail, 'error': error, 'notchecked': notchecked,
