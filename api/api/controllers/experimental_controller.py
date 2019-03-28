@@ -73,8 +73,6 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :type unknown: int
     :param score: Filters by final score
     :type score: int
-    :param pass: Filters by passed checks
-    :type pass: int
     """
     # get pass query parameter
     pass_ = connexion.request.args['pass']
