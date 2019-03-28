@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import connexion
 import logging
 
 from api.util import remove_nones_to_dict
@@ -36,9 +37,9 @@ def put_syscheck(pretty=False, wait_for_complete=False):
     return data, 200
 
 
-def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, 
-                       select=None, sort=None, search=None, file=None, type=None, summary=False,
-                       md5=None, sha1=None, sha256=None, hash=None):
+def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, 
+                       limit=None, select=None, sort=None, search=None,
+                       summary=False, md5=None, sha1=None, sha256=None):
     """
 
     :param pretty: Show results in human-readable format 
@@ -59,10 +60,6 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     :type search: str
     :param status: Filters by agent status. Use commas to enter multiple statuses.
     :type status: List[str]
-    :param file: Filters by filename.
-    :type file: str
-    :param type: Filters by file type.
-    :type type: str
     :param summary: Returns a summary grouping by filename.
     :type summary: bool
     :param md5: Filters files with the specified MD5 checksum.
@@ -71,11 +68,16 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     :type sha1: str
     :param sha256: Filters files with the specified SHA256 checksum.
     :type sha256: str
-    :param hash: Filters files with the specified checksum (MD5, SHA256 or SHA1)
-    :type md5: str
     """
-    filters = {'type': type, 'md5': md5, 'sha1': sha1, 'sha256': sha256,
-               'hash': hash, 'file': file}
+    # get type parameter from query
+    type_ = connexion.request.args.get('type', None)
+    # get hash parameter from query
+    hash_ = connexion.request.args.get('hash', None)
+    # get file parameter from query
+    file_ = connexion.request.args.get('file', None)
+
+    filters = {'type': type_, 'md5': md5, 'sha1': sha1,
+               'sha256': sha256, 'hash': hash_, 'file': file_}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': sort, 'search': search,
