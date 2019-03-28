@@ -192,6 +192,7 @@ All notable changes to this project will be documented in this file.
 - Analysisd and Syscollector did not detect the number of cores on Raspberry Pi. ([#2304](https://github.com/wazuh/wazuh/pull/2304))
 - Analysisd and Syscollector did not detect the number of cores on CentOS 5. ([#2340](https://github.com/wazuh/wazuh/pull/2340))
 
+
 ## [v3.7.2] 2018-12-17
 
 ### Changed

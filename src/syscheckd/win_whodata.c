@@ -85,6 +85,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash);
 int get_file_time(unsigned long long file_time_val, SYSTEMTIME *system_time);
 int compare_timestamp(SYSTEMTIME *t1, SYSTEMTIME *t2);
 void free_win_whodata_evt(whodata_evt *evt);
+char *get_whodata_path(const short unsigned int *win_path);
 void whodata_clean_rlist();
 
 char *guid_to_string(GUID *guid) {
@@ -501,7 +502,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 goto clean;
             }
         }  else {
-            if (path = convert_windows_string(buffer[2].XmlVal), !path) {
+            if (path = get_whodata_path(buffer[2].XmlVal), !path) {
                 goto clean;
             }
             str_lowercase(path);
@@ -1317,6 +1318,24 @@ void notify_SACL_change(char *dir) {
     char msg_alert[OS_SIZE_1024 + 1];
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+}
+
+char *get_whodata_path(const short unsigned int *win_path) {
+    int count;
+    char *path = NULL;
+
+    if (count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, NULL, 0, NULL, NULL), count > 0) {
+        os_calloc(count + 1, sizeof(char), path);
+        count = WideCharToMultiByte(CP_ACP, 0, win_path, -1, path, count, NULL, NULL);
+        path[count] = '\0';
+    }
+
+    if (!count) {
+        os_free(path);
+        mdebug1("The path could not be processed in Whodata mode. Error: %lu.", GetLastError());
+    }
+
+    return path;
 }
 
 int whodata_path_filter(char **path) {
