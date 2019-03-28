@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - Added options `same_field` and `not_same_field` in rules to correlate dynamic fields between events. ([#2689](https://github.com/wazuh/wazuh/pull/2689))
 - Added optional daemons start by default. ([#2769](https://github.com/wazuh/wazuh/pull/2769))
 - Make the Windows installer to choose the appropriate `ossec.conf` file based on the System version. ([#2773](https://github.com/wazuh/wazuh/pull/2773))
+- Added writer thread preference for Logcollector. ([#2783](https://github.com/wazuh/wazuh/pull/2783))
 
 ### Changed
 
@@ -69,6 +70,7 @@ All notable changes to this project will be documented in this file.
 - Let CIS-CAT decoder reuse the Wazuh DB connection socket. ([#2800](https://github.com/wazuh/wazuh/pull/2800))
 - Fixed issue with `agent-auth` options without argument. ([#2808](https://github.com/wazuh/wazuh/pull/2808))
 - Fixed control of the frequency counter in alerts. ([#2854](https://github.com/wazuh/wazuh/pull/2854))
+- Ignore invalid files for agent groups. ([#2895](https://github.com/wazuh/wazuh/pull/2895))
 
 ## [v3.8.2]
 
