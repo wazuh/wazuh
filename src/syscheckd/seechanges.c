@@ -20,6 +20,9 @@
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
+#ifdef WIN32
+static char *adapt_win_fc_output(char *command_output);
+#endif
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
@@ -184,17 +187,12 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     }
 
 #ifdef WIN32
-    diff_str = strchr(buf, '\n');
-
-    if (!diff_str) {
-        merror("Unable to find second line of alert string.");
+    if (diff_str = adapt_win_fc_output(buf), !diff_str) {
         return NULL;
     }
 
-    diff_str++;
-
 #else
-    diff_str = buf;
+    os_strdup(buf, diff_str);
 #endif
 
     snprintf(
@@ -210,7 +208,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
         mwarn("Cannot create a snapshot of file '%s'", filename);
     }
 
-    return (strdup(diff_str));
+    return diff_str;
 }
 
 static int seechanges_dupfile(const char *old, const char *current)
@@ -481,3 +479,59 @@ cleanup:
     /* Generate alert */
     return (gen_diff_alert(filename, new_date_of_change));
 }
+
+#ifdef WIN32
+
+char *adapt_win_fc_output(char *command_output) {
+    char *adapted_output;
+    char *line;
+    char *next_line;
+    const char *section_tag = "***** QUEUE\\DIFF\\LOCAL\\";
+    const char *end_tag = "*****";
+    const char *split_tag = "---";
+    char section = 0;
+    size_t section_tag_size = strlen(section_tag);
+    size_t end_tag_size = strlen(end_tag);
+    size_t written = 0;
+
+    if (line = strchr(command_output, '\n'), !line) {
+        merror("Unable to find second line of alert string.");
+        return NULL;
+    }
+
+    os_calloc(OS_MAXSTR + 1, sizeof(char), adapted_output);
+
+    while (line) {
+        next_line = strstr(++line, "\r\n");
+
+        if (section < 2 && !strncmp(line, section_tag, section_tag_size)) {
+            section++;
+            if (section == 2) {
+                written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+            }
+
+            if (next_line) {
+                next_line++;
+            }
+
+            goto next_it;
+        } else if (section == 2 && !strncmp(line, end_tag, end_tag_size)) {
+            next_line = NULL;
+            goto next_it;
+        }
+
+        if (next_line) {
+            *(next_line++) = '\0';
+            *next_line = '\0';
+        }
+
+        written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s%s%s", section == 1 ? "< " : "> ", line, next_line ? "\n" : "");
+
+next_it:
+        line = next_line;
+    }
+
+    return adapted_output;
+}
+
+#endif
