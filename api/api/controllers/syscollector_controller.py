@@ -41,6 +41,7 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False,
 
     return data, 200
 
+
 def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface_name=None,
     proto=None, address=None, broadcast=None, netmask=None):
@@ -71,11 +72,12 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     :param netmask: Filters by netmask
     :type netmask: str
     """
+    filters = {'iface_name': iface_name, 'proto': proto, 'address': address,
+                'broadcast': broadcast, 'netsmask': netmask}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': sort, 'search': search,
-                'iface_name': iface_name, 'proto': proto, 'address': address,
-                'broadcast': broadcast, 'netsmask': netmask}
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netaddr_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -88,6 +90,7 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, adapter=None,
@@ -135,14 +138,15 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     :params rx_dropped: Filters by rx_dropped
     :type rx_droppred: str
     """
+    filters = {'adapter': adapter, 'type': type, 'state': state,
+               'mtu': mtu, 'tx_packets': tx_packets, 'rx_packets': rx_packets,
+               'tx_bytes': tx_bytes, 'rx_bytes': rx_bytes,
+               'tx_errors': tx_errors, 'rx_errors': rx_errors,
+               'tx_dropped': tx_dropped, 'rx_dropped': rx_dropped}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': sort, 'search': search,
-                'adapter': adapter, 'type': type, 'state': state,
-                'mtu': mtu, 'tx_packets': tx_packets, 'rx_packets': rx_packets,
-                'tx_bytes': tx_bytes, 'rx_bytes': rx_bytes,
-                'tx_errors': tx_errors, 'rx_errors': rx_errors,
-                'tx_dropped': tx_dropped, 'rx_dropped': rx_dropped}
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netiface_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -155,6 +159,7 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface=None,
@@ -184,11 +189,11 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
     :param dhcp: Filters by dhcp
     :type dhcp: str
     """
+    filters = {'iface': iface, 'type': type, 'gateway': gateway, 'dhcp': dhcp}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': sort, 'search': search,
-                'iface': iface, 'type': type, 'gateway': gateway,
-                'dhcp': dhcp}
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netproto_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -201,6 +206,7 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def get_os_info(agent_id, pretty=False, wait_for_complete=False,
     select=None):
@@ -228,6 +234,7 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False,
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, vendor=None,
@@ -259,11 +266,12 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     :param package_version: Filters by version
     :type package_version: str
     """
+    filters = {'vendor': vendor, 'name': name, 'architecture': architecture,
+               'format': format, 'package_version': package_version}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': sort, 'search': search,
-                'vendor': vendor, 'name': name, 'architecture': architecture,
-                'format': format, 'package_version': package_version}
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_packages_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -276,6 +284,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, pid=None,
@@ -312,11 +321,12 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
     :param state: Filters by state
     :type state: str
     """
+    filters = {'pid': pid, 'protocol': protocol, 'local_ip': local_ip,
+               'remote_ip': remote_ip, 'tx_queue': tx_queue, 'state': state}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
                 'select': select, 'sort': sort, 'search': search,
-                'pid': pid, 'protocol': protocol, 'local_ip': local_ip,
-                'remote_ip': remote_ip, 'tx_queue': tx_queue, 'state': state}
+                'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_ports_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -329,6 +339,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, process_pid=None,
