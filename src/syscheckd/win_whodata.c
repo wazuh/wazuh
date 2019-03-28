@@ -1375,7 +1375,7 @@ int whodata_check_arch() {
             merror("Error reading 'Architecture' from Windows registry. (Error %u)", (unsigned int)result);
         } else {
 
-            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4)) {
+            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
                 sys_64 = 1;
                 retval = 0;
             } else if (!strncmp(arch, "x86", 3)) {
