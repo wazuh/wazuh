@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
+import connexion
 import logging
 
 from api.util import remove_nones_to_dict
@@ -40,8 +41,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
 
 def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=None,
                         select=None, sort=None, search=None, benchmark=None, profile=None,
-                        pass_=None, fail=None, error=None, notchecked=None, unknown=None,
-                        score=None):
+                        fail=None, error=None, notchecked=None, unknown=None, score=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -63,8 +63,8 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :type benchmark: str
     :param profile: Filters by evaluated profile
     :type profile: str
-    :param pass_: Filters by passed checks
-    :type pass_: int
+    :param pass: Filters by passed checks
+    :type pass: int
     :param fail: Filters by failed checks
     :type fail: int
     :param error: Filters by encountered errors
@@ -76,9 +76,12 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :param score: Filters by final score
     :type score: int
     """
-    filters = {'benchmark': benchmark, 'profile': profile, 'pass': pass_,
-               'fail': fail, 'error': error, 'notchecked': notchecked,
-               'unknown': unknown, 'score': score}
+    # get pass query parameter
+    query_params = connexion.request.args
+
+    filters = {'benchmark': benchmark, 'profile': profile,
+               'pass': query_params['pass'], 'fail': fail, 'error': error,
+               'notchecked': notchecked, 'unknown': unknown, 'score': score}
 
     f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
                 'sort': sort, 'search': search, 'filters': filters}
