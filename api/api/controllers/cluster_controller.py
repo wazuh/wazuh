@@ -28,7 +28,9 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
     Returns basic information about the cluster node receiving the request.
 
     :param pretty: Show results in human-readable format
+    :type pretty: bool
     :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
     :rtype: object
     """
     f_kwargs = {}
@@ -47,7 +49,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
 
 
 def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                      search=None, select=None, type=None):
+                      search=None, select=None):
     """Get information about all nodes in the cluster. 
 
     Returns a list containing all connected nodes in the cluster.
@@ -56,13 +58,18 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     :param wait_for_complete: Disable timeout response
     :param offset: First element to return in the collection
     :param limit: Maximum number of elements to return
+    :type limit: int
     :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+    :type sort: str
     :param search: Looks for elements with the specified string
+    :type search: str
     :param select: Select which fields to return (separated by comma)
-    :param type: Filters by node type.
+    :type select: List[str]
     """
+    query_params = connexion.request.args
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                'select': select, 'type': type}
+                'select': select, 'filter_type': query_params['type']}
 
     dapi = DistributedAPI(f=cluster_control.get_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
