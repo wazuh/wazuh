@@ -511,9 +511,8 @@ def get_processes_info(pretty=False, wait_for_complete=False,
                'priority': priority, 'rgroup': rgroup, 'ruser': ruser,
                'sgroup': sgroup, 'suser': suser}
 
-    f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
-                'filters': filters}
+    f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
+                'sort': sort, 'search': search, 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_processes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
