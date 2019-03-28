@@ -33,6 +33,7 @@
 #define WHODATA_DIR_REMOVE_INTERVAL 2
 
 // Variables whodata
+static char sys_64 = 1;
 static PSID everyone_sid = NULL;
 static size_t ev_sid_size = 0;
 static unsigned short inherit_flag = CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE; //SUB_CONTAINERS_AND_OBJECTS_INHERIT
@@ -67,6 +68,9 @@ void audit_restore();
 int check_object_sacl(char *obj, int is_file);
 int whodata_hash_add(OSHash *table, char *id, void *data, char *tag);
 void notify_SACL_change(char *dir);
+int whodata_path_filter(char **path);
+void whodata_adapt_path(char **path);
+int whodata_check_arch();
 void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data);
 
 // Whodata list operations
@@ -313,6 +317,10 @@ int run_whodata_scan() {
     wchar_t query[OS_MAXSTR];
     int result;
 
+    if (whodata_check_arch()) {
+        return 1;
+    }
+
     // Set the signal handler to restore the policies
     atexit(audit_restore);
     // Set the system audit policies
@@ -497,9 +505,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 goto clean;
             }
             str_lowercase(path);
-            if (OSHash_Get_ex(syscheck.wdata.ignored_paths, path)) {
-                // The file has been marked as ignored
-                mdebug2("The file '%s' has been marked as ignored. It will be discarded.", path);
+            if (whodata_path_filter(&path)) {
                 goto clean;
             }
         }
@@ -1313,6 +1319,76 @@ void notify_SACL_change(char *dir) {
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
 
+int whodata_path_filter(char **path) {
+    if (strstr(*path, ":\\$recycle.bin")) {
+        mdebug2("File '%s' is in the recycle bin. It will be discarded.", *path);
+        return 1;
+    }
+
+    if (sys_64) {
+        whodata_adapt_path(path);
+    }
+
+    if (OSHash_Get_ex(syscheck.wdata.ignored_paths, *path)) {
+        // The file has been marked as ignored
+        mdebug2("The file '%s' has been marked as ignored. It will be discarded.", *path);
+        return 1;
+    }
+
+    return 0;
+}
+
+void whodata_adapt_path(char **path) {
+    const char *system_32 = ":\\windows\\system32";
+    const char *system_wow64 = ":\\windows\\syswow64";
+    const char *system_native = ":\\windows\\sysnative";
+    char *new_path = NULL;
+
+    if (strstr(*path, system_32)) {
+        new_path = wstr_replace(*path, system_32, system_native);
+
+    } else if (strstr(*path, system_wow64)) {
+        new_path = wstr_replace(*path, system_wow64, system_32);
+    }
+
+    if (new_path) {
+        mdebug2("Convert '%s' to '%s' to process the whodata event.", *path, new_path);
+        free(*path);
+        *path = new_path;
+    }
+}
+
+int whodata_check_arch() {
+    HKEY RegistryKey;
+    int retval = OS_INVALID;
+    char arch[64 + 1] = "";
+    long unsigned int data_size = 64;
+    unsigned int result;
+    const char *environment_key = "System\\CurrentControlSet\\Control\\Session Manager\\Environment";
+    const char *processor_arch = "PROCESSOR_ARCHITECTURE";
+
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, environment_key, 0, KEY_READ, &RegistryKey) != ERROR_SUCCESS) {
+        merror(SK_REG_OPEN, environment_key);
+        return OS_INVALID;
+    } else {
+        if (result = RegQueryValueEx(RegistryKey, TEXT(processor_arch), NULL, NULL, (LPBYTE)&arch, &data_size), result != ERROR_SUCCESS) {
+            merror("Error reading 'Architecture' from Windows registry. (Error %u)", (unsigned int)result);
+        } else {
+
+            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
+                sys_64 = 1;
+                retval = 0;
+            } else if (!strncmp(arch, "x86", 3)) {
+                sys_64 = 0;
+                retval = 0;
+            }
+        }
+        RegCloseKey(RegistryKey);
+    }
+
+    return retval;
+}
+
 int w_update_sacl(const char *obj_path) {
     SYSTEM_AUDIT_ACE *ace = NULL;
     SID_IDENTIFIER_AUTHORITY world_auth = {SECURITY_WORLD_SID_AUTHORITY};
@@ -1527,6 +1603,5 @@ void whodata_clean_rlist() {
         syscheck.w_rlist.last = NULL;
     }
 }
-
 
 #endif

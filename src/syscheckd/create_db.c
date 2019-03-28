@@ -1076,7 +1076,11 @@ int create_db()
 int extract_whodata_sum(whodata_evt *evt, char *wd_sum, int size) {
     int retval = 0;
 
+#ifndef WIN_WHODATA
     if (!evt) {
+#else
+    if (!evt || evt->scan_directory) {
+#endif
         if (snprintf(wd_sum, size, "::::::::::") >= size) {
             retval = 1;
         }
