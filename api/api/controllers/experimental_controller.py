@@ -23,7 +23,7 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     """
-    f_kwargs = {}
+    f_kwargs = {'all_agents': True}
 
     dapi = DistributedAPI(f=syscheck.clear,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
