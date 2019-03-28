@@ -3,13 +3,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch
+from freezegun import freeze_time
+from unittest.mock import patch, mock_open
 import sqlite3
 import os
 import pytest
 from wazuh.exception import WazuhException
 
 from wazuh.agent import Agent
+from wazuh import common
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
@@ -161,3 +163,48 @@ def test_get_agents_overview_status_olderthan(test_data, status, older_than, tot
         else:
             with pytest.raises(WazuhException, match=f'.* {exception} .*'):
                 Agent.get_agents_overview(**kwargs)
+
+
+@pytest.mark.parametrize('backup', [
+    False,
+    True
+])
+@patch('wazuh.agent.remove')
+@patch('wazuh.agent.rmtree')
+@patch('wazuh.agent.move')
+@patch('wazuh.agent.chown')
+@patch('wazuh.agent.chmod')
+@patch('wazuh.agent.stat')
+@patch('wazuh.agent.glob', return_value=['/var/db/global.db'])
+@patch('wazuh.agent.path.exists', side_effect=lambda x: not (common.backup_path in x))
+@patch('wazuh.database.isfile', return_value=True)
+@patch('wazuh.agent.path.isdir', return_value=True)
+@patch('wazuh.agent.rename')
+@patch('wazuh.agent.makedirs')
+@patch('wazuh.agent.chmod_r')
+@freeze_time('1975-01-01')
+def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isfile_mock, exists_mock, glob_mock,
+                       stat_mock, chmod_mock, chown_mock, move_mock, rmtree_mock, remove_mock, test_data, backup):
+    """
+    Test the _remove_manual function
+    """
+    client_keys_text = '\n'.join([f'{str(aid).zfill(3)} {name} {ip} {key}' for aid, name, ip, key in
+                                  test_data.global_db.execute(
+                                      'select id, name, register_ip, internal_key from agent where id > 0')])
+
+    with patch('wazuh.agent.open', mock_open(read_data=client_keys_text)) as m:
+        with patch('sqlite3.connect') as mock_db:
+            mock_db.return_value = test_data.global_db
+            Agent('001')._remove_manual(backup=backup)
+
+        m.assert_any_call(common.client_keys)
+        m.assert_any_call(common.client_keys + '.tmp', 'w')
+        stat_mock.assert_called_once_with(common.client_keys)
+        chown_mock.assert_called_once_with(common.client_keys + '.tmp', common.ossec_uid, common.ossec_gid)
+        remove_mock.assert_any_call(os.path.join(common.ossec_path, 'queue/rids/001'))
+        assert len((rename_mock if backup else rmtree_mock).mock_calls) == 8
+        move_mock.assert_called_once_with(common.client_keys + '.tmp', common.client_keys)
+        if backup:
+            backup_path = os.path.join(common.backup_path, f'agents/1975/Jan/01/001-agent-1-any')
+            makedirs_mock.assert_called_once_with(backup_path)
+            chmod_r_mock.assert_called_once_with(backup_path, 0o750)
