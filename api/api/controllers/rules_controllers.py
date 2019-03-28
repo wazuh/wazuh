@@ -211,11 +211,9 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     return data, 200
 
 
-def get_rules_id(rule_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
-                 search=None):
+def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+                 search=None, rule_id=None):
     """
-    :param rule_id: Filters by rule ID.
-    :type rule_id: str
     :param pretty: Show results in human-readable format 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
@@ -228,6 +226,8 @@ def get_rules_id(rule_id, pretty=False, wait_for_complete=False, offset=0, limit
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
+    :param rule_id: Filters by rule ID
+    :type rule_id: str
     """
     f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search}
