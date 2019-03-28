@@ -741,6 +741,7 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     if (fluent->certificate) cJSON_AddStringToObject(wm_wd, "ca_file", fluent->certificate);
     if (fluent->user_name) cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
     if (fluent->user_pass) cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
+    cJSON_AddNumberToObject(wm_wd, "timeout", fluent->timeout);
 
     cJSON_AddItemToObject(root,"fluent-forward",wm_wd);
 
