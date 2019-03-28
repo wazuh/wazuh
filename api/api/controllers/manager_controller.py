@@ -271,7 +271,7 @@ def get_log_summary(pretty=False, wait_for_complete=False):
     return data, 200
 
 
-def get_files(pretty=False, wait_for_complete=False, path=None,):
+def get_files(pretty=False, wait_for_complete=False, path=None):
     """Get file contents.
 
     Returns file contents from any file.
