@@ -405,7 +405,7 @@ def get_packages_info(pretty=False, wait_for_complete=False, offset=0,
 def get_ports_info(pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, pid=None,
     protocol=None, local_ip=None, local_port=None, remote_ip=None,
-    tx_queue=None, state=None):
+    tx_queue=None, state=None, process=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -442,7 +442,7 @@ def get_ports_info(pretty=False, wait_for_complete=False,
                'tx_queue': tx_queue, 'state': state, 'process': process}
 
     f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
-                'sort': sort, 'search': search}
+                'sort': sort, 'search': search, 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_ports,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
