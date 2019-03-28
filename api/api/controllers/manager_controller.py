@@ -218,7 +218,7 @@ def get_stats_remoted(pretty=False, wait_for_complete=False):
 
 
 def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                 search=None, category=None, type_log=None):
+            search=None, category=None, type_log=None):
     """Get a specified node's wazuh logs. 
 
     Returns the last 2000 wazuh log entries in node {node_id}.
@@ -271,14 +271,14 @@ def get_log_summary(pretty=False, wait_for_complete=False):
     return data, 200
 
 
-def get_files(path, pretty=False, wait_for_complete=False):
+def get_files(pretty=False, wait_for_complete=False, path=None,):
     """Get file contents.
 
     Returns file contents from any file.
 
-    :param path: Filepath to return.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
     """
     f_kwargs = {'path': path}
 
@@ -295,16 +295,17 @@ def get_files(path, pretty=False, wait_for_complete=False):
     return data, 200
 
 
-def post_files(body, path, overwrite=False, pretty=False, wait_for_complete=False):
+def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
+               path=None):
     """Updates file contents.
 
     Replaces file contents with the data contained in the API request.
 
     :param body: Body request with the content of the file to be uploaded
-    :param path: Filepath to return.
     :param overwrite: If set to false, an exception will be raised when updating contents of an already existing filename.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
     """
     # get content-type from headers
     try:
@@ -334,14 +335,15 @@ def post_files(body, path, overwrite=False, pretty=False, wait_for_complete=Fals
 
     return data, 200
 
-def delete_files(path, pretty=False, wait_for_complete=False):
+
+def delete_files(pretty=False, wait_for_complete=False, path=None):
     """Removes a file.
 
     Removes a specified file.
 
-    :param path: Filepath to return.
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
+    :param path: Filepath to return.
     """
     f_kwargs = {'path': path}
 
@@ -356,6 +358,7 @@ def delete_files(path, pretty=False, wait_for_complete=False):
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
 
 def put_restart(pretty=False, wait_for_complete=False):
     """Restarts the wazuh manager.
