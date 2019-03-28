@@ -742,7 +742,7 @@ cJSON *wm_fluent_dump(const wm_fluent_t *fluent) {
     if (fluent->user_name) cJSON_AddStringToObject(wm_wd, "user", fluent->user_name);
     if (fluent->user_pass) cJSON_AddStringToObject(wm_wd, "password", fluent->user_pass);
 
-    cJSON_AddItemToObject(root,"fluent_forward",wm_wd);
+    cJSON_AddItemToObject(root,"fluent-forward",wm_wd);
 
     return root;
 }
