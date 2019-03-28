@@ -66,8 +66,8 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     :param select: Select which fields to return (separated by comma)
     :type select: List[str]
     """
-    # get type query parameter
-    type_ = connexion.request.args['type']
+    # get type parameter from query
+    type_ = connexion.request.args.get('type', 'all')
 
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                 'select': select, 'filter_type': type_}
