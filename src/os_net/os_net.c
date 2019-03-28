@@ -57,7 +57,7 @@ static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, in
     if (_proto == IPPROTO_UDP) {
 #ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-#else 
+#else
         if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 #endif
             return OS_SOCKTERR;
@@ -258,7 +258,7 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
     } else if (protocol == IPPROTO_UDP) {
 #ifndef WIN32
         if ((ossock = socket(ipv6 == 1 ? PF_INET6 : PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
-#else 
+#else
         if ((ossock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
 #endif
             return (OS_SOCKTERR);
@@ -573,8 +573,11 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     os_malloc(bufsz, buffer);
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
+#ifdef WIN32
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
-
+#else
+    retval = send(sock, buffer, bufsz, MSG_NOSIGNAL) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
+#endif
     free(buffer);
     return retval;
 }
