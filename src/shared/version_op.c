@@ -308,7 +308,6 @@ os_info *get_unix_version()
     os_info *info;
 
     os_calloc(1,sizeof(os_info),info);
-    info->os_platform = NULL;
 
     // Try to open /etc/os-release
     os_release = fopen("/etc/os-release", "r");
@@ -345,9 +344,31 @@ os_info *get_unix_version()
             }
         }
         fclose(os_release);
-    }
-    // Linux old distributions without 'os-release' file or CentOS systems
-    if (!os_release || (info->os_platform && strcmp(info->os_platform, "centos") == 0)) {
+
+        // If the OS is CentOS, try to get the version from the 'centos-release' file.
+        if (info->os_platform && strcmp(info->os_platform, "centos") == 0) {
+            regex_t regexCompiled;
+            regmatch_t match[2];
+            int match_size;
+            if (version_release = fopen("/etc/centos-release","r"), version_release){
+                os_free(info->os_version);
+                static const char *pattern = "([0-9][0-9]*\\.?[0-9]*)\\.*";
+                if (regcomp(&regexCompiled, pattern, REG_EXTENDED)) {
+                    merror_exit("Cannot compile regular expression.");
+                }
+                while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                    if(regexec(&regexCompiled, buff, 2, match, 0) == 0){
+                        match_size = match[1].rm_eo - match[1].rm_so;
+                        info->os_version = malloc(match_size +1);
+                        snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
+                        break;
+                    }
+                }
+                regfree(&regexCompiled);
+                fclose(version_release);
+            }
+        }
+    } else {
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
