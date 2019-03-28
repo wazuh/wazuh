@@ -39,9 +39,9 @@ def clear_syscheck_database(pretty=False, wait_for_complete=False):
 
 
 def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=None,
-                       select=None, sort=None, search=None, benchmark=None, profile=None,
-                       pass=False, fail=None, error=None, notchecked=None, unknown=None,
-                       score=None):
+                        select=None, sort=None, search=None, benchmark=None, profile=None,
+                        pass_=None, fail=None, error=None, notchecked=None, unknown=None,
+                        score=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
@@ -63,8 +63,8 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :type benchmark: str
     :param profile: Filters by evaluated profile
     :type profile: str
-    :param pass: Filters by passed checks
-    :type pass: int
+    :param pass_: Filters by passed checks
+    :type pass_: int
     :param fail: Filters by failed checks
     :type fail: int
     :param error: Filters by encountered errors
@@ -76,7 +76,7 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :param score: Filters by final score
     :type score: int
     """
-    filters = {'benchmark': benchmark, 'profile': profile, 'pass': pass,
+    filters = {'benchmark': benchmark, 'profile': profile, 'pass': pass_,
                'fail': fail, 'error': error, 'notchecked': notchecked,
                'unknown': unknown, 'score': score}
 
@@ -310,8 +310,8 @@ def get_network_protocol_info(pretty=False, wait_for_complete=False,
 
 def get_os_info(pretty=False, wait_for_complete=False, offset=0, limit=None,
                 select=None, sort=None, search=None, os_name=None,
-                architecture=None, os_version=None, version=version,
-                release=release):
+                architecture=None, os_version=None, version=None,
+                release=None):
     """
     :param pretty: Show results in human-readable format
     :type pretty: bool
