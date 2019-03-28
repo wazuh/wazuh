@@ -308,6 +308,7 @@ os_info *get_unix_version()
     os_info *info;
 
     os_calloc(1,sizeof(os_info),info);
+    info->os_platform = NULL;
 
     // Try to open /etc/os-release
     os_release = fopen("/etc/os-release", "r");
@@ -345,8 +346,8 @@ os_info *get_unix_version()
         }
         fclose(os_release);
     }
-    // Linux old distributions without 'os-release' file
-    else {
+    // Linux old distributions without 'os-release' file or CentOS systems
+    if (!os_release || (info->os_platform && strcmp(info->os_platform, "centos") == 0)) {
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
