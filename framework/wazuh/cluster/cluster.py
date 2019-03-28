@@ -456,8 +456,9 @@ def unmerge_agent_info(merge_type, path_file, filename):
             try:
                 st_size, name, st_mtime = header[:-1].split(' ', 2)
                 st_size = int(st_size)
-            except ValueError:
-                raise Exception("Malformed agent-info.merged file")
+            except ValueError as e:
+                logger.error("Malformed agent-info.merged file ({}). Parsed line: {}".format(e, header))
+                break
 
             # read data
             data = src_f.read(st_size)
