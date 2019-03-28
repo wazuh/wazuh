@@ -145,6 +145,8 @@ typedef struct whodata {
     int interval_scan;                  // Time interval between scans of the checking thread
     int whodata_setup;
     whodata_dir_status *dirs_status;    // Status list
+    char **device;                       // Hard disk devices
+    char **drive;                        // Drive letter
 } whodata;
 
 #endif /* End WIN32*/

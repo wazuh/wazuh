@@ -88,6 +88,11 @@ void free_win_whodata_evt(whodata_evt *evt);
 char *get_whodata_path(const short unsigned int *win_path);
 void whodata_clean_rlist();
 
+// Get volumes and paths of Windows system
+int get_volume_names();
+int get_drive_names(PWCHAR volume_name, char *device);
+int replace_device_path(char * path);
+
 char *guid_to_string(GUID *guid) {
     char *string_guid;
     os_calloc(40, sizeof(char *), string_guid);
@@ -505,6 +510,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             if (path = get_whodata_path(buffer[2].XmlVal), !path) {
                 goto clean;
             }
+
+            // Replace in string path \device\harddiskvolumeX\ by drive letter
+            replace_device_path(path);
+
             str_lowercase(path);
             if (whodata_path_filter(&path)) {
                 goto clean;
@@ -868,6 +877,9 @@ int whodata_audit_start() {
     memset(&syscheck.w_clist, 0, sizeof(whodata_event_list));
     memset(&syscheck.w_rlist, 0, sizeof(whodata_event_list));
     whodata_list_set_values();
+
+    minfo("Analyzing Windows volumes");
+    get_volume_names();
 
     return 0;
 }
@@ -1318,6 +1330,195 @@ void notify_SACL_change(char *dir) {
     char msg_alert[OS_SIZE_1024 + 1];
     snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
+}
+
+int get_volume_names() {
+    char *convert_device;
+    char *convert_volume;
+    WCHAR device_name[MAX_PATH] = L"";
+    WCHAR volume_name[MAX_PATH] = L"";
+    HANDLE fh = INVALID_HANDLE_VALUE;
+    unsigned long char_count = 0;
+    size_t index = 0;
+    size_t success = -1;
+    size_t win_error = ERROR_SUCCESS;
+
+    // Enumerate all volumes in the system.
+    fh = FindFirstVolumeW(volume_name, ARRAYSIZE(volume_name));
+
+    if (fh == INVALID_HANDLE_VALUE) {
+        win_error = GetLastError();
+        mwarn("FindFirstVolumeW failed (%u)'%s'", win_error, strerror(win_error));
+        FindVolumeClose(fh);
+        fh = INVALID_HANDLE_VALUE;
+        return success;
+    }
+
+    os_calloc(MAX_PATH, sizeof(char), convert_volume);
+    os_calloc(MAX_PATH, sizeof(char), convert_device);
+
+    // The loop ends when there are no more volumes
+    while (1) {
+        //  Skip the \\?\ prefix and remove the trailing backslash.
+        index = wcslen(volume_name) - 1;
+
+        // Convert volume_name
+        wcstombs(convert_volume, volume_name, ARRAYSIZE(volume_name));
+
+        if (volume_name[0]     != L'\\' ||
+            volume_name[1]     != L'\\' ||
+            volume_name[2]     != L'?'  ||
+            volume_name[3]     != L'\\' ||
+            volume_name[index] != L'\\')
+        {
+            win_error = ERROR_BAD_PATHNAME;
+            mwarn("Find Volume returned a bad path: %s", convert_volume);
+            break;
+        }
+
+        // QueryDosDeviceW does not allow a trailing backslash,
+        // so temporarily remove it.
+        volume_name[index] = '\0';
+        char_count = QueryDosDeviceW(&volume_name[4], device_name, ARRAYSIZE(device_name));
+        volume_name[index] = '\\';
+
+        if (char_count == 0) {
+            win_error = GetLastError();
+            mwarn("QueryDosDeviceW failed (%u)'%s'", win_error, strerror(win_error));
+            break;
+        }
+
+        // Convert device name
+        wcstombs(convert_device, device_name, ARRAYSIZE(device_name));
+        // Get all drive letters
+        get_drive_names(volume_name, convert_device);
+
+        // Move on to the next volume.
+        success = FindNextVolumeW(fh, volume_name, ARRAYSIZE(volume_name));
+
+        if (!success) {
+            win_error = GetLastError();
+
+            if (win_error != ERROR_NO_MORE_FILES) {
+                mwarn("FindNextVolumeW failed (%u)'%s'", win_error, strerror(win_error));
+                break;
+            }
+
+            // Finished iterating, through all the volumes.
+            win_error = ERROR_SUCCESS;
+            success = 0;
+            break;
+        }
+    }
+
+    FindVolumeClose(fh);
+    fh = INVALID_HANDLE_VALUE;
+
+    os_free(convert_device);
+    os_free(convert_volume);
+
+    return success;
+}
+
+int get_drive_names(PWCHAR volume_name, char *device) {
+    char *convert_name;
+    PWCHAR names = NULL;
+    PWCHAR nameit = NULL;
+    unsigned long char_count = MAX_PATH + 1;
+    unsigned int device_it;
+    size_t success = -1;
+    size_t retval = -1;
+
+    while (1) {
+        // Allocate a buffer to hold the paths.
+        os_calloc(MAX_PATH, sizeof(PWCHAR), names);
+
+        // Obtain all of the paths for this volume.
+        success = GetVolumePathNamesForVolumeNameW(
+            volume_name, names, char_count, &char_count
+            );
+
+        if (success) {
+            retval = 0;
+            break;
+        }
+
+        if (retval = GetLastError(), retval != ERROR_MORE_DATA) {
+            mwarn("GetVolumePathNamesForVolumeNameW (%u)'%s'", retval, strerror(retval));
+            break;
+        }
+
+        //  Try again with the new suggested size.
+        os_free(names);
+        names = NULL;
+    }
+
+    if (success) {
+        // Save information in FIM whodata structure
+        os_calloc(MAX_PATH, sizeof(char), convert_name);
+
+        for (nameit = names; nameit[0] != L'\0'; nameit += wcslen(nameit) + 1) {
+            wcstombs(convert_name, nameit, ARRAYSIZE(nameit));
+            mdebug1("Device '%s' associated with the mounting point '%s'", device, convert_name);
+
+            if(syscheck.wdata.device) {
+                device_it = 0;
+
+                while(syscheck.wdata.device[device_it]) {
+                    device_it++;
+                }
+
+                os_realloc(syscheck.wdata.device,
+                        (device_it + 2) * sizeof(char*),
+                        syscheck.wdata.device);
+                os_strdup(device, syscheck.wdata.device[device_it]);
+                syscheck.wdata.device[device_it + 1] = NULL;
+
+                os_realloc(syscheck.wdata.drive,
+                        (device_it + 2) * sizeof(char*),
+                        syscheck.wdata.drive);
+                os_strdup(convert_name, syscheck.wdata.drive[device_it]);
+                syscheck.wdata.drive[device_it + 1] = NULL;
+
+            } else {
+                os_calloc(2, sizeof(char*), syscheck.wdata.device);
+                os_strdup(device, syscheck.wdata.device[0]);
+                syscheck.wdata.device[1] = NULL;
+
+                os_calloc(2, sizeof(char*), syscheck.wdata.drive);
+                os_strdup(convert_name, syscheck.wdata.drive[0]);
+                syscheck.wdata.drive[1] = NULL;
+            }
+        }
+        os_free(convert_name);
+    }
+    os_free(names);
+
+    return 0;
+}
+
+int replace_device_path(char * path) {
+    char *new_path;
+    unsigned int iterator = 0;
+
+    while (syscheck.wdata.device[iterator]) {
+        minfo("Find device '%s' in path '%s'", syscheck.wdata.device[iterator], path);
+
+        if (strstr(path, syscheck.wdata.device[iterator]) != NULL) {
+            os_strdup(syscheck.wdata.drive[iterator], new_path);
+
+            if (wm_strcat(&new_path, path + strlen(syscheck.wdata.device[iterator]), '\0') == 0) {
+                minfo("Replacing '%s' to '%s'", path, new_path);
+                os_free(path);
+                path = new_path;
+            }
+            break;
+        }
+
+        iterator++;
+    }
+
+    return 0;
 }
 
 char *get_whodata_path(const short unsigned int *win_path) {
