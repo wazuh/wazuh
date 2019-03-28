@@ -66,10 +66,11 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     :param select: Select which fields to return (separated by comma)
     :type select: List[str]
     """
-    query_params = connexion.request.args
+    # get type query parameter
+    type_ = connexion.request.args['type']
 
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                'select': select, 'filter_type': query_params['type']}
+                'select': select, 'filter_type': type_}
 
     dapi = DistributedAPI(f=cluster_control.get_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
