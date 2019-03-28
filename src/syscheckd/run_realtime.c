@@ -42,20 +42,16 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
     char *buf;
-    char *real_path;
     char *path;
     syscheck_node *s_node;
 
     // To obtain path without symbolic links
-    os_calloc(PATH_MAX, sizeof(char), real_path);
 
 #ifndef WIN32
-    if (realpath(file_name, real_path) == NULL) {
-        os_strdup(file_name, path);
-        os_free(real_path);
-    } else {
-        os_strdup(real_path, path);
-        os_free(real_path);
+    os_calloc(PATH_MAX + 1, sizeof(char), path);
+
+    if (realpath(file_name, path) == NULL) {
+        snprintf(path, PATH_MAX, "%s", file_name);
     }
 #else
     os_strdup(file_name, path);
@@ -117,7 +113,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             return (1);
         } else {
-            mdebug2("Inotify event with same checksum for file: '%s'. Ignoring it.", real_path);
+            mdebug2("Inotify event with same checksum for file: '%s'. Ignoring it.", path);
         }
 
         os_free(path);
