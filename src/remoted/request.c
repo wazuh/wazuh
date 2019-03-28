@@ -120,6 +120,10 @@ void * req_main(__attribute__((unused)) void * arg) {
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            merror("OS_RecvSecureTCP(): Too big message size received from an internal component.");
+            free(buffer);
+            break;
         case -1:
             merror("OS_RecvSecureTCP(): %s", strerror(errno));
             free(buffer);
@@ -416,7 +420,7 @@ size_t rem_getconfig(const char * section, char ** output) {
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;
@@ -427,7 +431,7 @@ size_t rem_getconfig(const char * section, char ** output) {
             json_str = cJSON_PrintUnformatted(cfg);
             wm_strcat(output, json_str, ' ');
             free(json_str);
-            cJSON_free(cfg);
+            cJSON_Delete(cfg);
             return strlen(*output);
         } else {
             goto error;

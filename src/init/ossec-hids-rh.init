@@ -21,7 +21,7 @@ if [ "X${DIRECTORY}" = "X" ]; then
 fi
 
 start() {
-    echo -n "Starting OSSEC: "
+    echo -n "Starting Wazuh: "
     ${DIRECTORY}/bin/ossec-control start > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then
@@ -34,7 +34,7 @@ start() {
 }
 
 stop() {
-    echo -n "Stopping OSSEC: "
+    echo -n "Stopping Wazuh: "
     ${DIRECTORY}/bin/ossec-control stop > /dev/null
     RETVAL=$?
     if [ $RETVAL -eq 0 ]; then

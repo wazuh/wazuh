@@ -1,6 +1,9 @@
 ---
 name: 'Test: Upgrade'
 about: Test suite for upgrade.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

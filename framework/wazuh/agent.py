@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -19,22 +19,17 @@ from wazuh import common
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
-from shutil import copyfile, rmtree
+from shutil import copyfile, move, rmtree
 from platform import platform
-from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, errno
+from os import chown, chmod, path, makedirs, rename, urandom, listdir, stat, remove
 from time import time, sleep
 import socket
 import hashlib
 import fcntl
 from json import loads
 from functools import reduce
-from shutil import move
-from os import remove
-
-try:
-    from urllib2 import urlopen, URLError, HTTPError
-except ImportError:
-    from urllib.request import urlopen, URLError, HTTPError
+import errno
+import requests
 
 def create_exception_dic(id, e):
     """
@@ -55,15 +50,17 @@ def create_exception_dic(id, e):
 
 class WazuhDBQueryAgents(WazuhDBQuery):
 
-    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
+    def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
+                 min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields = {'internal_key'})
+                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
-        status_filter['value'] = status_filter['value'].lower()
+        # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
+        status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
         result = datetime.now() - timedelta(seconds=common.limit_seconds)
         self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -106,7 +103,6 @@ class WazuhDBQueryAgents(WazuhDBQuery):
             self.query = self.query[:-1] + ' OR id LIKE :search_id)'
             self.request['search_id'] = int(self.search['value']) if self.search['value'].isdigit() else self.search['value']
 
-
     def _format_data_into_dictionary(self):
         def format_fields(field_name, value, today, lastKeepAlive=None, version=None):
             if field_name == 'id':
@@ -120,28 +116,28 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
-        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple) if value is not None} for
-                       db_tuple in self.conn]
+        agent_items = [{field: value for field, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
+                        if value is not None} for db_tuple in self.conn]
 
         today = datetime.today()
 
-        # compute 'status' field, format id with zero padding and remove non-user-requested fields. Also remove, internal key
+        # compute 'status' field, format id with zero padding and remove non-user-requested fields.
+        # Also remove, extra fields (internal key and registration IP)
         selected_fields = self.select['fields'] - self.extra_fields if self.remove_extra_fields else self.select['fields']
         selected_fields |= {'id'}
-        agent_items = [{key:format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
+        agent_items = [{key: format_fields(key, value, today, item.get('lastKeepAlive'), item.get('version'))
                         for key, value in item.items() if key in selected_fields} for item in agent_items]
 
         agent_items = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, ['os'], '.') for d in agent_items]
 
         return {'items': agent_items, 'totalItems': self.total_items}
 
-
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
-            self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
+            if self.legacy_filters['older_than'] is not None:
+                self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
-
 
     def _process_filter(self, field_name, field_filter, q_filter):
         if field_name == 'group' and q_filter['value'] is not None:
@@ -157,8 +153,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
 class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
+
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
+    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
+                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
         WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
                               filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
                               db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
@@ -167,7 +165,9 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'}, remove_extra_fields=True):
+    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
+                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
+                 remove_extra_fields=True):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
         WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
@@ -194,13 +194,14 @@ class Agent:
     OSSEC Agent object.
     """
 
-    fields = {'id': 'id', 'name': 'name', 'ip': 'ip', 'status': 'status',
+    fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'status',
               'os.name': 'os_name', 'os.version': 'os_version', 'os.platform': 'os_platform',
               'version': 'version', 'manager': 'manager_host', 'dateAdd': 'date_add',
               'group': '`group`', 'mergedSum': 'merged_sum', 'configSum': 'config_sum',
               'os.codename': 'os_codename', 'os.major': 'os_major', 'os.minor': 'os_minor',
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build':'os_build',
-              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key'}
+              'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key':'internal_key',
+              'registerIP': 'register_ip'}
 
 
     def __init__(self, id=None, name=None, ip=None, key=None, force=-1):
@@ -227,6 +228,7 @@ class Agent:
         self.group         = None
         self.manager       = None
         self.node_name     = None
+        self.registerIP    = ip
 
         # if the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -335,7 +337,7 @@ class Agent:
 
 
     def compute_key(self):
-        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.ip, self.internal_key)
+        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.registerIP, self.internal_key)
         return b64encode(str_key.encode()).decode()
 
     def get_key(self):
@@ -344,7 +346,6 @@ class Agent:
 
         :return: Agent key.
         """
-
         self._load_info_from_DB()
         if self.id != "000":
             self.key = self.compute_key()
@@ -492,23 +493,27 @@ class Agent:
         if not backup:
             # Remove agent files
             agent_files = [
-                '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip),
-                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id)
+                '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP),
+                '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP),
+                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
+                '{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id),
+                '{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
+                '{}/queue/diff/{}'.format(common.ossec_path, self.name)
             ]
 
             for agent_file in filter(path.exists, agent_files):
-                remove(agent_file)
+                if path.isdir(agent_file):
+                    rmtree(agent_file)
+                else:
+                    remove(agent_file)
 
         else:
             # Create backup directory
             # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
             date_part = date.today().strftime('%Y/%b/%d')
-            main_agent_backup_dir = '{0}/agents/{1}/{2}-{3}-{4}'.format(common.backup_path, date_part, self.id, self.name, self.ip)
+            main_agent_backup_dir = '{0}/agents/{1}/{2}-{3}-{4}'.format(common.backup_path, date_part, self.id, self.name, self.registerIP)
             agent_backup_dir = main_agent_backup_dir
 
             not_agent_dir = True
@@ -524,13 +529,14 @@ class Agent:
 
             # Move agent file
             agent_files = [
-                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.ip), '{0}/agent-info'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck.cpt'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/({1}) {2}->syscheck-registry'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry'.format(agent_backup_dir)),
-                ('{0}/queue/syscheck/.({1}) {2}->syscheck-registry.cpt'.format(common.ossec_path, self.name, self.ip), '{0}/syscheck-registry.cpt'.format(agent_backup_dir)),
-                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.ip), '{0}/rootcheck'.format(agent_backup_dir)),
-                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir))
+                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP), '{0}/agent-info'.format(agent_backup_dir)),
+                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP), '{0}/rootcheck'.format(agent_backup_dir)),
+                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
+                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
+                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
@@ -1491,12 +1497,10 @@ class Agent:
 
         return msg
 
-
     @staticmethod
     def create_multi_group(group_id):
         """
         Creates a multi group.
-
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1513,12 +1517,12 @@ class Agent:
             chown(multi_group_path, common.ossec_uid, common.ossec_gid)
             chmod(multi_group_path, 0o770)
             msg = "Group '{0}' created.".format(group_id)
+            return msg
         except OSError as e:
-            if errno != errno.EEXIST:
+            if e.errno != errno.EEXIST:
                 raise WazuhException(1005, str(e))
-                
-        return msg
 
+        return msg
 
     @staticmethod
     def remove_multi_group(groups_id):
@@ -1678,24 +1682,21 @@ class Agent:
         if not Agent.group_exists(group_id):
             raise WazuhException(1710)
 
+        message = f'All selected agents were removed from group {group_id}'
         for agent_id in agent_id_list:
             try:
                 Agent.unset_group(agent_id=agent_id, group_id=group_id)
                 affected_agents.append(agent_id)
             except Exception as e:
-                failed_ids.append(agent_id)
-
-            if not failed_ids:
-                message = 'All selected agents were removed to group ' + group_id
-            else:
-                message = 'Some agents were not removed to group ' + group_id
-
-            final_dict = {}
+                failed_ids.append(create_exception_dic(agent_id, e))
 
             if failed_ids:
-                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
-            else:
-                final_dict = {'msg': message, 'affected_agents': affected_agents}
+                message = f'Some agents were not removed from group {group_id}'
+
+        if failed_ids:
+            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+        else:
+            final_dict = {'msg': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1836,23 +1837,25 @@ class Agent:
 
         # get agent's group
         group_name = Agent.get_agents_group_file(agent_id)
-        if group_name:
-            group_list = group_name.split(',')
-            # check agent belongs to group group_id
-            if group_id not in group_list:
-                raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
-            # remove group from group_list
-            group_list.remove(group_id)
-            if len(group_list) > 1:
-                multigroup_name = ','.join(group_list)
-                if not Agent.multi_group_exists(multigroup_name):
-                    Agent.create_multi_group(multigroup_name)
-            else:
-                multigroup_name = 'default' if not group_list else group_list[0]
-            Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
-            return "Group '{}' unset for agent '{}'.".format(group_id, agent_id)
+        group_list = group_name.split(',')
+        # check agent belongs to group group_id
+        if group_id not in group_list:
+            raise WazuhException(1734)
+        elif group_id == 'default' and len(group_list) == 1:
+            raise WazuhException(1745)
+        # remove group from group_list
+        group_list.remove(group_id)
+        if len(group_list) > 1:
+            multigroup_name = ','.join(group_list)
+            if not Agent.multi_group_exists(multigroup_name):
+                Agent.create_multi_group(multigroup_name)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            multigroup_name = 'default' if not group_list else group_list[0]
+
+        Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
+
+        return f"Group '{group_id}' unset for agent '{agent_id}'." if multigroup_name != 'default' else \
+               f"Agent {agent_id} set to group default."
 
 
     @staticmethod
@@ -1893,7 +1896,7 @@ class Agent:
 
             return "Group unset for agent '{0}'.".format(agent_id)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            raise WazuhException(1746)
 
 
     @staticmethod
@@ -1947,25 +1950,15 @@ class Agent:
                 versions_url = protocol + wpk_repo + self.os['platform'] + "/" + self.os['major'] + "/" + self.os['arch'] + "/versions"
 
         try:
-            result = urlopen(versions_url)
-        except HTTPError as e:
+            result = requests.get(versions_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1713, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
+
+        if result.ok:
+            versions = [version.split() for version in result.text.split('\n')]
+        else:
+            error = "Can't access to the versions file in {}".format(versions_url)
             raise WazuhException(1713, error)
-
-        lines = result.readlines()
-        lines = filter(None, lines)
-        versions = []
-
-        for line in lines:
-            ver_readed = line.decode().split()
-            version = ver_readed[0]
-            sha1sum = ver_readed[1] if len(ver_readed) > 1 else ''
-            versions.append([version, sha1sum])
 
         return versions
 
@@ -2046,16 +2039,16 @@ class Agent:
             print("Downloading WPK file from: {0}".format(wpk_url))
 
         try:
-            result = urlopen(wpk_url)
-            with open(wpk_file_path, "wb") as local_file:
-                local_file.write(result.read())
-        except HTTPError as e:
+            result = requests.get(wpk_url)
+        except requests.exceptions.RequestException as e:
             raise WazuhException(1714, e.code)
-        except URLError as e:
-            if "SSL23_GET_SERVER_HELLO" in str(e.reason):
-              error = "HTTPS requires Python 2.7.9 or newer. You may also run with Python 3."
-            else:
-              error = str(e.reason)
+
+        if result.ok:
+            with open(wpk_file_path, 'wb') as fd:
+                for chunk in result.iter_content(chunk_size=128):
+                    fd.write(chunk)
+        else:
+            error = "Can't access to the WPK file in {}".format(wpk_url)
             raise WazuhException(1714, error)
 
         # Get SHA1 file sum
@@ -2107,7 +2100,7 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
@@ -2120,7 +2113,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
 
@@ -2142,7 +2135,7 @@ class Agent:
                 s.send(msg.encode() + bytes_read)
                 data = s.receive().decode()
                 s.close()
-                if data != 'ok':
+                if not data.startswith('ok'):
                     raise WazuhException(1715, data.replace("err ",""))
                 bytes_read = file.read(chunk_size)
                 if show_progress:
@@ -2162,7 +2155,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare
@@ -2346,7 +2339,7 @@ class Agent:
             s.close()
             if debug:
                 print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending reset lock timeout
@@ -2359,7 +2352,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Sending file to agent
@@ -2401,7 +2394,7 @@ class Agent:
         s.close()
         if debug:
             print("RESPONSE: {0}".format(data))
-        if data != 'ok':
+        if not data.startswith('ok'):
             raise WazuhException(1715, data.replace("err ",""))
 
         # Get file SHA1 from agent and compare

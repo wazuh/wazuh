@@ -268,6 +268,7 @@ int read_reg(syscheck_config *syscheck, char *entries, int arch, char *tag)
             if (syscheck->registry[i].arch == arch && strcmp(syscheck->registry[i].entry, tmp_entry) == 0) {
                 mdebug2("Overwriting the registration entry: %s", syscheck->registry[i].entry);
                 dump_syscheck_entry(syscheck, tmp_entry, arch, 1, NULL, 0, clean_tag, i);
+                free_strarray(entry);
                 return (1);
             }
             i++;
@@ -814,6 +815,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 #endif
     const char *xml_whodata_options = "whodata";
     const char *xml_audit_key = "audit_key";
+    const char *xml_audit_hc = "startup_healthcheck";
 
     /* Configuration example
     <directories check_all="yes">/etc,/usr/bin</directories>
@@ -829,8 +831,9 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         syscheck->disabled = SK_CONF_UNDEFINED;
     }
 
-    os_calloc(1, sizeof(char *), syscheck->audit_key);
-
+    if(!syscheck->audit_key) {
+        os_calloc(1, sizeof(char *), syscheck->audit_key);
+    }
     while (node && node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -899,10 +902,12 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             snprintf(arch, 6, "%s", "both");
                         } else {
                             merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                            free(tag);
                             return OS_INVALID;
                         }
                     } else {
                         merror(XML_INVATTR, node[i]->attributes[j], node[i]->content);
+                        free(tag);
                         return OS_INVALID;
                     }
                     j++;
@@ -911,14 +916,23 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if (strcmp(arch, "both") == 0) {
                 if (!(read_reg(syscheck, node[i]->content, ARCH_32BIT, tag) &&
-                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)))
-                return (OS_INVALID);
+                read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+                
             } else if (strcmp(arch, "64bit") == 0) {
-                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag))
-                return (OS_INVALID);
+                if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+                
             } else {
-                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag))
-                return (OS_INVALID);
+                if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
+                    free(tag);
+                    return (OS_INVALID);
+                }
+                
             }
 
             if (tag)
@@ -1013,6 +1027,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if(!ExpandEnvironmentStrings(node[i]->content, new_ig, 2047)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_ig);
                 continue;
             }
 
@@ -1136,6 +1151,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             if(!ExpandEnvironmentStrings(node[i]->content, new_nodiff, 2047)){
                 merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
+                free(new_nodiff);
                 continue;
             }
 
@@ -1236,6 +1252,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
+            // To be deprecated. This field is now readed inside the <whodata> block.
             if(strcmp(node[i]->content, "yes") == 0)
                 syscheck->restart_audit = 1;
             else if(strcmp(node[i]->content, "no") == 0)
@@ -1260,7 +1277,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     int keyit = 0;
                     char delim = ',';
                     char *key;
-                    syscheck->audit_key[keyit] = NULL;
                     key = strtok(children[j]->content, &delim);
 
                     while (key) {
@@ -1271,6 +1287,28 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                             key = strtok(NULL, &delim);
                             keyit++;
                         }
+                    }
+                } else if (strcmp(children[j]->element, xml_audit_hc) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->audit_healthcheck = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->audit_healthcheck = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
+                    }
+                } else if (strcmp(children[j]->element, xml_restart_audit) == 0) {
+                    if(strcmp(children[j]->content, "yes") == 0)
+                        syscheck->restart_audit = 1;
+                    else if(strcmp(children[j]->content, "no") == 0)
+                        syscheck->restart_audit = 0;
+                    else
+                    {
+                        merror(XML_VALUEERR,children[j]->element,children[j]->content);
+                        OS_ClearNode(children);
+                        return(OS_INVALID);
                     }
                 } else {
                     merror(XML_ELEMNULL);

@@ -130,15 +130,71 @@ void run_notify()
 
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
+#ifdef __linux__
+    char *agent_ip;
+    int sock;
+    char label_ip[50];
+    int i;
+    os_calloc(16,sizeof(char),agent_ip);
+
+    for (i = SOCK_ATTEMPTS; i > 0; --i) {
+        if (sock = control_check_connection(), sock >= 0) {
+            if (OS_SendUnix(sock, agent_ip, IPSIZE) < 0) {
+                merror("Error sending msg to control socket (%d) %s", errno, strerror(errno));
+            }
+            else{
+                if(OS_RecvUnix(sock, IPSIZE - 1, agent_ip) == 0){
+                    merror("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
+                }
+                else{
+                    snprintf(label_ip,50,"#\"_agent_ip\":%s", agent_ip);
+                }
+            }
+
+            close(sock);
+            break;
+        } else {
+            mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
+            sleep(1);
+        }
+    }
+
+    if(sock < 0) {
+        merror("Unable to bind to socket '%s': (%d) %s.", CONTROL_SOCK, errno, strerror(errno));
+    }
+
     /* Create message */
+    if(strcmp(agent_ip,"Err")){
+        if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
+                (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s%s\n%s",
+                    getuname(), md5sum, tmp_labels, shared_files, label_ip, keep_alive_random);
+        } else {
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s%s\n%s",
+                    getuname(), tmp_labels, shared_files, label_ip, keep_alive_random);
+        }
+    }
+    else{
+        if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
+                (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
+                    getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
+        } else {
+            snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
+                    getuname(), tmp_labels, shared_files, keep_alive_random);
+        }
+    }
+    free(agent_ip);
+#else
     if ((File_DateofChange(AGENTCONFIGINT) > 0 ) &&
             (OS_MD5_File(AGENTCONFIGINT, md5sum, OS_TEXT) == 0)) {
         snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s / %s\n%s%s\n%s",
-                 getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
+                getuname(), md5sum, tmp_labels, shared_files, keep_alive_random);
     } else {
         snprintf(tmp_msg, OS_MAXSTR - OS_HEADER_SIZE, "#!-%s\n%s%s\n%s",
-                 getuname(), tmp_labels, shared_files, keep_alive_random);
+                getuname(), tmp_labels, shared_files, keep_alive_random);
     }
+#endif
 
     /* Send status message */
     mdebug2("Sending keep alive: %s", tmp_msg);

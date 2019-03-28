@@ -172,7 +172,7 @@ pstatus()
         for j in `cat ${DIR}/var/run/${pfile}*.pid 2>/dev/null`; do
             ps -p $j > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process $j not used by ossec, removing .."
+                echo "${pfile}: Process $j not used by Wazuh, removing .."
                 rm -f ${DIR}/var/run/${pfile}-$j.pid
                 continue;
             fi
@@ -188,18 +188,18 @@ pstatus()
 }
 
 wait_pid() {
-    local i=1
+    wp_counter=1
 
     while kill -0 $1 2> /dev/null
     do
-        if [ "$i" = "$MAX_KILL_TRIES" ]
+        if [ "$wp_counter" = "$MAX_KILL_TRIES" ]
         then
             return 1
         else
             # sleep doesn't work in AIX
             # read doesn't work in FreeBSD
             sleep 0.1 > /dev/null 2>&1 || read -t 0.1 > /dev/null 2>&1
-            i=`expr $i + 1`
+            wp_counter=`expr $wp_counter + 1`
         fi
     done
 

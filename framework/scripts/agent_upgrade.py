@@ -71,7 +71,7 @@ def main():
     agent = Agent(id=args.agent)
     agent._load_info_from_DB()
 
-    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.ip)
+    agent_info = "{0}/queue/agent-info/{1}-{2}".format(common.ossec_path, agent.name, agent.registerIP)
     if not os.path.isfile(agent_info):
         raise WazuhException(1720)
 
@@ -80,6 +80,10 @@ def main():
         pattern = re.compile("v[0-9]+\.[0-9]+\.[0-9]+")
         if not pattern.match(args.version):
             raise WazuhException(1733, "Version received: {0}".format(args.version))
+
+    if args.chunk_size is not None:
+        if args.chunk_size < 1 or args.chunk_size > 64000:
+            raise WazuhException(1744, "Chunk defined: {0}".format(args.chunk_size))
 
     # Custom WPK file
     if args.file:
@@ -155,7 +159,7 @@ if __name__ == "__main__":
     arg_parser.add_argument("-s", "--silent", action="store_true", help="Do not show output.")
     arg_parser.add_argument("-d", "--debug", action="store_true", help="Debug mode.")
     arg_parser.add_argument("-l", "--list_outdated", action="store_true", help="Generates a list with all outdated agents.")
-    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file. [Default: {0}]".format(common.wpk_chunk_size))
+    arg_parser.add_argument("-c", "--chunk_size", type=int, help="Chunk size sending WPK file. Allowed values: [1 - 64000]. [Default: {0}]".format(common.wpk_chunk_size))
     arg_parser.add_argument("-t", "--timeout", type=int, help="Timeout until agent restart is unlocked.")
     arg_parser.add_argument("-f", "--file", type=str, help="Custom WPK filename.")
     arg_parser.add_argument("-x", "--execute", type=str, help="Executable filename in the WPK custom file. [Default: upgrade.sh]")

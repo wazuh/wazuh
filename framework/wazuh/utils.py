@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -365,13 +365,13 @@ def mkdir_with_mode(name, mode=0o770):
                 raise
         if tail == curdir:           # xxx/newdir/. exists if xxx/newdir exists
             return
-    try:         
+    try:
         mkdir(name, mode)
     except OSError as e:
         # be happy if someone already created the path
         if e.errno != errno.EEXIST:
             raise
-            
+
     chmod(name, mode)
 
 
@@ -383,7 +383,7 @@ def md5(fname):
     return hash_md5.hexdigest()
 
 
-def get_hash(filename, hash_algorithm='md5'):
+def _get_hashing_algorithm(hash_algorithm):
     # check hash algorithm
     try:
         algorithm_list = hashlib.algorithms_available
@@ -393,14 +393,25 @@ def get_hash(filename, hash_algorithm='md5'):
     if not hash_algorithm in algorithm_list:
         raise WazuhException(1723, "Available algorithms are {0}.".format(', '.join(algorithm_list)))
 
-    hashing = hashlib.new(hash_algorithm)
+    return hashlib.new(hash_algorithm)
+
+
+def get_hash(filename, hash_algorithm='md5', return_hex=True):
+    hashing = _get_hashing_algorithm(hash_algorithm)
 
     try:
         with open(filename, 'rb') as f:
-            hashing.update(f.read())
+            for chunk in iter(lambda: f.read(65536), b""):
+                hashing.update(chunk)
     except IOError:
         return None
 
+    return hashing.hexdigest() if return_hex else hashing.digest()
+
+
+def get_hash_str(my_str, hash_algorithm='md5'):
+    hashing = _get_hashing_algorithm(hash_algorithm)
+    hashing.update(my_str.encode())
     return hashing.hexdigest()
 
 
@@ -492,8 +503,14 @@ def load_wazuh_xml(xml_path):
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
+    # replace \< by &lt;
+    data = re.sub(r'\\<', '&lt;', data)
+
+    # replace \> by &gt;
+    data = re.sub(r'\\>', '&gt;', data)
+
     # & characters should be scaped if they don't represent an &entity;
-    data = re.sub(r"&(?!\w+;)", "&amp;", data)
+    data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
 
     return fromstring('<root_tag>' + data + '</root_tag>')
 
@@ -502,7 +519,7 @@ class WazuhVersion:
 
     def __init__(self, version):
 
-        pattern = "v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
+        pattern = r"v?(\d)\.(\d)\.(\d)\-?(alpha|beta|rc)?(\d*)"
         m = re.match(pattern, version)
 
         if m:
@@ -642,10 +659,10 @@ class WazuhDBQuery(object):
         #    group=webserver
         self.query_regex = re.compile(
             r'(\()?' +                                                     # A ( character.
-            '([\w.]+)' +                                                   # Field name: name of the field to look on DB
+            r'([\w.]+)' +                                                   # Field name: name of the field to look on DB
             '([' + ''.join(self.query_operators.keys()) + "]{1,2})" +      # Operator: looks for =, !=, <, > or ~.
-            "([\w _\-.:/]+)" +                                             # Value: A string.
-            "(\))?" +                                                      # A ) character
+            r"([\w _\-\.:/']+)" +                                             # Value: A string.
+            r"(\))?" +                                                      # A ) character
             "([" + ''.join(self.query_separators.keys())+"])?"             # Separator: looks for ;, , or nothing.
         )
         self.date_regex = re.compile(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
@@ -693,9 +710,9 @@ class WazuhDBQuery(object):
     def _add_search_to_query(self):
         if self.search:
             self.query += " AND NOT" if bool(self.search['negation']) else ' AND'
-            self.query += " (" + " OR ".join(x + ' LIKE :search' for x in self.fields.values()) + ')'
+            self.query += " (" + " OR ".join(f'({x.split(" as ")[0]} LIKE :search AND {x.split(" as ")[0]} IS NOT NULL)' for x in self.fields.values()) + ')'
             self.query = self.query.replace('WHERE  AND', 'WHERE')
-            self.request['search'] = '%{0}%'.format(self.search['value'])
+            self.request['search'] = "%{0}%".format(self.search['value'])
 
 
     def _parse_select_filter(self, select_fields):
@@ -744,18 +761,37 @@ class WazuhDBQuery(object):
                 level -= 1
 
             if not self._pass_filter(value):
-                self.query_filters.append({'value': None if value == "null" else value, 'operator': self.query_operators[operator],
-                                 'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
-                                 'separator': self.query_separators[separator], 'level': level})
+                op_index = len(list(filter(lambda x: field in x['field'], self.query_filters)))
+                self.query_filters.append({'value': None if value == "null" else value,
+                                           'operator': self.query_operators[operator],
+                                           'field': '{}${}'.format(field, op_index),
+                                           'separator': self.query_separators[separator], 'level': level})
 
 
     def _parse_legacy_filters(self):
         """
         Parses legacy filters.
         """
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, unicode) or isinstance(value,str) else value for name, value in self.legacy_filters.items()}
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': '{}${}'.format(name,i), 'operator': '=', 'separator': 'OR' if len(value) > 1 else 'AND', 'level': 0}
-                               for name, value in legacy_filters_as_list.items() for subvalue,i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
+        # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
+                                  for name, value in self.legacy_filters.items()}
+        # each filter is represented using a dictionary containing the following fields:
+        #   * Value     -> Value to filter by
+        #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
+        #                  must be added to the field name.
+        #   * Operator  -> Operator to use in the database query. In legacy filters the only available one is =.
+        #   * Separator -> Logical operator used to join queries. In legacy filters, the AND operator is used when
+        #                  different fields are filtered and the OR operator is used when filtering by the same field
+        #                  multiple times.
+        #   * Level     -> The level defines the number of parenthesis the query has. In legacy filters, no
+        #                  parenthesis are used except when filtering over the same field.
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
+                                'field': '{}${}'.format(name, i),
+                                'operator': '=',
+                                'separator': 'OR' if len(value) > 1 else 'AND',
+                                'level': 0 if i == len(value) - 1 else 1}
+                               for name, value in legacy_filters_as_list.items()
+                               for subvalue, i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
@@ -782,8 +818,8 @@ class WazuhDBQuery(object):
                 self.request[field_filter] = q_filter['value'] if field_name != "version" else re.sub(
                     r'([a-zA-Z])([v])', r'\1 \2', q_filter['value'])
                 if q_filter['operator'] == 'LIKE':
-                    self.request[field_filter] = '%{}%'.format(self.request[field_filter])
-                self.query += '{} {} :{}'.format(self.fields[field_name], q_filter['operator'], field_filter)
+                    self.request[field_filter] = "%{}%".format(self.request[field_filter])
+                self.query += '{} {} :{}'.format(self.fields[field_name].split(' as ')[0], q_filter['operator'], field_filter)
                 if not field_filter.isdigit():
                     # filtering without being uppercase/lowercase sensitive
                     self.query += ' COLLATE NOCASE'

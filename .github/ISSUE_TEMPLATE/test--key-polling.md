@@ -1,6 +1,9 @@
 ---
 name: 'Test: Agent key polling'
 about: Test suite for key polling.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

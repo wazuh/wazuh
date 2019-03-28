@@ -6,31 +6,6 @@
 # Copyright: GPLv3
 #
 # Updated by Jeremy Phillips <jeremy@uranusbytes.com>
-# Full re-work of AWS wodle as per #510
-# - Scalability and functional enhancements for parsing of CloudTrail
-# - Support for existing config params
-# - Upgrade to a granular object key addressing to support multiple CloudTrails in S3 bucket
-# - Support granular parsing by account id, region, prefix
-# - Support only parsing logs after a given date
-# - Support IAM credential profiles, IAM roles
-# - Only look for new logs/objects since last iteration
-# - Skip digest files altogether (only look at logs)
-# - Move from downloading object and working with file on filesystem to byte stream
-# - Inherit debug from modulesd
-# - Add bounds checks for msg against socket buffer size; truncate fields if too big (wazuh/wazuh#733)
-# - Support multiple debug levels
-# - Move connect error so not confused with general error
-# - If fail to parse log, and skip_on_error, attempt to send me msg to wazuh
-# - Support existing configurations by migrating data, inferring other required params
-# - Reparse flag to support re-parsing of log files from s3 bucket
-# - Use CloudTrail timestamp for ES timestamp
-#
-# Future
-# ToDo: Integrity check logs against digest
-# ToDo: Escape special characters in arguments?  Needed?
-#     Valid values for AWS Keys
-#     Alphanumeric characters [0-9a-zA-Z]
-#     Special characters !, -, _, ., *, ', (, and )
 #
 # Error Codes:
 #   1 - Unknown
@@ -45,6 +20,7 @@
 #   10 - Failed to execute DB cleanup
 #   11 - Unable to connect to Wazuh
 #   12 - Invalid type of bucket
+#   13 - Unexpected error sending message to Wazuh
 
 import signal
 import sys
@@ -64,7 +40,6 @@ import gzip
 import zipfile
 import re
 import io
-from datetime import datetime
 from os import path
 import operator
 from datetime import datetime
@@ -259,6 +234,9 @@ class WazuhIntegration:
             if e.errno == 111:
                 print("ERROR: Wazuh must be running.")
                 sys.exit(11)
+            elif e.errno == 90:
+                print("ERROR: Message too long to send to Wazuh.  Skipping message...")
+                debug('+++ ERROR: Message longer than buffer socket for Wazuh.  Consider increasing rmem_max  Skipping message...', 1)
             else:
                 print("ERROR: Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
@@ -305,7 +283,7 @@ class AWSBucket(WazuhIntegration):
 
     def __init__(self, reparse, access_key, secret_key, profile, iam_role_arn,
                  bucket, only_logs_after, skip_on_error, account_alias,
-                 prefix, delete_file):
+                 prefix, delete_file, aws_organization_id):
         """
         AWS Bucket constructor.
 
@@ -320,6 +298,7 @@ class AWSBucket(WazuhIntegration):
         :param account_alias: Alias of the AWS account where the bucket is.
         :param prefix: Prefix to filter files in bucket
         :param delete_file: Wether to delete an already processed file from a bucket or not
+        :param aws_organization_id: The AWS organization ID
         """
 
         # common SQL queries
@@ -417,6 +396,7 @@ class AWSBucket(WazuhIntegration):
         self.prefix = prefix
         self.delete_file = delete_file
         self.bucket_path = self.bucket + '/' + self.prefix
+        self.aws_organization_id = aws_organization_id
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -731,11 +711,24 @@ class AWSLogsBucket(AWSBucket):
     Abstract class for logs generated from services such as CloudTrail or Config
     """
 
-    def get_full_prefix(self, account_id, account_region):
-        return '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/{aws_region}/'.format(
-            trail_prefix=self.prefix,
+    def get_base_prefix(self):
+        base_prefix = '{}AWSLogs/'.format(self.prefix)
+        if self.aws_organization_id:
+            base_prefix = '{base_prefix}{aws_organization_id}/'.format(
+                base_prefix=base_prefix,
+                aws_organization_id=self.aws_organization_id)
+
+        return base_prefix
+
+    def get_service_prefix(self, account_id):
+        return '{base_prefix}{aws_account_id}/{aws_service}/'.format(
+            base_prefix=self.get_base_prefix(),
             aws_account_id=account_id,
-            aws_service=self.service,
+            aws_service=self.service)
+
+    def get_full_prefix(self, account_id, account_region):
+        return '{service_prefix}{aws_region}/'.format(
+            service_prefix=self.get_service_prefix(account_id),
             aws_region=account_region)
 
     def get_creation_date(self, log_file):
@@ -765,17 +758,13 @@ class AWSLogsBucket(AWSBucket):
     def find_account_ids(self):
         return [common_prefix['Prefix'].split('/')[-2] for common_prefix in
                 self.client.list_objects_v2(Bucket=self.bucket,
-                                            Prefix='{}AWSLogs/'.format(self.prefix),
+                                            Prefix=self.get_base_prefix(),
                                             Delimiter='/')['CommonPrefixes']
                 ]
 
     def find_regions(self, account_id):
-        regions_prefix = '{trail_prefix}AWSLogs/{aws_account_id}/{aws_service}/'.format(
-            trail_prefix=self.prefix,
-            aws_account_id=account_id,
-            aws_service=self.service)
         regions = self.client.list_objects_v2(Bucket=self.bucket,
-                                              Prefix=regions_prefix,
+                                              Prefix=self.get_service_prefix(account_id=account_id),
                                               Delimiter='/')
 
         if 'CommonPrefixes' in regions:
@@ -824,6 +813,17 @@ class AWSCloudTrailBucket(AWSLogsBucket):
         for field_to_cast in ['additionalEventData', 'responseElements', 'requestParameters']:
             if field_to_cast in event['aws'] and not isinstance(event['aws'][field_to_cast], dict):
                 event['aws'][field_to_cast] = {'string': str(event['aws'][field_to_cast])}
+
+        if 'requestParameters' in event['aws']:
+            request_parameters = event['aws']['requestParameters']
+            if 'disableApiTermination' in request_parameters:
+                disable_api_termination = request_parameters['disableApiTermination']
+                if isinstance(disable_api_termination, bool):
+                    request_parameters['disableApiTermination'] = {'value': disable_api_termination}
+                elif isinstance(disable_api_termination, dict):
+                    pass
+                else:
+                    print("WARNING: Could not reformat event {0}".format(event))
 
         return event
 
@@ -1932,6 +1932,8 @@ def get_script_arguments():
                         action='store')
     group.add_argument('-sr', '--service', dest='service', help='Specify the name of the service',
                         action='store')
+    parser.add_argument('-O', '--aws_organization_id', dest='aws_organization_id',
+                        help='AWS organization ID for logs', required=False)
     parser.add_argument('-c', '--aws_account_id', dest='aws_account_id',
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
@@ -1996,7 +1998,8 @@ def main(argv):
                            iam_role_arn=options.iam_role_arn, bucket=options.logBucket,
                            only_logs_after=options.only_logs_after, skip_on_error=options.skip_on_error,
                            account_alias=options.aws_account_alias,
-                           prefix=options.trail_prefix, delete_file=options.deleteFile)
+                           prefix=options.trail_prefix, delete_file=options.deleteFile,
+                           aws_organization_id=options.aws_organization_id)
             bucket.iter_bucket(options.aws_account_id, options.regions)
         elif options.service:
             if options.service.lower() == 'inspector':
@@ -2018,8 +2021,10 @@ def main(argv):
                 service.get_alerts()
 
     except Exception as err:
-        debug("+++ Error: {}".format(err.message), 2)
-        print("ERROR: {}".format(err.message))
+        debug("+++ Error: {}".format(err), 2)
+        if debug_level > 0:
+            raise
+        print("ERROR: {}".format(err))
         sys.exit(12)
 
 

@@ -54,6 +54,8 @@ os_info *get_win_version()
     if (!(bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi))) {
         osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
         if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
+            free(info);
+            free(subkey);
             return (NULL);
         }
     }
@@ -235,7 +237,7 @@ os_info *get_win_version()
             info->machine = strdup("unknown");
         } else {
 
-            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4)) {
+            if (!strncmp(arch, "AMD64", 5) || !strncmp(arch, "IA64", 4) || !strncmp(arch, "ARM64", 5)) {
                 info->machine = strdup("x86_64");
             } else if (!strncmp(arch, "x86", 3)) {
                 info->machine = strdup("i686");
@@ -306,6 +308,7 @@ os_info *get_unix_version()
     os_info *info;
 
     os_calloc(1,sizeof(os_info),info);
+    info->os_platform = NULL;
 
     // Try to open /etc/os-release
     os_release = fopen("/etc/os-release", "r");
@@ -343,8 +346,8 @@ os_info *get_unix_version()
         }
         fclose(os_release);
     }
-    // Linux old distributions without 'os-release' file
-    else {
+    // Linux old distributions without 'os-release' file or CentOS systems
+    if (!os_release || (info->os_platform && strcmp(info->os_platform, "centos") == 0)) {
         regex_t regexCompiled;
         regmatch_t match[2];
         int match_size;
@@ -663,11 +666,14 @@ os_info *get_unix_version()
         // Get OSX codename
         if (strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
+                char * tmp_os_version;
                 size_t len = 4;
                 len += strlen(info->os_version);
                 len += strlen(info->os_codename);
-                os_realloc(info->os_version, len, info->os_version);
-                snprintf(info->os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                os_malloc(len, tmp_os_version);
+                snprintf(tmp_os_version, len, "%s (%s)", info->os_version, info->os_codename);
+                free(info->os_version);
+                info->os_version = tmp_os_version;
             }
         }
     } else {
@@ -731,7 +737,7 @@ int get_nproc() {
         }
         fclose(fp);
     }
-    
+
     if(!cpu_cores)
         cpu_cores = 1;
 

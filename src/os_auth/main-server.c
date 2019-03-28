@@ -367,6 +367,11 @@ int main(int argc, char **argv)
         }
     }
 
+    if (w_is_worker()) {
+        minfo("Cluster worker node: Disabling Authd daemon.");
+        exit(0);
+    }
+
     /* Start daemon -- NB: need to double fork and setsid */
     mdebug1(STARTED_MSG);
 
@@ -1264,7 +1269,7 @@ void add_remove(const keyentry *entry) {
 #ifdef __hpux
 char* strsignal(int sig)
 {
-    char str[12];
+    static char str[12];
     sprintf(str, "%d", sig);
     return str;
 }

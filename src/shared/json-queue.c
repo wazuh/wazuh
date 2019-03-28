@@ -62,6 +62,8 @@ cJSON * jqueue_next(file_queue * queue) {
         return NULL;
     }
 
+    clearerr(queue->fp);
+
     if (fgets(buffer, OS_MAXSTR + 1, queue->fp)) {
         if (end = strchr(buffer, '\n'), end) {
             *end = '\0';

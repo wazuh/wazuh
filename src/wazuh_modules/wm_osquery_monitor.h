@@ -29,8 +29,8 @@ typedef struct wm_osquery_monitor_t {
    int msg_delay;
    int queue_fd;
    wm_osquery_pack_t ** packs;
-   unsigned int add_labels:1;
-   unsigned int run_daemon:1;
+   signed int add_labels:2;
+   signed int run_daemon:2;
 } wm_osquery_monitor_t;
 
 int wm_osquery_monitor_read(xml_node **nodes, wmodule *module);

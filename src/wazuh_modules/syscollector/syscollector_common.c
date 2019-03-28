@@ -69,14 +69,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         wm_delay(1000);
     }
 
-    #ifdef WIN32
-        if (!checkVista()){
-            mtwarn(WM_SYS_LOGTAG, "Network and opened ports scans are incompatible with versions older than Vista.");
-            sys->flags.netinfo = 0;
-            sys->flags.portsinfo = 0;
-        }
-    #endif
-
     // Main loop
 
     while (1) {

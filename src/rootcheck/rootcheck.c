@@ -170,6 +170,18 @@ int rootcheck_init(int test_config)
         mterror_exit(ARGV0, CONFIG_ERROR, cfg);
     }
 
+#ifndef WIN32
+    if(rootcheck.checks.rc_unixaudit) {
+        mwarn("The check_unixaudit option is deprecated in favor of the SCA module.");
+    }
+#endif
+
+#ifdef WIN32
+    if(rootcheck.checks.rc_winaudit) {
+        mwarn("The check_winaudit option is deprecated in favor of the SCA module.");
+    }
+#endif
+
     rootcheck.tsleep = getDefine_Int("rootcheck", "sleep", 0, 1000);
 
     /* If testing config, exit here */

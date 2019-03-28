@@ -34,7 +34,4 @@
     <nodiff>/etc/ssl/private.key</nodiff>
 
     <skip_nfs>yes</skip_nfs>
-
-    <!-- Allow the system to restart Auditd after installing the plugin -->
-    <restart_audit>yes</restart_audit>
   </syscheck>

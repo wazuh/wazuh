@@ -1,6 +1,9 @@
 ---
 name: 'Test: Installation'
 about: Test suite for installation.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

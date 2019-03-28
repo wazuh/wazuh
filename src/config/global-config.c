@@ -514,20 +514,12 @@ int Read_Global(XML_NODE node, void *configp, void *mailp)
             }
         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
 #ifndef WIN32
-            if (Mail && (Mail->mn)) {
-                if (node[i]->content[0] == '/') {
-                    os_strdup(node[i]->content, Mail->smtpserver);
-                } else {
-                    Mail->smtpserver = OS_GetHost(node[i]->content, 5);
-                    if (!Mail->smtpserver) {
-                        merror(INVALID_SMTP, node[i]->content);
-                        return (OS_INVALID);
-                    }
-                }
+            if (Mail) {
+                os_strdup(node[i]->content, Mail->smtpserver);
             }
 #endif
         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
-            if (Mail && (Mail->mn)) {
+            if (Mail) {
                 os_strdup(node[i]->content, Mail->heloserver);
             }
         } else if (strcmp(node[i]->element, xml_mailmaxperhour) == 0) {
@@ -766,7 +758,7 @@ void config_free(_Config *config) {
         free(config->geoip_db_path);
     }
     if (config->geoip6_db_path) {
-        free(config->geoip_db_path);
+        free(config->geoip6_db_path);
     }
 #endif
 

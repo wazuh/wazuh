@@ -42,7 +42,12 @@ int send_msg(const char *msg, ssize_t msg_length)
     if (!retval) {
         agent_state.msg_sent++;
     } else {
+#ifdef WIN32
+        error = WSAGetLastError();
+        merror(SEND_ERROR, "server", win_strerror(error));
+#else
         merror(SEND_ERROR, "server", strerror(error));
+#endif
         sleep(1);
     }
 

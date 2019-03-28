@@ -1,6 +1,93 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v3.9.0]
+
+### Added
+
+- New module to perform **Security Configuration Assessment** scans. ([#2598](https://github.com/wazuh/wazuh/pull/2598))
+- Collect network and port inventory for Windows XP/Server 2003. ([#2464](https://github.com/wazuh/wazuh/pull/2464))
+- Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
+- Added an option _startup_healthcheck_ in FIM so that the the who-data health-check is optional. ([#2323](https://github.com/wazuh/wazuh/pull/2323))
+- The real agent IP is reported by the agent and shown in alerts and the App interface. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
+- Added support for organizations in AWS wodle. ([#2627](https://github.com/wazuh/wazuh/pull/2627))
+- Added support for hot added symbolic links in _Whodata_. ([#2466](https://github.com/wazuh/wazuh/pull/2466))
+- Added `-t` option to `wazuh-clusterd` binary ([#2691](https://github.com/wazuh/wazuh/pull/2691)).
+- Added options `same_field` and `not_same_field` in rules to correlate dynamic fields between events. ([#2689](https://github.com/wazuh/wazuh/pull/2689))
+- Added optional daemons start by default. ([#2769](https://github.com/wazuh/wazuh/pull/2769))
+- Make the Windows installer to choose the appropriate `ossec.conf` file based on the System version. ([#2773](https://github.com/wazuh/wazuh/pull/2773))
+
+### Changed
+
+- Introduced a network buffer in Remoted to cache incomplete messages from agents. This improves the performance by preventing Remoted from waiting for complete messages. ([#2528](https://github.com/wazuh/wazuh/pull/2528))
+- Improved alerts about disconnected agents: they will contain the data about the disconnected agent, although the alert is actually produced by the manager. ([#2379](https://github.com/wazuh/wazuh/pull/2379))
+- PagerDuty integration plain text alert support (by @spartantri). ([#2403](https://github.com/wazuh/wazuh/pull/2403))
+- Improved Remoted start-up logging messages. ([#2460](https://github.com/wazuh/wazuh/pull/2460))
+- Let _agent_auth_ warn when it receives extra input arguments. ([#2489](https://github.com/wazuh/wazuh/pull/2489))
+- Update the who-data related SELinux rules for Audit 3.0. This lets who-data work on Fedora 29. ([#2419](https://github.com/wazuh/wazuh/pull/2419))
+- Changed data source for network interface's MAC address in Syscollector so that it will be able to get bonded interfaces' MAC. ([#2550](https://github.com/wazuh/wazuh/pull/2550))
+- Migrated unit tests from Check to TAP (Test Anything Protocol). ([#2572](https://github.com/wazuh/wazuh/pull/2572))
+- Now labels starting with `_` are reserved for internal use. ([#2577](https://github.com/wazuh/wazuh/pull/2577))
+- Now AWS wodle fetches aws.requestParameters.disableApiTermination with an unified format ([#2614](https://github.com/wazuh/wazuh/pull/2614))
+- Improved overall performance in cluster ([#2575](https://github.com/wazuh/wazuh/pull/2575))
+- Some improvements has been made in the _vulnerability-detector_ module. ([#2603](https://github.com/wazuh/wazuh/pull/2603))
+- Refactor of decoded fields from the Windows eventchannel decoder. ([#2684](https://github.com/wazuh/wazuh/pull/2684))
+- Deprecate global option `<queue_size>` for Analysisd. ([#2729](https://github.com/wazuh/wazuh/pull/2729))
+- Excluded noisy events from Windows Eventchannel. ([#2763](https://github.com/wazuh/wazuh/pull/2763))
+- Replaced `printf` functions in `agent-authd`. ([#2830](https://github.com/wazuh/wazuh/pull/2830))
+- Replaced `strtoul()` using NULL arguments with `atol()` in wodles config files. ([#2801](https://github.com/wazuh/wazuh/pull/2801))
+
+### Fixed
+
+- Fixed error in Syscollector for Windows older than Vista when gathering the hardware inventory. ([#2326](https://github.com/wazuh/wazuh/pull/2326))
+- Fixed an error in the OSQuery configuration validation. ([#2446](https://github.com/wazuh/wazuh/pull/2446))
+- Prevent Integrator, Syslog Client and Mail forwarded from getting stuck while reading _alerts.json_. ([#2498](https://github.com/wazuh/wazuh/pull/2498))
+- Fixed a bug that could make an Agent running on Windows XP close unexpectedly while receiving a WPK file. ([#2486](https://github.com/wazuh/wazuh/pull/2486))
+- Fixed _ossec-control_ script in Solaris. ([#2495](https://github.com/wazuh/wazuh/pull/2495))
+- Fixed a compilation error when building Wazuh in static linking mode with the Audit library enabled. ([#2523](https://github.com/wazuh/wazuh/pull/2523))
+- Fixed a memory hazard in Analysisd on log pre-decoding for short logs (less than 5 bytes). ([#2391](https://github.com/wazuh/wazuh/pull/2391))
+- Fixed defects reported by Cppcheck. ([#2521](https://github.com/wazuh/wazuh/pull/2521))
+  - Double free in GeoIP data handling with IPv6.
+  - Buffer overlay when getting OS information.
+  - Check for successful memory allocation in Syscollector.
+- Fix out-of-memory error in Remoted when upgrading an agent with a big data chunk. ([#2594](https://github.com/wazuh/wazuh/pull/2594))
+- Re-registered agent are reassigned to correct groups when the multigroup is empty. ([#2440](https://github.com/wazuh/wazuh/pull/2440))
+- Wazuh manager starts regardless of the contents of _local_decoder.xml_. ([#2465](https://github.com/wazuh/wazuh/pull/2465))
+- Let _Remoted_ wait for download module availability. ([#2517](https://github.com/wazuh/wazuh/pull/2517))
+- Fix duplicate field names at some events for Windows eventchannel. ([#2500](https://github.com/wazuh/wazuh/pull/2500))
+- Delete empty fields from Windows Eventchannel alerts. ([#2492](https://github.com/wazuh/wazuh/pull/2492))
+- Fixed memory leak and crash in Vulnerability Detector. ([#2620](https://github.com/wazuh/wazuh/pull/2620))
+- Prevent Analysisd from crashing when receiving an invalid Syscollector event. ([#2621](https://github.com/wazuh/wazuh/pull/2621))
+- Fix a bug in the database synchronization module that left broken references of removed agents to groups. ([#2628](https://github.com/wazuh/wazuh/pull/2628))
+- Fixed restart service in AIX. ([#2674](https://github.com/wazuh/wazuh/pull/2674))
+- Prevent Execd from becoming defunct when Active Response disabled. ([#2692](https://github.com/wazuh/wazuh/pull/2692))
+- Fix error in Syscollector when unable to read the CPU frequency on agents. ([#2740](https://github.com/wazuh/wazuh/pull/2740))
+- Fix Windows escape format affecting non-format messages. ([#2725](https://github.com/wazuh/wazuh/pull/2725))
+- Avoid a segfault in mail daemon due to the XML tags order in the `ossec.conf`. ([#2711](https://github.com/wazuh/wazuh/pull/2711))
+- Prevent the key updating thread from starving in Remoted. ([#2761](https://github.com/wazuh/wazuh/pull/2761))
+- Fixed error logging on Windows agent. ([#2791](https://github.com/wazuh/wazuh/pull/2791))
+- Let CIS-CAT decoder reuse the Wazuh DB connection socket. ([#2800](https://github.com/wazuh/wazuh/pull/2800))
+- Fixed issue with `agent-auth` options without argument. ([#2808](https://github.com/wazuh/wazuh/pull/2808))
+- Fixed control of the frequency counter in alerts. ([#2854](https://github.com/wazuh/wazuh/pull/2854))
+
+## [v3.8.2]
+
+### Fixed
+
+- Analysisd crashed when parsing a log from OpenLDAP due to a bug in the option `<accumulate>`. ([#2456](https://github.com/wazuh/wazuh/pull/2456))
+- Modulesd closed unexpectedly if a command was defined without a `<tag>` option. ([#2470](https://github.com/wazuh/wazuh/pull/2470))
+- The Eventchannel decoder was not being escaping backslashes correctly. ([#2483](https://github.com/wazuh/wazuh/pull/2483))
+- The Eventchannel decoder was leaving spurious trailing spaces in some fields.  ([#2484](https://github.com/wazuh/wazuh/pull/2484))
+
+
+## [v3.8.1]
+
+### Fixed
+
+- Fixed memory leak in Logcollector when reading Windows eventchannel. ([#2450](https://github.com/wazuh/wazuh/pull/2450))
+- Fixed script parsing error in Solaris 10. ([#2449](https://github.com/wazuh/wazuh/pull/2449))
+- Fixed version comparisons on Red Hat systems. (By @orlando-jamie) ([#2445](https://github.com/wazuh/wazuh/pull/2445))
+
 ## [v3.8.0]
 
 ### Added
@@ -104,7 +191,6 @@ All notable changes to this project will be documented in this file.
 - Fix log shown when a command reaches its timeout and `ignore_output` is enabled. ([#2316](https://github.com/wazuh/wazuh/pull/2316))
 - Analysisd and Syscollector did not detect the number of cores on Raspberry Pi. ([#2304](https://github.com/wazuh/wazuh/pull/2304))
 - Analysisd and Syscollector did not detect the number of cores on CentOS 5. ([#2340](https://github.com/wazuh/wazuh/pull/2340))
-- Fix bug when processing strange characters in Whodata for Windows. ([#2406](https://github.com/wazuh/wazuh/pull/2406))
 
 
 ## [v3.7.2] 2018-12-17

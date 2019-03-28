@@ -1,6 +1,9 @@
 ---
 name: 'Test: Agent management'
 about: Test suite for agent management.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

@@ -1,6 +1,9 @@
 ---
 name: 'Test: Syscollector'
 about: Test suite for Syscollector.
+title: ''
+labels: ''
+assignees: ''
 
 ---
 

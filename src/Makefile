@@ -22,6 +22,8 @@ EXTERNAL_OPENSSL=external/openssl/
 EXTERNAL_LIBYAML=external/libyaml/
 EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
+EXTERNAL_LIBFFI=external/libffi/
+EXTERNAL_CPYTHON=external/cpython/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -48,6 +50,7 @@ USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
 USE_FRAMEWORK_LIB=no
+MINGW_HOST=unknown
 
 ifneq ($(HAS_CHECKMODULE),)
 ifneq ($(HAS_SEMODULE_PACKAGE),)
@@ -243,12 +246,15 @@ MAKEOVERRIDES=
 CC=gcc
 ifneq (,$(shell which amd64-mingw32msvc-gcc))
 	MING_BASE:=amd64-mingw32msvc-
+	MINGW_HOST="amd64-mingw32msvc"
 else
 ifneq (,$(shell which i686-pc-mingw32-gcc))
 	MING_BASE:=i686-pc-mingw32-
+	MINGW_HOST="i686-pc-mingw32"
 else
 ifneq (,$(shell which i686-w64-mingw32-gcc))
 	MING_BASE:=i686-w64-mingw32-
+	MINGW_HOST="i686-w64-mingw32"
 else
 $(error No windows cross-compiler found!) #MING_BASE:=unknown-
 endif
@@ -573,7 +579,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = test_os_zlib test_os_xml test_os_regex test_os_crypto test_os_net test_shared
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -584,6 +590,7 @@ endif
 winagent: external win32/libwinpthread-1.dll wazuh_modules/syscollector/syscollector_win_ext.dll
 	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32"
 	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
+	cd win32/ && ./unix2dos.pl ossec-pre6.conf > default-ossec-pre6.conf
 	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
 	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
 	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
@@ -615,12 +622,13 @@ DB_LIB      = $(EXTERNAL_LIBDB).libs/libdb-6.2.a
 LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
+LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
 ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBCURL_LIB)
+EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
@@ -667,6 +675,13 @@ endif
 endif
 endif
 endif
+
+#### libffi ##########
+
+LIBFFI_FLAGS = "CFLAGS=-fPIC"
+
+${LIBFFI_LIB}:
+	cd ${EXTERNAL_LIBFFI} && ./configure $(LIBFFI_FLAGS) && ${MAKE}
 
 #### zlib ##########
 
@@ -719,7 +734,11 @@ ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
 
 $(EXTERNAL_LIBYAML)Makefile:
-	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes
+ifeq (${TARGET},winagent)
+	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
+else
+	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
+endif
 
 #### curl ##########
 
@@ -779,8 +798,32 @@ space =
 space +=
 VERSION = $(subst $(space),.,$(wordlist 1,2,$(subst ., ,$(patsubst v%,%,$(shell cat VERSION)))))
 RESOURCES_URL := https://packages.wazuh.com/deps/$(VERSION)
+CPYTHON := cpython
+ifneq (${PREFIX},/var/ossec)
+	CPYTHON := src_cpython
+else
+	# Download the Python sources if we are building for any other OS.
+ifneq (${uname_S},Linux)
+CPYTHON := src_cpython
+else
+cpu_arch := ${uname_P}
+ifneq (,$(filter ${cpu_arch},unknown Unknown))
+	cpu_arch := $(shell sh -c 'arch 2>/dev/null || echo not')
+endif
+ifneq (,$(filter ${cpu_arch},x86_64 amd64))
+CPYTHON := cpython_amd64
+else
+ifneq (,$(filter ${cpu_arch},i386 i686))
+CPYTHON := cpython_i386
+else
+CPYTHON := src_cpython
+endif
+endif
+endif
+endif
 
-EXTERNAL_RES := cJSON curl libdb libyaml openssl procps sqlite zlib audit-userspace
+
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -1357,6 +1400,35 @@ wazuh-framework: ${shared_o} ${wdblib_o}
 	${MAKE} -C ../framework build PREFIX=${PREFIX} USE_FRAMEWORK_LIB=${USE_FRAMEWORK_LIB}
 endif
 
+### wazuh-python ###
+
+WPYTHON_DIR := ${PREFIX}/framework/python
+OPTIMIZE_CPYTHON?=no
+
+ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
+CPYTHON_FLAGS=--enable-optimizations
+endif
+
+wpython: build_python install_python install_dependencies install_framework
+
+build_python:
+ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+endif
+
+install_python:
+	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
+	ln -fs ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
+
+python_dependencies := requirements.txt
+
+install_dependencies: install_python
+	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
+
+
+install_framework:
+	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
+
 
 ####################
 #### test ##########
@@ -1364,10 +1436,11 @@ endif
 
 CFLAGS_TEST = -g -O0 --coverage
 
-LIBS_TEST = -lcheck -lm -lrt -lsubunit
+# LIBS_TEST = -lcheck -lm -lrt -lsubunit
 
 ifdef TEST
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
+	# OSSEC_CFLAGS+=${CFLAGS_TEST} -Itests
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 endif #TEST
@@ -1378,7 +1451,7 @@ test: build_tests
 	${MAKE} run_tests
 
 run_tests:
-	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=yes --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
+	@$(foreach bin,${test_programs},valgrind --leak-check=full --track-origins=yes --trace-children=no --vgdb=no --error-exitcode=1 --gen-suppressions=all --suppressions=tests/valgrind.supp ./${bin} || exit 1;)
 
 build_tests: external
 	${MAKE} DEBUG=1 TEST=1 ${test_programs}
@@ -1389,22 +1462,22 @@ test_o := $(test_c:.c=.o)
 tests/%.o: tests/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-test_os_zlib: tests/test_os_zlib.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_xml: tests/test_os_xml.o ${os_xml_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_regex: tests/test_os_regex.c ${os_regex_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-test_os_crypto: tests/test_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+tap_os_crypto: tests/tap_os_crypto.c ${crypto_o} ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-test_os_net: tests/test_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
+tap_os_net: tests/tap_os_net.c ${os_net_o} ${shared_o} ${os_regex_o} ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_CFLAGS} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
-test_shared: tests/test_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+tap_os_regex: tests/tap_os_regex.c ${os_regex_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_shared: tests/tap_shared.c ${shared_o} ${os_xml_o} ${os_net_o} ${os_regex_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_os_zlib: tests/tap_os_zlib.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests
@@ -1502,26 +1575,32 @@ clean-test:
 	find . -name "*.gcno" -exec rm {} \;
 	find . -name "*.gcda" -exec rm {} \;
 
-clean-external:
+clean-external: clean-wpython
 ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} $(EXTERNAL_JSON)libcjson.*
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc clean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
-	-cd ${EXTERNAL_LIBYAML} && ${MAKE} clean
+	-cd ${EXTERNAL_LIBYAML} && ${MAKE} distclean
 	-cd ${EXTERNAL_CURL} && ${MAKE} distclean
 	rm -f ${procps_o} $(PROCPS_LIB)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 	-cd ${EXTERNAL_AUDIT} && make distclean
+	-cd ${EXTERNAL_LIBFFI} && make clean
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
 endif
 endif
 
+clean-wpython:
+ifneq ($(wildcard external/cpython/*),)
+	cd ${EXTERNAL_CPYTHON} && make clean && make distclean
+endif
+
 clean-deps:
-	rm -rf $(EXTERNAL_DIR)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON)
 
 clean-internals:
 	rm -f $(BUILD_SERVER)
@@ -1569,6 +1648,7 @@ clean-windows:
 	rm -f win32/internal_options.conf
 	rm -f win32/default-local_internal_options.conf
 	rm -f win32/default-ossec.conf
+	rm -f win32/default-ossec-pre6.conf
 	rm -f win32/restart-ossec.cmd
 	rm -f win32/route-null.cmd
 	rm -f win32/route-null-2012.cmd

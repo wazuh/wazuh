@@ -42,11 +42,22 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
     char *buf;
+    char *path;
     syscheck_node *s_node;
 
-    s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, file_name);
+    // To obtain path without symbolic links
 
-    if (s_node != NULL) {
+#ifndef WIN32
+    os_calloc(PATH_MAX + 1, sizeof(char), path);
+
+    if (realpath(file_name, path) == NULL) {
+        snprintf(path, PATH_MAX, "%s", file_name);
+    }
+#else
+    os_strdup(file_name, path);
+#endif
+
+    if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
         char c_sum[OS_MAXSTR + 1];
         size_t c_sum_size;
 
@@ -54,13 +65,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[0] = '\0';
         c_sum[OS_MAXSTR] = '\0';
 
-
         // If it returns < 0, we've already alerted the deleted file
-        if (c_read_file(file_name, buf, c_sum, evt) < 0) {
-
+        if (c_read_file(path, buf, c_sum, evt) < 0) {
+            os_free(path);
             return (0);
         }
-
 
         c_sum_size = strlen(buf + SK_DB_NATTR);
         if (strncmp(c_sum, buf + SK_DB_NATTR, c_sum_size)) {
@@ -69,11 +78,11 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
             // Extract the whodata sum here to not include it in the hash table
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", path);
             }
 
             /* Find tag position for the evaluated file name */
-            int pos = find_dir_pos(file_name, 1, 0, 0);
+            int pos = find_dir_pos(path, 1, 0, 0);
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -83,28 +92,31 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             char *fullalert = NULL;
 
             if (buf[SK_DB_REPORT_CHANG] == '+') {
-                fullalert = seechanges_addfile(file_name);
+                fullalert = seechanges_addfile(path);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", path, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", path);
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", path);
             }
 
             send_syscheck_msg(alert_msg);
             struct timeval timeout = {0, syscheck.rt_delay * 1000};
             select(0, NULL, NULL, NULL, &timeout);
 
-            free(buf);
+            os_free(buf);
+            os_free(path);
 
             return (1);
         } else {
-            mdebug2("Inotify event with same checksum for file: '%s'. Ignoring it.", file_name);
+            mdebug2("Inotify event with same checksum for file: '%s'. Ignoring it.", path);
         }
+
+        os_free(path);
 
         return (0);
     } else {
@@ -115,36 +127,42 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             pos = evt->dir_position;
         } else {
 #endif
-        pos = find_dir_pos(file_name, 1, 0, 0);
+        pos = find_dir_pos(path, 1, 0, 0);
 #ifdef WIN_WHODATA
         }
 #endif
         if (pos >= 0) {
-            mdebug1("Scanning new file '%s' with options for directory '%s'.", file_name, syscheck.dir[pos]);
-            int diff = fim_find_child_depth(syscheck.dir[pos], file_name);
-            int depth = syscheck.recursion_level[pos] - diff+1;
+            if(IsFile(path) == 0){
+                mdebug1("Scanning new file '%s' with options for directory '%s'.", path, syscheck.dir[pos]);
+            }
+            int diff = fim_find_child_depth(syscheck.dir[pos], path);
+            int depth = syscheck.recursion_level[pos] - diff + 1;
 
-            if(check_path_type(file_name) == 2){
+            if(check_path_type(path) == 2){
                 depth = depth - 1;
             }
 #ifndef WIN32
             struct stat statbuf;
-            if (lstat(file_name, &statbuf) < 0) {
-                mdebug2("Stat() function failed on: %s. File may have been deleted", file_name);
-                return -1;
+
+            if (lstat(path, &statbuf) < 0) {
+                mdebug2("Stat() function failed on: %s. File may have been deleted", path);
+            } else {
+                if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
+                    read_dir(path, pos, evt, depth, 1);
+                    os_free(path);
+                    return 0;
+                } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
+                    os_free(path);
+                    return 0;
+                }
             }
-            if S_ISLNK(statbuf.st_mode) {
-                read_dir(file_name, pos, evt, depth, 1);
-            } else
 #endif
-            {
-                read_dir(file_name, pos, evt, depth, 0);
-            }
+            read_dir(path, pos, evt, depth, 0);
         }
 
     }
 
-
+    os_free(path);
     return (0);
 }
 
@@ -211,7 +229,7 @@ int realtime_start()
     }
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
-    
+
     syscheck.realtime->fd = -1;
 
 #ifdef INOTIFY_ENABLED
@@ -229,11 +247,14 @@ int realtime_start()
 int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 {
     if (whodata && audit_thread_active) {
-        mdebug1("Monitoring with Audit: '%s'.", dir);
 
         // Save dir into saved rules list
         w_mutex_lock(&audit_mutex);
-        W_Vector_insert(audit_added_dirs, dir);
+
+        if(!W_Vector_insert_unique(audit_added_dirs, dir)){
+            mdebug1("Monitoring with Audit: '%s'.", dir);
+        }
+
         w_mutex_unlock(&audit_mutex);
 
     } else {
@@ -425,12 +446,12 @@ int realtime_start()
 {
     minfo("Initializing real time file monitoring engine.");
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
-    
+
     syscheck.realtime->dirtb = OSHash_Create();
     if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
-    
+
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
-    
+
     syscheck.realtime->fd = -1;
     syscheck.realtime->evt = CreateEvent(NULL, TRUE, FALSE, NULL);
 
@@ -509,6 +530,7 @@ int realtime_adddir(const char *dir, int whodata)
     /* Maximum limit for realtime on Windows */
     if (syscheck.realtime->fd > syscheck.max_fd_win_rt) {
         merror("Unable to add directory to real time monitoring: '%s' - Maximum size permitted.", dir);
+        w_mutex_unlock(&adddir_mutex);
         return (0);
     }
 
@@ -535,6 +557,7 @@ int realtime_adddir(const char *dir, int whodata)
             free(rtlocald);
             rtlocald = NULL;
             merror("Unable to add directory to real time monitoring: '%s'.", dir);
+            w_mutex_unlock(&adddir_mutex);
             return (0);
         }
         syscheck.realtime->fd++;

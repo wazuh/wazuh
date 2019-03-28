@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
@@ -25,8 +25,8 @@ except ImportError:
     from io import StringIO
 
 import logging
-import hashlib
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger('wazuh')
 
 # Aux functions
 
@@ -96,6 +96,10 @@ conf_sections = {
     'labels': {
         'type': 'duplicate',
         'list_options': ['label']
+    },
+    'sca': {
+       'type': 'merge',
+       'list_options': ['policies']
     }
 }
 
@@ -179,7 +183,8 @@ def _read_option(section_name, opt):
             json_path = json_attribs.copy()
             json_path['path'] = path.strip()
             opt_value.append(json_path)
-    elif section_name == 'cluster' and opt_name == 'nodes':
+    elif (section_name == 'cluster' and opt_name == 'nodes') or \
+        (section_name == 'sca' and opt_name == 'policies'):
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
@@ -276,11 +281,11 @@ def _rcl2json(filepath):
     data = {'vars': {}, 'controls': []}
     # [Application name] [any or all] [reference]
     # type:<entry name>;
-    regex_comment = re.compile("^\s*#")
-    regex_title = re.compile("^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
-    regex_name_groups = re.compile("(\{\w+:\s+\S+\s*\S*\})")
-    regex_check = re.compile("^\s*(\w:.+)")
-    regex_var = re.compile("^\s*\$(\w+)=(.+)")
+    regex_comment = re.compile(r"^\s*#")
+    regex_title = re.compile(r"^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
+    regex_name_groups = re.compile(r"(\{\w+:\s+\S+\s*\S*\})")
+    regex_check = re.compile(r"^\s*(\w:.+)")
+    regex_var = re.compile(r"^\s*\$(\w+)=(.+)")
 
     try:
         item = {}
@@ -365,8 +370,8 @@ def _rootkit_files2json(filepath):
     data = []
 
     # file_name ! Name ::Link to it
-    regex_comment = re.compile("^\s*#")
-    regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
+    regex_comment = re.compile(r"^\s*#")
+    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*::\s*(.+)")
 
     try:
         with open(filepath) as f:
@@ -395,9 +400,9 @@ def _rootkit_trojans2json(filepath):
     data = []
 
     # file_name !string_to_search!Description
-    regex_comment = re.compile("^\s*#")
-    regex_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
-    regex_binary_check = re.compile("^\s*(.+)\s+!\s*(.+)\s*!")
+    regex_comment = re.compile(r"^\s*#")
+    regex_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!\s*(.+)")
+    regex_binary_check = re.compile(r"^\s*(.+)\s+!\s*(.+)\s*!")
 
     try:
         with open(filepath) as f:
@@ -431,18 +436,18 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None):
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     """
     Returns ossec.conf (manager) as dictionary.
 
     :param section: Filters by section (i.e. rules).
     :param field: Filters by field in section (i.e. included).
+    :param conf_file: Path of the configuration file to read.
     :return: ossec.conf (manager) as dictionary.
     """
-
     try:
         # Read XML
-        xml_data = load_wazuh_xml(common.ossec_conf)
+        xml_data = load_wazuh_xml(conf_file)
 
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
@@ -489,7 +494,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
-    try:       
+    try:
 
         # Read RAW file
         if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
@@ -497,7 +502,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
                 data = xml_data.read().replace('\n', '')
                 return data
         # Parse XML to JSON
-        else: 
+        else:
             # Read XML
             xml_data = load_wazuh_xml(agent_conf)
 
@@ -634,11 +639,11 @@ def get_internal_options_value(high_name, low_name, max, min):
     return option
 
 
-def upload_group_configuration(group_id, xml_file):
+def upload_group_configuration(group_id, file_content):
     """
     Updates group configuration
     :param group_id: Group to update
-    :param xml_file: File contents of the new configuration in string.
+    :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
     # check if the group exists
@@ -648,11 +653,11 @@ def upload_group_configuration(group_id, xml_file):
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 
-    # create temporary file for parsing xml input
+    # create temporary file for parsing xml input and validate XML format
     try:
         with open(tmp_file_path, 'w') as tmp_file:
             # beauty xml file
-            xml = parseString('<root>' + xml_file + '</root>')
+            xml = parseString('<root>' + file_content + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
             pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
@@ -664,11 +669,6 @@ def upload_group_configuration(group_id, xml_file):
         raise WazuhException(1113, str(e))
 
     try:
-        # check xml format
-        try:
-            load_wazuh_xml(tmp_file_path)
-        except Exception as e:
-            raise WazuhException(1113, str(e))
 
         # check Wazuh xml format
         try:
@@ -682,7 +682,10 @@ def upload_group_configuration(group_id, xml_file):
             # Invalid element in the configuration: 'agent_conf'. Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            raise WazuhException(1114, ' '.join(output_regex))
+            if output_regex:
+                raise WazuhException(1114, ' '.join(output_regex))
+            else:
+                raise WazuhException(1115, e.output.decode())
         except Exception as e:
             raise WazuhException(1743, str(e))
 
@@ -700,23 +703,23 @@ def upload_group_configuration(group_id, xml_file):
         raise e
 
 
-def upload_group_file(group_id, xml_file, file_name='agent.conf'):
+def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
     """
     Updates a group file
-
     :param group_id: Group to update
-    :param xml_file: File contents in string
+    :param tmp_file: Relative path of temporary file to upload
     :param file_name: File name to update
     :return: Confirmation message in string
     """
+    tmp_file_path = os_path.join(common.ossec_path, tmp_file)
     if file_name == 'agent.conf':
-        with open(xml_file) as f:
-            xml_file_data = f.read()
+        with open(tmp_file_path) as f:
+            file_data = f.read()
 
-        remove(xml_file)
-        if len(xml_file_data) == 0:
+        remove(tmp_file_path)
+        if len(file_data) == 0:
             raise WazuhException(1112)
 
-        return upload_group_configuration(group_id, xml_file_data)
+        return upload_group_configuration(group_id, file_data)
     else:
         raise WazuhException(1111)

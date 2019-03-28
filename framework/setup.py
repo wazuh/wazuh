@@ -10,12 +10,12 @@ from setuptools import setup, find_packages
 # Install the package dev: python setup.py develop
 
 setup(name='wazuh',
-      version='3.8.0',
+      version='3.9.0',
       description='Wazuh control with Python',
       url='https://github.com/wazuh',
       author='Wazuh',
       author_email='hello@wazuh.com',
       license='GPLv2',
-      packages=find_packages(),
+      packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
       install_requires=[],
       zip_safe=False)
