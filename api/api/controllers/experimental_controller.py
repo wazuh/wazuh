@@ -63,8 +63,6 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :type benchmark: str
     :param profile: Filters by evaluated profile
     :type profile: str
-    :param pass: Filters by passed checks
-    :type pass: int
     :param fail: Filters by failed checks
     :type fail: int
     :param error: Filters by encountered errors
@@ -75,13 +73,15 @@ def get_cis_cat_results(pretty=False, wait_for_complete=False, offset=0, limit=N
     :type unknown: int
     :param score: Filters by final score
     :type score: int
+    :param pass: Filters by passed checks
+    :type pass: int
     """
     # get pass query parameter
-    query_params = connexion.request.args
+    pass_ = connexion.request.args['pass']
 
     filters = {'benchmark': benchmark, 'profile': profile,
-               'pass': query_params['pass'], 'fail': fail, 'error': error,
-               'notchecked': notchecked, 'unknown': unknown, 'score': score}
+               'fail': fail, 'error': error, 'notchecked': notchecked,
+               'unknown': unknown, 'score': score, 'pass': pass_}
 
     f_kwargs = {'offset': offset, 'limit': limit, 'select': select,
                 'sort': sort, 'search': search, 'filters': filters}
