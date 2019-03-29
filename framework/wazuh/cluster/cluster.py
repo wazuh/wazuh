@@ -447,7 +447,7 @@ def unmerge_agent_info(merge_type, path_file, filename):
     dst_agent_info_path = os.path.join("queue", merge_type)
 
     bytes_read = 0
-    total_bytes = os.stat(src_agent_info_path).st_size
+    total_bytes = stat(src_agent_info_path).st_size
     with open(src_agent_info_path, 'rb') as src_f:
         while bytes_read < total_bytes:
             # read header
