@@ -1114,7 +1114,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
                             flow_log_id='{flow_log_id}' AND
-                            log_key='{log_key}'"""
+                            log_key='{log_key}';"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
@@ -1131,7 +1131,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 '{flow_log_id}',
                                 '{log_key}',
                                 DATETIME('now'),
-                                '{created_date}')"""
+                                '{created_date}');"""
 
         self.sql_create_table = """
                             CREATE TABLE
