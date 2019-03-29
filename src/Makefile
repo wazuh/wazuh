@@ -1605,7 +1605,7 @@ endif
 
 clean-wpython:
 ifneq ($(wildcard external/cpython/*),)
-	-cd ${EXTERNAL_CPYTHON} && make clean && make distclean
+	-cd ${EXTERNAL_CPYTHON} && ${MAKE} clean && ${MAKE} distclean
 endif
 
 clean-deps:
