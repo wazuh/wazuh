@@ -97,6 +97,7 @@ typedef struct whodata_evt {
     int dir_position;
     char deleted;
     char ignore_not_exist;
+    char ignore_remove_event;
     char scan_directory;
     whodata_event_node *wnode;
 #endif
@@ -112,19 +113,24 @@ typedef struct whodata_dir_status {
 
 typedef struct whodata_event_node {
     struct whodata_event_node *next;
-    struct whodata_event_node *previous;
-    char *handle_id;
+    struct whodata_event_node *prev;
+    char *id;
+    time_t insert_time;
 } whodata_event_node;
 
 typedef struct whodata_event_list {
-    whodata_event_node *nodes;
     whodata_event_node *first;
     whodata_event_node *last;
-    size_t current_size;
-    size_t max_size;
-    size_t alert_threshold;
-    size_t max_remove;
-    char alerted;
+    union {
+        struct {
+            size_t current_size;
+            size_t max_size;
+            size_t alert_threshold;
+            size_t max_remove;
+            char alerted;
+        };
+        time_t queue_time;
+    };
 } whodata_event_list;
 
 typedef struct whodata_directory {
@@ -139,6 +145,8 @@ typedef struct whodata {
     int interval_scan;                  // Time interval between scans of the checking thread
     int whodata_setup;
     whodata_dir_status *dirs_status;    // Status list
+    char **device;                       // Hard disk devices
+    char **drive;                        // Drive letter
 } whodata;
 
 #endif /* End WIN32*/
@@ -208,7 +216,8 @@ typedef struct _config {
     FILE *reg_fp;
     int max_fd_win_rt;
     whodata wdata;
-    whodata_event_list wlist;
+    whodata_event_list w_clist; // List of events cached from Whodata mode in the last seconds
+    whodata_event_list w_rlist; // List of events removed from Whodata mode in the last seconds
 #endif
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys

@@ -142,7 +142,8 @@ const char *vu_severities[] = {
     "Critical",
     "None",
     "Negligible",
-    "Untriaged"
+    "Untriaged",
+    "-"
 };
 
 const char *wm_vuldet_set_oval(const char *os_name, const char *os_version, update_node **updates, distribution *agent_dist) {
@@ -1554,7 +1555,7 @@ int wm_vuldet_xml_parser(OS_XML *xml, XML_NODE node, wm_vuldet_db *parsed_oval, 
                             double_condition = 0;
                         }
                     } else {
-                        if (strstr(node[i]->values[j], pending_state)) {
+                        if (wstr_end(node[i]->values[j], pending_state)) {
                             parsed_oval->vulnerabilities->pending = 1;
                         } else {
                             parsed_oval->vulnerabilities->pending = 0;
@@ -2812,6 +2813,11 @@ int wm_vuldet_db_empty() {
     sqlite3_stmt *stmt = NULL;
     int result;
 
+    if (wm_vuldet_check_db()) {
+        mterror(WM_VULNDETECTOR_LOGTAG, VU_CHECK_DB_ERROR);
+        return OS_INVALID;
+    }
+
     if (sqlite3_open_v2(CVE_DB, &db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK) {
         return wm_vuldet_sql_error(db, NULL);
     }
@@ -2835,7 +2841,7 @@ int wm_vuldet_db_empty() {
 
 const char *wm_vuldet_get_unified_severity(char *severity) {
     if (!severity || strcasestr(severity, vu_severities[VU_UNKNOWN]) || strcasestr(severity, vu_severities[VU_UNTR])) {
-        return vu_severities[VU_UNKNOWN];
+        return vu_severities[VU_UNDEFINED_SEV];
     } else if (strcasestr(severity, vu_severities[VU_LOW]) || strcasestr(severity, vu_severities[VU_NEGL])) {
         return vu_severities[VU_LOW];
     } else if (strcasestr(severity, vu_severities[VU_MEDIUM]) || strcasestr(severity, vu_severities[VU_MODERATE])) {
@@ -2863,7 +2869,7 @@ const char *wm_vuldet_get_unified_severity(char *severity) {
             sev_count++;
         }
     }
-    return vu_severities[VU_UNKNOWN];
+    return vu_severities[VU_UNDEFINED_SEV];
 }
 
 #endif

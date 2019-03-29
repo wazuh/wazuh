@@ -7,6 +7,7 @@ from unittest.mock import patch
 import sqlite3
 import os
 import pytest
+from wazuh.exception import WazuhException
 
 from wazuh.agent import Agent
 
@@ -51,7 +52,7 @@ def check_agent(test_data, agent):
     assert 'id' in agent
     if agent['id'] == '000':
         assert agent.keys() == test_data.manager_fields
-    elif agent['status'] == 'Active':
+    elif agent['status'] == 'Active' or agent['status'] == 'Disconnected':
         assert agent.keys() == test_data.active_fields
     elif agent['status'] == 'Pending':
         assert agent.keys() == test_data.pending_fields
@@ -71,7 +72,7 @@ def test_get_agents_overview_default(test_data):
         agents = Agent.get_agents_overview()
 
         # check number of agents
-        assert agents['totalItems'] == 5
+        assert agents['totalItems'] == 6
         # check the return dictionary has all necessary fields
 
         for agent in agents['items']:
@@ -79,27 +80,36 @@ def test_get_agents_overview_default(test_data):
             check_agent(test_data, agent)
 
 
-@pytest.mark.parametrize("select, status, offset", [
-    ({'id', 'dateAdd'}, 'all', 0),
-    ({'id', 'ip', 'registerIP'}, 'all', 1),
-    ({'id', 'registerIP'}, 'all', 1),
-    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', 0),
+@pytest.mark.parametrize("select, status, older_than, offset", [
+    ({'id', 'dateAdd'}, 'all', None, 0),
+    ({'id', 'ip', 'registerIP'}, 'all', None, 1),
+    ({'id', 'registerIP'}, 'all', None, 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', None, 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', None, 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', '1s', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Disconnected', '2h', 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'all', '15m', 2),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Active', '15m', 0),
+    ({'id', 'ip', 'lastKeepAlive'}, 'Active,Pending', '15m', 1),
+    ({'id', 'ip', 'lastKeepAlive'}, ['Active', 'Pending'], '15m', 1)
 ])
-def test_get_agents_overview_select(test_data, select, status, offset):
+def test_get_agents_overview_select(test_data, select, status, older_than, offset):
     """
     Test get_agents_overview function with multiple select parameters
     """
     with patch('sqlite3.connect') as mock_db:
         mock_db.return_value = test_data.global_db
 
-        agents = Agent.get_agents_overview(select={'fields': select}, filters={'status': status}, offset=offset)
+        agents = Agent.get_agents_overview(select={'fields': select}, filters={'status': status, 'older_than': older_than}, offset=offset)
         assert all(map(lambda x: x.keys() == select, agents['items']))
 
 
 @pytest.mark.parametrize("query", [
     "ip=172.17.0.201",
     "ip=172.17.0.202",
-    "ip=172.17.0.202;registerIP=any"
+    "ip=172.17.0.202;registerIP=any",
+    "status=Disconnected;lastKeepAlive>34m",
+    "(status=Active,status=Pending);lastKeepAlive>5m",
 ])
 def test_get_agents_overview_query(test_data, query):
     """
@@ -114,9 +124,9 @@ def test_get_agents_overview_query(test_data, query):
 
 @pytest.mark.parametrize("search, totalItems", [
     ({'value': 'any', 'negation': 0}, 3),
-    ({'value': 'any', 'negation': 1}, 2),
+    ({'value': 'any', 'negation': 1}, 3),
     ({'value': '202', 'negation': 0}, 1),
-    ({'value': '202', 'negation': 1}, 4),
+    ({'value': '202', 'negation': 1}, 5),
     ({'value': 'master', 'negation': 1}, 2)
 ])
 def test_get_agents_overview_search(test_data, search, totalItems):
@@ -130,9 +140,32 @@ def test_get_agents_overview_search(test_data, search, totalItems):
         assert len(agents['items']) == totalItems
 
 
+@pytest.mark.parametrize("status, older_than, totalItems, exception", [
+    ('active', '9m', 1, None),
+    ('all', '1s', 5, None),
+    ('pending,neverconnected', '30m', 1, None),
+    (55, '30m', 0, 1729)
+])
+def test_get_agents_overview_status_olderthan(test_data, status, older_than, totalItems, exception):
+    """
+    Test filtering by status
+    """
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        kwargs = {'filters': {'status': status, 'older_than': older_than},
+                  'select': {'fields': ['name', 'id', 'status', 'lastKeepAlive', 'dateAdd']}}
+
+        if exception is None:
+            agents = Agent.get_agents_overview(**kwargs)
+            assert agents['totalItems'] == totalItems
+        else:
+            with pytest.raises(WazuhException, match=f'.* {exception} .*'):
+                Agent.get_agents_overview(**kwargs)
+
+
 @pytest.mark.parametrize("sort, first_id", [
     ({'fields': ['dateAdd'], 'order': 'asc'}, '000'),
-    ({'fields': ['dateAdd'], 'order': 'desc'}, '003')
+    ({'fields': ['dateAdd'], 'order': 'desc'}, '004')
 ])
 def test_get_agents_overview_sort(test_data, sort, first_id):
     """
@@ -170,9 +203,9 @@ def test_get_basic_information(test_data, select, a_id, a_ip, a_status):
 
 
 @pytest.mark.parametrize('fields, expected_items', [
-    ({'fields': ['os.platform']}, [{'os': {'platform': 'ubuntu'}, 'count': 3}, {'count': 2}]),
-    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2}, {'count': 2}]),
-    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 2}, {'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}])
+    ({'fields': ['os.platform']}, [{'count': 2}, {'os': {'platform': 'ubuntu'}, 'count': 4}]),
+    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'count': 2}, {'version': 'Wazuh v3.8.2', 'count': 3}]),
+    ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}, {'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3}])
 ])
 def test_get_distinct_agents(test_data, fields, expected_items):
     """
@@ -194,7 +227,7 @@ def test_get_agents_summary(test_data):
         assert summary['Active'] == 3
         assert summary['Never connected'] == 1
         assert summary['Pending'] == 1
-        assert summary['Disconnected'] == 0
+        assert summary['Disconnected'] == 1
 
 
 def test_get_os_summary(test_data):

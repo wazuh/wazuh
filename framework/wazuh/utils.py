@@ -504,6 +504,12 @@ def load_wazuh_xml(xml_path):
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
+    # replace \< by &lt;
+    data = re.sub(r'\\<', '&lt;', data)
+
+    # replace \> by &gt;
+    data = re.sub(r'\\>', '&gt;', data)
+
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
 
@@ -760,17 +766,36 @@ class WazuhDBQuery(object):
                 level -= 1
 
             if not self._pass_filter(value):
-                self.query_filters.append({'value': None if value == "null" else value, 'operator': self.query_operators[operator],
-                                 'field': '{}${}'.format(field, len(list(filter(lambda x: field in x['field'], self.query_filters)))),
-                                 'separator': self.query_separators[separator], 'level': level})
+                op_index = len(list(filter(lambda x: field in x['field'], self.query_filters)))
+                self.query_filters.append({'value': None if value == "null" else value,
+                                           'operator': self.query_operators[operator],
+                                           'field': '{}${}'.format(field, op_index),
+                                           'separator': self.query_separators[separator], 'level': level})
 
     def _parse_legacy_filters(self):
         """
         Parses legacy filters.
         """
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, unicode) or isinstance(value,str) else value for name, value in self.legacy_filters.items()}
-        self.query_filters += [{'value': None if subvalue == "null" else subvalue, 'field': '{}${}'.format(name,i), 'operator': '=', 'separator': 'OR' if len(value) > 1 else 'AND', 'level': 0}
-                               for name, value in legacy_filters_as_list.items() for subvalue,i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
+        # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
+        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
+                                  for name, value in self.legacy_filters.items()}
+        # each filter is represented using a dictionary containing the following fields:
+        #   * Value     -> Value to filter by
+        #   * Field     -> Field to filter by. Since there can be multiple filters over the same field, a numeric ID
+        #                  must be added to the field name.
+        #   * Operator  -> Operator to use in the database query. In legacy filters the only available one is =.
+        #   * Separator -> Logical operator used to join queries. In legacy filters, the AND operator is used when
+        #                  different fields are filtered and the OR operator is used when filtering by the same field
+        #                  multiple times.
+        #   * Level     -> The level defines the number of parenthesis the query has. In legacy filters, no
+        #                  parenthesis are used except when filtering over the same field.
+        self.query_filters += [{'value': None if subvalue == "null" else subvalue,
+                                'field': '{}${}'.format(name, i),
+                                'operator': '=',
+                                'separator': 'OR' if len(value) > 1 else 'AND',
+                                'level': 0 if i == len(value) - 1 else 1}
+                               for name, value in legacy_filters_as_list.items()
+                               for subvalue, i in zip(value, range(len(value))) if not self._pass_filter(subvalue)]
         if self.query_filters:
             # if only traditional filters have been defined, remove last AND from the query.
             self.query_filters[-1]['separator'] = '' if not self.q else 'AND'
