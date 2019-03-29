@@ -22,7 +22,7 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
             fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), self.nested_fields, '_')
             self._data = [plain_dict_to_nested_dict(d, fields_to_nest, non_nested, self.nested_fields, '_') for d in self._data]
 
-        return super()._format_data_into_dictionary() if self.array else self._data[0]
+        return super()._format_data_into_dictionary() if self.array else next(iter(self._data), {})
 
 
 def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid_select_fields, query,
