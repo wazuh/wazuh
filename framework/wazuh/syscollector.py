@@ -15,7 +15,7 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
                          *args, **kwargs)
         self.array = array
         self.nested = nested
-        self.nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote', 'tx', 'rx']
+        self.nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote']
 
     def _format_data_into_dictionary(self):
         if self.nested:
