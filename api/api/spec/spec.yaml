@@ -4104,7 +4104,7 @@ paths:
           application/xml:
             schema:
               properties:
-                file_name:
+                tmp_file:
                   description: Updated file
                   type: string
 
@@ -4270,11 +4270,12 @@ paths:
         - $ref: '#/components/parameters/file_name'
 
       requestBody:
+        required: true
         content:
           application/xml:
             schema:
               properties:
-                file_name:
+                tmp_file:
                   description: Updated file
                   type: string
 

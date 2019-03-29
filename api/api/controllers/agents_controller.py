@@ -919,7 +919,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
 
     return data, 200
 
-#Incomplete
+
 def post_group_config(body, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Update group configuration. 
     
@@ -1049,8 +1049,52 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
     return data, 200
 
 
-def post_group_file():
-    pass
+def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
+    """Update group configuration. 
+    
+    Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.     # noqa: E501
+
+    :param pretty: Show results in human-readable format
+    :type pretty: bool
+    :param wait_for_complete: Disable timeout response
+    :type wait_for_complete: bool
+    :param group_id: Group ID.
+    :type group_id: str
+    :param group_id: Group ID.
+    :type group_id: str
+
+    :rtype: CommonResponse
+    """
+
+    try:
+        content_type = connexion.request.headers['Content-type']
+    except KeyError:
+        return 'Content-type header is mandatory', 400
+
+    # parse body to utf-8
+    try:
+        body = body.decode('utf-8')
+    except UnicodeDecodeError:
+        return 'Error parsing body request to UTF-8', 400
+    except AttributeError:
+        return 'Body is empty', 400
+    
+    f_kwargs = {'group_id': group_id,
+                'file_name': file_name,
+                'file_data': body}
+
+    dapi = DistributedAPI(f=configuration.upload_group_file,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
 
 
 def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
