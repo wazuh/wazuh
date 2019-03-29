@@ -686,7 +686,7 @@ static int wm_fluent_check_config(wm_fluent_t * fluent) {
     /* Socket path */
 
     if (!filled_string(fluent->sock_path)) {
-        merror("No sock_path defined.");
+        merror("No socket_path defined.");
         return -1;
     }
 
@@ -713,7 +713,7 @@ static int wm_fluent_check_config(wm_fluent_t * fluent) {
     /* Password required if user is defined. */
 
     if (filled_string(fluent->user_name) && !filled_string(fluent->user_pass)) {
-        merror("Password required because user is defined");
+        merror("Password required because user_name is defined");
         return -1;
     }
 
