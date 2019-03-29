@@ -10,12 +10,13 @@ from operator import itemgetter
 
 class WazuhDBQuerySyscollector(WazuhDBQuery):
 
+    nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote']
+
     def __init__(self, array, nested, *args, **kwargs):
         super().__init__(backend='wdb', default_sort_field='scan_id', db_path=None, get_data=True, count=True,
                          *args, **kwargs)
         self.array = array
         self.nested = nested
-        self.nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote']
 
     def _format_data_into_dictionary(self):
         if self.nested:
@@ -187,7 +188,13 @@ def _get_agent_items(func, offset, limit, select, filters, search, sort, array=F
                             reverse=True if sort['order'] == "desc" else False)
 
         fields_to_nest, non_nested = get_fields_to_nest(result[0].keys(), '_')
-    return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested), result)), 'totalItems': total}
+    else:
+        fields_to_nest, non_nested = None, None
+
+    return {'items': list(map(lambda x: plain_dict_to_nested_dict(x, fields_to_nest, non_nested,
+                                                                  WazuhDBQuerySyscollector.nested_fields, '_'),
+                              result)),
+            'totalItems': total}
 
 
 def get_packages(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}, q=''):
