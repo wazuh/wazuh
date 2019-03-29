@@ -93,7 +93,7 @@ class WazuhIntegration:
                                             metadata (
                                             key 'text' NOT NULL,
                                             value 'text' NOT NULL,
-                                            PRIMARY KEY (key, value))
+                                            PRIMARY KEY (key, value));
                                         """
 
         self.sql_check_metadata_version = """
@@ -102,7 +102,7 @@ class WazuhIntegration:
                                         FROM
                                             metadata
                                         WHERE
-                                            key='version'
+                                            key='version';
                                         """
 
         self.sql_find_table_metadata = """
@@ -121,7 +121,7 @@ class WazuhIntegration:
                                             value)
                                         VALUES (
                                             'version',
-                                            '{wazuh_version}')"""
+                                            '{wazuh_version}');"""
 
         self.sql_delete_trail_progress = """
                                         DROP TABLE trail_progress;
@@ -311,7 +311,7 @@ class AWSBucket(WazuhIntegration):
                             bucket_path='{bucket_path}' AND
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
-                            log_key='{log_name}'"""
+                            log_key='{log_name}';"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
@@ -326,7 +326,7 @@ class AWSBucket(WazuhIntegration):
                                 '{aws_region}',
                                 '{log_key}',
                                 DATETIME('now'),
-                                '{created_date}')"""
+                                '{created_date}');"""
 
         self.sql_create_table = """
                             CREATE TABLE
@@ -372,8 +372,8 @@ class AWSBucket(WazuhIntegration):
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
-                                rowid NOT IN
-                                (SELECT ROWID
+                                log_key NOT IN
+                                (SELECT log_key
                                     FROM
                                     {table_name}
                                     WHERE
@@ -381,8 +381,8 @@ class AWSBucket(WazuhIntegration):
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}'
                                     ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
+                                    log_key DESC
+                                    LIMIT {retain_db_records});"""
 
         self.db_name = 's3_cloudtrail'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
@@ -1182,8 +1182,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
                                 flow_log_id='{flow_log_id}' AND
-                                rowid NOT IN
-                                (SELECT ROWID
+                                log_key NOT IN
+                                (SELECT log_key
                                     FROM
                                     {table_name}
                                     WHERE
@@ -1192,8 +1192,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                     aws_region='{aws_region}' AND
                                     flow_log_id='{flow_log_id}'
                                     ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
+                                    log_key DESC
+                                    LIMIT {retain_db_records});"""
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -1462,7 +1462,7 @@ class AWSCustomBucket(AWSBucket):
                           WHERE
                             bucket_path='{bucket_path}' AND
                             aws_account_id='{aws_account_id}' AND
-                            log_key='{log_key}'"""
+                            log_key='{log_key}';"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
@@ -1475,7 +1475,7 @@ class AWSCustomBucket(AWSBucket):
                                 '{aws_account_id}',
                                 '{log_key}',
                                 DATETIME('now'),
-                                '{created_date}')"""
+                                '{created_date}');"""
 
         self.sql_create_table = """
                             CREATE TABLE
@@ -1517,16 +1517,16 @@ class AWSCustomBucket(AWSBucket):
                             WHERE
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
-                                rowid NOT IN
-                                (SELECT ROWID
+                                log_key NOT IN
+                                (SELECT log_key
                                     FROM
                                     {table_name}
                                     WHERE
                                     bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}'
                                     ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
+                                    log_key DESC
+                                    LIMIT {retain_db_records});"""
 
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
@@ -1769,7 +1769,7 @@ class AWSService(WazuhIntegration):
                                 aws_region='{aws_region}'
                                 ORDER BY
                                 scan_date DESC
-                                LIMIT {retain_db_records})"""
+                                LIMIT {retain_db_records});"""
 
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
