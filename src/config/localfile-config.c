@@ -512,6 +512,7 @@ void Free_Logreader(logreader * logf) {
         free(logf->djb_program_name);
         free(logf->alias);
         free(logf->query);
+        free(logf->exclude);
 
         if (logf->target) {
             for (i = 0; logf->target[i]; i++) {
@@ -566,6 +567,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
                 (*logf)[size - 1].ffile = NULL;
                 (*logf)[size - 1].logformat = NULL;
                 (*logf)[size - 1].command = NULL;
+                (*logf)[size - 1].exclude = NULL;
             }
 
             if (!size)

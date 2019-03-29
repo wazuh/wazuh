@@ -1211,6 +1211,7 @@ void check_pattern_expand_excluded() {
                     }
                     glob_offset++;
                 }
+                i--;
                 globfree(&g);
             }
             current = NULL;
@@ -2058,6 +2059,7 @@ void check_pattern_expand_excluded() {
                     }
                 } while (FindNextFile(hFind, &ffd) != 0);
                 FindClose(hFind);
+                i--;
             }
             current = NULL;
         }
