@@ -443,91 +443,99 @@ class Agent:
         :param purge: Delete definitely from key store.
         :return: Message.
         """
-
         # Check if agent exists
         self._load_info_from_DB()
 
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
 
-        agent_found = False
-        with open(common.client_keys) as f_k, open(f_keys_temp, 'w') as f_tmp:
-            for line in f_k.readlines():
-                id, name, ip, key = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+        try:
+            agent_found = False
+            with open(common.client_keys) as f_k, open(f_keys_temp, 'w') as f_tmp:
+                for line in f_k.readlines():
+                    id, name, ip, key = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
 
-                if self.id == id and name[0] not in ('#!'):
-                    if not purge:
-                        f_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
+                    if self.id == id and name[0] not in ('#!'):
+                        if not purge:
+                            f_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
 
-                    agent_found = True
-                else:
-                    f_tmp.write(line)
+                        agent_found = True
+                    else:
+                        f_tmp.write(line)
 
-        if not agent_found:
-            remove(f_keys_temp)
-            raise WazuhException(1701, self.id)
-        else:
-            f_keys_st = stat(common.client_keys)
-            chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
-            chmod(f_keys_temp, f_keys_st.st_mode)
+            if not agent_found:
+                remove(f_keys_temp)
+                raise WazuhException(1701, self.id)
+            else:
+                f_keys_st = stat(common.client_keys)
+                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
+                chmod(f_keys_temp, f_keys_st.st_mode)
+        except Exception as e:
+            raise WazuhException(1746, str(e))
 
-        # remove agent from groups
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
+        try:
+            # remove agent from groups
+            db_global = glob(common.database_path_global)
+            if not db_global:
+                raise WazuhException(1600)
 
-        conn = Connection(db_global[0])
-        conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
-        conn.commit()
+            conn = Connection(db_global[0])
+            conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
+            conn.commit()
+        except Exception as e:
+            raise WazuhException(1747, str(e))
 
-        # Remove rid file
-        rids_file = path.join(common.ossec_path, 'queue/rids', self.id)
-        if path.exists(rids_file):
-            remove(rids_file)
+        try:
+            # Remove rid file
+            rids_file = path.join(common.ossec_path, 'queue/rids', self.id)
+            if path.exists(rids_file):
+                remove(rids_file)
 
-        if backup:
-            # Create backup directory
-            # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
-            date_part = date.today().strftime('%Y/%b/%d')
-            main_agent_backup_dir = path.join(common.backup_path,
-                                              f'agents/{date_part}/{self.id}-{self.name}-{self.registerIP}')
-            agent_backup_dir = main_agent_backup_dir
+            if backup:
+                # Create backup directory
+                # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
+                date_part = date.today().strftime('%Y/%b/%d')
+                main_agent_backup_dir = path.join(common.backup_path,
+                                                  f'agents/{date_part}/{self.id}-{self.name}-{self.registerIP}')
+                agent_backup_dir = main_agent_backup_dir
 
-            not_agent_dir = True
-            i = 0
-            while not_agent_dir:
-                if path.exists(agent_backup_dir):
-                    i += 1
-                    agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
-                else:
-                    makedirs(agent_backup_dir)
-                    chmod_r(agent_backup_dir, 0o750)
-                    not_agent_dir = False
-        else:
-            agent_backup_dir = ''
+                not_agent_dir = True
+                i = 0
+                while not_agent_dir:
+                    if path.exists(agent_backup_dir):
+                        i += 1
+                        agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
+                    else:
+                        makedirs(agent_backup_dir)
+                        chmod_r(agent_backup_dir, 0o750)
+                        not_agent_dir = False
+            else:
+                agent_backup_dir = ''
 
-        # Move agent file
-        agent_files = [
-            ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP), '{0}/agent-info'.format(agent_backup_dir)),
-            ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP), '{0}/rootcheck'.format(agent_backup_dir)),
-            ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
-            ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
-            ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
-            ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
-            ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
-            ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
-        ]
+            # Move agent file
+            agent_files = [
+                ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP), '{0}/agent-info'.format(agent_backup_dir)),
+                ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP), '{0}/rootcheck'.format(agent_backup_dir)),
+                ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
+                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
+                ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
+                ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
+            ]
 
-        for agent_file, backup_file in filter(path.exists, agent_files):
-            if not backup:
-                if path.isdir(agent_file):
-                    rmtree(agent_file)
-                else:
-                    remove(agent_file)
-            elif not path.exists(backup_file):
-                rename(agent_file, backup_file)
+            for agent_file, backup_file in filter(path.exists, agent_files):
+                if not backup:
+                    if path.isdir(agent_file):
+                        rmtree(agent_file)
+                    else:
+                        remove(agent_file)
+                elif not path.exists(backup_file):
+                    rename(agent_file, backup_file)
 
-        # Overwrite client.keys
-        move(f_keys_temp, common.client_keys)
+            # Overwrite client.keys
+            move(f_keys_temp, common.client_keys)
+        except Exception as e:
+            raise WazuhException(1748, str(e))
 
         return 'Agent deleted successfully.'
 
