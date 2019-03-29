@@ -377,9 +377,9 @@ class AWSBucket(WazuhIntegration):
                                     FROM
                                     {table_name}
                                     WHERE
-                                    bucket_path='{bucket_path}' AND
-                                    aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}'
+                                        bucket_path='{bucket_path}' AND
+                                        aws_account_id='{aws_account_id}' AND
+                                        aws_region='{aws_region}'
                                     ORDER BY
                                         log_key DESC
                                     LIMIT 1
@@ -1224,7 +1224,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 log_key <
                                 (SELECT log_key
                                     FROM
-                                    {table_name}
+                                        {table_name}
                                     WHERE
                                         bucket_path='{bucket_path}' AND
                                         aws_account_id='{aws_account_id}' AND
@@ -1875,13 +1875,13 @@ class AWSService(WazuhIntegration):
                             rowid NOT IN
                             (SELECT ROWID
                                 FROM
-                                {table_name}
+                                    {table_name}
                                 WHERE
-                                service_name='{service_name}' AND
-                                aws_account_id='{aws_account_id}' AND
-                                aws_region='{aws_region}'
+                                    service_name='{service_name}' AND
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region='{aws_region}'
                                 ORDER BY
-                                scan_date DESC
+                                    scan_date DESC
                                 LIMIT {retain_db_records});"""
 
     def get_last_log_date(self):
