@@ -372,7 +372,7 @@ class AWSBucket(WazuhIntegration):
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
-                                log_key NOT IN
+                                log_key <
                                 (SELECT log_key
                                     FROM
                                     {table_name}
@@ -381,14 +381,25 @@ class AWSBucket(WazuhIntegration):
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}'
                                     ORDER BY
-                                    log_key DESC
-                                    LIMIT {retain_db_records});"""
+                                        log_key DESC
+                                    LIMIT 1
+                                    OFFSET {retain_db_records});"""
+
+        self.sql_count_region = """
+                                SELECT
+                                    count(*)
+                                FROM
+                                    {table_name}
+                                WHERE
+                                    bucket_path='{bucket_path}' AND
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region='{aws_region}';"""
 
         self.db_name = 's3_cloudtrail'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
         self.legacy_db_table_name = 'log_progress'
-        self.retain_db_records = 1000
+        self.retain_db_records = 500
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
@@ -449,16 +460,44 @@ class AWSBucket(WazuhIntegration):
         if self.db_table_name not in tables:
             self.create_table()
 
+    def db_count_region(self, aws_account_id, aws_region):
+        """Counts the number of rows in DB for a region
+        :param aws_account_id: AWS account ID
+        :type aws_account_id: str
+        :param aws_region: AWS region
+        :param aws_region: str
+        :rtype: int
+        """
+        try:
+            query_count_region = self.db_connector.execute(
+                self.sql_count_region.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    retain_db_records=self.retain_db_records
+                ))
+            return query_count_region.fetchone()[0]
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    error_msg=e))
+            sys.exit(10)
+
     def db_maintenance(self, aws_account_id, aws_region):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(self.sql_db_maintenance.format(
-                bucket_path=self.bucket_path,
-                table_name=self.db_table_name,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                retain_db_records=self.retain_db_records
-            ))
+            if self.db_count_region(aws_account_id, aws_region) \
+                > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    bucket_path=self.bucket_path,
+                    table_name=self.db_table_name,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    retain_db_records=self.retain_db_records
+                ))
         except Exception as e:
             print(
                 "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
@@ -631,7 +670,7 @@ class AWSBucket(WazuhIntegration):
                 # Send the message
                 self.send_msg(event_msg)
 
-    def iter_files_in_bucket(self, aws_account_id, aws_region):
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
 
@@ -1182,18 +1221,30 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
                                 flow_log_id='{flow_log_id}' AND
-                                log_key NOT IN
+                                log_key <
                                 (SELECT log_key
                                     FROM
                                     {table_name}
                                     WHERE
+                                        bucket_path='{bucket_path}' AND
+                                        aws_account_id='{aws_account_id}' AND
+                                        aws_region='{aws_region}' AND
+                                        flow_log_id='{flow_log_id}'
+                                    ORDER BY
+                                        log_key DESC
+                                    LIMIT 1
+                                    OFFSET {retain_db_records});"""
+
+        self.sql_count_region = """
+                                SELECT
+                                    count(*)
+                                FROM
+                                    {table_name}
+                                WHERE
                                     bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}' AND
-                                    flow_log_id='{flow_log_id}'
-                                    ORDER BY
-                                    log_key DESC
-                                    LIMIT {retain_db_records});"""
+                                    flow_log_id='{flow_log_id};"""
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -1284,17 +1335,48 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
 
+    def db_count_region(self, aws_account_id, aws_region, flow_log_id):
+        """Counts the number of rows in DB for a region
+        :param aws_account_id: AWS account ID
+        :type aws_account_id: str
+        :param aws_region: AWS region
+        :type aws_region: str
+        :param flow_log_id: Flow log ID
+        :type flow_log_id: str
+        :rtype: int
+        """
+        try:
+            query_count_region = self.db_connector.execute(
+                self.sql_count_region.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    flow_log_id=flow_log_id,
+                    retain_db_records=self.retain_db_records
+                ))
+            return query_count_region.fetchone()[0]
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    error_msg=e))
+            sys.exit(10)
+
     def db_maintenance(self, aws_account_id, aws_region, flow_log_id):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(self.sql_db_maintenance.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                flow_log_id=flow_log_id,
-                retain_db_records=self.retain_db_records
-            ))
+            if self.db_count_region(aws_account_id, aws_region, flow_log_id) \
+                > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    flow_log_id=flow_log_id,
+                    retain_db_records=self.retain_db_records
+                ))
         except Exception as e:
             print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
                 aws_account_id=aws_account_id,
@@ -1448,7 +1530,7 @@ class AWSCustomBucket(AWSBucket):
         else:
             self.db_table_name = 'custom'
         AWSBucket.__init__(self, **kwargs)
-        self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased
+        self.retain_db_records = 500
         # get STS client
         self.sts_client = self.get_sts_client(kwargs['access_key'], kwargs['secret_key'])
         # get account ID
@@ -1517,16 +1599,26 @@ class AWSCustomBucket(AWSBucket):
                             WHERE
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
-                                log_key NOT IN
+                                log_key <
                                 (SELECT log_key
                                     FROM
-                                    {table_name}
+                                        {table_name}
                                     WHERE
-                                    bucket_path='{bucket_path}' AND
-                                    aws_account_id='{aws_account_id}'
+                                        bucket_path='{bucket_path}' AND
+                                        aws_account_id='{aws_account_id}'
                                     ORDER BY
-                                    log_key DESC
-                                    LIMIT {retain_db_records});"""
+                                        log_key DESC
+                                    LIMIT 1
+                                    OFFSET {retain_db_records});"""
+
+        self.sql_count_custom = """
+                                SELECT
+                                    count(*)
+                                FROM
+                                    {table_name}
+                                WHERE
+                                    bucket_path='{bucket_path}' AND
+                                    aws_account_id='{aws_account_id}';"""
 
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
@@ -1575,10 +1667,8 @@ class AWSCustomBucket(AWSBucket):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
-        account_id = ''
-        regions = ''
-        self.iter_files_in_bucket(account_id, regions)
-        self.db_maintenance('', self.bucket)
+        self.iter_files_in_bucket()
+        self.db_maintenance(account_id)
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -1608,15 +1698,38 @@ class AWSCustomBucket(AWSBucket):
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
                 raise e
 
-    def db_maintenance(self, aws_account_id, aws_region):
+    def db_count_custom(self):
+        """Counts the number of rows in DB for a region
+        :param aws_account_id: AWS account ID
+        :type aws_account_id: str
+        :rtype: int
+        """
+        try:
+            query_count_custom = self.db_connector.execute(
+                self.sql_count_custom.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=self.aws_account_id,
+                    retain_db_records=self.retain_db_records
+                ))
+            return query_count_custom.fetchone()[0]
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
+                    bucket_path=self.bucket_path,
+                    error_msg=e))
+            sys.exit(10)
+
+    def db_maintenance(self, *args):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(self.sql_db_maintenance.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=self.aws_account_id,
-                retain_db_records=self.retain_db_records
-            ))
+            if self.db_count_custom() > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=self.aws_account_id,
+                    retain_db_records=self.retain_db_records
+                ))
         except Exception as e:
             print(
                 "ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
