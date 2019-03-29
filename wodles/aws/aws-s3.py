@@ -1244,7 +1244,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                     bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}' AND
-                                    flow_log_id='{flow_log_id};"""
+                                    flow_log_id='{flow_log_id}';"""
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
