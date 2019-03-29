@@ -4099,6 +4099,7 @@ paths:
         - $ref: '#/components/parameters/group_id'
 
       requestBody:
+        required: true
         content:
           application/xml:
             schema:

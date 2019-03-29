@@ -698,20 +698,16 @@ def upload_group_configuration(group_id, file_content):
         raise e
 
 
-def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
+def upload_group_file(group_id, file_data, file_name='agent.conf'):
     """
     Updates a group file
     :param group_id: Group to update
-    :param tmp_file: Relative path of temporary file to upload
+    :param file_date: Upload data
     :param file_name: File name to update
     :return: Confirmation message in string
     """
-    tmp_file_path = os_path.join(common.ossec_path, tmp_file)
+    
     if file_name == 'agent.conf':
-        with open(tmp_file_path) as f:
-            file_data = f.read()
-
-        remove(tmp_file_path)
         if len(file_data) == 0:
             raise WazuhException(1112)
 

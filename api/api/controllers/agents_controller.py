@@ -920,7 +920,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
     return data, 200
 
 #Incomplete
-def post_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
+def post_group_config(body, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Update group configuration. 
     
     Update an specified group's configuration. This API call expects a full valid XML file with the shared configuration tags/syntax.     # noqa: E501
@@ -934,7 +934,22 @@ def post_group_config(group_id, pretty=False, wait_for_complete=False, offset=0,
 
     :rtype: CommonResponse
     """
-    f_kwargs = {'group_id': group_id}
+
+    try:
+        content_type = connexion.request.headers['Content-type']
+    except KeyError:
+        return 'Content-type header is mandatory', 400
+
+    # parse body to utf-8
+    try:
+        body = body.decode('utf-8')
+    except UnicodeDecodeError:
+        return 'Error parsing body request to UTF-8', 400
+    except AttributeError:
+        return 'Body is empty', 400
+
+    f_kwargs = {'group_id': group_id,
+                'file_data': body}
 
     dapi = DistributedAPI(f=configuration.upload_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -1237,7 +1252,7 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
 
     return data, 200
 
-#Not Work with a field parameter
+
 def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, fields=None, q=''):
     """Get distinct fields in agents.
 
