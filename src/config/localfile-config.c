@@ -267,6 +267,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_localfile_exclude) == 0) {
+            if (logf[pl].exclude) {
+                os_free(logf[pl].exclude);
+            }
             os_strdup(node[i]->content, logf[pl].exclude);
         } else if (strcasecmp(node[i]->element, xml_localfile_alias) == 0) {
             os_strdup(node[i]->content, logf[pl].alias);
@@ -373,6 +376,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 log_config->globs[gl].gfiles->file = NULL;
             }
 
+            /* Wildcard exclusion */
+            if (logf[pl].exclude) {
+                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
+            }
+
             if (Remove_Localfile(&logf, pl, 0, 0)) {
                 merror(REM_ERROR, logf[pl].file);
                 FindClose(hFind);
@@ -400,6 +408,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
                 log_config->globs[gl].gfiles->file = NULL;
             }
+
+            /* Wildcard exclusion */
+            if (logf[pl].exclude) {
+                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
+            }
+
             globfree(&g);
             if (Remove_Localfile(&logf, pl, 0, 0)) {
                 merror(REM_ERROR, logf[pl].file);
@@ -424,6 +438,11 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             ret = strftime(lfile, OS_FLSIZE, logf[pl].file, p);
             if (ret != 0) {
                 os_strdup(logf[pl].file, logf[pl].ffile);
+            }
+
+            /* Wildcard exclusion */
+            if (logf[pl].exclude) {
+                os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
         }
     }
