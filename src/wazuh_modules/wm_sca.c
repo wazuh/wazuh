@@ -540,6 +540,8 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
     cJSON *description;
     cJSON *check;
     cJSON *check_id;
+    cJSON *rule;
+    cJSON *rules_id;
     int * read_id;
 
     retval = 1;
@@ -599,6 +601,8 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
     } else {
         os_calloc(1, sizeof(int), read_id);
         read_id[0] = 0;
+        int rules_n = 0;
+
         cJSON_ArrayForEach(check, profiles){
 
             check_id = cJSON_GetObjectItem(check, "id");
@@ -625,6 +629,27 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
             read_id = (int *) realloc(read_id, sizeof(int) * (i + 2));
             read_id[i] = check_id->valueint;
             read_id[i + 1] = 0;
+
+            rules_id = cJSON_GetObjectItem(check, "rules");
+
+            cJSON_ArrayForEach(rule, rules_id){
+                if (rules_id == NULL) {
+                    merror("Rules not found.");
+                    free(read_id);
+                    return retval;
+                }
+
+                rules_n++;
+
+                if (rules_n > 255) {
+                    retval = 1;
+                    free(read_id);
+                    mwarn("Policy check with more than 255 rules. Ignoring it.");
+                    return retval;
+                }
+            }
+
+            rules_n = 0;
         }
         free(read_id);
     }
