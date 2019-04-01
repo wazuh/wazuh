@@ -35,7 +35,7 @@ static int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *uparsed_vulnera
 static void wm_vuldet_add_rvulnerability(wm_vuldet_db *ctrl_block);
 static void wm_vuldet_add_vulnerability_info(wm_vuldet_db *ctrl_block);
 static char *wm_vuldet_extract_advisories(cJSON *advisories);
-static const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **package_name, char **package_version);
+static const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **OS_minor, char **package_name, char **package_version);
 static int wm_vuldet_check_db();
 static int wm_vuldet_insert(wm_vuldet_db *parsed_oval);
 static int wm_vuldet_remove_OS_table(sqlite3 *db, char *TABLE, const char *OS);
@@ -59,6 +59,8 @@ static void wm_vuldet_adapt_title(char *title, char *cve);
 static char *vu_get_version();
 static int wm_vuldet_db_empty();
 static const char *wm_vuldet_get_unified_severity(char *severity);
+static void wm_vuldet_get_package_os(char *version, const char **os_major, char **os_minor);
+static void wm_vuldet_set_subversion(char *version, char **os_minor);
 
 int *vu_queue;
 const wm_context WM_VULNDETECTOR_CONTEXT = {
@@ -66,6 +68,15 @@ const wm_context WM_VULNDETECTOR_CONTEXT = {
     (wm_routine)wm_vuldet_main,
     (wm_routine)wm_vuldet_destroy,
     (cJSON * (*)(const void *))wm_vuldet_dump
+};
+
+const char *vu_package_dist[] = {
+    ".el",
+    ".el7",
+    ".el6",
+    ".el5",
+    "ubuntu",
+    ".amzn"
 };
 
 const char *vu_dist_tag[] = {
@@ -404,24 +415,24 @@ int wm_vuldet_compare(char *version_it, char *cversion_it) {
         return VU_EQUAL;
     }
 
-    (found = strchr(version_it, '~'))? *found = '\0' : 0;
-    (found = strchr(version_it, '-'))? *found = '\0' : 0;
-    (found = strchr(version_it, '+'))? *found = '\0' : 0;
-    (found = strchr(cversion_it, '~'))? *found = '\0' : 0;
-    (found = strchr(cversion_it, '-'))? *found = '\0' : 0;
-    (found = strchr(cversion_it, '+'))? *found = '\0' : 0;
+    (found = strchr(version_it, '~')) ? *found = '\0' : 0;
+    (found = strchr(version_it, '-')) ? *found = '\0' : 0;
+    (found = strchr(version_it, '+')) ? *found = '\0' : 0;
+    (found = strchr(cversion_it, '~')) ? *found = '\0' : 0;
+    (found = strchr(cversion_it, '-')) ? *found = '\0' : 0;
+    (found = strchr(cversion_it, '+')) ? *found = '\0' : 0;
 
     // For RedHat/CentOS packages
-    (found = strstr(version_it, ".el"))? *found = '\0' : 0;
-    (found = strstr(cversion_it, ".el"))? *found = '\0' : 0;
+    (found = strstr(version_it, vu_package_dist[VU_RH_EXT_BASE])) ? *found = '\0' : 0;
+    (found = strstr(cversion_it, vu_package_dist[VU_RH_EXT_BASE])) ? *found = '\0' : 0;
 
     // For Ubuntu packages
-    (found = strstr(version_it, "ubuntu"))? *found = '\0' : 0;
-    (found = strstr(cversion_it, "ubuntu"))? *found = '\0' : 0;
+    (found = strstr(version_it, vu_package_dist[VU_UB_EXT]))? *found = '\0' : 0;
+    (found = strstr(cversion_it, vu_package_dist[VU_UB_EXT]))? *found = '\0' : 0;
 
     // For Amazon Linux packages
-    (found = strstr(version_it, ".amzn"))? *found = '\0' : 0;
-    (found = strstr(cversion_it, ".amzn"))? *found = '\0' : 0;
+    (found = strstr(version_it, vu_package_dist[VU_AMAZ_EXT])) ? *found = '\0' : 0;
+    (found = strstr(cversion_it, vu_package_dist[VU_AMAZ_EXT])) ? *found = '\0' : 0;
 
     // Check version
     if (strcmp(version_it, cversion_it)) {
@@ -587,8 +598,16 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             cJSON_Delete(alert);
             return OS_INVALID;
         }
-        sqlite3_bind_text(stmt, 1, agents_it->agent_OS, -1, NULL);
-        sqlite3_bind_int(stmt, 2,  strtol(agents_it->agent_id, NULL, 10));
+
+        if (agents_it->dist != DIS_REDHAT) {
+            sqlite3_bind_text(stmt, 1, agents_it->agent_OS, -1, NULL);
+            sqlite3_bind_int(stmt, 2,  strtol(agents_it->agent_id, NULL, 10));
+        } else {
+            sqlite3_bind_text(stmt, 1, vu_dist_tag[DIS_RHEL5], -1, NULL);
+            sqlite3_bind_text(stmt, 2, vu_dist_tag[DIS_RHEL6], -1, NULL);
+            sqlite3_bind_text(stmt, 3, vu_dist_tag[DIS_RHEL7], -1, NULL);
+            sqlite3_bind_int(stmt, 4,  strtol(agents_it->agent_id, NULL, 10));
+        }
 
         while (sql_result = wm_vuldet_step(stmt), sql_result == SQLITE_ROW) {
             char *package;
@@ -887,13 +906,14 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
 
             sqlite3_bind_text(stmt, 1, vul_it->cve_id, -1, NULL);
             sqlite3_bind_text(stmt, 2, parsed_oval->OS, -1, NULL);
-            sqlite3_bind_text(stmt, 3, vul_it->package_name, -1, NULL);
-            sqlite3_bind_int(stmt, 4, vul_it->pending);
-            sqlite3_bind_text(stmt, 5, vul_it->state_id, -1, NULL);
-            sqlite3_bind_text(stmt, 6, NULL, -1, NULL);
-            sqlite3_bind_text(stmt, 7, vul_it->second_state_id, -1, NULL);
-            sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 3, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 4, vul_it->package_name, -1, NULL);
+            sqlite3_bind_int(stmt, 5, vul_it->pending);
+            sqlite3_bind_text(stmt, 6, vul_it->state_id, -1, NULL);
+            sqlite3_bind_text(stmt, 7, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 8, vul_it->second_state_id, -1, NULL);
             sqlite3_bind_text(stmt, 9, NULL, -1, NULL);
+            sqlite3_bind_text(stmt, 10, NULL, -1, NULL);
 
             if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                 return wm_vuldet_sql_error(db, stmt);
@@ -917,12 +937,13 @@ int wm_vuldet_insert(wm_vuldet_db *parsed_oval) {
 
         sqlite3_bind_text(stmt, 1, rvul_it->cve_id, -1, NULL);
         sqlite3_bind_text(stmt, 2, rvul_it->OS, -1, NULL);
-        sqlite3_bind_text(stmt, 3, rvul_it->package_name, -1, NULL);
-        sqlite3_bind_int(stmt, 4, 0);
-        sqlite3_bind_text(stmt, 5, "less than", -1, NULL);
-        sqlite3_bind_text(stmt, 6, rvul_it->package_version, -1, NULL);
-        sqlite3_bind_text(stmt, 7, NULL, -1, NULL);
+        sqlite3_bind_text(stmt, 3, rvul_it->OS_minor, -1, NULL);
+        sqlite3_bind_text(stmt, 4, rvul_it->package_name, -1, NULL);
+        sqlite3_bind_int(stmt, 5, 0);
+        sqlite3_bind_text(stmt, 6, "less than", -1, NULL);
+        sqlite3_bind_text(stmt, 7, rvul_it->package_version, -1, NULL);
         sqlite3_bind_text(stmt, 8, NULL, -1, NULL);
+        sqlite3_bind_text(stmt, 9, NULL, -1, NULL);
 
         if (result = wm_vuldet_step(stmt), result != SQLITE_DONE) {
             return wm_vuldet_sql_error(db, stmt);
@@ -1763,7 +1784,7 @@ free_mem:
     }
 }
 
-const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **package_name, char **package_version) {
+const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **OS_minor, char **package_name, char **package_version) {
     static OSRegex *reg = NULL;
     static char *package_regex = "(-\\d+:)|(-\\d+.)|(-\\d+\\w+)";
     const char *retv = NULL;
@@ -1784,13 +1805,15 @@ const char *wm_vuldet_decode_package_version(char *raw, const char **OS, char **
         w_strdup(found + 1, *package_version);
         w_strdup(raw, *package_name);
 
-        if (strstr(*package_version, ".el7")) {
+        if (found = strstr(*package_version, vu_package_dist[VU_RH_EXT_7]), found) {
             *OS = vu_dist_tag[DIS_RHEL7];
-        } else if (strstr(*package_version, ".el6")) {
+        } else if (found = strstr(*package_version, vu_package_dist[VU_RH_EXT_6]), found) {
             *OS = vu_dist_tag[DIS_RHEL6];
-        } else if (strstr(*package_version, ".el5")) {
+        } else if (found = strstr(*package_version, vu_package_dist[VU_RH_EXT_5]), found) {
             *OS = vu_dist_tag[DIS_RHEL5];
         }
+
+        wm_vuldet_set_subversion(found, OS_minor);
     }
 
     return retv;
@@ -2173,6 +2196,7 @@ int wm_vuldet_json_parser(cJSON *json_feed, wm_vuldet_db *parsed_vulnerabilities
                     w_strdup(tmp_cve, parsed_vulnerabilities->rh_vulnerabilities->cve_id);
                     if (!wm_vuldet_decode_package_version(tmp_affected_packages->valuestring,
                         &parsed_vulnerabilities->rh_vulnerabilities->OS,
+                        &parsed_vulnerabilities->rh_vulnerabilities->OS_minor,
                         &parsed_vulnerabilities->rh_vulnerabilities->package_name,
                         &parsed_vulnerabilities->rh_vulnerabilities->package_version)) {
                         mterror(WM_VULNDETECTOR_LOGTAG, VU_VER_EXTRACT_ERROR, parsed_vulnerabilities->rh_vulnerabilities->package_name);
@@ -2385,15 +2409,28 @@ int wm_vuldet_get_software_info(agent_software *agent, sqlite3 *db, OSHash *agen
             if ((name = cJSON_GetObjectItem(package_list, "name")) &&
                 (version = cJSON_GetObjectItem(package_list, "version")) &&
                 (architecture = cJSON_GetObjectItem(package_list, "architecture"))) {
+                const char *os_major = NULL;
+                char *os_minor = NULL;
+
+                if (agent->dist == DIS_REDHAT) {
+                    wm_vuldet_get_package_os(version->valuestring, &os_major, &os_minor);
+                }
+
+                if (!os_major) {
+                    minfo("~~~~~~");
+                }
 
                 sqlite3_bind_text(stmt, 1, agent->agent_id, -1, NULL);
                 sqlite3_bind_text(stmt, 2, name->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 3, version->valuestring, -1, NULL);
-                sqlite3_bind_text(stmt, 4, architecture->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 3, os_major, -1, NULL);
+                sqlite3_bind_text(stmt, 4, os_minor, -1, NULL);
+                sqlite3_bind_text(stmt, 5, version->valuestring, -1, NULL);
+                sqlite3_bind_text(stmt, 6, architecture->valuestring, -1, NULL);
 
                 if (result = wm_vuldet_step(stmt), result != SQLITE_DONE && result != SQLITE_CONSTRAINT) {
                     return wm_vuldet_sql_error(db, stmt);
                 }
+                free(os_minor);
             }
             sqlite3_finalize(stmt);
 
@@ -2870,6 +2907,28 @@ const char *wm_vuldet_get_unified_severity(char *severity) {
         }
     }
     return vu_severities[VU_UNDEFINED_SEV];
+}
+
+void wm_vuldet_get_package_os(char *version, const char **os_major, char **os_minor)  {
+    char *v_it;
+
+    if (v_it = strstr(version, vu_package_dist[VU_RH_EXT_7]), v_it) {
+        *os_major = vu_dist_tag[DIS_RHEL7];
+    } else if (v_it = strstr(version, vu_package_dist[VU_RH_EXT_6]), v_it) {
+        *os_major = vu_dist_tag[DIS_RHEL6];
+    } else if (v_it = strstr(version, vu_package_dist[VU_RH_EXT_5]), v_it) {
+        *os_major = vu_dist_tag[DIS_RHEL5];
+    }
+
+    wm_vuldet_set_subversion(v_it, os_minor);
+}
+
+void wm_vuldet_set_subversion(char *version, char **os_minor) {
+    if (version && (version = strchr(version, '_')) && *(++version) != '\0') {
+        size_t minor_size = strlen(version) + 1;
+        os_calloc(minor_size + 1, sizeof(char), *os_minor);
+        snprintf(*os_minor, minor_size, "%ld", strtol(version, NULL, 10));
+    }
 }
 
 #endif
