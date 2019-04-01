@@ -237,6 +237,11 @@ functions = {
         'type': 'local_any',
         'is_async': False
     },
+    '/manager/config/:component/:configuration': {
+        'function': manager.get_config,
+        'type': 'local_any',
+        'is_async': False
+    },
     '/manager/configuration': {
         'function': configuration.get_ossec_conf,
         'type': 'local_any',
