@@ -19,7 +19,7 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 def get_fake_s3_db(*args, **kwargs):
     s3_db = sqlite3.connect(':memory:')
-    #cur = s3_db.cursor()
+    cur = s3_db.cursor()
     with open(os.path.join(test_data_path, 'schema_metadata_test.sql')) as f:
         cur.executescript(f.read())
     #s3_db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
@@ -38,10 +38,13 @@ class TestAWS(TestCase):
             #    service_name=None, region=None, bucket=None)
         #mocked_method.return_value = None
 
-        with patch.object(sqlite3, 'connect', side_effect=get_fake_s3_db) as mock_db:
-            wi = AWSCloudTrailBucket(**{'reparse': False, 'access_key': None, 'secret_key': None,
-                                  'profile': None, 'iam_role_arn': None, 'bucket': 'test',
-                                  'only_logs_after': '19700101', 'skip_on_error': True,
-                                  'account_alias': None, 'prefix': 'test',
-                                  'delete_file': False, 'aws_organization_id': None})
-            wi.check_metadata_version()
+        with patch('sqlite3.connect') as mock_db:
+            mock_db.return_value = get_fake_s3_db()
+            ct = AWSCloudTrailBucket(**{'reparse': False, 'access_key': None, 'secret_key': None,
+                                        'profile': None, 'iam_role_arn': None, 'bucket': 'test',
+                                        'only_logs_after': '19700101', 'skip_on_error': True,
+                                        'account_alias': None, 'prefix': 'test',
+                                        'delete_file': False, 'aws_organization_id': None})
+            query_version = ct.db_connector.execute(ct.sql_get_metadata_version)
+            metadata_version = query_version.fetchone()[0]
+            assert(metadata_version == '3.8')
