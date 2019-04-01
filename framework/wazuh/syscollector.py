@@ -4,7 +4,7 @@
 
 from wazuh import common
 from wazuh.agent import Agent
-from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery
+from wazuh.utils import plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, WazuhDBBackend
 from operator import itemgetter
 
 
@@ -12,8 +12,8 @@ class WazuhDBQuerySyscollector(WazuhDBQuery):
 
     nested_fields = ['scan', 'os', 'ram', 'cpu', 'local', 'remote']
 
-    def __init__(self, array, nested, *args, **kwargs):
-        super().__init__(backend='wdb', default_sort_field='scan_id', db_path=None, get_data=True, count=True,
+    def __init__(self, array, nested, agent_id, *args, **kwargs):
+        super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field='scan_id', get_data=True, count=True,
                          *args, **kwargs)
         self.array = array
         self.nested = nested
