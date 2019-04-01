@@ -1267,7 +1267,12 @@ int check_pattern_expand(int do_seek) {
 
                         if (!found) {
                             retval = 1;
-                            minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+                            char *ex_file = OSHash_Get(excluded_files,full_path);
+
+                            if(!ex_file) {
+                                minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+                            }
+
                             os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
                             if (i) {
                                 memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
