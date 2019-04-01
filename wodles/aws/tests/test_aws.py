@@ -12,37 +12,36 @@ from unittest import TestCase
 from unittest.mock import patch
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
-from aws_s3 import WazuhIntegration
+from aws_s3 import AWSCloudTrailBucket
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-def get_fake_s3_data(*args, **kwargs):
+def get_fake_s3_db(*args, **kwargs):
     s3_db = sqlite3.connect(':memory:')
-    try:
-        cur = s3_db.cursor()
-        query = 'SELECT * FROM metadata;'
-        with open(os.path.join(test_data_path, 'schema_metadata_test.sql')) as f:
-            cur.executescript(f.read())
-        #s3_db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
-        rows = s3_db.execute(query).fetchall()
-        if len(rows) > 0 and 'COUNT(*)' in rows[0]:
-            return rows[0]['COUNT(*)']
-        return rows
-    finally:
-        s3_db.close()
+    #cur = s3_db.cursor()
+    with open(os.path.join(test_data_path, 'schema_metadata_test.sql')) as f:
+        cur.executescript(f.read())
+    #s3_db.row_factory = lambda c, r: dict(zip([col[0] for col in c.description], r))
+    return s3_db
 
 
 class TestAWS(TestCase):
 
-    @patch('WazuhIntegration.client')
-    def test_get_metadata_version(self):
+    @patch.object(AWSCloudTrailBucket, 'get_client')
+    def test_get_metadata_version(self, mocked_method):
         """
         Checks metadata version
         """
-        with patch('WazuhIntegration.db_connector') as mock_db:
+        #with patch('aws_s3.WazuhIntegration') as mock_db:
             #wi = WazuhIntegration(access_key, secret_key, aws_profile, iam_role_arn,
             #    service_name=None, region=None, bucket=None)
-            wi = WazuhIntegration(None, None, None, None,
-                service_name=None, region=None, bucket=None)
+        #mocked_method.return_value = None
+
+        with patch.object(sqlite3, 'connect', side_effect=get_fake_s3_db) as mock_db:
+            wi = AWSCloudTrailBucket(**{'reparse': False, 'access_key': None, 'secret_key': None,
+                                  'profile': None, 'iam_role_arn': None, 'bucket': 'test',
+                                  'only_logs_after': '19700101', 'skip_on_error': True,
+                                  'account_alias': None, 'prefix': 'test',
+                                  'delete_file': False, 'aws_organization_id': None})
             wi.check_metadata_version()

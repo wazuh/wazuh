@@ -157,7 +157,6 @@ class WazuhIntegration:
     def check_metadata_version(self):
         try:
             query_metadata = self.db_connector.execute(self.sql_find_table.format(name='metadata'))
-            # if metadata table does not exist, a TypeError will happen
             metadata = True if query_metadata.fetchone() else False
             if metadata:
                 query_version = self.db_connector.execute(self.sql_get_metadata_version)
