@@ -349,6 +349,11 @@ functions = {
         'type': 'distributed_master',
         'is_async': False
     },
+    '/cluster/:node_id/config/:component/:configuration': {
+        'function': manager.get_config,
+        'type': 'distributed_master',
+        'is_async': False
+    },
     '/cluster/:node_id/configuration': {
         'function': configuration.get_ossec_conf,
         'type': 'distributed_master',
