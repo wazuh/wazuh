@@ -573,11 +573,7 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     os_malloc(bufsz, buffer);
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
-#ifdef WIN32
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
-#else
-    retval = send(sock, buffer, bufsz, MSG_NOSIGNAL) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
-#endif
     free(buffer);
     return retval;
 }
