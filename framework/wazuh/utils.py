@@ -609,13 +609,73 @@ def get_timeframe_in_seconds(timeframe):
     return seconds
 
 
+class AbstractDatabaseBackend:
+    """
+    This class describes an abstract database backend that executes database queries
+    """
+    def __init__(self):
+        self.conn = self.connect_to_db()
+
+    def connect_to_db(self):
+        raise NotImplementedError
+
+    def execute(self, query, request, count=False):
+        raise NotImplementedError
+
+
+class SQLiteBackend(AbstractDatabaseBackend):
+    """
+    This class describes a sqlite database backend that executes database queries
+    """
+    def __init__(self, db_path):
+        self.db_path = db_path
+        super().__init__()
+
+    def connect_to_db(self):
+        if not glob.glob(self.db_path):
+            raise WazuhException(1600)
+        return Connection(self.db_path)
+
+    def _get_data(self):
+        return [{k: v for k, v in db_tuple.items() if v is not None} for db_tuple in self.conn]
+
+    def execute(self, query, request, count=False):
+        self.conn.execute(query, request)
+        return self._get_data() if not count else next(iter(self.conn.fetch().values()))
+
+
+class WazuhDBBackend(AbstractDatabaseBackend):
+    """
+    This class describes a wazuh db backend that executes database queries
+    """
+    def __init__(self, agent_id):
+        self.agent_id = agent_id
+        super().__init__()
+
+    def connect_to_db(self):
+        return WazuhDBConnection()
+
+    def _substitute_params(self, query, request):
+        """
+        Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
+        parameters by itself.
+        """
+        for k, v in request.items():
+            query = query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
+        return query
+
+    def execute(self, query, request, count=False):
+        query = self._substitute_params(query, request)
+        return self.conn.execute(query=f'agent {self.agent_id} sql {query}', count=count)
+
+
 class WazuhDBQuery(object):
     """
     This class describes a database query for wazuh
     """
-    def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
-                 extra_fields=set(), backend='sqlite3', agent_id=None):
+    def __init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field, count,
+                 get_data, backend, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(),
+                 extra_fields=set()):
         """
         Wazuh DB Query constructor
 
@@ -676,16 +736,6 @@ class WazuhDBQuery(object):
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
         self.backend = backend
-        self.agent_id = agent_id
-        self.conn = self._connect_to_db(db_path)
-
-    def _connect_to_db(self, db_path):
-        if self.backend == 'sqlite3':
-            if not glob.glob(db_path):
-                raise WazuhException(1600)
-            return Connection(db_path)
-        else:
-            return WazuhDBConnection()
 
     def _add_limit_to_query(self):
         if self.limit:
@@ -851,33 +901,13 @@ class WazuhDBQuery(object):
             self.query = self.query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
 
     def _get_total_items(self):
-        if self.backend == 'sqlite3':
-            self.conn.execute(self.query.format(self._default_count_query()), self.request)
-            self.total_items = self.conn.fetch()[0]
-        else:
-            self._substitute_params()
-            total_items = self.conn.execute(
-                f'agent {self.agent_id} sql ' + self.query.format(self._default_count_query()))
-            self.total_items = total_items if isinstance(total_items, int) else total_items[0][
-                self._default_count_query()]
-
-    def _get_data(self):
-        return [{key: value for key, value in zip(self.select['fields'] | self.min_select_fields, db_tuple)
-                if value is not None} for db_tuple in self.conn]
+        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
 
     def _execute_data_query(self):
-        if self.backend == 'wdb':
-            self._substitute_params()
+        query_with_select_fields = self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                                  self.select['fields'] | self.min_select_fields)))
 
-        query_with_select_fields = self.query.format(','.join(
-            map(lambda x: f'{self.fields[x]} as {x}' if self.backend == 'wdb' else self.fields[x],
-                self.select['fields'] | self.min_select_fields)))
-
-        if self.backend == 'sqlite3':
-            self.conn.execute(query_with_select_fields, self.request)
-            self._data = self._get_data()
-        else:
-            self._data = self.conn.execute(f'agent {self.agent_id} sql {query_with_select_fields}')
+        self._data = self.backend.execute(query_with_select_fields, self.request)
 
     def _format_data_into_dictionary(self):
         return {'items': self._data, 'totalItems': self.total_items}
@@ -962,10 +992,8 @@ class WazuhDBQueryDistinct(WazuhDBQuery):
 
         WazuhDBQuery._add_select_to_query(self)
 
-    def _get_data(self):
-        return [db_tuple[0] for db_tuple in self.conn]
-
     def _format_data_into_dictionary(self):
+        self._data = [next(iter(x.values())) for x in self._data]
         return WazuhDBQuery._format_data_into_dictionary(self)
 
 
@@ -973,11 +1001,8 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
     """
     Retrieves unique values for multiple fields using group by
     """
-
-    def __init__(self, filter_fields, offset, limit, table, sort, search, select, query, fields, default_sort_field, db_path, count,
-                 get_data, default_sort_order='ASC', filters={}, min_select_fields=set(), date_fields=set(), extra_fields=set()):
-        WazuhDBQuery.__init__(self, offset, limit, table, sort, search, select, query, fields, default_sort_field,
-                              db_path, count, get_data, default_sort_order, filters, min_select_fields, date_fields, extra_fields)
+    def __init__(self, filter_fields, *args, **kwargs):
+        WazuhDBQuery.__init__(self, *args, **kwargs)
         self.filter_fields = filter_fields
 
 
