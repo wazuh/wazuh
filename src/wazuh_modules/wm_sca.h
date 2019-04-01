@@ -40,6 +40,7 @@ HKEY wm_sca_sub_tree;
 
 typedef struct wm_sca_profile_t {
     unsigned int enabled:1;
+    unsigned int remote:1;
     char *profile;
     char *policy_id;
 } wm_sca_profile_t;
@@ -59,6 +60,8 @@ typedef struct wm_sca_t {
     wm_sca_profile_t** profile;
     char **alert_msg;
     int queue;
+    int remote_commands:1;
+    int commands_timeout;
 } wm_sca_t;
 
 extern const wm_context WM_SCA_CONTEXT;

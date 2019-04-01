@@ -42,7 +42,7 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index);  // Do scan
+static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy);  // Do scan
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
@@ -118,6 +118,27 @@ void * wm_sca_main(wm_sca_t * data) {
     data->msg_delay = 1000000 / wm_max_eps;
     data->summary_delay = 3; /* Seconds to wait for summary sending */
     data_win = data;
+
+    /* Reading the internal options */
+
+    // Default values
+    data->request_db_interval = 300;
+    data->remote_commands = 0;
+    data->commands_timeout = 30;
+
+    data->request_db_interval = getDefine_Int("sca","request_db_interval", 0, 60) * 60;
+    data->commands_timeout = getDefine_Int("sca", "commands_timeout", 1, 300);
+#ifdef CLIENT
+    data->remote_commands = getDefine_Int("sca", "remote_commands", 0, 1);
+#else
+    data->remote_commands = 1;  // Only for agents
+#endif
+
+    /* Maximum request interval is the scan interval */
+    if(data->request_db_interval > data->interval) {
+       data->request_db_interval = data->interval;
+       minfo("The request_db_interval option cannot be higher than the scan interval. It will be redefined to that value.");
+    }
 
     /* Create Hash for each policy file */
     int i;
@@ -376,13 +397,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
                     sprintf(path,"%s\\%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, data->profile[i]->profile);
                 }
             }
-
-#elif CLIENT
-            if(data->profile[i]->profile[0] == '/') {
-                sprintf(path,"%s", data->profile[i]->profile);
-            } else {
-                sprintf(path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
-            }
 #else
             if(data->profile[i]->profile[0] == '/') {
                 sprintf(path,"%s", data->profile[i]->profile);
@@ -390,6 +404,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 sprintf(path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
             }
 #endif
+
             fp = fopen(path,"r");
 
             if(!fp) {
@@ -470,7 +485,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements) {
-                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
+                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote) == 0){
                     requirements_satisfied = 1;
                 }
             }
@@ -487,7 +502,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
 
-                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index) != 0) {
+                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -683,9 +698,9 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index) {
+static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy) {
 
-    int type = 0, condition = 0;
+    int type = 0, condition = 0, invalid = 0;
     char *nbuf = NULL;
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
@@ -721,6 +736,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         }
 
         check_count++;
+        invalid = 0;
 
         c_title = cJSON_GetObjectItem(profile, "title");
         c_condition = cJSON_GetObjectItem(profile, "condition");
@@ -851,6 +867,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
                 /* Check for a command */
                 else if (type == WM_SCA_TYPE_COMMAND) {
+
+                    if (!data->remote_commands && remote_policy) {
+                        mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
+                        invalid = 1;
+                        break;
+                    }
+
                     char *pattern = NULL;
                     char *f_value = NULL;
 
@@ -1162,6 +1185,22 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
             }
 
+            if (invalid) {  // Ignore this check
+                check_count--;
+                // Free resources
+                int j = 0;
+                while (data->alert_msg[j]) {
+                    free(data->alert_msg[j]);
+                    data->alert_msg[j] = NULL;
+                    j++;
+                }
+                if (!nbuf) {
+                    goto clean_return;
+                }
+                os_free(name);
+                continue;
+            }
+
             /* End if we don't have anything else */
             if (!nbuf) {
                 goto clean_return;
@@ -1459,7 +1498,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
         char *cmd_output = NULL;
         int result_code;
 
-        if( wm_exec(command,&cmd_output,&result_code,5,NULL) < 0 )  {
+        if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
             if (result_code == EXECVE_ERROR) {
                 mdebug1("Can't run command(%s): path is invalid or file has insufficient permissions.",command);
             } else {
