@@ -1,0 +1,40 @@
+---
+# Every test file has one or more tests...
+test_name: All test agents
+
+stages:
+  - name: Restart all agents
+
+    # Define the request to be made...
+    request:
+      url: http://localhost:55000/agents/restart
+      method: PUT
+
+    # ...and the expected response code and body
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: Restarting all agents
+
+---
+# Every test file has one or more tests...
+test_name: Get all agent
+
+stages:
+  - name: Get all agent
+
+    # Define the request to be made...
+    request:
+      url: http://localhost:55000/agents
+      method: GET
+      params:
+        limit: 2
+
+
+    # ...and the expected response code and body
+    response:
+      status_code: 200
+      body:
+        error: 0
+
