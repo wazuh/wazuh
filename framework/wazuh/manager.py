@@ -237,12 +237,15 @@ def upload_xml(xml_file, path):
             # beauty xml file
             xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            indent = '  '  # indent parameter for toprettyxml function
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">").replace('&apos', "'")
-            tmp_file.write(pretty_xml)
+                .replace("&gt;", ">").replace('&apos;', "'")
+            # delete two first spaces of each line
+            final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+            tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)

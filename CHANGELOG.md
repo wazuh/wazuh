@@ -71,6 +71,11 @@ All notable changes to this project will be documented in this file.
 - Fixed issue with `agent-auth` options without argument. ([#2808](https://github.com/wazuh/wazuh/pull/2808))
 - Fixed control of the frequency counter in alerts. ([#2854](https://github.com/wazuh/wazuh/pull/2854))
 - Ignore invalid files for agent groups. ([#2895](https://github.com/wazuh/wazuh/pull/2895))
+- Fixed invalid behaviour when moving files in Whodata mode. ([#2888](https://github.com/wazuh/wazuh/pull/2888))
+- Fixed deadlock in Remoted when updating the `keyentries` structure. ([#2956](https://github.com/wazuh/wazuh/pull/2956))
+- Fixed error in Whodata when one of the file permissions cannot be extracted. ([#2940](https://github.com/wazuh/wazuh/pull/2940))
+- Fixed System32 and SysWOW64 event processing in Whodata. ([#2935](https://github.com/wazuh/wazuh/pull/2935))
+
 
 ## [v3.8.2]
 

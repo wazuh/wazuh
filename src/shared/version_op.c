@@ -685,7 +685,7 @@ os_info *get_unix_version()
             snprintf(info->os_minor, match_size + 1, "%.*s", match_size, info->os_version + match[1].rm_so);
         }
         // Get OSX codename
-        if (strcmp(info->os_platform,"darwin") == 0) {
+        if (info->os_platform && strcmp(info->os_platform,"darwin") == 0) {
             if (info->os_codename) {
                 char * tmp_os_version;
                 size_t len = 4;
