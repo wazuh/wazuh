@@ -623,7 +623,7 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
                     return retval;
                 }
             }
-            read_id = (int *) realloc(read_id, sizeof(int) * (i + 2));
+            os_realloc(read_id, sizeof(int) * (i + 2), read_id);
             read_id[i] = check_id->valueint;
             read_id[i + 1] = 0;
         }
