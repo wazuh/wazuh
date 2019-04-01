@@ -450,17 +450,17 @@ class Agent:
 
         try:
             agent_found = False
-            with open(common.client_keys) as f_k, open(f_keys_temp, 'w') as f_tmp:
-                for line in f_k.readlines():
+            with open(common.client_keys) as client_keys, open(f_keys_temp, 'w') as client_keys_tmp:
+                for line in client_keys.readlines():
                     id, name, ip, key = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
 
                     if self.id == id and name[0] not in ('#!'):
                         if not purge:
-                            f_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
+                            client_keys_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
 
                         agent_found = True
                     else:
-                        f_tmp.write(line)
+                        client_keys_tmp.write(line)
 
             if not agent_found:
                 remove(f_keys_temp)
