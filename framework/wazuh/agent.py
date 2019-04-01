@@ -2465,22 +2465,10 @@ class Agent:
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
 
 
-    def getconfig(self, component, configuration):
+    def getconfig(self, component, config):
         """
         Read agent loaded configuration.
         """
-        sockets_path = common.ossec_path + "/queue/ossec/"
-
-        components = ["agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                      "monitor", "request", "syscheck", "wmodules"]
-
-        # checks if the component is correct
-        if component not in components:
-            raise WazuhException(1101, "Invalid target")
-
-        if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
-            raise WazuhException(1101, "Could not get requested section")
-
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         if self.version is None:
@@ -2491,47 +2479,7 @@ class Agent:
         if agent_version < required_version:
             raise WazuhException(1735, "Minimum required version is " + str(required_version))
 
-        if int(self.id) == 0:
-            dest_socket = sockets_path + component
-            command = "getconfig " + configuration
-        else:
-            dest_socket = sockets_path + "request"
-            command = str(self.id).zfill(3) + " " + component + " getconfig " + configuration
-
-        # Socket connection
-        try:
-            s = OssecSocket(dest_socket)
-        except Exception as e:
-            if int(self.id) == 0:
-                raise WazuhException(1013,"The component might be disabled")
-            else:
-                raise WazuhException(1013,str(e))
-
-        # Generate message
-        msg = "{0}".format(command)
-
-        # Send message
-        s.send(msg.encode())
-
-        # Receive response
-        try:
-            # Receive data length
-            data = s.receive().decode().split(" ", 1)
-            rec_msg_ok = data[0]
-            rec_msg = data[1]
-        except IndexError:
-            raise WazuhException(1014, "Data could not be received")
-
-        s.close()
-
-        if rec_msg_ok.startswith( 'ok' ):
-            msg = loads(rec_msg)
-            return msg
-        else:
-            if "No such file or directory" in rec_msg:
-                raise WazuhException(1013,"The component might be disabled")
-            else:
-                raise WazuhException(1101, rec_msg.replace("err ", ""))
+        return configuration.get_active_configuration(self.id, component, config)
 
     @staticmethod
     def get_config(agent_id, component, configuration):
@@ -2541,16 +2489,13 @@ class Agent:
         :param agent_id: Agent ID.
         :return: Loaded configuration in JSON.
         """
-        if not component or not configuration:
-            raise WazuhException(1307)
-
         my_agent = Agent(agent_id)
         my_agent._load_info_from_DB()
 
         if my_agent.status != "Active":
             raise WazuhException(1740)
 
-        return my_agent.getconfig(component=component, configuration=configuration)
+        return my_agent.getconfig(component=component, config=configuration)
 
     @staticmethod
     def get_sync_group(agent_id):

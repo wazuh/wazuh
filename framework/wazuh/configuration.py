@@ -3,7 +3,7 @@
 # Copyright (C) 2015-2019, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
-
+import json
 import random
 import time
 from os import remove, path as os_path
@@ -12,6 +12,7 @@ from shutil import move
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
 from wazuh import common
+from wazuh.ossec_socket import OssecSocket
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
 
@@ -703,3 +704,62 @@ def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
         return upload_group_configuration(group_id, file_data)
     else:
         raise WazuhException(1111)
+
+
+def get_active_configuration(agent_id, component, configuration):
+    """
+    Reads agent loaded configuration in memory
+    """
+    if not component or not configuration:
+        raise WazuhException(1307)
+
+    sockets_path = common.ossec_path + "/queue/ossec/"
+
+    components = ["agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
+                  "monitor", "request", "syscheck", "wmodules"]
+
+    # checks if the component is correct
+    if component not in components:
+        raise WazuhException(1101, "Invalid target")
+
+    if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
+        raise WazuhException(1101, "Could not get requested section")
+
+    if agent_id == '000':
+        dest_socket = sockets_path + component
+        command = "getconfig " + configuration
+    else:
+        dest_socket = sockets_path + "request"
+        command = str(agent_id).zfill(3) + " " + component + " getconfig " + configuration
+
+    # Socket connection
+    try:
+        s = OssecSocket(dest_socket)
+    except Exception as e:
+        if agent_id == '000':
+            raise WazuhException(1013, "The component might be disabled")
+        else:
+            raise WazuhException(1013, str(e))
+
+    # Send message
+    s.send(command.encode())
+
+    # Receive response
+    try:
+        # Receive data length
+        data = s.receive().decode().split(" ", 1)
+        rec_msg_ok = data[0]
+        rec_msg = data[1]
+    except IndexError:
+        raise WazuhException(1014, "Data could not be received")
+
+    s.close()
+
+    if rec_msg_ok.startswith('ok'):
+        msg = json.loads(rec_msg)
+        return msg
+    else:
+        if "No such file or directory" in rec_msg:
+            raise WazuhException(1013, "The component might be disabled")
+        else:
+            raise WazuhException(1101, rec_msg.replace("err ", ""))
