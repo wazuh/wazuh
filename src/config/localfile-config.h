@@ -86,6 +86,7 @@ typedef struct _logreader {
 
 typedef struct _logreader_glob {
     char *gpath;
+    char *exclude_path;
     logreader *gfiles;
 } logreader_glob;
 
