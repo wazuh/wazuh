@@ -44,6 +44,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     char *buf;
     char *path;
     syscheck_node *s_node;
+    int pos;
 
     // To obtain path without symbolic links
 
@@ -55,6 +56,17 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     }
 #else
     os_strdup(file_name, path);
+#endif
+
+    /* New file */
+#ifdef WIN_WHODATA
+    if (evt) {
+        pos = evt->dir_position;
+    } else {
+#endif
+        pos = find_dir_pos(path, 1, 0, 0);
+#ifdef WIN_WHODATA
+    }
 #endif
 
     if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
@@ -80,9 +92,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
                 merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", path);
             }
-
-            /* Find tag position for the evaluated file name */
-            int pos = find_dir_pos(path, 1, 0, 0);
 
             // Update database
             snprintf(alert_msg, sizeof(alert_msg), "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -120,17 +129,6 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
         return (0);
     } else {
-        /* New file */
-        int pos;
-#ifdef WIN_WHODATA
-        if (evt) {
-            pos = evt->dir_position;
-        } else {
-#endif
-        pos = find_dir_pos(path, 1, 0, 0);
-#ifdef WIN_WHODATA
-        }
-#endif
         if (pos >= 0) {
             if(IsFile(path) == 0){
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", path, syscheck.dir[pos]);
@@ -168,20 +166,28 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 
 /* Find container directory */
 int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) {
-    char buf[PATH_MAX];
+    char buf[PATH_MAX + 1];
     int i;
     char *c;
     int retval = -1;
     int path_length = PATH_MAX;
+    char path_end = 0;
 
     if (full_compare) {
-        snprintf(buf, strlen(filename) + 2, "%s%c", filename, PATH_SEP);
+        snprintf(buf, PATH_MAX, "%s%c", filename, PATH_SEP);
     } else {
-        snprintf(buf, strlen(filename) + 1, "%s", filename);
+        snprintf(buf, PATH_MAX, "%s", filename);
     }
 
-    while (c = strrchr(buf, PATH_SEP), c && c != buf) {
+    while (c = strrchr(buf, PATH_SEP), c && c != buf && !path_end) {
         *c = '\0';
+
+        // Convert C: to C:\ .
+        if (c > buf && *(c - 1) == ':') {
+            path_end = 1;
+            *c = '\\';
+            *(c + 1) = '\0';
+        }
 
         for (i = 0; syscheck.dir[i]; i++) {
             if (check_find && !(syscheck.opts[i] & check_find)) {

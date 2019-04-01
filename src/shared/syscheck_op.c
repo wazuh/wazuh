@@ -45,11 +45,11 @@ int fim_find_child_depth(const char *parent, const char *child) {
 
     char *diff_str;
 
-    if(parent[length_A - 1] == PATH_SEP){
+    if(parent[length_A - 1] == PATH_SEP && length_A >= 2 && parent[length_A - 2] != ':') {
         p_first[length_A - 1] = '\0';
     }
 
-    if(child[length_B - 1] == PATH_SEP){
+    if(child[length_B - 1] == PATH_SEP && length_B >= 2 && child[length_B - 2] != ':') {
         p_second[length_B - 1] = '\0';
     }
 
@@ -86,7 +86,7 @@ int fim_find_child_depth(const char *parent, const char *child) {
 
     os_free(p_first);
     os_free(p_second);
-    return child_depth;
+    return child_depth ? child_depth : 1;
 }
 
 void normalize_path(char * path) {

@@ -143,4 +143,8 @@ int w_update_sacl(const char *obj_path);
 int print_hash_table();
 int fim_delete_hashes(char *file_name);
 
+#ifdef WIN32
+#define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
+#endif
+
 #endif
