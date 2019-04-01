@@ -332,8 +332,21 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 log_config->globs[gl].gfiles->file = NULL;
             }
 
-            /* Wildcard exclusion */
-            if (logf[pl].exclude) {
+            /* Wildcard exclusion, check for date */
+            if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {
+
+                struct tm *p;
+                time_t l_time = time(0);
+                char excluded_path_date[PATH_MAX] = {0};
+                size_t ret;
+                
+                p = localtime(&l_time);
+                ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
+                if (ret != 0) {
+                    os_strdup(excluded_path_date, log_config->globs[gl].exclude_path);
+                }
+            }
+            else if (logf[pl].exclude) {
                 os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
 
