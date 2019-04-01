@@ -96,7 +96,7 @@ class WazuhIntegration:
                                             PRIMARY KEY (key, value));
                                         """
 
-        self.sql_check_metadata_version = """
+        self.sql_get_metadata_version = """
                                         SELECT
                                             value
                                         FROM
@@ -105,15 +105,15 @@ class WazuhIntegration:
                                             key='version';
                                         """
 
-        self.sql_find_table_metadata = """
-                                    SELECT
-                                        tbl_name
-                                    FROM
-                                        sqlite_master
-                                    WHERE
-                                        type='table' AND
-                                        name='metadata';
-                                    """
+        self.sql_find_table = """
+                                SELECT
+                                    tbl_name
+                                FROM
+                                    sqlite_master
+                                WHERE
+                                    type='table' AND
+                                    name='{name}';
+                                """
 
         self.sql_insert_version_metadata = """
                                         INSERT INTO metadata (
@@ -123,11 +123,22 @@ class WazuhIntegration:
                                             'version',
                                             '{wazuh_version}');"""
 
-        self.sql_delete_trail_progress = """
-                                        DROP TABLE trail_progress;
+        self.sql_delete_version_metadata = """
+                                        DELETE FROM
+                                            metadata
+                                        WHERE
+                                            key='version';
                                         """
 
-        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        self.sql_drop_table = """
+                            DROP TABLE {table};
+                            """
+        # get path and version from ossec.init.conf
+        with open('/etc/ossec-init.conf') as f:
+            lines = f.readlines()
+            re_ossec_init = re.compile(r'^([A-Z]+)={1}"{1}([\w\/.]+)"{1}$')
+            self.wazuh_path = re.search(re_ossec_init, lines[0]).group(2)
+            self.wazuh_version = re.search(re_ossec_init, lines[2]).group(2)
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
@@ -141,27 +152,41 @@ class WazuhIntegration:
         self.db_cursor = self.db_connector.cursor()
         if bucket:
             self.bucket = bucket
-        self.wazuh_version = '3.8'
         self.check_metadata_version()
 
     def check_metadata_version(self):
         try:
-            query_metadata = self.db_connector.execute(self.sql_find_table_metadata)
-            metadata = query_metadata.fetchone()[0]
-            # if not exist metadata table, an AttributeError will happen
-            query_version = self.db_connector.execute(self.sql_check_metadata_version)
-            metadata_version = query_version.fetchone()[0]
-        except Exception:
-            # create metadate table
-            self.db_connector.execute(self.sql_create_metadata_table)
-            # insert wazuh version value
-            self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
-            # delete old table (trail_progress), only for buckets services
-            self.db_connector.commit()
-            try:
-                self.db_connector.execute(self.sql_delete_trail_progress)
-            except Exception:
-                pass
+            query_metadata = self.db_connector.execute(self.sql_find_table.format(name='metadata'))
+            # if metadata table does not exist, a TypeError will happen
+            metadata = True if query_metadata.fetchone() else False
+            if metadata:
+                query_version = self.db_connector.execute(self.sql_get_metadata_version)
+                metadata_version = query_version.fetchone()[0]
+                # update Wazuh version in metadata table
+                if metadata_version != self.wazuh_version:
+                    self.db_connector.execute(self.sql_delete_version_metadata)
+                    self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
+                    self.db_connector.commit()
+            else:
+                # create metadate table
+                self.db_connector.execute(self.sql_create_metadata_table)
+                # insert wazuh version value
+                self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
+                self.db_connector.commit()
+                # delete old tables if its exist
+                self.delete_deprecated_tables()
+        except Exception as e:
+            print(f'ERROR: Error creating metadata table: {e}')
+            sys.exit(5)
+
+    def delete_deprecated_tables(self):
+        query_tables = self.db_connector.execute(self.sql_find_table_names)
+        tables = query_tables.fetchall()
+        for table in tables:
+            if 'log_progress' in table:
+                self.db_connector.execute(self.sql_drop_table.format(table='log_progress'))
+            elif 'trail_progress' in table:
+                self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None):
         conn_args = {}
