@@ -11,7 +11,6 @@ import re
 from shutil import move
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException
-from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
@@ -472,32 +471,20 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename=None, return_format=None):
+def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
     """
     Returns agent.conf as dictionary.
 
     :return: agent.conf as dictionary.
     """
-    if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-
-        agent_conf = "{0}/{1}".format(common.shared_path, group_id)
-
-    if filename:
-        agent_conf_name = filename
-    else:
-        agent_conf_name = 'agent.conf'
-
-    agent_conf += "/{0}".format(agent_conf_name)
+    agent_conf = os_path.join(common.shared_path, group_id if group_id is not None else '', filename)
 
     if not os_path.exists(agent_conf):
         raise WazuhException(1006, agent_conf)
 
     try:
-
         # Read RAW file
-        if agent_conf_name == 'agent.conf' and return_format and 'xml' == return_format.lower():
+        if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
             with open(agent_conf, 'r') as xml_data:
                 data = xml_data.read().replace('\n', '')
                 return data
@@ -556,9 +543,6 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     """
 
     if group_id:
-        if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
-
         file_path = "{0}/{1}".format(common.shared_path, filename) \
                     if filename == 'ar.conf' else \
                     "{0}/{1}/{2}".format(common.shared_path, group_id, filename)
@@ -646,10 +630,6 @@ def upload_group_configuration(group_id, file_content):
     :param file_content: File content of the new configuration in a string.
     :return: Confirmation message.
     """
-    # check if the group exists
-    if not Agent.group_exists(group_id):
-        raise WazuhException(1710)
-
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
 

@@ -14,8 +14,7 @@ from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
-from wazuh import manager
-from wazuh import common
+from wazuh import manager, common, configuration
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
@@ -2576,3 +2575,45 @@ class Agent:
                 return {'synced': False}
             except Exception as e:
                 raise WazuhException(1739, str(e))
+
+    @staticmethod
+    def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
+        """
+        Returns agent.conf as dictionary.
+
+        :return: agent.conf as dictionary.
+        """
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+        return configuration.get_agent_conf(group_id, offset, limit, filename, return_format)
+
+    @staticmethod
+    def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
+        """
+        Returns the configuration file as dictionary.
+
+        :return: configuration file as dictionary.
+        """
+
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+        return configuration.get_file_conf(filename, group_id, type_conf, return_format)
+
+    @staticmethod
+    def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
+        """
+        Updates a group file
+        :param group_id: Group to update
+        :param tmp_file: Relative path of temporary file to upload
+        :param file_name: File name to update
+        :return: Confirmation message in string
+        """
+        # check if the group exists
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710)
+
+        return configuration.upload_group_file(group_id, tmp_file, file_name)
