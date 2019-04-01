@@ -442,7 +442,7 @@ char *seechanges_addfile(const char *filename)
 #ifndef WIN32
             "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
 #else
-            "fc \"%s\" \"%s\" > \"%s\" 2> nul",
+            "fc /n \"%s\" \"%s\" > \"%s\" 2> nul",
 #endif
             tmp_location_filtered,
             old_location_filtered,
@@ -486,12 +486,11 @@ char *adapt_win_fc_output(char *command_output) {
     char *adapted_output;
     char *line;
     char *next_line;
-    const char *section_tag = "***** QUEUE\\DIFF\\LOCAL\\";
-    const char *end_tag = "*****";
+    const char *line_tag = ":  ";
     const char *split_tag = "---";
-    char section = 0;
-    size_t section_tag_size = strlen(section_tag);
-    size_t end_tag_size = strlen(end_tag);
+    char line_mode = 0; // 0: waiting for section, 1: remove, 2: add
+    char first_line = 0;
+    size_t line_tag_size = strlen(line_tag);
     size_t written = 0;
 
     if (line = strchr(command_output, '\n'), !line) {
@@ -504,19 +503,21 @@ char *adapt_win_fc_output(char *command_output) {
     while (line) {
         next_line = strstr(++line, "\r\n");
 
-        if (section < 2 && !strncmp(line, section_tag, section_tag_size)) {
-            section++;
-            if (section == 2) {
-                written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
-            }
-
+        if (*line == '*') {
             if (next_line) {
                 next_line++;
             }
 
-            goto next_it;
-        } else if (section == 2 && !strncmp(line, end_tag, end_tag_size)) {
-            next_line = NULL;
+            if (!line_mode) {
+                if (first_line) {
+                    written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+                }
+                first_line = 1;
+            } else if (line_mode == 1) {
+                written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+            }
+
+            line_mode = (line_mode + 1) % 3;
             goto next_it;
         }
 
@@ -525,7 +526,13 @@ char *adapt_win_fc_output(char *command_output) {
             *next_line = '\0';
         }
 
-        written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s%s%s", section == 1 ? "< " : "> ", line, next_line ? "\n" : "");
+        if (line = strstr(line, line_tag), !line) {
+            goto next_it;
+        } else {
+            line += line_tag_size;
+        }
+
+        written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s%s%s", line_mode == 1 ? "< " : "> ", line, next_line ? "\n" : "");
 
 next_it:
         line = next_line;
