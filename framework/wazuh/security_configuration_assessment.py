@@ -4,16 +4,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from glob import glob
 from itertools import groupby
-
-
 from wazuh import common
-from wazuh.agent import Agent
 from wazuh.exception import WazuhException
-from wazuh.utils import WazuhDBQuery
-from wazuh.wdb import WazuhDBConnection
-
+from wazuh.utils import WazuhDBQuery, WazuhDBBackend
 
 # API field -> DB field
 fields_translation_sca = {'policy_id': 'policy_id',
@@ -23,8 +17,8 @@ fields_translation_sca = {'policy_id': 'policy_id',
                           'pass': 'pass',
                           'fail': 'fail',
                           'score': 'score',
-                          'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch')) as end_scan",
-                          'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch')) as start_scan"
+                          'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch'))",
+                          'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch'))"
                           }
 fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'id': 'id',
@@ -56,7 +50,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='sca_policy', sort=sort,
                               search=search, select=select, fields=fields, default_sort_field=default_sort_field,
                               default_sort_order='DESC', filters=filters, query=query, count=count, get_data=get_data,
-                              date_fields={'end_scan', 'start_scan'}, backend='wdb', db_path=None, agent_id=agent_id)
+                              date_fields={'end_scan', 'start_scan'}, backend=WazuhDBBackend(agent_id))
 
     def _default_query(self):
         return self.default_query

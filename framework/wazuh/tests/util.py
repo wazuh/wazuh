@@ -23,10 +23,12 @@ class InitWDBSocketMock:
 
         return sys_db
 
-    def execute(self, sql):
-        query = re.search(r'^agent \d{3} sql (.+)$', sql).group(1)
+    def execute(self, query, count=False):
+        query = re.search(r'^agent \d{3} sql (.+)$', query).group(1)
         self.__conn.execute(query)
         rows = self.__conn.execute(query).fetchall()
         if len(rows) > 0 and 'COUNT(*)' in rows[0]:
             return rows[0]['COUNT(*)']
+        elif count:
+            return next(iter(rows[0].values()))
         return rows
