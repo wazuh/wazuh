@@ -7,12 +7,11 @@
 import operator
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
-                        md5
+                        md5, SQLiteBackend
 from wazuh.exception import WazuhException
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
-from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
 from wazuh import manager
 from wazuh import common
@@ -52,9 +51,10 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def __init__(self, offset, limit, sort, search, select, count, get_data, query, filters={}, default_sort_field='id',
                  min_select_fields={'lastKeepAlive', 'version', 'id'}, remove_extra_fields=True):
+        backend = SQLiteBackend(common.database_path_global)
         WazuhDBQuery.__init__(self, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select, filters=filters,
                               fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
+                              min_select_fields=min_select_fields, count=count, get_data=get_data, backend=backend,
                               date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
         self.remove_extra_fields = remove_extra_fields
 
@@ -152,34 +152,24 @@ class WazuhDBQueryDistinctAgents(WazuhDBQueryDistinct, WazuhDBQueryAgents): pass
 
 
 class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
-    def __init__(self, filter_fields, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'last_keepalive','version','id'}):
-        WazuhDBQueryGroupBy.__init__(self, filter_fields=filter_fields, offset=offset, limit=limit, table='agent', sort=sort, search=search, select=select,
-                              filters=filters, fields=Agent.fields, default_sort_field=default_sort_field, default_sort_order='ASC', query=query,
-                              db_path=common.database_path_global, min_select_fields=min_select_fields, count=count, get_data=get_data,
-                              date_fields={'lastKeepAlive','dateAdd'}, extra_fields={'internal_key'})
-        self.remove_extra_fields=True
+    def __init__(self, filter_fields, *args, **kwargs):
+        WazuhDBQueryAgents.__init__(self, *args, **kwargs)
+        WazuhDBQueryGroupBy.__init__(self, table=self.table, fields=self.fields, filter_fields=filter_fields,
+                                     default_sort_field=self.default_sort_field, backend=self.backend, *args, **kwargs)
+        self.remove_extra_fields = True
 
 
 class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    def __init__(self, group_id, offset, limit, sort, search, select, count, get_data, query, filters={},
-                 default_sort_field='id', min_select_fields={'lastKeepAlive','version','id'},
-                 remove_extra_fields=True):
+    def __init__(self, group_id, query, *args, **kwargs):
         self.group_id = group_id
         query = 'group={}'.format(group_id) + (';'+query if query else '')
-        WazuhDBQueryAgents.__init__(self, offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                    filters=filters, default_sort_field=default_sort_field, query=query,
-                                    min_select_fields=min_select_fields, count=count, get_data=get_data,
-                                    remove_extra_fields=remove_extra_fields)
-
+        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
 
     def _default_query(self):
         return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" else "SELECT {0} FROM agent a"
 
-
     def _default_count_query(self):
         return 'COUNT(DISTINCT a.id)'
-
 
     def _get_total_items(self):
         WazuhDBQueryAgents._get_total_items(self)
