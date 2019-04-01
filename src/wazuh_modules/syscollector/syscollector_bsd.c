@@ -25,8 +25,23 @@
 #include <net/if_types.h>
 #include <ifaddrs.h>
 #include <string.h>
+#include <net/route.h>
+
+
+#if !HAVE_SOCKADDR_SA_LEN
+#define SA_LEN(sa)      af_to_len(sa->sa_family)
+#if HAVE_SIOCGLIFNUM
+#define SS_LEN(sa)      af_to_len(sa->ss_family)
+#else
+#define SS_LEN(sa)      SA_LEN(sa)
+#endif
+#else
+#define SA_LEN(sa)      sa->sa_len
+#endif /* !HAVE_SOCKADDR_SA_LEN */
 
 hw_info *get_system_bsd();    // Get system information
+
+OSHash *gateways;
 
 #if defined(__MACH__)
 
@@ -668,9 +683,8 @@ hw_info *get_system_bsd(){
 void sys_network_bsd(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
-    int i = 0, j = 0, found;
+    int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddrs_ptr, *ifa;
-    int family;
     int random_id = os_random();
     char *timestamp;
     time_t now;
@@ -704,43 +718,72 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
-    for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
-        found = 0;
-        for (i=0; i<=j; i++){
-            if (!ifaces_list[i]){
-                if (ifa->ifa_flags & IFF_LOOPBACK)
-                    found = 1;
+    size_ifaces = getIfaceslist(ifaces_list, ifaddrs_ptr);
 
-                break;
-
-            }else if (!strcmp(ifaces_list[i], ifa->ifa_name)){
-                    found = 1;
-                    break;
-            }
-        }
-        if (!found){
-
-            ifaces_list[j] = strdup(ifa->ifa_name);
-            j++;
-        }
-    }
-
-    if(!ifaces_list[j-1]){
+    if(!ifaces_list[size_ifaces-1]){
         mterror(WM_SYS_LOGTAG, "Not found any interface. Network inventory suspended.");
         return;
     }
 
-    for (i=0; i<j; i++){
+    #if defined(__MACH__)
+    gateways = OSHash_Create();
+    if (getGatewayList(gateways) < 0){
+        merror("Error creating the list of gateways");
+    }
+    #endif
+
+
+    for (i=0; i < size_ifaces; i++){
 
         char *string;
 
         cJSON *object = cJSON_CreateObject();
-        cJSON *interface = cJSON_CreateObject();
         cJSON_AddStringToObject(object, "type", "network");
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+        getNetworkIface_bsd(object, ifaces_list[i], ifaddrs_ptr, gateways);
+
+        /* Send interface data in JSON format */
+        string = cJSON_PrintUnformatted(object);
+        mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
+        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+        cJSON_Delete(object);
+        free(string);
+    }
+
+    #if defined(__MACH__)
+        OSHash_Free(gateways);
+    #endif
+    freeifaddrs(ifaddrs_ptr);
+    for (i=0; ifaces_list[i]; i++){
+        free(ifaces_list[i]);
+    }
+    free(ifaces_list);
+
+    cJSON *object = cJSON_CreateObject();
+    cJSON_AddStringToObject(object, "type", "network_end");
+    cJSON_AddNumberToObject(object, "ID", random_id);
+    cJSON_AddStringToObject(object, "timestamp", timestamp);
+
+    char *string;
+    string = cJSON_PrintUnformatted(object);
+    mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
+    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
+    cJSON_Delete(object);
+    free(string);
+    free(timestamp);
+
+}
+
+    void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, OSHash *gateways){
+        
+        struct ifaddrs *ifa;
+        int family = 0;
+        
+        cJSON *interface = cJSON_CreateObject();
         cJSON_AddItemToObject(object, "iface", interface);
-        cJSON_AddStringToObject(interface, "name", ifaces_list[i]);
+        cJSON_AddStringToObject(interface, "name", iface_name);
 
         cJSON *ipv4 = cJSON_CreateObject();
         cJSON *ipv4_addr = cJSON_CreateArray();
@@ -754,7 +797,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
         for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
 
-            if (strcmp(ifaces_list[i], ifa->ifa_name)){
+            if (strcmp(iface_name, ifa->ifa_name)){
                 continue;
             }
             if (ifa->ifa_flags & IFF_LOOPBACK) {
@@ -933,6 +976,15 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
             } else {
                 cJSON_Delete(ipv4_broadcast);
             }
+
+            #if defined(__MACH__)
+            gateway *gate;
+            if(gate = (gateway *)OSHash_Get(gateways, iface_name), gate){
+                cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
+                free(gate);
+            }
+            #endif
+
             cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
             cJSON_AddItemToObject(interface, "IPv4", ipv4);
         } else {
@@ -963,33 +1015,210 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
             cJSON_Delete(ipv6);
         }
 
-        /* Send interface data in JSON format */
-        string = cJSON_PrintUnformatted(object);
-        mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
-        wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-        cJSON_Delete(object);
-        free(string);
-    }
-
-    freeifaddrs(ifaddrs_ptr);
-    for (i=0; ifaces_list[i]; i++){
-        free(ifaces_list[i]);
-    }
-    free(ifaces_list);
-
-    cJSON *object = cJSON_CreateObject();
-    cJSON_AddStringToObject(object, "type", "network_end");
-    cJSON_AddNumberToObject(object, "ID", random_id);
-    cJSON_AddStringToObject(object, "timestamp", timestamp);
-
-    char *string;
-    string = cJSON_PrintUnformatted(object);
-    mtdebug2(WM_SYS_LOGTAG, "sys_network_bsd() sending '%s'", string);
-    wm_sendmsg(usec, queue_fd, string, LOCATION, SYSCOLLECTOR_MQ);
-    cJSON_Delete(object);
-    free(string);
-    free(timestamp);
-
 }
+
+    #if defined(__MACH__)
+
+    static int af_to_len(int af){
+        switch (af) {
+            case AF_INET: return sizeof (struct sockaddr_in);
+            #if defined(AF_INET6) && HAVE_SOCKADDR_IN6
+            case AF_INET6: return sizeof (struct sockaddr_in6);
+            #endif
+            #if defined(AF_LINK) && HAVE_SOCKADDR_DL
+            case AF_LINK: return sizeof (struct sockaddr_dl);
+            #endif
+        }
+        return sizeof (struct sockaddr);
+    }
+
+    static int string_from_sockaddr (struct sockaddr *addr, char *buffer, size_t buflen) {
+        struct sockaddr* bigaddr = 0;
+        int failure;
+        struct sockaddr* gniaddr;
+        socklen_t gnilen;
+
+        if (!addr || addr->sa_family == AF_UNSPEC)
+            return -1;
+
+        if (SA_LEN(addr) < af_to_len(addr->sa_family)) {
+            gnilen = af_to_len(addr->sa_family);
+            bigaddr = calloc(1, gnilen);
+            if (!bigaddr)
+            return -1;
+            memcpy(bigaddr, addr, SA_LEN(addr));
+        #if HAVE_SOCKADDR_SA_LEN
+            bigaddr->sa_len = gnilen;
+        #endif
+            gniaddr = bigaddr;
+        } else {
+            gnilen = SA_LEN(addr);
+            gniaddr = addr;
+        }
+
+        failure = getnameinfo (gniaddr, gnilen,
+                                buffer, buflen,
+                                NULL, 0,
+                                NI_NUMERICHOST);
+
+        if (bigaddr) {
+            free(bigaddr);
+            bigaddr = 0;
+        }
+
+        if (failure) {
+            size_t n, len;
+            char *ptr;
+            const char *data;
+            
+            len = SA_LEN(addr);
+
+        #if HAVE_AF_LINK
+            if (addr->sa_family == AF_LINK) {
+            struct sockaddr_dl *dladdr = (struct sockaddr_dl *)addr;
+            len = dladdr->sdl_alen;
+            data = LLADDR(dladdr);
+            } else {
+        #endif
+                /* Unknown sockaddr */
+                len -= (sizeof (struct sockaddr) - sizeof (addr->sa_data));
+                data = addr->sa_data;
+        #if HAVE_AF_LINK
+            }
+        #endif
+
+            if (buflen < 3 * len)
+            return -1;
+
+            ptr = buffer;
+            buffer[0] = '\0';
+
+            for (n = 0; n < len; ++n) {
+            sprintf (ptr, "%02x:", data[n] & 0xff);
+            ptr += 3;
+            }
+            if (len)
+            *--ptr = '\0';
+        }
+
+        if (!buffer[0])
+            return -1;
+
+        return 0;
+    }
+    
+    int getGatewayList(OSHash *gateway_list){
+        int mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+        size_t len;
+        char *buffer = NULL, *ptr, *end;
+        int ret;
+        char ifnamebuf[IF_NAMESIZE];
+        char *ifname;
+
+        do {
+            if (sysctl (mib, 6, 0, &len, 0, 0) < 0) {
+            free (buffer);
+            return -1;
+            }
+
+            ptr = realloc(buffer, len);
+            if (!ptr) {
+            free (buffer);
+            return -1;
+            }
+
+            buffer = ptr;
+
+            ret = sysctl (mib, 6, buffer, &len, 0, 0);
+        } while (ret != 0);
+
+        if (ret < 0) {
+            free (buffer);
+            return -1;
+        }
+
+        ptr = buffer;
+        end = buffer + len;
+        while (ptr + sizeof (struct rt_msghdr) <= end) {
+            struct rt_msghdr *msg = (struct rt_msghdr *)ptr;
+            char *msgend = (char *)msg + msg->rtm_msglen;
+            int addrs = msg->rtm_addrs;
+            int addr = RTA_DST;
+
+            if (msgend > end)
+            break;
+
+            ifname = if_indextoname (msg->rtm_index, ifnamebuf);
+
+            if (!ifname) {
+            ptr = msgend;
+            continue;
+            }
+
+            ptr = (char *)(msg + 1);
+            while (ptr + sizeof (struct sockaddr) <= msgend && addrs) {
+            gateway *gate;
+            os_calloc(1, sizeof (struct gateway *), gate);
+            struct sockaddr *sa = (struct sockaddr *)ptr;
+            int len = SA_LEN(sa);
+
+            if (!len)
+                len = 4;
+            else
+                len = (len + 3) & ~3;
+
+            if (ptr + len > msgend)
+                break;
+
+            while (!(addrs & addr))
+                addr <<= 1;
+
+            addrs &= ~addr;
+
+            if (addr == RTA_DST) {
+                if (sa->sa_family == AF_INET) {
+                struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+                if (sin->sin_addr.s_addr != INADDR_ANY)
+                    break;
+        #ifdef AF_INET6
+                } else if (sa->sa_family == AF_INET6) {
+                struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)sa;
+                if (memcmp (&sin6->sin6_addr, &in6addr_any, sizeof (in6addr_any)) != 0)
+                    break;
+        #endif
+                } else {
+                break;
+                }
+            }
+
+            if (addr == RTA_GATEWAY) {
+                char strbuf[256];
+
+                if (string_from_sockaddr (sa, strbuf, sizeof(strbuf)) == 0) {
+                os_strdup(strbuf,gate->addr);
+                #ifdef RTF_IFSCOPE
+                    gate->isdefault = !(msg->rtm_flags & RTF_IFSCOPE);
+                #else
+                    gate->isdefault = 1;
+                #endif
+                    OSHash_Add(gateway_list, ifname, gate);
+                    mdebug2("Gateway of interface %s : %s %d\n", ifname, gate->addr, gate->isdefault);
+                }
+            }
+
+            /* These are aligned on a 4-byte boundary */
+            ptr += len;
+            }
+
+            ptr = msgend;
+        }
+
+        free (buffer);
+
+        return 0;
+    }
+
+    
+    #endif
 
 #endif /* __BSD__ */

@@ -953,7 +953,7 @@ char* get_broadcast_addr(char* ip, char* netmask){
 void sys_network_linux(int queue_fd, const char* LOCATION){
 
     char ** ifaces_list;
-    int i = 0, j = 0;
+    int i = 0, size_ifaces = 0;
     struct ifaddrs *ifaddr, *ifa;
     int random_id = os_random();
     char *timestamp;
@@ -989,7 +989,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     os_calloc(i, sizeof(char *), ifaces_list);
 
     /* Create interfaces list */
-    j = getIfaceslist(ifaces_list, ifaddr);
+    size_ifaces = getIfaceslist(ifaces_list, ifaddr);
 
     if(!ifaces_list[0]){
         mterror(WM_SYS_LOGTAG, "No interface found. Network inventory suspended.");
@@ -999,7 +999,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
     }
 
     /* Collect all information for each interface */
-    for (i=0; i<j; i++){
+    for (i=0; i < size_ifaces; i++){
 
         char *string;
         cJSON *object = cJSON_CreateObject();
@@ -1007,7 +1007,7 @@ void sys_network_linux(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-        getNetworkIface(object, ifaces_list[i], ifaddr);
+        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
@@ -1685,7 +1685,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info) {
 
 }
 
-void getNetworkIface(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
+void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr){
     
     struct ifaddrs *ifa;
     int k = 0;

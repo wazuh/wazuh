@@ -10,7 +10,7 @@
  */
 
 #ifdef CLIENT
-#ifdef __linux__
+#if defined (__linux__) || defined (__MACH__)
 #include "wm_control.h"
 #include "syscollector/syscollector.h"
 #include "external/cJSON/cJSON.h"
@@ -58,28 +58,55 @@ char* getPrimaryIP(){
         }
     }
 
+    #if defined (__linux__) || defined (__MACH__)
+    OSHash *gateways = OSHash_Create();
+    if (getGatewayList(gateways) < 0){
+        merror("Error creating the list of gateways");
+    }
+    gateway *gate;
+    #endif
+
     for (i=0; i<size; i++) {
         cJSON *object = cJSON_CreateObject();
-        getNetworkIface(object, ifaces_list[i], ifaddr);
+        #ifdef __linux__
+            getNetworkIface_linux(object, ifaces_list[i], ifaddr);
+        #elif defined __MACH__
+            if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
+                if(!gate->isdefault)
+                    continue;
+            }
+            getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gateways);
+        #endif
         cJSON *interface = cJSON_GetObjectItem(object, "iface");
         cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
         if(ipv4){
+            #ifdef __linux__
             cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
             if (gateway) {
-                cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-                if (metric && metric->valueint < min_metric) {
-                    cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                    cJSON *address = cJSON_GetArrayItem(addresses,0);
-                    if(agent_ip != NULL){
-                        free(agent_ip);
+                    cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
+                    if (metric && metric->valueint < min_metric) {
+                        cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                        cJSON *address = cJSON_GetArrayItem(addresses,0);
+                        if(agent_ip != NULL){
+                            free(agent_ip);
+                        }
+                        os_strdup(address->valuestring, agent_ip);
+                        min_metric = metric->valueint;
                     }
-                    os_strdup(address->valuestring, agent_ip);
-                    min_metric = metric->valueint;
-                }
             }
+            #elif defined __MACH__
+                cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                cJSON *address = cJSON_GetArrayItem(addresses,0);
+                os_strdup(address->valuestring, agent_ip);
+                break;
+            #endif
+            
         }
         cJSON_Delete(object);
     }
+    #if defined __MACH__
+    OSHash_Free(gateways);
+    #endif
 
     freeifaddrs(ifaddr);
     for (i=0; ifaces_list[i]; i++){
