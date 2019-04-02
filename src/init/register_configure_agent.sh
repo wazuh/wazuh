@@ -81,8 +81,7 @@ if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
         OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
         OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
         ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>/dev/null
-        # This avoid message: Unable to send message to 'server': Broken pipe
-        # sleep 10
+
         if [ -s ${DIR}/etc/client.keys ]; then
 
             if cat ${DIR}/etc/ossec.conf | grep -o -P '(?<=<server-ip>).*(?=</server-ip>)' | grep -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' > /dev/null 2>&1; then
