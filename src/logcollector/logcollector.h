@@ -18,6 +18,7 @@
 #define N_MIN_INPUT_THREADS 1
 #define N_OUPUT_THREADS 1
 #define OUTPUT_MIN_QUEUE_SIZE 128
+#define WIN32_MAX_FILES 200
 
 #include "shared.h"
 #include "config/localfile-config.h"
