@@ -725,12 +725,14 @@ def get_active_configuration(agent_id, component, configuration):
     if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
         raise WazuhException(1101, "Could not get requested section")
 
+    sockets_path = os_path.join(common.ossec_path, "queue/ossec/")
+
     if agent_id == '000':
-        dest_socket = sockets_path + component
-        command = "getconfig " + configuration
+        dest_socket = os_path.join(sockets_path, component)
+        command = f"getconfig {configuration}"
     else:
-        dest_socket = sockets_path + "request"
-        command = str(agent_id).zfill(3) + " " + component + " getconfig " + configuration
+        dest_socket = os_path.join(sockets_path, "request")
+        command = f"{str(agent_id).zfill(3)} {component} getconfig {configuration}"
 
     # Socket connection
     try:
