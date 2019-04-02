@@ -175,7 +175,7 @@ class WazuhIntegration:
                 # delete old tables if its exist
                 self.delete_deprecated_tables()
         except Exception as e:
-            print(f'ERROR: Error creating metadata table: {e}')
+            print('ERROR: Error creating metadata table: {}'.format(e))
             sys.exit(5)
 
     def delete_deprecated_tables(self):
@@ -396,7 +396,7 @@ class AWSBucket(WazuhIntegration):
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
-                                log_key <
+                                log_key <=
                                 (SELECT log_key
                                     FROM
                                     {table_name}
@@ -1245,7 +1245,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
                                 flow_log_id='{flow_log_id}' AND
-                                log_key <
+                                log_key <=
                                 (SELECT log_key
                                     FROM
                                         {table_name}
@@ -1623,7 +1623,7 @@ class AWSCustomBucket(AWSBucket):
                             WHERE
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
-                                log_key <
+                                log_key <=
                                 (SELECT log_key
                                     FROM
                                         {table_name}
