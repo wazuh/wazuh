@@ -18,13 +18,17 @@ import aws_s3
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
-def get_fake_s3_db(*args, **kwargs):
-    s3_db = connect(':memory:')
-    cur = s3_db.cursor()
-    with open(os.path.join(test_data_path, 'schema_metadata_test.sql')) as f:
-        cur.executescript(f.read())
+def get_fake_s3_db(sql_file):
 
-    return s3_db
+    def create_memory_db(*args, **kwargs):
+        s3_db = connect(':memory:')
+        cur = s3_db.cursor()
+        with open(os.path.join(test_data_path, sql_file)) as f:
+            cur.executescript(f.read())
+
+        return s3_db
+
+    return create_memory_db
 
 
 @pytest.mark.parametrize('class_', [
@@ -34,7 +38,7 @@ def get_fake_s3_db(*args, **kwargs):
     aws_s3.AWSCustomBucket,
     aws_s3.AWSGuardDutyBucket,
 ])
-@patch('sqlite3.connect', side_effect=get_fake_s3_db)
+@patch('sqlite3.connect', side_effect=get_fake_s3_db('schema_metadata_test.sql'))
 def test_metadata_version_buckets(mocked_db, class_):
     """
     Checks if metadata version has been updated
@@ -53,7 +57,7 @@ def test_metadata_version_buckets(mocked_db, class_):
 @pytest.mark.parametrize('class_', [
     aws_s3.AWSInspector
 ])
-@patch('sqlite3.connect', side_effect=get_fake_s3_db)
+@patch('sqlite3.connect',  side_effect=get_fake_s3_db('schema_metadata_test.sql'))
 def test_metadata_version_services(mocked_db, class_):
     """
     Checks if metadata version has been updated
@@ -65,3 +69,5 @@ def test_metadata_version_services(mocked_db, class_):
         query_version = ins.db_connector.execute(ins.sql_get_metadata_version)
         metadata_version = query_version.fetchone()[0]
         assert(metadata_version == ins.wazuh_version)
+
+
