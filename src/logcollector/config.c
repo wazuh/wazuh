@@ -65,6 +65,9 @@ int LogCollectorConfig(const char *cfgfile)
         merror("Definition 'logcollector.max_files' must be lower than ('logcollector.rlimit_nofile' - 100).");
         return OS_SIZELIM;
     }
+#else
+    /* Limit files on Windows as file descriptors are shared */
+    maximum_files = WIN32_MAX_FILES;
 #endif
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
