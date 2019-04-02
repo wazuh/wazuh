@@ -76,7 +76,7 @@ def test_metadata_version_services(mocked_db, class_):
 
 
 @pytest.mark.parametrize('class_', [
-    aws_s3.AWSCloudTrailBucket
+    aws_s3.AWSCloudTrailBucket,
 ])
 @patch('sqlite3.connect', side_effect=get_fake_s3_db('schema_cloudtrail_test.sql'))
 def test_cloudtrail_db_maintenance(mocked_db, class_):
@@ -85,8 +85,10 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
     """
     account_id = '123456789'
     region = 'us-east-1'
-    sql_get_log_keys = 'SELECT log_key FROM cloudtrail;'
-    sql_count_cloutrail = 'SELECT COUNT(*) FROM cloudtrail;'
+    sql_get_first_log_key = "SELECT log_key FROM cloudtrail ORDER BY log_key ASC LIMIT 1;"
+    sql_get_last_log_key = "SELECT log_key FROM cloudtrail ORDER BY log_key DESC LIMIT 1;"
+    sql_count_cloudtrail = "SELECT COUNT(*) FROM cloudtrail WHERE aws_region='{region}' \
+                            AND aws_account_id='{account_id}';"
 
     with patch(f'aws_s3.{class_.__name__}.get_client'):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
@@ -95,13 +97,18 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
                         'account_alias': None, 'prefix': '',
                         'delete_file': False, 'aws_organization_id': None})
 
-        # get rows before execute maintenance
-        query = ins.db_connector.execute(sql_get_log_keys)
-        log_keys_before = query.fetchall()
+        # get oldest log_key before execute maintenance
+        query = ins.db_connector.execute(sql_get_first_log_key)
+        first_log_key_before = query.fetchone()[0]
+
+        # get newest log_key before execute maintenance
+        query = ins.db_connector.execute(sql_get_last_log_key)
+        last_log_key_before = query.fetchone()[0]
 
         # maintenance when retain_db_records is bigger than elements in DB
         ins.db_maintenance('123456789', 'us-east-1')
-        query = ins.db_connector.execute(sql_count_cloutrail)
+        query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
+                                         account_id=account_id))
         data = query.fetchone()[0]
 
         assert(data == 8)
@@ -109,7 +116,8 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
         # maintenance when retain_db_records is smaller than elements in DB
         ins.retain_db_records = 6
         ins.db_maintenance(account_id, region)
-        query = ins.db_connector.execute(sql_count_cloutrail)
+        query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
+                                         account_id=account_id))
         data = query.fetchone()[0]
 
         assert(data == ins.retain_db_records)
@@ -117,25 +125,21 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
         # maintenance when retain_db_records is smaller than elements in DB
         ins.retain_db_records = 3
         ins.db_maintenance(account_id, region)
-        query = ins.db_connector.execute(sql_count_cloutrail)
+        query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
+                                         account_id=account_id))
         data = query.fetchone()[0]
 
         assert(data == ins.retain_db_records)
 
-        # get rows after execute maintenance
-        query = ins.db_connector.execute(sql_get_log_keys)
-        log_keys_after = query.fetchall()
+        # get oldest log_key after execute maintenance
+        query = ins.db_connector.execute(sql_get_first_log_key)
+        first_log_key_after = query.fetchone()[0]
 
-        # compare the oldest keys after executing DB maintenance
-        old_key_before = log_keys_before[0][0]
-        for i in range(len(log_keys_after)):
-            if log_keys_before[i][0] < old_key_before:
-                old_key_before = log_keys_before[i][0]
+        assert(first_log_key_before < first_log_key_after)
 
-        old_key_after = log_keys_after[0][0]
-        for i in range(len(log_keys_after)):
-            if log_keys_after[i][0] < old_key_after:
-                old_key_after = log_keys_after[i][0]
+        # get newest log_key after execute maintenance
+        query = ins.db_connector.execute(sql_get_last_log_key)
+        last_log_key_after = query.fetchone()[0]
 
-        assert(old_key_before < old_key_after)
+        assert(last_log_key_before == last_log_key_after)
 
