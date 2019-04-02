@@ -313,20 +313,18 @@ typedef struct last_scan {
 // Report queue
 
 typedef struct vu_alerts_node {
-    char *package_version;
-    char *package_version_subsys;
     char *version_compare;
-    char *version_compare_subsys;
     char *alert_body;
     struct vu_alerts_node *next;
-    struct vu_alerts_node *prev;
 } vu_alerts_node;
 
 typedef struct vu_processed_alerts {
     char *cve;
     char *package;
+    char *package_version;
+    char *package_arch;
     char *header;
-    int queue;
+    int send_queue;
     vu_alerts_node *report_queue;
 } vu_processed_alerts;
 

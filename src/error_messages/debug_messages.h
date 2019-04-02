@@ -55,5 +55,6 @@
 #define VU_UNEXP_JSON_KEY     "(5492): Unexpected JSON key: '%s'."
 #define VU_ENDING_UPDATE      "(5494): The update of the feeds ended successfully."
 #define VU_DOWNLOAD_FAIL      "(5495): The download can not be completed. Retrying in %d seconds."
+#define VU_ANAL_ACC_REPORTS   "(5501): Analyzing accumulated reports for %s in %s."
 
 #endif
