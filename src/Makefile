@@ -1416,9 +1416,30 @@ endif
 
 wpython: install_dependencies install_framework
 
+ifeq (${uname_S},Darwin)
+WLIBPYTHON=libpython3.7m.dylib
+else
+WLIBPYTHON=libpython3.7m.so.1.0
+endif
+
 build_python:
+ifeq (${uname_S},Darwin)
+ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
+	export WPATH_LIB="@executable_path/../../../lib"
+	export SOURCE_PATH=${ROUTE_PATH}
+	export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI}
+	export INSTALL_NAME_DIR=${ROUTE_PATH}
+	export DYLD_LIBRARY_PATH=${ROUTE_PATH}
+	mkdir -p ${ROUTE_PATH}/../lib && cp ${WAZUHEXT_LIB} ${ROUTE_PATH}/../lib
+	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Xlinker -rpath -Xlinker @executable_path/../../../lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	install_name_tool -change ${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	install_name_tool -change ${WPYTHON_DIR}/lib/libpython3.7m.dylib @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	rm -rf ${ROUTE_PATH}/../lib
+endif
+else
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+endif
 endif
 
 ifndef DISABLE_SHARED
@@ -1427,7 +1448,7 @@ endif
 
 install_python:
 	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
-	find ${WPYTHON_DIR} -name "*libpython3.7m.so.1.0" -exec ln -f {} ${PREFIX}/lib/libpython3.7m.so.1.0 \;
+	find ${WPYTHON_DIR} -name "*${WLIBPYTHON}" -exec ln -f {} ${PREFIX}/lib/${WLIBPYTHON} \;
 
 python_dependencies := requirements.txt
 
