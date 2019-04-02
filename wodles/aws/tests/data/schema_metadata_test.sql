@@ -6,7 +6,7 @@
  * and/or modify it under the terms of GPLv2.
  */
 
- CREATE table 'metadata' (
+ CREATE TABLE 'metadata' (
     key 'text' NOT NULL,
     value 'text' NOT NULL,
     PRIMARY KEY (key, value));
