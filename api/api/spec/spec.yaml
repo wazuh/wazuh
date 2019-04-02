@@ -8,6 +8,7 @@ info:
     \ everyday actions like adding an agent, restarting the manager(s) or agent(s)\
     \ or looking up syscheck details.\n"
   version: 4.0.0
+  x-revision: 'UNK'
   title: "Wazuh API"
   license:
     name: GPL 2.0
@@ -102,6 +103,30 @@ components:
           format: int32
           minimum: 1
           description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
+
+    BasicInfo:
+      type: object
+      properties:
+        title:
+          type: string
+          description: API title name.
+        api_version:
+          type: string
+          description: API version installed in the node.
+        revision:
+          type: string
+          description: Revision.
+        license_name:
+          type: string
+          description: API license name.
+        license_url:
+          type: string
+          description: API license url.
+        hostname:
+          type: string
+          description: Machine´s hostname.
+        timestamp:
+          type: string
 
     ## Agents models
     ExtraAgentFields:
@@ -3031,10 +3056,34 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-security:
-    - jwt: []
+#security:
+#    - jwt: []
 
 paths:
+  /:
+    get:
+      summary: 'Root-endpoint info'
+      description: 'Returns various basic information about the API'
+      operationId: api.controllers.default_controller.default_info
+      responses:
+        '200':
+          description: 'API default info'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/BasicInfo'
+              example:
+                title: "Wazuh API"
+                api_version: "v4.0.0"
+                revision: "Unknown"
+                license_name: "GPL 2.0"
+                license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
+                hostname: "wazuh"
+                timestamp: "2019-04-02T08:08:11+0000"
+ 
   /active-response/{agent_id}:
     put:
       tags:
