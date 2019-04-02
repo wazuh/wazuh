@@ -749,10 +749,6 @@ int wm_vuldet_report_agent_vulnerabilities(agent_software *agents, sqlite3 *db, 
             }
             free(str_json);
 
-            if (!strcmp(cve, "CVE-2018-16876")) {
-                minfo("~~~~~~");
-            }
-
             wm_vuldet_queue_report(&alerts_queue, cve, package, header, send_queue, version, arch, operation_value, alert_msg);
 
             cJSON_Delete(alert_cve);
@@ -2943,26 +2939,26 @@ void wm_vuldet_queue_report(vu_processed_alerts **alerts_queue, char *cve, char 
 
     if (*alerts_queue && (strcmp((*alerts_queue)->cve, cve) || strcmp((*alerts_queue)->package, package) || strcmp((*alerts_queue)->package_version, package_version) || strcmp((*alerts_queue)->package_arch, package_arch))) {
         wm_vuldet_queue_report_higher(alerts_queue);
-    } else {
-        if (!*alerts_queue) {
-            os_calloc(1, sizeof(vu_processed_alerts), *alerts_queue);
-            os_strdup(cve, (*alerts_queue)->cve);
-            os_strdup(package, (*alerts_queue)->package);
-            os_strdup(package_version, (*alerts_queue)->package_version);
-            os_strdup(package_arch, (*alerts_queue)->package_arch);
-            os_strdup(header, (*alerts_queue)->header);
-            (*alerts_queue)->send_queue = send_queue;
-        }
-
-        wm_vuldet_queue_report_add(alerts_queue, version_compare, alert_body);
     }
+
+    if (!*alerts_queue) {
+        os_calloc(1, sizeof(vu_processed_alerts), *alerts_queue);
+        os_strdup(cve, (*alerts_queue)->cve);
+        os_strdup(package, (*alerts_queue)->package);
+        os_strdup(package_version, (*alerts_queue)->package_version);
+        os_strdup(package_arch, (*alerts_queue)->package_arch);
+        os_strdup(header, (*alerts_queue)->header);
+        (*alerts_queue)->send_queue = send_queue;
+    }
+
+    wm_vuldet_queue_report_add(alerts_queue, version_compare, alert_body);
 }
 
 void wm_vuldet_queue_report_add(vu_processed_alerts **alerts_queue, char *version_compare, char *alert_body) {
     vu_alerts_node *alert_node;
 
     os_calloc(1, sizeof(vu_alerts_node), alert_node);
-    os_strdup(version_compare, alert_node->version_compare);
+    w_strdup(version_compare, alert_node->version_compare);
     os_strdup(alert_body, alert_node->alert_body);
 
     alert_node->next = (*alerts_queue)->report_queue;
@@ -2975,14 +2971,21 @@ void wm_vuldet_queue_report_higher(vu_processed_alerts **alerts_queue) {
     int result;
 
     mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_ANAL_ACC_REPORTS, (*alerts_queue)->package, (*alerts_queue)->cve);
-    mtinfo(WM_VULNDETECTOR_LOGTAG, VU_ANAL_ACC_REPORTS, (*alerts_queue)->package, (*alerts_queue)->cve); // ~~~~~~~~~~~~~~~~
+
 
     for (node_it = (*alerts_queue)->report_queue; node_it; node_it = node_it->next) {
         if (!node_higher) {
             node_higher = node_it;
+            if (!node_higher->version_compare) {
+                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_NO_VER_REPORT, (*alerts_queue)->cve);
+                break;
+            }
         } else {
             if (result = wm_checks_package_vulnerability(node_higher->version_compare, "less than", node_it->version_compare), result == VU_VULNERABLE) {
+                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_ADD_ACC_REPORTS, (*alerts_queue)->cve, node_it->version_compare, node_higher->version_compare);
                 node_higher = node_it;
+            } else {
+                mtdebug2(WM_VULNDETECTOR_LOGTAG, VU_DISC_ACC_REPORTS, (*alerts_queue)->cve, node_it->version_compare, node_higher->version_compare);
             }
         }
     }
@@ -3013,6 +3016,7 @@ void wm_vuldet_queue_report_clean(vu_processed_alerts **alerts_queue) {
     free((*alerts_queue)->package_version);
     free((*alerts_queue)->package_arch);
     free((*alerts_queue)->header);
+    free(*alerts_queue);
     *alerts_queue = NULL;
 }
 
