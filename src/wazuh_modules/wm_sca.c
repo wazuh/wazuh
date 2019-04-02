@@ -369,7 +369,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
 #ifdef WIN32
             if (data->profile[i]->profile[1] && data->profile[i]->profile[2]) {
-                if (data->profile[i]->profile[1] == ':') {
+                if ((data->profile[i]->profile[1] == ':') || (data->profile[i]->profile[0] == '\\' && data->profile[i]->profile[1] == '\\')) {
                     sprintf(path,"%s", data->profile[i]->profile);
                 } else{
                     sprintf(path,"%s\\%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, data->profile[i]->profile);
