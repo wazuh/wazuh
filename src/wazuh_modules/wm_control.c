@@ -72,6 +72,8 @@ char* getPrimaryIP(){
             if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
                 if(!gate->isdefault)
                     continue;
+                if(gate->addr[0]=='l')
+                    continue;
             }
             getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gateways);
         #endif
