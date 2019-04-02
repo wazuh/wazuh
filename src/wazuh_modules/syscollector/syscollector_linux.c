@@ -11,15 +11,18 @@
 
 #include "syscollector.h"
 
+#if defined(__linux__) || defined(__MACH__)
+#include <ifaddrs.h>
+#include <net/if.h>
+#endif
+
 #if defined(__linux__)
 
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
-#include <net/if.h>
 #include <netinet/tcp.h>
-#include <ifaddrs.h>
 #include <linux/if_packet.h>
 #include "external/procps/readproc.h"
 #include "external/libdb/build_unix/db.h"
@@ -1953,6 +1956,9 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 
 }
 
+#endif /* __linux__ */
+
+#if defined(__linux__) || defined(__MACH__)
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr){
 
     int found;
@@ -1985,4 +1991,4 @@ int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr){
 
 }
 
-#endif /* __linux__ */
+#endif

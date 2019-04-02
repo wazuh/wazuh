@@ -58,13 +58,11 @@ char* getPrimaryIP(){
         }
     }
 
-    #if defined (__linux__) || defined (__MACH__)
     OSHash *gateways = OSHash_Create();
     if (getGatewayList(gateways) < 0){
         merror("Error creating the list of gateways");
     }
     gateway *gate;
-    #endif
 
     for (i=0; i<size; i++) {
         cJSON *object = cJSON_CreateObject();
