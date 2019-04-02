@@ -643,7 +643,7 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
 
                 if (rules_n > 255) {
                     free(read_id);
-                    merror("Invalid check %d: Maximum number of rules is 255", check_id->valueint);
+                    merror("Invalid check %d: Maximum number of rules is 255.", check_id->valueint);
                     return retval;
                 }
             }
