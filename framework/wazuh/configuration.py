@@ -737,7 +737,7 @@ def get_active_configuration(agent_id, component, configuration):
         s = OssecSocket(dest_socket)
     except Exception as e:
         if agent_id == '000':
-            raise WazuhException(1013, "The component might be disabled")
+            raise WazuhException(1013, f"The component might be disabled, {e}")
         else:
             raise WazuhException(1013, str(e))
 
