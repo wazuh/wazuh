@@ -632,21 +632,26 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
 
             rules_id = cJSON_GetObjectItem(check, "rules");
 
-            cJSON_ArrayForEach(rule, rules_id){
-                if (rules_id == NULL) {
-                    merror("Rules not found.");
-                    free(read_id);
-                    return retval;
-                }
+            if (rules_id == NULL) {
+                merror("Invalid check %d: no rules found.", check_id->valueint);
+                free(read_id);
+                return retval;
+            }
 
+            cJSON_ArrayForEach(rule, rules_id){
                 rules_n++;
 
                 if (rules_n > 255) {
-                    retval = 1;
                     free(read_id);
-                    mwarn("Policy check with more than 255 rules. Ignoring it.");
+                    merror("Invalid check %d: Maximum number of rules is 255", check_id->valueint);
                     return retval;
                 }
+            }
+
+            if (rules_n == 0) {
+                merror("Invalid check %d: no rules found.", check_id->valueint);
+                free(read_id);
+                return retval;
             }
 
             rules_n = 0;
