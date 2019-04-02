@@ -713,10 +713,8 @@ def get_active_configuration(agent_id, component, configuration):
     if not component or not configuration:
         raise WazuhException(1307)
 
-    sockets_path = common.ossec_path + "/queue/ossec/"
-
-    components = ["agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                  "monitor", "request", "syscheck", "wmodules"]
+    components = {"agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
+                  "monitor", "request", "syscheck", "wmodules"}
 
     # checks if the component is correct
     if component not in components:
