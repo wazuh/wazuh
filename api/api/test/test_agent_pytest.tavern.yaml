@@ -1,40 +1,227 @@
 ---
-# Every test file has one or more tests...
-test_name: All test agents
+test_name: DELETE /agents
 
 stages:
-  - name: Restart all agents
+  - name: Remove not exist agents
 
-    # Define the request to be made...
+    request: &test_request
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: 007,006
+
+    response: &test_response
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1701
+                message: "Agent does not exist: 007"
+              id: '007'
+            - error:
+                code: 1701
+                message: "Agent does not exist: 006"
+              id: '006'
+          msg: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 2
+
+  - name: Create an agent to delete
+
     request:
-      url: http://localhost:55000/agents/restart
+      url: http://localhost:55000/agents/newAgent
       method: PUT
 
-    # ...and the expected response code and body
     response:
       status_code: 200
       body:
         error: 0
-        data: Restarting all agents
+        data:
+          id: '003'
+          key: !anystr
+    
+    delay_after: 11
+
+  - name: Remove an agent
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: '003'
+        older_than: '10s'
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: ["003"]
+          msg: All selected agents were removed
+          older_than: 10s
+          total_affected_agents: 1
 
 ---
-# Every test file has one or more tests...
 test_name: Get all agent
 
 stages:
   - name: Get all agent
 
-    # Define the request to be made...
     request:
-      url: http://localhost:55000/agents
-      method: GET
+      url: &url http://localhost:55000/agents
+      method: &metodo GET
       params:
         limit: 2
 
-
-    # ...and the expected response code and body
     response:
       status_code: 200
       body:
         error: 0
 
+---
+test_name: GET /agents/summary
+
+stages:
+  - name: Get agents summary
+
+    request:
+      url: http://localhost:55000/agents/summary
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          Total: !anyint
+          Active: !anyint
+          Disconnected: !anyint
+          Never connected: !anyint
+          Pending: !anyint
+
+---
+test_name: GET /agents/outdated
+
+stages:
+  - name: Get outdated agents
+
+    request:
+      url: http://localhost:55000/agents/outdated
+      method: GET
+      params:
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          items: !anything
+          totalItems: !anyint
+
+---
+test_name: All test agents
+
+stages:
+  - name: Restart all agents
+
+    request:
+      url: http://localhost:55000/agents/restart
+      method: PUT
+
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data: Restarting all agents
+
+---
+test_name: GET /agents/:agent_id
+
+stages:
+  - name: Get an agent
+
+    request: &get_agent
+      url: http://localhost:55000/agents/001
+      method: GET
+
+    response: &agent_response
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          id: "001"
+          ip: !anystr
+          lastKeepAlive: !anystr
+          manager: !anystr
+          name: !anystr
+          node_name: !anystr
+          os:
+            arch: !anystr
+            codename: !anystr
+            major: !anystr
+            minor: !anystr
+            name: !anystr
+            platform: !anystr
+            uname: !anystr
+            version: !anystr
+          registerIP: !anystr
+          status: !anystr
+          version: !anystr
+
+  - name: Get the manager
+
+    request: 
+      <<: *get_agent
+      url: http://localhost:55000/agents/000
+
+    response: 
+      <<: *agent_response
+      body:
+        data:
+          id: "000"
+
+  - name: Get an agent with some select
+
+    request: 
+      <<: *get_agent
+      params:
+        select: dateAdd,mergedSum
+
+    response: 
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          mergedSum: !anystr
+  
+  - name: Get an agent not allowed selector
+
+    request: 
+      <<: *get_agent
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 200
+      body:
+        error: 1724
+        message: !anystr
+  
+  - name: Get an agent, bad id
+
+    request: 
+      <<: *get_agent
+      url: http://localhost:55000/agents/abc
+
+    response:
+      status_code: 400
