@@ -59,6 +59,8 @@ class DistributedAPI:
 
         :return: Dictionary with API response
         """
+        import pydevd_pycharm
+        pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
         try:
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
@@ -108,7 +110,7 @@ class DistributedAPI:
             if self.debug:
                 raise
             self.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
-            return exception.WazuhInternalError(extra_message=str(e))
+            return exception.WazuhInternalError(1000, extra_message=str(e))
 
     async def execute_local_request(self) -> Dict:
         """
