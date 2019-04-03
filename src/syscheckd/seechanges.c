@@ -184,15 +184,18 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     }
 
 #ifdef WIN32
-    diff_str = strchr(buf, '\n');
+    if (!is_nodiff(filename)) {
+        diff_str = strchr(buf, '\n');
 
-    if (!diff_str) {
-        merror("Unable to find second line of alert string.");
-        return NULL;
+        if (!diff_str) {
+            merror("Unable to find second line of alert string.");
+            return NULL;
+        }
+
+        diff_str++;
+    } else {
+        diff_str = buf;
     }
-
-    diff_str++;
-
 #else
     diff_str = buf;
 #endif
