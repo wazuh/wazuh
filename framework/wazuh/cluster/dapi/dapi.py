@@ -17,6 +17,7 @@ from operator import or_
 from wazuh import Wazuh
 from wazuh import exception, agent, common, utils
 from wazuh.cluster import local_client, cluster, common as c_common
+from wazuh.results import WazuhResult
 
 
 class DistributedAPI:
@@ -36,7 +37,7 @@ class DistributedAPI:
         :param node: Asyncio protocol object to use when sending requests to other nodes
         :param debug: Enable debug messages and raise exceptions.
         :param pretty: Return request result with pretty indent
-        :param wait_for_complete: false to disable timeout, true otherwise
+        :param wait_for_complete: true to disable timeout, false otherwise
         """
         self.logger = logger
         self.f = f
@@ -59,8 +60,7 @@ class DistributedAPI:
 
         :return: Dictionary with API response
         """
-        import pydevd_pycharm
-        pydevd_pycharm.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+
         try:
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
             is_cluster_disabled = self.node == local_client and cluster.check_cluster_status()
@@ -95,7 +95,10 @@ class DistributedAPI:
             else:
                 response = await self.execute_remote_request()
 
-            response = json.loads(response, object_hook=as_wazuh_object) if isinstance(response, str) else response
+            try:
+                response = json.loads(response, object_hook=as_wazuh_object) if isinstance(response, str) else response
+            except json.decoder.JSONDecodeError:
+                response = WazuhResult({'message': response})
 
             return response
 
@@ -357,20 +360,22 @@ class APIRequestQueue:
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
-            names, request = (await self.request_queue.get()).split(' ', 1)
-            request = json.loads(request, object_hook=as_wazuh_object)
-            names = names.split('*', 1)
-            name_2 = '' if len(names) == 1 else names[1] + ' '
-            node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
-            self.logger.info("Receiving request: {} from {}".format(
-                request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
             try:
+                names, request = (await self.request_queue.get()).split(' ', 1)
+                request = json.loads(request, object_hook=as_wazuh_object)
+                names = names.split('*', 1)
+                name_2 = '' if len(names) == 1 else names[1] + ' '
+
+                node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+                self.logger.info("Receiving request: {} from {}".format(
+                    request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
+
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
                                               node=node).distribute_function()
                 task_id = await node.send_string(result.encode())
             except Exception as e:
-                self.logger.error("Error in distributed API: {}".format(e))
+                self.logger.error("Error in distributed API: {}".format(e), exc_info=True)
                 task_id = b'Error in distributed API: ' + str(e).encode()
 
             if task_id.startswith(b'Error'):

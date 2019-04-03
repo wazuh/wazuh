@@ -34,6 +34,20 @@ components:
           minimum: 0
           description: Total elements available. It can be used to implement pagination over results.
 
+    ApiError:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
     GenericResult:
       type: object
       properties:
@@ -3013,8 +3027,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-#security:
-#    - jwt: []
+security:
+    - jwt: []
 
 paths:
   /active-response/{agent_id}:
@@ -5942,24 +5956,29 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Confirmation message'
+          description: 'Configuration is OK'
+
+        '400':
+          description: 'Error in configuration'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ConfigurationValidation'
+                  - $ref: '#/components/schemas/ApiError'
+                  - type: object
+                    properties:
+                      errors:
+                        type: array
+                        items:
+                          type: string
               example:
-                error: 0
-                data:
-                  status: KO
-                  details:
-                    - "(1230): Invalid element in the configuration: 'hello'."
-                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+                type: "about:blank"
+                title: "Bad configuration"
+                detail: "Wazuh configuration has not been properly set"
+                errors:
+                  - "(1230): Invalid element in the configuration: 'hello'."
+                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+
 
   /cluster/{node_id}/configuration/validation:
     get:
@@ -5974,24 +5993,28 @@ paths:
         - $ref: '#/components/parameters/node_id'
       responses:
         '200':
-          description: 'Confirmation message'
+          description: 'Configuration is OK'
+
+        '400':
+          description: 'Error in configuration'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ConfigurationValidation'
+                  - $ref: '#/components/schemas/ApiError'
+                  - type: object
+                    properties:
+                      errors:
+                        type: array
+                        items:
+                          type: string
               example:
-                error: 0
-                data:
-                  status: KO
-                  details:
-                    - "(1230): Invalid element in the configuration: 'hello'."
-                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+                type: "about:blank"
+                title: "Bad configuration"
+                detail: "Wazuh configuration has not been properly set"
+                errors:
+                  - "(1230): Invalid element in the configuration: 'hello'."
+                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
   /lists:
     get:
@@ -6028,25 +6051,24 @@ paths:
                               type: array
                               items:
                                 $ref: '#/components/schemas/CDBList'
-                example:
-                  error: 0
-                  data:
-                    totalItems: 2
-                    items:
-                      - path: etc/lists/amazon/aws-eventnames
-                        items:
-                        - key: AttachLoadBalancers
-                          value: Autoscaling
-                        - key: TerminateInstanceInAutoScalingGroup
-                          value: Autoscaling
-                        - key: CreateStack
-                          value: Cloudformation
-                      - path: etc/lists/audit-keys
-                        items:
-                        - key: audit-wazuh-w
-                          value: write
-                        - key: audit-wazuh-a
-                          value: attribute
+              example:
+                data:
+                  totalItems: 2
+                  items:
+                    - path: etc/lists/amazon/aws-eventnames
+                      items:
+                      - key: AttachLoadBalancers
+                        value: Autoscaling
+                      - key: TerminateInstanceInAutoScalingGroup
+                        value: Autoscaling
+                      - key: CreateStack
+                        value: Cloudformation
+                    - path: etc/lists/audit-keys
+                      items:
+                      - key: audit-wazuh-w
+                        value: write
+                      - key: audit-wazuh-a
+                        value: attribute
 
 
   /lists/files:
@@ -6086,7 +6108,6 @@ paths:
                                     description: Path where the CDB list file is stored. This path is relative to the Wazuh installation path.
                                     type: string
                 example:
-                  error: 0
                   data:
                     totalItems: 2
                     items:
@@ -6116,10 +6137,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhDaemonsStatus'
+                      $ref: '#/components/schemas/WazuhDaemonsStatus'
               example:
-                error: 0
                 data:
                   ossec-agentlessd: stopped
                   ossec-analysisd: running
@@ -6158,10 +6177,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhInfo'
+                      $ref: '#/components/schemas/WazuhInfo'
               example:
-                error: 0
                 data:
                   path: /var/ossec
                   version: v3.9.0
@@ -6196,10 +6213,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhConfiguration'
+                      $ref: '#/components/schemas/WazuhConfiguration'
               example:
-                error: 0
                 data:
                   global:
                     jsonout_output: yes
@@ -6257,10 +6272,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhStats'
+                      $ref: '#/components/schemas/WazuhStats'
               example:
-                error: 0
                 data:
                   - hour: 15
                     alerts:
@@ -6310,10 +6323,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhHourlyStats'
+                      $ref: '#/components/schemas/WazuhHourlyStats'
               example:
-                error: 0
                 data:
                   averages:
                     - 40
@@ -6363,10 +6374,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhWeeklyStats'
+                      $ref: '#/components/schemas/WazuhWeeklyStats'
               example:
-                error: 0
                 data:
                   Sun:
                     averages:
@@ -6579,10 +6588,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhAnalysisdStats'
+                      $ref: '#/components/schemas/WazuhAnalysisdStats'
               example:
-                error: 0
                 data:
                   total_events_decoded: 5
                   syscheck_events_decoded: 0
@@ -6652,10 +6659,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhRemotedStats'
+                      $ref: '#/components/schemas/WazuhRemotedStats'
               example:
-                error: 0
                 data:
                   queue_size: 0
                   total_queue_size: 131072
@@ -6702,7 +6707,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/WazuhLogs'
               example:
-                error: 0
                 data:
                   totalItems: 3
                   items:
@@ -6740,10 +6744,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                        - $ref: '#/components/schemas/WazuhLogsSummary'
+                      $ref: '#/components/schemas/WazuhLogsSummary'
               example:
-                error: 0
                 data:
                   wazuh-modulesd:
                     info: 2
@@ -6785,15 +6787,18 @@ paths:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      description: File contents.
-                      type: string
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          contents:
+                            description: File contents.
+                            type: string
               example:
-                error: 0
-                data: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+                data:
+                  contents: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
     post:
       tags:
       - manager
@@ -6811,12 +6816,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: File updated successfully.
+                message: File updated successfully.
     delete:
       tags:
       - manager
@@ -6833,12 +6835,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: File was deleted.
+                message: File was deleted.
 
   /manager/restart:
     put:
@@ -6856,12 +6855,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: Restarting manager.
+                message: Restarting manager.
 
   /manager/configuration/validation:
     get:
@@ -6875,24 +6871,28 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: 'Confirmation message'
+          description: 'Configuration is OK'
+
+        '400':
+          description: 'Error in configuration'
           content:
             application/json:
               schema:
                 allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      allOf:
-                        - $ref: '#/components/schemas/ConfigurationValidation'
+                  - $ref: '#/components/schemas/ApiError'
+                  - type: object
+                    properties:
+                      errors:
+                        type: array
+                        items:
+                          type: string
               example:
-                error: 0
-                data:
-                  status: KO
-                  details:
-                    - "(1230): Invalid element in the configuration: 'hello'."
-                    - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+                type: "about:blank"
+                title: "Bad configuration"
+                detail: "Wazuh configuration has not been properly set"
+                errors:
+                  - "(1230): Invalid element in the configuration: 'hello'."
+                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
 
   /rootcheck:
     put:
@@ -6910,12 +6910,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Restarting Syscheck/Rootcheck on all agents"
+                message: "Restarting Syscheck/Rootcheck on all agents"
     delete:
       tags:
       - rootcheck
@@ -6931,12 +6928,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Rootcheck database deleted"
+                message: "Rootcheck database deleted"
 
   /rootcheck/{agent_id}:
     get:
@@ -6978,7 +6972,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/RootcheckDatabase'
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -7007,12 +7000,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Restarting Syscheck/Rootcheck locally"
+                message: "Restarting Syscheck/Rootcheck locally"
     delete:
       tags:
       - rootcheck
@@ -7029,12 +7019,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Rootcheck database deleted"
+                message: "Rootcheck database deleted"
 
   /rootcheck/{agent_id}/pci:
     get:
@@ -7071,7 +7058,6 @@ paths:
                               items:
                                 type: string
               example:
-                error: 0
                 data:
                   totalItems: 1
                   items:
@@ -7112,7 +7098,6 @@ paths:
                               items:
                                 type: string
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -7141,10 +7126,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                      - $ref: '#/components/schemas/LastScan'
+                      $ref: '#/components/schemas/LastScan'
               example:
-                error: 0
                 data:
                   end: "2019-03-08T10:35:21Z"
                   start: "2019-03-08T10:34:56Z"
@@ -7190,7 +7173,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/Rules'
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -7263,7 +7245,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/Rules'
               example:
-                error: 0
                 data:
                   totalItems: 1
                   items:
@@ -7318,7 +7299,6 @@ paths:
                               items:
                                 type: string
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -7361,7 +7341,6 @@ paths:
                               items:
                                 type: string
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -7404,7 +7383,6 @@ paths:
                               items:
                                 type: string
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -7451,7 +7429,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/RulesFiles'
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -7507,7 +7484,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SCADatabase'
               example:
-               error: 0
                data:
                 totalItems: 2
                 items:
@@ -7577,7 +7553,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SCAChecks'
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -7627,12 +7602,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Restarting Syscheck/Rootcheck on all agents"
+                message: "Restarting Syscheck/Rootcheck on all agents"
 
   /syscheck/{agent_id}:
     get:
@@ -7677,7 +7649,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscheckDatabase'
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -7725,12 +7696,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Restarting Syscheck/Rootcheck locally"
+                message: "Restarting Syscheck/Rootcheck locally"
     delete:
       tags:
       - syscheck
@@ -7747,12 +7715,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: "Syscheck database deleted"
+                message: "Syscheck database deleted"
 
   /syscheck/{agent_id}/last_scan:
     get:
@@ -7776,10 +7741,8 @@ paths:
                 - type: object
                   properties:
                     data:
-                      allOf:
-                      - $ref: '#/components/schemas/LastScan'
+                      $ref: '#/components/schemas/LastScan'
               example:
-                error: 0
                 data:
                   end: "2019-03-08T10:35:21Z"
                   start: "2019-03-08T10:34:56Z"
@@ -7822,7 +7785,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/Decoder'
               example:
-                error: 0
                 data:
                   totalItems: 571
                   items:
@@ -7877,7 +7839,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/Decoder'
               example:
-                error: 0
                 data:
                   totalItems: 3
                   items:
@@ -7938,7 +7899,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/DecoderFile'
               example:
-                error: 0
                 data:
                   totalItems: 571
                   items:
@@ -7998,7 +7958,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/Decoder'
               example:
-                error: 0
                 data:
                   totalItems: 153
                   items:
@@ -8033,12 +7992,9 @@ paths:
           content:
             application/json:
               schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - $ref: '#/components/schemas/GenericResult'
+                $ref: '#/components/schemas/ApiResponse'
               example:
-                error: 0
-                data: Syscheck database deleted
+                message: Syscheck database deleted
 
   /experimental/ciscat/results:
     get:
@@ -8083,7 +8039,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/CiscatResults'
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -8151,7 +8106,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorHardware'
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -8221,7 +8175,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorNetwork'
               example:
-                error: 0
                 data:
                   totalItems: 16
                   items:
@@ -8286,7 +8239,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorInterface'
               example:
-                error: 0
                 data:
                   totalItems: 8
                   items:
@@ -8368,7 +8320,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorProtocol'
               example:
-                error: 0
                 data:
                   totalItems: 16
                   items:
@@ -8423,7 +8374,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorOS'
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -8500,7 +8450,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorPackages'
               example:
-                error: 0
                 data:
                   totalItems: 2014
                   items:
@@ -8576,7 +8525,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorPorts'
               example:
-                error: 0
                 data:
                   totalItems: 18
                   items:
@@ -8658,7 +8606,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorProcess'
               example:
-                error: 0
                 data:
                   totalItems: 420
                   items:
@@ -8748,7 +8695,6 @@ paths:
                     data:
                       $ref: '#/components/schemas/SyscollectorHardware'
               example:
-                error: 0
                 data:
                   cpu:
                     core: 2
@@ -8804,7 +8750,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorNetwork'
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -8868,7 +8813,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorInterface'
               example:
-                error: 0
                 data:
                   totalItems: 2
                   items:
@@ -8949,7 +8893,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorProtocol'
               example:
-                error: 0
                 data:
                   totalItems: 4
                   items:
@@ -8987,7 +8930,6 @@ paths:
                     data:
                       $ref: '#/components/schemas/SyscollectorOS'
               example:
-                error: 0
                 data:
                   os:
                     codename: "Bionic Beaver"
@@ -9046,7 +8988,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorPackages'
               example:
-                error: 0
                 data:
                   totalItems: 535
                   items:
@@ -9120,7 +9061,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorPorts'
               example:
-                error: 0
                 data:
                   totalItems: 18
                   items:
@@ -9203,7 +9143,6 @@ paths:
                               items:
                                 $ref: '#/components/schemas/SyscollectorProcess'
               example:
-                error: 0
                 data:
                   totalItems: 120
                   items:

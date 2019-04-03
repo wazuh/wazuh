@@ -146,8 +146,7 @@ def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
 
     :rtype: AgentRestarted
     """
-    #import pydevd
-    #pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+
     dapi = DistributedAPI(f=Agent.restart_agents,
                           f_kwargs={'restart_all': True},
                           request_type='distributed_master',

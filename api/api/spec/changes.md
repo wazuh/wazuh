@@ -123,11 +123,20 @@ a human readable message is shown, the new field `message` will be used instead.
 ### PUT /cluster/{node_id}/restart
 * In response, `data` key is now moved to new `message` key
 
+### GET /cluster/configuration/validation
+* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+
+### GET /cluster/{node_id}/configuration/validation
+* Now errors are shown in a different schema with a HTTP status 400. See spec for more details.
+
 
 ## Experimental
 ### General
 * Changed **ram_free**, **ram_total**, **cpu_cores** type to integer and **cpu_mhz** type to number float
 * Deleded all parameters **agent_id** from all endpoints
+
+### DELETE/experimental/syscheck
+* In response, `data` key is now moved to new `message` key
 
 ### /experimental/syscollector/netiface
 * Changed **mtu**, **tx_packets**, **rx_packets**, **tx_bytes**, **rx_bytes**, **tx_errors**, **rx_errors**, **tx_dropped** and **rx_dropped** parameters to type integer.
@@ -138,14 +147,51 @@ a human readable message is shown, the new field `message` will be used instead.
 * Parameter **name** renamed to **process_name**
 
 ## Manager
+
+### GET /manager/files
+* Now file contents are return in a structure like `{"data": {"contents": "file contents"}}`
+
+### POST /manager/files
+* In response, `data` key is now moved to new `message` key
+
+### DELETE /manager/files
+* In response, `data` key is now moved to new `message` key
+
 ### GET /manager/stats
 * Changed date format from YYYYMMDD to YYYY-MM-DD
 
 ### GET/manager/info
 * Parameter `openssl_support` is now a boolean.
 
+### PUT/manager/restart
+* In response, `data` key is now moved to new `message` key
+
 ### GET/manager/stats/weekly
 * Parameter **hours** changed to **averages**.
+
+## Rootcheck
+### PUT/rootcheck
+* In response, `data` key is now moved to new `message` key
+
+### DELETE/rootcheck
+* In response, `data` key is now moved to new `message` key
+
+### PUT/rootcheck/:agent_id
+* In response, `data` key is now moved to new `message` key
+
+### DELETE/rootcheck/:agent_id
+* In response, `data` key is now moved to new `message` key
+
+
+## Syscheck
+### PUT/syscheck
+* In response, `data` key is now moved to new `message` key
+
+### PUT/syscheck/{agent_id}
+* In response, `data` key is now moved to new `message` key
+
+### DELETE/syscheck/{agent_id}
+* In response, `data` key is now moved to new `message` key
 
 ## Syscollectior
 ### /syscollector/:agent_id/netaddr
