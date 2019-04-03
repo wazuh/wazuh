@@ -750,7 +750,7 @@ $(EXTERNAL_CURL)Makefile:
 	cd $(EXTERNAL_CURL) && ./configure --with-darwinssl --disable-ldap --without-libidn2
 else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
-	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2
+	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-ldl -lpthread" ./configure --disable-ldap --without-libidn2  --without-libpsl --without-nghttp2 --without-librtmp --without-brotli
 endif
 
 
