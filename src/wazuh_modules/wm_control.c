@@ -70,12 +70,16 @@ char* getPrimaryIP(){
             getNetworkIface_linux(object, ifaces_list[i], ifaddr);
         #elif defined __MACH__
             if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
-                if(!gate->isdefault)
+                if(!gate->isdefault){
+                    free(gate);
                     continue;
-                if(gate->addr[0]=='l')
+                }
+                if(gate->addr[0]=='l'){
+                    free(gate);
                     continue;
+                }
+                getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
             }
-            getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gateways);
         #endif
         cJSON *interface = cJSON_GetObjectItem(object, "iface");
         cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
@@ -98,6 +102,7 @@ char* getPrimaryIP(){
                 cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                 cJSON *address = cJSON_GetArrayItem(addresses,0);
                 os_strdup(address->valuestring, agent_ip);
+                cJSON_Delete(object);
                 break;
             #endif
             

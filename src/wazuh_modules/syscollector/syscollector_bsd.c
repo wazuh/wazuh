@@ -742,7 +742,12 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-        getNetworkIface_bsd(object, ifaces_list[i], ifaddrs_ptr, gateways);
+        gateway *gate;
+        #if defined(__MACH__)
+        gate = (gateway *)OSHash_Get(gateways, ifaces_list[i]);
+        #endif
+
+        getNetworkIface_bsd(object, ifaces_list[i], ifaddrs_ptr, gate);
 
         /* Send interface data in JSON format */
         string = cJSON_PrintUnformatted(object);
@@ -776,7 +781,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
 }
 
-    void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, OSHash *gateways){
+    void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway* gate){
         
         struct ifaddrs *ifa;
         int family = 0;
@@ -978,11 +983,10 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
             }
 
             #if defined(__MACH__)
-            gateway *gate;
-            if(gate = (gateway *)OSHash_Get(gateways, iface_name), gate){
+            if(gate){
                 cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
                 free(gate);
-            }
+            } 
             #endif
 
             cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
@@ -1202,7 +1206,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
                     gate->isdefault = 1;
                 #endif
                     OSHash_Add(gateway_list, ifname, gate);
-                    mdebug2("Gateway of interface %s : %s %d\n", ifname, gate->addr, gate->isdefault);
+                    mdebug2("Gateway of interface %s : %s Default: %d\n", ifname, gate->addr, gate->isdefault);
                 }
             }
 

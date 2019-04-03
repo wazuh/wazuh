@@ -225,7 +225,7 @@ int read_entry(u_int8_t* bytes, rpm_data *info);
 struct ifaddrs;
 void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifaddr);
 
-void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, OSHash *gateways);
+void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway *gate);
 // Create the interface list
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr);
 
