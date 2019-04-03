@@ -422,7 +422,6 @@ class AWSBucket(WazuhIntegration):
         self.db_name = 's3_cloudtrail'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
-        self.legacy_db_table_name = 'log_progress'
         self.retain_db_records = 500
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
