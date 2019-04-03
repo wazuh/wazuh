@@ -11,7 +11,7 @@
 
 #include "syscollector.h"
 
-#if defined(__linux__) || defined(__MACH__)
+#if defined(__linux__) || defined(__MACH__) || defined (__FreeBSD__) || defined (__OpenBSD__)
 #include <ifaddrs.h>
 #include <net/if.h>
 #endif
@@ -1958,7 +1958,7 @@ void getNetworkIface_linux(cJSON *object, char *iface_name, struct ifaddrs *ifad
 
 #endif /* __linux__ */
 
-#if defined(__linux__) || defined(__MACH__)
+#if defined(__linux__) || defined(__MACH__) || defined (__FreeBSD__) || defined (__OpenBSD__)
 int getIfaceslist(char **ifaces_list, struct ifaddrs *ifaddr){
 
     int found;
