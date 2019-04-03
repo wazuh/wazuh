@@ -10,7 +10,7 @@ if [ "X$3" != "Xmaster" ]; then
     sed -i "s:<node_type>master</node_type>:<node_type>worker</node_type>:g" "${DIRECTORY}/etc/ossec.conf"
 fi
 
-/var/ossec/bin/ossec-control restart
+"${DIRECTORY}/bin/ossec-control" restart
 
-node /var/ossec/api/app.js &
-tail -f /var/ossec/logs/cluster.log
+node "${DIRECTORY}/api/app.js" &
+tail -f "${DIRECTORY}/logs/cluster.log"
