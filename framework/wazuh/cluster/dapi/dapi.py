@@ -366,14 +366,14 @@ class APIRequestQueue:
                 names = names.split('*', 1)
                 name_2 = '' if len(names) == 1 else names[1] + ' '
 
-                node = self.server.client if names[0] == 'None' else self.server.clients[names[0]]
+                node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
 
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
                                               node=node).distribute_function()
-                task_id = await node.send_string(result.encode())
+                task_id = await node.send_string(json.dumps(result).encode())
             except Exception as e:
                 self.logger.error("Error in distributed API: {}".format(e), exc_info=True)
                 task_id = b'Error in distributed API: ' + str(e).encode()

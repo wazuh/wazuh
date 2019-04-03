@@ -118,7 +118,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             return super().process_request(command, data)
 
-    async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> str:
+    async def execute(self, command: bytes, data: bytes, wait_for_complete: bool) -> Dict:
         """
         Sends a distributed API request and wait for a response in command dapi_res
 
@@ -142,18 +142,18 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
-            request_result = json.dumps({'error': 3009, 'message': result})
+            request_result = {'error': 3009, 'message': result}
         else:
             if command == b'dapi' or command == b'dapi_forward':
                 try:
                     timeout = None if wait_for_complete \
                                    else self.cluster_items['intervals']['communication']['timeout_api_request']
                     await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
-                    request_result = self.server.pending_api_requests[request_id]['Response']
+                    request_result = json.loads(self.server.pending_api_requests[request_id]['Response'])
                 except asyncio.TimeoutError:
-                    request_result = json.dumps({'error': 3000, 'message': 'Timeout exceeded'})
+                    request_result = {'error': 3000, 'message': 'Timeout exceeded'}
             else:
-                request_result = result
+                request_result = json.loads(result)
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
