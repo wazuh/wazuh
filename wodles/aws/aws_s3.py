@@ -123,9 +123,11 @@ class WazuhIntegration:
                                             'version',
                                             '{wazuh_version}');"""
 
-        self.sql_delete_version_metadata = """
-                                        DELETE FROM
+        self.sql_update_version_metadata = """
+                                        UPDATE
                                             metadata
+                                        SET
+                                            value='{wazuh_version}'
                                         WHERE
                                             key='version';
                                         """
@@ -133,6 +135,7 @@ class WazuhIntegration:
         self.sql_drop_table = """
                             DROP TABLE {table};
                             """
+
         # get path and version from ossec.init.conf
         with open('/etc/ossec-init.conf') as f:
             lines = f.readlines()
@@ -152,7 +155,24 @@ class WazuhIntegration:
         self.db_cursor = self.db_connector.cursor()
         if bucket:
             self.bucket = bucket
+        self.old_version = None  # for DB migration if it is necessary
         self.check_metadata_version()
+
+    def migrate_from_38(self, **kwargs):
+        self.db_maintenance(**kwargs)
+        self.db_connector.commit()
+
+    def migrate(self, **kwargs):
+        regex_version = re.compile(r'^v?(\d.\d){1}')
+        old_version = re.search(regex_version, self.old_version).group(1).replace('.', '')
+        current_version = re.search(regex_version, self.wazuh_version).group(1).replace('.', '')
+        if old_version < current_version:
+            migration_method_name = 'migrate_from_{}'.format(old_version)
+            if hasattr(self, migration_method_name):
+                migration_method = getattr(self, migration_method_name)
+                # do migration from 3.8 version
+                if old_version == '38':
+                    migration_method(**kwargs)
 
     def check_metadata_version(self):
         try:
@@ -163,8 +183,8 @@ class WazuhIntegration:
                 metadata_version = query_version.fetchone()[0]
                 # update Wazuh version in metadata table
                 if metadata_version != self.wazuh_version:
-                    self.db_connector.execute(self.sql_delete_version_metadata)
-                    self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
+                    self.old_version = metadata_version
+                    self.db_connector.execute(self.sql_update_version_metadata.format(wazuh_version=self.wazuh_version))
                     self.db_connector.commit()
             else:
                 # create metadate table
@@ -509,7 +529,7 @@ class AWSBucket(WazuhIntegration):
                     error_msg=e))
             sys.exit(10)
 
-    def db_maintenance(self, aws_account_id, aws_region):
+    def db_maintenance(self, aws_account_id=None, aws_region=None):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region) \
@@ -723,7 +743,7 @@ class AWSBucket(WazuhIntegration):
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -755,7 +775,7 @@ class AWSBucket(WazuhIntegration):
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
                 # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
                 self.db_connector.commit()
         except SystemExit:
             raise
@@ -846,9 +866,11 @@ class AWSLogsBucket(AWSBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
+                if self.old_version:
+                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 self.iter_files_in_bucket(aws_account_id, aws_region)
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -957,12 +979,14 @@ class AWSConfigBucket(AWSLogsBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
+                if self.old_version:
+                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # for processing logs day by day
                 date_list = self.get_date_list(aws_account_id, aws_region)
                 for date in date_list:
                     self.iter_files_in_bucket(aws_account_id, aws_region, date)
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def add_zero_to_day(self, date):
         # add zero to days with one digit
@@ -1038,7 +1062,7 @@ class AWSConfigBucket(AWSLogsBucket):
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -1070,7 +1094,7 @@ class AWSConfigBucket(AWSLogsBucket):
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
                 # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
                 self.db_connector.commit()
         except SystemExit:
             raise
@@ -1354,6 +1378,9 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     self.secret_key, aws_region)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
+                    if self.old_version:
+                        self.migrate(aws_account_id=aws_account_id, aws_region=aws_region,
+                            flow_log_id=flow_log_id)
                     date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
@@ -1387,7 +1414,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def db_maintenance(self, aws_account_id, aws_region, flow_log_id):
+    def db_maintenance(self, aws_account_id=None, aws_region=None, flow_log_id=None):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_region(aws_account_id, aws_region, flow_log_id) \
@@ -1479,7 +1506,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
             # optimize DB
-            self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region,
+                flow_log_id=flow_log_id)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -1512,7 +1540,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
                 # optimize DB
-                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region,
+                    flow_log_id=flow_log_id)
                 self.db_connector.commit()
         except SystemExit:
             raise
@@ -1691,7 +1720,7 @@ class AWSCustomBucket(AWSBucket):
         # would prevent to loose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
         self.iter_files_in_bucket()
-        self.db_maintenance(account_id)
+        self.db_maintenance()
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -1743,7 +1772,7 @@ class AWSCustomBucket(AWSBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def db_maintenance(self, *args):
+    def db_maintenance(self):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_custom() > self.retain_db_records:
