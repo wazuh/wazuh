@@ -36,14 +36,19 @@ typedef struct cis_db_hash_info_t {
     cis_db_info_t **elem;
 } cis_db_hash_info_t;
 
+typedef struct request_dump_t {
+    int policy_index;
+    int first_scan;
+} request_dump_t;
+
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
+static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,int first_scan);  // Do scan
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash, int first_scan,int id);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
@@ -99,6 +104,8 @@ cis_db_hash_info_t *cis_db_for_hash;
 static w_queue_t * request_queue;
 static wm_sca_t * data_win;
 
+cJSON **last_summary_json = NULL;
+
 // Module main function. It won't return
 void * wm_sca_main(wm_sca_t * data) {
     // If module is disabled, exit
@@ -132,6 +139,10 @@ void * wm_sca_main(wm_sca_t * data) {
 
             /* DB for calculating hash only */
             os_realloc(cis_db_for_hash, (i + 2) * sizeof(cis_db_hash_info_t), cis_db_for_hash);
+
+            /* Last summary for each policy */
+            os_realloc(last_summary_json, (i + 2) * sizeof(cJSON *), last_summary_json);
+            last_summary_json[i] = NULL;
 
             /* Prepare first ID for each policy file */
             os_calloc(1,sizeof(cis_db_info_t *),cis_db_for_hash[i].elem);
@@ -352,6 +363,7 @@ static int wm_sca_start(wm_sca_t * data) {
 static void wm_sca_read_files(wm_sca_t * data) {
     FILE *fp;
     int i = 0;
+    static int first_scan = 1;
 
     /* Read every policy monitoring file */
     if(data->profile){
@@ -469,7 +481,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements) {
-                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index) == 0){
+                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,first_scan) == 0){
                     requirements_satisfied = 1;
                 }
             }
@@ -486,7 +498,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
 
-                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index) != 0) {
+                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,first_scan) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -496,7 +508,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 /* Send summary */
                 if(integrity_hash) {
                     wm_delay(1000 * data->summary_delay);
-                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash);
+                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash,first_scan,cis_db_index);
                     snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
                     os_free(integrity_hash);
                 }
@@ -529,6 +541,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 w_del_plist(plist);
             }
         }
+        first_scan = 0;
     }
 }
 
@@ -712,7 +725,7 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index) {
+static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,int first_scan) {
 
     int type = 0, condition = 0;
     char *nbuf = NULL;
@@ -1072,7 +1085,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
 
                         if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                            if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
                                 wm_sca_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
@@ -1109,7 +1122,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
 
                         if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                            if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
                                 wm_sca_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
@@ -1917,7 +1930,7 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size)
 }
 #endif
 
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash) {
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash, int first_scan,int id) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
@@ -1970,7 +1983,17 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
         cJSON_AddStringToObject(json_summary, "hash", "error_calculating_hash");
     }
 
+    if (first_scan) {
+        cJSON_AddNumberToObject(json_summary, "first_scan", first_scan);
+    }
+
     mdebug1("Sending summary event for file: '%s", file->valuestring);
+
+    if (last_summary_json[id]) {
+        os_free(last_summary_json[id]);
+    }
+
+    last_summary_json[id] = cJSON_Duplicate(json_summary,1);
     wm_sca_send_alert(data,json_summary);
     cJSON_Delete(json_summary);
 
@@ -2299,9 +2322,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
     int i;
 
     while(1) {
-        unsigned int *policy_index;
+        request_dump_t *request;
 
-        if (policy_index = queue_pop_ex(request_queue), policy_index) {
+        if (request = queue_pop_ex(request_queue), request) {
 
 #ifndef WIN32
             int random = os_random();
@@ -2325,15 +2348,28 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             }
 
             unsigned int time = random;
-            mdebug1("Dumping DB for policy index: '%u' in %d seconds.",*policy_index,random);
-            minfo("Integration checksum failed for policy: '%s'. Resending scan results in %d seconds.", data->profile[*policy_index]->profile,random);
+            
 
-            wm_delay(1000 * time);
+            if (!request->first_scan) {
+                minfo("Integration checksum failed for policy: '%s'. Resending scan results in %d seconds.", data->profile[request->policy_index]->profile,random);
+            } else {
+                /* Delete this */
+                mdebug1("Sending dump first scan: '%s'. Resending scan results in 2 seconds.", data->profile[request->policy_index]->profile);
+            }
+
+            if (request->first_scan) {
+                mdebug1("Dumping DB for policy index: '%u' in 2 seconds.",request->policy_index);
+                wm_delay(2000);
+            } else {
+                mdebug1("Dumping DB for policy index: '%u' in %d seconds.",request->policy_index,random);
+                wm_delay(1000 * time);
+            }
+          
             int scan_id = -1;
 
-            for(i = 0; cis_db_for_hash[*policy_index].elem[i]; i++) {
+            for(i = 0; cis_db_for_hash[request->policy_index].elem[i]; i++) {
                 cis_db_info_t *event;
-                event = cis_db_for_hash[*policy_index].elem[i];
+                event = cis_db_for_hash[request->policy_index].elem[i];
 
                 if (event) {
                     if(event->event){
@@ -2356,10 +2392,20 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
            
             int elements_sent = i - 1;
             mdebug1("Sending dump ended event");
-            wm_sca_send_dump_end(data,elements_sent,data->profile[*policy_index]->policy_id,scan_id);
 
-            mdebug1("Finished dumping DB for policy index: %u",*policy_index);
-            os_free(policy_index);
+            wm_sca_send_dump_end(data,elements_sent,data->profile[request->policy_index]->policy_id,scan_id);
+
+            wm_delay(2000);
+
+            /* Send summary only for first scan */
+            if (request->first_scan) {
+                /* Send summary */
+                cJSON_DeleteItemFromObject(last_summary_json[request->policy_index],"first_scan");
+                wm_sca_send_alert(data,last_summary_json[request->policy_index]);
+            }
+
+            mdebug1("Finished dumping DB for policy index: %u",request->policy_index);
+            os_free(request);
         }
     }
 
@@ -2390,6 +2436,16 @@ void wm_sca_push_request_win(char * msg){
 
         *db++ = '\0';
 
+        /* Check for first scan */
+        char *first_scan = strchr(db,':');
+
+        if (!first_scan) {
+            mdebug1("First scan flag missing");
+            continue;
+        }
+
+        *first_scan++ = '\0';
+
         /* Search DB */
         int i;
 
@@ -2409,11 +2465,14 @@ void wm_sca_push_request_win(char * msg){
                     }
 
                     if(strcmp(data_win->profile[i]->policy_id,db) == 0){
-                        unsigned int *policy_index;
-                        os_calloc(1, sizeof(unsigned int), policy_index);
-                        *policy_index = i;
-                        if(queue_push_ex(request_queue,policy_index) < 0) {
-                            os_free(policy_index);
+                        request_dump_t *request;
+                        os_calloc(1, sizeof(request_dump_t),request);
+                         
+                        request->policy_index = i;
+                        request->first_scan = atoi(first_scan);
+
+                        if(queue_push_ex(request_queue,request) < 0) {
+                            os_free(request);
                             mdebug1("Could not push policy index to queue");
                         }
                         break;
@@ -2449,6 +2508,16 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
 
                 *db++ = '\0';
 
+                /* Check for first scan */
+                char *first_scan = strchr(db,':');
+
+                if (!first_scan) {
+                    mdebug1("First scan flag missing");
+                    continue;
+                }
+
+                *first_scan++ = '\0';
+
                 /* Search DB */
                 int i;
                 for(i = 0; data->profile[i]; i++) {
@@ -2466,12 +2535,14 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
                         }
 
                         if(strcmp(data->profile[i]->policy_id,db) == 0){
-                            unsigned int *policy_index;
-                            os_calloc(1, sizeof(unsigned int), policy_index);
-                            *policy_index = i;
+                            request_dump_t *request;
+                            os_calloc(1, sizeof(request_dump_t),request);
+                         
+                            request->policy_index = i;
+                            request->first_scan = atoi(first_scan);
 
-                            if(queue_push_ex(request_queue,policy_index) < 0) {
-                                os_free(policy_index);
+                            if(queue_push_ex(request_queue,request) < 0) {
+                                os_free(request);
                                 mdebug1("Could not push policy index to queue");
                             }
                             break;
