@@ -247,6 +247,7 @@ components:
       type: string
       minLength: 3
       description: Agent ID.
+      format: numbers
 
     AgentConfiguration:
       type: object

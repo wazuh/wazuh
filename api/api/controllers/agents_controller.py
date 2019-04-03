@@ -6,9 +6,6 @@ import asyncio
 import connexion
 import logging
 
-#import pydevd
-#pydevd.settrace('172.18.0.2', port=12345, stdoutToServer=True, stderrToServer=True)
-
 from wazuh.agent import Agent
 import wazuh.configuration as configuration
 from wazuh.cluster.dapi.dapi import DistributedAPI
