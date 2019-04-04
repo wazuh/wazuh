@@ -1,38 +1,42 @@
+# coding: utf-8
+
 from __future__ import absolute_import
 
 from api.models.base_model_ import Model
 from api import util
 
+
 class BasicInfo(Model):
 
-    def __init__(self, title: str=None, api_version: str=None, revision: str=None, license_name: str=None, license_url: str=None, hostname: str=None, timestamp:  str=None):  # noqa: E501
+    def __init__(self, title: str = None, api_version: str = None, revision: int = None, license_name: str = None,
+                 license_url: str = None, hostname: str = None, timestamp:  str = None):
         """BasicInfo - a model defined in Swagger
 
-        :param title: API title name.  # noqa: E501
+        :param title: API title name.
         :type title: str
 
-        :param api_version: API version installed in the node.  # noqa: E501
+        :param api_version: API version installed in the node.
         :type api_version: str
 
-        :param revision: Revision.  # noqa: E501
+        :param revision: Revision.
         :type revision: str
 
-        :param license_name: API license name.  # noqa: E501
+        :param license_name: API license name.
         :type license_name: str
 
-        :param license_url: API license url.  # noqa: E501
+        :param license_url: API license url.
         :type license_url: str
 
-        :param hostname: Machine´s hostname.  # noqa: E501
+        :param hostname: Machine´s hostname.
         :type hostname: str
 
-        :param timestamp: Timestamp.  # noqa: E501
+        :param timestamp: Timestamp.
         :type timestamp: str
         """
         self.swagger_types = {
             'title': str,
             'api_version': str,
-            'revision': str,
+            'revision': int,
             'license_name': str,
             'license_url': str,
             'hostname': str,
@@ -63,7 +67,7 @@ class BasicInfo(Model):
 
         :param dikt: A dict.
         :type: dict
-        :return: The BasicInfo of this BasicInfo.  # noqa: E501
+        :return: The BasicInfo of this BasicInfo.
         :rtype: BasicInfo
         """
         return util.deserialize_model(dikt, cls)
@@ -109,22 +113,22 @@ class BasicInfo(Model):
         self._api_version = api_version
 
     @property
-    def revision(self) -> str:
+    def revision(self) -> int:
         """Gets the revision of this BasicInfo.
 
 
         :return: The revision of this BasicInfo.
-        :rtype: str
+        :rtype: int
         """
         return self.revision
 
     @revision.setter
-    def revision(self, revision: str):
+    def revision(self, revision: int):
         """Sets the revision of this BasicInfo.
 
 
         :param revision: The revision of this BasicInfo.
-        :type revision: str
+        :type revision: int
             """
         self._revision = revision
 
