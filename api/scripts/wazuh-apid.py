@@ -9,6 +9,7 @@ import ssl
 
 import connexion
 from flask_cors import CORS
+from flask_caching import Cache
 
 from api import alogging, encoder, configuration, __path__ as api_path
 from api import validator  # To register custom validators (do not remove)
@@ -41,6 +42,9 @@ def main(cors, port, host, ssl_context, main_logger):
     if cors:
         # add CORS support
         CORS(app.app)
+    # add Cache support
+    cache = Cache(config={"CACHE_TYPE": "simple"})
+    cache.init_app(app.app)
     try:
         app.run(port=port, host=host, ssl_context=ssl_context)
     except Exception as e:
