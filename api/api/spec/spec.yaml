@@ -7,11 +7,11 @@ info:
     \ the Wazuh infrastructure via the Wazuh Kibana app. Use the API to easily perform\
     \ everyday actions like adding an agent, restarting the manager(s) or agent(s)\
     \ or looking up syscheck details.\n"
-  version: 4.0.0
-  x-revision: 'UNK'
-  title: "Wazuh API"
+  version: '4.0.0'
+  x-revision: 4000
+  title: 'Wazuh API'
   license:
-    name: GPL 2.0
+    name: 'GPL 2.0'
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 components:
