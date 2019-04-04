@@ -766,6 +766,13 @@ int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_d
         return 0;
     }
 
+#ifdef WIN32
+    if (check_removed_file(dir_name)) {
+        mdebug2("'%s' will not be read.", dir_name);
+        return 0;
+    }
+#endif
+
     // 3.8 - We can't follow symlinks in Windows
 #ifndef WIN32
     switch(read_links(dir_name, dir_position, max_depth, is_link)) {

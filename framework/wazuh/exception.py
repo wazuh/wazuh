@@ -142,6 +142,9 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
+        1746: "Could not parse current client.keys file",
+        1747: "Could not remove agent group assigment from database",
+        1748: "Could not remove agent files",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

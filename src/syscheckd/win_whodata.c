@@ -90,8 +90,8 @@ void whodata_clean_rlist();
 
 // Get volumes and paths of Windows system
 int get_volume_names();
-int get_drive_names(PWCHAR volume_name, char *device);
-int replace_device_path(char * path);
+int get_drive_names(wchar_t *volume_name, char *device);
+void replace_device_path(char **path);
 
 char *guid_to_string(GUID *guid) {
     char *string_guid;
@@ -512,7 +512,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
             }
 
             // Replace in string path \device\harddiskvolumeX\ by drive letter
-            replace_device_path(path);
+            replace_device_path(&path);
 
             str_lowercase(path);
             if (whodata_path_filter(&path)) {
@@ -596,7 +596,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 // Check if it is a known file
                 if (s_node = OSHash_Get_ex(syscheck.fp, path), !s_node) {
                     int device_type;
-                    // Check if it is not a directory
                     if (strchr(path, ':')) {
                         if (position = find_dir_pos(path, 1, CHECK_WHODATA, 1), position < 0) {
                             // Discard the file or directory if its monitoring has not been activated
@@ -623,8 +622,9 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         } else {
                             // It is an existing file
                         }
-                    } else { // Directory modification events do not have ':' in their path for event 4656
-                        is_directory = 1;
+                    } else {
+                        mdebug2("Uncontrolled whodata event on '%s'.", path);
+                        break;
                     }
                 } else {
                     if (s_node->dir_position < 0) {
@@ -638,7 +638,6 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                         whodata_hash_add(syscheck.wdata.ignored_paths, path, &fields_number, "ignored");
                         goto clean;
                     }
-
                     // If the file or directory is already in the hash table, it is not necessary to set its position
                     if (check_path_type(path) == 2) {
                         is_directory = 1;
@@ -658,7 +657,10 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                     // The directory path will be saved in 4663 event
                     w_evt->path = NULL;
                 }
-                w_evt->dir_position = position;
+
+                if (position > -1) {
+                    w_evt->dir_position = position;
+                }
                 w_evt->process_name = process_name;
                 w_evt->process_id = process_id;
                 w_evt->mask = 0;
@@ -750,7 +752,6 @@ add_whodata_evt:
             break;
             // Deleted file
             case 4660:
-            minfo("4660 [%s]", hash_id);
                 if (w_evt = OSHash_Get(syscheck.wdata.fd, hash_id), w_evt) {
                     // The file has been deleted
                     w_evt->deleted = 1;
@@ -1335,8 +1336,8 @@ void notify_SACL_change(char *dir) {
 int get_volume_names() {
     char *convert_device;
     char *convert_volume;
-    WCHAR device_name[MAX_PATH] = L"";
-    WCHAR volume_name[MAX_PATH] = L"";
+    wchar_t device_name[MAX_PATH] = L"";
+    wchar_t volume_name[MAX_PATH] = L"";
     HANDLE fh = INVALID_HANDLE_VALUE;
     unsigned long char_count = 0;
     size_t index = 0;
@@ -1420,10 +1421,10 @@ int get_volume_names() {
     return success;
 }
 
-int get_drive_names(PWCHAR volume_name, char *device) {
+int get_drive_names(wchar_t *volume_name, char *device) {
     char *convert_name;
-    PWCHAR names = NULL;
-    PWCHAR nameit = NULL;
+    wchar_t *names = NULL;
+    wchar_t *nameit = NULL;
     unsigned long char_count = MAX_PATH + 1;
     unsigned int device_it;
     size_t success = -1;
@@ -1431,7 +1432,7 @@ int get_drive_names(PWCHAR volume_name, char *device) {
 
     while (1) {
         // Allocate a buffer to hold the paths.
-        os_calloc(MAX_PATH, sizeof(PWCHAR), names);
+        os_calloc(MAX_PATH, sizeof(wchar_t *), names);
 
         // Obtain all of the paths for this volume.
         success = GetVolumePathNamesForVolumeNameW(
@@ -1497,28 +1498,34 @@ int get_drive_names(PWCHAR volume_name, char *device) {
     return 0;
 }
 
-int replace_device_path(char * path) {
+void replace_device_path(char **path) {
     char *new_path;
     unsigned int iterator = 0;
 
+    if (**path != '\\') {
+        return;
+    }
+
     while (syscheck.wdata.device[iterator]) {
-        minfo("Find device '%s' in path '%s'", syscheck.wdata.device[iterator], path);
+        size_t dev_size = strlen(syscheck.wdata.device[iterator]);
 
-        if (strstr(path, syscheck.wdata.device[iterator]) != NULL) {
-            os_strdup(syscheck.wdata.drive[iterator], new_path);
+        mdebug2("Find device '%s' in path '%s'", syscheck.wdata.device[iterator], *path);
 
-            if (wm_strcat(&new_path, path + strlen(syscheck.wdata.device[iterator]), '\0') == 0) {
-                minfo("Replacing '%s' to '%s'", path, new_path);
-                os_free(path);
-                path = new_path;
-            }
+        if (!strncmp(*path, syscheck.wdata.device[iterator], dev_size)) {
+            size_t new_path_size = strlen(syscheck.wdata.drive[iterator]) + (size_t) (*path - dev_size);
+
+            os_calloc(new_path_size + 1, sizeof(char), new_path);
+            snprintf(new_path, new_path_size, "%s%s", syscheck.wdata.drive[iterator], *path + dev_size);
+            mdebug2("Replacing '%s' to '%s'", *path, new_path);
+
+            os_free(*path);
+            *path = new_path;
             break;
         }
 
         iterator++;
     }
 
-    return 0;
 }
 
 char *get_whodata_path(const short unsigned int *win_path) {
@@ -1540,7 +1547,7 @@ char *get_whodata_path(const short unsigned int *win_path) {
 }
 
 int whodata_path_filter(char **path) {
-    if (strstr(*path, ":\\$recycle.bin")) {
+    if (check_removed_file(*path)) {
         mdebug2("File '%s' is in the recycle bin. It will be discarded.", *path);
         return 1;
     }
