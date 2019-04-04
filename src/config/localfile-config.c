@@ -296,6 +296,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
 
+            if(logf[pl].age_str){
+                os_free(logf[pl].age_str);
+            }
+
+            os_strdup(node[i]->content,logf[pl].age_str);
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

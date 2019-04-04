@@ -100,6 +100,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array) {
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
         if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
+        if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].target && *list[i].target) {
             cJSON *target = cJSON_CreateArray();
             for (j=0;list[i].target[j];j++) {
