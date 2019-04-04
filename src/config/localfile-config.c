@@ -34,8 +34,8 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_target = "target";
     const char *xml_localfile_outformat = "out_format";
     const char *xml_localfile_age = "age";
-    const char *xml_localfile_only = "only";
     const char *xml_localfile_exclude = "exclude";
+    const char *xml_localfile_binaries = "discard_binaries";
 
     logreader *logf;
     logreader_config *log_config;
@@ -303,12 +303,14 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
 
-        } else if (strcasecmp(node[i]->element, xml_localfile_only) == 0) {
+        } else if (strcasecmp(node[i]->element, xml_localfile_binaries) == 0) {
 
-            if(strcmp(node[i]->content,"text") == 0) {
-                os_strdup(node[i]->content, logf[pl].only);
+            if(strcmp(node[i]->content,"yes") == 0) {
+               logf[pl].filter_binary = 1;
             }
-            else {
+            else if (strcmp(node[i]->content,"no") == 0) {
+                logf[pl].filter_binary = 0;
+            } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }

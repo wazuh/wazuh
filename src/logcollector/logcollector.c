@@ -1041,7 +1041,7 @@ void set_read(logreader *current, int i, int j) {
         current->read = read_audit;
     } else {
 #ifdef WIN32
-        if (current->only) {
+        if (current->filter_binary) {
             /* If the file is empty, set it to UCS-2 LE */
             if (FileSizeWin(current->file) == 0) {
                 current->ucs2 = UCS2_LE;
@@ -1773,6 +1773,13 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
             int ucs2 = is_usc2(current->file);
             if (ucs2) {
                 current->ucs2 = ucs2;
+                if (current->filter_binary) {
+                    /* If the file is empty, set it to UCS-2 LE */
+                    if (FileSizeWin(current->file) == 0) {
+                        current->ucs2 = UCS2_LE;
+                        current->read = read_ucs2_le;
+                        mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
+                    } else {
 
                 if (current->ucs2 == UCS2_LE) {
                     mdebug1("File '%s' is UCS-2 LE",current->file);
@@ -1785,7 +1792,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                 }
             }
 
-            if (current->only) {
+            if (current->filter_binary) {
                 /* If the file is empty, set it to UCS-2 LE */
                 if (FileSizeWin(current->file) == 0) {
                     current->ucs2 = UCS2_LE;
@@ -1934,7 +1941,7 @@ static void check_text_only() {
         }
 
         /* Check for files to exclude */
-        if(current->file && !current->command && current->only) {
+        if(current->file && !current->command && current->filter_binary) {
             snprintf(file_name, PATH_MAX, "%s", current->file);
 
             if(is_ascii_utf8(current->file)) {
