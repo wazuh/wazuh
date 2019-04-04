@@ -133,7 +133,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if(IsFile(path) == 0){
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", path, syscheck.dir[pos]);
             }
-            int diff = fim_find_child_depth(syscheck.dir[pos], path);
+            int diff = fim_find_child_depth(syscheck.linked_paths[pos] ? syscheck.linked_paths[pos] : syscheck.dir[pos], path);
             int depth = syscheck.recursion_level[pos] - diff + 1;
 
             if(check_path_type(path) == 2){
@@ -190,10 +190,11 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
         }
 
         for (i = 0; syscheck.dir[i]; i++) {
+            char *dir = syscheck.linked_paths[i] ? syscheck.linked_paths[i] : syscheck.dir[i];
             if (check_find && !(syscheck.opts[i] & check_find)) {
                 continue;
             }
-            if (!strcmp(syscheck.dir[i], buf)) {
+            if (!strcmp(dir, buf)) {
                 // If deep_search is activated we will continue searching for parent directories
                 if (deep_search) {
                     int buf_len = strlen(buf);

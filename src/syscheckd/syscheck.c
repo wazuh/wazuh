@@ -91,11 +91,11 @@ int fim_initialize() {
 #endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
-    
+
     if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) merror_exit("At fim_initialize(): OSHash_Create() failed");
-    
+
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
-    
+
     return 0;
 }
 
@@ -183,7 +183,7 @@ int Start_win32_Syscheck()
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
             minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            if (syscheck.tag[r] != NULL)
+            if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
             r++;
         }
@@ -413,7 +413,13 @@ int main(int argc, char **argv)
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
-            minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+
+            if (!syscheck.linked_paths[r]) {
+                minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            } else {
+                minfo("Monitoring directory: '%s' (%s), with options %s.", syscheck.dir[r], syscheck.linked_paths[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            }
+
             if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
             r++;

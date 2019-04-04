@@ -948,7 +948,7 @@ int run_dbcheck()
             }
         }
 #endif
-        read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0);
+        read_dir(syscheck.linked_paths[i] ? syscheck.linked_paths[i] : syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0);
         i++;
     }
 
