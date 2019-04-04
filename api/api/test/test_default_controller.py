@@ -31,7 +31,3 @@ def test_default_info(mocked_hostname, mocked_time):
         assert data['hostname'] == 'wazuh'
         assert data['timestamp'] == '2019-04-04T07:38:09+0000'
         assert code == 200
-
-
-
-
