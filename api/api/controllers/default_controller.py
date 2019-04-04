@@ -19,17 +19,17 @@ def default_info():
 
     Returns various basic information about the API
     """
-    stream = open(os.path.join(api_path[0], 'spec/spec.yaml'), 'r')
-    info_data = yaml.load(stream)
-    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z", time.gmtime())
-    data = {
-        'title': info_data['info']['title'],
-        'api_version': info_data['info']['version'],
-        'revision': info_data['info']['x-revision'],
-        'license_name': info_data['info']['license']['name'],
-        'license_url': info_data['info']['license']['url'],
-        'hostname': socket.gethostname(),
-        'timestamp': timestamp
-    }
+    with open(os.path.join(api_path[0], 'spec', 'spec.yaml'), 'r') as stream:
+        info_data = yaml.load(stream)
+        timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z", time.gmtime())
+        data = {
+            'title': info_data['info']['title'],
+            'api_version': info_data['info']['version'],
+            'revision': info_data['info']['x-revision'],
+            'license_name': info_data['info']['license']['name'],
+            'license_url': info_data['info']['license']['url'],
+            'hostname': socket.gethostname(),
+            'timestamp': timestamp
+        }
 
     return data, 200
