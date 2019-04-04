@@ -114,8 +114,8 @@ components:
           type: string
           description: API version installed in the node.
         revision:
-          type: string
-          description: Revision.
+          type: integer
+          format: int32
         license_name:
           type: string
           description: API license name.
@@ -3078,7 +3078,7 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.0.0"
-                revision: "Unknown"
+                revision: 4000
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/master/LICENSE"
                 hostname: "wazuh"
