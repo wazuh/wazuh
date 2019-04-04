@@ -303,6 +303,12 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return OS_INVALID;
             }
 
+            if(logf[pl].age_str){
+                os_free(logf[pl].age_str);
+            }
+
+            os_strdup(node[i]->content,logf[pl].age_str);
+
         } else if (strcasecmp(node[i]->element, xml_localfile_binaries) == 0) {
 
             if(strcmp(node[i]->content,"yes") == 0) {
@@ -314,7 +320,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-            
+
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

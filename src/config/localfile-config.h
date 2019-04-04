@@ -80,6 +80,7 @@ typedef struct _logreader {
     pthread_mutex_t mutex;
     int exists;
     unsigned int age;
+    char *age_str;
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
