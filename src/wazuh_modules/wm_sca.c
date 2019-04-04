@@ -2401,6 +2401,9 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             if (request->first_scan) {
                 /* Send summary */
                 cJSON_DeleteItemFromObject(last_summary_json[request->policy_index],"first_scan");
+                /* Force alert */
+                cJSON_AddStringToObject(last_summary_json[request->policy_index], "force_alert", "1");
+
                 wm_sca_send_alert(data,last_summary_json[request->policy_index]);
             }
 
@@ -2441,7 +2444,7 @@ void wm_sca_push_request_win(char * msg){
 
         if (!first_scan) {
             mdebug1("First scan flag missing");
-            continue;
+            return;
         }
 
         *first_scan++ = '\0';

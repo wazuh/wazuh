@@ -675,6 +675,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *file = NULL;
     cJSON *policy = NULL;
     cJSON *first_scan = NULL;
+    cJSON *force_alert = NULL;
 
     pm_scan_id = cJSON_GetObjectItem(event, "scan_id");
     policy_id =  cJSON_GetObjectItem(event, "policy_id");
@@ -689,6 +690,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     file = cJSON_GetObjectItem(event,"file");
     policy = cJSON_GetObjectItem(event,"name");
     first_scan = cJSON_GetObjectItem(event,"first_scan");
+    force_alert = cJSON_GetObjectItem(event,"force_alert");
 
     if(!policy_id) {
         return;
@@ -799,6 +801,10 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                     }
                 }
+
+                if (force_alert) {
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                }
             }
             break;
         case 1: // It not exists, insert
@@ -819,6 +825,10 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                         mdebug1("Requesting dump first scan for policy: %s",policy_id->valuestring);
                         PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
                     }
+                }
+
+                if (force_alert) {
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                 }
             }
             
