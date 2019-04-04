@@ -375,3 +375,246 @@ stages:
       body:
         error: 0
         data: Restarting all agents
+
+---
+test_name: GET /agents/:agent/config/:component/:configuration
+
+stages:
+  - name: Request-Agent-Client
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/client
+      method: GET
+
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data:
+          client:
+            auto_restart: !anystr
+            config-profile: !anystr
+            crypto_method: !anystr
+            notify_time: !anyint
+            remote_conf: !anystr
+            server: !anything
+            time-reconnect: !anyint
+
+  - name: Request-Agent-Buffer
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/buffer
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          buffer:
+            disabled: !anystr
+            queue_size: !anyint
+            events_per_second: !anyint
+
+  - name: Request-Agent-Labels
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/labels
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          labels: !anything
+
+  - name: Request-Agent-Internal
+
+    request:
+      url: http://localhost:55000/agents/002/config/agent/internal
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          internal:
+            agent:
+              debug: !anyint
+              min_eps: !anyint
+              normal_level: !anyint
+              recv_timeout: !anyint
+              remote_conf: !anyint
+              state_interval: !anyint
+              tolerance: !anyint
+              warn_level: !anyint
+            monitord:
+              compress: !anyint
+              daily_rotations: !anyint
+              day_wait: !anyint
+              keep_log_days: !anyint
+              rotate_log: !anyint
+              size_rotate: !anyint
+            remoted:
+              comp_average_printout: !anyint
+              max_attempts: !anyint
+              recv_counter_flush: !anyint
+              request_pool: !anyint
+              request_rto_msec: !anyint
+              request_rto_sec: !anyint
+              verify_msg_id: !anyint
+
+  - name: Request-Analysis-Global
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/global
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          global:
+            alerts_log: !anystr
+            email_notification: !anystr
+            host_information: !anyint
+            integrity_checking: !anyint
+            jsonout_output: !anystr
+            logall: !anystr
+            logall_json: !anystr
+            max_output_size: !anyint
+            memory_size: !anyint
+            prelude_output: !anystr
+            rootkit_detection: !anyint
+            rotate_interval: !anyint
+            stats: !anyint
+            white_list: !anything
+            zeromq_output: !anystr
+
+  - name: Request-Analysis-Active-response
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/active_response
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          active-response: !anything
+
+  - name: Request-Analysis-Alerts
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/alerts
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          alerts:
+            email_alert_level: !anyint
+            log_alert_level: !anyint
+  
+  - name: Request-Analysis-Command
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/command
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          command: !anything
+
+  - name: Request-Analysis-Internal
+
+    request:
+      url: http://localhost:55000/agents/000/config/analysis/internal
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          internal:
+            analysisd:
+              debug: !anyint
+              decoder_order_size: !anyint
+              default_timeframe: !anyint
+              fts_list_size: !anyint
+              fts_min_size_for_str: !anyint
+              label_cache_maxage: !anyint
+              log_fw: !anyint
+              min_rotate_interval: !anyint
+              rlimit_nofile: !anyint
+              show_hidden_labels: !anyint
+              stats_maxdiff: !anyint
+              stats_mindiff: !anyint
+              stats_percent_diff: !anyint
+  
+  - name: Request-Auth-Auth
+
+    request:
+      url: http://localhost:55000/agents/000/config/auth/auth
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          auth:
+            ciphers: !anystr
+            disabled: !anystr
+            force_insert: !anystr
+            force_time: !anystr
+            limit_maxagents: !anystr
+            port: !anyint
+            purge: !anystr
+            ssl_auto_negotiate: !anystr
+            ssl_manager_cert: !anystr
+            ssl_manager_key: !anystr
+            ssl_verify_host: !anystr
+            use_password: !anystr
+            use_source_ip: !anystr
+
+  - name: Request-Com-Active-response
+
+    request:
+      url: http://localhost:55000/agents/002/config/com/active-response
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          active-response:
+            ca_store: !anything
+            disabled: !anystr
+
+  - name: Request-Com-Internal
+
+    request:
+      url: http://localhost:55000/agents/002/config/com/internal
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          internal:
+            execd:
+              request_timeout: !anyint
+              max_restart_lock: !anyint
