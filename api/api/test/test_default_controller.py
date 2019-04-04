@@ -2,49 +2,34 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
+import re
 from unittest.mock import patch, mock_open
 
 from api.controllers.default_controller import default_info
 
-test_path = os.path.dirname(os.path.realpath(__file__))
-test_data_path = os.path.join(test_path, 'data')
 
-spec_contents_yaml = '''
-info:
-  version: 4.0.0
-  x-revision: 'UNK'
-  title: "Wazuh API"
-  license:
-    name: GPL 2.0
-    url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
-    '''
+@patch('api.controllers.default_controller.time.strftime', return_value='2019-04-04T07:38:09+0000')
+@patch('api.controllers.default_controller.socket.gethostname', return_value='wazuh')
+def test_default_info(mocked_hostname, mocked_time):
 
-spec_contents = {
-    'info': {
-        'title': 'Wazuh API',
-        'version': '4.0.0',
-        'x-revision': 'UNK',
-        'license' : {
-            'name': 'GPL 2.0',
-            'url': 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
-            }
-    }
-}
-
-
-@patch('api.controllers.default_controller.socket.gethostname', return_value="wazuh")
-@patch('api.controllers.default_controller.yaml.load', return_value=spec_contents)
-def test_default_info(mocked_yaml, mocked_hostname):
-    m = mock_open(read_data=spec_contents_yaml)
-    with patch('builtins.open', m):
         data, code = default_info()
-        assert data['title'] == 'Wazuh API'
-        assert data['api_version'] == '4.0.0'
-        assert data['revision'] == 'UNK'
-        assert data['license_name'] == 'GPL 2.0'
-        assert data['license_url'] == 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
+        assert isinstance(data, dict)
+        assert 'title' in data.keys()
+        assert isinstance(data['title'], str)
+        assert 'api_version' in data.keys()
+        assert isinstance(data['api_version'], str)
+        version_regex = re.compile(r'^\d+\.+\d+\.+\d+$')
+        assert version_regex.fullmatch(data['api_version'])
+        assert 'revision' in data.keys()
+        assert isinstance(data['revision'], int)
+        assert 'license_name' in data.keys()
+        assert isinstance(data['license_name'], str)
+        assert 'license_url' in data.keys()
+        assert isinstance(data['license_url'], str)
+        url_regex = re.compile(r'^(https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+\.[^\s]{2,})$')
+        assert url_regex.fullmatch(data['license_url'])
         assert data['hostname'] == 'wazuh'
+        assert data['timestamp'] == '2019-04-04T07:38:09+0000'
         assert code == 200
 
 
