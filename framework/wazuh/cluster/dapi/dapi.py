@@ -24,7 +24,7 @@ class DistributedAPI:
     """
     Represents a distributed API request
     """
-    def __init__(self, f: Callable, logger: logging.Logger, f_kwargs: Dict = {}, node: c_common.Handler = None,
+    def __init__(self, f: Callable, logger: logging.Logger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False):
@@ -41,7 +41,7 @@ class DistributedAPI:
         """
         self.logger = logger
         self.f = f
-        self.f_kwargs = f_kwargs
+        self.f_kwargs = f_kwargs if f_kwargs is not None else {}
         self.node = node if node is not None else local_client
         self.cluster_items = cluster.get_cluster_items() if node is None else node.cluster_items
         self.debug = debug
@@ -98,9 +98,9 @@ class DistributedAPI:
             try:
                 response = json.loads(response, object_hook=as_wazuh_object) if isinstance(response, str) else response
             except json.decoder.JSONDecodeError:
-                response = WazuhResult({'message': response})
+                response = {'message': response}
 
-            return response
+            return response if isinstance(response, WazuhResult) else WazuhResult(response)
 
         except exception.WazuhError as e:
             return e
@@ -154,7 +154,7 @@ class DistributedAPI:
             self.logger.error("Error executing API request locally: {}".format(e))
             if self.debug:
                 raise
-            return json.dumps(exception.WazuhInternalError(), cls=WazuhJSONEncoder)
+            return json.dumps(exception.WazuhInternalError(1000), cls=WazuhJSONEncoder)
 
     def to_dict(self):
         return {"f": self.f,
@@ -173,7 +173,7 @@ class DistributedAPI:
         if res.startswith(b'Error'):
             return exception.WazuhInternalError(extra_message=res.decode())
 
-    async def execute_remote_request(self) -> str:
+    async def execute_remote_request(self) -> Dict:
         """
         Executes a remote request. This function is used by worker nodes to execute master_only API requests.
 
@@ -192,7 +192,7 @@ class DistributedAPI:
 
         :return: a JSON response.
         """
-        async def forward(node_name: Tuple) -> str:
+        async def forward(node_name: Tuple) -> Dict:
             """
             Forwards a request to a node.
             :param node_name: Node to forward a request to.
@@ -214,7 +214,7 @@ class DistributedAPI:
                                                                              cls=WazuhJSONEncoder)
                                                                   ).encode(),
                                                    self.wait_for_complete)
-            return response
+            return response if isinstance(response, WazuhResult) else WazuhResult(response)
 
         # get the node(s) who has all available information to answer the request.
         nodes = self.get_solver_node()
@@ -360,13 +360,12 @@ class APIRequestQueue:
             # name    -> node name the request must be sent to. None if called from a worker node.
             # id      -> id of the request.
             # request -> JSON containing request's necessary information
+            names, request = (await self.request_queue.get()).split(' ', 1)
+            names = names.split('*', 1)
+            name_2 = '' if len(names) == 1 else names[1] + ' '
+            node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             try:
-                names, request = (await self.request_queue.get()).split(' ', 1)
                 request = json.loads(request, object_hook=as_wazuh_object)
-                names = names.split('*', 1)
-                name_2 = '' if len(names) == 1 else names[1] + ' '
-
-                node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
 
@@ -443,4 +442,6 @@ def as_wazuh_object(dct: Dict):
             return exception.WazuhException.from_dict(dct['__wazuh_exception__'])
         return dct
     except (KeyError, AttributeError):
-        raise exception.WazuhInternalError(1000, extra_message=f"Wazuh object cannot be decoded from JSON {encoded_callable}", cmd_error=True)
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
+                                           cmd_error=True)

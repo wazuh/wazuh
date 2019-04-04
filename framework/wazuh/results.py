@@ -16,7 +16,7 @@ class WazuhResult(dict):
         
         if isinstance(other, WazuhException):
             return other
-        elif not isinstance(dict):
+        elif not isinstance(other, dict):
             raise WazuhInternalError(1000, extra_message=f"WazuhResult cannot be merged with {type(other)} object")
 
         result = deepcopy(self)
