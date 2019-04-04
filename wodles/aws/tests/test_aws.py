@@ -106,7 +106,7 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
         last_log_key_before = query.fetchone()[0]
 
         # maintenance when retain_db_records is bigger than elements in DB
-        ins.db_maintenance('123456789', 'us-east-1')
+        ins.db_maintenance(account_id, region)
         query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
                                          account_id=account_id))
         data = query.fetchone()[0]
@@ -142,4 +142,3 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
         last_log_key_after = query.fetchone()[0]
 
         assert(last_log_key_before == last_log_key_after)
-
