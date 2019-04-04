@@ -127,22 +127,6 @@ stages:
           totalItems: !anyint
 
 ---
-test_name: All test agents
-
-stages:
-  - name: Restart all agents
-
-    request:
-      url: http://localhost:55000/agents/restart
-      method: PUT
-
-    response:
-      status_code: 200 
-      body:
-        error: 0
-        data: Restarting all agents
-
----
 test_name: GET /agents/:agent_id
 
 stages:
@@ -270,7 +254,75 @@ stages:
         message: !anystr
 
 ---
-test_name: GET/agents/:agent_id/key
+test_name: GET /agents/name/:agent_name
+
+stages:
+  - name: Create an agent to delete
+
+    request:
+      url: http://localhost:55000/agents/common_agent
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Get agent by name
+
+    request:
+      url: http://localhost:55000/agents/name/common_agent
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          id: !anystr
+          ip: !anystr
+          name: !anystr
+          node_name: !anystr
+          registerIP: !anystr
+          status: !anystr
+
+
+  - name: Get key with not exit agent
+
+    request:
+      url: http://localhost:55000/agents/name/not_exist_agent
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: !anystr
+
+  - name: Get agent by name
+
+    request:
+      url: http://localhost:55000/agents/name/common_agent
+      method: GET
+      params:
+        select: dateAdd,mergedSum,os.name
+
+    response: 
+      status_code: 200
+      body:
+        error: 0
+        data:
+          dateAdd: !anystr
+          #mergedSum: !anystr
+          #os:
+            #name: !anystr
+
+---
+test_name: GET /agents/:agent_id/key
 
 stages:
   - name: Get agent key
@@ -305,3 +357,21 @@ stages:
       body:
         error: 1701
         message: !anystr
+
+
+#Distributed request
+---
+test_name: PUT /agents/restart
+
+stages:
+  - name: Restart all agents
+
+    request:
+      url: http://localhost:55000/agents/restart
+      method: PUT
+
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data: Restarting all agents
