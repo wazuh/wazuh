@@ -146,6 +146,7 @@ stages:
 test_name: GET /agents/:agent_id
 
 stages:
+
   - name: Get an agent
 
     request: &get_agent
@@ -266,4 +267,41 @@ stages:
       status_code: 200
       body:
         error: 1724
+        message: !anystr
+
+---
+test_name: GET/agents/:agent_id/key
+
+stages:
+  - name: Get agent key
+
+    request:
+      url: http://localhost:55000/agents/001/key
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: !anystr
+
+  - name: Get key with bad agent id
+
+    request:
+      url: http://localhost:55000/agents/abc/key
+      method: GET
+
+    response:
+      status_code: 400
+
+  - name: Get key with not exit agent
+
+    request:
+      url: http://localhost:55000/agents/99999/key
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
         message: !anystr
