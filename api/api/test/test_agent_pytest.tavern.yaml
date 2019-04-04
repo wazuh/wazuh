@@ -177,11 +177,11 @@ stages:
           status: !anystr
           version: !anystr
 
-  - name: Get the manager
+  - name: Get manager
 
-    request: 
-      <<: *get_agent
+    request:
       url: http://localhost:55000/agents/000
+      method: GET
 
     response: 
       <<: *agent_response
@@ -204,7 +204,7 @@ stages:
           dateAdd: !anystr
           mergedSum: !anystr
   
-  - name: Get an agent not allowed selector
+  - name: Get an agent, not allowed selector
 
     request: 
       <<: *get_agent
@@ -219,9 +219,51 @@ stages:
   
   - name: Get an agent, bad id
 
-    request: 
-      <<: *get_agent
+    request:
       url: http://localhost:55000/agents/abc
+      method: GET
 
     response:
       status_code: 400
+
+  - name: Get an agent, not agent
+
+    request:
+      url: http://localhost:55000/agents/99999
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: !anystr
+  
+  - name: Get manager, with some select
+
+    request:
+      url: http://localhost:55000/agents/000
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          id: !anystr
+          ip: !anystr
+          lastKeepAlive: !anystr
+          status: !anystr
+
+  - name: Get manager wrong field
+
+    request: 
+      url: http://localhost:55000/agents/000
+      method: GET
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 200
+      body:
+        error: 1724
+        message: !anystr
