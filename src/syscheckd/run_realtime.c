@@ -45,6 +45,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     char *path;
     syscheck_node *s_node;
     int pos;
+    char linked_file[PATH_MAX + 1] = {'\0'};
+
 
     // To obtain path without symbolic links
 
@@ -68,6 +70,10 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 #ifdef WIN_WHODATA
     }
 #endif
+
+    if (syscheck.linked_paths[pos]) {
+        replace_linked_path(file_name, pos, linked_file);
+    }
 
     if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
         char c_sum[OS_MAXSTR + 1];
@@ -103,14 +109,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[SK_DB_REPORT_CHANG] == '+') {
                 fullalert = seechanges_addfile(path);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", path, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *linked_file ? linked_file : file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", path);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *linked_file ? linked_file : file_name);
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", path);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *linked_file ? linked_file : file_name);
             }
 
             send_syscheck_msg(alert_msg);

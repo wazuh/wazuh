@@ -185,6 +185,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *wd_sum = NULL;
     char *alert_msg = NULL;
     char *c_sum = NULL;
+    char linked_file[PATH_MAX + 1] = {'\0'};
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wd_sum);
 #ifdef WIN32
     char *sid = NULL;
@@ -195,6 +196,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
     char *hash_file_name;
 #endif
 
+    if (syscheck.linked_paths[dir_position]) {
+        replace_linked_path(file_name, dir_position, linked_file);
+    }
 
     opts = syscheck.opts[dir_position];
     restriction = syscheck.filerestrict[dir_position];
@@ -220,7 +224,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
 
         case ENOTDIR:
             /*Deletion message sending*/
-            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
+            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? linked_file : file_name);
             send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
@@ -569,7 +573,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                file_name,
+                *linked_file ? linked_file : file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
 
@@ -662,7 +666,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                file_name,
+                *linked_file ? linked_file : file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
 #endif
@@ -697,7 +701,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (strcmp(c_sum, buf + SK_DB_NATTR)) {
                 // Extract the whodata sum here to not include it in the hash table
                 if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-                    merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+                    merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", *linked_file ? linked_file : file_name);
                 }
                 // Update database
                 snprintf(alert_msg, OS_MAXSTR, "%.*s%.*s", SK_DB_NATTR, buf, (int)strcspn(c_sum, " "), c_sum);
@@ -710,16 +714,16 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name, fullalert);
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? linked_file : file_name, fullalert);
                         os_free(fullalert);
                         fullalert = NULL;
                     } else {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? linked_file : file_name);
                     }
                 } else {
                     snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s",
-                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", file_name);
+                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? linked_file : file_name);
                 }
                 os_free(buf);
                 send_syscheck_msg(alert_msg);
@@ -735,7 +739,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
         }
         __counter++;
     } else {
-        mdebug2("IRREG File: '%s'", file_name);
+        mdebug2("IRREG File: '%s'", *linked_file ? linked_file : file_name);
     }
 
 
@@ -1279,6 +1283,31 @@ int fim_delete_hashes(char *file_name) {
     os_free(file_name);
 
     return 0;
+}
+
+void replace_linked_path(const char *file_name, int dir_position, char *linked_file) {
+    char *replaced_path;
+    char *dir_path;
+    char *real_path;
+    size_t dir_size = strlen(syscheck.dir[dir_position]) + 2;
+    size_t real_size = strlen(syscheck.linked_paths[dir_position]) + 2;
+
+    os_calloc(dir_size + 1, sizeof(char), dir_path);
+    os_calloc(real_size + 1, sizeof(char), real_path);
+
+    snprintf(dir_path, dir_size, "%s/", syscheck.dir[dir_position]);
+    snprintf(real_path, real_size, "%s/", syscheck.linked_paths[dir_position]);
+
+    if (replaced_path = wstr_replace(file_name, real_path, dir_path), replaced_path) {
+        if (strcmp(replaced_path, file_name)) {
+            snprintf(linked_file, PATH_MAX, "%s", replaced_path);
+            mdebug2("Replacing the symbolic link: '%s' -> '%s'.", file_name, linked_file);
+        }
+    }
+
+    free(replaced_path);
+    free(dir_path);
+    free(real_path);
 }
 
 #endif

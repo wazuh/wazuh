@@ -106,6 +106,7 @@ void audit_reload_rules(void);
 int audit_health_check(int audit_socket);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);
+void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;
