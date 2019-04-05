@@ -43,8 +43,8 @@ def main(cors, port, host, ssl_context, main_logger):
         # add CORS support
         CORS(app.app)
     # add Cache support
-    cache = Cache(config={"CACHE_TYPE": "simple"})
-    cache.init_app(app.app)
+    app.app.config['CACHE_TYPE'] = 'simple'
+    app.app.cache = Cache(app.app)
     try:
         app.run(port=port, host=host, ssl_context=ssl_context)
     except Exception as e:
