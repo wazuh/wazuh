@@ -1,0 +1,22 @@
+#Request with xml
+---
+test_name: POST /agents
+
+includes:
+  - !include common.yaml
+
+stages:
+  - name: Add new agent
+
+    request:
+      url: http://localhost:55000/agents/groups/dmz/configuration
+      method: POST
+      headers:
+        content-type: application/xml
+      files:
+        body: "agent.conf.xml"
+    response:
+      status_code: 200 
+      body:
+        error: 0
+        data: "Agent configuration was updated successfully"

@@ -1,0 +1,14 @@
+name: Test includes
+description: Used for testing against local server
+
+variables:
+  file_xml:
+    <agent_config>
+        <labels>
+          <label key="aws.instance-id">i-052a1838c</label>
+          <label key="aws.sec-group">sg-1103</label>
+          <label key="network.ip">172.17.0.0</label>
+          <label key="network.mac">02:42:ac:11:00:02</label>
+          <label key="installation" hidden="yes">January 1st, 2017</label>
+        </labels>
+      </agent_config>
