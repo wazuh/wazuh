@@ -49,7 +49,7 @@ class BasicInfo(Model):
             'revision': 'revision',
             'license_name': 'license_name',
             'license_url': 'license_url',
-            'hostname': 'license_url',
+            'hostname': 'hostname',
             'timestamp': 'timestamp'
         }
 
