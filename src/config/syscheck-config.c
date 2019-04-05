@@ -74,7 +74,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
 #endif
-            os_calloc(2, sizeof(char *), syscheck->linked_paths);
+            os_calloc(2, sizeof(char *), syscheck->converted_links);
             set_linked_path(syscheck, entry, 0);
 
             os_calloc(2, sizeof(int), syscheck->opts);
@@ -100,9 +100,9 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
 
-            os_realloc(syscheck->linked_paths, (pl + 2) * sizeof(char *), syscheck->linked_paths);
+            os_realloc(syscheck->converted_links, (pl + 2) * sizeof(char *), syscheck->converted_links);
             set_linked_path(syscheck, entry, pl);
-            syscheck->linked_paths[pl + 1] = NULL;
+            syscheck->converted_links[pl + 1] = NULL;
 
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);
@@ -1531,6 +1531,6 @@ void set_linked_path(syscheck_config *syscheck, const char *entry, int position)
         return;
     }
 
-    syscheck->linked_paths[position] = linked_path;
+    syscheck->converted_links[position] = linked_path;
 }
 #endif

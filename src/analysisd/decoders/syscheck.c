@@ -95,6 +95,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[SK_PPID] = "ppid";
     fim_decoder->fields[SK_PROC_ID] = "process_id";
     fim_decoder->fields[SK_TAG] = "tag";
+    fim_decoder->fields[SK_SYM_PATH] = "symbolic_path";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -103,6 +104,7 @@ void sdb_clean(_sdb *localsdb) {
     *localsdb->size = '\0';
     *localsdb->perm = '\0';
     *localsdb->attrs = '\0';
+    *localsdb->sym_path = '\0';
     *localsdb->owner = '\0';
     *localsdb->gowner = '\0';
     *localsdb->md5 = '\0';
@@ -140,9 +142,9 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     *                                             |v2.1       v3.4   |v3.4         v3.6  |
-     *                                             |->         |->    |->           |->   |
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags filename\nreportdiff"
+     *                                             |v2.1       v3.4   |v3.4         |v3.6 |v3.9
+     *                                             |->         |->    |->           |->   |->
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path filename\nreportdiff"
      *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
@@ -698,6 +700,13 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 localsdb->attrs[0] = '\0';
             }
 
+            /* Symbolic path message */
+            if (newsum->symbolic_path && *newsum->symbolic_path) {
+                snprintf(localsdb->sym_path, OS_FLSIZE, "Symbolic path: '%s'.\n", newsum->symbolic_path);
+            } else {
+                *localsdb->sym_path = '\0';
+            }
+
             break;
         default:
             return (-1);
@@ -723,9 +732,11 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             "%s"
             "%s"
             "%s"
+            "%s"
             "%s",
             f_name,
             msg_type,
+            localsdb->sym_path,
             localsdb->size,
             localsdb->perm,
             localsdb->owner,

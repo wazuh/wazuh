@@ -106,6 +106,7 @@ typedef enum sk_syscheck {
     SK_PPID,
     SK_PROC_ID,
     SK_TAG,
+    SK_SYM_PATH,
     SK_NFIELDS
 } sk_syscheck;
 
@@ -121,6 +122,7 @@ typedef struct __sdb {
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
     char attrs[OS_SIZE_1024 + 1];
+    char sym_path[OS_FLSIZE + 1];
 
     // Whodata fields
     char user_id[OS_FLSIZE + 1];
@@ -169,6 +171,7 @@ typedef struct sk_sum_t {
     long mtime;
     long inode;
     char *tag;
+    char *symbolic_path;
     sk_sum_wdata wdata;
     int changes;
     long date_alert;

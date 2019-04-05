@@ -414,10 +414,10 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
 
-            if (!syscheck.linked_paths[r]) {
+            if (!syscheck.converted_links[r]) {
                 minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             } else {
-                minfo("Monitoring directory: '%s' (%s), with options %s.", syscheck.dir[r], syscheck.linked_paths[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+                minfo("Monitoring directory: '%s' (%s), with options %s.", syscheck.dir[r], syscheck.converted_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             }
 
             if (syscheck.tag && syscheck.tag[r] != NULL)

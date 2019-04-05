@@ -774,10 +774,10 @@ add_whodata_evt:
                             send_whodata_del(w_evt, 1);
                         } else if (mask & modify_criteria) {
                             // Check if the file has been modified
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            realtime_checksumfile(w_evt->path, NULL, w_evt);
                         } else {
                             // At this point the file can be created
-                            realtime_checksumfile(w_evt->path, w_evt);
+                            realtime_checksumfile(w_evt->path, NULL, w_evt);
                         }
                     } else if (w_evt->scan_directory == 1) { // Directory scan has been aborted if scan_directory is 2
                         if (mask & DELETE) {
@@ -805,7 +805,7 @@ add_whodata_evt:
                                     w_evt->path = saved_path;
 
                                     // Find new files
-                                    read_dir(syscheck.dir[w_evt->dir_position], w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0);
+                                    read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0);
 
                                     last_mdir_tm = now;
                                     free(last_mdir);
@@ -823,7 +823,7 @@ add_whodata_evt:
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
-                                read_dir(w_evt->path, pos, w_evt, depth, 0);
+                                read_dir(w_evt->path, NULL, pos, w_evt, depth, 0);
                             }
 
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
@@ -1112,7 +1112,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
         pos = find_dir_pos(w_evt->path, 1, 0, 0);
     }
 
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
+    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
     send_syscheck_msg(del_msg);
     whodata_rlist_add(w_evt->path);
 }

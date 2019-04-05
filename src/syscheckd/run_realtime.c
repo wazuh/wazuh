@@ -35,9 +35,6 @@ volatile int audit_db_consistency_flag;
 
 pthread_mutex_t adddir_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Prototypes */
-int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__((nonnull(1)));
-
 /* Checksum of the realtime file being monitored */
 int realtime_checksumfile(const char *file_name, whodata_evt *evt)
 {
@@ -45,8 +42,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     char *path;
     syscheck_node *s_node;
     int pos;
-    char linked_file[PATH_MAX + 1] = {'\0'};
-
+    char file_link[PATH_MAX + 1] = {'\0'};
 
     // To obtain path without symbolic links
 
@@ -71,8 +67,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     }
 #endif
 
-    if (syscheck.linked_paths[pos]) {
-        replace_linked_path(file_name, pos, linked_file);
+    if (syscheck.converted_links[pos]) {
+        replace_linked_path(file_name, pos, file_link);
     }
 
     if (s_node = (syscheck_node *) OSHash_Get_ex(syscheck.fp, path), s_node) {
@@ -84,7 +80,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
         c_sum[OS_MAXSTR] = '\0';
 
         // If it returns < 0, we've already alerted the deleted file
-        if (c_read_file(path, *linked_file ? linked_file : NULL, buf, c_sum, evt) < 0) {
+        if (c_read_file(path, *file_link ? file_link : NULL, buf, c_sum, evt) < 0) {
             os_free(path);
             return (0);
         }
@@ -109,14 +105,14 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if (buf[SK_DB_REPORT_CHANG] == '+') {
                 fullalert = seechanges_addfile(path);
                 if (fullalert) {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *linked_file ? linked_file : file_name, fullalert);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s\n%s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *file_link ? file_link : "", file_name, fullalert);
                     free(fullalert);
                     fullalert = NULL;
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *linked_file ? linked_file : file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *file_link ? file_link : "", file_name);
                 }
             } else {
-                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *linked_file ? linked_file : file_name);
+                snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s", c_sum, wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", *file_link ? file_link : "", file_name);
             }
 
             send_syscheck_msg(alert_msg);
@@ -139,7 +135,8 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             if(IsFile(path) == 0){
                 mdebug1("Scanning new file '%s' with options for directory '%s'.", path, syscheck.dir[pos]);
             }
-            int diff = fim_find_child_depth(syscheck.linked_paths[pos] ? syscheck.linked_paths[pos] : syscheck.dir[pos], path);
+            char *cparent = get_converted_link_path(pos);
+            int diff = fim_find_child_depth(cparent ? cparent : syscheck.dir[pos], path);
             int depth = syscheck.recursion_level[pos] - diff + 1;
 
             if(check_path_type(path) == 2){
@@ -152,7 +149,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 mdebug2("Stat() function failed on: %s. File may have been deleted", path);
             } else {
                 if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                    read_dir(path, pos, evt, depth, 1);
+                    read_dir(path, NULL, pos, evt, depth, 1);
                     os_free(path);
                     return 0;
                 } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
@@ -161,7 +158,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 }
             }
 #endif
-            read_dir(path, pos, evt, depth, 0);
+            read_dir(path, *file_link ? file_link : NULL, pos, evt, depth, 0);
         }
 
     }
@@ -196,8 +193,10 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
         }
 
         for (i = 0; syscheck.dir[i]; i++) {
-            char *dir = syscheck.linked_paths[i] ? syscheck.linked_paths[i] : syscheck.dir[i];
+            char *cdir = get_converted_link_path(i);
+            char *dir = cdir ? cdir : syscheck.dir[i];
             if (check_find && !(syscheck.opts[i] & check_find)) {
+                free(cdir);
                 continue;
             }
             if (!strcmp(dir, buf)) {
@@ -211,8 +210,10 @@ int find_dir_pos(const char *filename, int full_compare, int check_find, int dee
                 } else {
                     retval = i;
                 }
+                free(cdir);
                 break;
             }
+            free(cdir);
         }
 
         if (!deep_search && syscheck.dir[i]) {

@@ -309,7 +309,7 @@ void start_daemon()
 }
 
 /* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt)
+int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
@@ -363,7 +363,7 @@ int c_read_file(const char *file_name, char *linked_file, const char *oldsum, ch
         int pos = find_dir_pos(file_name, 1, 0, 0);
 
         //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : file_name);
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
         send_syscheck_msg(alert_msg);
 
 

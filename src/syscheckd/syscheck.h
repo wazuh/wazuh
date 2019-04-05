@@ -51,7 +51,7 @@ int create_db(void);
 int run_dbcheck(void);
 
 /* Scan directory */
-int read_dir(const char *dir_name, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link);
+int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link);
 
 /* Check the registry for changes */
 void os_winreg_check(void);
@@ -77,7 +77,7 @@ void init_whodata_event(whodata_evt *w_evt);
 void free_whodata_event(whodata_evt *w_evt);
 
 /* Get checksum changes */
-int c_read_file(const char *file_name, char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt) __attribute__((nonnull(1,3,4)));
+int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt) __attribute__((nonnull(1,3,4)));
 
 int send_syscheck_msg(const char *msg) __attribute__((nonnull));
 int send_rootcheck_msg(const char *msg) __attribute__((nonnull));
@@ -107,6 +107,8 @@ int audit_health_check(int audit_socket);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
+char *get_converted_link_path(int position);
+char *escape_syscheck_field(char *field);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;

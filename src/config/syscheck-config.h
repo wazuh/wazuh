@@ -203,7 +203,7 @@ typedef struct _config {
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
     char **dir;                     /* array of directories to be scanned */
-    char **linked_paths;            /* array of linked directories */
+    char **converted_links;                       /* array of converted links directories */
     OSMatch **filerestrict;
     int *recursion_level;
 
