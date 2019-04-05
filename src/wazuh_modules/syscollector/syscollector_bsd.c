@@ -225,9 +225,9 @@ char* sys_parse_pkg(const char * app_folder, const char * folder_name, const cha
 
             if (strstr(read_buff, "CFBundleName")) {
                 void_file=0;
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+                if (strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 4);
+                    char ** _parts = OS_StrBreak('<', parts[3], 2);
 
                     cJSON_AddStringToObject(package, "name", _parts[0]);
 
@@ -238,9 +238,35 @@ char* sys_parse_pkg(const char * app_folder, const char * folder_name, const cha
                     free(parts);
                     free(_parts);
                 }
+                else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                  char ** parts = OS_StrBreak('>', read_buff, 2);
+                  char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                  cJSON_AddStringToObject(package, "name", _parts[0]);
+
+                  for (i = 0; _parts[i]; i++) {
+                      free(_parts[i]);
+                      free(parts[i]);
+                  }
+                  free(parts);
+                  free(_parts);
+                }
 
             } else if (strstr(read_buff, "CFBundleShortVersionString")){
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                if (strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 4);
+                    char ** _parts = OS_StrBreak('<', parts[3], 2);
+
+                    cJSON_AddStringToObject(package, "version", _parts[0]);
+
+                    for (i = 0; _parts[i]; i++) {
+                        free(_parts[i]);
+                        free(parts[i]);
+                    }
+                    free(parts);
+                    free(_parts);
+                }
+                else if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
                     char ** parts = OS_StrBreak('>', read_buff, 2);
                     char ** _parts = OS_StrBreak('<', parts[1], 2);
 
@@ -254,9 +280,9 @@ char* sys_parse_pkg(const char * app_folder, const char * folder_name, const cha
                     free(_parts);
                 }
             } else if (strstr(read_buff, "LSApplicationCategoryType")){
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+                if (strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 4);
+                    char ** _parts = OS_StrBreak('<', parts[3], 2);
 
                     cJSON_AddStringToObject(package, "group", _parts[0]);
 
@@ -267,10 +293,23 @@ char* sys_parse_pkg(const char * app_folder, const char * folder_name, const cha
                     free(parts);
                     free(_parts);
                 }
+                else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                  char ** parts = OS_StrBreak('>', read_buff, 2);
+                  char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                  cJSON_AddStringToObject(package, "group", _parts[0]);
+
+                  for (i = 0; _parts[i]; i++) {
+                      free(_parts[i]);
+                      free(parts[i]);
+                  }
+                  free(parts);
+                  free(_parts);
+                }
             } else if (strstr(read_buff, "CFBundleIdentifier")){
-                if ((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
-                    char ** parts = OS_StrBreak('>', read_buff, 2);
-                    char ** _parts = OS_StrBreak('<', parts[1], 2);
+                if (strstr(read_buff, "<string>")){
+                    char ** parts = OS_StrBreak('>', read_buff, 4);
+                    char ** _parts = OS_StrBreak('<', parts[3], 2);
 
                     cJSON_AddStringToObject(package, "description", _parts[0]);
 
@@ -280,6 +319,19 @@ char* sys_parse_pkg(const char * app_folder, const char * folder_name, const cha
                     }
                     free(parts);
                     free(_parts);
+                }
+                else if((fgets(read_buff, OS_MAXSTR - 1, fp) != NULL) && strstr(read_buff, "<string>")){
+                  char ** parts = OS_StrBreak('>', read_buff, 2);
+                  char ** _parts = OS_StrBreak('<', parts[1], 2);
+
+                  cJSON_AddStringToObject(package, "description", _parts[0]);
+
+                  for (i = 0; _parts[i]; i++) {
+                      free(_parts[i]);
+                      free(parts[i]);
+                  }
+                  free(parts);
+                  free(_parts);
                 }
             }
         }
