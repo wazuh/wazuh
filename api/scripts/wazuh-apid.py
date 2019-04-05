@@ -4,21 +4,20 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import argparse
 import os
-import sys
 import ssl
+import sys
 
 import connexion
-from flask_cors import CORS
-from flask_caching import Cache
-
-from api import alogging, encoder, configuration, __path__ as api_path
-from api import validator  # To register custom validators (do not remove)
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
+from flask_caching import Cache
+from flask_cors import CORS
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
+from api import alogging, encoder, configuration, __path__ as api_path
+from api import validator  # To register custom validators (do not remove)
 
 #
 # Aux functions
