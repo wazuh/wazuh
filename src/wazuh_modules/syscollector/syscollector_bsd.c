@@ -292,7 +292,22 @@ char* sys_parse_pkg(const char * app_folder, const char * folder_name, const cha
           cJSON_AddStringToObject(package, "location", app_folder);
         }
         else{
-          cJSON_AddStringToObject(package, "name", folder_name);
+
+          cJSON_DeleteItemFromObjectCaseSensitive(package, "version");
+          cJSON_DeleteItemFromObjectCaseSensitive(package, "group");
+          cJSON_DeleteItemFromObjectCaseSensitive(package, "description");
+
+          char folder_name2[30];
+
+          for (int i=0; i<30; i++){
+            folder_name2[i] = folder_name[i];
+          }
+
+          char *temp;
+          temp = strchr(folder_name2,'.');
+          *temp = '\0';
+
+          cJSON_AddStringToObject(package, "name", folder_name2);
         }
 
         char *string;
