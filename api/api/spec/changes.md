@@ -47,8 +47,11 @@
 * Parameter **force** renamed to **force_after**
 
 ## Cache
-### DELETE /cache (Clear group cache)
-* Changed path to **/cache/:group_id** because this path is used in other endpoint.
+### DELETE /cache 
+### GET /cache 
+### DELETE /cache{group} (Clear group cache)
+### GET /cache/config 
+* All cache endpoints have been removed
 
 ### GET /lists
 * Parameter **status** renamed to **list_status**
@@ -87,3 +90,7 @@
 
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+
+## Version
+### GET /version 
+* Removed endpoint
