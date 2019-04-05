@@ -159,7 +159,6 @@ void start_daemon()
     if (syscheck.scan_time || syscheck.scan_day) {
         /* At least once a week */
         syscheck.time = 604800;
-        rootcheck.time = 604800;
     }
     /* Printing syscheck properties */
 
