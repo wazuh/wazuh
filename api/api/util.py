@@ -1,9 +1,10 @@
 import datetime
+import functools
 import os
-
-import six
 import typing
 
+import six
+from flask import current_app
 from wazuh.common import ossec_path as WAZUH_PATH
 
 
@@ -163,3 +164,20 @@ def to_relative_path(full_path):
     :rtype: str
     """
     return os.path.relpath(full_path, WAZUH_PATH)
+
+
+def flask_cached(f):
+    """Adds a cache handler decorator to the function
+    This method is used to avoid problems accessing API app from API controllers without an existing app_context
+
+    :param f: function to decorate
+    :return: decorated function
+    """
+    @functools.wraps(f)
+    def cached_function(*args, **kwargs):
+        @current_app.cache.memoize(timeout=10)
+        def decorated_function(*args, **kwargs):
+            return f(*args, **kwargs)
+        return decorated_function(*args, **kwargs)
+
+    return cached_function
