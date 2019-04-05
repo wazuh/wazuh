@@ -690,7 +690,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             buf = s_node->checksum;
 
             /* If it returns < 0, we have already alerted */
-            if (c_read_file(file_name, buf, c_sum, NULL) < 0) {
+            if (c_read_file(file_name, *linked_file ? linked_file : NULL, buf, c_sum, NULL) < 0) {
               goto end;
             }
 
@@ -1034,7 +1034,7 @@ int create_db()
     /* Read all available directories */
     __counter = 0;
     do {
-        if (read_dir(syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0) == 0) {
+        if (read_dir(syscheck.linked_paths[i] ? syscheck.linked_paths[i] : syscheck.dir[i], i, NULL, syscheck.recursion_level[i], 0) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
 #ifdef WIN32
@@ -1286,26 +1286,22 @@ int fim_delete_hashes(char *file_name) {
 }
 
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file) {
-    char *replaced_path;
     char *dir_path;
     char *real_path;
-    size_t dir_size = strlen(syscheck.dir[dir_position]) + 2;
-    size_t real_size = strlen(syscheck.linked_paths[dir_position]) + 2;
+    size_t dir_size = strlen(syscheck.dir[dir_position]) + 1;
+    size_t real_size = strlen(syscheck.linked_paths[dir_position]) + 1;
 
-    os_calloc(dir_size + 1, sizeof(char), dir_path);
-    os_calloc(real_size + 1, sizeof(char), real_path);
+    os_calloc(dir_size + 2, sizeof(char), dir_path);
+    os_calloc(real_size + 2, sizeof(char), real_path);
 
-    snprintf(dir_path, dir_size, "%s/", syscheck.dir[dir_position]);
-    snprintf(real_path, real_size, "%s/", syscheck.linked_paths[dir_position]);
+    snprintf(dir_path, dir_size + 1, "%s/", syscheck.dir[dir_position]);
+    snprintf(real_path, real_size + 1, "%s/", syscheck.linked_paths[dir_position]);
 
-    if (replaced_path = wstr_replace(file_name, real_path, dir_path), replaced_path) {
-        if (strcmp(replaced_path, file_name)) {
-            snprintf(linked_file, PATH_MAX, "%s", replaced_path);
-            mdebug2("Replacing the symbolic link: '%s' -> '%s'.", file_name, linked_file);
-        }
+    if (!strncmp(real_path, file_name, real_size)) {
+        snprintf(linked_file, PATH_MAX, "%s%s", dir_path, file_name + real_size);
+        mdebug2("Replacing the symbolic link: '%s' -> '%s'.", file_name, linked_file);
     }
 
-    free(replaced_path);
     free(dir_path);
     free(real_path);
 }

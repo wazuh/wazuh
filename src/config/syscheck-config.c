@@ -102,6 +102,7 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 
             os_realloc(syscheck->linked_paths, (pl + 2) * sizeof(char *), syscheck->linked_paths);
             set_linked_path(syscheck, entry, pl);
+            syscheck->linked_paths[pl + 1] = NULL;
 
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);
@@ -1512,7 +1513,7 @@ char* check_ascci_hex (char *input) {
     }
     return output;
 }
- 
+
 #ifdef WIN32
 void set_linked_path(__attribute__((unused)) syscheck_config *syscheck, __attribute__((unused)) const char *entry, __attribute__((unused)) int position) {}
 #else
