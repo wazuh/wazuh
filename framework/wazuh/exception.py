@@ -89,11 +89,13 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
-        1650: 'Active response - Bad arguments',
+        1650: 'Active response - Command not specified',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
         1653: 'Active response - Agent not available',
         1654: 'Unable to clear rootcheck database',
+        1655: 'Active response - Agent ID not specified',
+        1656: 'Active response - Command not available',
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
