@@ -154,37 +154,46 @@ void OS_RotateLogs(int day,int year,char *mon) {
 
     char c_alogfile[OS_FLSIZE + 1];
     char c_jlogfile[OS_FLSIZE + 1];
+    char c_ejflogfile[OS_FLSIZE + 1];
+    char c_elogfile[OS_FLSIZE + 1];
+    char *previous_log = NULL;
 
     if (Config.rotate_interval && c_time - __crt_rsec > Config.rotate_interval) {
         // If timespan exceeded the rotation time and the file isn't empty
-        if (_eflog && ftell(_eflog) > 0) {
+        if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > 0) {
+            memset(c_elogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_elogfile, OS_FLSIZE, "%s.gz", __elogfile);
+            os_strdup(__elogfile, previous_log);
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
+            w_compress_gzfile(previous_log, c_elogfile);
+            os_free(previous_log);
         }
 
-        if (_ejflog && ftell(_ejflog) > 0) {
+        if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > 0) {
+            memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", __ejlogfile);
+            os_strdup(__ejlogfile, previous_log);
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
+            w_compress_gzfile(previous_log, c_ejflogfile);
+            os_free(previous_log);
         }
 
-        if (_aflog && ftell(_aflog) > 0) {
-            _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
+        if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > 0) {
             memset(c_alogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_alogfile, OS_FLSIZE, "%s.gz", __alogfile);
-            w_compress_gzfile(__alogfile, c_alogfile);
-            /* Remove uncompressed file */
-            if(unlink(__alogfile) == -1) {
-                merror("Unable to delete '%s' due to '%s'", __alogfile, strerror(errno));
-            }
+            os_strdup(__alogfile, previous_log);
+            _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
+            w_compress_gzfile(previous_log, c_alogfile);
+            os_free(previous_log);
         }
 
-        if (_jflog && ftell(_jflog) > 0) {
-            _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
+        if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > 0) {
             memset(c_jlogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", __jlogfile);
-            w_compress_gzfile(__jlogfile, c_jlogfile);
-            /* Remove uncompressed file */
-            if(unlink(__jlogfile) == -1) {
-                merror("Unable to delete '%s' due to '%s'", __jlogfile, strerror(errno));
-            }
+            os_strdup(__jlogfile, previous_log);
+            _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
+            w_compress_gzfile(previous_log, c_jlogfile);
+            os_free(previous_log);
         }
 
         if (_fflog && ftell(_fflog) > 0) {
@@ -195,23 +204,43 @@ void OS_RotateLogs(int day,int year,char *mon) {
     } else if (Config.max_output_size && c_time - __crt_rsec > Config.min_rotate_interval) {
         // Or if timespan from last rotation is enough and the file is too big
 
-        if (_eflog && ftell(_eflog) > Config.max_output_size) {
+        if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.max_output_size) {
+            memset(c_elogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_elogfile, OS_FLSIZE, "%s.gz", __elogfile);
+            os_strdup(__elogfile, previous_log);
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
+            w_compress_gzfile(previous_log, c_elogfile);
+            os_free(previous_log);
             __crt_rsec = c_time;
         }
 
-        if (_ejflog && ftell(_ejflog) > Config.max_output_size) {
+        if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.max_output_size) {
+            memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", __ejlogfile);
+            os_strdup(__ejlogfile, previous_log);
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
+            w_compress_gzfile(previous_log, c_ejflogfile);
+            os_free(previous_log);
             __crt_rsec = c_time;
         }
 
-        if (_aflog && ftell(_aflog) > Config.max_output_size) {
+        if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.max_output_size) {
+            memset(c_alogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_alogfile, OS_FLSIZE, "%s.gz", __alogfile);
+            os_strdup(__alogfile, previous_log);
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
+            w_compress_gzfile(previous_log, c_alogfile);
+            os_free(previous_log);
             __crt_rsec = c_time;
         }
 
-        if (_jflog && ftell(_jflog) > Config.max_output_size) {
+        if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.max_output_size) {
+            memset(c_jlogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", __jlogfile);
+            os_strdup(__jlogfile, previous_log);
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
+            w_compress_gzfile(previous_log, c_jlogfile);
+            os_free(previous_log);
             __crt_rsec = c_time;
         }
 
