@@ -87,7 +87,6 @@ char *cat_file(char *file, FILE *fp2)
     return (NULL);
 }
 
-
 /* Check if a file exists */
 int is_file(char *file)
 {
@@ -98,6 +97,31 @@ int is_file(char *file)
         return (1);
     }
     return (0);
+}
+
+/* Check if program is running admin mode */
+BOOL IsUserAdmin(VOID)
+{
+    BOOL isAdmin;
+    SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
+    PSID AdministratorsGroup;
+    isAdmin = AllocateAndInitializeSid(
+        &NtAuthority,
+        2,
+        SECURITY_BUILTIN_DOMAIN_RID,
+        DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
+        &AdministratorsGroup);
+
+    if(isAdmin)
+    {
+        if (!CheckTokenMembership( NULL, AdministratorsGroup, &isAdmin))
+        {
+            isAdmin = FALSE;
+        }
+        FreeSid(AdministratorsGroup);
+    }
+    return(isAdmin);
 }
 
 /* Clear configuration */
@@ -158,16 +182,10 @@ void init_config()
     config_inst.msg_sent = 0;
     config_inst.admin_access = 1;
 
-    /* Check if ui is on the right path and has the proper permissions */
-    if (!is_file(CONFIG)) {
-        if (chdir(DEFDIR)) {
-            config_inst.admin_access = 0;
-        }
+    /* Check if program is running admin mode */
+    if (!IsUserAdmin())
+        config_inst.admin_access = 0;
 
-        if (!is_file(CONFIG)) {
-            config_inst.admin_access = 0;
-        }
-    }
 }
 
 /* Read ossec config */
