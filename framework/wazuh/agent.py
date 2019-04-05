@@ -14,8 +14,7 @@ from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
-from wazuh import manager
-from wazuh import common
+from wazuh import manager, common, configuration
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
@@ -2442,22 +2441,10 @@ class Agent:
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
 
 
-    def getconfig(self, component, configuration):
+    def getconfig(self, component, config):
         """
         Read agent loaded configuration.
         """
-        sockets_path = common.ossec_path + "/queue/ossec/"
-
-        components = ["agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                      "monitor", "request", "syscheck", "wmodules"]
-
-        # checks if the component is correct
-        if component not in components:
-            raise WazuhException(1101, "Invalid target")
-
-        if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
-            raise WazuhException(1101, "Could not get requested section")
-
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         if self.version is None:
@@ -2468,47 +2455,7 @@ class Agent:
         if agent_version < required_version:
             raise WazuhException(1735, "Minimum required version is " + str(required_version))
 
-        if int(self.id) == 0:
-            dest_socket = sockets_path + component
-            command = "getconfig " + configuration
-        else:
-            dest_socket = sockets_path + "request"
-            command = str(self.id).zfill(3) + " " + component + " getconfig " + configuration
-
-        # Socket connection
-        try:
-            s = OssecSocket(dest_socket)
-        except Exception as e:
-            if int(self.id) == 0:
-                raise WazuhException(1013,"The component might be disabled")
-            else:
-                raise WazuhException(1013,str(e))
-
-        # Generate message
-        msg = "{0}".format(command)
-
-        # Send message
-        s.send(msg.encode())
-
-        # Receive response
-        try:
-            # Receive data length
-            data = s.receive().decode().split(" ", 1)
-            rec_msg_ok = data[0]
-            rec_msg = data[1]
-        except IndexError:
-            raise WazuhException(1014, "Data could not be received")
-
-        s.close()
-
-        if rec_msg_ok.startswith( 'ok' ):
-            msg = loads(rec_msg)
-            return msg
-        else:
-            if "No such file or directory" in rec_msg:
-                raise WazuhException(1013,"The component might be disabled")
-            else:
-                raise WazuhException(1101, rec_msg.replace("err ", ""))
+        return configuration.get_active_configuration(self.id, component, config)
 
     @staticmethod
     def get_config(agent_id, component, configuration):
@@ -2518,16 +2465,13 @@ class Agent:
         :param agent_id: Agent ID.
         :return: Loaded configuration in JSON.
         """
-        if not component or not configuration:
-            raise WazuhException(1307)
-
         my_agent = Agent(agent_id)
         my_agent._load_info_from_DB()
 
         if my_agent.status != "Active":
             raise WazuhException(1740)
 
-        return my_agent.getconfig(component=component, configuration=configuration)
+        return my_agent.getconfig(component=component, config=configuration)
 
     @staticmethod
     def get_sync_group(agent_id):
@@ -2552,3 +2496,45 @@ class Agent:
                 return {'synced': False}
             except Exception as e:
                 raise WazuhException(1739, str(e))
+
+    @staticmethod
+    def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
+        """
+        Returns agent.conf as dictionary.
+
+        :return: agent.conf as dictionary.
+        """
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+        return configuration.get_agent_conf(group_id, offset, limit, filename, return_format)
+
+    @staticmethod
+    def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
+        """
+        Returns the configuration file as dictionary.
+
+        :return: configuration file as dictionary.
+        """
+
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+        return configuration.get_file_conf(filename, group_id, type_conf, return_format)
+
+    @staticmethod
+    def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
+        """
+        Updates a group file
+        :param group_id: Group to update
+        :param tmp_file: Relative path of temporary file to upload
+        :param file_name: File name to update
+        :return: Confirmation message in string
+        """
+        # check if the group exists
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710)
+
+        return configuration.upload_group_file(group_id, tmp_file, file_name)
