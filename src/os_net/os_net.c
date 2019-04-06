@@ -539,6 +539,12 @@ int OS_CloseSocket(int socket)
 #endif /* WIN32 */
 }
 
+int OS_SetKeepalive(int socket)
+{
+    int keepalive = 1;
+    return setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
+}
+
 int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
 #ifdef WIN32
