@@ -13,6 +13,9 @@
 #include <math.h>
 #include <pthread.h>
 
+#define MAX_ASCII_LINES 10
+#define MAX_UTF8_CHARS 1400
+
 /* Prototypes */
 static int update_fname(int i, int j);
 static int update_current(logreader **current, int *i, int *j);
@@ -1946,7 +1949,9 @@ static void check_text_only() {
         if(current->file && !current->command && current->filter_binary) {
             snprintf(file_name, PATH_MAX, "%s", current->file);
 
-            if(is_ascii_utf8(current->file)) {
+            char *file_excluded = OSHash_Get(excluded_files,file_name);
+
+            if(is_ascii_utf8(current->file,MAX_ASCII_LINES,MAX_UTF8_CHARS)) {
                 #ifdef WIN32
 
                     int ucs2 = is_usc2(current->file);
@@ -1968,8 +1973,17 @@ static void check_text_only() {
                 } else {
                     mdebug2(NON_TEXT_FILE, file_name);
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
+
+                    if(!file_excluded) {
+                        OSHash_Add(excluded_files,file_name,(void *)1);
+                    }
                 }
                 i--;
+            } else {
+
+                if(file_excluded) {
+                    OSHash_Delete(excluded_files,file_name);
+                }
             }
         }
     }

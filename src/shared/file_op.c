@@ -2651,10 +2651,12 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 }
 
 /* Check if the file is ASCII or UTF-8 encoded */
-int is_ascii_utf8(const char * file) {
+int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int max_chars_utf8) {
     int is_ascii = 1;
     int retval = 0;
     char *buffer = NULL;
+    unsigned int lines_readed_ascii = 0;
+    unsigned int chars_readed_utf8 = 0;
     fpos_t begin; 
     FILE *fp;
 
@@ -2674,6 +2676,12 @@ int is_ascii_utf8(const char * file) {
     while (fgets(buffer, OS_MAXSTR, fp)) {
         int i;
         unsigned char *c = (unsigned char *)buffer;
+
+        if (lines_readed_ascii >= max_lines_ascii) {
+            break;
+        }
+
+        lines_readed_ascii++;
 
         for (i = 0; i < OS_MAXSTR; i++) {
             if( c[i] >= 0x80 ) {
@@ -2697,7 +2705,13 @@ int is_ascii_utf8(const char * file) {
     size_t nbytes = 0;
 
     while (nbytes = fread(b,sizeof(char),4,fp), nbytes) {
-        
+
+        if (chars_readed_utf8 >= max_chars_utf8) {
+            break;
+        }
+
+        chars_readed_utf8++;
+
         /* Check for UTF-8 BOM */
         if (b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
             if (fseek(fp,-1,SEEK_CUR) < 0) {
