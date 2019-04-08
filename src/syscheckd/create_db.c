@@ -20,7 +20,7 @@
 #include "syscheck_op.h"
 
 /* Prototypes */
-static int read_file(const char *dir_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth)  __attribute__((nonnull(1)));
+static int read_file(const char *dir_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth, char silent)  __attribute__((nonnull(1)));
 
 static int read_dir_diff(char *dir_name);
 
@@ -174,7 +174,7 @@ void remove_local_diff(){
 }
 
 /* Read and generate the integrity data of a file */
-static int read_file(const char *file_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth)
+static int read_file(const char *file_name, const char *linked_file, int dir_position, whodata_evt *evt, int max_depth, char silent)
 {
     int opts;
     OSMatch *restriction;
@@ -226,7 +226,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
         case ENOTDIR:
             /*Deletion message sending*/
-            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s: %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
+            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s:%c %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
             send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
@@ -267,7 +267,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
         os_free(alert_msg);
         free(esc_linked_file);
 
-        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0));
+        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, 0));
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
@@ -315,7 +315,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                             os_free(alert_msg);
                             os_free(wd_sum);
                             free(esc_linked_file);
-                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1));
+                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, 0));
                         }
                     }
                 } else {
@@ -531,7 +531,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     if(strcmp(inode_path, file_name)) {
                         mdebug2("Updating path '%s' in inode hash table: %s (%s) ", file_name, inode_path, str_inode);
                         OSHash_Update_ex(syscheck.inode_hash, str_inode, (void*)hash_file_name);
-                        read_file(inode_path, NULL, dir_position, evt, max_depth);
+                        read_file(inode_path, NULL, dir_position, evt, max_depth, silent);
                         os_free(inode_path);
                     }
                     else {
@@ -569,7 +569,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s%s: %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s%s:%c %s%s%s",
                 str_size,
                 str_perm ? str_perm : "",
                 (opts & CHECK_OWNER) && sid ? sid : "",
@@ -583,7 +583,8 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                esc_linked_file ? esc_linked_file : ""
+                esc_linked_file ? esc_linked_file : "",
+                silent,
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -662,7 +663,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s: %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
                 str_size,
                 str_perm,
                 str_owner,
@@ -678,6 +679,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
                 esc_linked_file ? esc_linked_file : "",
+                silent,
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -725,17 +727,17 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 if (buf[SK_DB_REPORT_CHANG] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s: %s\n%s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name, fullalert);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s:%c %s\n%s",
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name, fullalert);
                         os_free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s: %s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s:%c %s",
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
                     }
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s: %s",
-                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s:%c %s",
+                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", silent, file_name);
                 }
                 os_free(buf);
                 send_syscheck_msg(alert_msg);
@@ -769,7 +771,7 @@ end:
     return 0;
 }
 
-int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link)
+int read_dir(const char *dir_name, const char *link, int dir_position, whodata_evt *evt, int max_depth, __attribute__((unused))unsigned int is_link, char silent)
 {
     char *f_name;
     short is_nfs;
@@ -837,7 +839,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     if (!dp) {
         if (errno == ENOTDIR || errno == ENOENT) {
 
-            if (read_file(dir_name, link, dir_position, evt, max_depth) == 0) {
+            if (read_file(dir_name, link, dir_position, evt, max_depth, silent) == 0) {
 
                 free(f_name);
                 return (0);
@@ -941,7 +943,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
             replace_linked_path(f_name, dir_position, linked_read_file);
         }
 
-        read_file(f_name, *linked_read_file ? linked_read_file : NULL, dir_position, evt, max_depth);
+        read_file(f_name, *linked_read_file ? linked_read_file : NULL, dir_position, evt, max_depth, silent);
     }
 
     os_free(f_name);
@@ -973,7 +975,7 @@ int run_dbcheck()
         }
 #endif
         clink = get_converted_link_path(i);
-        read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0);
+        read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, 0);
         free(clink);
         i++;
     }
@@ -1070,7 +1072,7 @@ int create_db()
     do {
         char *clink = get_converted_link_path(i);
 
-        if (read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0) == 0) {
+        if (read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, 0) == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
         free(clink);

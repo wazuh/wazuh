@@ -703,7 +703,7 @@ void update_link_monitoring(int pos, char *old_path, char *new_path) {
     w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
 
     // Scan for new files
-    read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0);
+    read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
 
     // Remove unlink files
     OSHash_It_ex(syscheck.fp, (void *) old_path, unlink_files);
