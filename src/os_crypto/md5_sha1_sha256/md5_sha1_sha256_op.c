@@ -8,6 +8,7 @@
  * Foundation.
 */
 
+#include <shared.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -17,9 +18,9 @@
 #include "headers/defs.h"
 
 
-int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode)
+int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size)
 {
-    size_t n;
+    size_t n, read = 0;
     FILE *fp;
     unsigned char buf[2048 + 2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
@@ -63,6 +64,20 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     /* Update for each one */
     while ((n = fread(buf, 1, 2048, fp)) > 0) {
         buf[n] = '\0';
+        if (max_size > 0) {
+            read = read + n;
+            if (read >= max_size) {
+                merror("Maximum read size reached for file '%s' (%d MB)", fname, (int)read/1048576); // Read is counted in bytes
+                minfo("The internal option 'syscheck.max_size' controls the size limit for monitored files.");
+                /* Close it */
+                if (prefilter_cmd == NULL) {
+                    fclose(fp);
+                } else {
+                    pclose(fp);
+                }
+                return (-1);
+            }
+        }
         SHA1_Update(&sha1_ctx, buf, n);
         SHA256_Update(&sha256_ctx, buf, n);
         MD5_Update(&md5_ctx, buf, (unsigned)n);

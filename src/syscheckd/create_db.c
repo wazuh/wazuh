@@ -288,7 +288,7 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
             if (S_ISLNK(statbuf.st_mode)) {
                 if (stat(file_name, &statbuf_lnk) == 0) {
                     if (S_ISREG(statbuf_lnk.st_mode)) {
-                        if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY) < 0) {
+                        if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY, syscheck.max_size) < 0) {
                             strncpy(mf_sum, "n/a", 4);
                             strncpy(sf_sum, "n/a", 4);
                             strncpy(sf256_sum, "n/a", 4);
@@ -313,9 +313,9 @@ static int read_file(const char *file_name, int dir_position, whodata_evt *evt, 
                     os_free(alert_msg);
                     return -1;
                 }
-            } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
+            } else if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.max_size) < 0)
 #else
-            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0)
+            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.max_size) < 0)
 #endif
             {
                 snprintf(mf_sum, 4, "n/a");
