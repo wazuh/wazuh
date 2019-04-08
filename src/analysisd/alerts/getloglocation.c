@@ -101,6 +101,7 @@ int OS_GetLogLocation(int day,int year,char *mon)
 
 FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate) {
     char next[OS_FLSIZE + 1];
+    char next_gz[OS_FLSIZE + 1];
 
     if (fp) {
         if (ftell(fp) == 0) {
@@ -130,7 +131,7 @@ FILE * openlog(FILE * fp, char * path, const char * logdir, int year, const char
         snprintf(path, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d.%s", logdir, year, month, tag, day, ext);
 
         // While this file is bigger than maximum or there is a next file
-        for (*counter = 0; snprintf(next, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, *counter + 1, ext), !IsFile(next) || (Config.max_output_size && FileSize(path) > Config.max_output_size); (*counter)++) {
+        for (*counter = 0; snprintf(next, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s", logdir, year, month, tag, day, *counter + 1, ext), snprintf(next_gz, OS_FLSIZE + 1, "%s/%d/%s/ossec-%s-%02d-%.3d.%s.gz", logdir, year, month, tag, day, *counter + 1, ext), !IsFile(next) || !IsFile(next_gz) || (Config.max_output_size && FileSize(path) > Config.max_output_size); (*counter)++) {
             strncpy(path, next, OS_FLSIZE);
             path[OS_FLSIZE] = '\0';
         }
@@ -166,6 +167,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__elogfile, previous_log);
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
             w_compress_gzfile(previous_log, c_elogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
         }
 
@@ -175,6 +180,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__ejlogfile, previous_log);
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
             w_compress_gzfile(previous_log, c_ejflogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
         }
 
@@ -184,6 +193,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__alogfile, previous_log);
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
             w_compress_gzfile(previous_log, c_alogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
         }
 
@@ -193,6 +206,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__jlogfile, previous_log);
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
             w_compress_gzfile(previous_log, c_jlogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
         }
 
@@ -210,6 +227,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__elogfile, previous_log);
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
             w_compress_gzfile(previous_log, c_elogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
             __crt_rsec = c_time;
         }
@@ -220,6 +241,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__ejlogfile, previous_log);
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
             w_compress_gzfile(previous_log, c_ejflogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
             __crt_rsec = c_time;
         }
@@ -230,6 +255,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__alogfile, previous_log);
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
             w_compress_gzfile(previous_log, c_alogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
             __crt_rsec = c_time;
         }
@@ -240,6 +269,10 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__jlogfile, previous_log);
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
             w_compress_gzfile(previous_log, c_jlogfile);
+            /* Remove uncompressed file */
+            if(unlink(previous_log) == -1) {
+                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            }
             os_free(previous_log);
             __crt_rsec = c_time;
         }
