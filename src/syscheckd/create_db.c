@@ -226,7 +226,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
         case ENOTDIR:
             /*Deletion message sending*/
-            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", linked_file ? esc_linked_file : file_name);
+            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
             send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
@@ -583,7 +583,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 opts & CHECK_ATTRS ? w_get_file_attrs(file_name) : 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                linked_file ? esc_linked_file : ""
+                esc_linked_file ? esc_linked_file : ""
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -677,7 +677,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 0,
                 wd_sum,
                 syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "",
-                linked_file ? esc_linked_file : file_name,
+                esc_linked_file ? esc_linked_file : "",
                 file_name,
                 alertdump ? "\n" : "",
                 alertdump ? alertdump : "");
@@ -726,16 +726,16 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s\n%s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? esc_linked_file : "", file_name, fullalert);
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name, fullalert);
                         os_free(fullalert);
                         fullalert = NULL;
                     } else {
                         snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s",
-                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? esc_linked_file : "", file_name);
+                                c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
                     }
                 } else {
                     snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s",
-                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", *linked_file ? esc_linked_file : "", file_name);
+                            c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
                 }
                 os_free(buf);
                 send_syscheck_msg(alert_msg);
@@ -979,6 +979,7 @@ int run_dbcheck()
     }
 
     if (syscheck.dir[0]) {
+        char linked_file[PATH_MAX + 1];
         // Check for deleted files
         w_mutex_lock(&lastcheck_mutex);
         last_backup = syscheck.last_check;
@@ -994,10 +995,21 @@ int run_dbcheck()
         os_calloc(1, sizeof(unsigned int), i);
 
         for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
+            char *esc_linked_file = NULL;
             pos = find_dir_pos(curr_node->key, 1, 0, 0);
 
+            *linked_file = '\0';
+            if (syscheck.converted_links[pos]) {
+                replace_linked_path(curr_node->key, pos, linked_file);
+            }
+
+            if (*linked_file) {
+                esc_linked_file = escape_syscheck_field((char *) linked_file);
+            }
+
             mdebug2("Sending delete msg for file: %s", curr_node->key);
-            snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", curr_node->key);
+            snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s:%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", esc_linked_file ? esc_linked_file : "", curr_node->key);
+            free(esc_linked_file);
             send_syscheck_msg(alert_msg);
 #ifndef WIN32
             fim_delete_hashes(strdup(curr_node->key));

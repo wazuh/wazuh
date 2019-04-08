@@ -700,17 +700,17 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
                 localsdb->attrs[0] = '\0';
             }
 
-            /* Symbolic path message */
-            if (newsum->symbolic_path && *newsum->symbolic_path) {
-                snprintf(localsdb->sym_path, OS_FLSIZE, "Symbolic path: '%s'.\n", newsum->symbolic_path);
-            } else {
-                *localsdb->sym_path = '\0';
-            }
-
             break;
         default:
             return (-1);
             break;
+    }
+
+    /* Symbolic path message */
+    if (newsum->symbolic_path && *newsum->symbolic_path) {
+        snprintf(localsdb->sym_path, OS_FLSIZE, "Symbolic path: '%s'.\n", newsum->symbolic_path);
+    } else {
+        *localsdb->sym_path = '\0';
     }
 
     // Provide information about the file
