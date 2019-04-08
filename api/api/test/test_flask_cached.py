@@ -1,7 +1,9 @@
+import time
+
 import connexion
 from flask_caching import Cache
+
 from api.util import flask_cached
-import time
 
 
 @flask_cached
