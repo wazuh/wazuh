@@ -262,6 +262,7 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
+    char sym_link_thread = 0;
 #ifdef ENABLE_AUDIT
     audit_thread_active = 0;
     whodata_alerts = 0;
@@ -417,6 +418,7 @@ int main(int argc, char **argv)
             if (!syscheck.converted_links[r]) {
                 minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             } else {
+                sym_link_thread = 1;
                 minfo("Monitoring directory: '%s' (%s), with options %s.", syscheck.dir[r], syscheck.converted_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             }
 
@@ -477,6 +479,10 @@ int main(int argc, char **argv)
 #else
         merror("Audit support not built. Whodata is not available.");
 #endif
+    }
+
+    if (sym_link_thread) {
+        symlink_checker_init();
     }
 
     /* Start the daemon */

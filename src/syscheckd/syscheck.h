@@ -138,6 +138,8 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 #endif
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
+void symlink_checker_init();
+void send_silent_del(char *path);
 
 #ifdef WIN_WHODATA
 int w_update_sacl(const char *obj_path);

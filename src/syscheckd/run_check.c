@@ -25,8 +25,9 @@
 
 /* Prototypes */
 static void send_sk_db(int first_scan);
-
-
+static void *symlink_checker_thread(__attribute__((unused)) void * data);
+static void update_link_monitoring(int pos, char *old_path, char *new_path);
+static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -648,4 +649,98 @@ void log_realtime_status(int next) {
             status = next;
         }
     }
+}
+
+void symlink_checker_init() {
+#ifndef WIN32
+    minfo("Starting symbolic link updater.");
+
+    w_create_thread(symlink_checker_thread, NULL);
+#endif
+}
+
+void *symlink_checker_thread(__attribute__((unused)) void * data) {
+    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_sleep", 1, 2592000);
+    int i;
+    char *real_path;
+    char *conv_link;
+
+    mdebug1("Configured symbolic links will be checked every %d seconds.", checker_sleep);
+
+    while (1) {
+        sleep(checker_sleep);
+        mdebug1("Checking if the symbolic links have changed...");
+
+        for (i = 0; syscheck.dir[i]; i++) {
+            if (syscheck.converted_links[i]) {
+                if (real_path = realpath(syscheck.dir[i], NULL), !real_path) {
+                    continue;
+                }
+
+                conv_link = get_converted_link_path(i);
+
+                if (strcmp(real_path, conv_link)) {
+                    minfo("Updating the symbolic link from '%s': '%s' to '%s'.", syscheck.dir[i], conv_link, real_path);
+                    update_link_monitoring(i, conv_link, real_path);
+                } else {
+                    mdebug1("The symbolic link of '%s' has not changed.", syscheck.dir[i]);
+                }
+
+                free(conv_link);
+                free(real_path);
+            }
+        }
+
+        mdebug1("Links check finalized.");
+    }
+
+    return NULL;
+}
+
+void update_link_monitoring(int pos, char *old_path, char *new_path) {
+    w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+    os_strdup(new_path, syscheck.converted_links[pos]);
+    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+
+    // Scan for new files
+    read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0);
+
+    // Remove unlink files
+    OSHash_It_ex(syscheck.fp, (void *) old_path, unlink_files);
+}
+
+void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
+    char *dir = (char *) data;
+
+    if (!strncmp(dir, (*node)->key, strlen(dir))) {
+        syscheck_node *s_node = (syscheck_node *) (*node)->data;
+        OSHashNode *r_node = *node;
+
+        mdebug2("File '%s' was inside the unlinked directory '%s'. It will be notified.", (*node)->key, dir);
+
+        send_silent_del((*node)->key);
+
+        if ((*node)->prev) {
+            (*node)->prev->next = (*node)->next;
+        }
+
+        *node = NULL;
+
+        // If the node is the first node of the row
+        if (*row == r_node) {
+            *row = NULL;
+        }
+
+        free(r_node->key);
+        free(r_node);
+        free(s_node->checksum);
+        free(s_node);
+    }
+}
+
+void send_silent_del(char *path) {
+    char del_msg[OS_SIZE_6144 + 1];
+
+    snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::: %s", path);
+    send_syscheck_msg(del_msg);
 }
