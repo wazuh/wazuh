@@ -1112,7 +1112,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
         pos = find_dir_pos(w_evt->path, 1, 0, 0);
     }
 
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
+    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
     send_syscheck_msg(del_msg);
     whodata_rlist_add(w_evt->path);
 }

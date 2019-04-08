@@ -174,6 +174,7 @@ typedef struct sk_sum_t {
     char *symbolic_path;
     sk_sum_wdata wdata;
     int changes;
+    char silent;
     long date_alert;
 } sk_sum_t;
 

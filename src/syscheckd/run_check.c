@@ -660,7 +660,7 @@ void symlink_checker_init() {
 }
 
 void *symlink_checker_thread(__attribute__((unused)) void * data) {
-    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_sleep", 1, 2592000);
+    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     int i;
     char *real_path;
     char *conv_link;
@@ -741,6 +741,6 @@ void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
 void send_silent_del(char *path) {
     char del_msg[OS_SIZE_6144 + 1];
 
-    snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::: %s", path);
+    snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::::+ %s", path);
     send_syscheck_msg(del_msg);
 }

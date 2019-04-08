@@ -226,7 +226,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
         case ENOTDIR:
             /*Deletion message sending*/
-            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
+            snprintf(alert_msg, OS_SIZE_6144, "-1!:::::::::::%s:%s: %s", syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
             send_syscheck_msg(alert_msg);
 
 #ifndef WIN32
@@ -569,7 +569,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s%s: %s%s%s",
                 str_size,
                 str_perm ? str_perm : "",
                 (opts & CHECK_OWNER) && sid ? sid : "",
@@ -662,7 +662,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s: %s%s%s",
                 str_size,
                 str_perm,
                 str_owner,
@@ -725,16 +725,16 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 if (buf[SK_DB_REPORT_CHANG] == '+') {
                     fullalert = seechanges_addfile(file_name);
                     if (fullalert) {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s\n%s",
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s: %s\n%s",
                                 c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name, fullalert);
                         os_free(fullalert);
                         fullalert = NULL;
                     } else {
-                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s",
+                        snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s: %s",
                                 c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
                     }
                 } else {
-                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s %s",
+                    snprintf(alert_msg, OS_MAXSTR, "%s!%s:%s:%s: %s",
                             c_sum, wd_sum, syscheck.tag[dir_position] ? syscheck.tag[dir_position] : "", esc_linked_file ? esc_linked_file : "", file_name);
                 }
                 os_free(buf);
@@ -1008,7 +1008,7 @@ int run_dbcheck()
             }
 
             mdebug2("Sending delete msg for file: %s", curr_node->key);
-            snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s:%s %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", esc_linked_file ? esc_linked_file : "", curr_node->key);
+            snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s:%s: %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", esc_linked_file ? esc_linked_file : "", curr_node->key);
             free(esc_linked_file);
             send_syscheck_msg(alert_msg);
 #ifndef WIN32

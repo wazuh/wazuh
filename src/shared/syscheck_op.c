@@ -229,7 +229,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
         }
     }
 
-    // Get extra data wdata+tags(optional)
+    // Get extra data
     if (w_sum) {
         sum->wdata.user_id = w_sum;
 
@@ -300,12 +300,19 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             sum->tag = NULL;
         }
 
-        /* Look for a defined tag */
-        if (sum->symbolic_path = wstr_chr(sum->tag, ':'), sum->symbolic_path) {
+        /* Look for a symbolic path */
+        if (sum->tag && (sum->symbolic_path = wstr_chr(sum->tag, ':'))) {
             *(sum->symbolic_path++) = '\0';
-        } else {
-            sum->symbolic_path= NULL;
         }
+
+        /* Look if it is a silent event */
+        if (sum->symbolic_path && (c_inode = wstr_chr(sum->symbolic_path, ':'))) {
+            *(c_inode++) = '\0';
+            if (*c_inode == '+') {
+                sum->silent = 1;
+            }
+        }
+
 
         sum->symbolic_path = unescape_syscheck_field(sum->symbolic_path);
         sum->wdata.user_name = unescape_syscheck_field(sum->wdata.user_name);

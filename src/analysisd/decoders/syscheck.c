@@ -380,25 +380,30 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             goto exit_fail;
     }
 
-    sk_fill_event(lf, f_name, &newsum);
+    if (!newsum.silent) {
+        sk_fill_event(lf, f_name, &newsum);
 
-    /* Dyanmic Fields */
-    lf->nfields = SK_NFIELDS;
-    for (i = 0; i < SK_NFIELDS; i++) {
-        os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
-    }
+        /* Dyanmic Fields */
+        lf->nfields = SK_NFIELDS;
+        for (i = 0; i < SK_NFIELDS; i++) {
+            os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
+        }
 
-    if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
-        //No changes in checksum
-        goto exit_ok;
+        if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
+            //No changes in checksum
+            goto exit_ok;
+        }
+        sk_sum_clean(&newsum);
+        sk_sum_clean(&oldsum);
+        os_free(response);
+        os_free(new_check_sum);
+        os_free(old_check_sum);
+        os_free(wazuhdb_query);
+
+        return (1);
+    } else {
+        mdebug2("Ignoring FIM event on '%s'.", f_name);
     }
-    sk_sum_clean(&newsum);
-    sk_sum_clean(&oldsum);
-    os_free(response);
-    os_free(new_check_sum);
-    os_free(old_check_sum);
-    os_free(wazuhdb_query);
-    return (1);
 
 exit_ok:
     sk_sum_clean(&newsum);
