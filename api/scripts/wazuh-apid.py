@@ -32,7 +32,7 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
-def main(cors, port, host, ssl_context, main_logger):
+def main(cache_conf, cors, port, host, ssl_context, main_logger):
     app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
@@ -42,7 +42,11 @@ def main(cors, port, host, ssl_context, main_logger):
         # add CORS support
         CORS(app.app)
     # add Cache support
-    app.app.config['CACHE_TYPE'] = 'simple'
+    if cache_conf['enabled']:
+        app.app.config['CACHE_TYPE'] = 'simple'
+        app.app.config['CACHE_DEFAULT_TIMEOUT'] = cache_conf['time']/1000
+    else:
+        app.app.config['CACHE_TYPE'] = 'null'
     app.app.cache = Cache(app.app)
     try:
         app.run(port=port, host=host, ssl_context=ssl_context)
@@ -109,6 +113,6 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main(configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
+        main(configuration['cache'], configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
