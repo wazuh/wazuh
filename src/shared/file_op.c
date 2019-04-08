@@ -22,6 +22,18 @@
 #include <aclapi.h>
 #endif
 
+#ifndef WIN32
+#include <setjmp.h>
+
+static __thread jmp_buf env_alrm;
+static void sigalrm_handler(int signo)
+{
+    (void)signo;
+    /* restore env */
+    longjmp(env_alrm, 5);
+}
+#endif
+
 /* Vista product information */
 #ifdef WIN32
 
@@ -2687,3 +2699,37 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 
     return 0;
 }
+
+#ifndef WIN32
+size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, const char * filename, int timeout){
+
+    size_t read_count = 0;
+
+    /* set long jump */
+    int val = setjmp(env_alrm);
+
+    if (!val) {
+        
+        /* setup signal handler */
+        if (signal(SIGALRM, &sigalrm_handler) == SIG_ERR)
+            return (0);
+
+        /* setup alarm */
+        alarm(timeout);
+
+        /* read */
+        read_count = fread(ptr, size, nitems, stream);
+
+    } else {
+        errno = EINTR;
+        merror("Timeout when calling fread() expired for file '%s'", filename);
+    }
+
+    /* unset signal handler and alarm */
+    signal(SIGALRM, NULL);
+    alarm(0);
+
+    return (read_count);
+
+}
+#endif

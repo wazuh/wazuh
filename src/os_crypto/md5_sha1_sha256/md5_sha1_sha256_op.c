@@ -62,7 +62,11 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     SHA256_Init(&sha256_ctx);
 
     /* Update for each one */
+#ifdef WIN32
     while ((n = fread(buf, 1, 2048, fp)) > 0) {
+#else
+    while ((n = w_fread_timeout(buf, 1, 2048, fp, fname, 5)) > 0) {
+#endif
         buf[n] = '\0';
         if (max_size > 0) {
             read = read + n;
