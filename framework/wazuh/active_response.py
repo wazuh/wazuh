@@ -41,11 +41,11 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         raise WazuhException(1650)
 
     if not agent_id:
-        raise WazuhException(1655)
+        raise WazuhException(1653)
 
     commands = get_commands()
     if not custom and command not in commands:
-        raise WazuhException(1656, command)
+        raise WazuhException(1655, command)
 
     # Create message
     msg_queue = command
@@ -58,21 +58,19 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         msg_queue += " - -"
 
     # Send
-    if agent_id == "000" or agent_id == "all":
+    if agent_id == "000":
         oq = OssecQueue(common.EXECQ)
         ret_msg = oq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=OssecQueue.AR_TYPE)
         oq.close()
 
-    if agent_id != "000" or agent_id == "all":
-
+    else:
         if agent_id != "all":
             # Check if agent exists and it is active
             agent_info = Agent(agent_id).get_basic_information()
 
             if agent_info['status'].lower() != 'active':
                 raise WazuhException(1651)
-
-        if agent_id == "all":
+        else:
             agent_id = None
 
         oq = OssecQueue(common.ARQUEUE)
