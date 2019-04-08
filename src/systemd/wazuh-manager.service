@@ -4,6 +4,7 @@ Description=Wazuh manager
 [Service]
 Type=forking
 EnvironmentFile=/etc/ossec-init.conf
+EnvironmentFile=-/etc/environment
 LimitNOFILE=65536
 
 ExecStart=/usr/bin/env ${DIRECTORY}/bin/ossec-control start
