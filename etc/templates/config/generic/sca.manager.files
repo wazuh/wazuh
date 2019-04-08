@@ -4,6 +4,10 @@ generic/system_audit_pw.yml
 applications/cis_apache2224_rcl.yml
 applications/cis_mysql5-6_community_rcl.yml
 applications/cis_mysql5-6_enterprise_rcl.yml
+darwin/system_audit_rcl_mac.yml
+darwin/15/cis_apple_macOS_10.11.yml
+darwin/16/cis_apple_macOS_10.12.yml
+darwin/17/cis_apple_macOS_10.13.yml
 debian/cis_debian_linux_rcl.yml
 debian/cis_debianlinux7-8_L1_rcl.yml
 debian/cis_debianlinux7-8_L2_rcl.yml
