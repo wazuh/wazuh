@@ -1143,7 +1143,7 @@ int check_pattern_expand(int do_seek) {
     return retval;
 }
 
-void check_pattern_expand_excluded() {
+static void check_pattern_expand_excluded() {
     glob_t g;
     int err;
     int glob_offset;
@@ -1781,14 +1781,16 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         mdebug2("File '%s' is empty. Setting encoding to UCS-2 LE.",current->file);
                     } else {
 
-                if (current->ucs2 == UCS2_LE) {
-                    mdebug1("File '%s' is UCS-2 LE",current->file);
-                    current->read = read_ucs2_le;
-                }
+                        if (current->ucs2 == UCS2_LE) {
+                            mdebug1("File '%s' is UCS-2 LE",current->file);
+                            current->read = read_ucs2_le;
+                        }
 
-                if (current->ucs2 == UCS2_BE) {
-                    mdebug1("File '%s' is UCS-2 BE",current->file);
-                    current->read = read_ucs2_be;
+                        if (current->ucs2 == UCS2_BE) {
+                            mdebug1("File '%s' is UCS-2 BE",current->file);
+                            current->read = read_ucs2_be;
+                        }
+                    }
                 }
             }
 
@@ -1974,7 +1976,7 @@ static void check_text_only() {
 }
 
 #ifdef WIN32
-void check_pattern_expand_excluded() {
+static void check_pattern_expand_excluded() {
     int found;
     int j;
 
