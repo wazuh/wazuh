@@ -253,6 +253,7 @@ CREATE TABLE IF NOT EXISTS sca_check (
    process TEXT,
    directory TEXT,
    registry TEXT,
+   command TEXT,
    `references` TEXT,
    result TEXT NOT NULL
 );

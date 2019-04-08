@@ -39,10 +39,10 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event);
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id);
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id,cJSON **command);
 static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result);
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
 static void PushDumpRequest(char * agent_id, char * policy_id);
 static int pm_send_db(char *msg, char *response, int *sock);
@@ -585,10 +585,11 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *directory = NULL;
     cJSON *process = NULL;
     cJSON *registry = NULL;
+    cJSON *command = NULL;
     cJSON *result = NULL;
     cJSON *policy_id = NULL;
 
-    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&policy_id)) {
+    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&policy_id,&command)) {
        
         int result_event = 0;
         char *wdb_response = NULL;
@@ -605,7 +606,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 result_event = SaveEventcheck(lf, 1, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL,policy_id ? policy_id->valuestring : NULL,event);
                
                 if(strcmp(wdb_response,result->valuestring)) {
-                    FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,wdb_response);
+                    FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,wdb_response,command);
                 }
                 if (result_event < 0)
                 {
@@ -616,7 +617,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 result_event = SaveEventcheck(lf, 0, socket,id->valueint,scan_id ? scan_id->valueint : -1,title ? title->valuestring : NULL,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL,result ? result->valuestring : NULL,policy_id ? policy_id->valuestring : NULL,event);
 
                 if(strcmp(wdb_response,result->valuestring)) {
-                    FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,NULL);
+                    FillCheckEventInfo(lf,scan_id,id,name,title,description,rationale,remediation,compliance,reference,file,directory,process,registry,result,NULL,command);
                 }
 
                 if (result_event < 0)
@@ -962,7 +963,7 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJ
     return retval;
 }
 
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id) {
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id,cJSON **command) {
     int retval = 1;
     cJSON *obj;
 
@@ -1088,6 +1089,13 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
             merror("Malformed JSON: field 'registry' must be a string");
             return retval;
         }
+
+        *command = cJSON_GetObjectItem(*check, "command");
+        obj = *command;
+        if( obj && !obj->valuestring ) {
+            merror("Malformed JSON: field 'command' must be a string");
+            return retval;
+        }
         
         if( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
             merror("Malformed JSON: field 'result' not found");
@@ -1178,7 +1186,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
     return retval;
 }
 
-static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result) {
+static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command) {
     
     fillData(lf, "sca.type", "check");
 
@@ -1281,6 +1289,10 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
 
     if(process){
         fillData(lf, "sca.check.process", process->valuestring);
+    }
+
+    if(command){
+        fillData(lf, "sca.check.command", command->valuestring);
     }
 
     if(result) {

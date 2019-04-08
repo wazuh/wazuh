@@ -208,7 +208,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
 int wdb_sca_update(wdb_t * wdb, char * result, int pm_id,int scan_id);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
+int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id,char * command);
 
 /* Insert scan info configuration assessment entry. Returns ID on success or -1 on error (new) */
 int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int score,char * hash);
