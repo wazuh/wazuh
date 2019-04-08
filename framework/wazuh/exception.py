@@ -195,7 +195,7 @@ class WazuhException(Exception):
         # > 9000: Authd
     }
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, node_name=None):
         """
         Creates a Wazuh Exception.
 
@@ -207,6 +207,7 @@ class WazuhException(Exception):
         self._extra_message = extra_message
         self._extra_remediation = extra_remediation
         self._cmd_error = cmd_error
+        self._node_name = node_name
 
         error_details = self.ERRORS[self._code]
         if isinstance(error_details, dict):
@@ -233,6 +234,11 @@ class WazuhException(Exception):
     def __repr__(self):
         return repr(self.to_dict())
 
+    def __eq__(self, other):
+        if not isinstance(other, WazuhException):
+            return NotImplemented
+        return self.to_dict() == other.to_dict()
+
     def __or__(self, other):
         return self
 
@@ -241,7 +247,7 @@ class WazuhException(Exception):
                 'extra_message': self._extra_message,
                 'extra_remediation': self._extra_remediation,
                 'cmd_error': self._cmd_error,
-                'exception_type': self.__class__
+                'node_name': self._node_name
                 }
 
     @property
@@ -252,11 +258,13 @@ class WazuhException(Exception):
     def remediation(self):
         return self._remediation
 
-    @staticmethod
-    def from_dict(dct):
-        local_dct = deepcopy(dct)
-        exception_type = local_dct.pop('exception_type')
-        return globals()[exception_type](**local_dct)
+    @property
+    def node_name(self):
+        return self._node_name
+
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(**dct)
 
 
 class WazuhInternalError(WazuhException):

@@ -47,13 +47,9 @@ components:
         instance:
           type: string
           format: uri
-
-    GenericResult:
-      type: object
-      properties:
-        data:
-          type: string
-          description: Confirmation message.
+        code:
+          type: integer
+          format: int32
 
     ScanIdTime:
       type: object

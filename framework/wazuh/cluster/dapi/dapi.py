@@ -9,15 +9,15 @@ import operator
 import os
 import random
 import time
-from importlib import import_module
-from typing import Callable, Dict, Tuple
 from functools import reduce
+from importlib import import_module
 from operator import or_
+from typing import Callable, Dict, Tuple
 
 from wazuh import Wazuh
-from wazuh import exception, agent, common, utils
+from wazuh import exception, agent, common
 from wazuh.cluster import local_client, cluster, common as c_common
-from wazuh.results import WazuhResult
+import wazuh.results as wresults
 
 
 class DistributedAPI:
@@ -58,7 +58,7 @@ class DistributedAPI:
         """
         Distributes an API call
 
-        :return: Dictionary with API response
+        :return: Dictionary with API response or WazuhException in case of error
         """
 
         try:
@@ -100,14 +100,14 @@ class DistributedAPI:
             except json.decoder.JSONDecodeError:
                 response = {'message': response}
 
-            return response if isinstance(response, WazuhResult) else WazuhResult(response)
+            return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
 
         except exception.WazuhError as e:
             return e
         except exception.WazuhInternalError as e:
             if self.debug:
                 raise
-            self.logger.error(f'Wazuh Internal Error: {e.message}', exc_info=True)
+            self.logger.error(f'{e.message}', exc_info=True)
             return e
         except Exception as e:
             if self.debug:
@@ -146,15 +146,20 @@ class DistributedAPI:
             after = time.time()
             self.logger.debug("Time calculating request result: {}s".format(after - before))
             return data
-        except exception.WazuhException as e:
+        except exception.WazuhError as e:
+            if self.debug:
+                raise
+            return json.dumps(e, cls=WazuhJSONEncoder)
+        except exception.WazuhInternalError as e:
+            self.logger.error(f"{e.message}", exc_info=True)
             if self.debug:
                 raise
             return json.dumps(e, cls=WazuhJSONEncoder)
         except Exception as e:
-            self.logger.error("Error executing API request locally: {}".format(e))
+            self.logger.error(f'Error executing API request locally: {str(e)}', exc_info=True)
             if self.debug:
                 raise
-            return json.dumps(exception.WazuhInternalError(1000), cls=WazuhJSONEncoder)
+            return json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
 
     def to_dict(self):
         return {"f": self.f,
@@ -214,17 +219,19 @@ class DistributedAPI:
                                                                              cls=WazuhJSONEncoder)
                                                                   ).encode(),
                                                    self.wait_for_complete)
-            return response if isinstance(response, WazuhResult) else WazuhResult(response)
+            return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
 
         # get the node(s) who has all available information to answer the request.
         nodes = self.get_solver_node()
         self.from_cluster = True
         if len(nodes) > 1:
             results = await asyncio.shield(asyncio.gather(*[forward(node) for node in nodes.items()]))
-            response = reduce(or_, results).limit(limit=self.f_kwargs.get('limit', common.database_limit),
-                                                  offset=self.f_kwargs.get('offset', 0))\
-                                           .sort(fields=self.f_kwargs.get('fields', []),
-                                                 order=self.f_kwargs.get('order', 'asc'))
+            response = reduce(or_, results)
+            if isinstance(response, wresults.WazuhResult):
+                response = response.limit(limit=self.f_kwargs.get('limit', common.database_limit),
+                                          offset=self.f_kwargs.get('offset', 0))\
+                                   .sort(fields=self.f_kwargs.get('fields', []),
+                                         order=self.f_kwargs.get('order', 'asc'))
         else:
             response = await forward(next(iter(nodes.items())))
         return response
@@ -279,69 +286,6 @@ class DistributedAPI:
                 node_name = {k: [] for k, _ in itertools.groupby(agents, key=operator.itemgetter('node_name'))}
             return node_name
 
-    def merge_results(self, responses, final_json):
-        """
-        Merge results from an API call.
-        To do the merging process, the following is considered:
-            1.- If the field is a list, append items to it
-            2.- If the field is a message (msg), only replace it if the new message has more priority.
-            3.- If the field is a integer:
-                * if it's totalItems, sum
-                * if it's an error, only replace it if its value is higher
-        The priorities are defined in a list of tuples. The first item of the tuple is the element which has more priority.
-        :param responses: list of results from each node
-        :param final_json: JSON to return.
-        :return: single JSON with the final result
-        """
-        priorities = {
-            ("Some agents were not restarted", "All selected agents were restarted"),
-            ("KO", "OK")
-        }
-
-        for local_json in responses:
-            for key, field in local_json.items():
-                field_type = type(field)
-                if field_type == dict:
-                    final_json[key] = self.merge_results([field], {} if key not in final_json else final_json[key])
-                elif field_type == list:
-                    if key in final_json:
-                        final_json[key].extend([elem for elem in field if elem not in final_json[key]])
-                    else:
-                        final_json[key] = field
-                elif field_type == int:
-                    if key in final_json:
-                        if key == 'totalItems':
-                            final_json[key] += field
-                        elif key == 'error' and final_json[key] < field:
-                            final_json[key] = field
-                    else:
-                        final_json[key] = field
-                else:  # str
-                    if key in final_json:
-                        if (field, final_json[key]) in priorities:
-                            final_json[key] = field
-                    else:
-                        final_json[key] = field
-
-        if 'data' in final_json and 'items' in final_json['data'] and isinstance(final_json['data']['items'], list):
-            if 'offset' not in self.f_kwargs:
-                self.f_kwargs['offset'] = 0
-            if 'limit' not in self.f_kwargs:
-                self.f_kwargs['limit'] = common.database_limit
-
-            if 'sort' in self.f_kwargs:
-                final_json['data']['items'] = utils.sort_array(final_json['data']['items'],
-                                                               self.f_kwargs['sort']['fields'],
-                                                               self.f_kwargs['sort']['order'])
-
-            offset, limit = self.f_kwargs['offset'], self.f_kwargs['limit']
-            final_json['data']['items'] = final_json['data']['items'][offset:offset+limit]
-
-        if 'error' in final_json and final_json['error'] > 0 and 'data' in final_json:
-            del final_json['data']
-
-        return final_json
-
 
 class APIRequestQueue:
     """
@@ -372,7 +316,7 @@ class APIRequestQueue:
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
                                               node=node).distribute_function()
-                task_id = await node.send_string(json.dumps(result).encode())
+                task_id = await node.send_string(json.dumps(result, cls=WazuhJSONEncoder).encode())
             except Exception as e:
                 self.logger.error("Error in distributed API: {}".format(e), exc_info=True)
                 task_id = b'Error in distributed API: ' + str(e).encode()
@@ -413,7 +357,13 @@ class WazuhJSONEncoder(json.JSONEncoder):
             attributes['__type__'] = type(obj).__name__
             return result
         elif isinstance(obj, exception.WazuhException):
-            result = {'__wazuh_exception__': obj.to_dict()}
+            result = {'__wazuh_exception__': {'__class__': obj.__class__.__name__,
+                                              '__object__': obj.to_dict()}}
+            return result
+        elif isinstance(obj, wresults.WazuhResult):
+            result = {'__wazuh_result__': {'__class__': obj.__class__.__name__,
+                                           '__object__': obj.to_dict()}
+                      }
             return result
         return json.JSONEncoder.default(self, obj)
 
@@ -439,8 +389,13 @@ def as_wazuh_object(dct: Dict):
                 else:
                     return getattr(getattr(module, classname), funcname)
         elif '__wazuh_exception__' in dct:
-            return exception.WazuhException.from_dict(dct['__wazuh_exception__'])
+            wazuh_exception = dct['__wazuh_exception__']
+            return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
+        elif '__wazuh_result__' in dct:
+            wazuh_result = dct['__wazuh_result__']
+            return getattr(wresults, wazuh_result['__class__']).from_dict(wazuh_result['__object__'])
         return dct
+
     except (KeyError, AttributeError):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",

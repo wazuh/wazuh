@@ -12,6 +12,10 @@ from wazuh.exception import WazuhException, WazuhInternalError
 
 class WazuhResult(dict):
 
+    def __init__(self, dct, str_priority=None):
+        super().__init__(dct)
+        self._str_priority = str_priority
+
     def __or__(self, other):
         
         if isinstance(other, WazuhException):
@@ -32,15 +36,31 @@ class WazuhResult(dict):
             elif isinstance(field, Number):
                 result[key] = result[key] + field
             elif isinstance(field, str):  # str
-                result[key] = "|".join([result[key], field])
+                if self._str_priority is not None:
+                    priorities = self._str_priority + result[key] + field
+                    result[key] = result[key] if priorities.index(result[key]) < priorities.index(field) else field
+                else:
+                    result[key] = "|".join([result[key], field]) if result[key] != field else field
 
         return result
+
+    def to_dict(self):
+        return {
+            'str_priority': self._str_priority,
+            'result': deepcopy(self)
+        }
 
     def limit(self, limit=database_limit, offset=0):
         return deepcopy(self)
 
     def sort(self, fields=[], order='asc'):
         return deepcopy(self)
+
+    @classmethod
+    def from_dict(cls, dct):
+        result = cls(dct['result'], str_priority=dct['str_priority'])
+        result.update(dct['result'])
+        return result
 
 
 class WazuhQueryResult(WazuhResult):

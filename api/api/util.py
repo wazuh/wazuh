@@ -186,6 +186,7 @@ def exception_handler(f):
                 if len(result) > 0:
                     if isinstance(result[0], Exception):
                         raise result[0]
+            return result
         except Exception as e:
             return _create_problem(e)
 

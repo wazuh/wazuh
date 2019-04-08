@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh.cluster import local_client
-from wazuh import common, exception
+from wazuh import common
 from wazuh.agent import Agent
 from wazuh.cluster.dapi.dapi import WazuhJSONEncoder
 import json
