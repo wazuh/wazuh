@@ -57,6 +57,8 @@ static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
 static int wm_sca_send_dump_end(wm_sca_t * data, unsigned int elements_sent,char * policy_id,int scan_id);  // Send dump end event
 
+int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
+
 #ifndef WIN32
 static void * wm_sca_request_thread(wm_sca_t * data);
 #endif
@@ -74,9 +76,10 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_
 static int wm_sca_is_process(char *value, OSList *p_list,wm_sca_t * data); // Check is a process
 
 #ifdef WIN32
+static int wm_check_registry_entry(char * const value, wm_sca_t * const data);
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value);
 static char *wm_sca_os_winreg_getkey(char *reg_entry);
-static int wm_sca_open_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value);
+static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, int * test_result);
 static int wm_sca_winreg_querykey(HKEY hKey,__attribute__((unused))char *p_key,__attribute__((unused)) char *full_key_name,char *reg_option, char *reg_value);
 static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
@@ -728,6 +731,25 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
+int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
+{
+    /* Already present */
+    if (w_is_str_in_array(data->alert_msg, msg)) {
+        return 1;
+    }
+    
+    int i = 0;
+    while (data->alert_msg[i] && (i < 255)) {
+        i++;
+    }
+
+    if (!data->alert_msg[i]) {
+        os_strdup(msg, data->alert_msg[i]);
+    }
+    return 0;
+}
+
+
 static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy) {
 
     int type = 0, condition = 0, invalid = 0;
@@ -946,53 +968,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #ifdef WIN32
                 /* Check for a registry entry */
                 else if (type == WM_SCA_TYPE_REGISTRY) {
-                    char *entry = NULL;
-                    char *pattern = NULL;
-
-                    /* Look for additional entries in the registry
-                    * and a pattern to match.
-                    */
-                    entry = wm_sca_get_pattern(value);
-                    if (entry) {
-                        pattern = wm_sca_get_pattern(entry);
-                    }
-
-                    mdebug2("Checking registry: '%s'.", value);
-                    if (wm_sca_is_registry(value, entry, pattern)) {
-                        mdebug2("Found registry.");
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Registry: %s",
-                                value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
-
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
-                            }
-                        }
-                        found = 1;
-                    } else {
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Registry: %s",
-                                value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
-
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
-                            }
-                        }
-                    }
+                    found = wm_check_registry_entry(value, data);
                 }
     #endif
                 /* Check for a directory */
@@ -1123,91 +1099,55 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
             if (condition & WM_SCA_COND_NON) {
                 if (not_found == -1){ g_found = 0;} else {g_found = 1;}
             }
+            
+            void (*sumary_increment)() = (g_found == 1) ? wm_sca_summary_increment_failed : wm_sca_summary_increment_passed;
+            char * const results[]= {"failed", "passed"};
+            char * const result = (g_found == 1) ? results[0] : results[1];
+            int j = 0;
+            char **p_alert_msg = data->alert_msg;
+            while (1) {
+                if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                    sumary_increment();
+                    cJSON *event = wm_sca_build_event(profile, policy, p_alert_msg, id, result);
 
-            /* Alert if necessary */
-            if (g_found == 1) {
-                int j = 0;
-                char **p_alert_msg = data->alert_msg;
-
-
-                while (1) {
-                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_sca_summary_increment_failed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
-
-                        if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
-                                wm_sca_send_event_check(data,event);
-                            }
-                            cJSON_Delete(event);
-                        } else {
-                            merror("Building event for check: %s. Set debug mode for more information.", name);
-                            ret_val = 1;
+                    if(event){
+                        if(wm_sca_check_hash(cis_db[cis_db_index], result, profile, event, id_check_p, cis_db_index) && !requirements_scan) {
+                            wm_sca_send_event_check(data,event);
                         }
-                    }
-
-                    if (p_alert_msg[j]) {
-                        free(p_alert_msg[j]);
-                        p_alert_msg[j] = NULL;
-                        j++;
-
-                        if (!p_alert_msg[j]) {
-                            break;
-                        }
+                        cJSON_Delete(event);
                     } else {
-                        break;
-                    }
-                }
-
-                if (requirements_scan == 1){
-                    wm_sca_reset_summary();
-                    goto clean_return;
-                }
-            } else {
-                int j = 0;
-                char **p_alert_msg = data->alert_msg;
-
-                while (1) {
-                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_sca_summary_increment_passed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
-
-                        if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
-                                wm_sca_send_event_check(data,event);
-                            }
-                            cJSON_Delete(event);
-                        } else {
-                            merror("Building event for check: %s. Set debug mode for more information.", name);
-                            ret_val = 1;
-                        }
-                    }
-
-                    if (p_alert_msg[j]) {
-                        free(p_alert_msg[j]);
-                        p_alert_msg[j] = NULL;
-                        j++;
-
-                        if (!p_alert_msg[j]) {
-                            break;
-                        }
-                    } else {
-                        break;
-                    }
-                }
-                j = 0;
-                while (data->alert_msg[j]) {
-                    free(data->alert_msg[j]);
-                    data->alert_msg[j] = NULL;
-                    j++;
-                }
-
-                /* Check if this entry is required for the rest of the file */
-                if (condition & WM_SCA_COND_REQ) {
-                    if (requirements_scan == 1){
+                        merror("Building event for check: %s. Set debug mode for more information.", name);
                         ret_val = 1;
                     }
-                    goto clean_return;
+                }
+
+                if (p_alert_msg[j]) {
+                    free(p_alert_msg[j]);
+                    p_alert_msg[j] = NULL;
+                    j++;
+
+                    if (!p_alert_msg[j]) {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+                
+
+                if (g_found != 1){
+                    j = 0;
+                    while (data->alert_msg[j]) {
+                        free(data->alert_msg[j]);
+                        data->alert_msg[j] = NULL;
+                        j++;
+                    }
+
+                    if (condition & WM_SCA_COND_REQ) {
+                        if (requirements_scan == 1){
+                            ret_val = 1;
+                        }
+                        goto clean_return;
+                    }
                 }
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
@@ -1358,7 +1298,7 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
+static int wm_sca_check_file(char *file, char *pattern, wm_sca_t * data)
 {
     char *split_file;
     int full_negate = 0;
@@ -1880,17 +1820,54 @@ void wm_sca_destroy(wm_sca_t * data) {
 }
 
 #ifdef WIN32
+
+static int wm_check_registry_entry(char * const value, wm_sca_t * const data)
+{
+    /* Look for additional entries in the registry and a pattern to match. */
+    char *entry = wm_sca_get_pattern(value);
+    char *pattern = entry ? wm_sca_get_pattern(entry) : NULL;
+
+    minfo("Checking registry: '%s\\%s'...", value, entry);
+    
+    char _b_msg[OS_SIZE_1024 + 1];
+    _b_msg[OS_SIZE_1024] = '\0';
+    snprintf(_b_msg, OS_SIZE_1024, " Registry: %s", value);
+
+    append_msg_to_vm_scat(data, _b_msg);
+
+    const int ret = wm_sca_is_registry(value, entry, pattern);
+    if (ret == 1) {
+        minfo("registry found.");
+        return 1;
+    } else if (ret == -1) {
+        minfo("registry not found.");
+    }
+
+    return 0;
+}
+
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value) {
     char *rk;
-
     rk = wm_sca_os_winreg_getkey(entry_name);
     if (wm_sca_sub_tree == NULL || rk == NULL) {
         merror(SK_INV_REG, entry_name);
         return (0);
     }
 
-    return wm_sca_open_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value) || wm_sca_open_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value);
+    int test_results_32 = 0;
+    int test_results_64 = 0;
+
+    // most likely to find it in the 64bit registry nowadays. Comes first to leverage short-circuit evaluation.
+    
+    const int found = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, &test_results_64)
+                   || wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, &test_results_32);
+    const int test_results = test_results_32 || test_results_64;
+    mdebug2("Reading registry 32/64b key %s\\%s -> %s) -> found?: %d, test results: %d", entry_name, reg_option, reg_value, found, test_results);
+
+    // unable to open the entry (not found) -> ret -1
+    return found ? test_results : -1;
 }
+
 static char *wm_sca_os_winreg_getkey(char *reg_entry)
 {
     char *ret = NULL;
@@ -1940,24 +1917,35 @@ static char *wm_sca_os_winreg_getkey(char *reg_entry)
     return (ret);
 }
 
-static int wm_sca_open_key(char *subkey, char *full_key_name, unsigned long arch,
-                         char *reg_option, char *reg_value)
+static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,
+                         char *reg_option, char *reg_value, int * test_result)
 {
-    int ret = 1;
     HKEY oshkey;
+    LSTATUS err = RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey);
+    if (err != ERROR_SUCCESS) {
+        char error_msg[OS_SIZE_1024 + 1];
+        error_msg[OS_SIZE_1024] = '\0';
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+                    | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                    NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                    (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
-    if (RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey) != ERROR_SUCCESS) {
-        return (0);
+        mdebug2("Unable to read  %s: %s", full_key_name, error_msg);
+        /* If the key does not exists, testings should also fail */
+        *test_result = 0;
+        return 0;
     }
-
-    /* If option is set, return the value of query key */
+    
+    /* If the key does exists, a test for existance succeeds  */
+    *test_result = 1;
+    
+    /* If option is set, set test_result as the value of query key */
     if (reg_option) {
-        ret = wm_sca_winreg_querykey(oshkey, subkey, full_key_name,
-                                   reg_option, reg_value);
+        *test_result = wm_sca_winreg_querykey(oshkey, subkey, full_key_name, reg_option, reg_value);
     }
 
     RegCloseKey(oshkey);
-    return (ret);
+    return 1;
 }
 
 static int wm_sca_winreg_querykey(HKEY hKey,
