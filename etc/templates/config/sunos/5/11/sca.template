@@ -5,7 +5,7 @@
     <skip_nfs>yes</skip_nfs>
 
     <policies>
-      <policy>cis_sles12_linux_rcl.yml</policy>
+      <policy>cis_solaris11_rcl.yml</policy>
       <policy>system_audit_rcl.yml</policy>
       <policy>system_audit_ssh.yml</policy>
       <policy>system_audit_pw.yml</policy>
