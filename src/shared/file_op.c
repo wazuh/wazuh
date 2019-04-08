@@ -25,12 +25,12 @@
 #ifndef WIN32
 #include <setjmp.h>
 
-static __thread jmp_buf env_alrm;
+static __thread sigjmp_buf env_alrm;
 static void sigalrm_handler(int signo)
 {
     (void)signo;
     /* restore env */
-    longjmp(env_alrm, 5);
+    siglongjmp(env_alrm, 5);
 }
 #endif
 
@@ -2706,7 +2706,7 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, cons
     size_t read_count = 0;
 
     /* set long jump */
-    int val = setjmp(env_alrm);
+    int val = sigsetjmp(env_alrm, 1);
 
     if (!val) {
         
