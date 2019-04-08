@@ -175,7 +175,8 @@ def flask_cached(f):
     """
     @functools.wraps(f)
     def cached_function(*args, **kwargs):
-        @current_app.cache.memoize(timeout=10)
+
+        @current_app.cache.memoize()
         def decorated_function(*args, **kwargs):
             return f(*args, **kwargs)
         return decorated_function(*args, **kwargs)
