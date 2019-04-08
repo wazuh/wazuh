@@ -86,6 +86,11 @@ int OS_SetRecvTimeout(int socket, long seconds, long useconds);
  */
 int OS_SetKeepalive(int socket);
 
+/*
+ * Enable SO_KEEPALIVE options for TCP
+ */
+void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
+
 /* Set the delivery timeout for a socket
  * Returns 0 on success, else -1
  */
