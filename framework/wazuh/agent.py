@@ -912,7 +912,6 @@ class Agent:
 
         if restart_all:
             oq = OssecQueue(common.ARQUEUE)
-            raise WazuhInternalError(1000, extra_message="Fake error")
             ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS)
             oq.close()
             return ret_msg

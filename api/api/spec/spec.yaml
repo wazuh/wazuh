@@ -14,6 +14,14 @@ info:
     url: 'https://github.com/wazuh/wazuh/blob/master/LICENSE'
 
 components:
+  responses:
+    ResponseError:
+      description: Response to report a result error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
   schemas:
     ## Common models
     ApiResponse:
@@ -36,6 +44,10 @@ components:
 
     ApiError:
       type: object
+      required:
+        - type
+        - title
+        - detail
       properties:
         type:
           type: string
@@ -50,6 +62,18 @@ components:
         code:
           type: integer
           format: int32
+        remediation:
+          type: string
+        dapi_errors:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              error:
+                type: string
+              logfile:
+                type: string
+                format: path
 
     ScanIdTime:
       type: object
@@ -1757,6 +1781,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
       x-bearerInfoFunc: api.authentication.decode_token
+
   parameters:
     agent_id:
       in: path
@@ -3023,8 +3048,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-#security:
-#   - jwt: []
+security:
+   - jwt: []
 
 paths:
   /active-response/{agent_id}:
@@ -3067,6 +3092,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Command sent."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents:
     delete:
@@ -3110,6 +3137,8 @@ paths:
                   - '005'
                   older_than: 10s
                   total_affected_agents: 2
+        default:
+          $ref: '#/components/responses/ResponseError'
     get:
       tags:
       - agents
@@ -3237,6 +3266,8 @@ paths:
                     registerIP: any
                     id: '002'
                     node_name: unknown
+        default:
+          $ref: '#/components/responses/ResponseError'
     post:
       tags:
       - agents
@@ -3282,6 +3313,8 @@ paths:
                 data:
                   id: "007"
                   key: MDA3IE5ld0hvc3QgMTAuMC4wLjkgZTk5MDE2ZTkzMjMyZDBjZDYyMGIyZTZmMTM2ZjMzMDQxMjY3M2E0NGRmOTNmODk1NzFjMGQyYzczY2VlYzRhZQ==
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}:
     delete:
@@ -3312,6 +3345,8 @@ paths:
                 data:
                   affected_agents:
                   - '008'
+        default:
+          $ref: '#/components/responses/ResponseError'
     get:
       tags:
         - agents
@@ -3360,6 +3395,8 @@ paths:
                   registerIP: "172.18.0.6"
                   status: "Active"
                   version: "Wazuh v3.8.2"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/config/{component}/{configuration}:
     get:
@@ -3427,6 +3464,8 @@ paths:
                         logformat: syslog
                         target:
                           - agent
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/group:
     delete:
@@ -3448,6 +3487,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Group unset for agent '004'."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/group/is_sync:
     get:
@@ -3477,6 +3518,8 @@ paths:
               example:
                 data:
                     synced: false
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/group/{group_id}:
     delete:
@@ -3499,6 +3542,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Group 'dmz' unset for agent '004'."
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     put:
       tags:
         - agents
@@ -3524,6 +3570,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Group '004' already belongs to group 'dmz'."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/key:
     get:
@@ -3555,6 +3603,8 @@ paths:
               example:
                 data:
                   key: MDA0IG1haW5fZGF0YWJhc2UgMTAuMC4wLjE1IDIzNGM1Y2MzZjhhNzA2OWY2ZGRjN2I0NDc1MWZmNmE1Zjg3MjExMTJiZWJhNmFhMWUyMDIzNWI4MTBjYWNiM2I=
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/restart:
     put:
@@ -3584,6 +3634,8 @@ paths:
                   data:
                     affected_agents:
                       - "007"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/upgrade:
     put:
@@ -3624,6 +3676,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Upgrade procedure started"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/upgrade_custom:
     put:
@@ -3657,6 +3711,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Installation started"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_name}:
     put:
@@ -3685,6 +3741,8 @@ paths:
                 data:
                   id: "008"
                   key: MDA4IG15TmV3QWdlbnQgYW55IDIyNGVmNmI4NjYyMDk5OTc5NzdiZWJhNDRmZTAyNDI0NjU2ZDM1NjhjNWJiZWI4Njk0M2JkMzdjZjA5YjZlM2M=
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/{agent_id}/upgrade_result:
     get:
@@ -3703,7 +3761,6 @@ paths:
           schema:
             type: integer
             format: int32
-
       responses:
         '200':
           description: 'Get agent upgrade result'
@@ -3713,6 +3770,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Agent upgraded successfully
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/group/{group_id}:
     delete:
@@ -3744,6 +3803,9 @@ paths:
                   affected_agents:
                   - '001'
                   - '002'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     post:
       tags:
         - agents
@@ -3783,6 +3845,9 @@ paths:
                   affected_agents:
                   - '001'
                   - '002'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /agents/groups:
     delete:
       tags:
@@ -3816,6 +3881,9 @@ paths:
                   - '002'
                   - '005'
                   - '003'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     get:
       tags:
         - agents
@@ -3864,6 +3932,8 @@ paths:
                     name: pciserver
                     mergedSum: 220d6c5fc253f251827ee7487341c0fc
                     configSum: ab73af41699f13fdd81903b5f23d8d00
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/groups/{group_id}:
     delete:
@@ -3898,6 +3968,9 @@ paths:
                   affected_agents:
                   - '001'
                   - '002'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     get:
       tags:
         - agents
@@ -3981,6 +4054,9 @@ paths:
                     registerIP: 10.0.0.15
                     node_name: unknown
                     id: '004'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     put:
       tags:
         - agents
@@ -4000,6 +4076,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Group 'pciserver' created"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/groups/{group_id}/configuration:
     get:
@@ -4043,6 +4121,9 @@ paths:
                       localfile:
                       - location: /var/log/linux.log
                       - log_format: syslog
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     post:
       tags:
         - agents
@@ -4072,6 +4153,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Agent configuration was updated successfully
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/groups/{group_id}/files:
     get:
@@ -4164,6 +4247,8 @@ paths:
                       hash: 92d8011facc8b921ece301ea4ce6a616
                     - filename: win_malware_rcl.txt
                       hash: 6a8d3c63a0e77dea35aaed3ee2cca3a1
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/groups/{group_id}/files/{file_name}:
     get:
@@ -4208,6 +4293,9 @@ paths:
                       reference: "https://benchmarks.cisecurity.org/tools2/linux/CIS_Debian_Benchmark_v1.0.pdf"
                       checks:
                         - "f:/etc/fstab -> !r:/tmp;"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     post:
       tags:
         - agents
@@ -4237,6 +4325,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Agent configuration was updated successfully
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /agents/insert:
     post:
       tags:
@@ -4294,6 +4385,8 @@ paths:
                 data:
                   id: 123
                   key: MTIzIE5ld0hvc3RfMiAxMC4wLjEwLjEwIDFhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5emFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6YWJjZGVmZ2hpNjQ=
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/name/{agent_name}:
     get:
@@ -4328,6 +4421,8 @@ paths:
                   registerIP: 10.0.0.9
                   node_name: unknown
                   id: "007"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/no_group:
     get:
@@ -4389,6 +4484,8 @@ paths:
                       registerIP: 10.0.10.10
                       node_name: unknown
                       id: "123"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/outdated:
     get:
@@ -4433,6 +4530,8 @@ paths:
                     - version: Wazuh v3.0.0
                       id: "004"
                       name: dmz002
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/restart:
     post:
@@ -4473,6 +4572,9 @@ paths:
                     affected_agents:
                     - '002'
                     - '004'
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     put:
       tags:
       - agents
@@ -4490,6 +4592,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Restarting all agents"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/stats/distinct:
     get:
@@ -4548,6 +4652,8 @@ paths:
                         platform: ubuntu
                       count: 2
                     - count: 5
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/summary:
     get:
@@ -4588,6 +4694,8 @@ paths:
                   Disconnected: 0
                   Never connected: 5
                   Pending: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /agents/summary/os:
     get:
@@ -4629,6 +4737,8 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cache/:
     delete:
@@ -4683,6 +4793,8 @@ paths:
                   all:
                     -
                   groups:
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cache/{group}:
     delete:
@@ -4714,6 +4826,8 @@ paths:
                   groups:
                     agents:
                       - /agents/stats/distinct?pretty&fields=os.platform
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cache/config:
     get:
@@ -4746,6 +4860,8 @@ paths:
                     -
                   jsonp: false
                   redisClient: false
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /ciscat/{agent_id}/results:
     get:
@@ -4817,6 +4933,8 @@ paths:
                     pass: 96
                     notchecked: 71
                     unknown: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/node:
     get:
@@ -4854,6 +4972,8 @@ paths:
                   node: "node02"
                   cluster: "wazuh"
                   type: "worker"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/nodes:
     get:
@@ -4902,6 +5022,8 @@ paths:
                       type: "master"
                       version: "3.9.0"
                       ip: "172.17.0.100"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/nodes/{node_id}:
     get:
@@ -4933,6 +5055,8 @@ paths:
                   type: "worker"
                   version: "3.9.0"
                   ip: "172.17.0.101"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/healthcheck:
     get:
@@ -5002,6 +5126,8 @@ paths:
                         - type: "Last keep alive"
                           date_start: "2019-01-11T18:52:57.72Z"
                           date_end: "2019-01-11T18:52:57.73Z"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/healthcheck/{node_id}:
     get:
@@ -5056,6 +5182,8 @@ paths:
                     - type: "Last keep alive"
                       date_start: "2019-01-11 18:52:57.72"
                       date_end: "2019-01-11 18:52:57.73"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/status:
     get:
@@ -5095,6 +5223,8 @@ paths:
                 data:
                   enabled: yes
                   running: yes
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/config:
     get:
@@ -5162,6 +5292,8 @@ paths:
                     - 172.17.0.100
                   hidden: no
                   disabled: false
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/status:
     get:
@@ -5203,6 +5335,8 @@ paths:
                   ossec-syscheckd: running
                   wazuh-clusterd: running
                   wazuh-modulesd: running
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/info:
     get:
@@ -5238,6 +5372,8 @@ paths:
                   ruleset_version: 3905
                   tz_offset: +0000
                   tz_name: UTC
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/configuration:
     get:
@@ -5299,6 +5435,8 @@ paths:
                       timeout_allowed: yes
                     - name: restart-ossec
                       executable: restart-ossec.sh
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/stats:
     get:
@@ -5352,6 +5490,8 @@ paths:
                     events: 4379
                     syscheck: 0
                     firewall: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/stats/hourly:
     get:
@@ -5404,6 +5544,8 @@ paths:
                     - 65
                     - 23
                   interactions: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/stats/weekly:
     get:
@@ -5619,6 +5761,8 @@ paths:
                     - 65
                     - 23
                     interactions: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/stats/analysisd:
     get:
@@ -5691,6 +5835,8 @@ paths:
                   statistical_queue_size: 16384
                   archives_queue_usage: 0
                   archives_queue_size: 16384
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/stats/remoted:
     get:
@@ -5725,6 +5871,8 @@ paths:
                   discarded_count: 0
                   msg_sent: 0
                   recv_bytes: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/logs:
     get:
@@ -5778,6 +5926,8 @@ paths:
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/logs/summary:
     get:
@@ -5825,6 +5975,8 @@ paths:
                     debug: 0
                     error: 0
                     warning: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/files:
     get:
@@ -5857,6 +6009,9 @@ paths:
               example:
                 data:
                   contents: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     post:
       tags:
       - cluster
@@ -5878,6 +6033,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: File updated successfully.
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     delete:
       tags:
       - cluster
@@ -5898,6 +6056,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: File was deleted.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/restart:
     put:
@@ -5918,6 +6078,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Restarting cluster.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/{node_id}/restart:
     put:
@@ -5939,6 +6101,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Restarting manager.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /cluster/configuration/validation:
     get:
@@ -5974,6 +6138,8 @@ paths:
                 errors:
                   - "(1230): Invalid element in the configuration: 'hello'."
                   - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
 
   /cluster/{node_id}/configuration/validation:
@@ -6011,6 +6177,8 @@ paths:
                 errors:
                   - "(1230): Invalid element in the configuration: 'hello'."
                   - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /lists:
     get:
@@ -6065,6 +6233,8 @@ paths:
                         value: write
                       - key: audit-wazuh-a
                         value: attribute
+        default:
+          $ref: '#/components/responses/ResponseError'
 
 
   /lists/files:
@@ -6111,6 +6281,8 @@ paths:
                         path: etc/lists
                       - name: aws-sources
                         path: etc/lists/amazon
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/status:
     get:
@@ -6151,6 +6323,8 @@ paths:
                   ossec-syscheckd: running
                   wazuh-clusterd: running
                   wazuh-modulesd: running
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/info:
     get:
@@ -6185,6 +6359,8 @@ paths:
                   ruleset_version: 3905
                   tz_offset: +0000
                   tz_name: UTC
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/configuration:
     get:
@@ -6245,6 +6421,8 @@ paths:
                       timeout_allowed: yes
                     - name: restart-ossec
                       executable: restart-ossec.sh
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/stats:
     get:
@@ -6297,6 +6475,8 @@ paths:
                     events: 4379
                     syscheck: 0
                     firewall: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/stats/hourly:
     get:
@@ -6348,6 +6528,8 @@ paths:
                     - 65
                     - 23
                   interactions: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/stats/weekly:
     get:
@@ -6562,6 +6744,8 @@ paths:
                     - 65
                     - 23
                     interactions: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/stats/analysisd:
     get:
@@ -6633,6 +6817,8 @@ paths:
                   statistical_queue_size: 16384
                   archives_queue_usage: 0
                   archives_queue_size: 16384
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/stats/remoted:
     get:
@@ -6666,6 +6852,8 @@ paths:
                   discarded_count: 0
                   msg_sent: 0
                   recv_bytes: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/logs:
     get:
@@ -6718,6 +6906,8 @@ paths:
                       tag: ossec-rootcheck
                       level: info
                       description: Starting rootcheck scan.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/logs/summary:
     get:
@@ -6764,6 +6954,8 @@ paths:
                     debug: 0
                     error: 0
                     warning: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/files:
     get:
@@ -6795,6 +6987,9 @@ paths:
               example:
                 data:
                   contents: "<!-- Local rules -->\n\n<!-- Modify it at your will. -->\n<!-- Copyright (C) 2015-2019, Wazuh Inc. -->\n\n<!-- Example -->\n<group name=\"local,syslog,sshd,\">\n\n  <!--\n  Dec 10 01:02:02 host sshd[1234]: Failed none for root from 1.1.1.1 port 1066 ssh2\n -->\n  <rule id=\"100001\" level=\"5\">\n    <if_sid>5716</if_sid>\n    <srcip>1.1.1.1</srcip>\n    <description>sshd: authentication failed from IP 1.1.1.1.</description>\n    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n  </rule>\n\n</group>\n"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     post:
       tags:
       - manager
@@ -6815,6 +7010,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: File updated successfully.
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     delete:
       tags:
       - manager
@@ -6834,6 +7032,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: File was deleted.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/restart:
     put:
@@ -6854,6 +7054,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Restarting manager.
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /manager/configuration/validation:
     get:
@@ -6889,6 +7091,8 @@ paths:
                 errors:
                   - "(1230): Invalid element in the configuration: 'hello'."
                   - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rootcheck:
     put:
@@ -6909,6 +7113,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Restarting Syscheck/Rootcheck on all agents"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     delete:
       tags:
       - rootcheck
@@ -6927,6 +7134,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Rootcheck database deleted"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rootcheck/{agent_id}:
     get:
@@ -6980,6 +7189,9 @@ paths:
                       oldDay: "2019-03-08T09:20:05Z"
                       pci: 2.2.4
                       event: "System Audit: SSH Hardening - 4: No Public Key authentication {PCI_DSS: 2.2.4}. File: /etc/ssh/sshd_config. Reference: 4 ."
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     put:
       tags:
       - rootcheck
@@ -6999,6 +7211,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Restarting Syscheck/Rootcheck locally"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     delete:
       tags:
       - rootcheck
@@ -7018,6 +7233,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Rootcheck database deleted"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rootcheck/{agent_id}/pci:
     get:
@@ -7058,6 +7275,8 @@ paths:
                   totalItems: 1
                   items:
                   - 2.2.4
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rootcheck/{agent_id}/cis:
     get:
@@ -7099,6 +7318,8 @@ paths:
                   items:
                   - "2.3 Debian Linux"
                   - "1.4 Debian Linux"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rootcheck/{agent_id}/last_scan:
     get:
@@ -7127,6 +7348,8 @@ paths:
                 data:
                   end: "2019-03-08T10:35:21Z"
                   start: "2019-03-08T10:34:56Z"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rules:
     get:
@@ -7205,6 +7428,8 @@ paths:
                       details:
                         if_sid: "510"
                         match: "^Windows Malware"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rules/{rule_id}:
     get:
@@ -7260,6 +7485,8 @@ paths:
                         if_sid: "7505"
                         match: contains the EICAR test file
                         options: alert_by_email
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rules/groups:
     get:
@@ -7302,6 +7529,8 @@ paths:
                     - access_denied
                     - accesslog
                     - account_changed
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rules/pci:
     get:
@@ -7344,6 +7573,8 @@ paths:
                     - "1.3.4"
                     - "1.4"
                     - "10.1"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rules/gdpr:
     get:
@@ -7386,6 +7617,8 @@ paths:
                     - "IV_30.1.g"
                     - "IV_32.2"
                     - "IV_35.7.d"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /rules/files:
     get:
@@ -7440,6 +7673,8 @@ paths:
                     - file: 0020-syslog_rules.xml
                       path: ruleset/rules
                       status: enabled
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /sca/{agent_id}:
     get:
@@ -7501,6 +7736,8 @@ paths:
                   policy_id: "cis_debian"
                   end_scan: "2019-03-06T10:11:53Z"
                   start_scan: "2019-03-06T10:11:53Z"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /sca/{agent_id}/checks/{policy_id}:
     get:
@@ -7581,6 +7818,8 @@ paths:
                       value: "9"
                     - key: pci_dss
                       value: "2.2.2"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscheck:
     put:
@@ -7601,6 +7840,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Restarting Syscheck/Rootcheck on all agents"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscheck/{agent_id}:
     get:
@@ -7676,6 +7917,9 @@ paths:
                       gid: "0"
                       mtime: "2018-11-05T11:51:29Z"
                       sha256: a39fbc57dc2ef8a473f078d1f6a35f725809400df67070b8852e8ed725047df2
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     put:
       tags:
       - syscheck
@@ -7695,6 +7939,9 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Restarting Syscheck/Rootcheck locally"
+        default:
+          $ref: '#/components/responses/ResponseError'
+
     delete:
       tags:
       - syscheck
@@ -7714,6 +7961,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: "Syscheck database deleted"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscheck/{agent_id}/last_scan:
     get:
@@ -7742,6 +7991,8 @@ paths:
                 data:
                   end: "2019-03-08T10:35:21Z"
                   start: "2019-03-08T10:34:56Z"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /decoders:
     get:
@@ -7799,6 +8050,8 @@ paths:
                       prematch: "^Agent buffer:"
                       regex: "^ '(\\S+)'."
                       order: level
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /decoders/{decoder_name}:
     get:
@@ -7856,6 +8109,8 @@ paths:
                     status: enabled
                     details:
                       prematch: "^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:warn] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:notice] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S*:error] |^[\\w+ \\w+ \\d+ \\d+:\\d+:\\d+.\\d+ \\d+] [\\S+:info] "
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /decoders/files:
     get:
@@ -7919,6 +8174,8 @@ paths:
                     status: enabled
                   - file: 0345-unbound_decoders.xml
                     status: enabled
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /decoders/parents:
     get:
@@ -7971,6 +8228,8 @@ paths:
                       prematch: "^azure_tag: azure-storage. "
                       regex: "^azure_storage_tag: (\\S+)"
                       order: tag
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscheck:
     delete:
@@ -7991,6 +8250,8 @@ paths:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 message: Syscheck database deleted
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/ciscat/results:
     get:
@@ -8060,6 +8321,8 @@ paths:
                     pass: 104
                     notchecked: 36
                     unknown: 1
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/hardware:
     get:
@@ -8131,6 +8394,8 @@ paths:
                       time: "2019-02-19T10:26:20Z"
                     board_serial: "0"
                     agent_id: "001"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/netaddr:
     get:
@@ -8186,6 +8451,8 @@ paths:
                     address: "fe80::a00:27ff:fefc:51f5"
                     netmask: "ffff:ffff:ffff:ffff::"
                     agent_id: "000"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/netiface:
     get:
@@ -8276,6 +8543,8 @@ paths:
                     mtu: 1500
                     state: "up"
                     agent_id: "000"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/netproto:
     get:
@@ -8329,6 +8598,8 @@ paths:
                     type: "ipv6"
                     dhcp: "enabled"
                     agent_id: "000"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/os:
     get:
@@ -8405,6 +8676,8 @@ paths:
                     sysname: "Linux"
                     hostname: "agent-1"
                     agent_id: "001"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/packages:
     get:
@@ -8477,6 +8750,8 @@ paths:
                     version: "0.6.45-1ubuntu1"
                     format: "deb"
                     agent_id: "000"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/ports:
     get:
@@ -8552,6 +8827,8 @@ paths:
                     rx_queue: 0
                     inode: 18153
                     tx_queue: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /experimental/syscollector/processes:
     get:
@@ -8665,6 +8942,8 @@ paths:
                     start_time: 22
                     tty: 0
                     agent_id: "000"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/hardware:
     get:
@@ -8704,6 +8983,8 @@ paths:
                     id: 599386135
                     time: "2019-03-08T08:30:53Z"
                   board_serial: "0"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/netaddr:
     get:
@@ -8759,6 +9040,8 @@ paths:
                     iface: "enp0s8"
                     netmask: "ffff:ffff:ffff:ffff::"
                     scan_id: 1478544824
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/netiface:
     get:
@@ -8848,6 +9131,8 @@ paths:
                     type: "ethernet"
                     mtu: 1500
                     mac: "08:00:27:78:05:d4"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/netproto:
     get:
@@ -8900,6 +9185,8 @@ paths:
                     iface: "enp0s8"
                     dhcp: "enabled"
                     scan_id: 1478544824
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/os:
     get:
@@ -8942,6 +9229,8 @@ paths:
                   version: "#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018"
                   sysname: "Linux"
                   hostname: "master"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/packages:
     get:
@@ -9013,6 +9302,8 @@ paths:
                     version: "3.5.44"
                     section: "admin"
                     multiarch: "foreign"
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/ports:
     get:
@@ -9088,6 +9379,8 @@ paths:
                     rx_queue: 0
                     inode: 18153
                     tx_queue: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /syscollector/{agent_id}/processes:
     get:
@@ -9202,6 +9495,8 @@ paths:
                     tgid: 121
                     start_time: 1009
                     tty: 0
+        default:
+          $ref: '#/components/responses/ResponseError'
 
   /security/user/authenticate:
     get:
@@ -9224,6 +9519,8 @@ paths:
                     type: string
         '401':
           description: 'Access unauthorized'
+        default:
+          $ref: '#/components/responses/ResponseError'
 
 externalDocs:
   description: Find more about Wazuh API usage

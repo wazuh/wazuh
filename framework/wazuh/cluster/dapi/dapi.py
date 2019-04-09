@@ -14,17 +14,18 @@ from importlib import import_module
 from operator import or_
 from typing import Callable, Dict, Tuple
 
+import wazuh.results as wresults
 from wazuh import Wazuh
 from wazuh import exception, agent, common
 from wazuh.cluster import local_client, cluster, common as c_common
-import wazuh.results as wresults
+from wazuh.wlogging import WazuhLogger
 
 
 class DistributedAPI:
     """
     Represents a distributed API request
     """
-    def __init__(self, f: Callable, logger: logging.Logger, f_kwargs: Dict = None, node: c_common.Handler = None,
+    def __init__(self, f: Callable, logger: WazuhLogger, f_kwargs: Dict = None, node: c_common.Handler = None,
                  debug: bool = False, pretty: bool = False, request_type: str = "local_master",
                  wait_for_complete: bool = False, from_cluster: bool = False, is_async: bool = False,
                  broadcasting: bool = False):
@@ -54,7 +55,7 @@ class DistributedAPI:
         self.is_async = is_async
         self.broadcasting = broadcasting
 
-    async def distribute_function(self) -> Dict:
+    async def distribute_function(self) -> [Dict, exception.WazuhException]:
         """
         Distributes an API call
 
@@ -103,8 +104,10 @@ class DistributedAPI:
             return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
 
         except exception.WazuhError as e:
+            e.dapi_errors = self.get_error_info(e)
             return e
         except exception.WazuhInternalError as e:
+            e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
             self.logger.error(f'{e.message}', exc_info=True)
@@ -113,9 +116,11 @@ class DistributedAPI:
             if self.debug:
                 raise
             self.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
-            return exception.WazuhInternalError(1000, extra_message=str(e))
+            return exception.WazuhInternalError(1000,
+                                                extra_message=str(e),
+                                                dapi_errors=self.get_error_info(e))
 
-    async def execute_local_request(self) -> Dict:
+    async def execute_local_request(self) -> str:
         """
         Executes an API request locally.
 
@@ -147,10 +152,12 @@ class DistributedAPI:
             self.logger.debug("Time calculating request result: {}s".format(after - before))
             return data
         except exception.WazuhError as e:
+            e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
             return json.dumps(e, cls=WazuhJSONEncoder)
         except exception.WazuhInternalError as e:
+            e.dapi_errors = self.get_error_info(e)
             self.logger.error(f"{e.message}", exc_info=True)
             if self.debug:
                 raise
@@ -159,7 +166,10 @@ class DistributedAPI:
             self.logger.error(f'Error executing API request locally: {str(e)}', exc_info=True)
             if self.debug:
                 raise
-            return json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
+            return json.dumps(exception.WazuhInternalError(1000,
+                                                           extra_message=str(e),
+                                                           dapi_errors=self.get_error_info(e)),
+                              cls=WazuhJSONEncoder)
 
     def to_dict(self):
         return {"f": self.f,
@@ -168,6 +178,15 @@ class DistributedAPI:
                 "wait_for_complete": self.wait_for_complete,
                 "from_cluster": self.from_cluster,
                 "is_async": self.is_async
+                }
+
+    def get_error_info(self, e) -> Dict:
+        log_filename = None
+        for h in self.logger.handlers or self.logger.parent.handlers:
+            if hasattr(h, 'baseFilename'):
+                log_filename = os.path.join('WAZUH_HOME', os.path.relpath(h.baseFilename, start=common.ossec_path))
+        return {self.node_info['node']: {'error': e.message if isinstance(e, exception.WazuhException) else str(e),
+                                         'logfile': log_filename}
                 }
 
     async def send_tmp_file(self, node_name=None):
@@ -186,8 +205,9 @@ class DistributedAPI:
         """
         if 'tmp_file' in self.f_kwargs:
             await self.send_tmp_file()
-        return await self.node.execute(command=b'dapi', data=json.dumps(self.to_dict(), cls=WazuhJSONEncoder).encode(),
-                                       wait_for_complete=self.wait_for_complete)
+        return json.loads(await self.node.execute(command=b'dapi', data=json.dumps(self.to_dict(), cls=WazuhJSONEncoder).encode(),
+                                                  wait_for_complete=self.wait_for_complete),
+                          object_hook=as_wazuh_object)
 
     async def forward_request(self) -> str:
         """
@@ -213,12 +233,13 @@ class DistributedAPI:
             else:
                 if 'tmp_file' in self.f_kwargs:
                     await self.send_tmp_file(node_name)
-                response = await self.node.execute(b'dapi_forward',
-                                                   "{} {}".format(node_name,
-                                                                  json.dumps(self.to_dict(),
-                                                                             cls=WazuhJSONEncoder)
-                                                                  ).encode(),
-                                                   self.wait_for_complete)
+                response = json.loads(await self.node.execute(b'dapi_forward',
+                                                              "{} {}".format(node_name,
+                                                                             json.dumps(self.to_dict(),
+                                                                                        cls=WazuhJSONEncoder)
+                                                                             ).encode(),
+                                                              self.wait_for_complete),
+                                      object_hook=as_wazuh_object)
             return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
 
         # get the node(s) who has all available information to answer the request.

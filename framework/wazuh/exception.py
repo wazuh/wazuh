@@ -195,19 +195,24 @@ class WazuhException(Exception):
         # > 9000: Authd
     }
 
-    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, node_name=None):
+    def __init__(self, code, extra_message=None, extra_remediation=None, cmd_error=False, dapi_errors=None):
         """
         Creates a Wazuh Exception.
 
         :param code: Exception code.
         :param extra_message: Adds an extra message to the error description.
+        :param extra_remediation: Adds an extra description to remediation
         :param cmd_error: If it is a custom error code (i.e. ossec commands), the error description will be the message.
+        :param dapi_errors: dict with details about node and logfile. I.e.:
+                            {'master-node': {'error': 'Wazuh Internal error',
+                                             'logfile': WAZUH_HOME/logs/api.log}
+                            }
         """
         self._code = code
         self._extra_message = extra_message
         self._extra_remediation = extra_remediation
         self._cmd_error = cmd_error
-        self._node_name = node_name
+        self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
 
         error_details = self.ERRORS[self._code]
         if isinstance(error_details, dict):
@@ -240,14 +245,17 @@ class WazuhException(Exception):
         return self.to_dict() == other.to_dict()
 
     def __or__(self, other):
-        return self
+        result = self.__class__(**self.to_dict())
+        if isinstance(other, WazuhException):
+            result.dapi_errors = {**self._dapi_errors, **other.dapi_errors}
+        return result
 
     def to_dict(self):
         return {'code': self._code,
                 'extra_message': self._extra_message,
                 'extra_remediation': self._extra_remediation,
                 'cmd_error': self._cmd_error,
-                'node_name': self._node_name
+                'dapi_errors': self._dapi_errors
                 }
 
     @property
@@ -259,8 +267,16 @@ class WazuhException(Exception):
         return self._remediation
 
     @property
-    def node_name(self):
-        return self._node_name
+    def dapi_errors(self):
+        return self._dapi_errors
+
+    @dapi_errors.setter
+    def dapi_errors(self, value):
+        self._dapi_errors = value
+
+    @property
+    def code(self):
+        return self._code
 
     @classmethod
     def from_dict(cls, dct):
