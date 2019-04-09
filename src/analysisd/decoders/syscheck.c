@@ -751,7 +751,7 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     if(lf->data) {
-        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s",
+        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "%s",
                 lf->data);
         lf->diff = lf->data;
         lf->data = NULL;
