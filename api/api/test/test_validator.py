@@ -3,109 +3,114 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import jsonschema as js
 import os
 import pytest
 
-from api import validator
+from api.validator import check_cdb_list, check_exp, check_xml, format_etc_path, _alphanumeric_param, \
+    _array_numbers, _array_names, _base64, _boolean, _cdb_list, _dates, _empty_boolean, _hashes,\
+    _ips, _names, _numbers, _wazuh_key, _paths, _query_param, _ranges, _etc_path, _search_param,\
+    _sort_param, _timeframe_type, _type_format, _yes_no_boolean
+
+
+test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 
 
 @pytest.mark.parametrize('exp, regex_name', [
     # numbers
-    ('43,21,34', 'array_numbers'),
-    ('20190226', 'dates'),
-    ('54355', 'numbers'),
+    ('43,21,34', _array_numbers),
+    ('20190226', _dates),
+    ('54355', _numbers),
     # names
-    ('alphanumeric1_param2', 'alphanumeric_param'),
-    ('file_1,file_2,file-3', 'array_names'),
-    ('file-test_name1', 'names'),
+    ('alphanumeric1_param2', _alphanumeric_param),
+    ('file_1,file_2,file-3', _array_names),
+    ('file-test_name1', _names),
     # IPs
-    ('192.168.122.255', 'ips'),
-    ('any', 'ips'),
+    ('192.168.122.255', _ips),
+    ('any', _ips),
     # hashes
-    ('e4d909c290d0fb1ca068ffaddf22cbd0', 'hashes'),
-    ('449e3b6ffd9b484c5c645321edd4d610', 'ossec_key'),
+    ('e4d909c290d0fb1ca068ffaddf22cbd0', _hashes),
+    ('449e3b6ffd9b484c5c645321edd4d610', _wazuh_key),
     # time
-    ('1d', 'timeframe_type'),
-    ('12h', 'timeframe_type'),
-    ('40m', 'timeframe_type'),
-    ('60s', 'timeframe_type'),
+    ('1d', _timeframe_type),
+    ('12h', _timeframe_type),
+    ('40m', _timeframe_type),
+    ('60s', _timeframe_type),
     # boolean
-    ('true', 'boolean'),
-    ('false', 'boolean'),
-    ('', 'empty_boolean'),
-    ('true', 'empty_boolean'),
-    ('false', 'empty_boolean'),
-    ('yes', 'yes_no_boolean'),
-    ('no', 'yes_no_boolean'),
+    ('true', _boolean),
+    ('false', _boolean),
+    ('', _empty_boolean),
+    ('true', _empty_boolean),
+    ('false', _empty_boolean),
+    ('yes', _yes_no_boolean),
+    ('no', _yes_no_boolean),
     # query parameters
-    ('param1 param2 param3', 'query_param'),
-    ('sort param-', 'sort_param'),
-    ('search param3', 'search_param'),
-    ('select_param2', 'select_param'),
+    ('field1=3;field2!=4', _query_param),
+    ('sort param-', _sort_param),
+    ('search param3', _search_param),
     # ranges
-    ('5-35', 'ranges'),
+    ('5-35', _ranges),
     # format
-    ('xml', 'type_format'),
-    ('json', 'type_format'),
+    ('xml', _type_format),
+    ('json', _type_format),
     # paths
-    ('/var/ossec/etc/internal_options', 'paths'),
-    ('/var/ossec/etc/rules/local_rules.xml', 'paths'),
+    ('/var/ossec/etc/internal_options', _paths),
+    ('/var/ossec/etc/rules/local_rules.xml', _paths),
     # relative paths
-    ('etc/ossec.conf', 'relative_paths'),
-    ('etc/rules/new_rules2.xml', 'relative_paths'),
-    ('etc/lists/new_lists3', 'relative_paths')
+    ('etc/ossec.conf', _etc_path),
+    ('etc/rules/new_rules2.xml', _etc_path),
+    ('etc/lists/new_lists3', _etc_path)
 ])
 def test_validation_check_exp_ok(exp, regex_name):
-    assert validator.check_exp(exp, regex_name)
+    assert check_exp(exp, regex_name)
 
 
 @pytest.mark.parametrize('exp, regex_name', [
     # numbers
-    ('43a,21,34', 'array_numbers'),
-    ('2019-02-26', 'dates'),
-    ('543a', 'numbers'),
+    ('43a,21,34', _array_numbers),
+    ('2019-02-26', _dates),
+    ('543a', _numbers),
     # names
-    ('alphanumeric1_$param2', 'alphanumeric_param'),
+    ('alphanumeric1_$param2', _alphanumeric_param),
     ('file-$', 'names'),
-    ('file_1$,file_2#,file-3', 'array_names'),
+    ('file_1$,file_2#,file-3', _array_names),
     # IPs
-    ('192.168.122.256', 'ips'),
-    ('192.266.1.1', 'ips'),
+    ('192.168.122.256', _ips),
+    ('192.266.1.1', _ips),
     # query parameters
-    ('sort param@', 'sort_param'),
-    ('search param;', 'search_param'),
-    ('select_param2;', 'select_param'),
+    ('sort param@', _sort_param),
+    ('search param;', _search_param),
     # hashes
-    ('$$d909c290d0fb1ca068ffaddf22cbd0', 'hashes'),
-    ('449e3b6ffd9b484c5c645321edd4d61$', 'ossec_key'),
+    ('$$d909c290d0fb1ca068ffaddf22cbd0', _hashes),
+    ('449e3b6ffd9b484c5c645321edd4d61$', _wazuh_key),
     # time
-    ('1j', 'timeframe_type'),
-    ('12x', 'timeframe_type'),
+    ('1j', _timeframe_type),
+    ('12x', _timeframe_type),
     # boolean
-    ('correct', 'boolean'),
-    ('wrong', 'boolean'),
-    ('yes', 'empty_boolean'),
-    ('truee', 'empty_boolean'),
-    ('true', 'yes_no_boolean'),
-    ('false', 'yes_no_boolean'),
+    ('correct', _boolean),
+    ('wrong', _boolean),
+    ('yes', _empty_boolean),
+    ('truee', _empty_boolean),
+    ('true', _yes_no_boolean),
+    ('false', _yes_no_boolean),
     # ranges
-    ('5-35-32', 'ranges'),
-    ('param1,param2,param3', 'query_param'),
+    ('5-35-32', _ranges),
+    ('param1,param2,param3', _query_param),
     # format
-    ('txt', 'type_format'),
-    ('exe', 'type_format'),
+    ('txt', _type_format),
+    ('exe', _type_format),
     # paths
-    ('/var/ossec/etc/internal_options$', 'paths'),
-    ('/var/ossec/etc/rules/local_rules.xml()', 'paths'),
+    ('/var/ossec/etc/internal_options$', _paths),
+    ('/var/ossec/etc/rules/local_rules.xml()', _paths),
     # relative paths
-    ('etc/internal_options', 'relative_paths'),
-    ('../../path', 'relative_paths'),
-    ('/var/ossec/etc/lists/new_lists3', 'relative_paths'),
-    ('../ossec', 'relative_paths'),
-    ('etc/rules/../../../dir', 'relative_paths')
+    ('etc/internal_options', _etc_path),
+    ('../../path', _etc_path),
+    ('/var/ossec/etc/lists/new_lists3', _etc_path),
+    ('../ossec', _etc_path),
+    ('etc/rules/../../../dir', _etc_path)
 ])
 def test_validation_check_exp_ko(exp, regex_name):
-    assert not validator.check_exp(exp, regex_name)
+    assert not check_exp(exp, regex_name)
 
 
 @pytest.mark.parametrize('relative_path', [
@@ -115,7 +120,7 @@ def test_validation_check_exp_ko(exp, regex_name):
     ('etc/ossec.conf')
 ])
 def test_validation_paths_ok(relative_path):
-    assert validator.check_path(relative_path)
+    assert format_etc_path(relative_path)
 
 
 @pytest.mark.parametrize('relative_path', [
@@ -125,35 +130,7 @@ def test_validation_paths_ok(relative_path):
     ('etc/internal_options')
 ])
 def test_validation_paths_ko(relative_path):
-    assert not validator.check_path(relative_path)
-
-
-@pytest.mark.parametrize('parameters, filters', [
-    ({'path': 'etc/rules/rule.xml', 'offset': '32', 'format': 'xml'},
-     {'path': 'paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
-    ({'offset': '2', 'limit': '3', 'sort': '-agent_id'},
-     {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
-    ({'ip': '192.168.122.15', 'os.name': 'CentOS Linux', 'os.version': '7.1'},
-     {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
-    ({'use_http': 'true', 'force': '1', 'agent_id': '004'},
-     {'use_http': 'boolean', 'force': 'numbers', 'agent_id': 'numbers'})
-])
-def test_validation_check_parms_ok(parameters, filters):
-    assert validator.check_params(parameters, filters)
-
-
-@pytest.mark.parametrize('parameters, filters', [
-    ({'path': 'etc/internal_options', 'offset': '32', 'format': 'xml'},
-     {'path': 'relative_paths', 'offset': 'numbers', 'limit': 'numbers', 'format': 'type_format'}),
-    ({'offset': '2', 'limit': '3', 'sort': '-agent_id', 'path': 'etc/rules/local_rules.xml'},
-     {'offset': 'numbers', 'limit': 'numbers', 'sort': 'sort_param'}),
-    ({'ip': '192.168.122.345', 'os.name': 'CentOS Linux', 'os.version': '7.1'},
-     {'ip': 'ips', 'os.name': 'alphanumeric_param', 'os.version': 'alphanumeric_param'}),
-    ({'use_http': 'true', 'force': '1', 'agent_id': '004'},
-     {'use_http': 'boolean', 'force': 'numbers'})
-])
-def test_validation_check_parms_ko(parameters, filters):
-    assert not validator.check_params(parameters, filters)
+    assert not format_etc_path(relative_path)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -161,7 +138,7 @@ def test_validation_check_parms_ko(parameters, filters):
      'audit-wazuh-x:execute \n audit-wazuh-c:command')
 ])
 def test_validation_cdb_list_ok(cdb_list):
-    assert validator.check_cdb_list(cdb_list)
+    assert check_cdb_list(cdb_list)
 
 
 @pytest.mark.parametrize('cdb_list', [
@@ -169,24 +146,79 @@ def test_validation_cdb_list_ok(cdb_list):
     ('audit-wazuh:write \n $variable:read \n audit-wazuh-a:attribute')
 ])
 def test_validation_cdb_list_ko(cdb_list):
-    assert not validator.check_cdb_list(cdb_list)
+    assert not check_cdb_list(cdb_list)
 
 
 @pytest.mark.parametrize('xml_file', [
-    (os.path.join(os.getcwd(), 'test/data/test_xml_1.xml')),
-    (os.path.join(os.getcwd(), 'test/data/test_xml_2.xml'))
+    (os.path.join(test_data_path, 'test_xml_1.xml')),
+    (os.path.join(test_data_path, 'test_xml_2.xml'))
 ])
 def test_validation_xml_ok(xml_file):
     with open(xml_file) as f:
         xml_content = f.read()
-    assert validator.check_xml(xml_content)
+    assert check_xml(xml_content)
 
 
 @pytest.mark.parametrize('xml_file', [
-    (os.path.join(os.getcwd(), 'test/data/test_xml_ko_1.xml')),
-    (os.path.join(os.getcwd(), 'test/data/test_xml_ko_2.xml'))
+    (os.path.join(test_data_path, 'test_xml_ko_1.xml')),
+    (os.path.join(test_data_path, 'test_xml_ko_2.xml'))
 ])
 def test_validation_xml_ko(xml_file):
     with open(xml_file) as f:
         xml_content = f.read()
-    assert not validator.check_xml(xml_content)
+    assert not check_xml(xml_content)
+
+
+@pytest.mark.parametrize('value, format', [
+    ("test.33alphanumeric:", "alphanumeric"),
+    ("cGVwZQ==", "base64"),
+    ("etc/lists/list.csv", "etc_path"),
+    ("etc/decoders/dec35.xml", "etc_path"),
+    ("etc/decoders/test/dec35.xml", "etc_path"),
+    ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4", "hash"),
+    ("file_test-33.xml", "names"),
+    ("651403650840", "numbers"),
+    ("/var/wazuh/test", "path"),
+    ("field=0", "query"),
+    ("field=0,field2!=3;field3~hi", "query"),
+    ("34", "range"),
+    ("34-36", "range"),
+    ("test,.", "search"),
+    ("+field", "sort"),
+    ("-field,+field.subfield", "sort"),
+    ("7d", "timeframe"),
+    ("1s", "timeframe"),
+    ("7m", "timeframe"),
+    ("asdfASD0101", "wazuh_key")
+])
+def test_validation_json_ok(value, format):
+    assert(js.validate({"key": value},
+                       schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
+                       format_checker=js.draft4_format_checker) is None)
+
+
+@pytest.mark.parametrize('value, format', [
+    ("~test.33alphanumeric:", "alphanumeric"),
+    ("cGVwZQ===", "base64"),
+    ("etc/../lists/list.csv", "etc_path"),
+    ("/etc/decoders/dec35.xml", "etc_path"),
+    ("AB0264EA00FD9BCDCF1A5B88BC1BDEA4.", "hash"),
+    ("../../file_test-33.xml", "names"),
+    ("a651403650840", "numbers"),
+    ("!/var/wazuh/test", "path"),
+    #("field=0", "query"),
+    ("34-", "range"),
+    ("34-36-9", "range"),
+    ("test,.&", "search"),
+    ("+field&", "sort"),
+    ("-field;+field.subfield", "sort"),
+    ("7a", "timeframe"),
+    ("s1", "timeframe"),
+    ("asdfASD0101!", "wazuh_key")
+])
+def test_validation_json_ko(value, format):
+    with pytest.raises(js.ValidationError):
+        js.validate({"key": value},
+                    schema={'type': 'object',
+                            'properties': {'key': {'type': 'string', 'format': format}}},
+                    format_checker=js.draft4_format_checker)
