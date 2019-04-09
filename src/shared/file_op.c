@@ -2701,7 +2701,7 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 }
 
 #ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, const char * filename, int timeout){
+size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout){
 
     size_t read_count = 0;
 
@@ -2722,7 +2722,9 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, cons
 
     } else {
         errno = EINTR;
-        merror("Timeout when calling fread() expired for file '%s'", filename);
+        /* To escalate the timeout error to the calling function, we set read_count to 2049
+        since the maximum possible read count is 2048 */
+        read_count = 2049;
     }
 
     /* unset signal handler and alarm */

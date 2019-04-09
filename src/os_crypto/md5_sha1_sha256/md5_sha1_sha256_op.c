@@ -65,15 +65,22 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
 #ifdef WIN32
     while ((n = fread(buf, 1, 2048, fp)) > 0) {
 #else
-    while ((n = w_fread_timeout(buf, 1, 2048, fp, fname, 5)) > 0) {
+    while ((n = w_fread_timeout(buf, 1, 2048, fp, 5)) > 0) {
 #endif
-        buf[n] = '\0';
+        if (n == 2049) {    // Timeout error
+            mwarn("Timeout when scanning file '%s'. File skipped.", fname);
+            if (prefilter_cmd == NULL) {
+                fclose(fp);
+            } else {
+                pclose(fp);
+            }
+            return (-1);
+        }
+
         if (max_size > 0) {
             read = read + n;
-            if (read >= max_size) {
-                merror("Maximum read size reached for file '%s' (%d MB)", fname, (int)read/1048576); // Read is counted in bytes
-                minfo("The internal option 'syscheck.max_size' controls the size limit for monitored files.");
-                /* Close it */
+            if (read >= max_size) {     // Maximum filesize error
+                mwarn("Filesize of '%s' is higher than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
                 if (prefilter_cmd == NULL) {
                     fclose(fp);
                 } else {
@@ -82,6 +89,9 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
                 return (-1);
             }
         }
+
+        buf[n] = '\0';
+
         SHA1_Update(&sha1_ctx, buf, n);
         SHA256_Update(&sha256_ctx, buf, n);
         MD5_Update(&md5_ctx, buf, (unsigned)n);

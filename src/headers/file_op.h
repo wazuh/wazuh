@@ -136,6 +136,6 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 int checkBinaryFile(const char *f_name);
 
 #ifndef WIN32
-size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, const char * filename, int timeout);
+size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout);
 #endif
 #endif /* __FILE_H */
