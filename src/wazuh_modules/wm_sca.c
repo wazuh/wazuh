@@ -11,6 +11,7 @@
 
 #include "wmodules.h"
 #include <os_net/os_net.h>
+#include <sys/stat.h>
 #include "os_crypto/md5/md5_op.h"
 #include "shared.h"
 
@@ -404,14 +405,43 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 sprintf(path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, data->profile[i]->profile);
             }
 #endif
-
-            fp = fopen(path,"r");
+            fp = fopen(path, "r");
 
             if(!fp) {
-                mwarn("Policy file not found: '%s'. Skipping it.",path);
+                mwarn("Policy file not found: '%s'. Skipping it.", path);
                 goto next;
             }
 
+#ifndef WIN32
+            struct stat statbuf;
+            int err = fstat(fileno(fp), &statbuf);
+
+            if (err){
+                mwarn("Couldn't check policy file stat() of: '%s'. Skipping it.", path);
+                goto next;
+            }
+
+            if (statbuf.st_mode & S_IRWXO) {
+                mwarn("Policy file '%s' has wrong permissions. Skipping it.", path);
+                goto next;
+            }
+
+            uid_t root_uid = Privsep_GetUser(ROOTUSER);
+            gid_t root_gid = Privsep_GetGroup(ROOTUSER);
+
+            uid_t ossec_uid = Privsep_GetUser(USER);
+            gid_t ossec_gid = Privsep_GetGroup(GROUPGLOBAL);
+
+            if (root_uid != statbuf.st_uid && ossec_uid != statbuf.st_uid) {
+                mwarn("Policy file '%s' has wrong ownership. Skipping it.", path);
+                goto next;
+            }
+
+            if (root_gid != statbuf.st_gid && ossec_gid != statbuf.st_gid) {
+                mwarn("Policy file '%s' has wrong group. Skipping it.", path);
+                goto next;
+            }
+#endif
             /* Yaml parsing */
             yaml_document_t document;
 
