@@ -6,7 +6,7 @@
 
 from glob import glob
 from itertools import groupby
-
+from operator import itemgetter
 
 from wazuh import common
 from wazuh.agent import Agent
@@ -40,9 +40,10 @@ fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'result': 'result'}
 fields_translation_sca_check_compliance = {'key': 'key',
                                            'value': 'value'}
+fields_translation_sca_check_rule = {'type': 'type', 'rule': 'rule'}
 
 default_query_sca = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
-default_query_sca_check = 'SELECT {0} FROM sca_check LEFT JOIN sca_check_compliance ON id=id_check'
+default_query_sca_check = 'SELECT {0} FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check LEFT JOIN sca_check_rules c ON a.id=c.id_check'
 
 
 class WazuhDBQuerySCA(WazuhDBQuery):
@@ -151,10 +152,12 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     fields_translation = {**fields_translation_sca_check,
-                          **fields_translation_sca_check_compliance}
+                          **fields_translation_sca_check_compliance,
+                          **fields_translation_sca_check_rule}
 
     full_select = {'fields': (list(fields_translation_sca_check.keys()) +
-                              list(fields_translation_sca_check_compliance.keys())
+                              list(fields_translation_sca_check_compliance.keys()) +
+                              list(fields_translation_sca_check_rule.keys())
                               )
                    }
 
@@ -171,7 +174,7 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
     else:
         raise WazuhException(2007)
 
-    groups = groupby(checks, key=lambda row: row['id'])
+    groups = groupby(checks, key=itemgetter('id'))
     result = []
     select_fields = full_select['fields'] if select is None else select['fields']
     select_fields = set([fields_translation_sca_check[field] if field != 'compliance' else 'compliance'
@@ -182,14 +185,12 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
         check_dict = {k: v for k, v in group_list[0].items()
                       if k in set([col.replace('`', '') for col in select_fields])
                       }
-        if select is None or 'compliance' in select['fields']:
-            check_dict['compliance'] = list(filter(lambda x: x != {},
-                                                   ({k: v for k, v in elem.items()
-                                                     if k in fields_translation_sca_check_compliance.values()}
-                                                    for elem in group_list
-                                                    )
-                                                   )
-                                            )
+        for extra_field, field_translations in [('compliance', fields_translation_sca_check_compliance),
+                                                ('rules', fields_translation_sca_check_rule)]:
+            if (select is None or extra_field in select['fields']) and set(field_translations.values()) & group_list[0].keys():
+                check_dict[extra_field] = [dict(zip(field_translations.values(), x))
+                                           for x in set((map(itemgetter(*field_translations.values()), group_list)))]
+
         result.append(check_dict)
 
     return {'totalItems': result_dict['totalItems'], 'items': result}
