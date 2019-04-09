@@ -1,0 +1,1587 @@
+test_name: GET /cluster/nodes
+
+stages:
+  
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search:
+        select:
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Pagination
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset: 0
+        limit: 1
+        sort:
+        search:
+        select:
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems: 1
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Retrieve all elements with limit=0
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit: 0
+        sort:
+        search:
+        select:
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems: 1
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Sort
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort: -name
+        search:
+        select:
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Search
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search: 1
+        select:
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Filters -> type
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search:
+        select:
+        node_type: master
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Filters -> invalid type
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search:
+        select:
+        node_type: wrong_type
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search:
+        select: name, version
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Select 2
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search:
+        select: type
+        node_type:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+  - name: Wrong select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        offset:
+        limit:
+        sort:
+        search:
+        select: wrong_field
+        node_type:
+
+    response:
+        status_code: 400
+        body:
+          data:
+            totalItems:
+            items:
+              - ip:
+                version:
+                type:
+                name:
+
+
+test_name: GET /cluster/{node_id}/stats
+
+stages:
+
+  - name: Cluster stats
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/stats
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        date:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            - hour:
+              alerts:
+                - sigid:
+                  level:
+                  times:
+                - sigid:
+                  level:
+                  times:
+                - sigid:
+                  level:
+                  times:
+              totalAlerts:
+              events:
+              firewall:
+            - hour:
+              alerts:
+                - sigid:
+                  level:
+                  times:
+                - sigid:
+                  level:
+                  times:
+              totalAlerts:
+              events:
+              syscheck:
+              firewall:
+
+  - name: Unexisting node stats
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/stats
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: unexisting_node
+        date:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Hourly node stats
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/stats/hourly
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        date:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Weekly node stats
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/stats/weekly
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        date:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Analysisd stats
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/stats/analysisd
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        date:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            data:
+              total_events_decoded: !anyint
+              syscheck_events_decoded: !anyint
+              syscheck_edps: !anyint
+              syscollector_events_decoded: !anyint
+              syscollector_edps: !anyint
+              rootcheck_events_decoded: !anyint
+              rootcheck_edps: !anyint
+              sca_events_decoded: !anyint
+              sca_edps: !anyint
+              hostinfo_events_decoded: !anyint
+              hostinfo_edps: !anyint
+              winevt_events_decoded: !anyint
+              winevt_edps: !anyint
+              other_events_decoded: !anyint
+              other_events_edps: !anyint
+              events_processed: !anyint
+              events_edps: !anyint
+              events_received: !anyint
+              events_dropped: !anyint
+              alerts_written: !anyint
+              firewall_written: !anyint
+              fts_written: !anyint
+              syscheck_queue_usage: !anyint
+              syscheck_queue_size: !anyint
+              syscollector_queue_usage: !anyint
+              syscollector_queue_size: !anyint
+              rootcheck_queue_usage: !anyint
+              rootcheck_queue_size: !anyint
+              sca_queue_usage: !anyint
+              sca_queue_size: !anyint
+              hostinfo_queue_usage: !anyint
+              hostinfo_queue_size: !anyint
+              winevt_queue_usage: !anyint
+              winevt_queue_size: !anyint
+              event_queue_usage: !anyint
+              event_queue_size: !anyint
+              rule_matching_queue_usage: !anyint
+              rule_matching_queue_size: !anyint
+              alerts_queue_usage: !anyint
+              alerts_queue_size: !anyint
+              firewall_queue_usage: !anyint
+              firewall_queue_size: !anyint
+              statistical_queue_usage: !anyint
+              statistical_queue_size: !anyint
+              archives_queue_usage: !anyint
+              archives_queue_size: !anyint
+
+  - name: Remoted stats
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/stats/remoted
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        date:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            queue_size: !anyint
+            total_queue_size: !anyint
+            tcp_sessions: !anyint
+            evt_count: !anyint
+            ctrl_msg_count: !anyint
+            discarded_count: !anyint
+            msg_sent: !anyint
+            recv_bytes: !anyint
+
+
+test_name: GET /cluster/nodes/{node_id}
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/nodes/{node_id}
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        date:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            name: "node02"
+            type: "worker"
+            version: "3.9.0"
+            ip: "172.17.0.101"
+
+  - name: Request wrong name
+
+    request:
+      url: http://localhost:55000/cluster/nodes/{node_id}
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: wrong_name
+        date:
+
+    response:
+        status_code: 400
+        body:
+          data:
+            name: "node02"
+
+
+test_name: GET /cluster/status
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/status
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            enabled: yes
+            running: yes
+
+
+test_name: GET /cluster/config
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/config
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          data:
+            name: wazuh
+            node_name: node02
+            node_type: worker
+            key: 9d273b53510fef702b54a92e9cffc82e
+            port: 1516
+            bind_addr: 0.0.0.0
+            nodes:
+              - 172.17.0.100
+            hidden: no
+            disabled: false
+
+  
+test_name: GET /cluster/healthcheck
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/healthcheck
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          totalItems: 2
+          items:
+            - name: "node01"
+              info:
+                ip: "172.17.0.100"
+                version: "3.9.0"
+                type: "master"
+                totalActiveAgents: 2
+            - name: "node02"
+              info:
+                ip: "172.17.0.101"
+                version: "3.9.0"
+                type: "worker"
+                totalActiveAgents: 5
+              status:
+                - type: "Agent status"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11 18:52:57.73"
+                  synchronized_files: 4
+                  free: true
+                - type: "Extra valid"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11T18:52:57.73Z"
+                  synchronized_files: 4
+                  free: true
+                - type: "Integrity"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11T18:52:57.73Z"
+                  synchronized_files:
+                    shared: 5
+                    missing: 4
+                    extra_valid: 0
+                    extra: 0
+                  free: true
+                - type: "Last keep alive"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11T18:52:57.73Z"
+
+  - name: Filter -> node name
+
+    request:
+      url: http://localhost:55000/cluster/healthcheck
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          totalItems: 2
+          items:
+            - name: "node01"
+              info:
+                ip: "172.17.0.100"
+                version: "3.9.0"
+                type: "master"
+                totalActiveAgents: 2
+            - name: "node02"
+              info:
+                ip: "172.17.0.101"
+                version: "3.9.0"
+                type: "worker"
+                totalActiveAgents: 5
+              status:
+                - type: "Agent status"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11 18:52:57.73"
+                  synchronized_files: 4
+                  free: true
+                - type: "Extra valid"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11T18:52:57.73Z"
+                  synchronized_files: 4
+                  free: true
+                - type: "Integrity"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11T18:52:57.73Z"
+                  synchronized_files:
+                    shared: 5
+                    missing: 4
+                    extra_valid: 0
+                    extra: 0
+                  free: true
+                - type: "Last keep alive"
+                  date_start: "2019-01-11T18:52:57.72Z"
+                  date_end: "2019-01-11T18:52:57.73Z"
+
+
+test_name: POST /cluster/{node_id}/files
+
+stages:
+
+  - name: Upload ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/ossec.conf
+        overwrite: true
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+        path: etc/ossec.conf
+        overwrite: true
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+  
+  - name: Upload new rules
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_rules.xml
+        overwrite:
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload rules (overwrite=True)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_rules.xml
+        overwrite: true
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload rules (overwrite=True)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_rules.xml
+        overwrite: false
+
+    response:
+        status_code: 400
+        body:
+          data: File updated successfully.
+
+  - name: Upload new decoder
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/decoders/test_decoder.xml
+        overwrite:
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload new decoder (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/decoders/test_decoder.xml
+        overwrite: true
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload new decoder (without overwrite parameter)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/decoders/test_decoder.xml
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload new list
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/lists/test_list
+        overwrite:
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload list (overwrite=true)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/lists/test_list
+        overwrite: true
+
+    response:
+        status_code: 200
+        body:
+          data: File updated successfully.
+
+  - name: Upload list (overwrite=false)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/lists/test_list
+        overwrite: false
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload corrupted ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/ossec.conf
+        overwrite: true
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload corrupted ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+        path: etc/ossec.conf
+        overwrite: true
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload malformed rules
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_rules.xml
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload rules to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: wrong_node
+        path: etc/rules/test_rules.xml
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload malformed decoder
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_decoder.xml
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload decoder to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: wrong_node
+        path: etc/rules/test_decoder.xml
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload malformed list
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_list
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload list to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: wrong_node
+        path: etc/rules/test_list
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload list with empty path
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path:
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Upload a file with a wrong content type
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: POST
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path:
+        overwrite:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+
+test_name: GET /cluster/{node_id}/files
+
+stages:
+
+  - name: Get ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/ossec.conf
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Get ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+        path: etc/ossec.conf
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Get rules
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_rules.xml
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Get rules
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/decoders/test_decoder.xml
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Get lists
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/lists/test_list
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Request wrong path 1
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/wrong_path
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Request wrong path 2
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/../ossec.conf
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Request wrong path 3
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: ./framework/wazuh/agent.py
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Request unexisting file
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/wrong_file.xml
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Request file from unexisting node
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: wrong_node
+        path: etc/rules/test_rules.xml
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Request file with empty path
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path:
+
+    response:
+        status_code: 400
+        body:
+          data:
+
+  - name: Request file with validation parameter (true)
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: /etc/lists/test_list
+        validation: true
+
+    response:
+        status_code: 400
+        body:
+          data:
+  
+test_name: GET /cluster/{node_id}/configuration/validation (manager and worker OK)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Request validation (all nodes)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+
+test_name: GET /cluster/{node_id}/configuration/validation (manager and worker KO)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+  - name: Request validation (all nodes)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+
+test_name: GET /cluster/{node_id}/configuration/validation (manager KO, worker OK)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Request validation (all nodes)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+test_name: GET /cluster/{node_id}/configuration/validation (manager OK, worker KO)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+  - name: Request validation (all nodes)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+
+test_name: GET /cluster/{node_id}/configuration/validation (manager KO, worker KO)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+  - name: Request validation (all nodes)
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+
+test_name: DELETE /cluster/{node_id}/files
+
+stages:
+
+  - name: Delete rules (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: DELETE
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_rules.xml
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Delete decoders (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: DELETE
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/rules/test_decoder.xml
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Delete list (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: DELETE
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path: etc/list/test_list
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Delete file with empty path
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/files
+      method: DELETE
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+        path:
+
+    response:
+        status_code: 400
+        body:
+          data: !anystr
+
+
+test_name: PUT /cluster/{node_id}/restart
+
+stages:
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/restart
+      method: PUT
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: worker
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/{node_id}/restart
+      method: PUT
+      params:
+        pretty:
+        wait_for_complete:
+        node_id: master
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/restart
+      method: PUT
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
+
+
+test_name: GET /cluster/master/config/:component/:configuration
+
+stages:
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/restart
+      method: GET
+      params:
+        pretty:
+        wait_for_complete:
+
+    response:
+        status_code: 200
+        body:
+          data: !anystr
