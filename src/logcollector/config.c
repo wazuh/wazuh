@@ -17,7 +17,7 @@ int lc_debug_level;
 rlim_t nofile;
 #endif
 
-void _getLocalfilesListJSON(logreader *list, cJSON *array);
+void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl);
 
 /* Read the config file (the localfiles) */
 int LogCollectorConfig(const char *cfgfile)
@@ -89,12 +89,12 @@ int LogCollectorConfig(const char *cfgfile)
 }
 
 
-void _getLocalfilesListJSON(logreader *list, cJSON *array) {
+void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
 
     unsigned int i = 0;
     unsigned int j;
 
-    while (list[i].file && list[i].target) {
+    while ((!gl && list[i].target) || (gl && list[i].file)) {
         cJSON *file = cJSON_CreateObject();
 
         if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
@@ -152,12 +152,12 @@ cJSON *getLocalfileConfig(void) {
     cJSON *root = cJSON_CreateObject();
 
     cJSON *localfiles = cJSON_CreateArray();
-    _getLocalfilesListJSON(logff, localfiles);
+    _getLocalfilesListJSON(logff, localfiles, 0);
 
     if (globs) {
         unsigned int i = 0;
         while (globs[i].gfiles) {
-            _getLocalfilesListJSON(globs[i].gfiles, localfiles);
+            _getLocalfilesListJSON(globs[i].gfiles, localfiles, 1);
             i++;
         }
     }
