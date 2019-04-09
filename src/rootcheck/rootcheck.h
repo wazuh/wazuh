@@ -120,6 +120,9 @@ void check_rc_ports(void);
 void check_open_ports(void);
 void check_rc_if(void);
 
+/*Checks if the path is user-ignored */
+ int check_ignore(char *path_to_ignore, rkconfig *rootcheck);
+
 int Read_Rootcheck_Config(const char *cfgfile);
 
 /* Global variables */
