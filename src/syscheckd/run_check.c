@@ -25,11 +25,9 @@
 
 /* Prototypes */
 static void send_sk_db(int first_scan);
-#ifndef WIN32
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 static void update_link_monitoring(int pos, char *old_path, char *new_path);
 static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
-#endif
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -661,13 +659,13 @@ void symlink_checker_init() {
 #endif
 }
 
-#ifndef WIN32
 void *symlink_checker_thread(__attribute__((unused)) void * data) {
     int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     int i;
     char *real_path;
     char *conv_link;
 
+    syscheck.sym_checker_interval = checker_sleep;
     mdebug1("Configured symbolic links will be checked every %d seconds.", checker_sleep);
 
     while (1) {
@@ -740,8 +738,6 @@ void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
         free(s_node);
     }
 }
-
-#endif
 
 void send_silent_del(char *path) {
     char del_msg[OS_SIZE_6144 + 1];

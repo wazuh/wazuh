@@ -223,6 +223,7 @@ typedef struct _config {
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
+    int sym_checker_interval;
 
     OSHash *fp;
     OSHash *last_check;
