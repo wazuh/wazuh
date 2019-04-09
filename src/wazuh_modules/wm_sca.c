@@ -66,8 +66,8 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
 static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
-static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data); // Check file
-static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data); // Read command output
+static int wm_sca_check_file(char *file, char *pattern, wm_sca_t * data, char **reason); // Check file
+static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
 static int wm_sca_pt_check_negate(const char *pattern); // Check pattern negate
 static int wm_sca_pt_matches(const char *str, char *pattern); // Check pattern match
 static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_sca_t * data); // Check dir
@@ -737,6 +737,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     char final_file[2048 + 1];
     char *value;
     char *name = NULL;
+    char *reason = NULL;
     int ret_val = 0;
     int id_check_p = 0;
     cJSON *c_title = NULL;
@@ -873,9 +874,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #endif
 
                     mdebug2("Checking file: '%s'.", f_value);
-                    if (wm_sca_check_file(f_value, pattern,data)) {
+                    int val = wm_sca_check_file(f_value, pattern, data, &reason);
+                    if (val == 1) {
                         mdebug2("Found file.");
                         found = 1;
+                    }  else if (val == 2) {
+                        found = 2;
                     } else {
                         int i = 0;
                         char _b_msg[OS_SIZE_1024 + 1];
@@ -892,7 +896,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                                 os_strdup(_b_msg, data->alert_msg[i]);
                             }
                         }
-                        mdebug2("Found file.");
                     }
                 }
                 /* Check for a command */
@@ -920,9 +923,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
 
                     mdebug2("Running command: '%s'.", f_value);
-                    if (wm_sca_read_command(f_value, pattern,data)) {
+                    int val = wm_sca_read_command(f_value, pattern, data, &reason);
+                    if (val == 1) {
                         mdebug2("Found command.");
                         found = 1;
+                    } else if (val == 2) {
+                        found = 2;
                     } else {
                         int i = 0;
                         char _b_msg[OS_SIZE_1024 + 1];
@@ -1095,8 +1101,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                 }
 
+                /* If not applicable, return g_found = 2 */
+                if (found == 2) {
+                    g_found = 2;
+                }
                 /* Check the conditions */
-                if (condition & WM_SCA_COND_ANY) {
+                else if (condition & WM_SCA_COND_ANY) {
                     mdebug2("Condition ANY.");
                     if (found) {
                         g_found = 1;
@@ -1163,7 +1173,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     wm_sca_reset_summary();
                     goto clean_return;
                 }
-            } else {
+            } else if (g_found == -1 || g_found == 0) {
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
 
@@ -1209,6 +1219,43 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                     goto clean_return;
                 }
+                if (requirements_scan == 1){
+                    wm_sca_reset_summary();
+                    goto clean_return;
+                }
+            } else {
+                int j = 0;
+                char **p_alert_msg = data->alert_msg;
+
+
+                while (1) {
+                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error");
+
+                        if(event){
+                            if(wm_sca_check_hash(cis_db[cis_db_index],"error",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                                wm_sca_send_event_check(data,event);
+                            }
+                            cJSON_Delete(event);
+                        } else {
+                            merror("Building event for check: %s. Set debug mode for more information.", name);
+                            ret_val = 1;
+                        }
+                    }
+
+                    if (p_alert_msg[j]) {
+                        free(p_alert_msg[j]);
+                        p_alert_msg[j] = NULL;
+                        j++;
+
+                        if (!p_alert_msg[j]) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
                     goto clean_return;
@@ -1358,13 +1405,14 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
+static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, char **reason)
 {
     char *split_file;
     int full_negate = 0;
     int pt_result = 0;
     FILE *fp;
     char buf[OS_SIZE_2048 + 1];
+    os_malloc(OS_MAXSTR, *reason);
 
     if (file == NULL) {
         return (0);
@@ -1403,6 +1451,9 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
                 }
 
                 return (1);
+            } else {
+                sprintf(*reason,"File not found");
+                return (2);
             }
         } else {
             full_negate = wm_sca_pt_check_negate(pattern);
@@ -1510,16 +1561,18 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
     return (0);
 }
 
-static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
+static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, char **reason)
 {
     int full_negate = 0;
     int pt_result = 0;
+
+    os_malloc(OS_MAXSTR, *reason);
 
     if (command == NULL) {
         return (0);
     }
 
-    /* If we don't have a pattern, just check if the file/dir is there */
+    /* If we don't have a pattern, return 1 */
     if (pattern == NULL) {
         return (1);
     } else {
@@ -1531,10 +1584,12 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
         if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
             if (result_code == EXECVE_ERROR) {
                 mdebug1("Can't run command(%s): path is invalid or file has insufficient permissions.",command);
+                sprintf(*reason, "Can't run command(%s): path is invalid or file has insufficient permissions.",command);
             } else {
                 mdebug1("Error executing [%s]", command);
+                sprintf(*reason, "Error executing [%s]", command);
             }
-            return 0;
+            return 2;
         } else if (result_code != 0) {
             mdebug1("Command (%s) returned code %d.", command, result_code);
         }
@@ -1793,18 +1848,18 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_
 
         /* Create new file + path string */
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir, entry->d_name);
-
+        char *reason = NULL;
         /* Check if the read entry matches the provided file name */
         if (strncasecmp(file, "r:", 2) == 0) {
             if (OS_Regex(file + 2, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern,data)) {
+                if (wm_sca_check_file(f_name, pattern,data, &reason)) {
                     ret_code = 1;
                 }
             }
         } else {
             /* ... otherwise try without regex */
             if (OS_Match2(file, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern,data)) {
+                if (wm_sca_check_file(f_name, pattern,data, &reason)) {
                     ret_code = 1;
                 }
             }
@@ -2383,7 +2438,12 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
        os_free(final_str_command);
     }
 
-    cJSON_AddStringToObject(check, "result", result);
+    if (!strcmp(result, "error")) {
+        cJSON_AddStringToObject(check, "status", "Not applicable");
+        cJSON_AddStringToObject(check, "reason", result);
+    } else {
+        cJSON_AddStringToObject(check, "result", result);
+    }
 
     if(!policy_id->valuestring) {
         mdebug1("Field 'id' must be a string");

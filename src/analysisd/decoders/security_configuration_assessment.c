@@ -39,7 +39,7 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event);
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id,cJSON **command);
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **status,cJSON **reason,cJSON **policy_id,cJSON **command);
 static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command);
@@ -587,9 +587,11 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *registry = NULL;
     cJSON *command = NULL;
     cJSON *result = NULL;
+    cJSON *status = NULL;
+    cJSON *reason = NULL;
     cJSON *policy_id = NULL;
 
-    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&policy_id,&command)) {
+    if(!CheckEventJSON(event,&scan_id,&id,&name,&title,&description,&rationale,&remediation,&compliance,&check,&reference,&file,&directory,&process,&registry,&result,&status,&reason,&policy_id,&command)) {
        
         int result_event = 0;
         char *wdb_response = NULL;
@@ -963,7 +965,7 @@ static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJ
     return retval;
 }
 
-static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **policy_id,cJSON **command) {
+static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,cJSON **title,cJSON **description,cJSON **rationale,cJSON **remediation,cJSON **compliance,cJSON **check,cJSON **reference,cJSON **file,cJSON **directory,cJSON **process,cJSON **registry,cJSON **result,cJSON **status,cJSON **reason,cJSON **policy_id,cJSON **command) {
     int retval = 1;
     cJSON *obj;
 
@@ -1097,8 +1099,16 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
             return retval;
         }
         
-        if( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
-            merror("Malformed JSON: field 'result' not found");
+        if ( *status = cJSON_GetObjectItem(*check, "status"), *status) {
+            if ( *reason = cJSON_GetObjectItem(*check, "reason"), !*reason) {
+                merror("Malformed JSON: field 'reason' not found");
+                return retval;
+            }
+        }
+
+        if ( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
+            if (!*status)
+                merror("Malformed JSON: field 'result' not found");
             return retval;
         }
 
