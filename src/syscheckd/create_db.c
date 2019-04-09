@@ -267,7 +267,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
         os_free(alert_msg);
         free(esc_linked_file);
 
-        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, 0));
+        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, '-'));
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
@@ -315,7 +315,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                             os_free(alert_msg);
                             os_free(wd_sum);
                             free(esc_linked_file);
-                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, 0));
+                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, '-'));
                         }
                     }
                 } else {
@@ -975,7 +975,7 @@ int run_dbcheck()
         }
 #endif
         clink = get_converted_link_path(i);
-        read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, 0);
+        read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, '-');
         free(clink);
         i++;
     }
@@ -1072,7 +1072,7 @@ int create_db()
     do {
         char *clink = get_converted_link_path(i);
 
-        if (read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, 0) == 0) {
+        if (read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, '-') == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
         }
         free(clink);
@@ -1361,18 +1361,6 @@ char *get_converted_link_path(int position) {
         w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
     }
     return linked_dir;
-}
-
-char *escape_syscheck_field(char *field) {
-    char *esc_it;
-
-    field = wstr_replace(field, "!", "\\!");
-    esc_it = wstr_replace(field, ":", "\\:");
-    free(field);
-    field = wstr_replace(esc_it, " ", "\\ ");
-    free(esc_it);
-
-    return field;
 }
 
 #endif

@@ -149,7 +149,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 mdebug2("Stat() function failed on: %s. File may have been deleted", path);
             } else {
                 if (S_ISLNK(statbuf.st_mode) && (syscheck.opts[pos] & CHECK_FOLLOW)) {
-                    read_dir(path, NULL, pos, evt, depth, 1, 0);
+                    read_dir(path, NULL, pos, evt, depth, 1, '-');
                     os_free(path);
                     return 0;
                 } else if (S_ISLNK(statbuf.st_mode) && !(syscheck.opts[pos] & CHECK_FOLLOW)) {
@@ -158,7 +158,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
                 }
             }
 #endif
-            read_dir(path, *file_link ? file_link : NULL, pos, evt, depth, 0, 0);
+            read_dir(path, *file_link ? file_link : NULL, pos, evt, depth, 0, '-');
         }
 
     }

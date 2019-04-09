@@ -34,6 +34,18 @@ int delete_target_file(const char *path) {
     return 1;
 }
 
+char *escape_syscheck_field(char *field) {
+    char *esc_it;
+
+    field = wstr_replace(field, "!", "\\!");
+    esc_it = wstr_replace(field, ":", "\\:");
+    free(field);
+    field = wstr_replace(esc_it, " ", "\\ ");
+    free(esc_it);
+
+    return field;
+}
+
 int fim_find_child_depth(const char *parent, const char *child) {
 
     int length_A = strlen(parent);
@@ -329,6 +341,7 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
 int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
     char *changes;
     char *date_alert;
+    char *sym_path;
 
     if (changes = strchr(c_sum, '!'), !changes) {
         return -1;
@@ -339,6 +352,12 @@ int sk_decode_extradata(sk_sum_t *sum, char *c_sum) {
         return -1;
     }
     *(date_alert++) = '\0';
+
+    if (sym_path = strchr(date_alert, ':'), sym_path) {
+        *(sym_path++) = '\0';
+        sum->symbolic_path = unescape_syscheck_field(sym_path);
+    }
+
     sum->changes = atoi(changes);
     sum->date_alert = atol(date_alert);
 

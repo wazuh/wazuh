@@ -108,7 +108,6 @@ void clean_rules(void);
 int filterkey_audit_events(char *buffer);
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
 char *get_converted_link_path(int position);
-char *escape_syscheck_field(char *field);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;

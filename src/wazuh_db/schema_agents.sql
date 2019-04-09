@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     mtime INTEGER,
     inode INTEGER,
     sha256 TEXT,
-    attributes INTEGER DEFAULT 0
+    attributes INTEGER DEFAULT 0,
+    symbolic_path TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (

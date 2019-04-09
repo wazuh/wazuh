@@ -805,7 +805,7 @@ add_whodata_evt:
                                     w_evt->path = saved_path;
 
                                     // Find new files
-                                    read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, 0);
+                                    read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, '-');
 
                                     last_mdir_tm = now;
                                     free(last_mdir);
@@ -823,7 +823,7 @@ add_whodata_evt:
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
-                                read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, 0);
+                                read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
                             }
 
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);

@@ -205,6 +205,8 @@ void normalize_path(char *path);
 //Return an attr from checksum
 char *get_attr_from_checksum(char *checksum, int attr);
 
+char *escape_syscheck_field(char *field);
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
@@ -221,7 +223,6 @@ unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
 char *escape_perm_sum(char *sum);
-
 
 #endif
 

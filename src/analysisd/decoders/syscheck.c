@@ -144,7 +144,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      *                                             |v2.1       v3.4   |v3.4         |v3.6 |v3.9
      *                                             |->         |->    |->           |->   |->
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path filename\nreportdiff"
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
      *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
@@ -216,6 +216,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     char *old_check_sum = NULL;
     char *response = NULL;
     char *check_sum = NULL;
+    char *sym_path = NULL;
     sk_sum_t oldsum = { .size = NULL };
     sk_sum_t newsum = { .size = NULL };
     time_t *end_first_scan = NULL;
@@ -321,14 +322,20 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 *ttype = "file";
             }
 
-            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck save %s %s!%d:%ld %s",
+            if (newsum.symbolic_path) {
+                sym_path = escape_syscheck_field(newsum.symbolic_path);
+            }
+
+            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck save %s %s!%d:%ld:%s %s",
                     lf->agent_id,
                     *ttype,
                     new_check_sum,
                     changes,
                     lf->time.tv_sec,
+                    sym_path ? sym_path : "",
                     f_name
             );
+            os_free(sym_path);
             os_free(response);
             response = NULL;
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
@@ -905,7 +912,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         snprintf(msg, OS_SIZE_128, "end_scan");
     }
 
-    if (msg) {
+    if (*msg != '\0') {
         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
         snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_update %s %ld",
