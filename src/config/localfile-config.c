@@ -35,7 +35,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_outformat = "out_format";
     const char *xml_localfile_age = "age";
     const char *xml_localfile_exclude = "exclude";
-    const char *xml_localfile_binaries = "discard_binaries";
+    const char *xml_localfile_binaries = "ignore_binaries";
 
     logreader *logf;
     logreader_config *log_config;

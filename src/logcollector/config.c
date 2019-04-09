@@ -94,7 +94,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array) {
     unsigned int i = 0;
     unsigned int j;
 
-    while (list[i].target) {
+    while (list[i].file && list[i].target) {
         cJSON *file = cJSON_CreateObject();
 
         if (list[i].file) cJSON_AddStringToObject(file,"file",list[i].file);
@@ -103,7 +103,7 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array) {
         if (list[i].djb_program_name) cJSON_AddStringToObject(file,"djb_program_name",list[i].djb_program_name);
         if (list[i].alias) cJSON_AddStringToObject(file,"alias",list[i].alias);
         if (list[i].query) cJSON_AddStringToObject(file,"query",list[i].query);
-        cJSON_AddStringToObject(file,"discard_binaries",list[i].filter_binary ? "yes" : "no");
+        cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
         if (list[i].target && *list[i].target) {
