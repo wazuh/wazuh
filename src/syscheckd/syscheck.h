@@ -88,6 +88,12 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt) __attribute__
 /* Find container directory */
 int find_dir_pos(const char *filename, int full_compare, int check_find, int deep_search) __attribute__((nonnull(1)));
 
+/* Return the version with symbolic link */
+void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
+
+/* Returns the real path associated with a position securely */
+char *get_converted_link_path(int position);
+
 #ifdef __linux__
 #define READING_MODE 0
 #define HEALTHCHECK_MODE 1
@@ -106,8 +112,6 @@ void audit_reload_rules(void);
 int audit_health_check(int audit_socket);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);
-void replace_linked_path(const char *file_name, int dir_position, char *linked_file);
-char *get_converted_link_path(int position);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;

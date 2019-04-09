@@ -569,7 +569,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 *str_inode = '\0';
             }
 
-            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s%s:%c %s%s%s",
+            snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
                 str_size,
                 str_perm ? str_perm : "",
                 (opts & CHECK_OWNER) && sid ? sid : "",
@@ -1324,6 +1324,8 @@ int fim_delete_hashes(char *file_name) {
     return 0;
 }
 
+#endif
+
 void replace_linked_path(const char *file_name, int dir_position, char *linked_file) {
     char *dir_path;
     char *real_path;
@@ -1362,5 +1364,3 @@ char *get_converted_link_path(int position) {
     }
     return linked_dir;
 }
-
-#endif

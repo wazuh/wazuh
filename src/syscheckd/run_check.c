@@ -25,9 +25,11 @@
 
 /* Prototypes */
 static void send_sk_db(int first_scan);
+#ifndef WIN32
 static void *symlink_checker_thread(__attribute__((unused)) void * data);
 static void update_link_monitoring(int pos, char *old_path, char *new_path);
 static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
+#endif
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -364,7 +366,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         int pos = find_dir_pos(file_name, 1, 0, 0);
 
         //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
+        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
         send_syscheck_msg(alert_msg);
 
 
@@ -659,6 +661,7 @@ void symlink_checker_init() {
 #endif
 }
 
+#ifndef WIN32
 void *symlink_checker_thread(__attribute__((unused)) void * data) {
     int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
     int i;
@@ -737,6 +740,8 @@ void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
         free(s_node);
     }
 }
+
+#endif
 
 void send_silent_del(char *path) {
     char del_msg[OS_SIZE_6144 + 1];
