@@ -1,0 +1,20 @@
+test_name: PUT /active-response/:agent_id
+
+stages:
+  
+  - name: Runs an Active Response command on a specified agent
+
+    request:
+      url: http://localhost:55000/active-response
+      method: PUT
+      params:
+        agent_id: 000
+        command: restart-ossec0
+        custom:
+        arguments: ["-", "null", "(from_the_server)", "(no_rule_id)"]
+
+    response:
+        status_code: 200
+        body:
+          error: 0
+          data: Command sent
