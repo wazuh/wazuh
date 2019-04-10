@@ -345,6 +345,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     {
         char alert_msg[OS_SIZE_6144 + 1];
         char wd_sum[OS_SIZE_6144 + 1];
+        int pos;
 
 #ifdef WIN_WHODATA
         // If this flag is enable, the remove event will be notified at another point
@@ -361,12 +362,11 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         }
 
         /* Find tag position for the evaluated file name */
-        int pos = find_dir_pos(file_name, 1, 0, 0);
-
-        //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
-        send_syscheck_msg(alert_msg);
-
+        if (pos = find_dir_pos(file_name, 1, 0, 0), pos >= 0) {
+            //Alert for deleted file
+            snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
+            send_syscheck_msg(alert_msg);
+        }
 
 #ifndef WIN32
         if(evt && evt->inode) {
@@ -700,6 +700,7 @@ void *symlink_checker_thread(__attribute__((unused)) void * data) {
 
 void update_link_monitoring(int pos, char *old_path, char *new_path) {
     w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+    free( syscheck.converted_links[pos]);
     os_strdup(new_path, syscheck.converted_links[pos]);
     w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
 
@@ -721,14 +722,19 @@ void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
 
         send_silent_del((*node)->key);
 
+        if ((*node)->next) {
+            (*node)->next->prev = (*node)->prev;
+        }
+
         if ((*node)->prev) {
             (*node)->prev->next = (*node)->next;
         }
 
-        *node = NULL;
+        *node = (*node)->next;
 
-        // If the node is the first node of the row
-        if (*row == r_node) {
+
+        // If the node is the first and last node of the row
+        if (*row == r_node && !r_node->next) {
             *row = NULL;
         }
 

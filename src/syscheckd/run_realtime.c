@@ -67,7 +67,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
     }
 #endif
 
-    if (syscheck.converted_links[pos]) {
+    if (pos >= 0 && syscheck.converted_links[pos]) {
         replace_linked_path(file_name, pos, file_link);
     }
 
@@ -139,6 +139,7 @@ int realtime_checksumfile(const char *file_name, whodata_evt *evt)
             int diff = fim_find_child_depth(cparent ? cparent : syscheck.dir[pos], path);
             int depth = syscheck.recursion_level[pos] - diff + 1;
 
+            free(cparent);
             if(check_path_type(path) == 2){
                 depth = depth - 1;
             }

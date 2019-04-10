@@ -1767,14 +1767,18 @@ void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
         w_file.path = (*node)->key;
         send_whodata_del(&w_file, 0);
 
+        if ((*node)->next) {
+            (*node)->next->prev = (*node)->prev;
+        }
+
         if ((*node)->prev) {
             (*node)->prev->next = (*node)->next;
         }
 
-        *node = NULL;
+        *node = (*node)->next;
 
-        // If the node is the first node of the row
-        if (*row == r_node) {
+        // If the node is the first and last node of the row
+        if (*row == r_node && !r_node->next) {
             *row = NULL;
         }
 

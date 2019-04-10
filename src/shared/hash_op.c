@@ -245,7 +245,6 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
 {
     unsigned int hash_key;
     unsigned int index;
-    OSHashNode *prev_node = NULL;
     OSHashNode *curr_node;
     OSHashNode *new_node;
 
@@ -265,7 +264,6 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
             }
             return (1);
         }
-        prev_node = curr_node;
         curr_node = curr_node->next;
     }
 
@@ -276,7 +274,7 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
         return (0);
     }
     new_node->next = NULL;
-    new_node->prev = prev_node;
+    new_node->prev = NULL;
     new_node->data = data;
     new_node->key = strdup(key);
     if ( new_node->key == NULL ) {
@@ -292,6 +290,7 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
     /* If there is duplicated, add to the beginning */
     else {
         new_node->next = self->table[index];
+        self->table[index]->prev = new_node;
         self->table[index] = new_node;
     }
 
@@ -450,7 +449,7 @@ void *OSHash_Get_ins(const OSHash *self, const char *key)
 void *OSHash_Delete(OSHash *self, const char *key)
 {
     OSHashNode *curr_node;
-    OSHashNode *prev_node = 0;
+    OSHashNode *prev_node = NULL;
     unsigned int hash_key;
     unsigned int index;
     void *data;
@@ -626,15 +625,15 @@ void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHash
     unsigned int i;
     OSHashNode *node_it;
 
-    for (i = 0; i <= hash->rows; i++) {
+    for (i = 0; i < hash->rows; i++) {
         node_it = hash->table[i];
-        if (node_it && node_it->key) {
-            do {
-                iterating_function(&hash->table[i], &node_it, data);
-                if (node_it) {
-                    node_it = node_it->next;
-                }
-            } while(node_it && node_it->key);
+        while (node_it && node_it->key) {
+            OSHashNode *node_cpy = node_it;
+            iterating_function(&hash->table[i], &node_it, data);
+            // To avoid infinite loops
+            if (node_cpy == node_it) {
+                node_it = node_it->next;
+            }
         }
     }
 }
