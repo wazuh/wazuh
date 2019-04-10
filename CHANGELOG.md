@@ -37,6 +37,8 @@ All notable changes to this project will be documented in this file.
 - Excluded noisy events from Windows Eventchannel. ([#2763](https://github.com/wazuh/wazuh/pull/2763))
 - Replaced `printf` functions in `agent-authd`. ([#2830](https://github.com/wazuh/wazuh/pull/2830))
 - Replaced `strtoul()` using NULL arguments with `atol()` in wodles config files. ([#2801](https://github.com/wazuh/wazuh/pull/2801))
+- Added a more descriptive message for SSL error when agent-auth fails. ([#2941](https://github.com/wazuh/wazuh/pull/2941))
+- Changed the starting Analysisd messages about loaded rules from `info` to `debug` level. ([#2881](https://github.com/wazuh/wazuh/pull/2881))
 
 ### Fixed
 
@@ -75,6 +77,7 @@ All notable changes to this project will be documented in this file.
 - Fixed deadlock in Remoted when updating the `keyentries` structure. ([#2956](https://github.com/wazuh/wazuh/pull/2956))
 - Fixed error in Whodata when one of the file permissions cannot be extracted. ([#2940](https://github.com/wazuh/wazuh/pull/2940))
 - Fixed System32 and SysWOW64 event processing in Whodata. ([#2935](https://github.com/wazuh/wazuh/pull/2935))
+- Fixed Syscheck hang when monitoring system directories. ([#3059](https://github.com/wazuh/wazuh/pull/3059))
 
 
 ## [v3.8.2]
