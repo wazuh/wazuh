@@ -23,8 +23,8 @@ fields_translation_sca = {'policy_id': 'policy_id',
                           'pass': 'pass',
                           'fail': 'fail',
                           'score': 'score',
-                          'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch')) as end_scan",
-                          'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch')) as start_scan"
+                          'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch'))",
+                          'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch'))"
                           }
 fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'id': 'id',
@@ -38,9 +38,9 @@ fields_translation_sca_check = {'policy_id': 'policy_id',
                                 'registry': 'registry',
                                 'references': '`references`',
                                 'result': 'result'}
-fields_translation_sca_check_compliance = {'key': 'key',
-                                           'value': 'value'}
-fields_translation_sca_check_rule = {'type': 'type', 'rule': 'rule'}
+fields_translation_sca_check_compliance = {'compliance.key': 'key',
+                                           'compliance.value': 'value'}
+fields_translation_sca_check_rule = {'rules.type': 'type', 'rules.rule': 'rule'}
 
 default_query_sca = 'SELECT {0} FROM sca_policy sca INNER JOIN sca_scan_info si ON sca.id=si.policy_id'
 default_query_sca_check = 'SELECT {0} FROM sca_check a LEFT JOIN sca_check_compliance b ON a.id=b.id_check LEFT JOIN sca_check_rules c ON a.id=c.id_check'

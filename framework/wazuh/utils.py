@@ -849,7 +849,8 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                         self.select['fields'] | self.min_select_fields))), self.request)
 
 
     def _format_data_into_dictionary(self):

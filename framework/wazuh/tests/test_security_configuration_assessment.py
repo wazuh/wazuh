@@ -140,3 +140,14 @@ class TestPolicyMonitoring(TestCase):
             sca = result['items']
             assert(isinstance(sca, list))
             assert(len(sca) == 0)
+
+    def test_sca_checks_select_and_q(self):
+        """
+        Tests filtering using q parameter and selecting multiple fields
+        """
+        with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value.execute.side_effect = get_fake_sca_data
+            result = get_sca_checks('cis_debian', agent_id='000', q="rules.type!=file",
+                                    select={'fields': ['compliance', 'policy_id', 'result', 'rules']})
+            assert result['items'][0]['rules'][0]['type'] != 'file'
+            assert set(result['items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})
