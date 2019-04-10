@@ -44,11 +44,12 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
+static void wm_sca_summary_increment_invalid();
 static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
@@ -93,6 +94,7 @@ const wm_context WM_SCA_CONTEXT = {
 
 static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
+static unsigned int summary_invalid = 0;
 
 OSHash **cis_db;
 char **last_md5;
@@ -513,7 +515,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 /* Send summary */
                 if(integrity_hash) {
                     wm_delay(1000 * data->summary_delay);
-                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash);
+                    wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash);
                     snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
                     os_free(integrity_hash);
                 }
@@ -1234,6 +1236,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
+                        wm_sca_summary_increment_invalid();
                         cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",inv_check_reason);
 
                         if(event){
@@ -2248,7 +2251,7 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size)
 }
 #endif
 
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash) {
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed, unsigned int invalid, cJSON *policy,int start_time,int end_time,char * integrity_hash) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
@@ -2285,10 +2288,12 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
 
     cJSON_AddNumberToObject(json_summary, "passed", passed);
     cJSON_AddNumberToObject(json_summary, "failed", failed);
+    cJSON_AddNumberToObject(json_summary, "invalid", invalid);
 
     float passedf = passed;
     float failedf = failed;
-    float score = ((passedf/(failedf+passedf)))* 100;
+    float invalidf = invalid;
+    float score = ((passedf/(failedf+passedf+invalidf))) * 100;
 
     cJSON_AddNumberToObject(json_summary, "score", score);
 
@@ -2843,9 +2848,14 @@ static void wm_sca_summary_increment_failed() {
     summary_failed++;
 }
 
+static void wm_sca_summary_increment_invalid() {
+    summary_invalid++;
+}
+
 static void wm_sca_reset_summary() {
     summary_failed = 0;
     summary_passed = 0;
+    summary_invalid = 0;
 }
 
 cJSON *wm_sca_dump(const wm_sca_t *data) {
