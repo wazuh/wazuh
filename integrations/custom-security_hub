@@ -1,0 +1,810 @@
+#!/usr/bin/python2.7
+
+# written by Peter Shipley https://github.com/evilpete
+
+
+import sys
+import os
+import traceback
+import json
+import shlex
+import time
+import pprint
+import datetime
+import boto3
+
+DEBUG = 0
+
+RAISE_ON_ERROR = False
+IGNORE_RULES = ['11', '5108', '80350', '80351', '80352', '80353', '80354', '80355']
+
+LEVEL_THRESHOLD = 5
+BATCH_SIZE = 40    # set to 0 for debuging
+
+NOSEND = False
+# NOSEND = True # do not sent to AWS
+
+skip = 0           # skip X input alert (debuging)
+
+ALERTS_FILE = '/var/ossec/logs/alerts/alerts.json'
+LOGS_DIR = '/var/ossec/logs'
+
+# print "NOSEND =", NOSEND
+
+
+def track_file(myfile):
+    """
+        returns an iterator that reads line from a file returning events (json dicts)
+        handles truncated or replaced files
+        Returns None at EOF
+    """
+    x = 0
+    cur = 0
+    while True:
+        try:
+            print "open", myfile
+            with open(myfile) as f:
+                f.seek(0, 2)
+                if f.tell() < cur:
+                    f.seek(0, 0)
+                else:
+                    f.seek(cur, 0)
+                for l in f:
+                    try:
+                        j = json.loads(l)
+                    except ValueError as _e:
+                        print >>sys.stderr, "Json ValueError:\n", l
+                        _ex_type, _ex, tb = sys.exc_info()
+                        traceback.print_tb(tb, file=sys.stderr)
+                        continue
+
+                    yield j
+                cur = f.tell()
+            if DEBUG:
+                print "track_file None"
+            yield None
+        except IOError, _e:
+            pass
+        time.sleep(1)
+        x += 1
+        if x > 5:
+            break
+
+
+class Wazuh_to_SecHub(object):
+
+    def __init__(self, **kwargs):
+
+        self.my_findings = []
+        self.batch_size = kwargs.get('batch_size', BATCH_SIZE)
+
+        # Event Filter Stuff
+        self.ignore_rules = kwargs.get('ignore_rules', IGNORE_RULES)
+        self.level_threshold = int(kwargs.get('level_threshold', LEVEL_THRESHOLD))
+
+        self.debug = kwargs.get('debug', 0)
+
+        # self.in_file = kwargs.get('in_file', None)
+        # self.in_src = kwargs.get('in_src', None)
+
+        # if self.in_src is None:
+        #     if self.in_file is None:
+        #         raise ValueError("Requires in_src or in_file argument")
+        #     else:
+        #         self.in_src = track_file(self.in_file)
+
+        # AWS Stuff
+        session_args = kwargs.get('session_args', {})
+        self.my_session = boto3.session.Session(**session_args)
+        self.my_account_id = self.my_session.client('sts').get_caller_identity()['Account']
+        self.my_region = self.my_session.region_name
+
+        self.securityhub = self.my_session.client('securityhub')
+
+        # Debug Stuff
+        self.raise_on_error = kwargs.get('raise_on_error', RAISE_ON_ERROR)
+
+        # print "my_account_id", self.my_account_id
+
+        self.logs_dir = kwargs.get('logs_dir', LOGS_DIR)
+        self.logfilename = "{}/{}.log".format(self.logs_dir, os.path.splitext(os.path.basename(sys.argv[0]))[0])
+
+        self.skipmsg = ""
+
+    # This code can be expanded a ton
+    #
+    # types in the format of 'namespace/category/classifier'
+    #
+    # Valid namespace values are:
+    #       Software and Configuration Checks | TTPs | Effects
+    #       Unusual Behaviors | Sensitive Data Identifications
+    #
+    def type_Taxonomy(self, d):
+        """
+            takes a alert in dict format
+            returns a list of Identified Alert Types
+
+            Ref : https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-findings-format.html#securityhub-findings-format-type-taxonomy
+
+        """
+
+        r = []
+
+        if 'data' in d and 'vulnerability' in d['data'] and 'cve' in d['data']['vulnerability']:
+            r.append('Software and Configuration Checks/Vulnerabilities/' + d['data']['vulnerability']['cve'])
+
+        if 'pci_dss' in d['rule']:
+            r.append('Software and Configuration Checks/Industry and Regulatory Standards/PCI-DSS Controls')
+
+        if 'gdpr' in d['rule']:
+            r.append('Software and Configuration Checks/Industry and Regulatory Standards/GDPR Controls')
+
+        if ' sudo ' in d['rule']['description']:
+            r.append('TTPs/Discovery/Recon:sudo')
+            r.append('TTPs/Privilege Escalation/Recon:sudo')
+            r.append('Unusual Behaviors/User/Recon:sudo')
+
+        if 'login_denied' in d['rule']['groups']:
+            r.append('Unusual Behaviors/User/Recon:login')
+
+        # rule:group sshd is in a lot of non-ssh events
+    #    if 'sshd' in d['rule']['groups']:
+    #        r.append('Unusual Behaviors/User/Recon:login')
+
+        # Punt !
+        if not r:
+            r.append('TTPs/Discovery/Unknown')
+
+        return r
+
+    #
+    # See: https://docs.aws.amazon.com/securityhub/1.0/APIReference/API_BatchImportFindings.html
+    #
+    def send_findings(self):
+        """
+        takes a list of dicts in AWS findings format and sends them to AWS Security Hub
+        """
+        if self.debug:
+            print "send_findings:", len(self.my_findings)
+
+        if not self.my_findings:
+            return None
+
+        if NOSEND:
+            r = None
+        else:
+            r = self.securityhub.batch_import_findings(Findings=self.my_findings)
+            if self.debug:
+                print "\nSuccessCount:", r['SuccessCount'], "\n"
+
+            if r['FailedCount'] > 0:
+                print "\nFailedCount:", r['FailedCount'], "\n"
+
+        del self.my_findings[:]
+
+        return r
+
+    def queue_findings(self, finding=None):
+        """
+            appends "finding" obj (a dict) self.my_findings array
+        """
+        r = None
+        self.my_findings.append(finding)
+
+        f_len = len(self.my_findings)
+        if f_len > self.batch_size:
+
+            r = self.send_findings()
+
+        return r
+
+    def flatten(self, d, s=""):
+        """
+            takes a dict and returns list of key value pairs
+            where is the key was dict path
+
+            useful for generating 'ProductFields' data
+        """
+        try:
+            # print "s=", s
+            r = {}
+
+            if isinstance(d, basestring):
+                r[s] = d
+                return r
+
+            k2 = ""
+            if s:
+                s = s + '/'
+            for k in d:
+                k2 = s + k
+
+                if isinstance(d[k], dict):
+                    x = self.flatten(d[k], k2)
+                    r.update(x)
+
+                # elif isinstance(d[k], basestring):
+                else:
+                    r[k2] = str(d[k])
+
+            return r
+        except TypeError as _e:
+            print "s", s
+            print "k", k
+            print "k2", k2
+            print "d", d
+            print "r", r
+
+            if self.raise_on_error:
+                raise
+            else:
+                _ex_type, _ex, tb = sys.exc_info()
+                traceback.print_tb(tb, file=sys.stderr)
+
+    def log(self, msg='', j=None):
+
+        timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
+
+        try:
+            if isinstance(j, dict):
+                log_str = '{} {} id={} rule={} level={} agent={} name={}\n'.format(
+                    timestamp, msg,
+                    j['id'], j['rule']['id'], j['rule']['level'],
+                    j['agent']['id'], j['agent']['name'])
+            else:
+                log_str = '{} {}'.format(timestamp, msg)
+
+            with open(self.logfilename, 'a+', 0o664) as fd:
+                fd.write(log_str)
+
+        except (IOError, KeyError) as _e:
+            print >>sys.stderr, _e
+            _ex_type, _ex, tb = sys.exc_info()
+            traceback.print_tb(tb, file=sys.stderr)
+
+    def skip_finding(self, j):
+        """
+            takes a a Wazuh alert event
+            evaluates if event should be forwarded or not
+        """
+
+        if not isinstance(j, dict):
+            self.skipmsg = 'Skip msg type err'
+            return True
+
+        if j['rule']['id'] in self.ignore_rules:
+            self.skipmsg = 'skipping rule # {}'.format(j['rule']['id'])
+            if self.debug > 1:
+                print self.skipmsg
+            return True
+
+        if j['rule']['level'] < self.level_threshold:
+            self.skipmsg = 'skipping level # {}'.format(j['rule']['level'])
+            if self.debug > 1:
+                print self.skipmsg
+            return True
+
+        # Skip Macie since AWS Security Hub reads Macie directly
+        if 'Macie' in j['rule']['description'] or 'Macie' in j.get('full_log', ''):
+            self.skipmsg = 'Skip Macie'
+            if self.debug:
+                print self.skipmsg
+            return True
+
+        self.skipmsg = ''
+
+        return False
+
+    #  finding ID
+    #
+    # From AWS Docs:
+    #     The finding provider-specific identifier for a finding.  512 chars. max
+    #
+    #     The ID must be globally unique within the product.
+    #     To enforce incorporate region / account ID
+    #
+    #     You CANNOT recycle identifiers regardless of whether the previous
+    #     finding no longer exists.
+    #
+    #     For non-AWS services, the ID CANNOT be prefixed with the literal
+    #     string "arn:".
+    #
+    #     For AWS services, the ID MUST be the ARN of the finding if one is
+    #     available. Otherwise, any other unique identifier can be used.
+    #
+    #     These constraints are expected to hold within a findings provider
+    #     (product), but are not required to hold across findings providers.
+    #
+    # **
+    # * Unsure if effort should be made for duplicate alert from some host/agent
+    # * since WAZUH does not track repeat vs. continuing events thus it is hard to
+    # * comply to the no recycling identifiers
+    # **
+    #
+    # Using:
+    #
+    #    wasuh : [cluster_name or manager name] : agent_id : rule_number : [instance-id] : unique_rule_identifier : wazah_alert_id
+    #
+    def gen_id(self, j):
+
+        id_list = ['wazuh']
+
+        try:
+            id_list.append(j.get("cluster", j['manager'])['name'])
+        except KeyError as _e:
+            id_list.append("")
+
+        id_list.append(j['agent']['id'])
+        id_list.append(j['rule']['id'])
+
+        try:
+            id_list.append(j['agent']['labels']['aws']['instance-id'])
+        except KeyError as _e:
+            id_list.append("")
+
+        #
+        #       Not sure is this field is needed
+        #
+        if j['location'] == 'vulnerability-detector':
+            try:
+                id_list.append(j['data']['vulnerability']['cve'])
+            except KeyError as _e:
+                id_list.append('vulnerability-detector')
+        elif j['location'] == 'rootcheck':
+            try:
+                id_list.append(j['data']['file'])
+            except KeyError as _e:
+                id_list.append('rootcheck')
+        elif j['location'] == 'syscheck':
+            try:
+                id_list.append(j['syscheck']['path'])
+            except KeyError as _e:
+                id_list.append('syscheck')
+        # something unique
+        else:
+            id_list.append("")
+
+        id_list.append(j['id'])
+
+        return ':'.join(id_list)
+
+    #
+    # Ref: https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-findings-format.html
+    #
+    # This is Ugly Guess work
+    #
+    def to_finding_fmt(self, j):
+        """
+            takes a Wazuh alert event and returns AWS finding event
+        """
+
+        # The ARN generated by Security Hub that uniquely identifies a
+        # third-party company (security findings provider) once this
+        # provider's product (solution that generates findings) is
+        # registered with Security Hub.
+        #
+        # The format of this field is:
+        #    arn:partition:securityhub:region:account-id:product/company-id/product-id
+        #
+        # But *we* must use product/AWS_ACCT_#/default
+        # Ref:  https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-findings-providers.html
+        myarn = 'arn:aws:securityhub:{0}:{1}:product/{1}/default'.format(self.my_region, self.my_account_id)
+
+        # CreatedAt
+        #    An ISO8601-formatted timestamp indicating when the potential
+        #    security issue captured by a finding was created by the security
+        #    findings provider.
+        #    This timestamp MUST be provided on the first generation of the
+        #    finding, and CANNOT be changed upon subsequent updates to the finding.
+
+        # UpdatedAt
+        #    An ISO8601-formatted timestamp indicating when the finding
+        #    record was last updated by the findings provider.
+        #    can differ from the LastObservedAt timestamp, which reflects was last/most-recently observed.
+        #
+        #    This timestamp must be updated to the current timestamp when the finding record is updated.
+        #    Upon creation finding record, the CreatedAt and UpdatedAt timestamps must be the same timestamp.
+
+        # updatedAt = datetime.datetime.utcnow().isoformat() + 'Z'
+        updatedAt = j['timestamp'][:-5] + 'Z'
+        createdAt = updatedAt
+
+        # findings template with minimal required fields
+        f = {
+            "Title": "",
+            "AwsAccountId": "",
+            "CreatedAt": createdAt,
+            "GeneratorId": "",
+            "Id": "",
+            "ProductArn": myarn,
+            "Resources": [],
+            "SchemaVersion": "2018-10-08",
+            "Severity": {"Normalized": 0},
+            "Types": [],
+            "UpdatedAt": updatedAt
+        }
+
+        # Title
+        #    A finding's title. This field can be non-specific boilerplate text
+        #    or it can contain details specific to this instance of the finding.
+        #    Type: string (256 char max)
+        f['Title'] = j['rule']['description'][:255]
+
+        # Description
+        #    A finding's description. This field can be non-specific
+        #    boilerplate text or contain details specific to the instance
+        #    of the finding.
+        # Type: string (1,024 chars. max)
+        f['Description'] = j['rule']['description'][:1023]
+
+        # GeneratorId
+        #    This is the identifier for the solution-specific component
+        #    (a discrete unit of logic) that generated a finding. In
+        #    various solutions from security findings providers, this
+        #    generator can be called a rule, a check, a detector, a
+        #    plug-in, and so on.
+        f['GeneratorId'] = ':'.join(['wazuhj', j['location'], j['rule']['id']])
+
+        # Severity.Product
+        #    The native severity as defined by the security findings
+        #     provider's solution that generated the finding.
+        f['Severity']['Product'] = j['rule']['level']
+
+        # Severity.Normalized
+        #    Severity is scored on a 0-100 basis using a ratio scale
+        #    with only full integers
+        #
+        # Informational 0
+        # Low        1 - 39
+        # Medium    40 - 69
+        # High      70 - 89
+        # Critical  90 - 100
+        #
+        # Scale Wazuh alerts from 1-15 to 1-100
+        f['Severity']['Normalized'] = int(j['rule']['level']) * 6
+
+        # Grab AWS metadata from from agent labels
+        try:
+            aws_meta = j["agent"]["labels"]["aws"]
+        except KeyError as _e:
+            aws_meta = {}
+
+        # The AWS account ID where a finding is generated
+        f['AwsAccountId'] = aws_meta.get('accountId', self.my_account_id)
+
+        # Question ;
+        # for events from a ec2 instance
+        # I am unsure if we should pack all the data into 'Resources'
+        # in the 'AwsEc2Instance' Resource type as 'Details' 'Other' data
+        #
+        # Or place the non-conforming additional data into 'Resources' as
+        # Resource type 'Other'
+        #
+        # [ not to be confused with 'ProductFields' info data
+        #
+        #
+        # ???
+
+        # Resources Field
+        #
+        # A set of resource data types that describe the resources
+        # to which the finding refers.
+        #
+        # Type: array of up to 10 resource objects
+
+        # if we have EC2 Instance Metadata:
+        #
+        # Create Resources type "AwsEc2Instance" using info from AWS metadata
+        if aws_meta and 'instance-id' in aws_meta:
+            r = {'Type': 'AwsEc2Instance', 'Partition': 'aws', 'Details': {'AwsEc2Instance': {}}}
+
+            # is this enough of an ID ?
+            r['Id'] = aws_meta['instance-id']
+            r['Region'] = aws_meta['availabilityZone'][:-1]
+
+            # map meta data key to AwsEc2Instance Resources key
+            val_map = [('imageId', 'ImageId'), ('privateIp', 'IpV4Addresses'), ('launchTime', 'LaunchedAt'), ('instanceType', 'Type')]
+            for v in val_map:
+                x = aws_meta.get(v[0], None)
+                if x:
+                    r['Details']['AwsEc2Instance'][v[1]] = x
+
+            x = aws_meta.get('privateIp', None)
+            if x:
+                r['Details']['AwsEc2Instance']['IpV4Addresses'] = [x]
+
+            # ? store event rules info into Resources:AwsEc2Instance:Details:Other ?
+            r['Details']['Other'] = self.flatten(j['rule'], 'rule')
+
+            # should this be in 'ProductFields' only?
+            # if 'full_log' in j:
+            #     r['Details']['Other'].update({'full_log': j['full_log']})
+
+            # ? store event data info into Resources:AwsEc2Instance:Details:Other ?
+            if 'data' in j:
+                r['Details']['Other'].update(self.flatten(j['data'], 'data'))
+
+            # add to Resources List
+            f['Resources'].append(r)
+
+        # ??
+        # copy data filed to Resources array as Type Other
+        # Resources Details have to be a key: value pairs (no multi dimensional data)
+        #
+        # much of thus will be repetitive from the Resources:AwsEc2Instance
+        #
+        # [>>>this needs more work and less guess work<<<]
+        if 'data' in j:
+
+            # check for (multi dimensional)  Windows EventChannel channel and write as separate Resources Details
+            if 'EventChannel' in j['data']:
+                for k in j['data']['EventChannel']:
+                    if isinstance(j['data']['EventChannel'][k], dict):
+                        r = {'Type': 'Other', 'Partition': 'aws', 'Details': {'Other': {}}}
+                        r['Details']['Other'] = j['data']['EventChannel'][k]
+                        r['Id'] = "WAZUH:Location:{}:Rule:{}:Data:{}".format(j['location'], j['rule']['id'], k)
+
+                        # add to Resources List
+                        f['Resources'].append(r)
+
+            else:
+
+                # else flatten into key: value pairs
+                r = {'Type': 'Other', 'Partition': 'aws', 'Details': {'Other': {}}}
+                # r['Details']['Other'] = j['data']
+                r['Details']['Other'] = self.flatten(j['data'], 'data')
+                r['Id'] = "WAZUH:Location:{}:Rule:{}:Data".format(j['location'], j['rule']['id'])
+                f['Resources'].append(r)
+
+        # does 'full_log' go in:
+        # Resources:Other:Details
+        # or Resources:AwsEc2Instance:Details:Other
+        # or into ProductFields
+        if 'full_log' in j:
+
+            r = {'Type': 'Other', 'Partition': 'aws', 'Details': {'Other': {}}}
+            r['Details']['Other'] = {'full_log': j['full_log']}
+            r['Id'] = "WAZUH:Location:{}:Rule:{}:Fulllog".format(j['location'], j['rule']['id'])
+            f['Resources'].append(r)
+
+        # ProductFields
+        #
+        #    Data type where security findings providers can include
+        #    additional solution-specific details that are not part of the
+        #    defined AwsSecurityFinding format.
+        #
+        # Type: key-values map of up to 50 key/value pairs
+        #
+        f['ProductFields'] = {
+            'ProviderName': 'Wazuh',
+            'ProviderVersion': '3.8.2',
+            'Service_Name': 'OSSEC',
+            'CompanyName': 'Wazuh.com',
+            'ProductName': 'Wazuh/Ossec',
+            # 'RuleId': j['rule']['id'],
+            # 'count': str(j['rule']['firedtimes']),
+        }
+
+        for k in j:
+            f['ProductFields']['Wazuh' + str(k)] = json.dumps(j[k])
+
+        # hack
+        # if Severity text is defined save it to ProductFields:SeverityLabel
+        # there is not mention of this in the AWS docs but it seems to
+        # be used in AWS generated reports)
+        try:
+            if 'severity' in j['data']['vulnerability']:
+                f['ProductFields']['SeverityLabel'] = j['data']['vulnerability']['severity']
+        except KeyError as _e:
+            pass
+
+        # generate Taxonomy Type
+        #
+        #  A shit ton of guess work here, mostly keying off of group fields in rule data block
+        #
+        try:
+            f['Types'] = self.type_Taxonomy(j)
+        except KeyError as _e:
+            print j
+            pprint.pprint(j)
+            if self.raise_on_error:
+                raise
+            else:
+                _ex_type, _ex, tb = sys.exc_info()
+                traceback.print_tb(tb, file=sys.stderr)
+
+        # Create provider-specific identifier for a finding
+        #
+        f['Id'] = self.gen_id(j)
+
+        # Create GeneratorId
+        #
+        #    This is the identifier for the solution-specific component (a
+        #    discrete unit of logic) that generated a finding. In various
+        #    security findings provider's solutions, this generator can be
+        #    called a rule, a check, a detector, a plug-in, etc.
+        #
+        # Using "location: rule id"
+        #
+        f['GeneratorId'] = ':'.join([j['location'], j['rule']['id']])[:512]
+
+        # Remediation
+        # recommendation on how to remediate the issue identified within a finding.
+        #
+        # AWS Doc:
+        # If the recommendation object is present, then either the Text
+        # or Url field must be present and populated, though both can be
+        # present and populated. The Recommendation field is meant to
+        # facilitate manual instruction/details to resolve a finding.
+        #
+        # In Reality
+        # Text field is required, URL is optional,
+        # If URL present Text field will me presented as a Link
+        #
+        # ** Currently only used alert-data-vulnerability-reference if it exists
+        #
+        try:
+            if 'reference' in j['data']['vulnerability']:
+                vref = j['data']['vulnerability']['reference'][:512]
+                if vref.startswith('http'):
+                    f['Remediation'] = {'Recommendation': {'Text': vref, 'Url': vref}}
+                else:
+                    f['Remediation'] = {'Recommendation': {'Text': vref}}
+        except KeyError as _e:
+            pass
+
+        # ok we are done...
+        return f
+
+    # <integration>
+    #   <name>custom-aws_sec_hub</name>
+    #   <level>6</level>
+    #   <alert_format>json</alert_format>
+    # </integration>
+
+    def as_Integrator(self, in_file=None):
+
+        with open(in_file) as fd:
+            alert_json = json.load(fd)
+
+        if self.skip_finding(alert_json):
+            self.log('Skip', alert_json)
+            sys.exit(0)
+
+        f_data = self.to_finding_fmt(alert_json)
+
+        self.queue_findings(f_data)
+
+        r = self.send_findings()
+        if r is not None and r['FailedCount'] > 0:
+            self.log('Send Error', alert_json)
+            self.log(json.dumps(r))
+        else:
+            self.log('Send', alert_json)
+
+        sys.exit(0)
+
+    #
+    # can be used if run independently from ossec-integrator
+    # this will follow ( tail ) the alerts file and forward events as they come
+    #
+    def follow_file(self, in_file=None):
+
+        if in_file is None:
+            raise ValueError("Requires in_file argument")
+
+        in_src = track_file(in_file)
+
+        cnt = 0
+        for event in in_src:
+            if event is None:
+                w2s.send_findings()
+                time.sleep(1)
+                continue
+
+            cnt += 1
+
+            # debug
+            # if skip and c < skip:
+            #    continue
+
+            if self.skip_finding(event):
+                if self.debug:
+                    print "Skip", cnt
+                continue
+
+            try:
+                f_data = self.to_finding_fmt(event)
+            except KeyError as _e:
+                # Debuging
+                print >>sys.stderr, "to_finding_fmt: KeyError"
+                pprint.pprint(event, stream=sys.stderr)
+                if self.raise_on_error:
+                    raise
+                else:
+                    _ex_type, _ex, tb = sys.exc_info()
+                    traceback.print_tb(tb, file=sys.stderr)
+                    continue
+
+            if self.debug:
+                print "Q", cnt
+            resp = self.queue_findings(f_data)
+
+            # is Title ever missing?
+            if not f_data['Title']:
+                print "Title", f_data['Title']
+                pprint.pprint(event)
+                break
+
+            if self.debug > 2:
+                print "\n\n\n"
+                pprint.pprint(event)
+                print "findings VV"
+                pprint.pprint(f_data)
+
+            # maybe the following should me moved to send_findings()
+            if resp is not None:
+                if self.debug > 2:
+                    print "\nResp\n"
+                    pprint.pprint(resp)
+                # report any falures
+                # maybe we should print the failed finding data???
+                if resp['FailedCount'] > 0:
+                    # pprint.pprint(f_data)
+                    print >>sys.stderr, "cnt =", cnt
+                    print >>sys.stderr, "\nFailedCount:", resp['FailedCount'], "\n"
+                    pprint.pprint(resp, stream=sys.stderr)
+                    break
+                resp = None
+
+        # if there are any to send, send them..
+        if self.my_findings:
+            resp = self.send_findings()
+            if resp is not None and resp['FailedCount'] > 0:
+                pprint.pprint(resp, stream=sys.stderr)
+
+if __name__ == '__main__':
+
+    len_argv = len(sys.argv)
+    if len_argv > 1:
+        alerts_file = sys.argv[1]
+    else:
+        alerts_file = ALERTS_FILE
+
+    options = aws_args = {}
+
+    if len_argv > 2:
+        try:
+            api_key = sys.argv[2]
+            aws_args = dict(token.split('=') for token in shlex.split(api_key))
+        except ValueError as _e:
+            pass
+
+    if len_argv > 3:
+        try:
+            hook_url = sys.argv[3]
+            options = dict(token.split('=') for token in shlex.split(hook_url))
+            ignore_r = options.get('ignore_rules', None)
+            if ignore_r is not None:
+                options['ignore_rules'] = ignore_r.split(',')
+        except ValueError as _e:
+            pass
+
+    # <api_key>region_name=us-west-2 profile_name=snp</<api_key>
+    # aws_args = {'region_name': aws_region} # , 'profile_name':aws_profile}
+
+    # print "options", options
+    # print "aws_args", aws_args
+
+    w2s = Wazuh_to_SecHub(session_args=aws_args, **options)
+
+    # to track the alerts.file
+    # read each line, reformat, then send to AWS Security Hub
+    # w2s.follow_file(in_file=alerts_file)
+
+    # to run as an wazuh alert 'Integrator'
+    # https://wazuh.com/blog/how-to-integrate-external-software-using-integrator/
+    w2s.as_Integrator(in_file=alerts_file)
+
+    # Done, Go Home
+    sys.exit(0)
