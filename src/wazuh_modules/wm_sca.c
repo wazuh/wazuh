@@ -39,7 +39,7 @@ typedef struct cis_db_hash_info_t {
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
-static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
+static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy);  // Do scan
@@ -737,7 +737,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     char final_file[2048 + 1];
     char *value;
     char *name = NULL;
-    char *reason = NULL;
+    char *inv_check_reason = NULL;
+
     int ret_val = 0;
     int id_check_p = 0;
     cJSON *c_title = NULL;
@@ -874,7 +875,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #endif
 
                     mdebug2("Checking file: '%s'.", f_value);
-                    int val = wm_sca_check_file(f_value, pattern, data, &reason);
+                    int val = wm_sca_check_file(f_value, pattern, data, &inv_check_reason);
                     if (val == 1) {
                         mdebug2("Found file.");
                         found = 1;
@@ -923,7 +924,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
 
                     mdebug2("Running command: '%s'.", f_value);
-                    int val = wm_sca_read_command(f_value, pattern, data, &reason);
+                    int val = wm_sca_read_command(f_value, pattern, data, &inv_check_reason);
                     if (val == 1) {
                         mdebug2("Found command.");
                         found = 1;
@@ -1139,11 +1140,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
 
-
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_failed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
+                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",inv_check_reason);
 
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -1180,7 +1180,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_passed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
+                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",inv_check_reason);
 
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -1227,10 +1227,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 int j = 0;
                 char **p_alert_msg = data->alert_msg;
 
-
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error");
+                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",inv_check_reason);
 
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"error",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -1452,7 +1451,7 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, char **r
 
                 return (1);
             } else {
-                sprintf(*reason,"File not found");
+                sprintf(*reason, "File %s not found.", file);
                 return (2);
             }
         } else {
@@ -1557,6 +1556,10 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, char **r
 
 
     } while (split_file);
+
+    if (reason == NULL) {
+        sprintf(*reason, "-");
+    }
 
     return (0);
 }
@@ -2246,7 +2249,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event) {
     return 0;
 }
 
-static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result) {
+static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason) {
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -2440,7 +2443,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 
     if (!strcmp(result, "error")) {
         cJSON_AddStringToObject(check, "status", "Not applicable");
-        cJSON_AddStringToObject(check, "reason", result);
+        cJSON_AddStringToObject(check, "reason", reason);
     } else {
         cJSON_AddStringToObject(check, "result", result);
     }
