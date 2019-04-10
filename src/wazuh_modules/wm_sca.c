@@ -824,8 +824,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 nbuf = p_check->valuestring;
                 mdebug2("Rule is: %s",nbuf);
 
+                /* Make a copy of the rule */
+                char *rule_cp;
+                os_strdup(nbuf, rule_cp);
+
                 /* Get value to look for */
-                value = wm_sca_get_value(nbuf, &type);
+                value = wm_sca_get_value(rule_cp, &type);
+
                 if (value == NULL) {
                     mdebug1(WM_SCA_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
@@ -2206,6 +2211,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
     cJSON *description = cJSON_GetObjectItem(profile, "description");
     cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
     cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
+    cJSON *rules = cJSON_GetObjectItem(profile, "rules");
 
     if(!pm_id) {
         mdebug1("No 'id' field found on check.");
@@ -2281,6 +2287,8 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 
         cJSON_AddItemToObject(check,"compliance",add_compliances);
     }
+
+    cJSON_AddItemToObject(check,"rules", cJSON_Duplicate(rules,1));
 
     cJSON *references = cJSON_GetObjectItem(profile, "references");
 
