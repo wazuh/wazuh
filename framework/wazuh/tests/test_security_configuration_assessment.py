@@ -113,7 +113,7 @@ class TestPolicyMonitoring(TestCase):
         """
         with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_sca_data
-            result = get_sca_checks('cis_debian', agent_id='000', q="id=5031,id=5030")
+            result = get_sca_checks('cis_debian', agent_id='000')
             assert(isinstance(result, dict))
             assert ('totalItems' in result)
             assert (isinstance(result['totalItems'], int))
@@ -121,10 +121,7 @@ class TestPolicyMonitoring(TestCase):
             sca = result['items']
             assert(isinstance(sca, list))
             assert(len(sca) > 0)
-            # element containing rules field
             assert(set(sca[0].keys()).issubset(set(cols_returned_from_db_sca_check) | {'compliance', 'rules'}))
-            # element not containing rules field
-            assert(set(sca[1].keys()).issubset(set(cols_returned_from_db_sca_check) | {'compliance'}))
 
             compliance = sca[0]['compliance']
             assert(isinstance(compliance, list))
