@@ -505,6 +505,34 @@ int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value) {
     }
 }
 
+int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule){
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
+        return -1;
+    }
+
+     sqlite3_stmt *stmt = NULL;
+
+     if (wdb_stmt_cache(wdb, WDB_STMT_SCA_INSERT_RULES) < 0) {
+        mdebug1("at wdb_rootcheck_save(): cannot cache statement");
+        return -1;
+    }
+
+     stmt = wdb->stmt[WDB_STMT_SCA_INSERT_RULES];
+
+     sqlite3_bind_int(stmt, 1, id_check);
+    sqlite3_bind_text(stmt, 2, type, -1, NULL);
+    sqlite3_bind_text(stmt, 3, rule, -1, NULL);
+
+     if (sqlite3_step(stmt) == SQLITE_DONE) {
+        return 0;
+    } else {
+        merror("sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+}
+
+
 /* Insert policy entry. Returns 0 on success or -1 on error (new) */
 int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references ) {
 
