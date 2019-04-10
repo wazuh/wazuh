@@ -728,6 +728,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
             wdb_sca_check_compliances_delete(wdb);
+            wdb_sca_check_rules_delete(wdb);
         }
 
         return result;
@@ -745,6 +746,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
             wdb_sca_check_compliances_delete(wdb);
+            wdb_sca_check_rules_delete(wdb);
         }
 
         return result;
@@ -1036,7 +1038,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
          return result;
-         
+
     } else if (strcmp(curr, "insert_compliance") == 0) {
 
         int id_check;

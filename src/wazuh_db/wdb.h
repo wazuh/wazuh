@@ -107,6 +107,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_DELETE,
     WDB_STMT_SCA_SCAN_INFO_DELETE,
     WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE,
+    WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_SIZE
@@ -261,6 +262,9 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id);
 
 /* Delete a configuration assessment check compliances. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_compliances_delete(wdb_t * wdb);
+
+/* Delete a configuration assessment check rules. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_rules_delete(wdb_t * wdb);
 
 /* Delete distinct configuration assessment check. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
