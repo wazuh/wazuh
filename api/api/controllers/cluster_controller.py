@@ -227,6 +227,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_info_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's information 
 
@@ -251,6 +252,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_configuration_node(node_id, pretty=False, wait_for_complete=False, section=None, field=None):
     """Get a specified node's configuration 
 
@@ -277,6 +279,7 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
     return data, 200
 
 
+@exception_handler
 def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     """Get a specified node's stats. 
 
@@ -313,6 +316,7 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
     return data, 200
 
 
+@exception_handler
 def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's stats by hour. 
 
@@ -337,6 +341,7 @@ def get_stats_hourly_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's stats by week. 
 
@@ -361,6 +366,7 @@ def get_stats_weekly_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's analysisd stats. 
 
@@ -385,6 +391,7 @@ def get_stats_analysisd_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's remoted stats.
 
@@ -409,6 +416,7 @@ def get_stats_remoted_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                  search=None, category=None, type_log=None):
     """Get a specified node's wazuh logs. 
@@ -442,6 +450,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
     return data, 200
 
 
+@exception_handler
 def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     """Get a summary of a specified node's wazuh logs. 
 
@@ -466,6 +475,7 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     """Get file contents from a specified node in the cluster.
 
@@ -491,6 +501,7 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for_complete=False):
     """Updates file contents in a specified cluster node.
 
@@ -533,6 +544,7 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
     return data, 200
 
 
+@exception_handler
 def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     """Removes a file in a specified cluster node.
 
@@ -558,6 +570,7 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def put_restart(pretty=False, wait_for_complete=False):
     """Restarts all nodes in cluster.
 
@@ -582,6 +595,7 @@ def put_restart(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def put_restart_node(node_id, pretty=False, wait_for_complete=False):
     """Restarts a specific node in cluster.
 
@@ -606,6 +620,7 @@ def put_restart_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_conf_validation(pretty=False, wait_for_complete=False):
     """Check Wazuh configuration in all cluster nodes.
 
@@ -630,6 +645,7 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_conf_validation_node(node_id, pretty=False, wait_for_complete=False):
     """Check Wazuh configuration in a cluster node
 
