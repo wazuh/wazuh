@@ -2722,9 +2722,9 @@ size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int 
 
     } else {
         errno = EINTR;
-        /* To escalate the timeout error to the calling function, we set read_count to 2049
-        since the maximum possible read count is 2048 */
-        read_count = 2049;
+        /* To escalate the timeout error to the calling function, we set read_count to
+        the first value which fread cannot return ever */
+        read_count = (size * nitems) + 1;
     }
 
     /* unset signal handler and alarm */

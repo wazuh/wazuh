@@ -179,7 +179,7 @@ typedef struct _config {
     int scan_on_start;
     int realtime_count;
     int max_depth;                  /* max level of recursivity allowed */
-    size_t max_size;                /* max file size for calculating hashes */
+    size_t file_max_size;           /* max file size for calculating hashes */
 
     short skip_nfs;
     int rt_delay;                   /* Delay before real-time dispatching (ms) */

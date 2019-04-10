@@ -22,7 +22,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
 {
     size_t n, read = 0;
     FILE *fp;
-    unsigned char buf[2048 + 2];
+    unsigned char buf[OS_BUFFER_SIZE + 2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
     unsigned char sha256_digest[SHA256_DIGEST_LENGTH];
@@ -35,7 +35,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
     md5output[0] = '\0';
     sha1output[0] = '\0';
     sha256output[0] = '\0';
-    buf[2048 + 1] = '\0';
+    buf[OS_BUFFER_SIZE + 1] = '\0';
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
@@ -63,11 +63,11 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
 
     /* Update for each one */
 #ifdef WIN32
-    while ((n = fread(buf, 1, 2048, fp)) > 0) {
+    while ((n = fread(buf, 1, OS_BUFFER_SIZE, fp)) > 0) {
 #else
-    while ((n = w_fread_timeout(buf, 1, 2048, fp, 5)) > 0) {
+    while ((n = w_fread_timeout(buf, 1, OS_BUFFER_SIZE, fp, 5)) > 0) {
 #endif
-        if (n == 2049) {    // Timeout error
+        if (n == OS_BUFFER_SIZE + 1) {    // Timeout error
             mwarn("Timeout when scanning file '%s'. File skipped.", fname);
             if (prefilter_cmd == NULL) {
                 fclose(fp);
@@ -80,7 +80,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5
         if (max_size > 0) {
             read = read + n;
             if (read >= max_size) {     // Maximum filesize error
-                mwarn("Filesize of '%s' is higher than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
+                mwarn("'%s' filesize is larger than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
                 if (prefilter_cmd == NULL) {
                     fclose(fp);
                 } else {
