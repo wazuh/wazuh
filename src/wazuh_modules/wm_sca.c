@@ -1169,6 +1169,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                 }
 
+                os_free(inv_check_reason);
+
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
                     goto clean_return;
@@ -1212,6 +1214,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     j++;
                 }
 
+                os_free(inv_check_reason);
+
                 /* Check if this entry is required for the rest of the file */
                 if (condition & WM_SCA_COND_REQ) {
                     if (requirements_scan == 1){
@@ -1254,6 +1258,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         break;
                     }
                 }
+
+                os_free(inv_check_reason);
 
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
