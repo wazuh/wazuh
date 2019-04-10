@@ -1498,12 +1498,14 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, char **r
                 }
 
                 return (1);
-            } else {
-                sprintf(*reason, "File %s not found.", file);
-                return (2);
             }
         } else {
             full_negate = wm_sca_pt_check_negate(pattern);
+
+            if (!w_is_file(file)) {
+                sprintf(*reason, "File %s not found.", file);
+                return (2);
+            }
             /* Check for content in the file */
             fp = fopen(file, "r");
             if (fp) {
