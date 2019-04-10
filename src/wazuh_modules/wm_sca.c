@@ -11,6 +11,7 @@
 
 #include "wmodules.h"
 #include <os_net/os_net.h>
+#include <sys/stat.h>
 #include "os_crypto/md5/md5_op.h"
 #include "shared.h"
 
@@ -1432,6 +1433,46 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, char **r
 
     /* Get each file */
     do {
+        /* Check if the file has the right permissions */
+#ifndef WIN32
+            fp = fopen(file, "r");
+
+            if (fp) {
+                struct stat statbuf;
+                int err = fstat(fileno(fp), &statbuf);
+
+                if (err){
+                    mwarn("Couldn't check file stat() of file '%s'. Skipping it.", file);
+                    sprintf(*reason, "Couldn't check file stat() of file '%s'.", file);
+                    return (2);
+                }
+
+                if (statbuf.st_mode & S_IRWXO) {
+                    mwarn("File '%s' has wrong permissions. Skipping it.", file);
+                    sprintf(*reason, "File '%s' has wrong permissions.", file);
+                    return (2);
+                }
+
+                uid_t root_uid = Privsep_GetUser(ROOTUSER);
+                gid_t root_gid = Privsep_GetGroup(ROOTUSER);
+
+                uid_t ossec_uid = Privsep_GetUser(USER);
+                gid_t ossec_gid = Privsep_GetGroup(GROUPGLOBAL);
+
+                if (root_uid != statbuf.st_uid && ossec_uid != statbuf.st_uid) {
+                    mwarn("File '%s' has wrong ownership. Skipping it.", file);
+                    sprintf(*reason, "File '%s' has wrong ownership.", file);
+                    return (2);
+                }
+
+                if (root_gid != statbuf.st_gid && ossec_gid != statbuf.st_gid) {
+                    mwarn("File '%s' has wrong group. Skipping it.", file);
+                    sprintf(*reason, "File '%s' has wrong group.", file);
+                    return (2);
+                }
+            }
+#endif
+
         /* If we don't have a pattern, just check if the file/dir is there */
         if (pattern == NULL) {
             if (w_is_file(file)) {
