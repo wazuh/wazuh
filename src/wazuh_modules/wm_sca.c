@@ -1174,80 +1174,51 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
             /* Alert if necessary */
             if (g_found == 1) {
-                int j = 0;
                 char **p_alert_msg = data->alert_msg;
+                if (!requirements_scan) {
+                    wm_sca_summary_increment_failed();
+                    cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
 
-
-                while (1) {
-                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_sca_summary_increment_failed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
-
-                        if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                                wm_sca_send_event_check(data,event);
-                            }
-                            cJSON_Delete(event);
-                        } else {
-                            merror("Building event for check: %s. Set debug mode for more information.", name);
-                            ret_val = 1;
+                    if(event){
+                        if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
+                            wm_sca_send_event_check(data,event);
                         }
-                    }
-
-                    if (p_alert_msg[j]) {
-                        free(p_alert_msg[j]);
-                        p_alert_msg[j] = NULL;
-                        j++;
-
-                        if (!p_alert_msg[j]) {
-                            break;
-                        }
+                        cJSON_Delete(event);
                     } else {
-                        break;
+                        merror("Building event for check: %s. Set debug mode for more information.", name);
+                        ret_val = 1;
                     }
                 }
 
+                for (int i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
+                }
+                
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
                     goto clean_return;
                 }
             } else {
-                int j = 0;
                 char **p_alert_msg = data->alert_msg;
+                if (!requirements_scan) {
+                    wm_sca_summary_increment_passed();
+                    cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
 
-                while (1) {
-                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_sca_summary_increment_passed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
-
-                        if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                                wm_sca_send_event_check(data,event);
-                            }
-                            cJSON_Delete(event);
-                        } else {
-                            merror("Building event for check: %s. Set debug mode for more information.", name);
-                            ret_val = 1;
+                    if(event){
+                        if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
+                            wm_sca_send_event_check(data,event);
                         }
-                    }
-
-                    if (p_alert_msg[j]) {
-                        free(p_alert_msg[j]);
-                        p_alert_msg[j] = NULL;
-                        j++;
-
-                        if (!p_alert_msg[j]) {
-                            break;
-                        }
+                        cJSON_Delete(event);
                     } else {
-                        break;
+                        merror("Building event for check: %s. Set debug mode for more information.", name);
+                        ret_val = 1;
                     }
                 }
-                j = 0;
-                while (data->alert_msg[j]) {
-                    free(data->alert_msg[j]);
-                    data->alert_msg[j] = NULL;
-                    j++;
+
+                for (int i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
                 }
 
                 /* Check if this entry is required for the rest of the file */
