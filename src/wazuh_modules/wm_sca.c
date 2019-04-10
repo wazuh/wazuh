@@ -1594,6 +1594,9 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
             if (result_code == EXECVE_ERROR) {
                 mdebug1("Can't run command(%s): path is invalid or file has insufficient permissions.",command);
                 sprintf(*reason, "Can't run command(%s): path is invalid or file has insufficient permissions.",command);
+            } else if (result_code == 1) {
+                mdebug1("Timeout overtaken running command (%s).", command);
+                sprintf(*reason, "Timeout overtaken running command (%s).", command);
             } else {
                 mdebug1("Error executing [%s]", command);
                 sprintf(*reason, "Error executing [%s]", command);
