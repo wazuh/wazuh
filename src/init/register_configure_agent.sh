@@ -10,9 +10,11 @@
 
 . /etc/ossec-init.conf
 
+sed="sed -ri"
+
 edit_value_tag() {
     if [ "$#" == "2" ] && [ ! -z "$2" ]; then
-        sed -ri "s#<$1>.+</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf" > /dev/null
+        ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
     fi
 
     if [ "$?" != "0" ]; then
@@ -34,7 +36,7 @@ add_adress_block() {
         fi
         BLOCK=${BLOCK}${NEW}
     done
-    sed -ri "s#<address>MANAGER_IP</address>#${BLOCK}#g" "ossec.conf" > /dev/null
+    ${sed} "s#<address>MANAGER_IP</address>#${BLOCK}#g" "ossec.conf"
 }
 
 add_parameter () {
@@ -45,6 +47,7 @@ add_parameter () {
 }
 
 set_vars () {
+    export WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
     export WAZUH_PROTOCOL=$(launchctl getenv WAZUH_PROTOCOL)
     export WAZUH_SERVER_PORT=$(launchctl getenv WAZUH_SERVER_PORT)
     export WAZUH_NOTIFY_TIME=$(launchctl getenv WAZUH_NOTIFY_TIME)
@@ -64,6 +67,7 @@ main () {
     uname_s=$(uname -s)
 
     if [ "${uname_s}" = "Darwin" ]; then
+        sed="sed -ire"
         set_vars
     fi
 
@@ -104,22 +108,6 @@ main () {
             OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
             OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
             ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>/dev/null
-
-            if [ -s ${DIR}/etc/client.keys ]; then
-
-                if cat ${DIR}/etc/ossec.conf | grep -o -P '(?<=<server-ip>).*(?=</server-ip>)' | grep -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$' > /dev/null 2>&1; then
-                    service wazuh-agent restart || :
-                fi
-
-                if cat ${DIR}/etc/ossec.conf | grep -o -P '(?<=<server-hostname>).*(?=</server-hostname>)' > /dev/null 2>&1; then
-                    service wazuh-agent restart || :
-                fi
-
-                if cat ${DIR}/etc/ossec.conf | grep -o -P '(?<=<address>)(?!MANAGER_IP).*(?=</address>)' > /dev/null 2>&1; then
-                    service wazuh-agent restart || :
-                fi
-            fi
-
     fi
 }
 
