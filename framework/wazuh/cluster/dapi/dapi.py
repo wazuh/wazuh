@@ -209,7 +209,7 @@ class DistributedAPI:
                                                   wait_for_complete=self.wait_for_complete),
                           object_hook=as_wazuh_object)
 
-    async def forward_request(self) -> str:
+    async def forward_request(self) -> [wresults.WazuhResult, exception.WazuhException]:
         """
         Forwards a request to the node who has all available information to answer it. This function is called when a
         distributed_master function is used. Only the master node calls this function. An API request will only be

@@ -237,12 +237,11 @@ def upload_xml(xml_file, path):
             # beauty xml file
             xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            indent = '  '
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">").replace('&apos', "'").replace(fr"^{indent}", "")
+                .replace("&gt;", ">").replace('&apos', "'")
             tmp_file.write(pretty_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
