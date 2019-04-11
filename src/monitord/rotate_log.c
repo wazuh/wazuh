@@ -75,14 +75,23 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
     strcpy(base_dir, "logs");
 #else
     char *base_dir;
+    char tag[OS_FLSIZE];
     os_strdup(old_file, dir);
     base_dir = dirname(dir);
+    if(!strncmp(old_file, LOGFILE, strlen(LOGFILE)) || !strncmp(old_file, LOGJSONFILE, strlen(LOGJSONFILE))){
+        snprintf(tag, OS_FLSIZE, "logs");
+    } else if(!strncmp(old_file, ALERTS_DAILY, strlen(ALERTS_DAILY)) || !strncmp(old_file, ALERTSJSON_DAILY, strlen(ALERTSJSON_DAILY))){
+        snprintf(tag, OS_FLSIZE, "alerts");
+    } else if(!strncmp(old_file, EVENTS_DAILY, strlen(EVENTS_DAILY)) || !strncmp(old_file, EVENTSJSON_DAILY, strlen(EVENTSJSON_DAILY))){
+        snprintf(tag, OS_FLSIZE, "archive");
+    }
+
 #endif
 
     snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
     snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
-    snprintf(new_path, PATH_MAX, "%s/ossec-%02d.log", month_dir, tm.tm_mday);
-    snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d.json", month_dir, tm.tm_mday);
+    snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
+    snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
     snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
 
     // Create folders
@@ -102,17 +111,17 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
         /* Count rotated log files of the current day */
         while(!IsFile(compressed_path)){
             counter++;
-            snprintf(new_path, PATH_MAX, "%s/ossec-%02d-%03d.log", month_dir, tm.tm_mday, counter);
+            snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
         }
 
         /* Rotate compressed logs if needed */
         if (counter == daily_rotations) {
             if (daily_rotations == 1 && counter == 1) {
-                snprintf(new_path, PATH_MAX, "%s/ossec-%02d.log", month_dir, tm.tm_mday);
+                snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
             } else {
-                snprintf(rename_path, PATH_MAX, "%s/ossec-%02d.log.gz", month_dir, tm.tm_mday);
-                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d-001.log.gz", month_dir, tm.tm_mday);
+                snprintf(rename_path, PATH_MAX, "%s/ossec-%s-%02d.log.gz", month_dir, tag, tm.tm_mday);
+                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-001.log.gz", month_dir, tag, tm.tm_mday);
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename_ex(old_rename_path, rename_path) != 0) {
@@ -122,9 +131,9 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
                     }
                     counter++;
                     snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
-                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d-%03d.log.gz", month_dir, tm.tm_mday, counter);
+                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log.gz", month_dir, tag, tm.tm_mday, counter);
                 }
-                snprintf(new_path, PATH_MAX, "%s/ossec-%02d-%03d.log", month_dir, tm.tm_mday, counter - 1);
+                snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter - 1);
             }
         }
 
@@ -147,17 +156,17 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
         /* Count rotated log files of the current day */
         while(!IsFile(compressed_path)) {
             counter++;
-            snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d-%03d.json", month_dir, tm.tm_mday, counter);
+            snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
         }
 
         /* Rotate compressed logs if needed */
         if (counter == daily_rotations) {
             if (daily_rotations == 1 && counter == 1) {
-                snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d.json", month_dir, tm.tm_mday);
+                snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
             } else {
-                snprintf(rename_path, PATH_MAX, "%s/ossec-%02d.json.gz", month_dir, tm.tm_mday);
-                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d-001.json.gz", month_dir, tm.tm_mday);
+                snprintf(rename_path, PATH_MAX, "%s/ossec-%s-%02d.json.gz", month_dir, tag, tm.tm_mday);
+                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-001.json.gz", month_dir, tag, tm.tm_mday);
                 counter = 1;
                 while (counter < daily_rotations) {
                     if (rename_ex(old_rename_path, rename_path) != 0) {
@@ -167,9 +176,9 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
                     }
                     counter++;
                     snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
-                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%02d-%03d.json.gz", month_dir, tm.tm_mday, counter);
+                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.json.gz", month_dir, tag, tm.tm_mday, counter);
                 }
-                snprintf(new_path_json, PATH_MAX, "%s/ossec-%02d-%03d.json", month_dir, tm.tm_mday, counter - 1);
+                snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter - 1);
             }
         }
 
