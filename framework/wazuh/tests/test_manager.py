@@ -186,21 +186,27 @@ ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_databa
 2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
 2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
 2019/03/26 19:49:15 ossec-execd: ERROR: (1210): Queue '/var/ossec/queue/alerts/execa' not accessible: 'No such file or directory'.
-2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'"""
+2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'
+2019/04/11 12:51:40 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
+2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Returned exit code 7
+2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Unexpected error querying/working with objects in S3: db_maintenance() got an unexpected keyword argument 'aws_account_id'
+
+2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle"""
 
 
 @pytest.mark.parametrize('category, type_log, totalItems', [
-    ('all', 'all', 6),
+    ('all', 'all', 10),
     ('wazuh-modulesd:database', 'all', 2),
     ('wazuh-modulesd:syscollector', 'all', 1),
-    ('wazuh-modulesd:aws-s3', 'all', 1),
+    ('wazuh-modulesd:aws-s3', 'all', 5),
     ('ossec-execd', 'all', 1),
     ('ossec-csyslogd', 'all', 1),
     ('random', 'all', 0),
-    ('all', 'info', 2),
+    ('all', 'info', 4),
     ('all', 'error', 2),
     ('all', 'debug', 2),
-    ('all', 'random', 0)
+    ('all', 'random', 0),
+    ('all', 'warning', 2)
 ])
 def test_ossec_log(test_manager, category, type_log, totalItems):
     """
@@ -210,3 +216,4 @@ def test_ossec_log(test_manager, category, type_log, totalItems):
         tail_patch.return_value = ossec_log_file.splitlines()
         logs = ossec_log(category=category, type_log=type_log)
         assert logs['totalItems'] == totalItems
+        assert all(log['description'][-1] != '\n' for log in logs['items'])
