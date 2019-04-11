@@ -1320,7 +1320,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
         if (!result) {
             merror("The event could not be added to the %s hash table. Target: '%s'.", tag, id);
         } else if (result == 1) {
-            merror("The event could not be added to the %s hash table because it is duplicated. Target: '%s'.", tag, id);
+            mdebug1("The event could not be added to the %s hash table because it is duplicated. Target: '%s'.", tag, id);
         }
     }
 
