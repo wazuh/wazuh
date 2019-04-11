@@ -63,7 +63,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
-    logger.error(data)
+
     # get rules as dict
     rules_list = []
     for rule in data['items']:
