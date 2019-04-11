@@ -5,7 +5,7 @@ import re
 from glob import glob
 from xml.etree.ElementTree import fromstring
 import wazuh.configuration as configuration
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
 from wazuh.utils import cut_array, sort_array, search_array, load_wazuh_xml
 import os
@@ -133,7 +133,7 @@ class Rule:
         elif status in [Rule.S_ALL, Rule.S_ENABLED, Rule.S_DISABLED]:
             return status
         else:
-            raise WazuhException(1202)
+            raise WazuhError(1202)
 
 
     @staticmethod
@@ -156,7 +156,7 @@ class Rule:
         # Rules configuration
         ruleset_conf = configuration.get_ossec_conf(section='ruleset')
         if not ruleset_conf:
-            raise WazuhException(1200)
+            raise WazuhInternalError(1200)
 
         tmp_data = []
         tags = ['rule_include', 'rule_exclude']
@@ -246,7 +246,7 @@ class Rule:
         if level:
             levels = level.split('-')
             if len(levels) < 0 or len(levels) > 2:
-                raise WazuhException(1203)
+                raise WazuhError(1203)
 
         for rule_file in Rule.get_rules_files(status=status, limit=None)['items']:
             all_rules.extend(Rule.__load_rules_from_file(rule_file['file'], rule_file['path'], rule_file['status']))
@@ -332,7 +332,7 @@ class Rule:
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         if requirement != 'pci' and requirement != 'gdpr':
-            raise WazuhException(1205, requirement)
+            raise WazuhError(1205, requirement)
 
         req = list({req for rule in Rule.get_rules(limit=None)['items'] for req in rule.to_dict()[requirement]})
 
@@ -443,6 +443,6 @@ class Rule:
 
                             rules.append(rule)
         except Exception as e:
-            raise WazuhException(1201, "{0}. Error: {1}".format(rule_file, str(e)))
+            raise WazuhInternalError(1201, "{0}. Error: {1}".format(rule_file, str(e)))
 
         return rules

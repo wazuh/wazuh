@@ -9,27 +9,28 @@ import logging
 from api.models.list_metadata import ListMetadata
 from api.models.rules_files_model import RulesFiles
 from api.models.rules_model import Rules as RulesModel
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('rules_controllers')
+logger = logging.getLogger('wazuh')
 
 
-def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+@exception_handler
+def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
               search=None, status=None, group=None, level=None, file=None, path=None,
               pci=None, gdpr=None):
     """
-    :param pretty: Show results in human-readable format 
+    :param pretty: Show results in human-readable format
     :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
+    :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     :param offset: First element to return in the collection
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -62,30 +63,30 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
-
+    logger.error(data)
     # get rules as dict
     rules_list = []
-    for rule in data['data']['items']:
+    for rule in data['items']:
         rule = rule.to_dict()
         rules_list.append(rule)
 
-    data['data']['items'] = rules_list
+    data['items'] = rules_list
 
     return data, 200
 
 
-def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                      search=None):
     """
-    :param pretty: Show results in human-readable format 
+    :param pretty: Show results in human-readable format
     :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
+    :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     :param offset: First element to return in the collection
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -106,18 +107,19 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
     return data, 200
 
 
-def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+@exception_handler
+def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                   search=None):
     """
-    :param pretty: Show results in human-readable format 
+    :param pretty: Show results in human-readable format
     :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
+    :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     :param offset: First element to return in the collection
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -138,18 +140,19 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
     return data, 200
 
 
-def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+@exception_handler
+def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                    search=None):
     """
-    :param pretty: Show results in human-readable format 
+    :param pretty: Show results in human-readable format
     :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
+    :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     :param offset: First element to return in the collection
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -170,18 +173,19 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     return data, 200
 
 
-def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
+@exception_handler
+def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                     search=None, status=None, file=None, path=None, download=None):
     """
-    :param pretty: Show results in human-readable format 
+    :param pretty: Show results in human-readable format
     :type pretty: bool
-    :param wait_for_complete: Disable timeout response 
+    :param wait_for_complete: Disable timeout response
     :type wait_for_complete: bool
     :param offset: First element to return in the collection
     :type offset: int
     :param limit: Maximum number of elements to return
     :type limit: int
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order. 
+    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
@@ -211,6 +215,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     return data, 200
 
 
+@exception_handler
 def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, 
                  search=None, rule_id=None):
     """
