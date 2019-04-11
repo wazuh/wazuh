@@ -27,7 +27,7 @@
 #include <string.h>
 #include <net/route.h>
 
-
+#ifdef __MACH__
 #if !HAVE_SOCKADDR_SA_LEN
 #define SA_LEN(sa)      af_to_len(sa->sa_family)
 #if HAVE_SIOCGLIFNUM
@@ -38,10 +38,13 @@
 #else
 #define SA_LEN(sa)      sa->sa_len
 #endif /* !HAVE_SOCKADDR_SA_LEN */
+#endif /* MACH */
 
 hw_info *get_system_bsd();    // Get system information
 
-OSHash *gateways;
+#ifdef __MACH__
+    OSHash *gateways;
+#endif
 
 #if defined(__MACH__)
 
@@ -742,7 +745,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         cJSON_AddNumberToObject(object, "ID", random_id);
         cJSON_AddStringToObject(object, "timestamp", timestamp);
 
-        gateway *gate;
+        gateway *gate = NULL;
         #if defined(__MACH__)
         gate = (gateway *)OSHash_Get(gateways, ifaces_list[i]);
         #endif
@@ -781,386 +784,386 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
 }
 
-    void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway* gate){
-        
-        struct ifaddrs *ifa;
-        int family = 0;
-        
-        cJSON *interface = cJSON_CreateObject();
-        cJSON_AddItemToObject(object, "iface", interface);
-        cJSON_AddStringToObject(interface, "name", iface_name);
+void getNetworkIface_bsd(cJSON *object, char *iface_name, struct ifaddrs *ifaddrs_ptr, __attribute__((unused)) gateway* gate){
 
-        cJSON *ipv4 = cJSON_CreateObject();
-        cJSON *ipv4_addr = cJSON_CreateArray();
-        cJSON *ipv4_netmask = cJSON_CreateArray();
-        cJSON *ipv4_broadcast = cJSON_CreateArray();
+    struct ifaddrs *ifa;
+    int family = 0;
 
-        cJSON *ipv6 = cJSON_CreateObject();
-        cJSON *ipv6_addr = cJSON_CreateArray();
-        cJSON *ipv6_netmask = cJSON_CreateArray();
-        cJSON *ipv6_broadcast = cJSON_CreateArray();
+    cJSON *interface = cJSON_CreateObject();
+    cJSON_AddItemToObject(object, "iface", interface);
+    cJSON_AddStringToObject(interface, "name", iface_name);
 
-        for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
+    cJSON *ipv4 = cJSON_CreateObject();
+    cJSON *ipv4_addr = cJSON_CreateArray();
+    cJSON *ipv4_netmask = cJSON_CreateArray();
+    cJSON *ipv4_broadcast = cJSON_CreateArray();
 
-            if (strcmp(iface_name, ifa->ifa_name)){
-                continue;
+    cJSON *ipv6 = cJSON_CreateObject();
+    cJSON *ipv6_addr = cJSON_CreateArray();
+    cJSON *ipv6_netmask = cJSON_CreateArray();
+    cJSON *ipv6_broadcast = cJSON_CreateArray();
+
+    for (ifa = ifaddrs_ptr; ifa; ifa = ifa->ifa_next){
+
+        if (strcmp(iface_name, ifa->ifa_name)){
+            continue;
+        }
+        if (ifa->ifa_flags & IFF_LOOPBACK) {
+            continue;
+        }
+
+        family = ifa->ifa_addr->sa_family;
+
+        if (family == AF_INET){
+
+            if (ifa->ifa_addr){
+
+                void * addr_ptr;
+                /* IPv4 Address */
+
+                addr_ptr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+
+                char host[NI_MAXHOST];
+                inet_ntop(ifa->ifa_addr->sa_family,
+                        addr_ptr,
+                        host,
+                        sizeof (host));
+
+                cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+
+                /* Netmask Address */
+                addr_ptr = &((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr;
+
+                char netmask[NI_MAXHOST];
+                inet_ntop(ifa->ifa_netmask->sa_family,
+                        addr_ptr,
+                        netmask,
+                        sizeof (netmask));
+
+                cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
+
+                /* Broadcast Address */
+                addr_ptr = &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr;
+
+                char broadaddr[NI_MAXHOST];
+                inet_ntop(ifa->ifa_dstaddr->sa_family,
+                        addr_ptr,
+                        broadaddr,
+                        sizeof (broadaddr));
+
+                cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
             }
-            if (ifa->ifa_flags & IFF_LOOPBACK) {
-                continue;
-            }
 
-            family = ifa->ifa_addr->sa_family;
+        } else if (family == AF_INET6){
 
-            if (family == AF_INET){
+            if (ifa->ifa_addr){
 
-                if (ifa->ifa_addr){
+                void * addr_ptr;
 
-                    void * addr_ptr;
-                    /* IPv4 Address */
+                /* IPv6 Address */
+                addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr;
 
-                    addr_ptr = &((struct sockaddr_in *) ifa->ifa_addr)->sin_addr;
+                char host[NI_MAXHOST];
+                inet_ntop(ifa->ifa_addr->sa_family,
+                        addr_ptr,
+                        host,
+                        sizeof (host));
 
-                    char host[NI_MAXHOST];
-                    inet_ntop(ifa->ifa_addr->sa_family,
-                            addr_ptr,
-                            host,
-                            sizeof (host));
+                cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
 
-                    cJSON_AddItemToArray(ipv4_addr, cJSON_CreateString(host));
+                /* Netmask address */
+                if (ifa->ifa_netmask){
+                    addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_netmask)->sin6_addr;
 
-                    /* Netmask Address */
-                    addr_ptr = &((struct sockaddr_in *) ifa->ifa_netmask)->sin_addr;
-
-                    char netmask[NI_MAXHOST];
+                    char netmask6[NI_MAXHOST];
                     inet_ntop(ifa->ifa_netmask->sa_family,
                             addr_ptr,
-                            netmask,
-                            sizeof (netmask));
+                            netmask6,
+                            sizeof (netmask6));
 
-                    cJSON_AddItemToArray(ipv4_netmask, cJSON_CreateString(netmask));
+                    cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
+                }
 
-                    /* Broadcast Address */
-                    addr_ptr = &((struct sockaddr_in *) ifa->ifa_dstaddr)->sin_addr;
+                /* Broadcast address */
+                if (ifa->ifa_dstaddr){
+                    addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr;
 
-                    char broadaddr[NI_MAXHOST];
+                    char broadaddr6[NI_MAXHOST];
                     inet_ntop(ifa->ifa_dstaddr->sa_family,
                             addr_ptr,
-                            broadaddr,
-                            sizeof (broadaddr));
+                            broadaddr6,
+                            sizeof (broadaddr6));
 
-                    cJSON_AddItemToArray(ipv4_broadcast, cJSON_CreateString(broadaddr));
+                    cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
                 }
+            }
 
-            } else if (family == AF_INET6){
+        } else if (family == AF_LINK && ifa->ifa_data != NULL){
 
-                if (ifa->ifa_addr){
+            char * type;
+            char * state;
 
-                    void * addr_ptr;
+            struct sockaddr_dl * sdl;
+            sdl = (struct sockaddr_dl *) ifa->ifa_addr;
 
-                    /* IPv6 Address */
-                    addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_addr)->sin6_addr;
+            os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
+            snprintf(type, TYPE_LENGTH, "%s", "unknown");
 
-                    char host[NI_MAXHOST];
-                    inet_ntop(ifa->ifa_addr->sa_family,
-                            addr_ptr,
-                            host,
-                            sizeof (host));
-
-                    cJSON_AddItemToArray(ipv6_addr, cJSON_CreateString(host));
-
-                    /* Netmask address */
-                    if (ifa->ifa_netmask){
-                        addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_netmask)->sin6_addr;
-
-                        char netmask6[NI_MAXHOST];
-                        inet_ntop(ifa->ifa_netmask->sa_family,
-                                addr_ptr,
-                                netmask6,
-                                sizeof (netmask6));
-
-                        cJSON_AddItemToArray(ipv6_netmask, cJSON_CreateString(netmask6));
-                    }
-
-                    /* Broadcast address */
-                    if (ifa->ifa_dstaddr){
-                        addr_ptr = &((struct sockaddr_in6 *) ifa->ifa_dstaddr)->sin6_addr;
-
-                        char broadaddr6[NI_MAXHOST];
-                        inet_ntop(ifa->ifa_dstaddr->sa_family,
-                                addr_ptr,
-                                broadaddr6,
-                                sizeof (broadaddr6));
-
-                        cJSON_AddItemToArray(ipv6_broadcast, cJSON_CreateString(broadaddr6));
-                    }
-                }
-
-            } else if (family == AF_LINK && ifa->ifa_data != NULL){
-
-                char * type;
-                char * state;
-
-                struct sockaddr_dl * sdl;
-                sdl = (struct sockaddr_dl *) ifa->ifa_addr;
-
-                os_calloc(TYPE_LENGTH + 1, sizeof(char), type);
+            /* IF Type */
+            if (sdl->sdl_type == IFT_ETHER){
+                snprintf(type, TYPE_LENGTH, "%s", "ethernet");
+            }else if (sdl->sdl_type == IFT_ISO88023){
+                snprintf(type, TYPE_LENGTH, "%s", "CSMA/CD");
+            }else if (sdl->sdl_type == IFT_ISO88024 || sdl->sdl_type == IFT_ISO88025){
+                snprintf(type, TYPE_LENGTH, "%s", "token ring");
+            }else if (sdl->sdl_type == IFT_FDDI){
+                snprintf(type, TYPE_LENGTH, "%s", "FDDI");
+            }else if (sdl->sdl_type == IFT_PPP){
+                snprintf(type, TYPE_LENGTH, "%s", "point-to-point");
+            }else if (sdl->sdl_type == IFT_ATM){
+                snprintf(type, TYPE_LENGTH, "%s", "ATM");
+            }else{
                 snprintf(type, TYPE_LENGTH, "%s", "unknown");
-
-                /* IF Type */
-                if (sdl->sdl_type == IFT_ETHER){
-                    snprintf(type, TYPE_LENGTH, "%s", "ethernet");
-                }else if (sdl->sdl_type == IFT_ISO88023){
-                    snprintf(type, TYPE_LENGTH, "%s", "CSMA/CD");
-                }else if (sdl->sdl_type == IFT_ISO88024 || sdl->sdl_type == IFT_ISO88025){
-                    snprintf(type, TYPE_LENGTH, "%s", "token ring");
-                }else if (sdl->sdl_type == IFT_FDDI){
-                    snprintf(type, TYPE_LENGTH, "%s", "FDDI");
-                }else if (sdl->sdl_type == IFT_PPP){
-                    snprintf(type, TYPE_LENGTH, "%s", "point-to-point");
-                }else if (sdl->sdl_type == IFT_ATM){
-                    snprintf(type, TYPE_LENGTH, "%s", "ATM");
-                }else{
-                    snprintf(type, TYPE_LENGTH, "%s", "unknown");
-                }
-
-                cJSON_AddStringToObject(interface, "type", type);
-                free(type);
-
-                os_calloc(STATE_LENGTH + 1, sizeof(char), state);
-
-                /* Oper status based on flags */
-                if (ifa->ifa_flags & IFF_UP){
-                    snprintf(state, STATE_LENGTH, "%s", "up");
-                }else{
-                    snprintf(state, STATE_LENGTH, "%s", "down");
-                }
-                cJSON_AddStringToObject(interface, "state", state);
-                free(state);
-
-                /* MAC address */
-                char MAC[MAC_LENGTH] = "";
-                char *mac_addr = &MAC[0];
-                int mac_offset;
-
-                for (mac_offset = 0; mac_offset < 6; mac_offset++){
-                    unsigned char byte;
-                    byte = (unsigned char)(LLADDR(sdl)[mac_offset]);
-                    mac_addr += sprintf(mac_addr, "%.2X", byte);
-                    if (mac_offset != 5){
-                        mac_addr += sprintf(mac_addr, "%c", ':');
-                    }
-                }
-                cJSON_AddStringToObject(interface, "MAC", MAC);
-
-                /* Stats and other information */
-                struct if_data *stats = ifa->ifa_data;
-                cJSON_AddNumberToObject(interface, "tx_packets", stats->ifi_opackets);
-                cJSON_AddNumberToObject(interface, "rx_packets", stats->ifi_ipackets);
-                cJSON_AddNumberToObject(interface, "tx_bytes", stats->ifi_obytes);
-                cJSON_AddNumberToObject(interface, "rx_bytes", stats->ifi_ibytes);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_oerrors);
-                cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_ierrors);
-                cJSON_AddNumberToObject(interface, "rx_dropped", stats->ifi_iqdrops);
-
-                cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
-
             }
+
+            cJSON_AddStringToObject(interface, "type", type);
+            free(type);
+
+            os_calloc(STATE_LENGTH + 1, sizeof(char), state);
+
+            /* Oper status based on flags */
+            if (ifa->ifa_flags & IFF_UP){
+                snprintf(state, STATE_LENGTH, "%s", "up");
+            }else{
+                snprintf(state, STATE_LENGTH, "%s", "down");
+            }
+            cJSON_AddStringToObject(interface, "state", state);
+            free(state);
+
+            /* MAC address */
+            char MAC[MAC_LENGTH] = "";
+            char *mac_addr = &MAC[0];
+            int mac_offset;
+
+            for (mac_offset = 0; mac_offset < 6; mac_offset++){
+                unsigned char byte;
+                byte = (unsigned char)(LLADDR(sdl)[mac_offset]);
+                mac_addr += sprintf(mac_addr, "%.2X", byte);
+                if (mac_offset != 5){
+                    mac_addr += sprintf(mac_addr, "%c", ':');
+                }
+            }
+            cJSON_AddStringToObject(interface, "MAC", MAC);
+
+            /* Stats and other information */
+            struct if_data *stats = ifa->ifa_data;
+            cJSON_AddNumberToObject(interface, "tx_packets", stats->ifi_opackets);
+            cJSON_AddNumberToObject(interface, "rx_packets", stats->ifi_ipackets);
+            cJSON_AddNumberToObject(interface, "tx_bytes", stats->ifi_obytes);
+            cJSON_AddNumberToObject(interface, "rx_bytes", stats->ifi_ibytes);
+            cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_oerrors);
+            cJSON_AddNumberToObject(interface, "tx_errors", stats->ifi_ierrors);
+            cJSON_AddNumberToObject(interface, "rx_dropped", stats->ifi_iqdrops);
+
+            cJSON_AddNumberToObject(interface, "MTU", stats->ifi_mtu);
+
         }
+    }
 
-        /* Add address information to the structure */
+    /* Add address information to the structure */
 
-        if (cJSON_GetArraySize(ipv4_addr) > 0) {
-            cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
-            if (cJSON_GetArraySize(ipv4_netmask) > 0) {
-                cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
-            } else {
-                cJSON_Delete(ipv4_netmask);
-            }
-            if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
-                cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
-            } else {
-                cJSON_Delete(ipv4_broadcast);
-            }
-
-            #if defined(__MACH__)
-            if(gate){
-                cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
-                free(gate);
-            } 
-            #endif
-
-            cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
-            cJSON_AddItemToObject(interface, "IPv4", ipv4);
+    if (cJSON_GetArraySize(ipv4_addr) > 0) {
+        cJSON_AddItemToObject(ipv4, "address", ipv4_addr);
+        if (cJSON_GetArraySize(ipv4_netmask) > 0) {
+            cJSON_AddItemToObject(ipv4, "netmask", ipv4_netmask);
         } else {
-            cJSON_Delete(ipv4_addr);
             cJSON_Delete(ipv4_netmask);
+        }
+        if (cJSON_GetArraySize(ipv4_broadcast) > 0) {
+            cJSON_AddItemToObject(ipv4, "broadcast", ipv4_broadcast);
+        } else {
             cJSON_Delete(ipv4_broadcast);
-            cJSON_Delete(ipv4);
         }
 
-        if (cJSON_GetArraySize(ipv6_addr) > 0) {
-            cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
-            if (cJSON_GetArraySize(ipv6_netmask) > 0) {
-                cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
-            } else {
-                cJSON_Delete(ipv6_netmask);
-            }
-            if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
-                cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
-            } else {
-                cJSON_Delete(ipv6_broadcast);
-            }
-            cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
-            cJSON_AddItemToObject(interface, "IPv6", ipv6);
-        } else {
-            cJSON_Delete(ipv6_addr);
-            cJSON_Delete(ipv6_netmask);
-            cJSON_Delete(ipv6_broadcast);
-            cJSON_Delete(ipv6);
+        #if defined(__MACH__)
+        if(gate){
+            cJSON_AddStringToObject(ipv4, "gateway", gate->addr);
+            free(gate);
         }
+        #endif
+
+        cJSON_AddStringToObject(ipv4, "DHCP", "unknown");
+        cJSON_AddItemToObject(interface, "IPv4", ipv4);
+    } else {
+        cJSON_Delete(ipv4_addr);
+        cJSON_Delete(ipv4_netmask);
+        cJSON_Delete(ipv4_broadcast);
+        cJSON_Delete(ipv4);
+    }
+
+    if (cJSON_GetArraySize(ipv6_addr) > 0) {
+        cJSON_AddItemToObject(ipv6, "address", ipv6_addr);
+        if (cJSON_GetArraySize(ipv6_netmask) > 0) {
+            cJSON_AddItemToObject(ipv6, "netmask", ipv6_netmask);
+        } else {
+            cJSON_Delete(ipv6_netmask);
+        }
+        if (cJSON_GetArraySize(ipv6_broadcast) > 0) {
+            cJSON_AddItemToObject(ipv6, "broadcast", ipv6_broadcast);
+        } else {
+            cJSON_Delete(ipv6_broadcast);
+        }
+        cJSON_AddStringToObject(ipv6, "DHCP", "unknown");
+        cJSON_AddItemToObject(interface, "IPv6", ipv6);
+    } else {
+        cJSON_Delete(ipv6_addr);
+        cJSON_Delete(ipv6_netmask);
+        cJSON_Delete(ipv6_broadcast);
+        cJSON_Delete(ipv6);
+    }
 
 }
 
-    #if defined(__MACH__)
+#if defined(__MACH__)
 
-    static int af_to_len(int af){
-        switch (af) {
-            case AF_INET: return sizeof (struct sockaddr_in);
-            #if defined(AF_INET6) && HAVE_SOCKADDR_IN6
-            case AF_INET6: return sizeof (struct sockaddr_in6);
-            #endif
-            #if defined(AF_LINK) && HAVE_SOCKADDR_DL
-            case AF_LINK: return sizeof (struct sockaddr_dl);
-            #endif
-        }
-        return sizeof (struct sockaddr);
+static int af_to_len(int af){
+    switch (af) {
+        case AF_INET: return sizeof (struct sockaddr_in);
+        #if defined(AF_INET6) && HAVE_SOCKADDR_IN6
+        case AF_INET6: return sizeof (struct sockaddr_in6);
+        #endif
+        #if defined(AF_LINK) && HAVE_SOCKADDR_DL
+        case AF_LINK: return sizeof (struct sockaddr_dl);
+        #endif
+    }
+    return sizeof (struct sockaddr);
+}
+
+static int string_from_sockaddr (struct sockaddr *addr, char *buffer, size_t buflen) {
+    struct sockaddr* bigaddr = 0;
+    int failure;
+    struct sockaddr* gniaddr;
+    socklen_t gnilen;
+
+    if (!addr || addr->sa_family == AF_UNSPEC)
+        return -1;
+
+    if (SA_LEN(addr) < af_to_len(addr->sa_family)) {
+        gnilen = af_to_len(addr->sa_family);
+        bigaddr = calloc(1, gnilen);
+        if (!bigaddr)
+        return -1;
+        memcpy(bigaddr, addr, SA_LEN(addr));
+    #if HAVE_SOCKADDR_SA_LEN
+        bigaddr->sa_len = gnilen;
+    #endif
+        gniaddr = bigaddr;
+    } else {
+        gnilen = SA_LEN(addr);
+        gniaddr = addr;
     }
 
-    static int string_from_sockaddr (struct sockaddr *addr, char *buffer, size_t buflen) {
-        struct sockaddr* bigaddr = 0;
-        int failure;
-        struct sockaddr* gniaddr;
-        socklen_t gnilen;
+    failure = getnameinfo (gniaddr, gnilen,
+                            buffer, buflen,
+                            NULL, 0,
+                            NI_NUMERICHOST);
 
-        if (!addr || addr->sa_family == AF_UNSPEC)
-            return -1;
+    if (bigaddr) {
+        free(bigaddr);
+        bigaddr = 0;
+    }
 
-        if (SA_LEN(addr) < af_to_len(addr->sa_family)) {
-            gnilen = af_to_len(addr->sa_family);
-            bigaddr = calloc(1, gnilen);
-            if (!bigaddr)
-            return -1;
-            memcpy(bigaddr, addr, SA_LEN(addr));
-        #if HAVE_SOCKADDR_SA_LEN
-            bigaddr->sa_len = gnilen;
-        #endif
-            gniaddr = bigaddr;
+    if (failure) {
+        size_t n, len;
+        char *ptr;
+        const char *data;
+
+        len = SA_LEN(addr);
+
+    #if HAVE_AF_LINK
+        if (addr->sa_family == AF_LINK) {
+        struct sockaddr_dl *dladdr = (struct sockaddr_dl *)addr;
+        len = dladdr->sdl_alen;
+        data = LLADDR(dladdr);
         } else {
-            gnilen = SA_LEN(addr);
-            gniaddr = addr;
+    #endif
+            /* Unknown sockaddr */
+            len -= (sizeof (struct sockaddr) - sizeof (addr->sa_data));
+            data = addr->sa_data;
+    #if HAVE_AF_LINK
         }
+    #endif
 
-        failure = getnameinfo (gniaddr, gnilen,
-                                buffer, buflen,
-                                NULL, 0,
-                                NI_NUMERICHOST);
-
-        if (bigaddr) {
-            free(bigaddr);
-            bigaddr = 0;
-        }
-
-        if (failure) {
-            size_t n, len;
-            char *ptr;
-            const char *data;
-            
-            len = SA_LEN(addr);
-
-        #if HAVE_AF_LINK
-            if (addr->sa_family == AF_LINK) {
-            struct sockaddr_dl *dladdr = (struct sockaddr_dl *)addr;
-            len = dladdr->sdl_alen;
-            data = LLADDR(dladdr);
-            } else {
-        #endif
-                /* Unknown sockaddr */
-                len -= (sizeof (struct sockaddr) - sizeof (addr->sa_data));
-                data = addr->sa_data;
-        #if HAVE_AF_LINK
-            }
-        #endif
-
-            if (buflen < 3 * len)
-            return -1;
-
-            ptr = buffer;
-            buffer[0] = '\0';
-
-            for (n = 0; n < len; ++n) {
-            sprintf (ptr, "%02x:", data[n] & 0xff);
-            ptr += 3;
-            }
-            if (len)
-            *--ptr = '\0';
-        }
-
-        if (!buffer[0])
-            return -1;
-
-        return 0;
-    }
-    
-    int getGatewayList(OSHash *gateway_list){
-        int mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
-        size_t len;
-        char *buffer = NULL, *ptr, *end;
-        int ret;
-        char ifnamebuf[IF_NAMESIZE];
-        char *ifname;
-
-        do {
-            if (sysctl (mib, 6, 0, &len, 0, 0) < 0) {
-            free (buffer);
-            return -1;
-            }
-
-            ptr = realloc(buffer, len);
-            if (!ptr) {
-            free (buffer);
-            return -1;
-            }
-
-            buffer = ptr;
-
-            ret = sysctl (mib, 6, buffer, &len, 0, 0);
-        } while (ret != 0);
-
-        if (ret < 0) {
-            free (buffer);
-            return -1;
-        }
+        if (buflen < 3 * len)
+        return -1;
 
         ptr = buffer;
-        end = buffer + len;
-        while (ptr + sizeof (struct rt_msghdr) <= end) {
-            struct rt_msghdr *msg = (struct rt_msghdr *)ptr;
-            char *msgend = (char *)msg + msg->rtm_msglen;
-            int addrs = msg->rtm_addrs;
-            int addr = RTA_DST;
+        buffer[0] = '\0';
 
-            if (msgend > end)
+        for (n = 0; n < len; ++n) {
+        sprintf (ptr, "%02x:", data[n] & 0xff);
+        ptr += 3;
+        }
+        if (len)
+        *--ptr = '\0';
+    }
+
+    if (!buffer[0])
+        return -1;
+
+    return 0;
+}
+
+int getGatewayList(OSHash *gateway_list){
+    int mib[] = { CTL_NET, PF_ROUTE, 0, 0, NET_RT_FLAGS, RTF_UP | RTF_GATEWAY };
+    size_t len;
+    char *buffer = NULL, *ptr, *end;
+    int ret;
+    char ifnamebuf[IF_NAMESIZE];
+    char *ifname;
+
+    do {
+        if (sysctl (mib, 6, 0, &len, 0, 0) < 0) {
+        free (buffer);
+        return -1;
+        }
+
+        ptr = realloc(buffer, len);
+        if (!ptr) {
+            free (buffer);
+            return -1;
+        }
+
+        buffer = ptr;
+
+        ret = sysctl (mib, 6, buffer, &len, 0, 0);
+    } while (ret != 0);
+
+    if (ret < 0) {
+        free (buffer);
+        return -1;
+    }
+
+    ptr = buffer;
+    end = buffer + len;
+    while (ptr + sizeof (struct rt_msghdr) <= end) {
+        struct rt_msghdr *msg = (struct rt_msghdr *)ptr;
+        char *msgend = (char *)msg + msg->rtm_msglen;
+        int addrs = msg->rtm_addrs;
+        int addr = RTA_DST;
+
+        if (msgend > end)
             break;
 
-            ifname = if_indextoname (msg->rtm_index, ifnamebuf);
+        ifname = if_indextoname (msg->rtm_index, ifnamebuf);
 
-            if (!ifname) {
+        if (!ifname) {
             ptr = msgend;
             continue;
-            }
+        }
 
-            ptr = (char *)(msg + 1);
-            while (ptr + sizeof (struct sockaddr) <= msgend && addrs) {
+        ptr = (char *)(msg + 1);
+        while (ptr + sizeof (struct sockaddr) <= msgend && addrs) {
             gateway *gate;
             os_calloc(1, sizeof (struct gateway *), gate);
             struct sockaddr *sa = (struct sockaddr *)ptr;
@@ -1212,17 +1215,17 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
 
             /* These are aligned on a 4-byte boundary */
             ptr += len;
-            }
-
-            ptr = msgend;
         }
 
-        free (buffer);
-
-        return 0;
+        ptr = msgend;
     }
 
-    
-    #endif
+    free (buffer);
+
+    return 0;
+}
+
+
+#endif
 
 #endif /* __BSD__ */

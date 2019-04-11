@@ -180,6 +180,9 @@ void list_users(HKEY hKey, int usec, const char * timestamp, int ID, const char 
 // Installed programs inventory for BSD based systems
 void sys_packages_bsd(int queue_fd, const char* LOCATION);
 
+#endif
+
+#ifdef __MACH__
 int getGatewayList(OSHash *gateway_list);
 
 #endif

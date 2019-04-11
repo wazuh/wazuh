@@ -57,12 +57,13 @@ char* getPrimaryIP(){
             return agent_ip;
         }
     }
-
+    #ifdef __MACH__
     OSHash *gateways = OSHash_Create();
     if (getGatewayList(gateways) < 0){
-        merror("Error creating the list of gateways");
+        mterror(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
     }
     gateway *gate;
+    #endif
 
     for (i=0; i<size; i++) {
         cJSON *object = cJSON_CreateObject();
