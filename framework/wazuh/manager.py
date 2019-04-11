@@ -407,7 +407,7 @@ def validation():
         remove(api_socket_path)
     except OSError:
         if exists(api_socket_path):
-            raise WazuhException(1014)
+            raise WazuhInternalError(1014)
 
     # up API socket
     try:
@@ -416,7 +416,7 @@ def validation():
         # timeout
         api_socket.settimeout(5)
     except socket.error:
-        raise WazuhException(1013)
+        raise WazuhInternalException(1013)
 
     # connect to execq socket
     if exists(execq_socket_path):
@@ -424,16 +424,16 @@ def validation():
             execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             execq_socket.connect(execq_socket_path)
         except socket.error:
-            raise WazuhException(1013)
+            raise WazuhInternalError(1013)
     else:
-        raise WazuhException(1901)
+        raise WazuhInternalError(1901)
 
     # send msg to execq socket
     try:
         execq_socket.send(execq_msg.encode())
         execq_socket.close()
     except socket.error:
-        raise WazuhException(1014)
+        raise WazuhInternalError(1014)
     finally:
         execq_socket.close()
 
@@ -444,7 +444,7 @@ def validation():
         datagram = api_socket.recv(4096)
         buffer.extend(datagram)
     except socket.timeout:
-        raise WazuhException(1014)
+        raise WazuhInternalError(1014)
     finally:
         api_socket.close()
         # remove api_socket
@@ -454,7 +454,7 @@ def validation():
     try:
         response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
     except (KeyError, json.decoder.JSONDecodeError):
-        raise WazuhException(1904)
+        raise WazuhInternalError(1904)
 
     return response
 
