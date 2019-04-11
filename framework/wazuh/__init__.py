@@ -8,7 +8,7 @@ from wazuh import common
 from wazuh.utils import execute
 from wazuh.database import Connection
 from time import strftime
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 import re
 
 
@@ -105,7 +105,7 @@ class Wazuh:
                             else:
                                 self.type = match.group(2)
         except:
-            raise WazuhException(1005, self.OSSEC_INIT)
+            raise WazuhError(1005, self.OSSEC_INIT)
 
         # info DB if possible
         try:
@@ -133,7 +133,7 @@ class Wazuh:
                     if match and len(match.groups()) == 2:
                         self.ruleset_version = match.group(2)
         except:
-            raise WazuhException(1005, ruleset_version_file)
+            raise WazuhError(1005, ruleset_version_file)
 
         # Timezone info
         try:

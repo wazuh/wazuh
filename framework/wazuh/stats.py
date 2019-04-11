@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh import common
 from io import StringIO
 try:
@@ -33,31 +33,31 @@ def totals(year, month, day):
         day = int(day)
 
         if year < 0 or day < 0 or day > 31:
-            raise WazuhException(1307)
+            raise WazuhError(1307)
 
         day = "%02d" % day
     except ValueError:
-        raise WazuhException(1307)
+        raise WazuhError(1307)
 
     if month not in MONTHS:
         try:
             index = int(month)
         except ValueError:
-            raise WazuhException(1307)
+            raise WazuhError(1307)
 
         if index < 1 or index > 12:
-            raise WazuhException(1307)
+            raise WazuhError(1307)
 
         try:
             month = MONTHS[index - 1]
         except IndexError:
-            raise WazuhException(1307)
+            raise WazuhError(1307)
 
     try:
         stat_filename = common.stats_path + "/totals/" + str(year) + '/' + month + "/ossec-totals-" + day + ".log"
         stats = open(stat_filename, 'r')
     except IOError:
-        raise WazuhException(1308, stat_filename)
+        raise WazuhInternalError(1308, stat_filename)
 
     response = []
     alerts = []
@@ -80,7 +80,7 @@ def totals(year, month, day):
                 if len(data) in (0, 1):
                     continue
                 else:
-                    raise WazuhException(1309)
+                    raise WazuhInternalError(1309)
 
             hour = int(data[0])
             total_alerts = int(data[1])
@@ -179,13 +179,13 @@ def get_daemons_stats(filename):
             for key, value in items.items():
                 items[key] = float(value[1:-1])  # delete extra quotation marks
         except Exception as e:
-            return WazuhException(1104, str(e))
+            return WazuhInternalError(1104, str(e))
 
         return items
 
     except Exception as e:
 
-        raise WazuhException(1308, str(e))
+        raise WazuhInternalError(1308, str(e))
 
 
 def analysisd():

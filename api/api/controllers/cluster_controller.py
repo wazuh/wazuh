@@ -7,7 +7,7 @@ import connexion
 import datetime
 import logging
 
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
@@ -19,9 +19,10 @@ import wazuh.stats as stats
 
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('wazuh')
+logger = logging.getLogger('cluster')
 
 
+@exception_handler
 def get_cluster_node(pretty=False, wait_for_complete=False):
     """Get information about the local node.
 
@@ -48,6 +49,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                       search=None, select=None):
     """Get information about all nodes in the cluster. 
@@ -85,6 +87,7 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     return data, 200
 
 
+@exception_handler
 def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select=None):
     """Get information about a specified node.
 
@@ -110,6 +113,7 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
     return data, 200
 
 
+@exception_handler
 def get_healthcheck(pretty=False, wait_for_complete=False):
     """Show cluster healthcheck 
 
@@ -133,6 +137,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
     """Show a specified node's healthcheck information 
 
@@ -157,6 +162,7 @@ def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_status(pretty=False, wait_for_complete=False):
     """Get cluster status 
 
@@ -180,6 +186,7 @@ def get_status(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_config(pretty=False, wait_for_complete=False):
     """Get cluster configuration 
 
@@ -203,6 +210,7 @@ def get_config(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_status_node(node_id, pretty=False, wait_for_complete=False):
     """Get a specified node's status 
 

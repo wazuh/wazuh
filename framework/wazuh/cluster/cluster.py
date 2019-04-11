@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import itertools
 from wazuh.utils import md5, mkdir_with_mode
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.agent import Agent
 from wazuh.manager import status, restart
 from wazuh.configuration import get_ossec_conf
@@ -104,16 +104,16 @@ def read_config(config_file=common.ossec_conf):
             cluster_default_configuration['disabled'] = True
             return cluster_default_configuration
         else:
-            raise WazuhException(3006, e.message)
+            raise WazuhError(3006, e.message)
     except Exception as e:
-        raise WazuhException(3006, str(e))
+        raise WazuhError(3006, str(e))
 
     # if any value is missing from user's cluster configuration, add the default one:
     for value_name in set(cluster_default_configuration.keys()) - set(config_cluster.keys()):
         config_cluster[value_name] = cluster_default_configuration[value_name]
 
     if isinstance(config_cluster['port'], str) and not config_cluster['port'].isdigit():
-        raise WazuhException(3004, "Cluster port must be an integer.")
+        raise WazuhError(3004, "Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
     if config_cluster['disabled'] == 'no':
@@ -121,7 +121,7 @@ def read_config(config_file=common.ossec_conf):
     elif config_cluster['disabled'] == 'yes':
         config_cluster['disabled'] = True
     elif not isinstance(config_cluster['disabled'], bool):
-        raise WazuhException(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
+        raise WazuhError(3004, "Allowed values for 'disabled' field are 'yes' and 'no'. Found: '{}'".format(
             config_cluster['disabled']))
 
     # if config_cluster['node_name'].upper() == '$HOSTNAME':

@@ -19,7 +19,7 @@ from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
 
 from wazuh import common
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
@@ -191,14 +191,14 @@ def upload_file(path='', content='', overwrite=False):
     :return: Confirmation message in string
     """
     if not path:
-        raise WazuhException(1908)
+        raise WazuhError(1908)
 
     if not content:
-        raise WazuhException(1112)
+        raise WazuhException(1909)
 
     # if file already exists and overwrite is False, raise exception
     if not overwrite and exists(join(common.ossec_path, path)):
-        raise WazuhException(1905)
+        raise WazuhError(1905)
     
     if path.split('/')[1] == 'rules':
         return upload_list(content, path)
@@ -230,27 +230,27 @@ def upload_xml(xml_file, path):
             tmp_file.write(pretty_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except ExpatError:
-        raise WazuhException(1113)
+        raise WazuhError(1113)
     except Exception as e:
-        raise WazuhException(1000, str(e))
+        raise WazuhInternalError(1000, str(e))
 
     try:
         # check xml format
         try:
             load_wazuh_xml(tmp_file_path)
         except Exception as e:
-            raise WazuhException(1113, str(e))
+            raise WazuhError(1113, str(e))
 
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
             move(tmp_file_path, new_conf_path)
         except Error:
-            raise WazuhException(1016)
+            raise WazuhInternalError(1016)
         except Exception:
-            raise WazuhException(1000)
+            raise WazuhInternalError(1000)
 
         return 'File updated successfully'
 
@@ -307,9 +307,9 @@ def get_file(path):
         with open(file_path) as f:
             output = f.read()
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except Exception:
-        raise WazuhException(1000)
+        raise WazuhInternalError(1000)
 
     return output
 
@@ -329,9 +329,9 @@ def delete_file(path):
         try:
             remove(full_path)
         except IOError:
-            raise WazuhException(1907)
+            raise WazuhInternalError(1907)
     else:
-        raise WazuhException(1906)
+        raise WazuhError(1906)
 
     return 'File was deleted'
 
@@ -352,15 +352,15 @@ def restart():
             conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             conn.connect(socket_path)
         except socket.error:
-            raise WazuhException(1902)
+            raise WazuhInternalError(1902)
     else:
-        raise WazuhException(1901)
+        raise WazuhInternalError(1901)
 
     try:
         conn.send(msg.encode())
         conn.close()
     except socket.error:
-        raise WazuhException(1014)
+        raise WazuhInternalError(1014)
 
     return "Restarting manager"
 
