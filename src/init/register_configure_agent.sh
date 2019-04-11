@@ -79,6 +79,10 @@ set_vars () {
     export WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
 }
 
+tolower () {
+   echo $1 | tr '[:upper:]' '[:lower:]'
+}
+
 main () {
 
     uname_s=$(uname -s)
@@ -108,7 +112,7 @@ main () {
         fi
 
         # Options to be modified in ossec.conf
-        edit_value_tag "protocol" ${WAZUH_PROTOCOL}
+        edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
         edit_value_tag "port" ${WAZUH_SERVER_PORT}
         edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
