@@ -146,6 +146,8 @@ int main(int argc, char **argv)
     mond.sign = (unsigned int) getDefine_Int("monitord", "sign", 0, 1);
     mond.monitor_agents = no_agents ? 0 : (unsigned int) getDefine_Int("monitord", "monitor_agents", 0, 1);
     mond.rotate_log = (unsigned int)getDefine_Int("monitord", "rotate_log", 0, 1);
+    mond.rotate_alerts = (unsigned int)getDefine_Int("monitord", "rotate_alerts", 0, 1);
+    mond.rotate_archives = (unsigned int)getDefine_Int("monitord", "rotate_archives", 0, 1);
     mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     mond.keep_rotated_files = getDefine_Int("monitord", "keep_rotated_files", 1, 1440);
     mond.size_rotate = (unsigned long) getDefine_Int("monitord", "size_rotate", 0, 4096) * 1024 * 1024;
