@@ -1157,6 +1157,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         cJSON *event = NULL;
                         if (n_reason > 0){
                             event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",inv_check_reasons[n_reason-1]);
+                        } else {
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",NULL);
                         }
 
                         if(event){
@@ -1201,7 +1203,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         cJSON *event = NULL;
                         if (n_reason > 0){
                             event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",inv_check_reasons[n_reason-1]);
+                        } else {
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",NULL);
                         }
+
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
                                 wm_sca_send_event_check(data,event);
@@ -1258,6 +1263,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         cJSON *event = NULL;
                         if (n_reason > 0){
                             event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",inv_check_reasons[n_reason-1]);
+                        } else {
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",NULL);
                         }
 
                         if(event){
@@ -1447,9 +1454,10 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
     FILE *fp;
     char buf[OS_SIZE_2048 + 1];
     os_malloc(OS_MAXSTR, inv_check_reasons[n_reason]);
+    int ret_val = 0;
 
     if (file == NULL) {
-        return (0);
+        goto cleanup;
     }
 
     /* Check if the file is divided */
@@ -1473,7 +1481,8 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
 
                 /* Already present */
                 if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                    return (1);
+                    ret_val = 1;
+                    goto cleanup;
                 }
 
                 while (data->alert_msg[i] && (i < 255)) {
@@ -1484,14 +1493,16 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
                     os_strdup(_b_msg, data->alert_msg[i]);
                 }
 
-                return (1);
+                ret_val = 1;
+                goto cleanup;
             }
         } else {
             full_negate = wm_sca_pt_check_negate(pattern);
 
             if (!w_is_file(file)) {
                 sprintf(inv_check_reasons[n_reason], "File %s not found.", file);
-                return (2);
+                ret_val = 2;
+                goto cleanup;
             }
             /* Check for content in the file */
             fp = fopen(file, "r");
@@ -1530,7 +1541,8 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
 
                         /* Already present */
                         if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            return (1);
+                            ret_val = 1;
+                            goto cleanup;
                         }
 
                         while (data->alert_msg[i] && (i < 255)) {
@@ -1541,7 +1553,8 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
                             os_strdup(_b_msg, data->alert_msg[i]);
                         }
 
-                        return (1);
+                        ret_val = 1;
+                        goto cleanup;
                     } else if ((pt_result == 0 && full_negate == 1) ) {
                         /* Found a full+negate match so no longer need to search
                          * break out of loop and make sure the full negate does
@@ -1567,7 +1580,8 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
 
                     /* Already present */
                     if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                        return (1);
+                        ret_val = 1;
+                        goto cleanup;
                     }
 
                     while (data->alert_msg[i] && (i < 255)) {
@@ -1578,7 +1592,8 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
                         os_strdup(_b_msg, data->alert_msg[i]);
                     }
 
-                    return (1);
+                    ret_val = 1;
+                    goto cleanup;
                 }
             }
         }
@@ -1594,11 +1609,14 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
 
     } while (split_file);
 
+    ret_val = 0;
+
+cleanup:
     if (&inv_check_reasons[n_reason] == NULL) {
             sprintf(inv_check_reasons[n_reason], "-");
     }
 
-    return (0);
+    return ret_val;
 }
 
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, int n_reason)
@@ -2496,7 +2514,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
        os_free(final_str_command);
     }
 
-    if (!strcmp(result, "error")) {
+    if (!strcmp(result, "error") && reason != NULL) {
         cJSON_AddStringToObject(check, "status", "Not applicable");
         cJSON_AddStringToObject(check, "reason", reason);
     } else {
