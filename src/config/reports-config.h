@@ -32,6 +32,7 @@ typedef struct _monitor_config {
     unsigned int delete_old_agents:1;
     int a_queue;
     int keep_log_days;
+    int keep_rotated_files;
     unsigned long size_rotate;
     int daily_rotations;
 
