@@ -23,7 +23,7 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit, sor
 async def get_node(filter_node=None, select=None):
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
-    node_info_array = await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False)
+    node_info_array = await json.loads(local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False), object_hook=as_wazuh_object)
     if len(node_info_array['items']) > 0:
         return node_info_array['items'][0]
     else:

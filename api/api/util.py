@@ -181,14 +181,14 @@ def _create_problem(exc):
                                     })
     else:
         ext = None
-    if isinstance(exc, (WazuhInternalError, WazuhException)):
-        return problem(500,
-                       'Wazuh Internal Error',
-                       exc.message,
-                       ext=ext)
-    elif isinstance(exc, WazuhError):
+    if isinstance(exc, WazuhError):
         return problem(400,
                        'Wazuh Error',
+                       exc.message,
+                       ext=ext)
+    elif isinstance(exc, (WazuhInternalError, WazuhException)):
+        return problem(500,
+                       'Wazuh Internal Error',
                        exc.message,
                        ext=ext)
     raise exc
