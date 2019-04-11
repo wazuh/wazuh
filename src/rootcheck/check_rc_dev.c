@@ -120,9 +120,9 @@ static int read_dev_dir(const char *dir_name)
         f_name[PATH_MAX + 1] = '\0';
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir_name, entry->d_name);
 
-        /* Ignoring user specified paths*/
+        /* Ignoring user specified files and paths*/
         if(rootcheck.ignore){
-            if(check_ignore( dir_name, &rootcheck))
+            if(check_ignore(f_name, &rootcheck) || check_ignore(dir_name , &rootcheck))
                 continue;
         }
 
