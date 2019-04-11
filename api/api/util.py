@@ -2,10 +2,13 @@ import datetime
 import functools
 import os
 import typing
+from functools import wraps
 
 import six
+from connexion import problem
 from flask import current_app
 from wazuh.common import ossec_path as WAZUH_PATH
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 
 
 def _deserialize(data, klass):
@@ -182,3 +185,50 @@ def flask_cached(f):
         return decorated_function(*args, **kwargs)
 
     return cached_function
+
+
+def _create_problem(exc):
+    """
+    Builds an HTTP response to show a WazuhException information
+    :param exc: WazuhException to be rendered
+    :return: HTTP response to be return by an API controller
+    """
+    if isinstance(exc, WazuhException):
+        ext = remove_nones_to_dict({'remediation': exc.remediation,
+                                    'code': exc.code,
+                                    'dapi_errors': exc.dapi_errors
+                                    })
+    else:
+        ext = None
+    if isinstance(exc, (WazuhInternalError, WazuhException)):
+        return problem(500,
+                       'Wazuh Internal Error',
+                       exc.message,
+                       ext=ext)
+    elif isinstance(exc, WazuhError):
+        return problem(400,
+                       'Wazuh Error',
+                       exc.message,
+                       ext=ext)
+    raise exc
+
+
+def exception_handler(f):
+    """
+    Enables a controller to handle a WazuhException return by a framework function
+
+    Intended to be used as a decorator
+    """
+    @wraps(f)
+    def handle_exception(*args, **kwargs):
+        try:
+            result = f(*args, **kwargs)
+            if isinstance(result, tuple) or isinstance(result, list):
+                if len(result) > 0:
+                    if isinstance(result[0], Exception):
+                        raise result[0]
+            return result
+        except Exception as e:
+            return _create_problem(e)
+
+    return handle_exception
