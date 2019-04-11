@@ -50,8 +50,14 @@ class WazuhException(Exception):
         1115: "Error executing verify-agent-conf",
 
         # Rule: 1200 - 1299
-        1200: 'Error reading rules from ossec.conf',
-        1201: 'Error reading rule files',
+        1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+                              ' to get more information about how to configure the rules'
+               },
+        1201: {'message': 'Error reading rule files `WAZUH_HOME/etc/ossec.conf`',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
+                              ' to get more information about how to configure the rules'
+               },
         1202: 'Argument \'status\' must be: enabled, disabled or all',
         1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
         1204: 'Operation not implemented',
