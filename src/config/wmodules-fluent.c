@@ -10,6 +10,7 @@
 
 #include "wazuh_modules/wmodules.h"
 #include <stdio.h>
+#define MAX_TIMEOUT_VALUE 9000
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_TAG = "tag";
@@ -171,9 +172,19 @@ int wm_fluent_read(xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_TIMEOUT))
         {
+            char *pt = nodes[i]->content;
+            
+            while (*pt != '\0') {
+                if (!isdigit((int)*pt)) {
+                    merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
+                    return OS_INVALID;
+                }
+                pt++;
+            }
+
             fluent->timeout = atoi(nodes[i]->content);
 
-            if (fluent->timeout < 0 || fluent->timeout >= INT_MAX) {
+            if (fluent->timeout < 0 || fluent->timeout > MAX_TIMEOUT_VALUE) {
                 merror("Invalid timeout at module '%s'", WM_FLUENT_CONTEXT.name);
                 return OS_INVALID;
             }
