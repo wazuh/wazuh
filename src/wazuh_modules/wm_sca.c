@@ -735,7 +735,7 @@ static int wm_sca_check_requirements(cJSON *requirements) {
 
 static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy) {
 
-    int type = 0, condition = 0, invalid = 0;
+    int type = 0, condition = 0;
     char *nbuf = NULL;
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
@@ -774,7 +774,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         }
 
         check_count++;
-        invalid = 0;
 
         c_title = cJSON_GetObjectItem(profile, "title");
         c_condition = cJSON_GetObjectItem(profile, "condition");
@@ -911,51 +910,54 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                     if (!data->remote_commands && remote_policy) {
                         mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
-                        invalid = 1;
-                        break;
-                    }
-
-                    char *pattern = NULL;
-                    char *f_value = NULL;
-
-                    pattern = wm_sca_get_pattern(value);
-                    f_value = value;
-
-                    /* Get any variable */
-                    if (value[0] == '$') {
-                        f_value = (char *) OSStore_Get(vars, value);
-                        if (!f_value) {
-                            merror(WM_SCA_INVALID_RKCL_VAR, value);
-                            continue;
-                        }
-                    }
-
-                    mdebug2("Running command: '%s'.", f_value);
-                    int val = wm_sca_read_command(f_value, pattern, data, n_reason);
-                    if (val == 1) {
-                        mdebug2("Found command.");
-                        found = 1;
-                    } else if (val == 2) {
+                        sprintf(inv_check_reasons[n_reason],"Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
+                        n_reason++;
                         found = 2;
-                    } else {
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Command: %s",
-                                f_value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
+                    }
 
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
+                    if (found != 2) {
+                        char *pattern = NULL;
+                        char *f_value = NULL;
+
+                        pattern = wm_sca_get_pattern(value);
+                        f_value = value;
+
+                        /* Get any variable */
+                        if (value[0] == '$') {
+                            f_value = (char *) OSStore_Get(vars, value);
+                            if (!f_value) {
+                                merror(WM_SCA_INVALID_RKCL_VAR, value);
+                                continue;
                             }
                         }
-                        mdebug2("Found command.");
+
+                        mdebug2("Running command: '%s'.", f_value);
+                        int val = wm_sca_read_command(f_value, pattern, data, n_reason);
+                        if (val == 1) {
+                            mdebug2("Found command.");
+                            found = 1;
+                        } else if (val == 2) {
+                            found = 2;
+                        } else {
+                            int i = 0;
+                            char _b_msg[OS_SIZE_1024 + 1];
+                            _b_msg[OS_SIZE_1024] = '\0';
+                            snprintf(_b_msg, OS_SIZE_1024, " Command: %s",
+                                    f_value);
+                            /* Already present */
+                            if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
+                                while (data->alert_msg[i] && (i < 255)) {
+                                    i++;
+                                }
+
+                                if (!data->alert_msg[i]) {
+                                    os_strdup(_b_msg, data->alert_msg[i]);
+                                }
+                            }
+                            mdebug2("Found command.");
+                        }
+                        n_reason++;
                     }
-                    n_reason++;
                 }
 
     #ifdef WIN32
@@ -1299,22 +1301,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     wm_sca_reset_summary();
                     goto clean_return;
                 }
-            }
-
-            if (invalid) {  // Ignore this check
-                check_count--;
-                // Free resources
-                int j = 0;
-                while (data->alert_msg[j]) {
-                    free(data->alert_msg[j]);
-                    data->alert_msg[j] = NULL;
-                    j++;
-                }
-                if (!nbuf) {
-                    goto clean_return;
-                }
-                os_free(name);
-                continue;
             }
 
             /* End if we don't have anything else */
