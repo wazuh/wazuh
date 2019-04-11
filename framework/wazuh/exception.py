@@ -61,7 +61,7 @@ class WazuhException(Exception):
         1113: {'message': 'XML syntax error',
                'remediation': 'Verify XML syntax'},
         1114: {'message': 'Wazuh syntax error',
-               'remediation': ''}
+               'remediation': ''},
         1115: "Error executing verify-agent-conf",
 
         # Rule: 1200 - 1299
