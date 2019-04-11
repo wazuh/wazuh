@@ -58,7 +58,7 @@ class TestPolicyMonitoring(TestCase):
             assert(len(result['items']) > 0)
             sca = result['items'][0]
             assert(isinstance(sca, dict))
-            assert(set(sca.keys()) == set(cols_returned_from_db_sca))
+            assert(set(sca.keys()) == set(fields_translation_sca.keys()))
 
     def test_get_sca_list_select_param(self):
         """
@@ -121,7 +121,7 @@ class TestPolicyMonitoring(TestCase):
             sca = result['items']
             assert(isinstance(sca, list))
             assert(len(sca) > 0)
-            assert(set(sca[0].keys()).issubset(set(cols_returned_from_db_sca_check) | {'compliance', 'rules'}))
+            assert(set(sca[0].keys()).issubset(set(fields_translation_sca_check.keys()) | {'compliance', 'rules'}))
 
             compliance = sca[0]['compliance']
             assert(isinstance(compliance, list))

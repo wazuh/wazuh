@@ -81,7 +81,7 @@ class WazuhDBQuerySCA(WazuhDBQuery):
     def _get_data(self):
         self._substitute_params()
         self._data = self.conn.execute(f'agent {self.agent_id} sql '
-                                       + self.query.format(','.join(map(lambda x: self.fields[x],
+                                       + self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
                                                                         self.select['fields'] | self.min_select_fields)
                                                                     )
                                                            )
@@ -183,13 +183,13 @@ def get_sca_checks(policy_id, agent_id=None, q="", offset=0, limit=common.databa
     for _, group in groups:
         group_list = list(group)
         check_dict = {k: v for k, v in group_list[0].items()
-                      if k in set([col.replace('`', '') for col in select_fields])
+                      if k in select_fields
                       }
         for extra_field, field_translations in [('compliance', fields_translation_sca_check_compliance),
                                                 ('rules', fields_translation_sca_check_rule)]:
-            if (select is None or extra_field in select['fields']) and set(field_translations.values()) & group_list[0].keys():
+            if (select is None or extra_field in select['fields']) and set(field_translations.keys()) & group_list[0].keys():
                 check_dict[extra_field] = [dict(zip(field_translations.values(), x))
-                                           for x in set((map(itemgetter(*field_translations.values()), group_list)))]
+                                           for x in set((map(itemgetter(*field_translations.keys()), group_list)))]
 
         result.append(check_dict)
 
