@@ -79,6 +79,23 @@ set_vars () {
     export WAZUH_PEM=$(launchctl getenv WAZUH_PEM)
 }
 
+unset_vars() {
+
+    OS=$1
+
+    vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_SERVER_PORT WAZUH_NOTIFY_TIME \
+          WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
+          WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM)
+
+
+    for var in "${vars[@]}"; do
+        if [ "${OS}" = "Darwin" ]; then
+            launchctl unsetenv ${var}
+        fi
+        unset ${var}
+    done
+}
+
 tolower () {
    echo $1 | tr '[:upper:]' '[:lower:]'
 }
@@ -120,16 +137,18 @@ main () {
 
     if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
         # Options to be used in register time.
-            OPTIONS="-m ${WAZUH_AUTHD_SERVER}"
-            OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_AUTHD_PORT}")
-            OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_PASSWORD}")
-            OPTIONS=$(add_parameter "${OPTIONS}" "-A" "${WAZUH_AGENT_NAME}")
-            OPTIONS=$(add_parameter "${OPTIONS}" "-G" "${WAZUH_GROUP}")
-            OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_CERTIFICATE}")
-            OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
-            OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
-            ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>/dev/null
+        OPTIONS="-m ${WAZUH_AUTHD_SERVER}"
+        OPTIONS=$(add_parameter "${OPTIONS}" "-p" "${WAZUH_AUTHD_PORT}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-P" "${WAZUH_PASSWORD}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-A" "${WAZUH_AGENT_NAME}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-G" "${WAZUH_GROUP}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-v" "${WAZUH_CERTIFICATE}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-k" "${WAZUH_KEY}")
+        OPTIONS=$(add_parameter "${OPTIONS}" "-x" "${WAZUH_PEM}")
+        ${DIRECTORY}/bin/agent-auth ${OPTIONS} >> ${DIRECTORY}/logs/ossec.log 2>/dev/null
     fi
+
+    unset_vars ${uname_s}
 }
 
 main
