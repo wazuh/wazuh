@@ -1123,6 +1123,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         g_found = -1;
                     }
                 }
+
+                os_free(rule_cp);
             }
 
             if (condition & WM_SCA_COND_NON) {
