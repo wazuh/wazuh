@@ -718,10 +718,7 @@ def get_active_configuration(agent_id, component, configuration):
 
     # checks if the component is correct
     if component not in components:
-        raise WazuhException(1101, "Invalid target")
-
-    if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
-        raise WazuhException(1101, "Could not get requested section")
+        raise WazuhException(1101, f'Valid components: {", ".join(components)}')
 
     sockets_path = os_path.join(common.ossec_path, "queue/ossec/")
 
@@ -736,10 +733,7 @@ def get_active_configuration(agent_id, component, configuration):
     try:
         s = OssecSocket(dest_socket)
     except Exception as e:
-        if agent_id == '000':
-            raise WazuhException(1013, f"The component might be disabled, {e}")
-        else:
-            raise WazuhException(1013, str(e))
+        raise WazuhException(1117, str(e))
 
     # Send message
     s.send(command.encode())
@@ -747,11 +741,9 @@ def get_active_configuration(agent_id, component, configuration):
     # Receive response
     try:
         # Receive data length
-        data = s.receive().decode().split(" ", 1)
-        rec_msg_ok = data[0]
-        rec_msg = data[1]
-    except IndexError:
-        raise WazuhException(1014, "Data could not be received")
+        rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+    except ValueError:
+        raise WazuhException(1118, "Data could not be received")
 
     s.close()
 
@@ -759,7 +751,4 @@ def get_active_configuration(agent_id, component, configuration):
         msg = json.loads(rec_msg)
         return msg
     else:
-        if "No such file or directory" in rec_msg:
-            raise WazuhException(1013, "The component might be disabled")
-        else:
-            raise WazuhException(1101, rec_msg.replace("err ", ""))
+        raise WazuhException(1117 if "No such file or directory" in rec_msg else 1116, rec_msg.replace("err ", ""))

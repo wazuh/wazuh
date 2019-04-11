@@ -35,7 +35,7 @@ class WazuhException(Exception):
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
-        1101: 'Error getting configuration',
+        1101: 'Requested component does not exist',
         1102: 'Invalid section',
         1103: 'Invalid field in section',
         1104: 'Invalid type',
@@ -50,6 +50,9 @@ class WazuhException(Exception):
         1113: "XML syntax error",
         1114: "Wazuh syntax error",
         1115: "Error executing verify-agent-conf",
+        1116: "Requested component configuration does not exist",
+        1117: "Unable to connect with component. The component might be disabled.",
+        1118: "Could not request component configuration",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
