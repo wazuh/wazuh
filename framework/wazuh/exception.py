@@ -58,10 +58,18 @@ class WazuhException(Exception):
                'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/reference/ossec-conf/index.html)'
                               ' to get more information about how to configure the rules'
                },
-        1202: 'Argument \'status\' must be: enabled, disabled or all',
-        1203: 'Argument \'level\' must be a number or an interval separated by \'-\'',
-        1204: 'Operation not implemented',
-        1205: 'Requirement not valid. Valid ones are pci and gdpr',
+        1202: {'message': 'Argument \'status\' must be: enabled, disabled or all',
+               'remediation': 'Please indicate one of the following states: enabled, disabled, all'
+               },
+        1203: {'message': 'Error in argument \'level\'',
+               'remediation': 'Argument \'level\' must be a number or an interval separated by \'-\''
+               },
+        1204: {'message': 'Operation not implemented',
+               'remediation': 'Please contact us: [official repository]https://github.com/wazuh/wazuh/issues'
+               },
+        1205: {'message': 'Requirement not valid. Valid ones are pci and gdpr',
+               'remediation': 'Please indicate one of the following values: pci or gdpr'
+               },
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',
