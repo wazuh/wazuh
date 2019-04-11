@@ -1104,12 +1104,23 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
                 merror("Malformed JSON: field 'reason' not found");
                 return retval;
             }
+            obj = *status;
+            if( obj && !obj->valuestring ) {
+                merror("Malformed JSON: field 'status' must be a string");
+                return retval;
+            }
+            obj = *reason;
+            if( obj && !obj->valuestring ) {
+                merror("Malformed JSON: field 'reason' must be a string");
+                return retval;
+            }
         }
 
         if ( *result = cJSON_GetObjectItem(*check, "result"), !*result) {
-            if (!*status)
+            if (!*status){
                 merror("Malformed JSON: field 'result' not found");
-            return retval;
+                return retval;
+            }
         }
 
         obj = *result;
