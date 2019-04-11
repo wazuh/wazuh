@@ -731,7 +731,7 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
     #if defined(__MACH__)
     gateways = OSHash_Create();
     if (getGatewayList(gateways) < 0){
-        merror("Error creating the list of gateways");
+        mterror(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
     }
     #endif
 

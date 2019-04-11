@@ -36,7 +36,9 @@ char* getPrimaryIP(){
     struct ifaddrs *ifaddr, *ifa;
     int size;
     int i = 0;
+    #ifdef __linux__
     int min_metric = INT_MAX;
+    #endif
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
