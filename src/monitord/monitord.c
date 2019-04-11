@@ -21,8 +21,14 @@ void Monitord()
     struct tm *p;
     int counter = 0;
 
-    char path[PATH_MAX];
-    char path_json[PATH_MAX];
+    char path_ossec[PATH_MAX];
+    char path_ossec_json[PATH_MAX];
+
+    char path_alerts[PATH_MAX];
+    char path_alerts_json[PATH_MAX];
+
+    char path_archives[PATH_MAX];
+    char path_archives_json[PATH_MAX];
     struct stat buf;
     off_t size;
 
@@ -53,9 +59,19 @@ void Monitord()
     snprintf(path_json, PATH_MAX, "%s", LOGJSONFILE);
 #else
     // /var/ossec/logs/ossec.log
-    snprintf(path, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
+    snprintf(path_ossec, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGFILE);
     // /var/ossec/logs/ossec.json
-    snprintf(path_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+    snprintf(path_ossec_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, LOGJSONFILE);
+
+    // /var/ossec/logs/alerts/alerts.log
+    snprintf(path_alerts, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, ALERTS_DAILY);
+    // /var/ossec/logs/alerts/alerts.json
+    snprintf(path_alerts_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, ALERTSJSON_DAILY);
+
+    // /var/ossec/logs/archives/archives.log
+    snprintf(path_archives, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, EVENTS_DAILY);
+    // /var/ossec/logs/archives/archives.json
+    snprintf(path_archives_json, PATH_MAX, "%s%s", isChroot() ? "" : DEFAULTDIR, EVENTSJSON_DAILY);
 #endif
 
     /* Connect to the message queue or exit */
@@ -89,10 +105,20 @@ void Monitord()
 
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {
-            if (mond.rotate_log) {
+            if (mond.rotate_log || mond.rotate_alerts || mond.rotate_archives) {
                 sleep(mond.day_wait);
                 /* Daily rotation and compression of ossec.log/ossec.json */
-                w_rotate_log(mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
+                if(mond.rotate_log) {
+                    w_rotate_log(path_ossec, mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
+                }
+                /* Daily rotation and compression of alerts.log/alerts.json */
+                if(mond.rotate_alerts) {
+                    w_rotate_log(path_alerts, mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
+                }
+                /* Daily rotation and compression of archives.log/archives.json */
+                if(mond.rotate_archives) {
+                    w_rotate_log(path_archives, mond.compress, mond.keep_log_days, 1, 0, mond.daily_rotations);
+                }
             }
 
             /* Generate reports */
@@ -103,19 +129,49 @@ void Monitord()
             thismonth = p->tm_mon;
             thisyear = p->tm_year + 1900;
         } else if (mond.rotate_log && mond.size_rotate > 0) {
-            if (stat(path, &buf) == 0) {
+            if (stat(path_ossec, &buf) == 0) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.log */
                 if ( (unsigned long) size >= mond.size_rotate) {
-                    w_rotate_log(mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
+                    w_rotate_log(path_ossec, mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
                 }
             }
 
-            if (stat(path_json, &buf) == 0) {
+            if (stat(path_ossec_json, &buf) == 0) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.json */
                 if ( (unsigned long) size >= mond.size_rotate) {
-                    w_rotate_log(mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
+                    w_rotate_log(path_ossec_json, mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
+                }
+            }
+
+            if (stat(path_alerts, &buf) == 0) {
+                size = buf.st_size;
+                /* If log file reachs maximum size, rotate ossec.json */
+                if ( (unsigned long) size >= mond.size_rotate) {
+                    w_rotate_log(path_alerts, mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
+                }
+            }
+            if (stat(path_alerts_json, &buf) == 0) {
+                size = buf.st_size;
+                /* If log file reachs maximum size, rotate ossec.log */
+                if ( (unsigned long) size >= mond.size_rotate) {
+                    w_rotate_log(path_alerts_json, mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
+                }
+            }
+
+            if (stat(path_archives, &buf) == 0) {
+                size = buf.st_size;
+                /* If log file reachs maximum size, rotate ossec.json */
+                if ( (unsigned long) size >= mond.size_rotate) {
+                    w_rotate_log(path_archives, mond.compress, mond.keep_log_days, 0, 0, mond.daily_rotations);
+                }
+            }
+            if (stat(path_archives_json, &buf) == 0) {
+                size = buf.st_size;
+                /* If log file reachs maximum size, rotate ossec.log */
+                if ( (unsigned long) size >= mond.size_rotate) {
+                    w_rotate_log(path_archives_json, mond.compress, mond.keep_log_days, 0, 1, mond.daily_rotations);
                 }
             }
         }

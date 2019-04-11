@@ -61,7 +61,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         if (today != tm.tm_mday) {
             sleep(day_wait);
             /* Daily rotation and compression of ossec.log/ossec.json */
-            w_rotate_log(log_compress, keep_log_days, 1, 0, daily_rotations);
+            w_rotate_log(path, log_compress, keep_log_days, 1, 0, daily_rotations);
             today = tm.tm_mday;
         }
 
@@ -70,7 +70,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.log */
                 if ( (unsigned long) size >= size_rotate) {
-                    w_rotate_log(log_compress, keep_log_days, 0, 0, daily_rotations);
+                    w_rotate_log(path, log_compress, keep_log_days, 0, 0, daily_rotations);
                 }
             }
 
@@ -78,7 +78,7 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
                 size = buf.st_size;
                 /* If log file reachs maximum size, rotate ossec.json */
                 if ( (unsigned long) size >= size_rotate) {
-                    w_rotate_log(log_compress, keep_log_days, 0, 1, daily_rotations);
+                    w_rotate_log(path_json, log_compress, keep_log_days, 0, 1, daily_rotations);
                 }
             }
         }else
