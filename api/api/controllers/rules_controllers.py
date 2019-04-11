@@ -64,17 +64,19 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
-    # get rules as dict
-    rules_list = []
-    for rule in data['items']:
-        rule = rule.to_dict()
-        rules_list.append(rule)
+    if isinstance(data, dict):
+        # get rules as dict
+        rules_list = []
+        for rule in data['items']:
+            rule = rule.to_dict()
+            rules_list.append(rule)
 
-    data['items'] = rules_list
+        data['items'] = rules_list
 
     return data, 200
 
 
+@exception_handler
 def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
                      search=None):
     """

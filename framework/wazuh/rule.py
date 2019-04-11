@@ -40,25 +40,25 @@ class Rule:
         if isinstance(other, Rule):
             return self.id < other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
     def __le__(self, other):
         if isinstance(other, Rule):
             return self.id <= other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
     def __gt__(self, other):
         if isinstance(other, Rule):
             return self.id > other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
     def __ge__(self, other):
         if isinstance(other, Rule):
             return self.id >= other.id
         else:
-            raise WazuhException(1204)
+            raise WazuhInternalError(1204)
 
 
     def to_dict(self):
