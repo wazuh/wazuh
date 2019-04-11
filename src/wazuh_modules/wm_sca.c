@@ -1054,9 +1054,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         else {
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
 
-                            if (wm_sca_check_dir(dir, file, pattern, data, &n_reason)) {
+                            int val = wm_sca_check_dir(dir, file, pattern, data, &n_reason);
+                            if (val == 1) {
                                 mdebug2("Found dir.");
                                 found = 1;
+                            } else if (val == 2) {
+                                found = 2;
                             }
 
                             int i = 0;
@@ -1151,7 +1154,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_failed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",inv_check_reasons[n_reason-1]);
+                        cJSON *event = NULL;
+                        if (n_reason > 0){
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",inv_check_reasons[n_reason-1]);
+                        }
 
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -1177,7 +1183,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                 }
 
-                os_free(inv_check_reasons[n_reason-1]);
+                if (n_reason > 0) {
+                    os_free(inv_check_reasons[n_reason-1]);
+                }
 
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
@@ -1190,8 +1198,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_passed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",inv_check_reasons[n_reason-1]);
-
+                        cJSON *event = NULL;
+                        if (n_reason > 0){
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",inv_check_reasons[n_reason-1]);
+                        }
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
                                 wm_sca_send_event_check(data,event);
@@ -1215,8 +1225,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         break;
                     }
                 }
-
-                os_free(inv_check_reasons[n_reason-1]);
+                if (n_reason > 0) {
+                    os_free(inv_check_reasons[n_reason-1]);
+                }
 
                 j = 0;
                 while (data->alert_msg[j]) {
@@ -1243,7 +1254,11 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 while (1) {
                     if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
                         wm_sca_summary_increment_invalid();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",inv_check_reasons[n_reason-1]);
+
+                        cJSON *event = NULL;
+                        if (n_reason > 0){
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",inv_check_reasons[n_reason-1]);
+                        }
 
                         if(event){
                             if(wm_sca_check_hash(cis_db[cis_db_index],"error",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
@@ -1269,7 +1284,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                 }
 
-                os_free(inv_check_reasons[n_reason-1]);
+                if (n_reason > 0) {
+                    os_free(inv_check_reasons[n_reason-1]);
+                }
 
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
@@ -1853,6 +1870,8 @@ static int wm_sca_pt_matches(const char *str, char *pattern)
 static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, wm_sca_t * data, int *n_reason)
 {
     int ret_code = 0;
+    int result_dir;
+    int result_file;
     char f_name[PATH_MAX + 2];
     struct dirent *entry;
     struct stat statbuf_local;
@@ -1878,16 +1897,22 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, wm
         /* Check if the read entry matches the provided file name */
         if (strncasecmp(file, "r:", 2) == 0) {
             if (OS_Regex(file + 2, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern, data, *n_reason)) {
+                result_file = wm_sca_check_file(f_name, pattern, data, *n_reason);
+                if (result_file == 1) {
                     ret_code = 1;
+                } else if (result_file == 2) {
+                    ret_code = 2;
                 }
                 (*n_reason)++;
             }
         } else {
             /* ... otherwise try without regex */
             if (OS_Match2(file, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern, data, *n_reason)) {
+                result_file = wm_sca_check_file(f_name, pattern, data, *n_reason);
+                if (result_file == 1) {
                     ret_code = 1;
+                } else if (result_file == 2) {
+                    ret_code = 2;
                 }
                 (*n_reason)++;
             }
@@ -1896,8 +1921,11 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, wm
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
             if (S_ISDIR(statbuf_local.st_mode)) {
-                if (wm_sca_check_dir(f_name, file, pattern, data, n_reason)) {
+                result_dir = wm_sca_check_dir(f_name, file, pattern, data, n_reason);
+                if (result_dir == 1) {
                     ret_code = 1;
+                } else if (result_dir == 2) {
+                    ret_code = 2;
                 }
             }
         }
