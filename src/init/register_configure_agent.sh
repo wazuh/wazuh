@@ -36,7 +36,7 @@ add_adress_block() {
         fi
         BLOCK=${BLOCK}${NEW}
     done
-    ${sed} "s#<address>MANAGER_IP</address>#${BLOCK}#g" "ossec.conf"
+    ${sed} "s#<address>MANAGER_IP</address>#${BLOCK}#g" "${DIRECTORY}/etc/ossec.conf"
 }
 
 add_parameter () {
