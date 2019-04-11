@@ -9,14 +9,14 @@ import logging
 from wazuh.agent import Agent
 import wazuh.configuration as configuration
 from wazuh.cluster.dapi.dapi import DistributedAPI
-from wazuh.exception import WazuhException
-from ..models.agent_added import AgentAdded
-from ..models.agent_inserted import AgentInserted
 from ..models.agent_list_model import AgentList
-from ..util import remove_nones_to_dict
+from ..models.agent_inserted import AgentInserted
+from ..models.agent_added import AgentAdded
+from wazuh.exception import WazuhException
+from ..util import remove_nones_to_dict, exception_handler
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('wazuh.agents_controller')
+logger = logging.getLogger('wazuh')
 
 
 def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=None, status=None, older_than=None):  # noqa: E501
@@ -107,7 +107,6 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     :rtype: AllAgents
     """
-
     f_kwargs = {'offset': offset,
                 'limit': limit,
                 'sort': sort,
@@ -142,7 +141,8 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     return data, 200
 
 
-def restart_all_agents(wait_for_complete=False):  # noqa: E501
+@exception_handler
+def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
     """Restarts all agents
 
      # noqa: E501
@@ -152,6 +152,7 @@ def restart_all_agents(wait_for_complete=False):  # noqa: E501
 
     :rtype: CommonResponse
     """
+
     dapi = DistributedAPI(f=Agent.restart_agents,
                           f_kwargs={'restart_all': True},
                           request_type='distributed_master',

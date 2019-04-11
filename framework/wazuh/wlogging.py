@@ -104,7 +104,8 @@ class WazuhLogger:
 
         def error(self, msg, *args, **kws):
             if self.isEnabledFor(logging.ERROR):
-                kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
+                if 'exc_info' not in kws:
+                    kws['exc_info'] = self.isEnabledFor(logging.DEBUG2)
                 self._log(logging.ERROR, msg, args, **kws)
 
         logging.addLevelName(logging.DEBUG2, "DEBUG2")

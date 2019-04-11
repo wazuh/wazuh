@@ -5,10 +5,11 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import operator
+from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
                         md5
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
@@ -898,7 +899,6 @@ class Agent:
                                               default_sort_field='os_platform', query=q, min_select_fields=set())
         return db_query.run()
 
-
     @staticmethod
     def restart_agents(agent_id=None, restart_all=False):
         """
@@ -938,14 +938,20 @@ class Agent:
             else:
                 message = 'Some agents were not restarted'
 
-            final_dict = {}
             if failed_ids:
-                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+                final_dict = {'message': message,
+                              'data': {'affected_agents': affected_agents,
+                                       'failed_ids': failed_ids}
+                              }
             else:
-                final_dict = {'msg': message, 'affected_agents': affected_agents}
+                final_dict = {'message': message,
+                              'data': {'affected_agents': affected_agents}
+                              }
 
-            return final_dict
+            result = WazuhResult(final_dict, str_priority=['Some agents were not restarted',
+                                                           'All selected agents were restarted'])
 
+            return result
 
     @staticmethod
     def get_agent_by_name(agent_name, select=None):

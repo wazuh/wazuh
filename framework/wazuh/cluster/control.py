@@ -2,9 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 from wazuh.cluster import local_client
-from wazuh import common, exception
+from wazuh import common
 from wazuh.agent import Agent
-from wazuh.cluster.dapi.dapi import CallableEncoder
+from wazuh.cluster.dapi.dapi import WazuhJSONEncoder
 import json
 
 
@@ -47,7 +47,10 @@ async def get_agents(filter_node=None, filter_status=None):
                   'from_cluster': False
                   }
 
-    result = await local_client.execute(command=b'dapi', data=json.dumps(input_json, cls=CallableEncoder).encode(), wait_for_complete=False)
+    result = await local_client.execute(command=b'dapi',
+                                        data=json.dumps(input_json, cls=WazuhJSONEncoder).encode(),
+                                        wait_for_complete=False)
+
     if result['error'] > 0:
         raise Exception(result['message'])
     # add unknown value to unfilled variables in result. For example, never connected agents will miss the 'version'
