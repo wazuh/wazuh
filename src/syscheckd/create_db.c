@@ -127,6 +127,7 @@ void remove_local_diff(){
     char *full_path = NULL;
     os_calloc(OS_SIZE_8192, sizeof(char), full_path);
 
+    w_rwlock_rdlock((pthread_rwlock_t *)&syscheck.fp->mutex);
     for (i = 0; i <= syscheck.fp->rows; i++) {
         curr_node_fp = syscheck.fp->table[i];
         if (curr_node_fp && curr_node_fp->key) {
@@ -148,6 +149,7 @@ void remove_local_diff(){
             } while(curr_node_fp && curr_node_fp->key);
         }
     }
+    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
     free(full_path);
 
     /* Delete local files that aren't monitored */
@@ -998,21 +1000,22 @@ int run_dbcheck()
 
         for (curr_node = OSHash_Begin(last_backup, i); curr_node && curr_node->data; curr_node = OSHash_Next(last_backup, i, curr_node)) {
             char *esc_linked_file = NULL;
-            pos = find_dir_pos(curr_node->key, 1, 0, 0);
+            if (pos = find_dir_pos(curr_node->key, 1, 0, 0), pos >= 0) {
+                *linked_file = '\0';
+                if (syscheck.converted_links[pos]) {
+                    replace_linked_path(curr_node->key, pos, linked_file);
+                }
 
-            *linked_file = '\0';
-            if (syscheck.converted_links[pos]) {
-                replace_linked_path(curr_node->key, pos, linked_file);
+                if (*linked_file) {
+                    esc_linked_file = escape_syscheck_field((char *) linked_file);
+                }
+
+                mdebug2("Sending delete msg for file: %s", curr_node->key);
+                snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s:%s: %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", esc_linked_file ? esc_linked_file : "", curr_node->key);
+                free(esc_linked_file);
+                send_syscheck_msg(alert_msg);
             }
 
-            if (*linked_file) {
-                esc_linked_file = escape_syscheck_field((char *) linked_file);
-            }
-
-            mdebug2("Sending delete msg for file: %s", curr_node->key);
-            snprintf(alert_msg, OS_SIZE_6144 - 1, "-1!:::::::::::%s:%s: %s", syscheck.tag[pos] ? syscheck.tag[pos] : "", esc_linked_file ? esc_linked_file : "", curr_node->key);
-            free(esc_linked_file);
-            send_syscheck_msg(alert_msg);
 #ifndef WIN32
             fim_delete_hashes(strdup(curr_node->key));
 #endif
@@ -1035,6 +1038,7 @@ int run_dbcheck()
 int create_db()
 {
     int i = 0;
+    char sym_link_thread = 0;
 #ifdef WIN_WHODATA
     int enable_who_scan = 0;
     HANDLE t_hdle;
@@ -1071,6 +1075,10 @@ int create_db()
     __counter = 0;
     do {
         char *clink = get_converted_link_path(i);
+
+        if (syscheck.converted_links[i]) {
+            sym_link_thread = 1;
+        }
 
         if (read_dir(clink ? clink : syscheck.dir[i], clink ? syscheck.dir[i] : NULL, i, NULL, syscheck.recursion_level[i], 0, '-') == 0) {
             mdebug2("Directory loaded from syscheck db: %s", syscheck.dir[i]);
@@ -1120,6 +1128,11 @@ int create_db()
     }
 #endif
     minfo("Finished creating syscheck database (pre-scan completed).");
+
+    if (sym_link_thread) {
+        symlink_checker_init();
+    }
+
     return (0);
 }
 

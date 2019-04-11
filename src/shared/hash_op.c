@@ -382,17 +382,15 @@ void *OSHash_Get(const OSHash *self, const char *key)
 
     /* Get entry */
     curr_node = self->table[index];
+
     while (curr_node != NULL) {
         /* Skip null pointers */
-        if ( curr_node->key == NULL ) {
-            continue;
+        if (curr_node->key != NULL) {
+            /* We may have collisions, so double check with strcmp */
+            if (strcmp(curr_node->key, key) == 0) {
+                return (curr_node->data);
+            }
         }
-
-        /* We may have collisions, so double check with strcmp */
-        if (strcmp(curr_node->key, key) == 0) {
-            return (curr_node->data);
-        }
-
         curr_node = curr_node->next;
     }
 
@@ -629,7 +627,9 @@ void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHash
         node_it = hash->table[i];
         while (node_it && node_it->key) {
             OSHashNode *node_cpy = node_it;
+
             iterating_function(&hash->table[i], &node_it, data);
+
             // To avoid infinite loops
             if (node_cpy == node_it) {
                 node_it = node_it->next;
@@ -638,8 +638,21 @@ void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHash
     }
 }
 
-void OSHash_It_ex(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data)) {
-    w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
+void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data)) {
+    switch (mode) {
+        case 0:
+            w_rwlock_rdlock((pthread_rwlock_t *)&hash->mutex);
+        break;
+        case 1:
+            w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
+        break;
+        case 2:
+            w_rwlock_wrlock((pthread_rwlock_t *)&hash->mutex);
+            sleep(1);
+        break;
+        default:
+            return;
+    }
     OSHash_It(hash, data, iterating_function);
     w_rwlock_unlock((pthread_rwlock_t *)&hash->mutex);
 }

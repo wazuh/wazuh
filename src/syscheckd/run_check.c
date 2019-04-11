@@ -96,8 +96,8 @@ static void send_sk_db(int first_start)
 #endif
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
+        minfo("Ending syscheck scan. Database completed.");
     }
-    minfo("Ending syscheck scan. Database completed.");
 }
 
 /* Periodically run the integrity checker */
@@ -708,7 +708,7 @@ void update_link_monitoring(int pos, char *old_path, char *new_path) {
     read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
 
     // Remove unlink files
-    OSHash_It_ex(syscheck.fp, (void *) old_path, unlink_files);
+    OSHash_It_ex(syscheck.fp, 2, (void *) old_path, unlink_files);
 }
 
 void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
@@ -732,10 +732,9 @@ void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
 
         *node = (*node)->next;
 
-
         // If the node is the first and last node of the row
-        if (*row == r_node && !r_node->next) {
-            *row = NULL;
+        if (*row == r_node) {
+            *row = r_node->next;
         }
 
         free(r_node->key);

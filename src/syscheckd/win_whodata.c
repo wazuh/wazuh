@@ -800,7 +800,7 @@ add_whodata_evt:
 
                                     // Notify removed files
                                     mdebug1("Directory '%s' has been moved or removed.", dir_path);
-                                    OSHash_It_ex(syscheck.fp, (void *) w_evt, whodata_remove_folder);
+                                    OSHash_It_ex(syscheck.fp, 1, (void *) w_evt, whodata_remove_folder);
                                     free(dir_path);
                                     w_evt->path = saved_path;
 
@@ -1778,8 +1778,8 @@ void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
         *node = (*node)->next;
 
         // If the node is the first and last node of the row
-        if (*row == r_node && !r_node->next) {
-            *row = NULL;
+        if (*row == r_node) {
+            *row = r_node->next;
         }
 
         free(r_node->key);
