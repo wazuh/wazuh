@@ -114,7 +114,7 @@ class LocalClient(client.AbstractClientManager):
                     raise exception.WazuhException(3020)
             else:
                 request_result = result
-        return json.loads(request_result)
+        return request_result
 
 
 async def execute(command: bytes, data: bytes, wait_for_complete: bool) -> Dict:
