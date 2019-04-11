@@ -19,7 +19,7 @@ import wazuh.stats as stats
 
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('cluster')
+logger = logging.getLogger('wazuh')
 
 
 @exception_handler

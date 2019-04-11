@@ -4,14 +4,16 @@
 from wazuh.cluster import local_client
 from wazuh import common
 from wazuh.agent import Agent
-from wazuh.cluster.dapi.dapi import WazuhJSONEncoder
+from wazuh.cluster.dapi.dapi import WazuhJSONEncoder, as_wazuh_object
 import json
 
 
 async def get_nodes(filter_node=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filter_type='all'):
     arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                  'select': select, 'filter_type': filter_type}
-    result = await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False)
+
+    result = json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(), wait_for_complete=False), object_hook=as_wazuh_object)
+
     if 'error' in result and result['error'] > 0:
         raise Exception(result['message'])
 
