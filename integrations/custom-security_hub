@@ -2,7 +2,6 @@
 
 # written by Peter Shipley https://github.com/evilpete
 
-
 import sys
 import os
 import traceback
@@ -13,30 +12,35 @@ import pprint
 import datetime
 import boto3
 
-DEBUG = 0
-
-RAISE_ON_ERROR = False
-IGNORE_RULES = ['11', '5108', '80350', '80351', '80352', '80353', '80354', '80355']
-
-LEVEL_THRESHOLD = 5
-BATCH_SIZE = 40    # set to 0 for debuging
-
-NOSEND = False
-# NOSEND = True # do not sent to AWS
-
-skip = 0           # skip X input alert (debuging)
 
 ALERTS_FILE = '/var/ossec/logs/alerts/alerts.json'
 LOGS_DIR = '/var/ossec/logs'
 
-# print "NOSEND =", NOSEND
+IGNORE_RULES = ['11', '5108', '80350', '80351', '80352', '80353', '80354', '80355']
+LEVEL_THRESHOLD = 5
+
+BATCH_SIZE = 40    # not used when running as integrations plugin,  set to 0 for debuging
+
+DEBUG = 0
+RAISE_ON_ERROR = False  # (Debuging)
+NOSEND = False
+# NOSEND = True # do not sent to AWS (Debuging)
+skip = 0           # skip X input alert (Debuging)
 
 
+
+# not used when running as integrations plugin
 def track_file(myfile):
     """
-        returns an iterator that reads line from a file returning events (json dicts)
-        handles truncated or replaced files
-        Returns None at EOF
+            Args:
+                param1 (str): filename
+
+            Yields:
+                dict: json in dict format
+                None: if at end of file
+
+            Note:
+                handles truncated or replaced files
     """
     x = 0
     cur = 0
@@ -74,7 +78,18 @@ def track_file(myfile):
 class Wazuh_to_SecHub(object):
 
     def __init__(self, **kwargs):
+        """
+            Keyword Args:
+                ignore_rules:       a list array of rules Id's to ignore
+                level_threshold:    alert level threshold (must be equal or greater)
 
+                logs_dir:           Log Directory Path
+
+                session_args:       a dict containing Boto3 sesson args/AWS info
+                batch_size:         cache experation (not used when running as integrations plugin)
+                debug:              Debug flags (default 0)
+
+        """
         self.my_findings = []
         self.batch_size = kwargs.get('batch_size', BATCH_SIZE)
 
@@ -106,8 +121,8 @@ class Wazuh_to_SecHub(object):
 
         # print "my_account_id", self.my_account_id
 
-        self.logs_dir = kwargs.get('logs_dir', LOGS_DIR)
-        self.logfilename = "{}/{}.log".format(self.logs_dir, os.path.splitext(os.path.basename(sys.argv[0]))[0])
+        logs_dir = kwargs.get('logs_dir', LOGS_DIR)
+        self.logfilename = "{}/{}.log".format(logs_dir, os.path.splitext(os.path.basename(sys.argv[0]))[0])
 
         self.skipmsg = ""
 
@@ -119,12 +134,17 @@ class Wazuh_to_SecHub(object):
     #       Software and Configuration Checks | TTPs | Effects
     #       Unusual Behaviors | Sensitive Data Identifications
     #
-    def type_Taxonomy(self, d):
+    @staticmethod
+    def type_Taxonomy(d):
         """
-            takes a alert in dict format
-            returns a list of Identified Alert Types
+            Args:
+                param1 (dict): an alert in dict format
 
-            Ref : https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-findings-format.html#securityhub-findings-format-type-taxonomy
+            Returns:
+                list of strings classifying alert category types
+
+            Ref :
+                https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-findings-format.html#securityhub-findings-format-type-taxonomy
 
         """
 
@@ -162,7 +182,10 @@ class Wazuh_to_SecHub(object):
     #
     def send_findings(self):
         """
-        takes a list of dicts in AWS findings format and sends them to AWS Security Hub
+            Calls AWS API securityhub:batch_import_findings and passes contents of self.my_findings
+
+            Returns:
+                (dict) result from AWS API call
         """
         if self.debug:
             print "send_findings:", len(self.my_findings)
@@ -187,6 +210,9 @@ class Wazuh_to_SecHub(object):
     def queue_findings(self, finding=None):
         """
             appends "finding" obj (a dict) self.my_findings array
+
+            Arg:
+                param1 (dict): an AWS finding in dict format
         """
         r = None
         self.my_findings.append(finding)
@@ -204,6 +230,13 @@ class Wazuh_to_SecHub(object):
             where is the key was dict path
 
             useful for generating 'ProductFields' data
+
+            Arg:
+                param1 (dict)
+                param1 (str)
+
+            Returns:
+                (dict) set of key, value pairs based on input dict
         """
         try:
             # print "s=", s
@@ -242,6 +275,13 @@ class Wazuh_to_SecHub(object):
                 traceback.print_tb(tb, file=sys.stderr)
 
     def log(self, msg='', j=None):
+        """
+            Write messages to log file with timestamp
+
+            Args:
+                param1 (str): message string
+                param2 (dict): alert data to append to message
+            """
 
         timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
 
@@ -264,8 +304,14 @@ class Wazuh_to_SecHub(object):
 
     def skip_finding(self, j):
         """
-            takes a a Wazuh alert event
             evaluates if event should be forwarded or not
+
+            Args:
+                param1 (str): alert data
+
+            Returns:
+                bool: True to skip alert,, False otherwise.
+
         """
 
         if not isinstance(j, dict):
@@ -325,7 +371,17 @@ class Wazuh_to_SecHub(object):
     #
     #    wasuh : [cluster_name or manager name] : agent_id : rule_number : [instance-id] : unique_rule_identifier : wazah_alert_id
     #
-    def gen_id(self, j):
+    @staticmethod
+    def gen_id(j):
+        """
+            evaluates if event should be forwarded or not
+
+            Args:
+                param1 (dict): alert data
+
+            Returns:
+                str: Unique Id for findings' data
+        """
 
         id_list = ['wazuh']
 
@@ -376,6 +432,12 @@ class Wazuh_to_SecHub(object):
     def to_finding_fmt(self, j):
         """
             takes a Wazuh alert event and returns AWS finding event
+
+            Args:
+                param1 (dict): alert data
+
+            Returns:
+                dict: alert data in AWS Security Hub Findings format
         """
 
         # The ARN generated by Security Hub that uniquely identifies a
@@ -503,8 +565,8 @@ class Wazuh_to_SecHub(object):
             r['Region'] = aws_meta['availabilityZone'][:-1]
 
             # map meta data key to AwsEc2Instance Resources key
-            val_map = [('imageId', 'ImageId'), ('privateIp', 'IpV4Addresses'), ('launchTime', 'LaunchedAt'), ('instanceType', 'Type')]
-            for v in val_map:
+            _val_map = [('imageId', 'ImageId'), ('privateIp', 'IpV4Addresses'), ('launchTime', 'LaunchedAt'), ('instanceType', 'Type')]
+            for v in _val_map:
                 x = aws_meta.get(v[0], None)
                 if x:
                     r['Details']['AwsEc2Instance'][v[1]] = x
@@ -542,7 +604,8 @@ class Wazuh_to_SecHub(object):
                     if isinstance(j['data']['EventChannel'][k], dict):
                         r = {'Type': 'Other', 'Partition': 'aws', 'Details': {'Other': {}}}
                         r['Details']['Other'] = j['data']['EventChannel'][k]
-                        r['Id'] = "WAZUH:Location:{}:Rule:{}:Data:{}".format(j['location'], j['rule']['id'], k)
+                        r['Id'] = "WAZUH:Location:{}:Rule:{}:Data:{}".format(
+                            j['location'], j['rule']['id'], k)
 
                         # add to Resources List
                         f['Resources'].append(r)
@@ -585,6 +648,7 @@ class Wazuh_to_SecHub(object):
             # 'count': str(j['rule']['firedtimes']),
         }
 
+	# we do this because of the 50 line limit and 1024 line length limit for ProductFields
         for k in j:
             f['ProductFields']['Wazuh' + str(k)] = json.dumps(j[k])
 
@@ -614,8 +678,9 @@ class Wazuh_to_SecHub(object):
                 traceback.print_tb(tb, file=sys.stderr)
 
         # Create provider-specific identifier for a finding
+        # 512 chars. max
         #
-        f['Id'] = self.gen_id(j)
+        f['Id'] = self.gen_id(j)[:512]
 
         # Create GeneratorId
         #
@@ -663,6 +728,12 @@ class Wazuh_to_SecHub(object):
     # </integration>
 
     def as_Integrator(self, in_file=None):
+        """
+            takes a Wazuh alert event and returns AWS finding event
+
+            Args:
+                param1 (stc): input fileaname
+        """
 
         with open(in_file) as fd:
             alert_json = json.load(fd)
@@ -689,6 +760,10 @@ class Wazuh_to_SecHub(object):
     # this will follow ( tail ) the alerts file and forward events as they come
     #
     def follow_file(self, in_file=None):
+        """
+            Args:
+                param1 (stc): path to alert.json log file
+        """
 
         if in_file is None:
             raise ValueError("Requires in_file argument")
@@ -726,15 +801,14 @@ class Wazuh_to_SecHub(object):
                     traceback.print_tb(tb, file=sys.stderr)
                     continue
 
-            if self.debug:
-                print "Q", cnt
             resp = self.queue_findings(f_data)
 
+	    # Debuging
             # is Title ever missing?
-            if not f_data['Title']:
-                print "Title", f_data['Title']
-                pprint.pprint(event)
-                break
+            # if not f_data['Title']:
+            #     print "Title", f_data['Title']
+            #     pprint.pprint(event)
+            #     break
 
             if self.debug > 2:
                 print "\n\n\n"
@@ -745,8 +819,7 @@ class Wazuh_to_SecHub(object):
             # maybe the following should me moved to send_findings()
             if resp is not None:
                 if self.debug > 2:
-                    print "\nResp\n"
-                    pprint.pprint(resp)
+                    print "\nResp\n", pprint.pformat(resp)
                 # report any falures
                 # maybe we should print the failed finding data???
                 if resp['FailedCount'] > 0:
