@@ -1,11 +1,12 @@
 import datetime
+import functools
 import os
 import typing
 from functools import wraps
 
 import six
 from connexion import problem
-
+from flask import current_app
 from wazuh.common import ossec_path as WAZUH_PATH
 from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 
@@ -166,6 +167,24 @@ def to_relative_path(full_path):
     :rtype: str
     """
     return os.path.relpath(full_path, WAZUH_PATH)
+
+
+def flask_cached(f):
+    """Adds a cache handler decorator to the function
+    This method is used to avoid problems accessing API app from API controllers without an existing app_context
+
+    :param f: function to decorate
+    :return: decorated function
+    """
+    @functools.wraps(f)
+    def cached_function(*args, **kwargs):
+
+        @current_app.cache.memoize()
+        def decorated_function(*args, **kwargs):
+            return f(*args, **kwargs)
+        return decorated_function(*args, **kwargs)
+
+    return cached_function
 
 
 def _create_problem(exc):
