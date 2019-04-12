@@ -45,7 +45,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command);
 static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
-static void PushDumpRequest(char * agent_id, char * policy_id);
+static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan);
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequestDBThread();
 static int ConnectToSecurityConfigurationAssessmentSocket();
@@ -736,6 +736,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *hash = NULL;
     cJSON *file = NULL;
     cJSON *policy = NULL;
+    cJSON *first_scan = NULL;
+    cJSON *force_alert = NULL;
 
     pm_scan_id = cJSON_GetObjectItem(event, "scan_id");
     policy_id =  cJSON_GetObjectItem(event, "policy_id");
@@ -749,6 +751,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     hash = cJSON_GetObjectItem(event,"hash");
     file = cJSON_GetObjectItem(event,"file");
     policy = cJSON_GetObjectItem(event,"name");
+    first_scan = cJSON_GetObjectItem(event,"first_scan");
+    force_alert = cJSON_GetObjectItem(event,"force_alert");
 
     if(!policy_id) {
         return;
@@ -855,6 +859,12 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 /* Compare hash with previous hash */
                 if(strcmp(hash_md5,hash->valuestring)) {
+                    if (!first_scan) {
+                        FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                    }
+                }
+
+                if (force_alert) {
                     FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                 }
             }
@@ -869,6 +879,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 /* Compare hash with previous hash */
                 if(strcmp(hash_md5,hash->valuestring)) {
+                    if (!first_scan) {
+                        FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                       
+                    } else {
+                        /* Request dump */
+                        mdebug1("Requesting dump first scan for policy: %s",policy_id->valuestring);
+                        PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
+                    }
+                }
+
+                if (force_alert) {
                     FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                 }
             }
@@ -935,7 +956,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash->valuestring);
                 mdebug2("Requesting DB dump");
-                PushDumpRequest(lf->agent_id,policy_id->valuestring);
+
+                if (!first_scan) {
+                    PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
+                } else {
+                    PushDumpRequest(lf->agent_id,policy_id->valuestring,1);
+                }
+              
             }
 
             break;
@@ -986,7 +1013,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
 
                     mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash_md5);
                     mdebug2("Requesting DB dump");
-                    PushDumpRequest(lf->agent_id,policy_id->valuestring);
+                    PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
             }
             os_free(hash_scan_info);
@@ -1435,11 +1462,11 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
     }
 }
 
-static void PushDumpRequest(char * agent_id, char * policy_id) {
+static void PushDumpRequest(char * agent_id, char * policy_id, int first_scan) {
     int result;
     char request_db[OS_SIZE_4096 + 1] = {0};
 
-    snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s",agent_id,policy_id);
+    snprintf(request_db,OS_SIZE_4096,"%s:sca-dump:%s:%d",agent_id,policy_id,first_scan);
     char *msg = NULL;
 
     os_strdup(request_db,msg);
