@@ -75,6 +75,7 @@ static const char *SQL_STMT[] = {
     "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
     "SELECT name FROM sca_global WHERE name = ?;",
     "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
     "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM sca_policy WHERE id = ?;",
@@ -86,6 +87,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_scan_info WHERE policy_id = ?;",
     "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     "SELECT id FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
 };
