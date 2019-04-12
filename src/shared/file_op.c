@@ -2721,7 +2721,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         }
 
         /* Valid ASCII */
-        if (b[0] == 0 || b[0] <= 0x80) {
+        if (b[0] < 0x80) {
             if (fseek(fp,-nbytes + 1,SEEK_CUR) < 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
@@ -2738,8 +2738,20 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
             }
         } 
 
+        /* Exclude overlongs */
+        if ( b[0] == 0xE0 ) {
+            if ( b[1] >= 0xA0 && b[1] <= 0xBF) {
+                if ( b[2] >= 0x80 && b[2] <= 0xBF ) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
+                    goto next;
+                }
+            }
+        }
+
         /* Three bytes UTF-8 */
-        if (b[0] >= 0xE1 && b[0] <= 0xEC) {
+        if ((b[0] >= 0xE1 && b[0] <= 0xEC) || b[0] == 0xEE || b[0] == 0xEF) {
             if (b[1] >= 0x80 && b[1] <= 0xBF) {
                 if (b[2] >= 0x80 && b[2] <= 0xBF) {
                     if (fseek(fp,-1,SEEK_CUR) < 0 ) {
@@ -2750,9 +2762,43 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
             } 
         } 
 
-        /* Four bytes UTF-8 */
-        if (b[0] >= 0xF0 && b[0] <= 0xF7) {
+        /* Exclude surrogates */
+        if (b[0] == 0xED) {
+            if ( b[1] >= 0x80 && b[1] <= 0x9F) {
+                if ( b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
+                    goto next;
+                }
+            }
+        }
+
+        /* Four bytes UTF-8 plane 1-3 */
+        if (b[0] == 0xF0) {
+            if (b[1] >= 0x90 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (b[3] >= 0x80 && b[3] <= 0xBF) {
+                        goto next;
+                    }
+                }
+            }
+        }
+
+        /* Four bytes UTF-8 plane 4-15*/
+        if (b[0] >= 0xF1 && b[0] <= 0xF3) {
             if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (b[3] >= 0x80 && b[3] <= 0xBF) {
+                        goto next;
+                    }
+                }
+            }
+        }
+
+        /* Four bytes UTF-8 plane 16 */
+        if (b[0] == 0xF4) {
+            if (b[1] >= 0x80 && b[1] <= 0x8F) {
                 if (b[2] >= 0x80 && b[2] <= 0xBF) {
                     if (b[3] >= 0x80 && b[3] <= 0xBF) {
                         goto next;
