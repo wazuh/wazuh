@@ -18,6 +18,7 @@
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
+ROTATION_TEMPLATE="./etc/templates/config/generic/rotation.template"
 GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
 RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
 AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
@@ -592,6 +593,10 @@ WriteManager()
 
     # Writting cluster configuration
     cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
+
+    # Write the templates for log rotation
+    cat ${ROTATION_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</ossec_config>" >> $NEWCONFIG

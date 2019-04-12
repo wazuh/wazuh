@@ -1,0 +1,24 @@
+  <!-- Log rotation configuration -->
+  <rotation_config>
+    <log>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <max_size>512M</max_size>
+      </rotation>
+    </log>
+    <alerts>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <max_size>512M</max_size>
+      </rotation>
+    </alerts>
+    <archives>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <max_size>512M</max_size>
+      </rotation>
+    </archives>
+  </rotation_config>
