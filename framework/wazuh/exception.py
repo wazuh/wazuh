@@ -82,10 +82,22 @@ class WazuhException(Exception):
         1501: 'Error reading decoder files',
 
         # Syscheck/Rootcheck/AR: 1600 - 1699
-        1600: 'There is no database for selected agent',  # Also, agent
-        1601: 'Unable to restart syscheck/rootcheck',
+        1600: {'message': 'There is no database for selected agent with id',
+               'remediation': 'Please, upgrade wazuh to v3.7.0 or newer. Visit '
+                              'https://documentation.wazuh.com/current/installation-guide/upgrading/index.html'
+                              ' to obtain more information on upgrading wazuh'
+               },
+        1601: {'message': 'Could not restart Syscheck/Rootcheck locally',
+               'remediation': 'Please, ensure wazuh is installed in /var/ossec path and the files permissions are '
+                              'correct'
+               },
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
-        1604: 'Impossible to run FIM scan due to agent is not active',
+        1604: {'message': 'Impossible to run FIM scan, agent is not active',
+               'remediation': 'Please, ensure selected agent is active and connected to the manager. Visit '
+                              'https://documentation.wazuh.com/current/user-manual/registering/index.html and '
+                              'https://documentation.wazuh.com/current/user-manual/agents/agent-connection.html'
+                              'to obtain more information on registering and connecting agents'
+               },
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
         1650: 'Active response - Bad arguments',
         1651: 'Active response - Agent is not active',
