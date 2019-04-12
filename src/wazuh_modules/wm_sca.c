@@ -71,12 +71,12 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
 static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
-static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data); // Check file
+static int wm_sca_check_file(char *file, char *pattern); // Check file
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data); // Read command output
 static int wm_sca_pt_check_negate(const char *pattern); // Check pattern negate
 static int wm_sca_pt_matches(const char *str, char *pattern); // Check pattern match
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_sca_t * data); // Check dir
-static int wm_sca_is_process(char *value, OSList *p_list,wm_sca_t * data); // Check is a process
+static int wm_sca_check_dir(const char *dir, const char *file, char *pattern); // Check dir
+static int wm_sca_is_process(char *value, OSList *p_list); // Check is a process
 
 #ifdef WIN32
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value);
@@ -87,6 +87,7 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
+static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg);
 
 const wm_context WM_SCA_CONTEXT = {
     SCA_WM_NAME,
@@ -919,27 +920,14 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #endif
 
                     mdebug2("Checking file: '%s'.", f_value);
-                    if (wm_sca_check_file(f_value, pattern,data)) {
+                    if (wm_sca_check_file(f_value, pattern)) {
                         mdebug2("Found file.");
                         found = 1;
-                    } else {
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " File: %s",
-                                f_value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
-
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
-                            }
-                        }
-                        mdebug2("Found file.");
                     }
+                    char _b_msg[OS_SIZE_1024 + 1];
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " File: %s", f_value);
+                    append_msg_to_vm_scat(data, _b_msg);
                 }
                 /* Check for a command */
                 else if (type == WM_SCA_TYPE_COMMAND) {
@@ -967,26 +955,15 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                     mdebug2("Running command: '%s'.", f_value);
                     if (wm_sca_read_command(f_value, pattern,data)) {
-                        mdebug2("Found command.");
+                        mdebug2("Command returned pass.");
                         found = 1;
                     } else {
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Command: %s",
-                                f_value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
-
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
-                            }
-                        }
-                        mdebug2("Found command.");
+                        mdebug2("Command returned fail.");
                     }
+                    char _b_msg[OS_SIZE_1024 + 1];
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
+                    append_msg_to_vm_scat(data, _b_msg);
                 }
 
     #ifdef WIN32
@@ -1006,39 +983,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     mdebug2("Checking registry: '%s'.", value);
                     if (wm_sca_is_registry(value, entry, pattern)) {
                         mdebug2("Found registry.");
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Registry: %s",
-                                value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
-
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
-                            }
-                        }
                         found = 1;
-                    } else {
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " Registry: %s",
-                                value);
-                        /* Already present */
-                        if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            while (data->alert_msg[i] && (i < 255)) {
-                                i++;
-                            }
-
-                            if (!data->alert_msg[i]) {
-                                os_strdup(_b_msg, data->alert_msg[i]);
-                            }
-                        }
                     }
+                    char _b_msg[OS_SIZE_1024 + 1];
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " Registry: %s", value);
+                    append_msg_to_vm_scat(data, _b_msg);
                 }
     #endif
                 /* Check for a directory */
@@ -1075,38 +1025,23 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
 
                     while (dir) {
-
                         mdebug2("Checking dir: %s", dir);
 
                         short is_nfs = IsNFS(dir);
                         if( is_nfs == 1 && data->skip_nfs ) {
                             mdebug2("skip_nfs enabled and %s is flagged as NFS.", dir);
-                        }
-                        else {
+                        } else {
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
-
-                            if (wm_sca_check_dir(dir, file, pattern,data)) {
+                            if (wm_sca_check_dir(dir, file, pattern)) {
                                 mdebug2("Found dir.");
                                 found = 1;
                             }
-
-                            int i = 0;
-                            char _b_msg[OS_SIZE_1024 + 1];
-                            _b_msg[OS_SIZE_1024] = '\0';
-                            snprintf(_b_msg, OS_SIZE_1024, " Directory: %s",
-                                    dir);
-                            /* Already present */
-                            if (!w_is_str_in_array(data->alert_msg, _b_msg)) {
-                                while (data->alert_msg[i] && (i < 255)) {
-                                    i++;
-                                }
-
-                                if (!data->alert_msg[i]) {
-                                    os_strdup(_b_msg, data->alert_msg[i]);
-                                }
-                            }
                         }
 
+                        char _b_msg[OS_SIZE_1024 + 1];
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " Directory: %s", dir);
+                        append_msg_to_vm_scat(data, _b_msg);
                         if (f_value) {
                             *f_value = ',';
                             f_value++;
@@ -1126,10 +1061,16 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 /* Check for a process */
                 else if (type == WM_SCA_TYPE_PROCESS) {
                     mdebug2("Checking process: '%s'", value);
-                    if (wm_sca_is_process(value, p_list,data)) {
-                        mdebug2("Found process.");
+                    if (wm_sca_is_process(value, p_list)) {
+                        mdebug2("Process found.");
                         found = 1;
+                    } else {
+                        mdebug2("Process not found.");
                     }
+                    char _b_msg[OS_SIZE_1024 + 1];
+                    _b_msg[OS_SIZE_1024] = '\0';
+                    snprintf(_b_msg, OS_SIZE_1024, " Process: %s", value);
+                    append_msg_to_vm_scat(data, _b_msg);
                 }
 
                 /* Switch the values if ! is present */
@@ -1174,37 +1115,25 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
             /* Alert if necessary */
             if (g_found == 1) {
-                int j = 0;
                 char **p_alert_msg = data->alert_msg;
+                if (!requirements_scan) {
+                    wm_sca_summary_increment_failed();
+                    cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
 
-
-                while (1) {
-                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_sca_summary_increment_failed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
-
-                        if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                                wm_sca_send_event_check(data,event);
-                            }
-                            cJSON_Delete(event);
-                        } else {
-                            merror("Building event for check: %s. Set debug mode for more information.", name);
-                            ret_val = 1;
+                    if(event){
+                        if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                            wm_sca_send_event_check(data,event);
                         }
-                    }
-
-                    if (p_alert_msg[j]) {
-                        free(p_alert_msg[j]);
-                        p_alert_msg[j] = NULL;
-                        j++;
-
-                        if (!p_alert_msg[j]) {
-                            break;
-                        }
+                        cJSON_Delete(event);
                     } else {
-                        break;
+                        merror("Building event for check: %s. Set debug mode for more information.", name);
+                        ret_val = 1;
                     }
+                }
+
+                for (int i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
                 }
 
                 if (requirements_scan == 1){
@@ -1212,42 +1141,25 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     goto clean_return;
                 }
             } else {
-                int j = 0;
                 char **p_alert_msg = data->alert_msg;
+                if (!requirements_scan) {
+                    wm_sca_summary_increment_passed();
+                    cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
 
-                while (1) {
-                    if (((type == WM_SCA_TYPE_DIR) || (j == 0)) && (!requirements_scan)) {
-                        wm_sca_summary_increment_passed();
-                        cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
-
-                        if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                                wm_sca_send_event_check(data,event);
-                            }
-                            cJSON_Delete(event);
-                        } else {
-                            merror("Building event for check: %s. Set debug mode for more information.", name);
-                            ret_val = 1;
+                    if(event){
+                        if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                            wm_sca_send_event_check(data,event);
                         }
-                    }
-
-                    if (p_alert_msg[j]) {
-                        free(p_alert_msg[j]);
-                        p_alert_msg[j] = NULL;
-                        j++;
-
-                        if (!p_alert_msg[j]) {
-                            break;
-                        }
+                        cJSON_Delete(event);
                     } else {
-                        break;
+                        merror("Building event for check: %s. Set debug mode for more information.", name);
+                        ret_val = 1;
                     }
                 }
-                j = 0;
-                while (data->alert_msg[j]) {
-                    free(data->alert_msg[j]);
-                    data->alert_msg[j] = NULL;
-                    j++;
+
+                for (int i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
                 }
 
                 /* Check if this entry is required for the rest of the file */
@@ -1406,7 +1318,7 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
+static int wm_sca_check_file(char *file, char *pattern)
 {
     char *split_file;
     int full_negate = 0;
@@ -1430,26 +1342,6 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
         /* If we don't have a pattern, just check if the file/dir is there */
         if (pattern == NULL) {
             if (w_is_file(file)) {
-                int i = 0;
-                char _b_msg[OS_SIZE_1024 + 1];
-
-                _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " File: %s",
-                         file);
-
-                /* Already present */
-                if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                    return (1);
-                }
-
-                while (data->alert_msg[i] && (i < 255)) {
-                    i++;
-                }
-
-                if (!data->alert_msg[i]) {
-                    os_strdup(_b_msg, data->alert_msg[i]);
-                }
-
                 return (1);
             }
         } else {
@@ -1478,30 +1370,7 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
                     pt_result = wm_sca_pt_matches(buf, pattern);
                     if ((pt_result == 1 && full_negate == 0) ) {
                         mdebug2("Alerting file %s on line %s", file, buf);
-                        int i = 0;
-                        char _b_msg[OS_SIZE_1024 + 1];
-
-                        /* Close the file before dealing with the alert */
                         fclose(fp);
-
-                        /* Generate the alert itself */
-                        _b_msg[OS_SIZE_1024] = '\0';
-                        snprintf(_b_msg, OS_SIZE_1024, " File: %s",
-                                 file);
-
-                        /* Already present */
-                        if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                            return (1);
-                        }
-
-                        while (data->alert_msg[i] && (i < 255)) {
-                            i++;
-                        }
-
-                        if (!data->alert_msg[i]) {
-                            os_strdup(_b_msg, data->alert_msg[i]);
-                        }
-
                         return (1);
                     } else if ((pt_result == 0 && full_negate == 1) ) {
                         /* Found a full+negate match so no longer need to search
@@ -1518,27 +1387,6 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data)
 
                 if (full_negate == 1) {
                     mdebug2("Full_negate alerting - file %s", file);
-                    int i = 0;
-                    char _b_msg[OS_SIZE_1024 + 1];
-
-                    /* Generate the alert itself */
-                    _b_msg[OS_SIZE_1024] = '\0';
-                    snprintf(_b_msg, OS_SIZE_1024, " File: %s",
-                             file);
-
-                    /* Already present */
-                    if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                        return (1);
-                    }
-
-                    while (data->alert_msg[i] && (i < 255)) {
-                        i++;
-                    }
-
-                    if (!data->alert_msg[i]) {
-                        os_strdup(_b_msg, data->alert_msg[i]);
-                    }
-
                     return (1);
                 }
             }
@@ -1616,27 +1464,6 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
             /* Matched */
             pt_result = wm_sca_pt_matches(buf, pattern);
             if ((pt_result == 1 && full_negate == 0) ) {
-                int i = 0;
-                char _b_msg[OS_SIZE_1024 + 1];
-
-                /* Generate the alert itself */
-                _b_msg[OS_SIZE_1024] = '\0';
-                snprintf(_b_msg, OS_SIZE_1024, " Command: %s",
-                            command);
-
-                /* Already present */
-                if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                    free_strarray(output_line);
-                    return (1);
-                }
-
-                while (data->alert_msg[i] && (i < 255)) {
-                    i++;
-                }
-
-                if (!data->alert_msg[i]) {
-                    os_strdup(_b_msg, data->alert_msg[i]);
-                }
                 free_strarray(output_line);
                 return (1);
             } else if ((pt_result == 0 && full_negate == 1) ) {
@@ -1652,27 +1479,6 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
         }
 
         if (full_negate == 1) {
-            int i = 0;
-            char _b_msg[OS_SIZE_1024 + 1];
-
-            /* Generate the alert itself */
-            _b_msg[OS_SIZE_1024] = '\0';
-            snprintf(_b_msg, OS_SIZE_1024, " Command: %s",
-                        command);
-
-            /* Already present */
-            if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                free_strarray(output_line);
-                return (1);
-            }
-
-            while (data->alert_msg[i] && (i < 255)) {
-                i++;
-            }
-
-            if (!data->alert_msg[i]) {
-                os_strdup(_b_msg, data->alert_msg[i]);
-            }
             free_strarray(output_line);
             return (1);
         }
@@ -1817,7 +1623,7 @@ static int wm_sca_pt_matches(const char *str, char *pattern)
     return (ret_code);
 }
 
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_sca_t * data)
+static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
 {
     int ret_code = 0;
     char f_name[PATH_MAX + 2];
@@ -1845,14 +1651,14 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_
         /* Check if the read entry matches the provided file name */
         if (strncasecmp(file, "r:", 2) == 0) {
             if (OS_Regex(file + 2, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern,data)) {
+                if (wm_sca_check_file(f_name, pattern)) {
                     ret_code = 1;
                 }
             }
         } else {
             /* ... otherwise try without regex */
             if (OS_Match2(file, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern,data)) {
+                if (wm_sca_check_file(f_name, pattern)) {
                     ret_code = 1;
                 }
             }
@@ -1861,7 +1667,7 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
             if (S_ISDIR(statbuf_local.st_mode)) {
-                if (wm_sca_check_dir(f_name, file, pattern,data)) {
+                if (wm_sca_check_dir(f_name, file, pattern)) {
                     ret_code = 1;
                 }
             }
@@ -1874,7 +1680,7 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern,wm_
 }
 
 /* Check if a process is running */
-static int wm_sca_is_process(char *value, OSList *p_list,wm_sca_t * data)
+static int wm_sca_is_process(char *value, OSList *p_list)
 {
     OSListNode *l_node;
     if (p_list == NULL) {
@@ -1892,27 +1698,6 @@ static int wm_sca_is_process(char *value, OSList *p_list,wm_sca_t * data)
 
         /* Check if value matches */
         if (wm_sca_pt_matches(pinfo->p_path, value)) {
-            int i = 0;
-            char _b_msg[OS_SIZE_1024 + 1];
-
-            _b_msg[OS_SIZE_1024] = '\0';
-
-            snprintf(_b_msg, OS_SIZE_1024, " Process: %s",
-                     pinfo->p_path);
-
-            /* Already present */
-            if (w_is_str_in_array(data->alert_msg, _b_msg)) {
-                return (1);
-            }
-
-            while (data->alert_msg[i] && (i < 255)) {
-                i++;
-            }
-
-            if (!data->alert_msg[i]) {
-                os_strdup(_b_msg, data->alert_msg[i]);
-            }
-
             return (1);
         }
 
@@ -2366,7 +2151,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
     char * final_str_process = NULL;
     char * final_str_registry = NULL;
     char * final_str_command = NULL;
-
+    char * final_str_ref = NULL;
     while(i < 255) {
 
         if(p_alert_msg[i]) {
@@ -2378,11 +2163,13 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                 *alert_file = '\0';
                 alert_file++;
                 wm_strcat(&final_str_file,alert_file,',');
+                final_str_ref = final_str_file;
             } else if (alert_directory){
                 alert_directory+= 10;
                 *alert_directory = '\0';
                 alert_directory++;
                 wm_strcat(&final_str_directory,alert_directory,',');
+                final_str_ref = final_str_directory;
             } else {
                 char *alert_process = strstr(p_alert_msg[i],"Process:");
                 if(alert_process){
@@ -2390,6 +2177,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                     *alert_process = '\0';
                     alert_process++;
                     wm_strcat(&final_str_process,alert_process,',');
+                    final_str_ref = final_str_process;
                 } else {
                     char *alert_registry = strstr(p_alert_msg[i],"Registry:");
                     if(alert_registry){
@@ -2397,14 +2185,15 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                         *alert_registry = '\0';
                         alert_registry++;
                         wm_strcat(&final_str_registry,alert_registry,',');
+                        final_str_ref = final_str_registry;
                     } else {
                         char *alert_command = strstr(p_alert_msg[i],"Command:");
-
                         if(alert_command) {
                             alert_command+= 8;
                             *alert_command = '\0';
                             alert_command++;
                             wm_strcat(&final_str_command,alert_command,',');
+                            final_str_ref = final_str_command;
                         }
                     }
                 }
@@ -2415,35 +2204,37 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
         i++;
     }
 
-    if(!final_str_file && !final_str_directory && !final_str_process && !final_str_registry && !final_str_command) {
-        cJSON_AddStringToObject(check, "file", "\0");
+    cJSON *array = cJSON_CreateArray();
+    char *element; 
+    while ((element = strtok_r(final_str_ref, ",", &final_str_ref))){
+        cJSON_AddItemToArray(array, cJSON_CreateString(strdup(element)));
     }
-
+    
     if(final_str_file) {
-        cJSON_AddStringToObject(check, "file", final_str_file);
+        cJSON_AddItemToObject(check, "file", array);
         os_free(final_str_file);
     }
 
     if(final_str_directory) {
-        cJSON_AddStringToObject(check, "directory", final_str_directory);
+        cJSON_AddItemToObject(check, "directory", array);
         os_free(final_str_directory);
     }
 
     if(final_str_process) {
-       cJSON_AddStringToObject(check, "process", final_str_process);
+       cJSON_AddItemToObject(check, "process", array);
        os_free(final_str_process);
     }
 
     if(final_str_registry) {
-       cJSON_AddStringToObject(check, "registry", final_str_registry);
+       cJSON_AddItemToObject(check, "registry", array);
        os_free(final_str_registry);
     }
 
     if(final_str_command) {
-       cJSON_AddStringToObject(check, "command", final_str_command);
+       cJSON_AddItemToObject(check, "command", array);
        os_free(final_str_command);
     }
-
+    
     cJSON_AddStringToObject(check, "result", result);
 
     if(!policy_id->valuestring) {
@@ -2876,4 +2667,22 @@ cJSON *wm_sca_dump(const wm_sca_t *data) {
 
 
     return root;
+}
+
+static int append_msg_to_vm_scat (wm_sca_t * const data, const char * const msg)
+{
+    /* Already present */
+    if (w_is_str_in_array(data->alert_msg, msg)) {
+        return 1;
+    }
+
+    int i = 0;
+    while (data->alert_msg[i] && (i < 255)) {
+        i++;
+    }
+
+    if (!data->alert_msg[i]) {
+        os_strdup(msg, data->alert_msg[i]);
+    }
+    return 0;
 }
