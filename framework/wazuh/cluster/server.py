@@ -160,16 +160,16 @@ class AbstractServer:
             select = default_fields
         else:
             if not set(select).issubset(default_fields):
-                raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
-                    ', '.join(default_fields), ', '.join(set(select) - default_fields)))
+                raise exception.WazuhError(code=1724, extra_message=', '.join(set(select) - default_fields),
+                                           extra_remediation=', '.join(default_fields))
 
         if filter_type != 'all' and filter_type not in {'worker', 'master'}:
-            raise exception.WazuhException(1728, "Valid types are 'worker' and 'master'.")
+            raise exception.WazuhError(1728)
 
         if filter_node is not None:
             filter_node = set(filter_node) if isinstance(filter_node, list) else {filter_node}
             if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
-                raise exception.WazuhException(1730)
+                raise exception.WazuhError(1730)
 
         res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
                if return_node(val.to_dict()['info'])]
