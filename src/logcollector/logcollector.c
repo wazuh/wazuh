@@ -83,9 +83,6 @@ void LogCollectorStart()
     char keepalive[1024];
     logreader *current;
 
-    total_files = 0;
-    current_files = 0;
-
     set_sockets();
     files_lock_init();
 
