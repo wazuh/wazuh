@@ -255,7 +255,9 @@ CREATE TABLE IF NOT EXISTS sca_check (
    registry TEXT,
    command TEXT,
    `references` TEXT,
-   result TEXT NOT NULL
+   result TEXT,
+   `status` TEXT,
+    reason TEXT
 );
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);
