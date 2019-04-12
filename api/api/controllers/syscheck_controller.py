@@ -6,7 +6,7 @@ import asyncio
 import connexion
 import logging
 
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.syscheck as syscheck
 
@@ -14,6 +14,8 @@ import wazuh.syscheck as syscheck
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('syscheck')
 
+
+@exception_handler
 def put_syscheck(pretty=False, wait_for_complete=False):
     """
 
@@ -37,6 +39,7 @@ def put_syscheck(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0, 
                        limit=None, select=None, sort=None, search=None,
                        summary=False, md5=None, sha1=None, sha256=None):
@@ -69,6 +72,7 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     :param sha256: Filters files with the specified SHA256 checksum.
     :type sha256: str
     """
+
     # get type parameter from query
     type_ = connexion.request.args.get('type', None)
     # get hash parameter from query
@@ -96,6 +100,7 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     return data, 200
 
 
+@exception_handler
 def put_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     """
 
@@ -121,6 +126,7 @@ def put_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
     """
 
@@ -145,6 +151,8 @@ def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
 
     return data, 200
 
+
+@exception_handler
 def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
     """
 
