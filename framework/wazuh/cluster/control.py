@@ -17,8 +17,8 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
                                                    data=json.dumps(arguments).encode(),
                                                    wait_for_complete=False),
                         object_hook=as_wazuh_object)
-    if 'error' in result and result['error'] > 0:
-        raise Exception(result['message'])
+    if isinstance(result, Exception):
+        raise result
 
     return result
 
@@ -29,6 +29,9 @@ async def get_node(filter_node=None, select=None):
     node_info_array = json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
                                                             wait_for_complete=False),
                                  object_hook=as_wazuh_object)
+    if isinstance(node_info_array, Exception):
+        raise node_info_array
+
     if len(node_info_array['items']) > 0:
         return node_info_array['items'][0]
     else:
@@ -36,10 +39,13 @@ async def get_node(filter_node=None, select=None):
 
 
 async def get_health(filter_node=None):
-    return json.loads(await local_client.execute(command=b'get_health',
-                                                 data=json.dumps(filter_node).encode(),
-                                                 wait_for_complete=False),
-                      object_hook=as_wazuh_object)
+    result = json.loads(await local_client.execute(command=b'get_health',
+                                                   data=json.dumps(filter_node).encode(),
+                                                   wait_for_complete=False),
+                        object_hook=as_wazuh_object)
+    if isinstance(result, Exception):
+        raise result
+    return result
 
 
 async def get_agents(filter_node=None, filter_status=None):
@@ -62,8 +68,8 @@ async def get_agents(filter_node=None, filter_status=None):
                                                    wait_for_complete=False),
                         object_hook=as_wazuh_object)
 
-    if result['error'] > 0:
-        raise Exception(result['message'])
+    if isinstance(result, Exception):
+        raise result
     # add unknown value to unfilled variables in result. For example, never connected agents will miss the 'version'
     # variable.
     filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['data']['items']]
