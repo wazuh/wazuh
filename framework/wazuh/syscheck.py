@@ -6,7 +6,7 @@
 
 from glob import glob
 from operator import itemgetter
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh.agent import Agent
 from wazuh.ossec_queue import OssecQueue
 from wazuh import common, Connection
@@ -32,7 +32,7 @@ def run(agent_id=None, all_agents=False):
             fp.close()
             ret_msg = "Restarting Syscheck/Rootcheck locally"
         except:
-            raise WazuhException(1601, "locally")
+            raise WazuhInternalError(1601)
 
         if all_agents:
             oq = OssecQueue(common.ARQUEUE)
@@ -45,9 +45,8 @@ def run(agent_id=None, all_agents=False):
             agent_status = agent_info['status']
         else:
             agent_status = "N/A"
-
         if agent_status.lower() != 'active':
-            raise WazuhException(1604, '{0} - {1}'.format(agent_id, agent_status))
+            raise WazuhInternalError(1604, '{0} - {1}'.format(agent_id, agent_status))
 
         oq = OssecQueue(common.ARQUEUE)
         ret_msg = oq.send_msg_to_agent(OssecQueue.HC_SK_RESTART, agent_id)
@@ -95,7 +94,7 @@ def last_scan(agent_id):
     if agent_version < 'Wazuh v3.7.0':
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
         if not db_agent:
-            raise WazuhException(1600)
+            raise WazuhInternalError(1600, agent_id)
         else:
             db_agent = db_agent[0]
         conn = Connection(db_agent)
@@ -135,7 +134,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     else:
         select = set(select['fields'])
         if not select.issubset(parameters):
-            raise WazuhException(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
+            raise WazuhError(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
                                                                                          ','.join(select - parameters)))
 
     if 'hash' in filters:
