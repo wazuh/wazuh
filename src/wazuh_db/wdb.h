@@ -95,6 +95,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_GLOBAL_UPDATE,
     WDB_STMT_SCA_GLOBAL_FIND,
     WDB_STMT_SCA_INSERT_COMPLIANCE,
+    WDB_STMT_SCA_INSERT_RULES,
     WDB_STMT_SCA_FIND_SCAN,
     WDB_STMT_SCA_SCAN_INFO_UPDATE_START,
     WDB_STMT_SCA_POLICY_FIND,
@@ -106,6 +107,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_DELETE,
     WDB_STMT_SCA_SCAN_INFO_DELETE,
     WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE,
+    WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_SIZE
@@ -222,6 +224,9 @@ int wdb_sca_global_find(wdb_t * wdb, char *name, char * output);
 /* Insert global configuration assessment compliance entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
 
+/* Insert the rules of the policy checks,. Returns number of affected rows or -1 on error.  */
+int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule);
+
 /* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
 
@@ -257,6 +262,9 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id);
 
 /* Delete a configuration assessment check compliances. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_compliances_delete(wdb_t * wdb);
+
+/* Delete a configuration assessment check rules. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_rules_delete(wdb_t * wdb);
 
 /* Delete distinct configuration assessment check. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);

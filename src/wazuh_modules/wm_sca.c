@@ -416,12 +416,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
             yaml_document_t document;
 
             if (yaml_parse_file(path, &document)) {
-                merror("Policy file could not be parsed: '%s'. Skipping it.",path);
+                mwarn("Policy file could not be parsed: '%s'. Skipping it.",path);
                 goto next;
             }
 
             if (object = yaml2json(&document,1), !object) {
-                merror("Transforming yaml to json: '%s'. Skipping it.",path);
+                mwarn("Transforming yaml to json: '%s'. Skipping it.",path);
                 goto next;
             }
 
@@ -436,12 +436,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
             cJSON_AddItemReferenceToArray(requirements_array, requirements);
 
             if(wm_sca_check_policy(policy, profiles)) {
-                merror("Validating policy file: '%s'. Skipping it.", path);
+                mwarn("Validating policy file: '%s'. Skipping it.", path);
                 goto next;
             }
 
             if(requirements && wm_sca_check_requirements(requirements)) {
-                merror("Reading 'requirements' section of file: '%s'. Skipping it.", path);
+                mwarn("Reading 'requirements' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -451,14 +451,14 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(!profiles){
-                merror("Reading 'checks' section of file: '%s'. Skipping it.", path);
+                mwarn("Reading 'checks' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
             vars = OSStore_Create();
 
             if( wm_sca_get_vars(variables,vars) != 0 ){
-                merror("Reading 'variables' section of file: '%s'. Skipping it.", path);
+                mwarn("Reading 'variables' section of file: '%s'. Skipping it.", path);
                 goto next;
             }
 
@@ -568,51 +568,51 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
 
     id = cJSON_GetObjectItem(policy, "id");
     if(!id) {
-        merror("Field 'id' not found in policy header.");
+        mwarn("Field 'id' not found in policy header.");
         return retval;
     }
 
     if(!id->valuestring){
-        merror("Invalid format for field 'id'.");
+        mwarn("Invalid format for field 'id'.");
         return retval;
     }
 
     name = cJSON_GetObjectItem(policy, "name");
     if(!name) {
-        merror("Field 'name' not found in policy header.");
+        mwarn("Field 'name' not found in policy header.");
         return retval;
     }
 
     if(!name->valuestring){
-        merror("Invalid format for field 'name'.");
+        mwarn("Invalid format for field 'name'.");
         return retval;
     }
 
     file = cJSON_GetObjectItem(policy, "file");
     if(!file) {
-        merror("Field 'file' not found in policy header.");
+        mwarn("Field 'file' not found in policy header.");
         return retval;
     }
 
     if(!file->valuestring){
-        merror("Invalid format for field 'file'.");
+        mwarn("Invalid format for field 'file'.");
         return retval;
     }
 
     description = cJSON_GetObjectItem(policy, "description");
     if(!description) {
-        merror("Field 'description' not found in policy header.");
+        mwarn("Field 'description' not found in policy header.");
         return retval;
     }
 
     if(!description->valuestring) {
-        merror("Invalid format for field 'description'.");
+        mwarn("Invalid format for field 'description'.");
         return retval;
     }
 
     // Check for policy rules with duplicated IDs */
     if (!profiles) {
-        merror("Section 'checks' not found.");
+        mwarn("Section 'checks' not found.");
         return retval;
     } else {
         os_calloc(1, sizeof(int), read_id);
@@ -624,12 +624,12 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
             check_id = cJSON_GetObjectItem(check, "id");
 
             if (check_id == NULL) {
-                merror("Check ID not found.");
+                mwarn("Check ID not found.");
                 free(read_id);
                 return retval;
             } else if (check_id->valueint <= 0) {
                 // Invalid ID
-                merror("Invalid check ID: %d", check_id->valueint);
+                mwarn("Invalid check ID: %d", check_id->valueint);
                 free(read_id);
                 return retval;
             }
@@ -637,7 +637,7 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
             for (i = 0; read_id[i] != 0; i++) {
                 if (check_id->valueint == read_id[i]) {
                     // Duplicated ID
-                    merror("Duplicated check ID: %d", check_id->valueint);
+                    mwarn("Duplicated check ID: %d", check_id->valueint);
                     free(read_id);
                     return retval;
                 }
@@ -649,23 +649,51 @@ static int wm_sca_check_policy(cJSON *policy, cJSON *profiles) {
             rules_id = cJSON_GetObjectItem(check, "rules");
 
             if (rules_id == NULL) {
-                merror("Invalid check %d: no rules found.", check_id->valueint);
+                mwarn("Invalid check %d: no rules found.", check_id->valueint);
                 free(read_id);
                 return retval;
             }
 
             cJSON_ArrayForEach(rule, rules_id){
+
+                if (!rule->valuestring) {
+                    mwarn("Invalid check %d: Empty rule.", check_id->valueint);
+                    free(read_id);
+                    return retval;
+                } else {
+                    switch (rule->valuestring[0]) {
+                        case 'f':
+                            break;
+                        case 'd':
+                            break;
+                        case 'p':
+                            break;
+                        case 'r':
+                            break;
+                        case 'c':
+                            break;
+                        case '\0':
+                            mwarn("Invalid check %d: Empty rule.", check_id->valueint);
+                            free(read_id);
+                            return retval;
+                        default:
+                            mwarn("Invalid check %d: Invalid rule format.", check_id->valueint);
+                            free(read_id);
+                            return retval;
+                    }
+                }
+
                 rules_n++;
 
                 if (rules_n > 255) {
                     free(read_id);
-                    merror("Invalid check %d: Maximum number of rules is 255.", check_id->valueint);
+                    mwarn("Invalid check %d: Maximum number of rules is 255.", check_id->valueint);
                     return retval;
                 }
             }
 
             if (rules_n == 0) {
-                merror("Invalid check %d: no rules found.", check_id->valueint);
+                mwarn("Invalid check %d: no rules found.", check_id->valueint);
                 free(read_id);
                 return retval;
             }
@@ -824,8 +852,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 nbuf = p_check->valuestring;
                 mdebug2("Rule is: %s",nbuf);
 
+                /* Make a copy of the rule */
+                char *rule_cp;
+                os_strdup(nbuf, rule_cp);
+
                 /* Get value to look for */
-                value = wm_sca_get_value(nbuf, &type);
+                value = wm_sca_get_value(rule_cp, &type);
+
                 if (value == NULL) {
                     mdebug1(WM_SCA_INVALID_RKCL_VALUE, nbuf);
                     goto clean_return;
@@ -1118,6 +1151,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         g_found = -1;
                     }
                 }
+
+                os_free(rule_cp);
             }
 
             if (condition & WM_SCA_COND_NON) {
@@ -2206,6 +2241,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
     cJSON *description = cJSON_GetObjectItem(profile, "description");
     cJSON *rationale = cJSON_GetObjectItem(profile, "rationale");
     cJSON *remediation = cJSON_GetObjectItem(profile, "remediation");
+    cJSON *rules = cJSON_GetObjectItem(profile, "rules");
 
     if(!pm_id) {
         mdebug1("No 'id' field found on check.");
@@ -2281,6 +2317,8 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 
         cJSON_AddItemToObject(check,"compliance",add_compliances);
     }
+
+    cJSON_AddItemToObject(check,"rules", cJSON_Duplicate(rules,1));
 
     cJSON *references = cJSON_GetObjectItem(profile, "references");
 

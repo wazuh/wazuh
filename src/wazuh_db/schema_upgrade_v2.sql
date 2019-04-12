@@ -46,6 +46,13 @@ CREATE TABLE IF NOT EXISTS sca_check (
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);
 
+CREATE TABLE IF NOT EXISTS sca_check_rules (
+  id_check INTEGER REFERENCES sca_check (id),
+  `type` TEXT,
+  rule TEXT,
+  PRIMARY KEY (id_check, `type`, rule)
+);
+
 CREATE TABLE IF NOT EXISTS sca_check_compliance (
    id_check INTEGER REFERENCES sca_check (id),
   `key` TEXT,
