@@ -172,7 +172,7 @@ def print_db(agent_id=None, q="", offset=0, limit=common.database_limit, sort=No
     :param search: Looks for items with the specified string.
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
-    select = {'fields':["status", "oldDay", "readDay", "event", "pci", "cis"]} if select is None else select
+    select = ["status", "oldDay", "readDay", "event", "pci", "cis"] if select is None else select
     if 'status' not in q and 'status' not in filters:
         q = 'status=all' + ('' if not q else ';'+q)
 
@@ -195,7 +195,7 @@ def _get_requirement(requirement, agent_id=None, offset=0, limit=common.database
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     db_query = WazuhDBQueryRootcheckDistinct(offset=offset, limit=limit, sort=sort, search=search, filters=filters,
-                                            select={'fields':[requirement]}, agent_id=agent_id, fields={requirement:fields[requirement]},
+                                            select=[requirement], agent_id=agent_id, fields={requirement:fields[requirement]},
                                              default_sort_field=fields[requirement], count=True, get_data=True, query=q)
     return db_query.run()
 

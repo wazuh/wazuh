@@ -52,6 +52,8 @@ def main(cors, port, host, ssl_context, main_logger):
 # Main
 #
 if __name__ == '__main__':
+    my_wazuh = Wazuh(get_init=True)
+
     parser = argparse.ArgumentParser()
     ####################################################################################################################
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
@@ -60,8 +62,6 @@ if __name__ == '__main__':
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
                         default=common.ossec_conf)
     args = parser.parse_args()
-
-    my_wazuh = Wazuh(get_init=True)
 
     configuration = configuration.read_config()
     if args.test_config:
