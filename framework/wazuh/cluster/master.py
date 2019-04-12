@@ -448,7 +448,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             utils.mkdir_with_mode(lock_directory)
 
         try:
-            agents = Agent.get_agents_overview(select={'fields': ['name']}, limit=None)['items']
+            agents = Agent.get_agents_overview(select=['name'], limit=None)['items']
             agent_names = set(map(operator.itemgetter('name'), agents))
             agent_ids = set(map(operator.itemgetter('id'), agents))
         except Exception as e:
