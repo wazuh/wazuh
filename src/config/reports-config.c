@@ -186,3 +186,48 @@ int Read_CReports(XML_NODE node, void *config, __attribute__((unused)) void *con
 
     return (0);
 }
+
+int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attribute__((unused)) void *config2) {
+
+    unsigned int i = 0;
+    /* XML definitions */
+    const char *xml_title = "rotation_config";
+    const char *xml_log = "log";
+    const char *xml_enabled = "enabled";
+    const char *xml_format = "format";
+    const char *xml_rotation = "rotation";
+    const char *xml_max_size = "max_size";
+    const char *xml_interval = "interval";
+    const char *xml_rotate = "rotate";
+
+    XML_NODE children = NULL;
+
+    monitor_config *rotation_config = (monitor_config *)config;
+
+    /* Zero the elements */
+    rotation_config->enabled = 0;
+    rotation_config->format = NULL;
+    rotation_config->max_size = 0;
+    rotation_config->interval = 0;
+    rotation_config->rotate = 0;
+
+    /* Reading the XML */
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[i]->element, xml_log) == 0) {
+            // Get children
+            if (children = OS_GetElementsbyNode(xml, node[i]), !children) {
+                mdebug1("Empty configuration for module '%s'.", node[i]->element);
+            }
+            // log tag
+        }
+        i++;
+    }
+    return (0);
+}
+

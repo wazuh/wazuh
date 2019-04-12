@@ -42,6 +42,13 @@ typedef struct _monitor_config {
     char *emailfrom;
     char *emailidsname;
 
+    // Rotation options
+    unsigned int enabled:1;
+    char *format;
+    int max_size;
+    int interval;
+    int rotate;
+
     char **agents;
     report_config **reports;
 } monitor_config;
