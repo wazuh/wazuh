@@ -382,12 +382,16 @@ class Handler(asyncio.Protocol):
         """
         try:
             command, payload = self.process_request(command, payload)
-        except exception.WazuhException as e:
-            self.logger.error("Error processing request '{}': {}".format(command, e))
-            command, payload = b'err', "WazuhException {} {}".format(e.code, e.message).encode()
+        except exception.WazuhError as e:
+            self.logger.error("Error processsing request '{}': {}".format(command, e))
+            command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
+        except (exception.WazuhInternalError, exception.WazuhException) as e:
+            self.logger.error("Internal error processing request '{}': {}".format(command, e), exc_info=True)
+            command, payload = b'err', json.dumps(e, cls=WazuhJSONEncoder).encode()
         except Exception as e:
-            self.logger.error("Error processing request '{}': {}".format(command, e))
-            command, payload = b'err', str(e).encode()
+            self.logger.error("Unhandled error processing request '{}': {}".format(command, e), exc_info=True)
+            command, payload = b'err', json.dumps(exception.WazuhInternalError(1000, extra_message=str(e)),
+                                                  cls=WazuhJSONEncoder).encode()
 
         self.push(self.msg_build(command, counter, payload))
 
@@ -522,13 +526,7 @@ class Handler(asyncio.Protocol):
         :param data: error message from peer
         :return: Nothing
         """
-        if data.startswith(b'WazuhException'):
-            type_error, code, message = data.split(b' ', 2)
-            # remove first part of the exception message
-            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
-            return type_error + b' ' + code + b' ' + extra_msg
-        else:
-            return b"Error processing request: " + data
+        return json.dumps(exception.WazuhInternalError(3009, extra_message=data.decode()), cls=WazuhJSONEncoder)
 
     def setup_task_logger(self, task_tag: str):
         task_logger = self.logger.getChild(task_tag)
