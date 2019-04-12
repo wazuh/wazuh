@@ -7,6 +7,7 @@ from wazuh import common
 from wazuh.agent import Agent
 from wazuh.cluster import local_client
 from wazuh.cluster.common import as_wazuh_object, WazuhJSONEncoder
+from wazuh.results import WazuhResult
 
 
 async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
@@ -20,7 +21,7 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
     if isinstance(result, Exception):
         raise result
 
-    return result
+    return WazuhResult({'data': result})
 
 
 async def get_node(filter_node=None, select=None):

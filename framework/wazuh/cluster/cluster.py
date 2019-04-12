@@ -6,6 +6,7 @@ from wazuh.utils import md5, mkdir_with_mode
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.agent import Agent
 from wazuh.manager import status, restart
+from wazuh.results import WazuhResult
 from wazuh.configuration import get_ossec_conf
 from wazuh.InputValidator import InputValidator
 from wazuh import common
@@ -155,7 +156,7 @@ def get_node():
     data["cluster"] = config_cluster["name"]
     data["type"]    = config_cluster["node_type"]
 
-    return {'data': data}
+    return WazuhResult({'data': data})
 
 
 def check_cluster_status():
