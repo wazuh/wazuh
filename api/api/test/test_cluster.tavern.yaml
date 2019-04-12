@@ -12,10 +12,9 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-          cluster: wazuh
-          node: master
-          type: master
+        cluster: wazuh
+        node: master
+        type: master
 
 ---
 test_name: GET /cluster/nodes
@@ -54,13 +53,12 @@ stages:
         limit: 0
 
     response:
-        status_code: 400
-        body:
-          data:
-            detail: !anystr
-            status: 400
-            title: !anystr
-            type: !anystr
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
 
   - name: Sort 1
 
@@ -71,20 +69,20 @@ stages:
         sort: name
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              -
-                ip: !anystr
-                version: !anystr
-                type: master
-                name: !anystr
-              -
-                ip: !anystr
-                version: !anystr
-                type: worker
-                name: !anystr
+      status_code: 200
+      body:
+        data:
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
 
   - name: Sort 2
 
@@ -95,20 +93,20 @@ stages:
         sort: -name
 
     response:
-        status_code: 200
-        body:
-          data:
-            items:
-              -
-                ip: !anystr
-                version: !anystr
-                type: worker
-                name: !anystr
-              -
-                ip: !anystr
-                version: !anystr
-                type: master
-                name: !anystr
+      status_code: 200
+      body:
+        data:
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
 
   - name: Search 1
 
@@ -120,15 +118,15 @@ stages:
         search: master
 
     response:
-        status_code: 200
-        body:
-          data:
-            totalItems:
-            items:
-              - ip: !anystr
-                version: !anystr
-                type: master
-                name: !anystr
+      status_code: 200
+      body:
+        data:
+          totalItems:
+          items:
+            - ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
 
   - name: Search 2
 
@@ -140,15 +138,15 @@ stages:
         search: worker
 
     response:
-        status_code: 200
-        body:
-          data:
-            totalItems:
-            items:
-              - ip: !anystr
-                version: !anystr
-                type: worker
-                name: !anystr
+      status_code: 200
+      body:
+        data:
+          totalItems:
+          items:
+            - ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
 
   - name: Filters (type) -> master
 
@@ -200,13 +198,12 @@ stages:
         type: wrong_type
 
     response:
-        status_code: 400
-        body:
-          data:
-            detail: !anystr
-            status: 400
-            title: !anystr
-            type: !anystr
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
 
   - name: Select
 
@@ -217,17 +214,17 @@ stages:
         select: name,version
 
     response:
-        status_code: 200
-        body:
-          data:
-            totalItems: 2
-            items:
-              -
-                name: !anystr
-                version: !anystr
-              -
-                name: !anystr
-                version: !anystr
+      status_code: 200
+      body:
+        data:
+          totalItems: 2
+          items:
+            -
+              name: !anystr
+              version: !anystr
+            -
+              name: !anystr
+              version: !anystr
 
   - name: Select 2
 
@@ -238,32 +235,31 @@ stages:
         select: type
 
     response:
-        status_code: 200
-        body:
-          data:
-            totalItems: 2
-            items:
-              -
-                type: !anystr
-              -
-                type: !anystr
+      status_code: 200
+      body:
+        data:
+          totalItems: 2
+          items:
+            -
+              type: !anystr
+            -
+              type: !anystr
 
-  - name: Wrong select
-
-    request:
-      url: http://localhost:55000/cluster/nodes
-      method: GET
-      params:
-        select: wrong_field
-
-    response:
-        status_code: 400
-        body:
-          data:
-            detail: !anystr
-            status: 400
-            title: !anystr
-            type: !anystr
+#  - name: Wrong select
+#
+#    request:
+#      url: http://localhost:55000/cluster/nodes
+#      method: GET
+#      params:
+#        select: wrong_field
+#
+#    response:
+#      status_code: 400
+#      body:
+#        detail: !anystr
+#        status: 400
+#        title: !anystr
+#        type: !anystr
 
 ---
 #test_name: GET /cluster/{node_id}/stats
@@ -468,3 +464,4 @@ stages:
 #          msg_sent: !anyint
 #          recv_bytes: !anyint
 #
+
