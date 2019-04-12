@@ -156,7 +156,7 @@ def get_node():
     data["cluster"] = config_cluster["name"]
     data["type"]    = config_cluster["node_type"]
 
-    return WazuhResult({'data': data})
+    return data
 
 
 def check_cluster_status():
