@@ -31,8 +31,8 @@ static int read_sys_file(const char *file_name, int do_read)
     _sys_total++;
 
     /* Ignoring user specified files */
-    if(rootcheck.ignore){
-        if(check_ignore(file_name, &rootcheck)){
+    if (rootcheck.ignore) {
+        if (check_ignore(file_name, &rootcheck)) {
             return (0);
         }
     }
