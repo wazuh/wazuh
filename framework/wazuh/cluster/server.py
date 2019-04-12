@@ -2,7 +2,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
 import itertools
-import operator
 import ssl
 import uvloop
 import time
@@ -11,6 +10,7 @@ from wazuh import common, exception, utils
 import logging
 from typing import Tuple, Dict
 import random
+import traceback
 
 
 class AbstractServerHandler(c_common.Handler):
@@ -108,11 +108,12 @@ class AbstractServerHandler(c_common.Handler):
             if exc is None:
                 self.logger.info("Disconnected.".format(self.name))
             else:
-                self.logger.error("Error during connection with '{}': {}.".format(self.name, exc))
+                self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
+                                  f"{''.join(traceback.format_tb(exc.__traceback__))}")
             del self.server.clients[self.name]
         else:
             if exc is not None:
-                self.logger.error("Error during handshake with incoming connection: {}".format(exc))
+                self.logger.error(f"Error during handshake with incoming connection: {exc}", exc_info=True)
             else:
                 self.logger.error("Error during handshake with incoming connection.")
 
