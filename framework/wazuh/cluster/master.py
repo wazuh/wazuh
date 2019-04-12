@@ -16,7 +16,7 @@ import fcntl
 from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import cluster as metadata
-from wazuh import common, utils, WazuhException
+from wazuh import common, utils, exception
 from wazuh.cluster.dapi import dapi
 
 
@@ -138,7 +138,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             elif client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             else:
-                raise WazuhException(3022, client)
+                raise exception.WazuhException(3022, client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):
@@ -244,8 +244,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         else:  # command == b'sync_a_w_m_r'
             sync_type, self.sync_agent_info_free = "Agent status", True
 
-        self.logger.error("Worker reported an error synchronizing {}: {}".format(sync_type, error_msg.decode()))
-        return b'ok', b'Error received'
+        return super().error_receiving_file(error_msg.decode())
 
     def end_receiving_integrity_checksums(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         return super().end_receiving_file(task_and_file_names)
@@ -254,10 +253,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info("Waiting to receive zip file from worker")
         await asyncio.wait_for(received_file.wait(),
                                timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+
         received_filename = self.sync_tasks[task_name].filename
-        if received_filename == 'Error':
-            logger.info("Stopping synchronization process: worker files weren't correctly received.")
-            return
+        if isinstance(received_filename, Exception):
+            raise received_filename
 
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
@@ -287,10 +286,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger.info("Waiting to receive zip file from worker")
         await asyncio.wait_for(received_file.wait(),
                                timeout=self.cluster_items['intervals']['communication']['timeout_receiving_file'])
+
         received_filename = self.sync_tasks[task_name].filename
-        if received_filename == 'Error':
-            logger.info("Stopping synchronization process: worker files weren't correctly received.")
-            return
+        if isinstance(received_filename, Exception):
+            raise received_filename
+
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
@@ -315,22 +315,27 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             compressed_data = cluster.compress_files(self.name, master_files_paths, worker_files_ko)
 
             logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
-            task_name = await self.send_request(command=b'sync_m_c', data=b'')
-            if task_name.startswith(b'Error'):
-                logger.error(task_name.decode())
-                return task_name
+            try:
+                task_name = await self.send_request(command=b'sync_m_c', data=b'')
+                if task_name.startswith(b'Error'):
+                    logger.error(task_name.decode())
+                    return task_name
 
-            result = await self.send_file(compressed_data)
-            os.unlink(compressed_data)
-            if result.startswith(b'Error'):
-                self.logger.error("Error sending files information: {}".format(result.decode()))
-                result = await self.send_request(command=b'sync_m_c_e', data=task_name + b' ' + b'Error')
-            else:
+                result = await self.send_file(compressed_data)
                 result = await self.send_request(command=b'sync_m_c_e',
-                                                 data=task_name + b' ' + compressed_data.replace(common.ossec_path, '').encode())
-
-            if result.startswith(b'Error'):
-                self.logger.error(result.decode())
+                                                 data=task_name + b' ' + os.path.relpath(
+                                                     compressed_data, common.ossec_path).encode())
+            except exception.WazuhException as e:
+                self.logger.error(f"Error sending files information: {e}")
+                result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' +
+                                                 json.dumps(e, cls=c_common.WazuhJSONEncoder).encode())
+            except Exception as e:
+                self.logger.error(f"Error sending files information: {e}")
+                exc_info = json.dumps(exception.WazuhClusterError(code=1000, extra_message=str(e)),
+                                      cls=c_common.WazuhJSONEncoder).encode()
+                result = await self.send_request(command=b'sync_m_c_r', data=task_name + b' ' + exc_info)
+            finally:
+                os.unlink(compressed_data)
 
         self.sync_integrity_status['date_end_master'] = str(datetime.now())
         self.sync_integrity_free = True
@@ -349,7 +354,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
                 if os.path.basename(name) == 'client.keys':
                     self.logger.warning("Client.keys received in a master node")
-                    raise WazuhException(3007)
+                    raise exception.WazuhException(3007)
                 if data['merged']:
                     is_agent_info = data['merge_type'] == 'agent-info'
                     if is_agent_info:
@@ -420,7 +425,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     os.chmod(zip_path, self.cluster_items['files'][data['cluster_item_key']]['permissions'])
                     os.rename(zip_path, full_path)
 
-            except WazuhException as e:
+            except exception.WazuhException as e:
                 logger.debug2("Warning updating file '{}': {}".format(name, e))
                 error_tag = 'warnings'
                 error_updating_file = True

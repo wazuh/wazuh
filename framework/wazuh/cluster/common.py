@@ -279,31 +279,28 @@ class Handler(asyncio.Protocol):
         :param filename: File path to send
         :return: response message.
         """
-        try:
-            if not os.path.exists(filename):
-                return "File {} not found.".format(filename).encode()
+        if not os.path.exists(filename):
+            return "File {} not found.".format(filename).encode()
 
-            filename = filename.encode()
-            relative_path = filename.replace(common.ossec_path.encode(), b'')
-            response = await self.send_request(command=b'new_file', data=relative_path)
-            if response.startswith(b"Error"):
-                return response
+        filename = filename.encode()
+        relative_path = filename.replace(common.ossec_path.encode(), b'')
+        response = await self.send_request(command=b'new_file', data=relative_path)
+        if response.startswith(b"Error"):
+            return response
 
-            file_hash = hashlib.sha256()
-            with open(filename, 'rb') as f:
-                for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
-                    response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
-                    if response.startswith(b"Error"):
-                        return response
-                    file_hash.update(chunk)
+        file_hash = hashlib.sha256()
+        with open(filename, 'rb') as f:
+            for chunk in iter(lambda: f.read(self.request_chunk - len(relative_path) - 1), b''):
+                response = await self.send_request(command=b'file_upd', data=relative_path + b' ' + chunk)
+                if response.startswith(b"Error"):
+                    return response
+                file_hash.update(chunk)
 
-            response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
-            if response.startswith(b"Error"):
-                return response
+        response = await self.send_request(command=b'file_end', data=relative_path + b' ' + file_hash.digest())
+        if response.startswith(b"Error"):
+            return response
 
-            return b'File sent'
-        except Exception as e:
-            return str(e).encode()
+        return b'File sent'
 
     async def send_string(self, my_str: bytes) -> bytes:
         """
@@ -558,9 +555,25 @@ class WazuhCommon:
         if task_name not in self.sync_tasks:
             self.get_logger(self.logger_tag).error("Received task name '{}' doesn't exist.".format(task_name))
             return b'err', b'Task name doesnt exist'
-        self.sync_tasks[task_name].filename = common.ossec_path + filename if not filename == 'Error' else filename
+
+        self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
         self.sync_tasks[task_name].received_information.set()
         return b'ok', b'File correctly received'
+
+    def error_receiving_file(self, taskname_and_error_details: str) -> Tuple[bytes, bytes]:
+        """
+        Peer reported an error in the send file process
+        :param error_details: WazuhJSONEncoded object with the exception details
+        :return: confirmation response
+        """
+        taskname, error_details = taskname_and_error_details.split(' ', 1)
+        error_details_json = json.loads(error_details, object_hook=as_wazuh_object)
+        if taskname != 'None':
+            self.sync_tasks[taskname].filename = error_details_json
+            self.sync_tasks[taskname].received_information.set()
+        else:
+            self.get_logger(self.logger_tag).error(f"Error in synchronization process: {error_details_json}")
+        return b'ok', b'Error received'
 
     def get_node(self):
         return self.get_manager().get_node()
