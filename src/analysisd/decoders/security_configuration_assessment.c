@@ -679,37 +679,39 @@ static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event) {
                     //Save rules
                     cJSON *rule;
                     cJSON_ArrayForEach(rule, rules){
+                        if(rule->valuestring){
+                            char flag = rule->valuestring[0];
+                            char *type = NULL;
+                            switch (flag) {
+                                case 'f':
+                                    os_calloc(5, sizeof(char), type);
+                                    strncpy(type, "file", 5);
+                                    break;
+                                case 'd':
+                                    os_calloc(10, sizeof(char), type);
+                                    strncpy(type, "directory", 10);
+                                    break;
+                                case 'r':
+                                    os_calloc(9, sizeof(char), type);
+                                    strncpy(type, "registry", 9);
+                                    break;
+                                case 'c':
+                                    os_calloc(8, sizeof(char), type);
+                                    strncpy(type, "command", 8);
+                                    break;
+                                case 'p':
+                                    os_calloc(8, sizeof(char), type);
+                                    strncpy(type, "process", 8);
+                                    break;
+                                default:
+                                    merror("Invalid type: %c", flag);
+                                    continue;
+                            }
 
-                        char flag = rule->valuestring[0];
-                        char *type = NULL;
-                        switch (flag) {
-                            case 'f':
-                                os_calloc(5, sizeof(char), type);
-                                strncpy(type, "file", 5);
-                                break;
-                            case 'd':
-                                os_calloc(10, sizeof(char), type);
-                                strncpy(type, "directory", 10);
-                                break;
-                            case 'r':
-                                os_calloc(9, sizeof(char), type);
-                                strncpy(type, "register", 9);
-                                break;
-                            case 'c':
-                                os_calloc(8, sizeof(char), type);
-                                strncpy(type, "command", 8);
-                                break;
-                            case 'p':
-                                os_calloc(8, sizeof(char), type);
-                                strncpy(type, "process", 8);
-                                break;
-                            default:
-                                merror("Invalid type: %c", flag);
-                                break;
+                            SaveRules(lf, socket, id->valueint, type, rule->valuestring);
+
+                            os_free(type);
                         }
-                        SaveRules(lf, socket, id->valueint, type, rule->valuestring);
-
-                        os_free(type);
                     }
                 }
                 break;
