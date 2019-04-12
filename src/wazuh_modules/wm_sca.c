@@ -2348,21 +2348,14 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             }
 
             unsigned int time = random;
-            
-
-            if (!request->first_scan) {
-                minfo("Integration checksum failed for policy: '%s'. Resending scan results in %d seconds.", data->profile[request->policy_index]->profile,random);
-            } else {
-                /* Delete this */
-                mdebug1("Sending dump first scan: '%s'. Resending scan results in 2 seconds.", data->profile[request->policy_index]->profile);
-            }
 
             if (request->first_scan) {
-                mdebug1("Dumping DB for policy index: '%u' in 2 seconds.",request->policy_index);
                 wm_delay(2000);
+                mdebug1("Sending first scan results for policy '%s'.", data->profile[request->policy_index]->profile);
             } else {
-                mdebug1("Dumping DB for policy index: '%u' in %d seconds.",request->policy_index,random);
+                minfo("Integration checksum failed for policy '%s'. Resending scan results in %d seconds.", data->profile[request->policy_index]->profile,random);
                 wm_delay(1000 * time);
+                mdebug1("Dumping results to SCA DB for policy index '%u'",request->policy_index,random);
             }
           
             int scan_id = -1;
@@ -2391,7 +2384,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             sleep(5);
            
             int elements_sent = i - 1;
-            mdebug1("Sending dump ended event");
+            mdebug1("Sending end of dump control event");
 
             wm_sca_send_dump_end(data,elements_sent,data->profile[request->policy_index]->policy_id,scan_id);
 
@@ -2407,7 +2400,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_sca_send_alert(data,last_summary_json[request->policy_index]);
             }
 
-            mdebug1("Finished dumping DB for policy index: %u",request->policy_index);
+            mdebug1("Finished dumping scan results to SCA DB for policy index '%u'",request->policy_index);
             os_free(request);
         }
     }
