@@ -76,7 +76,6 @@ class BasicInfo(Model):
     def title(self) -> str:
         """Gets the title of this BasicInfo.
 
-
         :return: The title of this BasicInfo.
         :rtype: str
         """
@@ -85,7 +84,6 @@ class BasicInfo(Model):
     @title.setter
     def title(self, title: str):
         """Sets the title of this BasicInfo.
-
 
         :param title: The title of this BasicInfo.
         :type title: str
@@ -96,16 +94,14 @@ class BasicInfo(Model):
     def api_version(self) -> str:
         """Gets the api_version of this BasicInfo.
 
-
         :return: The api_version of this BasicInfo.
         :rtype: str
         """
-        return self.api_version
+        return self._api_version
 
     @api_version.setter
     def api_version(self, api_version: str):
         """Sets the api_version of this BasicInfo.
-
 
         :param api_version: The api_version of this BasicInfo.
         :type api_version: str
@@ -116,16 +112,14 @@ class BasicInfo(Model):
     def revision(self) -> int:
         """Gets the revision of this BasicInfo.
 
-
         :return: The revision of this BasicInfo.
         :rtype: int
         """
-        return self.revision
+        return self._revision
 
     @revision.setter
     def revision(self, revision: int):
         """Sets the revision of this BasicInfo.
-
 
         :param revision: The revision of this BasicInfo.
         :type revision: int
@@ -136,16 +130,14 @@ class BasicInfo(Model):
     def license_name(self) -> str:
         """Gets the license_name of this BasicInfo.
 
-
         :return: The license_name of this BasicInfo.
         :rtype: str
         """
-        return self.license_name
+        return self._license_name
 
     @license_name.setter
     def license_name(self, license_name: str):
         """Sets the license_name of this BasicInfo.
-
 
         :param license_name: The license_name of this BasicInfo.
         :type license_name: str
@@ -156,16 +148,14 @@ class BasicInfo(Model):
     def license_url(self) -> str:
         """Gets the license_url of this BasicInfo.
 
-
         :return: The license_url of this BasicInfo.
         :rtype: str
         """
-        return self.license_url
+        return self._license_url
 
     @license_url.setter
     def license_url(self, license_url: str):
         """Sets the license_url of this BasicInfo.
-
 
         :param license_url: The license_url of this BasicInfo.
         :type license_url: str
@@ -176,16 +166,14 @@ class BasicInfo(Model):
     def hostname(self) -> str:
         """Gets the hostname of this BasicInfo.
 
-
         :return: The hostname of this BasicInfo.
         :rtype: str
         """
-        return self.hostname
+        return self._hostname
 
     @hostname.setter
     def hostname(self, hostname: str):
         """Sets the hostname of this BasicInfo.
-
 
         :param hostname: The hostname of this BasicInfo.
         :type hostname: str
@@ -196,16 +184,14 @@ class BasicInfo(Model):
     def timestamp(self) -> str:
         """Gets the timestamp of this BasicInfo.
 
-
         :return: The timestamp of this BasicInfo.
         :rtype: str
         """
-        return self.timestamp
+        return self._timestamp
 
     @timestamp.setter
     def timestamp(self, timestamp: str):
         """Sets the timestamp of this BasicInfo.
-
 
         :param timestamp: The timestamp of this BasicInfo.
         :type timestamp: str
