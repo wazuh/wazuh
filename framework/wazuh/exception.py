@@ -87,10 +87,20 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
-        1650: 'Active response - Bad arguments',
-        1651: 'Active response - Agent is not active',
-        1652: 'Active response - Unable to run command',
-        1653: 'Active response - Agent not available',
+        1650: {'message': 'Bad arguments',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response)'
+                              ' to get more information about how runs an Active Response command on a specified agent'
+               },
+        1651: {'message': 'Agent is not active',
+               'remediation': 'Please make sure the selected agent is active.'
+               },
+        1652: {'message': 'Unable to run command',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#active-response)'
+                              ' to get more information about how runs an Active Response command on a specified agent'
+               },
+        1653: {'message': 'Can not connect with the agent, please check its status',
+               'remediation': 'Please make sure the selected agent is active and available.'
+               },
         1654: 'Unable to clear rootcheck database',
 
         # Agents: 1700 - 1799
