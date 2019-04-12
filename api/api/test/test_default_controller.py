@@ -3,22 +3,21 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import re
-from unittest.mock import patch, mock_open
 
 from api.controllers.default_controller import default_info
+from api.models.basic_info import BasicInfo
 
 
-@patch('api.controllers.default_controller.time.strftime', return_value='2019-04-04T07:38:09+0000')
-@patch('api.controllers.default_controller.socket.gethostname', return_value='wazuh')
-def test_default_info(mocked_hostname, mocked_time):
+def test_default_info():
 
-        data, code = default_info()
-        assert isinstance(data, dict)
+        res, code = default_info()
+        assert isinstance(res, BasicInfo)
+        data = BasicInfo.to_dict(res)
         assert 'title' in data.keys()
         assert isinstance(data['title'], str)
         assert 'api_version' in data.keys()
         assert isinstance(data['api_version'], str)
-        version_regex = re.compile(r'^\d+\.+\d+\.+\d+$')
+        version_regex = re.compile(r'^\d+\.\d+\.\d+$')
         assert version_regex.fullmatch(data['api_version'])
         assert 'revision' in data.keys()
         assert isinstance(data['revision'], int)
@@ -26,8 +25,8 @@ def test_default_info(mocked_hostname, mocked_time):
         assert isinstance(data['license_name'], str)
         assert 'license_url' in data.keys()
         assert isinstance(data['license_url'], str)
-        url_regex = re.compile(r'^(https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+\.[^\s]{2,})$')
-        assert url_regex.fullmatch(data['license_url'])
-        assert data['hostname'] == 'wazuh'
-        assert data['timestamp'] == '2019-04-04T07:38:09+0000'
+        assert 'hostname' in data.keys()
+        assert isinstance(data['hostname'], str)
+        assert 'timestamp' in data.keys()
+        assert isinstance(data['timestamp'], str)
         assert code == 200
