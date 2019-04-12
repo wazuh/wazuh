@@ -7,7 +7,7 @@ import connexion
 import datetime
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
@@ -71,8 +71,12 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
     # get type parameter from query
     type_ = connexion.request.args.get('type', 'all')
 
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
-                'select': select, 'filter_type': type_}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'select': select,
+                'filter_type': type_}
 
     dapi = DistributedAPI(f=cluster_control.get_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -98,7 +102,8 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
     :param wait_for_complete: Disable timeout response
     :param select: Select which fields to return (separated by comma)
     """
-    f_kwargs = {'filter_node': node_id, 'select': select}
+    f_kwargs = {'filter_node': node_id,
+                'select': select}
 
     dapi = DistributedAPI(f=cluster_control.get_node,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
