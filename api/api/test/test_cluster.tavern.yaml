@@ -12,16 +12,17 @@ stages:
     response:
       status_code: 200
       body:
-        cluster: wazuh
-        node: master
-        type: master
+        data:
+          cluster: wazuh
+          node: master
+          type: master
 
 ---
 test_name: GET /cluster/nodes
 
 stages:
 
-  - name: Request (master)
+  - name: Request
 
     request:
       url: http://localhost:55000/cluster/nodes
@@ -30,18 +31,19 @@ stages:
     response:
       status_code: 200
       body:
-        totalItems: 2
-        items:
-          -
-            ip: !anystr
-            version: !anystr
-            type: worker
-            name: !anystr
-          -
-            ip: !anystr
-            version: !anystr
-            type: master
-            name: !anystr
+        data:
+          totalItems: 2
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
 
   - name: Retrieve all elements with limit=0
 
@@ -54,55 +56,101 @@ stages:
     response:
         status_code: 400
         body:
-          detail: !anystr
-          status: 400
-          title: !anystr
-          type: !anystr
+          data:
+            detail: !anystr
+            status: 400
+            title: !anystr
+            type: !anystr
 
-  #- name: Sort
-#
-  #  request:
-  #    url: http://localhost:55000/cluster/nodes
-  #    method: GET
-  #    params:
-  #      sort: -name
-#
-  #  response:
-  #      status_code: 200
-  #      body:
-  #         totalItems:
-  #         items:
-  #           - ip:
-  #             version:
-  #             type:
-  #             name:
+  - name: Sort 1
 
-#  - name: Search
-#
-#    request:
-#      url: http://localhost:55000/cluster/nodes
-#      method: GET
-#      params:
-#        pretty:
-#        wait_for_complete:
-#        offset:
-#        limit:
-#        sort:
-#        search: 1
-#        select:
-#        node_type:
-#
-#    response:
-#        status_code: 200
-#        body:
-#          totalItems:
-#          items:
-#            - ip:
-#              version:
-#              type:
-#              name:
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        sort: name
 
-  - name: Filters -> type master
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              -
+                ip: !anystr
+                version: !anystr
+                type: master
+                name: !anystr
+              -
+                ip: !anystr
+                version: !anystr
+                type: worker
+                name: !anystr
+
+  - name: Sort 2
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        sort: -name
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              -
+                ip: !anystr
+                version: !anystr
+                type: worker
+                name: !anystr
+              -
+                ip: !anystr
+                version: !anystr
+                type: master
+                name: !anystr
+
+  - name: Search 1
+
+    request:
+
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        search: master
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip: !anystr
+                version: !anystr
+                type: master
+                name: !anystr
+
+  - name: Search 2
+
+    request:
+
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        search: worker
+
+    response:
+        status_code: 200
+        body:
+          data:
+            totalItems:
+            items:
+              - ip: !anystr
+                version: !anystr
+                type: worker
+                name: !anystr
+
+  - name: Filters (type) -> master
 
     request:
       url: http://localhost:55000/cluster/nodes
@@ -113,15 +161,16 @@ stages:
     response:
       status_code: 200
       body:
-        totalItems: 1
-        items:
-          -
-            ip: !anystr
-            version: !anystr
-            type: master
-            name: !anystr
+        data:
+          totalItems: 1
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: master
+              name: !anystr
 
-  - name: Filters -> type worker
+  - name: Filters (type) -> worker
 
     request:
       url: http://localhost:55000/cluster/nodes
@@ -133,13 +182,14 @@ stages:
     response:
       status_code: 200
       body:
-        totalItems: 1
-        items:
-          -
-            ip: !anystr
-            version: !anystr
-            type: worker
-            name: !anystr
+        data:
+          totalItems: 1
+          items:
+            -
+              ip: !anystr
+              version: !anystr
+              type: worker
+              name: !anystr
 
   - name: Filters -> invalid type
 
@@ -152,10 +202,11 @@ stages:
     response:
         status_code: 400
         body:
-          detail: !anystr
-          status: 400
-          title: !anystr
-          type: !anystr
+          data:
+            detail: !anystr
+            status: 400
+            title: !anystr
+            type: !anystr
 
   - name: Select
 
@@ -168,14 +219,15 @@ stages:
     response:
         status_code: 200
         body:
-          totalItems: 2
-          items:
-            -
-              name: !anystr
-              version: !anystr
-            -
-              name: !anystr
-              version: !anystr
+          data:
+            totalItems: 2
+            items:
+              -
+                name: !anystr
+                version: !anystr
+              -
+                name: !anystr
+                version: !anystr
 
   - name: Select 2
 
@@ -188,34 +240,34 @@ stages:
     response:
         status_code: 200
         body:
-          totalItems: 2
-          items:
-            - 
-              type: !anystr
-            -
-              type: !anystr
+          data:
+            totalItems: 2
+            items:
+              -
+                type: !anystr
+              -
+                type: !anystr
 
-#  - name: Wrong select ----> should returns 400 status, but returns 500
-#
-#    request:
-#      url: http://localhost:55000/cluster/nodes
-#      method: GET
-#      params:
-#        select: wrong_field
-#
-#    response:
-#        status_code: 400
-#        body:
-#          detail: !anystr
-#          status: 400
-#          title: !anystr
-#          type: !anystr
+  - name: Wrong select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        select: wrong_field
+
+    response:
+        status_code: 400
+        body:
+          data:
+            detail: !anystr
+            status: 400
+            title: !anystr
+            type: !anystr
 
 ---
 #test_name: GET /cluster/{node_id}/stats
-
 #stages:
-
 #  - name: Cluster stats (master)
 #
 #    request:
@@ -226,34 +278,35 @@ stages:
 #
 #    response:
 #        status_code: 200
-#        body:
-#          - hour:
-#            alerts:
-#              - sigid:
-#                level:
-#                times:
-#              - sigid:
-#                level:
-#                times:
-#              - sigid:
-#                level:
-#                times:
-#            totalAlerts:
-#            events:
-#            firewall:
-#          - hour:
-#            alerts:
-#              - sigid:
-#                level:
-#                times:
-#              - sigid:
-#                level:
-#                times:
-#            totalAlerts:
-#            events:
-#            syscheck:
-#            firewall:
-#
+#        data:
+#          body:
+#            - hour:
+#              alerts:
+#                - sigid:
+#                  level:
+#                  times:
+#                - sigid:
+#                  level:
+#                  times:
+#                - sigid:
+#                  level:
+#                  times:
+#              totalAlerts:
+#              events:
+#              firewall:
+#            - hour:
+#              alerts:
+#                - sigid:
+#                  level:
+#                  times:
+#                - sigid:
+#                  level:
+#                  times:
+#              totalAlerts:
+#              events:
+#              syscheck:
+#              firewall:
+
 #  - name: Cluster stats (worker)
 #
 #    request:

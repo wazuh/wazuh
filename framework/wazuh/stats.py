@@ -5,6 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.results import WazuhResult
 from wazuh import common
 from io import StringIO
 try:
@@ -91,7 +92,7 @@ def totals(year, month, day):
             response.append({'hour': hour, 'alerts': alerts, 'totalAlerts': total_alerts, 'events': events, 'syscheck': syscheck, 'firewall': firewall})
             alerts = []
 
-    return response
+    return WazuhResult({'data': response})
 
 
 def hourly():
@@ -120,7 +121,7 @@ def hourly():
             if i < 24:
                 averages.append(0)
 
-    return {'averages': averages, 'interactions': interactions}
+    return WazuhResult({'data': {'averages': averages, 'interactions': interactions}})
 
 
 def weekly():
@@ -154,7 +155,7 @@ def weekly():
 
         response[DAYS[i]] = {'hours': hours, 'interactions': interactions}
 
-    return response
+    return WazuhResult({'data': response})
 
 
 def get_daemons_stats(filename):
