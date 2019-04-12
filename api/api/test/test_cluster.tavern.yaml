@@ -218,9 +218,9 @@ stages:
 #          type: !anystr
 
 ---
-test_name: GET /cluster/{node_id}/stats
+#test_name: GET /cluster/{node_id}/stats
 
-stages:
+#stages:
 
 #  - name: Cluster stats (master)
 #
