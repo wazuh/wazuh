@@ -14,7 +14,7 @@ from api.models.active_response_model import ActiveResponse
 from api.models.api_response_model import ApiResponse
 from api.models.api_response_data_model import ApiResponseData
 from api.models.confirmation_message_model import ConfirmationMessage
-from api.util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, get_data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh.active_response_controller')
@@ -58,8 +58,8 @@ def run_command(pretty=False, wait_for_complete=False, agent_id='000', command=N
                           logger=logger
                           )
 
-
     data = loop.run_until_complete(dapi.distribute_function())
+    get_data(data)
     api_response = ApiResponse.from_dict(data)
     confirmation_message = ConfirmationMessage.from_dict(data)
 

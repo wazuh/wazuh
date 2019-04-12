@@ -252,6 +252,7 @@ components:
     AgentID:
       type: string
       minLength: 3
+      maxLength: 3
       description: Agent ID.
 
     AgentConfiguration:
@@ -3037,8 +3038,8 @@ tags:
   - name: syscollector
     description: 'Capability to collect interesting information for each agent'
 
-#security:
-#    - jwt: []
+security:
+    - jwt: []
 
 paths:
   /active-response/{agent_id}:

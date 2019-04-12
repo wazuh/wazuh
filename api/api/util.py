@@ -195,6 +195,12 @@ def _create_problem(exc):
     raise exc
 
 
+def get_data(data):
+    if isinstance(data, WazuhException):
+        raise data
+
+    return data
+
 def exception_handler(f):
     """
     Enables a controller to handle a WazuhException return by a framework function

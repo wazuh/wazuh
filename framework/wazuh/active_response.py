@@ -73,9 +73,6 @@ def run_command(agent_id=None, command=None, arguments=[], custom=False):
         # Check if agent exists and it is active
         agent_info = Agent(agent_id).get_basic_information()
 
-        if len(agent_id) > 3:
-            raise WazuhError(1655)
-
         if agent_info['status'].lower() != 'active':
             raise WazuhError(1651)
 
