@@ -100,10 +100,10 @@ class LocalClient(client.AbstractClientManager):
     async def send_api_request(self):
         result = (await self.protocol.send_request(self.command, self.data)).decode()
         if result.startswith('Error'):
-            raise exception.WazuhInternalError(3009, result)
+            raise exception.WazuhException(3009, result)
         elif result.startswith('WazuhException'):
             _, code, message = result.split(' ', 2)
-            raise exception.WazuhInternalError(int(code), message)
+            raise exception.WazuhException(int(code), message)
         elif result == 'There are no connected worker nodes':
             request_result = {}
         else:
@@ -115,7 +115,7 @@ class LocalClient(client.AbstractClientManager):
                     await asyncio.wait_for(self.protocol.response_available.wait(), timeout=timeout)
                     request_result = self.protocol.response.decode()
                 except asyncio.TimeoutError:
-                    raise exception.WazuhInternalError(3020)
+                    raise exception.WazuhException(3020)
             else:
                 request_result = result
         return request_result

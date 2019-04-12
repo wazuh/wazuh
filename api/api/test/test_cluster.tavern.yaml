@@ -12,9 +12,9 @@ stages:
     response:
       status_code: 200
       body:
-        cluster: 'wazuh'
-        node: 'master'
-        type: 'master'
+        cluster: wazuh
+        node: master
+        type: master
 
 ---
 test_name: GET /cluster/nodes
@@ -35,12 +35,12 @@ stages:
           -
             ip: !anystr
             version: !anystr
-            type: 'worker'
+            type: worker
             name: !anystr
           -
             ip: !anystr
             version: !anystr
-            type: 'master'
+            type: master
             name: !anystr
 
   - name: Retrieve all elements with limit=0
@@ -108,7 +108,7 @@ stages:
       url: http://localhost:55000/cluster/nodes
       method: GET
       params:
-        type: 'master'
+        type: master
 
     response:
       status_code: 200
@@ -118,7 +118,7 @@ stages:
           -
             ip: !anystr
             version: !anystr
-            type: 'master'
+            type: master
             name: !anystr
 
   - name: Filters -> type worker
@@ -128,7 +128,7 @@ stages:
       method: GET
       params:
         limit: 1
-        type: 'worker'
+        type: worker
 
     response:
       status_code: 200
@@ -138,7 +138,7 @@ stages:
           -
             ip: !anystr
             version: !anystr
-            type: 'worker'
+            type: worker
             name: !anystr
 
   - name: Filters -> invalid type
@@ -157,49 +157,43 @@ stages:
           title: !anystr
           type: !anystr
 
-#  - name: Select
-#
-#    request:
-#      url: http://localhost:55000/cluster/nodes
-#      method: GET
-#      params:
-#        select: name, version
-#
-#    response:
-#        status_code: 200
-#        body:
-#          totalItems:
-#          items:
-#            - ip:
-#              version:
-#              type:
-#              name:
-#
-#  - name: Select 2
-#
-#    request:
-#      url: http://localhost:55000/cluster/nodes
-#      method: GET
-#      params:
-#        pretty:
-#        wait_for_complete:
-#        offset:
-#        limit:
-#        sort:
-#        search:
-#        select: type
-#        node_type:
-#
-#    response:
-#        status_code: 200
-#        body:
-#          data:
-#            totalItems:
-#            items:
-#              - ip:
-#                version:
-#                type:
-#                name:
+  - name: Select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        select: name,version
+
+    response:
+        status_code: 200
+        body:
+          totalItems: 2
+          items:
+            -
+              name: !anystr
+              version: !anystr
+            -
+              name: !anystr
+              version: !anystr
+
+  - name: Select 2
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        select: type
+
+    response:
+        status_code: 200
+        body:
+          totalItems: 2
+          items:
+            - 
+              type: !anystr
+            -
+              type: !anystr
 
 #  - name: Wrong select ----> should returns 400 status, but returns 500
 #

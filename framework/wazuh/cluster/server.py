@@ -157,19 +157,19 @@ class AbstractServer:
 
         default_fields = self.to_dict()['info'].keys()
         if select is None:
-            select = {'fields': default_fields}
+            select = default_fields
         else:
-            if not set(select['fields']).issubset(default_fields):
-                raise exception.WazuhException(1724, "Allowed fields: {}. Fields: {}".format(
-                    ', '.join(default_fields), ', '.join(set(select['fields']) - default_fields)))
+            if not set(select).issubset(default_fields):
+                raise exception.WazuhError(1724, "Allowed fields: {}. Fields: {}".format(
+                    ', '.join(default_fields), ', '.join(set(select) - default_fields)))
 
         if filter_type != 'all' and filter_type not in {'worker', 'master'}:
-            raise exception.WazuhException(1728, "Valid types are 'worker' and 'master'.")
+            raise exception.WazuhError(1728, "Valid types are 'worker' and 'master'.")
 
         if filter_node is not None:
             filter_node = set(filter_node) if isinstance(filter_node, list) else {filter_node}
             if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
-                raise exception.WazuhException(1730)
+                raise exception.WazuhError(1730)
 
         res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
                if return_node(val.to_dict()['info'])]
@@ -180,7 +180,7 @@ class AbstractServer:
         if search is not None:
             res = utils.search_array(array=res, text=search['value'], negation=search['negation'])
 
-        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select['fields']} for v in res],
+        return {'totalItems': len(res), 'items': utils.cut_array([{k: v[k] for k in select} for v in res],
                                                                  offset, limit)}
 
     async def check_clients_keepalive(self):
