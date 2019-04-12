@@ -9,12 +9,27 @@
 # Foundation.
 
 . /etc/ossec-init.conf
-
+set -exf
 sed="sed -ri"
+# By default, use gnu sed (gsed).
+used_unix_sed="False"
+
+unix_sed() {
+    sed_expression="$1"
+    target_file="$2"
+
+    sed "${sed_expression}" "${target_file}" > "${target_file}.tmp"
+    cat "${target_file}.tmp" > "${target_file}"
+    rm "${target_file}.tmp"
+}
 
 edit_value_tag() {
     if [ "$#" == "2" ] && [ ! -z "$2" ]; then
-        ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
+        if [ "${used_unix_sed}" = "False" ] ; then
+            ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
+        else
+            unix_sed "s#<$1>.*</$1>#<$1>$2</$1>#g" "${DIRECTORY}/etc/ossec.conf"
+        fi
     fi
 
     if [ "$?" != "0" ]; then
@@ -107,10 +122,11 @@ main () {
     if [ "${uname_s}" = "Darwin" ]; then
         sed="sed -ire"
         set_vars
+    elif [ "${uname_s}" = "AIX" ] || [ "${uname_s}" = "SunOS" ] || [ "${uname_s}" = "HP-UX" ]; then
+        used_unix_sed="True"
     fi
 
     if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
-
         if [ ! -f ${DIRECTORY}/logs/ossec.log ]; then
             touch -f ${DIRECTORY}/logs/ossec.log
             chmod 660 ${DIRECTORY}/logs/ossec.log
