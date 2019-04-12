@@ -7,6 +7,7 @@
 * `error` field has been removed. Now error status is shown in HTTP status code (400 for client error and 500 for server error)
 * `data` is never showing a human readable message. To be consistent, it will only contain an object or list of objects. In case
 a human readable message is shown, the new field `message` will be used instead.
+* Changed search negation from `!` to `-`.
 
 ## Active Response
 ### /active-response/:agent_id

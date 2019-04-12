@@ -396,7 +396,7 @@ def get_agents_status(filter_status="all", filter_nodes="all",  offset=0, limit=
         limit = common.database_limit
 
     agents = Agent.get_agents_overview(filters={'status':filter_status, 'node_name':filter_nodes},
-                                       select={'fields':['id','ip','name','status','node_name']}, limit=limit,
+                                       select=['id','ip','name','status','node_name'], limit=limit,
                                        offset=offset)
     return agents
 
