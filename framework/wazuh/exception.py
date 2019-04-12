@@ -102,6 +102,9 @@ class WazuhException(Exception):
                'remediation': 'Please make sure the selected agent is active and available.'
                },
         1654: 'Unable to clear rootcheck database',
+        1655: {'message': 'Agent_id invalid',
+               'remediation': 'Please make sure that the entered agent_id is a number between the interval 000 - 999'
+               },
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
