@@ -1276,6 +1276,19 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
     return retval;
 }
 
+static void CsvListToJsonStrArray(char * const csv_list, char **buffer)
+{
+    cJSON *array = cJSON_CreateArray();
+    char *remaining_str = csv_list;
+    char *element = NULL;
+    while ((element = strtok_r(remaining_str, ",", &remaining_str))){
+        cJSON *obj = cJSON_CreateString(element);
+        cJSON_AddItemToArray(array, obj);
+    }
+    *buffer = cJSON_Print(array);
+    cJSON_Delete(array);
+}
+
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,char *old_result,cJSON *command) {
     
     fillData(lf, "sca.type", "check");
@@ -1365,24 +1378,36 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         fillData(lf, "sca.check.references", reference->valuestring);
     }
 
+    char *array_buffer = NULL;
+
     if(file){
-        fillData(lf, "sca.check.file", file->valuestring);
+        CsvListToJsonStrArray(file->valuestring, &array_buffer);
+        fillData(lf, "sca.check.file", array_buffer);
+        os_free(array_buffer);
     }
 
     if(directory) {
-        fillData(lf, "sca.check.directory", directory->valuestring);
+        CsvListToJsonStrArray(directory->valuestring, &array_buffer);
+        fillData(lf, "sca.check.directory", array_buffer);
+        os_free(array_buffer);
     }
 
     if(registry) {
-        fillData(lf, "sca.check.registry", registry->valuestring);
+        CsvListToJsonStrArray(registry->valuestring, &array_buffer);
+        fillData(lf, "sca.check.registry", array_buffer);
+        os_free(array_buffer);
     }
 
     if(process){
-        fillData(lf, "sca.check.process", process->valuestring);
+        CsvListToJsonStrArray(process->valuestring, &array_buffer);
+        fillData(lf, "sca.check.process", array_buffer);
+        os_free(array_buffer);
     }
 
     if(command){
-        fillData(lf, "sca.check.command", command->valuestring);
+        CsvListToJsonStrArray(command->valuestring, &array_buffer);
+        fillData(lf, "sca.check.command", array_buffer);
+        os_free(array_buffer);
     }
 
     if(result) {

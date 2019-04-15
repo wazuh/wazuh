@@ -178,7 +178,7 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        cJSON_AddStringToObject(root, key, value);
+        cJSON_AddItemToObject(root, key, cJSON_Parse(value));
     }
 }
 
