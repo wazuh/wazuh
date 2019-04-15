@@ -51,8 +51,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslogging = "logging";                  /* Logging Config */
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
-    const char *ossca = "sca";     /* Security Configuration Assessment */
-    const char *ossrotation = "rotation_config";     /* Security Configuration Assessment */
+    const char *ossca = "sca";                          /* Security Configuration Assessment */
+    const char *ossrotation = "rotation_config";        /* Ossec Rotation config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;

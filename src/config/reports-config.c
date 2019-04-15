@@ -194,7 +194,6 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     unsigned int k = 0;
 
     /* XML definitions */
-    const char *xml_title = "rotation_config";
     const char *xml_log = "log";
     const char *xml_enabled = "enabled";
     const char *xml_format = "format";
@@ -245,23 +244,23 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                         return(OS_INVALID);
                     }
                 } else if (strcmp(children[j]->element, xml_format) == 0) {
-                    char delim = ',';
+                    const char *delim = ",";
                     char *format = NULL;
                     int format_it = 0;
-                    format = strtok(children[j]->content, &delim);
+                    format = strtok(children[j]->content, delim);
 
                     while (format) {
                         if (*format && !strncmp(format, "json", strlen(format))) {
                             rotation_config->format[format_it] = "json";
                             os_realloc(rotation_config->format, (format_it + 2) * sizeof(char *), rotation_config->format);
                             rotation_config->format[format_it + 1] = NULL;
-                            format = strtok(NULL, &delim);
+                            format = strtok(NULL, delim);
                             format_it++;
                         } else if (*format && !strncmp(format, "plain", strlen(format))) {
                             rotation_config->format[format_it] = "plain";
                             os_realloc(rotation_config->format, (format_it + 2) * sizeof(char *), rotation_config->format);
                             rotation_config->format[format_it + 1] = NULL;
-                            format = strtok(NULL, &delim);
+                            format = strtok(NULL, delim);
                             format_it++;
                         } else {
                             merror(XML_VALUEERR,children[j]->element,format);
@@ -277,43 +276,44 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                     /* Read the configuration inside rotation tag */
                     for (k = 0; rotation_children[k]; k++) {
                         if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
-                            if (rotation_children[k]->content < 1000000) {
+                            char c;
+                            switch (sscanf(rotation_children[k]->content, "%d%c", &rotation_config->max_size, &c)) {
+                                case 1:
+                                    break;
+                                case 2:
+                                    switch (c) {
+                                        case 'G':
+                                        case 'g':
+                                            rotation_config->max_size *= 1073741824;
+                                            break;
+                                        case 'M':
+                                        case 'm':
+                                            rotation_config->max_size *= 1048576;
+                                            break;
+                                        case 'K':
+                                        case 'k':
+                                            rotation_config->max_size *= 1024;
+                                            break;
+                                        case 'B':
+                                        case 'b':
+                                            break;
+                                        default:
+                                            merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                            OS_ClearNode(rotation_children);
+                                            return (OS_INVALID);
+                                    }
+                                    break;
+                                default:
+                                    merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
+                                    OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
+                                    return (OS_INVALID);
+                            }
+                            if (rotation_config->max_size < 1000000) {
                                 merror("The minimum allowed value for '%s' is 1 MiB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
                                 return (OS_INVALID);
-                            } else {
-                                char c;
-                                switch (sscanf(rotation_children[k]->content, "%zd%c", &rotation_config->max_size, &c)) {
-                                    case 1:
-                                        break;
-                                    case 2:
-                                        switch (c) {
-                                            case 'G':
-                                            case 'g':
-                                                rotation_config->max_size *= 1073741824;
-                                                break;
-                                            case 'M':
-                                            case 'm':
-                                                rotation_config->max_size *= 1048576;
-                                                break;
-                                            case 'K':
-                                            case 'k':
-                                                rotation_config->max_size *= 1024;
-                                                break;
-                                            case 'B':
-                                            case 'b':
-                                                break;
-                                            default:
-                                                merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
-                                                OS_ClearNode(rotation_children);
-                                                return (OS_INVALID);
-                                        }
-                                        break;
-                                    default:
-                                        merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
-                                        OS_ClearNode(rotation_children);
-                                        return (OS_INVALID);
-                                }
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_interval) == 0) {
                             char c;
@@ -342,11 +342,13 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 default:
                                     merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                     OS_ClearNode(rotation_children);
+                                    OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
                             if (rotation_config->interval < 0) {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
                                 return (OS_INVALID);
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
@@ -355,15 +357,18 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                             if (*end != '\0') {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(rotation_children);
+                                OS_ClearNode(children);
                                 return OS_INVALID;
                             }
                         } else {
                             merror(XML_ELEMNULL);
                             OS_ClearNode(rotation_children);
+                            OS_ClearNode(children);
                             return OS_INVALID;
                         }
                     }
                     OS_ClearNode(rotation_children);
+                    OS_ClearNode(children);
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
