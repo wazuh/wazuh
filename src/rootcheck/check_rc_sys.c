@@ -171,13 +171,9 @@ static int read_sys_dir(const char *dir_name, int do_read)
 
     /* Ignore user-supplied list */
     if (rootcheck.ignore) {
-        while (rootcheck.ignore[i]) {
-            if (strcmp(dir_name, rootcheck.ignore[i]) == 0) {
-                return (1);
-            }
-            i++;
+        if (check_ignore(dir_name, &rootcheck)) {
+            return(1);
         }
-        i = 0;
     }
 
     /* Should we check for NFS? */
