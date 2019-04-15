@@ -158,6 +158,7 @@ def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
                           request_type='distributed_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
+                          pretty=pretty,
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
@@ -412,6 +413,8 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
     :type agent_id: str
     :param group_id: Group ID.
     :type group_id: str
+    :param force_single_group: Forces the agent to belong to a single group
+    :type group_id: bool
 
     :rtype: CommonResponse
     """
@@ -566,6 +569,7 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
     return data, 200
 
 
+@exception_handler
 def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E501
     """Add agent (quick method)
 
@@ -659,7 +663,7 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
     return data, 200
 
 
-def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
+def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False, agent_id_list=None):  # noqa: E501
     """Add multiple agents to a group
     
     Adds multiple agents to the specified group.    # noqa: E501
@@ -683,12 +687,12 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False): 
     
     f_kwargs = {**{'group_id': group_id}, **agent_list_model.to_dict()}
 
-
     dapi = DistributedAPI(f=Agent.set_group_list,
                         f_kwargs=remove_nones_to_dict(f_kwargs),
                         request_type='local_master',
                         is_async=False,
                         wait_for_complete=wait_for_complete,
+                        agent_id_list=agent_id_list,
                         pretty=pretty,
                         logger=logger
                         )
