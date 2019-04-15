@@ -193,7 +193,21 @@ class WazuhException(Exception):
         3020: 'Timeout sending request',
         3021: 'Timeout executing API request',
         3022: 'Unknown node ID',
-        3023: 'Worker node is not connected to master'
+        3023: 'Worker node is not connected to master',
+        3024: "Length of command exceeds limit",
+        3025: {'message': "Could not decrypt message",
+               'remediation': "Check the cluster key is correct"},
+        3026: "Error sending request: Memory error. Request chunk size divided by 2.",
+        3027: "Unknown received task name",
+        3028: {'message': "Worker node ID already exists",
+               'remediation': "Change one of the two worker names with the same name and restart the node"},
+        3029: {"message": "Connected worker with same name as the master",
+               "remediation": "Change the worker name and restart the node"},
+        3030: {'message': 'Worker does not belong to the same cluster',
+               'remediation': "Change the tag <cluster> in the worker configuration to match the master's"},
+        3031: {'message': "Worker and master versions are not the same",
+               'remediation': "Update both master and worker to the same version."},
+        3032: "Could not forward DAPI request. Connection not available.",
 
         # > 9000: Authd
     }

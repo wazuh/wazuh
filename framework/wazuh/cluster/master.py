@@ -106,8 +106,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.process_dapi_cluster(data)
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg,
-                                                                                                    command))
+            asyncio.create_task(self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'get_nodes':
             cmd, res = self.get_nodes(json.loads(data))
@@ -141,19 +140,17 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 raise exception.WazuhException(3022, client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
-        if result.startswith('Error'):
-            request_result = {'error': 3009, 'message': result}
+
+        if command == b'dapi' or command == b'dapi_forward':
+            try:
+                timeout = None if wait_for_complete \
+                               else self.cluster_items['intervals']['communication']['timeout_api_request']
+                await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
+                request_result = json.loads(self.server.pending_api_requests[request_id]['Response'])
+            except asyncio.TimeoutError:
+                raise exception.WazuhClusterError(3021)
         else:
-            if command == b'dapi' or command == b'dapi_forward':
-                try:
-                    timeout = None if wait_for_complete \
-                                   else self.cluster_items['intervals']['communication']['timeout_api_request']
-                    await asyncio.wait_for(self.server.pending_api_requests[request_id]['Event'].wait(), timeout=timeout)
-                    request_result = json.loads(self.server.pending_api_requests[request_id]['Response'])
-                except asyncio.TimeoutError:
-                    request_result = {'error': 3000, 'message': 'Timeout exceeded'}
-            else:
-                request_result = json.loads(result)
+            request_result = json.loads(result)
         return request_result
 
     def hello(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -167,9 +164,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
 
         if self.cluster_name != self.server.configuration['name']:
-            cmd, payload = b'err', b'Worker does not belong to the same cluster'
+            raise exception.WazuhClusterError(3030)
         elif self.version != metadata.__version__:
-            cmd, payload = b'err', b'Worker and master versions are not the same'
+            raise exception.WazuhClusterError(3031)
 
         worker_dir = '{}/queue/cluster/{}'.format(common.ossec_path, self.name)
         if cmd == b'ok' and not os.path.exists(worker_dir):
@@ -190,8 +187,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
         else:
-            self.logger.error("Could not forward request to {}. Connection not available.".format(req_id))
-            return b'err', b'Could not forward request, connection is not available'
+            raise exception.WazuhClusterError(3032, req_id)
 
     def process_dapi_cluster(self, arguments: bytes) -> Tuple[bytes, bytes]:
         api_call_info = json.loads(arguments.decode())
@@ -317,9 +313,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             logger.info("Analyzing worker integrity: Files checked. KO files compressed.")
             try:
                 task_name = await self.send_request(command=b'sync_m_c', data=b'')
-                if task_name.startswith(b'Error'):
-                    logger.error(task_name.decode())
-                    return task_name
 
                 result = await self.send_file(compressed_data)
                 result = await self.send_request(command=b'sync_m_c_e',
@@ -354,7 +347,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                 fcntl.lockf(lock_file, fcntl.LOCK_EX)
                 if os.path.basename(name) == 'client.keys':
                     self.logger.warning("Client.keys received in a master node")
-                    raise exception.WazuhException(3007)
+                    raise exception.WazuhClusterError(3007)
                 if data['merged']:
                     is_agent_info = data['merge_type'] == 'agent-info'
                     if is_agent_info:

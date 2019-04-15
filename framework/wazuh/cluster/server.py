@@ -72,12 +72,10 @@ class AbstractServerHandler(c_common.Handler):
         """
         self.name = data.decode()
         if self.name in self.server.clients:
-            self.logger.error("Could not accept incoming connection: ID {} already present".format(data))
             self.name = ''
-            return b'err', b'Client already present'
+            raise exception.WazuhClusterError(3028, data)
         elif self.name == self.server.configuration['node_name']:
-            self.logger.error("Connected client with same name as the master: {}".format(self.name))
-            return b'err', b'Same name as master'
+            raise exception.WazuhClusterError(3029)
         else:
             self.server.clients[self.name] = self
             self.tag = '{} {}'.format(self.tag, self.name)
@@ -110,7 +108,9 @@ class AbstractServerHandler(c_common.Handler):
             else:
                 self.logger.error(f"Error during connection with '{self.name}': {exc}.\n"
                                   f"{''.join(traceback.format_tb(exc.__traceback__))}")
-            del self.server.clients[self.name]
+
+            if self.name in self.server.clients:
+                del self.server.clients[self.name]
         else:
             if exc is not None:
                 self.logger.error(f"Error during handshake with incoming connection: {exc}", exc_info=True)

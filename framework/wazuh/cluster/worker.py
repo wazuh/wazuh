@@ -39,8 +39,8 @@ class SyncWorker:
 
     async def sync(self):
         result = await self.worker.send_request(command=self.cmd+b'_p', data=b'')
-        if result.startswith(b'Error'):
-            self.logger.error('Error asking for permission: {}'.format(result.decode()))
+        if isinstance(result, Exception):
+            self.logger.error(f"Error asking for permission: {result}")
             return
         elif result == b'False':
             self.logger.info('Master didnt grant permission to synchronize')
@@ -106,8 +106,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return b'ok', b'Response forwarded to worker'
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg,
-                                                                                                     command))
+            asyncio.create_task(self.manager.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
             return b'ok', b'DAPI error forwarded to worker'
         elif command == b'dapi':
             self.manager.dapi.add_request(b'master*' + data)

@@ -195,8 +195,6 @@ class DistributedAPI:
                                                    node_name),
                          object_hook=c_common.as_wazuh_object)
         os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
-        if res.startswith(b'Error'):
-            return exception.WazuhInternalError(extra_message=res.decode())
 
     async def execute_remote_request(self) -> Dict:
         """
@@ -347,9 +345,9 @@ class APIRequestQueue:
 
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
-                result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')
+                result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
             else:
-                result = await node.send_request(b'dapi_res', name_2.encode() + task_id, b'dapi_err')
+                result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
             if result.startswith(b'Error'):
                 self.logger.error(result.decode())
 
