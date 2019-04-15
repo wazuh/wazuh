@@ -74,9 +74,12 @@ void HandleRemote(int uid)
 
             if (OS_SetKeepalive(logr.sock) < 0){
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
-            } else {
+            }
+#ifndef CLIENT
+            else {
                 OS_SetKeepalive_Options(logr.sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
             }
+#endif
             if (OS_SetRecvTimeout(logr.sock, recv_timeout, 0) < 0){
                 merror("OS_SetRecvTimeout failed with error '%s'", strerror(errno));
             }

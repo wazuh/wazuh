@@ -545,6 +545,7 @@ int OS_SetKeepalive(int socket)
     return setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(keepalive));
 }
 
+#ifndef CLIENT
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
 {
     if (setsockopt(socket, SOL_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
@@ -557,6 +558,7 @@ void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
         merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
     }
 }
+#endif
 
 int OS_SetRecvTimeout(int socket, long seconds, long useconds)
 {
