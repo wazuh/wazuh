@@ -8,7 +8,7 @@ stages:
       url: http://127.0.0.1:55000/rules
       method: GET
       params:
-        list_agents:
+        limit: 2
 
     response:
       status_code: 200
@@ -30,7 +30,217 @@ stages:
             "path": "ruleset/rules",
             "pci": [],
             "status": "enabled"
+          },
+          {
+            "description": "Generic template for all firewall rules.",
+            "details": {
+              "category": "firewall",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "firewall"
+            ],
+            "id": 2,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
           }
         ]
-        totalItems: "2168"
+        totalItems: 2168
+---
+
+---
+
+test_name: GET /rules
+
+stages:
+  - name: Try to show the rules of the system with a existent state
+
+    request:
+      url: http://127.0.0.1:55000/rules
+      method: GET
+      params:
+        list_status: disabled
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Successful login during non-business hours.",
+            "details": {
+              "if_group": "authentication_success",
+              "time": "6 pm - 8:30 am"
+            },
+            "file": "0215-policy_rules.xml",
+            "gdpr": [
+              "IV_35.7.d",
+              "IV_32.2"
+            ],
+            "groups": [
+              "login_time",
+              "gpg13_7.1",
+              "gpg13_7.2",
+              "policy_violation"
+            ],
+            "id": 17101,
+            "level": 9,
+            "path": "ruleset/rules",
+            "pci": [
+              "10.2.5",
+              "10.6.1"
+            ],
+            "status": "disabled"
+          },
+          {
+            "description": "Successful login during weekend.",
+            "details": {
+              "if_group": "authentication_success",
+              "weekday": "weekends"
+            },
+            "file": "0215-policy_rules.xml",
+            "gdpr": [
+              "IV_35.7.d",
+              "IV_32.2"
+            ],
+            "groups": [
+              "login_day",
+              "gpg13_7.1",
+              "gpg13_7.2",
+              "policy_violation"
+            ],
+            "id": 17102,
+            "level": 9,
+            "path": "ruleset/rules",
+            "pci": [
+              "10.2.5",
+              "10.6.1"
+            ],
+            "status": "disabled"
+          }
+        ]
+        totalItems: 2
+
+---
+
+---
+
+test_name: GET /rules
+
+stages:
+  - name: Try to show the rules of the system with a non-existent state
+
+    request:
+      url: http://127.0.0.1:55000/rules
+      method: GET
+      params:
+        list_status: notexist
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+---
+
+---
+
+test_name: GET /rules
+
+stages:
+  - name: Try to show the rules by levels
+
+    request:
+      url: http://127.0.0.1:55000/rules
+      method: GET
+      params:
+        level: 2
+
+    response:
+      status_code: 200
+      body:
+#        items: !anystr
+        totalItems: 50
+
+---
+
+---
+
+test_name: GET /rules
+
+stages:
+  - name: Try to show the rules by levels (invalid interval)
+
+    request:
+      url: http://127.0.0.1:55000/rules
+      method: GET
+      params:
+        level: 2-4-5
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+---
+
+---
+
+test_name: GET /rules/pci
+
+stages:
+  - name: Try to show the rules by requeriment (pci, gdpr)
+
+    request:
+      url: http://127.0.0.1:55000/rules/pci
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 38
+---
+
+---
+
+test_name: GET /rules/gdpr
+
+stages:
+  - name: Try to show the rules by requeriment (pci, gdpr)
+
+    request:
+      url: http://127.0.0.1:55000/rules/gdpr
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 4
+---
+
+---
+
+test_name: GET /rules/XgdprY
+
+stages:
+  - name: Try to show the rules by invalid requeriment (XgdprY)
+
+    request:
+      url: http://127.0.0.1:55000/rules/XgdprY
+      method: GET
+
+    response:
+      status_code: 404
+      body:
+        detail: !anystr
+        status: 404
+        title: "Not Found"
+        type: "about:blank"
 ---

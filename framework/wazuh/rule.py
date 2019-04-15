@@ -277,8 +277,8 @@ class Rule:
                         rules.remove(r)
                         continue
                 elif not (int(levels[0]) <= r.level <= int(levels[1])):
-                        rules.remove(r)
-                        continue
+                    rules.remove(r)
+                    continue
 
         if search:
             rules = search_array(rules, search['value'], search['negation'])

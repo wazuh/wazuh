@@ -70,6 +70,9 @@ class WazuhException(Exception):
         1205: {'message': 'Requirement not valid. Valid ones are pci and gdpr',
                'remediation': 'Please indicate one of the following values: pci or gdpr'
                },
+        1206: {'message': 'Duplicated rule ID',
+               'remediation': 'Please check your configuration, two or more rules have the same ID, visit [official documentation]https://documentation.wazuh.com/3.x/user-manual/ruleset/custom.html'
+               },
 
         # Stats: 1300 - 1399
         1307: 'Invalid parameters',

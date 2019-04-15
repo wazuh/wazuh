@@ -12,6 +12,7 @@ from api.models.rules_model import Rules as RulesModel
 from api.util import remove_nones_to_dict, exception_handler
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
+from wazuh.exception import WazuhException, WazuhError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
@@ -249,4 +250,9 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
                           )
     data = loop.run_until_complete(dapi.distribute_function())
 
-    return data, 200
+    if data['totalItems'] == 0:
+        return data, 200
+    elif data['totalItems'] == 1:
+        return {'items': data['items'][0].to_dict(), 'totalItems': data['totalItems']}, 200
+    else:
+        raise WazuhError(1206)
