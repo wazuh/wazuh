@@ -10,15 +10,17 @@ import logging
 import wazuh.configuration as configuration
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler
 from wazuh import common
 from wazuh import Wazuh
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('manager_controller')
 
 
+@exception_handler
 def get_status(pretty=False, wait_for_complete=False):
     """Get a specified node's status 
 
@@ -42,6 +44,7 @@ def get_status(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_info(pretty=False, wait_for_complete=False):
     """Get a specified node's information 
 
@@ -65,6 +68,7 @@ def get_info(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_configuration(pretty=False, wait_for_complete=False, section=None, field=None):
     """Get a specified node's configuration 
 
@@ -90,6 +94,7 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
     return data, 200
 
 
+@exception_handler
 def get_stats(pretty=False, wait_for_complete=False, date=None):
     """Get a specified node's stats. 
 
@@ -125,6 +130,7 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
     return data, 200
 
 
+@exception_handler
 def get_stats_hourly(pretty=False, wait_for_complete=False):
     """Get a specified node's stats by hour. 
 
@@ -148,6 +154,7 @@ def get_stats_hourly(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_stats_weekly(pretty=False, wait_for_complete=False):
     """Get a specified node's stats by week. 
 
@@ -171,6 +178,7 @@ def get_stats_weekly(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_stats_analysisd(pretty=False, wait_for_complete=False):
     """Get a specified node's analysisd stats. 
 
@@ -194,6 +202,7 @@ def get_stats_analysisd(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_stats_remoted(pretty=False, wait_for_complete=False):
     """Get a specified node's remoted stats.
 
@@ -217,6 +226,7 @@ def get_stats_remoted(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
             search=None, category=None, type_log=None):
     """Get a specified node's wazuh logs. 
@@ -248,6 +258,7 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
     return data, 200
 
 
+@exception_handler
 def get_log_summary(pretty=False, wait_for_complete=False):
     """Get a summary of a specified node's wazuh logs. 
 
@@ -271,6 +282,7 @@ def get_log_summary(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_files(pretty=False, wait_for_complete=False, path=None):
     """Get file contents.
 
@@ -295,6 +307,7 @@ def get_files(pretty=False, wait_for_complete=False, path=None):
     return data, 200
 
 
+@exception_handler
 def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
                path=None):
     """Updates file contents.
@@ -307,12 +320,12 @@ def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
     :param wait_for_complete: Disable timeout response
     :param path: Filepath to return.
     """
+
     # get content-type from headers
     try:
         content_type = connexion.request.headers['Content-type']
     except KeyError:
         return 'Content-type header is mandatory', 400
-
     # parse body to utf-8
     try:
         body = body.decode('utf-8')
@@ -336,6 +349,7 @@ def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def delete_files(pretty=False, wait_for_complete=False, path=None):
     """Removes a file.
 
@@ -360,6 +374,7 @@ def delete_files(pretty=False, wait_for_complete=False, path=None):
     return data, 200
 
 
+@exception_handler
 def put_restart(pretty=False, wait_for_complete=False):
     """Restarts the wazuh manager.
 
@@ -383,6 +398,7 @@ def put_restart(pretty=False, wait_for_complete=False):
     return data, 200
 
 
+@exception_handler
 def get_conf_validation(pretty=False, wait_for_complete=False):
     """Check Wazuh configuration.
 
