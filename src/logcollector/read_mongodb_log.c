@@ -15,7 +15,6 @@
 
 /* Send MongoDB message and check the return code */
 static void __send_mongodb_msg(logreader *lf, int drop_it, char *buffer) {
-    mdebug2("Reading MongoDB message: '%s'", buffer);
     if (drop_it == 0) {
         w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, POSTGRESQL_MQ);
     }
@@ -39,6 +38,8 @@ void *read_mongodb_log(logreader *lf, int *rc, int drop_it) {
 
     /* Get new entry */
     while (fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines)){
+
+        mdebug2("Reading mongodb messages: '%s'", str);
 
         lines++;
         /* Get buffer size */
@@ -86,25 +87,22 @@ void *read_mongodb_log(logreader *lf, int *rc, int drop_it) {
             (str[19] == '.')
         ){
             str[19] = ' ';
-            
-            /* If the saved message is empty, set it and continue */
-            if (buffer[0] == '\0') {
-                strncpy(buffer, str, str_len + 2);
-                continue;
-            }
-            /* If not, send the saved one and store the new one for later */
-            else {
-                __send_mongodb_msg(lf, drop_it, buffer);
-                /* Store current one at the buffer */
-                strncpy(buffer, str, str_len + 2);
-            }
+            strncpy(buffer, str, str_len + 2);
 
-            mdebug2("Reading mongodb messages: '%s'", buffer);
+            if(buffer[0] != '\0'){ 
+                /* Send message to queue */
+                __send_mongodb_msg(lf, drop_it, buffer);
+            }
         }
 
         continue;
     }
-    
+
+    if (buffer[0] != '\0'){
+        /* Send message to queue */
+        __send_mongodb_msg(lf, drop_it, buffer);
+    }
+
     mdebug2("Read %d lines from %s", lines, lf->file);
     return (NULL);
 }
