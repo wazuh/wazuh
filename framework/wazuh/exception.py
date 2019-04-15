@@ -130,7 +130,9 @@ class WazuhException(Exception):
         1721: 'Remote upgrade is not available for this agent OS version',
         1722: 'Incorrect format for group_id. Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255',
         1723: 'Hash algorithm not available',
-        1724: 'Not a valid select field',
+        1724: {'message': 'Not a valid select field ',
+               'remediation': 'Please, use only allowed select fields'
+               },
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
