@@ -473,13 +473,13 @@ void LogCollectorStart()
                         merror(FILE_ERROR, current->file);
                     }
 
-                    if(current->exists==1){
-                        minfo(FORGET_FILE, current->file);
-                        current->exists = 0;
-                    }
-                    current->ign++;
-
                     if (!current->fp) {
+                        if(current->exists==1){
+                            minfo(FORGET_FILE, current->file);
+                            current->exists = 0;
+                        }
+                        current->ign++;
+
                         // Only expanded files that have been deleted will be forgotten
                         if (j >= 0) {
                             if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
@@ -1258,9 +1258,25 @@ int check_pattern_expand(int do_seek) {
 
                         if (!found) {
                             retval = 1;
+
                             char *ex_file = OSHash_Get(excluded_files,full_path);
 
                             if(!ex_file) {
+
+                                /*  Because Windows cache's files with FindFirstFile, we need to check if the file
+                                exists. Deleted files can still appear due to caching */
+                                HANDLE h1;
+
+                                h1 = CreateFile(full_path, GENERIC_READ,
+                                                FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+                                if (h1 == INVALID_HANDLE_VALUE) {
+                                    continue;
+                                }
+
+                                CloseHandle(h1);
+
                                 minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
                             }
 

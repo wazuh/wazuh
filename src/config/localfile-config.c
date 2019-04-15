@@ -602,6 +602,11 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
                 if((*logf)[i].fp) {
                     fclose((*logf)[i].fp);
                 }
+            #ifdef WIN32
+                if ((*logf)[i].h && (*logf)[i].h != INVALID_HANDLE_VALUE) {
+                    CloseHandle((*logf)[i].h);
+                }
+            #endif
             }
             if (i != size -1) {
                 memcpy(&(*logf)[i], &(*logf)[size - 1], sizeof(logreader));
