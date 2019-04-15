@@ -194,9 +194,9 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
     }
 
     minfo("Starting new log after rotation.");
-    os_free(dir);
     // Remove old compressed files
     remove_old_logs(base_dir, keep_log_days);
+    os_free(dir);
 }
 
 void remove_old_logs(const char *base_dir, int keep_log_days) {

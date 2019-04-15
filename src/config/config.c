@@ -52,7 +52,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oscluster = "cluster";                  /* Cluster Config */
     const char *ossocket = "socket";                    /* Socket Config */
     const char *ossca = "sca";                          /* Security Configuration Assessment */
-    const char *ossrotation = "rotation_config";        /* Ossec Rotation config */
 
     while (node[i]) {
         XML_NODE chld_node = NULL;
@@ -153,16 +152,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
+            if ((modules & CROTATION) && (Read_RotationMonitord(xml, chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
         } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
             if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, ossrotation) == 0)) {
-            if ((modules & CROTATION) && (Read_RotationMonitord(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else {

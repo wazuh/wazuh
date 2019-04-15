@@ -1,4 +1,28 @@
   <!-- Choose between "plain", "json", or "plain,json" for the format of internal logs -->
   <logging>
     <log_format>plain</log_format>
+    <log>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <max_size>512M</max_size>
+        <enabled>yes</enabled>
+      </rotation>
+    </log>
+    <alerts>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <max_size>512M</max_size>
+        <enabled>yes</enabled>
+      </rotation>
+    </alerts>
+    <archives>
+      <enabled>yes</enabled>
+      <format>json,plain</format>
+      <rotation>
+        <max_size>512M</max_size>
+        <enabled>yes</enabled>
+      </rotation>
+    </archives>
   </logging>

@@ -201,6 +201,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     const char *xml_max_size = "max_size";
     const char *xml_interval = "interval";
     const char *xml_rotate = "rotate";
+    const char *xml_compress = "compress";
 
     XML_NODE children = NULL;
     XML_NODE rotation_children = NULL;
@@ -213,6 +214,8 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     rotation_config->max_size = 0;
     rotation_config->interval = 0;
     rotation_config->rotate = 0;
+    rotation_config->rotation_enabled = 1;
+    rotation_config->compress_rotation = 1;
 
     if(!rotation_config->format) {
         os_calloc(1, sizeof(char *), rotation_config->format);
@@ -277,7 +280,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                     for (k = 0; rotation_children[k]; k++) {
                         if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
                             char c;
-                            switch (sscanf(rotation_children[k]->content, "%d%c", &rotation_config->max_size, &c)) {
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->max_size, &c)) {
                                 case 1:
                                     break;
                                 case 2:
@@ -317,7 +320,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_interval) == 0) {
                             char c;
-                            switch (sscanf(rotation_children[k]->content, "%d%c", &rotation_config->interval, &c)) {
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &rotation_config->interval, &c)) {
                                 case 1:
                                     break;
                                 case 2:
@@ -359,6 +362,26 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return OS_INVALID;
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_enabled) == 0) {
+                            if(strcmp(rotation_children[k]->content, "yes") == 0) {
+                                rotation_config->rotation_enabled = 1;
+                            } else if(strcmp(rotation_children[k]->content, "no") == 0) {
+                                rotation_config->rotation_enabled = 0;
+                            } else {
+                                merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(children);
+                                return(OS_INVALID);
+                            }
+                        } else if(strcmp(rotation_children[k]->element, xml_compress) == 0) {
+                            if(strcmp(rotation_children[k]->content, "yes") == 0) {
+                                rotation_config->compress_rotation = 1;
+                            } else if(strcmp(rotation_children[k]->content, "no") == 0) {
+                                rotation_config->compress_rotation = 0;
+                            } else {
+                                merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
+                                OS_ClearNode(children);
+                                return(OS_INVALID);
                             }
                         } else {
                             merror(XML_ELEMNULL);
