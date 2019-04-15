@@ -11,10 +11,12 @@ import yaml
 
 from api import __path__ as api_path
 from api.models.basic_info import BasicInfo
+from api.util import exception_handler
 
 logger = logging.getLogger('wazuh')
 
 
+@exception_handler
 def default_info():
     """Get basicinfo
 
