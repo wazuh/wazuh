@@ -102,8 +102,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return b'ok', b'Added request to API requests queue'
         elif command == b'dapi_res':
             return self.process_dapi_res(data)
-        elif command == b'dapi_cluster':
-            return self.process_dapi_cluster(data)
         elif command == b'dapi_err':
             dapi_client, error_msg = data.split(b' ', 1)
             asyncio.create_task(self.server.local_server.clients[dapi_client.decode()].send_request(command, error_msg))
@@ -188,19 +186,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return b'ok', b'Response forwarded to worker'
         else:
             raise exception.WazuhClusterError(3032, req_id)
-
-    def process_dapi_cluster(self, arguments: bytes) -> Tuple[bytes, bytes]:
-        api_call_info = json.loads(arguments.decode())
-        del api_call_info['arguments']['wait_for_complete']
-        if api_call_info['function'] == '/cluster/healthcheck':
-            filter_node = None if 'filter_node' not in api_call_info['arguments'] else \
-                               [api_call_info['arguments']['filter_node']]
-            cmd, res = self.get_health(filter_node)
-        else:
-            cmd, res = self.get_nodes(api_call_info['arguments'])
-            if api_call_info['function'] == '/cluster/nodes/:node_name':
-                res = res['items'][0] if len(res['items']) > 0 else {}
-        return cmd, json.dumps({'error': 0, 'data': res}).encode()
 
     def get_nodes(self, arguments: Dict) -> Tuple[bytes, Dict]:
         return b'ok', self.server.get_connected_nodes(**arguments)

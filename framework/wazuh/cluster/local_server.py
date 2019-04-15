@@ -156,14 +156,10 @@ class LocalServerHandlerWorker(LocalServerHandler):
     def process_request(self, command: bytes, data: bytes):
         self.logger.debug2("Command received: {}".format(command))
         if command == b'dapi':
-            api_call_name = json.loads(data.decode())['function']
-            if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
-                if self.server.node.client is None:
-                    raise WazuhClusterError(3023)
-                asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
-                return b'ok', b'Added request to API requests queue'
-            else:
-                return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
+            if self.server.node.client is None:
+                raise WazuhClusterError(3023)
+            asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
+            return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
 
