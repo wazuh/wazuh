@@ -954,7 +954,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
 
-                mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash->valuestring);
+                mdebug2("SHA256 from DB: %s SHA256 from summary: %s",wdb_response,hash->valuestring);
                 mdebug2("Requesting DB dump");
 
                 if (!first_scan) {
@@ -991,7 +991,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 break;
         }
 
-        /* Check the new md5 */
+        /* Check the new sha256 */
         char *wdb_response = NULL;
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
@@ -1011,7 +1011,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 /* Integrity check */
                 if(strcmp(wdb_response, hash_sha256)) {
 
-                    mdebug2("MD5 from DB: %s MD5 from summary: %s", wdb_response, hash_sha256);
+                    mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
                     mdebug2("Requesting DB dump");
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
