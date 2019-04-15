@@ -2282,7 +2282,9 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     float failedf = failed;
     float invalidf = invalid;
     float score = ((passedf/(failedf+passedf+invalidf))) * 100;
+    int total_checks = passed + failed + invalid;
 
+    cJSON_AddNumberToObject(json_summary, "total_checks", total_checks);
     cJSON_AddNumberToObject(json_summary, "score", score);
 
     cJSON_AddNumberToObject(json_summary, "start_time", start_time);

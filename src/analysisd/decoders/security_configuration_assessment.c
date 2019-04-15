@@ -32,7 +32,7 @@ static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheck(Eventinfo *lf, char *policy, int *socket);
 static int DeletePolicyCheckDistinct(Eventinfo *lf, char *policy_id,int scan_id, int *socket);
 static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__((unused)) int id , __attribute__((unused)) int scan_id,__attribute__((unused)) char * title,__attribute__((unused)) char *description, __attribute__((unused)) char *rationale, __attribute__((unused)) char *remediation,__attribute__((unused)) char * file, __attribute__((unused))char * directory,__attribute__((unused)) char * process, __attribute__((unused)) char * registry,__attribute__((unused)) char * reference,__attribute__((unused))char * result, char *status, char *reason,__attribute__((unused))char * policy_id,cJSON *event);
-static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int invalid, int total_checks, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
@@ -499,7 +499,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
     }
 }
 
-static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update) {
+static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int invalid,int total_checks,int score,char * hash,int update) {
     
     char *msg = NULL;
     char *response = NULL;
@@ -508,9 +508,9 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if(!update) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_scan_info %d|%d|%d|%s|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,score,hash);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_scan_info %d|%d|%d|%s|%d|%d|%d|%d|%d|%s",lf->agent_id,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,failed,invalid,total_checks,score,hash);
     } else {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,score,hash );
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update_scan_info_start %s|%d|%d|%d|%d|%d|%d|%d|%d|%s",lf->agent_id, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,failed,invalid,total_checks,score,hash );
     }
    
     if (pm_send_db(msg, response, socket) == 0)
@@ -686,6 +686,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *passed = NULL;
     cJSON *failed = NULL;
     cJSON *invalid = NULL;
+    cJSON *total_checks = NULL;
     cJSON *score = NULL;
     cJSON *hash = NULL;
     cJSON *file = NULL;
@@ -700,6 +701,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     passed = cJSON_GetObjectItem(event,"passed");
     failed = cJSON_GetObjectItem(event,"failed");
     invalid = cJSON_GetObjectItem(event,"invalid");
+    total_checks = cJSON_GetObjectItem(event,"total_checks");
     score = cJSON_GetObjectItem(event,"score");
     hash = cJSON_GetObjectItem(event,"hash");
     file = cJSON_GetObjectItem(event,"file");
@@ -758,6 +760,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!total_checks){
+        merror("Malformed JSON: field 'total_checks' not found");
+        return;
+    }
+
     if(!score){
         merror("Malformed JSON: field 'score' not found");
         return;
@@ -807,7 +814,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             break;
         case 0: // It exists, update
 
-            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,score->valueint,hash->valuestring,1);
+            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,1);
             if (result_event < 0)
             {
                 merror("Error updating scan policy monitoring database for agent %s", lf->agent_id);
@@ -821,7 +828,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             break;
         case 1: // It not exists, insert
             
-            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,score->valueint,hash->valuestring,0);
+            result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,0);
             if (result_event < 0)
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);

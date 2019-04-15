@@ -1099,6 +1099,8 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         char * policy_id;
         int pass;
         int fail;
+        int invalid;
+        int total_checks;
         int score;
         char *hash;
 
@@ -1196,6 +1198,36 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         if (!strncmp(curr, "NULL", 4))
+            invalid = -1;
+        else
+            invalid = strtol(curr,NULL,10);
+        
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            total_checks = -1;
+        else
+            total_checks = strtol(curr,NULL,10);
+        
+        *next++ = '\0';
+        curr = next;
+
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
             score = -1;
         else
             score = strtol(curr,NULL,10);
@@ -1203,7 +1235,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         hash = next;
-        if (result = wdb_sca_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,score,hash), result < 0) {
+        if (result = wdb_sca_scan_info_save(wdb,pm_start_scan,pm_end_scan,scan_id,policy_id,pass,fail,invalid,total_checks,score,hash), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
@@ -1304,6 +1336,8 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         int scan_id;
         int pass;
         int fail;
+        int invalid;
+        int total_checks;
         int score;
         char *hash;
 
@@ -1407,6 +1441,36 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         if (!strncmp(curr, "NULL", 4))
+            invalid = -1;
+        else
+            invalid = strtol(curr,NULL,10);
+        
+        *next++ = '\0';
+        curr = next;
+        
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
+            total_checks = -1;
+        else
+            total_checks = strtol(curr,NULL,10);
+        
+        *next++ = '\0';
+        curr = next;
+        
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid configuration assessment query syntax.");
+            mdebug2("configuration assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        if (!strncmp(curr, "NULL", 4))
             score = -1;
         else
             score = strtol(curr,NULL,10);
@@ -1415,7 +1479,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
         hash = next;
 
-        if (result = wdb_sca_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,score,hash), result < 0) {
+        if (result = wdb_sca_scan_info_update_start(wdb, policy_id,pm_start_scan,pm_end_scan,scan_id,pass,fail,invalid,total_checks,score,hash), result < 0) {
             mdebug1("Cannot save configuration assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment information.");
         } else {
