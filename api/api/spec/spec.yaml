@@ -7365,11 +7365,11 @@ paths:
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/group'
         - $ref: '#/components/parameters/level'
         - $ref: '#/components/parameters/file'
         - $ref: '#/components/parameters/pathFilter'
-        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/pci'
         - $ref: '#/components/parameters/gdpr'
       responses:

@@ -1,0 +1,36 @@
+---
+test_name: GET /rules
+
+stages:
+  - name: Try to show the rules of the system
+
+    request:
+      url: http://127.0.0.1:55000/rules
+      method: GET
+      params:
+        list_agents:
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Generic template for all syslog rules.",
+            "details": {
+              "category": "syslog",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "syslog"
+            ],
+            "id": 1,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          }
+        ]
+        totalItems: "2168"
+---
