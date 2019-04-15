@@ -10,12 +10,10 @@ import os
 import random
 import time
 from functools import reduce
-from importlib import import_module
 from operator import or_
 from typing import Callable, Dict, Tuple
 
 import wazuh.results as wresults
-from wazuh import Wazuh
 from wazuh import exception, agent, common
 from wazuh.cluster import local_client, cluster, common as c_common
 from wazuh.wlogging import WazuhLogger
@@ -97,7 +95,7 @@ class DistributedAPI:
                 response = await self.execute_remote_request()
 
             try:
-                response = json.loads(response, object_hook=as_wazuh_object) if isinstance(response, str) else response
+                response = json.loads(response, object_hook=c_common.as_wazuh_object) if isinstance(response, str) else response
             except json.decoder.JSONDecodeError:
                 response = {'message': response}
 
@@ -155,13 +153,13 @@ class DistributedAPI:
             e.dapi_errors = self.get_error_info(e)
             if self.debug:
                 raise
-            return json.dumps(e, cls=WazuhJSONEncoder)
+            return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except exception.WazuhInternalError as e:
             e.dapi_errors = self.get_error_info(e)
             self.logger.error(f"{e.message}", exc_info=True)
             if self.debug:
                 raise
-            return json.dumps(e, cls=WazuhJSONEncoder)
+            return json.dumps(e, cls=c_common.WazuhJSONEncoder)
         except Exception as e:
             self.logger.error(f'Error executing API request locally: {str(e)}', exc_info=True)
             if self.debug:
@@ -169,7 +167,7 @@ class DistributedAPI:
             return json.dumps(exception.WazuhInternalError(1000,
                                                            extra_message=str(e),
                                                            dapi_errors=self.get_error_info(e)),
-                              cls=WazuhJSONEncoder)
+                              cls=c_common.WazuhJSONEncoder)
 
     def to_dict(self):
         return {"f": self.f,
@@ -192,7 +190,10 @@ class DistributedAPI:
     async def send_tmp_file(self, node_name=None):
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
-        res = await self.node.send_file(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']), node_name)
+        res = json.loads(await self.node.send_file(os.path.join(common.ossec_path,
+                                                                self.f_kwargs['tmp_file']),
+                                                   node_name),
+                         object_hook=c_common.as_wazuh_object)
         os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
         if res.startswith(b'Error'):
             return exception.WazuhInternalError(extra_message=res.decode())
@@ -205,9 +206,11 @@ class DistributedAPI:
         """
         if 'tmp_file' in self.f_kwargs:
             await self.send_tmp_file()
-        return json.loads(await self.node.execute(command=b'dapi', data=json.dumps(self.to_dict(), cls=WazuhJSONEncoder).encode(),
+        return json.loads(await self.node.execute(command=b'dapi',
+                                                  data=json.dumps(self.to_dict(),
+                                                                  cls=c_common.WazuhJSONEncoder).encode(),
                                                   wait_for_complete=self.wait_for_complete),
-                          object_hook=as_wazuh_object)
+                          object_hook=c_common.as_wazuh_object)
 
     async def forward_request(self) -> [wresults.WazuhResult, exception.WazuhException]:
         """
@@ -236,10 +239,10 @@ class DistributedAPI:
                 response = json.loads(await self.node.execute(b'dapi_forward',
                                                               "{} {}".format(node_name,
                                                                              json.dumps(self.to_dict(),
-                                                                                        cls=WazuhJSONEncoder)
+                                                                                        cls=c_common.WazuhJSONEncoder)
                                                                              ).encode(),
                                                               self.wait_for_complete),
-                                      object_hook=as_wazuh_object)
+                                      object_hook=c_common.as_wazuh_object)
             return response if isinstance(response, (wresults.WazuhResult, exception.WazuhException)) else wresults.WazuhResult(response)
 
         # get the node(s) who has all available information to answer the request.
@@ -264,7 +267,7 @@ class DistributedAPI:
 
         :return: node name and whether the result is list or not
         """
-        select_node = {'fields': ['node_name']}
+        select_node = ['node_name']
         if 'agent_id' in self.f_kwargs:
             # the request is for multiple agents
             if isinstance(self.f_kwargs['agent_id'], list):
@@ -330,14 +333,14 @@ class APIRequestQueue:
             name_2 = '' if len(names) == 1 else names[1] + ' '
             node = self.server.client if names[0] == 'master' else self.server.clients[names[0]]
             try:
-                request = json.loads(request, object_hook=as_wazuh_object)
+                request = json.loads(request, object_hook=c_common.as_wazuh_object)
                 self.logger.info("Receiving request: {} from {}".format(
                     request['f'].__name__, names[0] if not name_2 else '{} ({})'.format(names[0], names[1])))
 
                 result = await DistributedAPI(**request,
                                               logger=self.logger,
                                               node=node).distribute_function()
-                task_id = await node.send_string(json.dumps(result, cls=WazuhJSONEncoder).encode())
+                task_id = await node.send_string(json.dumps(result, cls=c_common.WazuhJSONEncoder).encode())
             except Exception as e:
                 self.logger.error("Error in distributed API: {}".format(e), exc_info=True)
                 task_id = b'Error in distributed API: ' + str(e).encode()

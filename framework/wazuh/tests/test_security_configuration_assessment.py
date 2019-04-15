@@ -79,7 +79,7 @@ class TestPolicyMonitoring(TestCase):
         """
         with patch('wazuh.security_configuration_assessment.WazuhDBConnection') as mock_wdb:
             mock_wdb.return_value.execute.side_effect = get_fake_sca_data
-            fields = {'fields': ['name', 'policy_id']}
+            fields = ['name', 'policy_id']
             result = get_sca_list('000', select=fields)
             assert (isinstance(result, dict))
             assert ('totalItems' in result)
