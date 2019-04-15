@@ -15,9 +15,9 @@ def get_item_agent(agent_id, offset, limit, select, search, sort, filters, valid
     Agent(agent_id).get_basic_information()
 
     if select:
-        select_fields = list(set(select['fields']) & set(valid_select_fields))
+        select_fields = list(set(select) & set(valid_select_fields))
         if select_fields == []:
-            incorrect_fields = map(lambda x: str(x), set(select['fields']) - set(valid_select_fields))
+            incorrect_fields = map(lambda x: str(x), set(select) - set(valid_select_fields))
             raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}".\
                 format(', '.join(valid_select_fields), ','.join(incorrect_fields)))
     else:
@@ -164,7 +164,7 @@ def get_netiface_agent(agent_id, offset=0, limit=common.database_limit, select={
 
 
 def _get_agent_items(func, offset, limit, select, filters, search, sort, array=False):
-    agents, result = Agent.get_agents_overview(select={'fields': ['id']})['items'], []
+    agents, result = Agent.get_agents_overview(select=['id'])['items'], []
 
     total = 0
 

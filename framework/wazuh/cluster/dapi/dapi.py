@@ -267,7 +267,7 @@ class DistributedAPI:
 
         :return: node name and whether the result is list or not
         """
-        select_node = {'fields': ['node_name']}
+        select_node = ['node_name']
         if 'agent_id' in self.f_kwargs:
             # the request is for multiple agents
             if isinstance(self.f_kwargs['agent_id'], list):
