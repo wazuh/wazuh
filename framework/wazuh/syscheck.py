@@ -134,8 +134,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     else:
         select = set(select)
         if not select.issubset(parameters):
-            raise WazuhError(1724, "Allowed select fields: {0}. Fields: {1}.".format(', '.join(parameters),
-                                                                                         ','.join(select - parameters)))
+            raise WazuhError(1724, ', '.join(select - parameters), "Allowed fields are: {0}".format(', '.join(parameters)))
 
     if 'hash' in filters:
         or_filters = {'md5': filters['hash'], 'sha1': filters['hash'], 'sha256': filters['hash']}
