@@ -36,9 +36,9 @@ char* getPrimaryIP(){
     struct ifaddrs *ifaddr, *ifa;
     int size;
     int i = 0;
-    #ifdef __linux__
+#ifdef __linux__
     int min_metric = INT_MAX;
-    #endif
+#endif
 
     if (getifaddrs(&ifaddr) == -1) {
         mterror(WM_CONTROL_LOGTAG, "at getPrimaryIP(): getifaddrs() failed.");
@@ -55,66 +55,68 @@ char* getPrimaryIP(){
 
         if(!ifaces_list[0]){
             mtdebug1(WM_CONTROL_LOGTAG, "No network interface found when reading agent IP.");
-            free(ifaces_list);
+            os_free(ifaces_list);
             return agent_ip;
         }
     }
-    #ifdef __MACH__
+#ifdef __MACH__
     OSHash *gateways = OSHash_Create();
     if (getGatewayList(gateways) < 0){
-        mterror(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
+        mtdebug1(WM_CONTROL_LOGTAG, "Unable to obtain the Default Gateway list");
+        os_free(ifaces_list);
+        return agent_ip;
     }
     gateway *gate;
-    #endif
+#endif
 
     for (i=0; i<size; i++) {
         cJSON *object = cJSON_CreateObject();
-        #ifdef __linux__
-            getNetworkIface_linux(object, ifaces_list[i], ifaddr);
-        #elif defined __MACH__
-            if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
-                if(!gate->isdefault){
-                    free(gate);
-                    continue;
-                }
-                if(gate->addr[0]=='l'){
-                    free(gate);
-                    continue;
-                }
-                getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
+#ifdef __linux__
+        getNetworkIface_linux(object, ifaces_list[i], ifaddr);
+#elif defined __MACH__
+        if(gate = OSHash_Get(gateways, ifaces_list[i]), gate){
+            if(!gate->isdefault){
+                free(gate);
+                continue;
             }
-        #endif
+            if(gate->addr[0]=='l'){
+                free(gate);
+                continue;
+            }
+            getNetworkIface_bsd(object, ifaces_list[i], ifaddr, gate);
+        }
+#endif
         cJSON *interface = cJSON_GetObjectItem(object, "iface");
         cJSON *ipv4 = cJSON_GetObjectItem(interface, "IPv4");
         if(ipv4){
-            #ifdef __linux__
+#ifdef __linux__
             cJSON * gateway = cJSON_GetObjectItem(ipv4, "gateway");
             if (gateway) {
-                    cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
-                    if (metric && metric->valueint < min_metric) {
-                        cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                        cJSON *address = cJSON_GetArrayItem(addresses,0);
-                        if(agent_ip != NULL){
-                            free(agent_ip);
-                        }
-                        os_strdup(address->valuestring, agent_ip);
-                        min_metric = metric->valueint;
+                cJSON * metric = cJSON_GetObjectItem(ipv4, "metric");
+                if (metric && metric->valueint < min_metric) {
+                    cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+                    cJSON *address = cJSON_GetArrayItem(addresses,0);
+                    if(agent_ip != NULL){
+                        free(agent_ip);
                     }
+                    os_strdup(address->valuestring, agent_ip);
+                    min_metric = metric->valueint;
+                }
             }
-            #elif defined __MACH__
-                cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
-                cJSON *address = cJSON_GetArrayItem(addresses,0);
-                os_strdup(address->valuestring, agent_ip);
-                cJSON_Delete(object);
-                break;
-            #endif
+#elif defined __MACH__
+            cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
+            cJSON *address = cJSON_GetArrayItem(addresses,0);
+            os_strdup(address->valuestring, agent_ip);
+            cJSON_Delete(object);
+            break;
+#endif
             
         }
         cJSON_Delete(object);
     }
-    #if defined __MACH__
+#if defined __MACH__
     OSHash_Free(gateways);
-    #endif
+#endif
 
     freeifaddrs(ifaddr);
     for (i=0; ifaces_list[i]; i++){

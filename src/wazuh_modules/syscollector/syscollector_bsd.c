@@ -728,13 +728,12 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         return;
     }
 
-    #if defined(__MACH__)
+#if defined(__MACH__)
     gateways = OSHash_Create();
     if (getGatewayList(gateways) < 0){
-        mterror(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
+        mtwarn(WM_SYS_LOGTAG, "Unable to obtain the Default Gateway list");
     }
-    #endif
-
+#endif
 
     for (i=0; i < size_ifaces; i++){
 
@@ -760,9 +759,9 @@ void sys_network_bsd(int queue_fd, const char* LOCATION){
         free(string);
     }
 
-    #if defined(__MACH__)
-        OSHash_Free(gateways);
-    #endif
+#if defined(__MACH__)
+    OSHash_Free(gateways);
+#endif
     freeifaddrs(ifaddrs_ptr);
     for (i=0; ifaces_list[i]; i++){
         free(ifaces_list[i]);
@@ -1209,7 +1208,7 @@ int getGatewayList(OSHash *gateway_list){
                     gate->isdefault = 1;
                 #endif
                     OSHash_Add(gateway_list, ifname, gate);
-                    mdebug2("Gateway of interface %s : %s Default: %d\n", ifname, gate->addr, gate->isdefault);
+                    mdebug2("Gateway of interface %s : %s Default: %d", ifname, gate->addr, gate->isdefault);
                 }
             }
 
