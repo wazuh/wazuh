@@ -1298,7 +1298,7 @@ void wm_vuldet_adapt_title(char *title, char *cve) {
         offset += strlen(cve) + 1;
     }
     os_strdup(title + offset, title_ofs);
-    strncpy(title, title_ofs, strlen(title_ofs));
+    strncpy(title, title_ofs, strlen(title_ofs) + 1);
     free(title_ofs);
 }
 
