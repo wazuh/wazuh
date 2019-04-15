@@ -14,7 +14,6 @@
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
-#include "wazuhdb_op.h"
 
 #ifndef WIN32
 
