@@ -57,10 +57,10 @@ async def get_agents(filter_node=None, filter_status=None):
                   'f_kwargs': {
                       'filters': {'status': ','.join(filter_status), 'node_name': ','.join(filter_node)},
                       'limit': None,
-                      'wait_for_complete': False,
-                      'select': select_fields
+                      'select': list(select_fields)
                       },
-                  'from_cluster': False
+                  'from_cluster': False,
+                  'wait_for_complete': False
                   }
 
     result = json.loads(await local_client.execute(command=b'dapi',
@@ -72,6 +72,6 @@ async def get_agents(filter_node=None, filter_status=None):
         raise result
     # add unknown value to unfilled variables in result. For example, never connected agents will miss the 'version'
     # variable.
-    filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['data']['items']]
-    result['data']['items'] = filled_result
+    filled_result = [{**r, **{key: 'unknown' for key in select_fields - r.keys()}} for r in result['items']]
+    result['items'] = filled_result
     return result
