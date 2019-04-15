@@ -847,6 +847,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         char *id;
         char *description;
         char *references;
+        char *hash_file;
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
@@ -892,8 +893,19 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         description = curr;
         *next++ = '\0';
 
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        hash_file = curr;
+        *next++ = '\0';
+
         references = next;
-        if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references), result < 0) {
+        if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references,hash_file), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");
         } else {

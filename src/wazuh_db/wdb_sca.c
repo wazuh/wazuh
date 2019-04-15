@@ -558,7 +558,7 @@ int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule){
 
 
 /* Insert policy entry. Returns 0 on success or -1 on error (new) */
-int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references ) {
+int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references, char *hash_file) {
 
      if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_sca_policy_info_save(): cannot begin transaction");
@@ -579,6 +579,7 @@ int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char *
     sqlite3_bind_text(stmt, 3, id, -1, NULL);
     sqlite3_bind_text(stmt, 4, description, -1, NULL);
     sqlite3_bind_text(stmt, 5, references, -1, NULL);
+    sqlite3_bind_text(stmt, 6, hash_file, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;

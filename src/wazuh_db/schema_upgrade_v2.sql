@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS sca_policy (
    file TEXT,
    id TEXT,
    description TEXT,
+   hash_file TEXT,
    `references` TEXT
 );
 

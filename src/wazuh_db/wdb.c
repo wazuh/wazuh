@@ -79,7 +79,7 @@ static const char *SQL_STMT[] = {
     "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM sca_policy WHERE id = ?;",
-    "INSERT INTO sca_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
+    "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
     "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
     "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
     "SELECT id FROM sca_policy;",

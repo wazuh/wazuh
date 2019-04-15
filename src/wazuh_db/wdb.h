@@ -247,7 +247,7 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output);
 int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output);
 
 /* Insert policy entry. Returns number of affected rows or -1 on error.  */
-int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references);
+int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references, char *hash_file);
 
 /* Gets the result of all policies in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_policy_get_id(wdb_t * wdb, char * output);

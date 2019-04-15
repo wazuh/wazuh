@@ -35,7 +35,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *rule);
-static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references);
+static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
@@ -527,7 +527,7 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
     }
 }
 
-static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references) {
+static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file) {
     
     char *msg = NULL;
     char *response = NULL;
@@ -535,7 +535,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references,hash_file);
    
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -834,6 +834,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+
     int result_event = 0;
     char *hash_scan_info = NULL;
     os_sha256 hash_sha256 = {0};
@@ -901,6 +902,19 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     char *references_db = NULL;
     char *description_db = NULL;
+    char *hash_file;
+    char file_path[OS_MAXSTR];
+    snprintf(file_path, OS_MAXSTR -1, "%s/%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR, file->valuestring);
+
+    os_malloc(33*sizeof(char), hash_file);
+
+    if(OS_MD5_File(file_path, hash_file, OS_TEXT) != 0){
+        merror("Unable to open the file %s to extract the MD5", file->valuestring);
+    }
+    else{
+        mdebug2("MD5 of the file %s: %s",file->valuestring, hash_file);
+    }
+
     result_db = FindPolicyInfo(lf,policy_id->valuestring,socket);
     
     switch (result_db)
@@ -909,7 +923,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
         case 1: // It not exists, insert
-            
             if(references) {
                 if(!references->valuestring) {
                     merror("Malformed JSON: field 'references' must be a string");
@@ -926,17 +939,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 description_db = description->valuestring;
             }
 
-            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db);
+            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file);
             if (result_event < 0)
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
             }
-            
             break;
         default:
             break;
     }
 
+    os_free(hash_file);
     os_free(hash_scan_info);
 
     char *wdb_response = NULL;
