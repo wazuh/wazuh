@@ -83,7 +83,7 @@ void* wm_aws_main(wm_aws *aws_config) {
         }
 
         for (cur_service = aws_config->services; cur_service; cur_service = cur_service->next) {
-            if (cur_service->aws_account_id && && cur_service->type && cur_service->aws_account_alias) {
+            if (cur_service->aws_account_id && cur_service->type && cur_service->aws_account_alias) {
                 mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: [%s] %s (%s)", cur_service->type, cur_service->aws_account_alias, cur_service->aws_account_id);
             } else if (cur_service->aws_account_id && cur_service->type) {
                 mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: [%s] %s", cur_service->type, cur_service->aws_account_id);
