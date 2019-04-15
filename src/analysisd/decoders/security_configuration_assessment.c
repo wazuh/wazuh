@@ -18,7 +18,7 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
-#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include "string_op.h"
 #include "../../remoted/remoted.h"
 #include <time.h>
@@ -836,13 +836,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     int result_event = 0;
     char *hash_scan_info = NULL;
-    os_md5 hash_md5 = {0};
+    os_sha256 hash_sha256 = {0};
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
     
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
     int scan_id_old = 0;
-    sscanf(hash_scan_info,"%s %d",hash_md5,&scan_id_old);
+    sscanf(hash_scan_info, "%s %d", hash_sha256, &scan_id_old);
 
     switch (result_db)
     {
@@ -858,7 +858,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             } else {
 
                 /* Compare hash with previous hash */
-                if(strcmp(hash_md5,hash->valuestring)) {
+                if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                     }
@@ -878,7 +878,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             } else {
 
                 /* Compare hash with previous hash */
-                if(strcmp(hash_md5,hash->valuestring)) {
+                if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                        
@@ -1000,18 +1000,18 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
         if (!result_db)
         {   
             char *hash_scan_info = NULL;
-            os_md5 hash_md5 = {0};
+            os_sha256 hash_sha256 = {0};
             os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
             
             int result_db_hash = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
-            sscanf(hash_scan_info,"%s",hash_md5);
+            sscanf(hash_scan_info, "%s", hash_sha256);
 
             if(!result_db_hash) {
             
                 /* Integrity check */
-                if(strcmp(wdb_response,hash_md5)) {
+                if(strcmp(wdb_response, hash_sha256)) {
 
-                    mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash_md5);
+                    mdebug2("MD5 from DB: %s MD5 from summary: %s", wdb_response, hash_sha256);
                     mdebug2("Requesting DB dump");
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
