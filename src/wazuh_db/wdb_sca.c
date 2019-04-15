@@ -132,8 +132,6 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 
 /* Insert configuration assessment entry. Returns 0 on success or -1 on error (new) */
 int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id,char * command,char *status,char *reason) {
-    int WDB_QUERY = 0;
-
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_rootcheck_save(): cannot begin transaction");
         return -1;
@@ -141,18 +139,12 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
 
     sqlite3_stmt *stmt = NULL;
 
-    if (reason == NULL) {
-        WDB_QUERY = WDB_STMT_SCA_INSERT;
-    } else {
-        WDB_QUERY = WDB_STMT_SCA_INSERT_STATUS;
-    }
-
-    if (wdb_stmt_cache(wdb, WDB_QUERY) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_INSERT) < 0) {
         mdebug1("at wdb_rootcheck_save(): cannot cache statement");
         return -1;
     }
 
-    stmt = wdb->stmt[WDB_QUERY];
+    stmt = wdb->stmt[WDB_STMT_SCA_INSERT];
 
     sqlite3_bind_int(stmt, 1, id);
     sqlite3_bind_int(stmt, 2, scan_id);
@@ -165,17 +157,11 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
     sqlite3_bind_text(stmt, 9, process, -1, NULL);
     sqlite3_bind_text(stmt, 10, registry, -1, NULL);
     sqlite3_bind_text(stmt, 11, reference, -1, NULL);
-
-    if (reason == NULL) {
-        sqlite3_bind_text(stmt, 12, result, -1, NULL);
-        sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
-        sqlite3_bind_text(stmt, 14, command, -1, NULL);
-    } else {
-        sqlite3_bind_text(stmt, 12, policy_id, -1, NULL);
-        sqlite3_bind_text(stmt, 13, command, -1, NULL);
-        sqlite3_bind_text(stmt, 14, status, -1, NULL);
-        sqlite3_bind_text(stmt, 15, reason, -1, NULL);
-    }
+    sqlite3_bind_text(stmt, 12, result, -1, NULL);
+    sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
+    sqlite3_bind_text(stmt, 14, command, -1, NULL);
+    sqlite3_bind_text(stmt, 15, status, -1, NULL);
+    sqlite3_bind_text(stmt, 16, reason, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -730,31 +716,18 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id, char * status
 
     sqlite3_stmt *stmt = NULL;
 
-    if (reason == NULL) {
-        if (wdb_stmt_cache(wdb, WDB_STMT_SCA_UPDATE) < 0) {
-            mdebug1("at wdb_rootcheck_update(): cannot cache statement");
-            return -1;
-        }
-
-        stmt = wdb->stmt[WDB_STMT_SCA_UPDATE];
-
-        sqlite3_bind_text(stmt, 1, result,-1, NULL);
-        sqlite3_bind_int(stmt, 2, scan_id);
-        sqlite3_bind_int(stmt, 3, id);
-    } else {
-
-        if (wdb_stmt_cache(wdb, WDB_STMT_SCA_UPDATE_STATUS) < 0) {
-            mdebug1("at wdb_rootcheck_update(): cannot cache statement");
-            return -1;
-        }
-
-        stmt = wdb->stmt[WDB_STMT_SCA_UPDATE_STATUS];
-
-        sqlite3_bind_text(stmt, 1, status,-1, NULL);
-        sqlite3_bind_text(stmt, 2, reason,-1, NULL);
-        sqlite3_bind_int(stmt, 3, scan_id);
-        sqlite3_bind_int(stmt, 4, id);
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_UPDATE) < 0) {
+        mdebug1("at wdb_rootcheck_update(): cannot cache statement");
+        return -1;
     }
+
+    stmt = wdb->stmt[WDB_STMT_SCA_UPDATE];
+
+    sqlite3_bind_text(stmt, 1, result,-1, NULL);
+    sqlite3_bind_int(stmt, 2, scan_id);
+    sqlite3_bind_text(stmt, 3, status,-1, NULL);
+    sqlite3_bind_text(stmt, 4, reason,-1, NULL);
+    sqlite3_bind_int(stmt, 5, id);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);

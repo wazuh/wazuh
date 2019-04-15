@@ -67,10 +67,8 @@ static const char *SQL_STMT[] = {
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
     "SELECT fim_third_check FROM scan_info WHERE module = ?;",
     "SELECT id,result FROM sca_check WHERE id = ?;",
-    "UPDATE sca_check SET result = ?, scan_id = ? WHERE id = ?;",
-    "UPDATE sca_check SET status = ?, reason = ?, scan_id = ? WHERE id = ?;",
-    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
-    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,'',?,?,?,?);", // insert status
+    "UPDATE sca_check SET result = ?, scan_id = ?, status = ?, reason = ? WHERE id = ?;",
+    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,score,hash) VALUES (?,?,?,?,?,?,?,?);",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",

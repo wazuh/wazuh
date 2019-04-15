@@ -685,6 +685,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *references = NULL;
     cJSON *passed = NULL;
     cJSON *failed = NULL;
+    cJSON *invalid = NULL;
     cJSON *score = NULL;
     cJSON *hash = NULL;
     cJSON *file = NULL;
@@ -698,6 +699,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     pm_scan_end = cJSON_GetObjectItem(event,"end_time");
     passed = cJSON_GetObjectItem(event,"passed");
     failed = cJSON_GetObjectItem(event,"failed");
+    invalid = cJSON_GetObjectItem(event,"invalid");
     score = cJSON_GetObjectItem(event,"score");
     hash = cJSON_GetObjectItem(event,"hash");
     file = cJSON_GetObjectItem(event,"file");
@@ -748,6 +750,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     if(!failed){
         merror("Malformed JSON: field 'failed' not found");
+        return;
+    }
+
+    if(!invalid){
+        merror("Malformed JSON: field 'invalid' not found");
         return;
     }
 

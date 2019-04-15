@@ -505,7 +505,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 time_t time_end = 0;
                 time_start = time(NULL);
 
-                minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
+                minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
                 if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
@@ -1264,13 +1264,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                         cJSON *event = NULL;
                         if (n_reason > 0){
-                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",inv_check_reasons[n_reason-1]);
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,NULL,inv_check_reasons[n_reason-1]);
                         } else {
-                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"error",NULL);
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,NULL,NULL);
                         }
 
                         if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],"error",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                            if(wm_sca_check_hash(cis_db[cis_db_index],NULL,profile,event,id_check_p,cis_db_index) && !requirements_scan) {
                                 wm_sca_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
@@ -2500,7 +2500,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
        os_free(final_str_command);
     }
 
-    if (!strcmp(result, "error") && reason != NULL) {
+    if (!result && reason != NULL) {
         cJSON_AddStringToObject(check, "status", "Not applicable");
         cJSON_AddStringToObject(check, "reason", reason);
     } else {
@@ -2543,7 +2543,6 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
     sprintf(id_hashed, "%d", pm_id->valueint);
 
     hashed_result = OSHash_Get(cis_db_hash,id_hashed);
-
     if(hashed_result){
         if(strcmp(result,hashed_result->result) == 0) {
             return 0;
@@ -2551,7 +2550,11 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
             cis_db_info_t *elem;
 
             os_calloc(1,sizeof(cis_db_info_t),elem);
-            os_strdup(result,elem->result);
+            if (!result) {
+                elem->result = "";
+            } else {
+                os_strdup(result,elem->result);
+            }
 
             cJSON *obj = cJSON_Duplicate(event,1);
             elem->event = NULL;
@@ -2578,7 +2581,11 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
         cis_db_info_t *elem;
 
         os_calloc(1,sizeof(cis_db_info_t),elem);
-        os_strdup(result,elem->result);
+        if (!result) {
+            elem->result = "";
+        } else {
+            os_strdup(result,elem->result);
+        }
 
         cJSON *obj = cJSON_Duplicate(event,1);
         elem->event = NULL;
