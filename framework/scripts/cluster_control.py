@@ -64,7 +64,7 @@ async def print_health(config, more, filter_node):
 
     for node, node_info in sorted(result["nodes"].items()):
 
-        msg2 += "\n    {} ({})\n".format(node, node_info['info']['address'])
+        msg2 += "\n    {} ({})\n".format(node, node_info['info']['ip'])
         msg2 += "        Version: {}\n".format(node_info['info']['version'])
         msg2 += "        Type: {}\n".format(node_info['info']['type'])
         msg2 += "        Active agents: {}\n".format(node_info['info']['n_active_agents'])
