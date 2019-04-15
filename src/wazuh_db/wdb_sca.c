@@ -502,6 +502,38 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output) {
     }
 }
 
+int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output) {
+
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("cannot begin transaction");
+        return -1;
+    }
+
+    sqlite3_stmt *stmt = NULL;
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_SCA_POLICY_SHA256) < 0) {
+        mdebug1("cannot cache statement");
+        return -1;
+    }
+
+    stmt = wdb->stmt[WDB_STMT_SCA_POLICY_SHA256];
+
+    sqlite3_bind_text(stmt, 1, id, -1, NULL);
+
+    switch (sqlite3_step(stmt)) {
+        case SQLITE_ROW:
+            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 0));
+            return 1;
+            break;
+        case SQLITE_DONE:
+            return 0;
+            break;
+        default:
+            merror(" at sqlite3_step(): %s", sqlite3_errmsg(wdb->db));
+            return -1;
+    }
+}
+
 int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_sca_compliance_save(): cannot begin transaction");

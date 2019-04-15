@@ -18,6 +18,10 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
+<<<<<<< HEAD
+=======
+#include "os_crypto/md5/md5_op.h"
+>>>>>>> 559b08132... Change MD5 to SHA256 and provide fucntionality to retrieve the SHA256 of a policy from the DB
 #include "os_crypto/sha256/sha256_op.h"
 #include "string_op.h"
 #include "../../remoted/remoted.h"
@@ -26,6 +30,7 @@
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
+static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *response);
 static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *wdb_response);
 static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
@@ -377,6 +382,31 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
     }
 
     free(response);
+    return retval;
+}
+
+static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *response) {
+
+    char *msg = NULL;
+    response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy_sha256 %s", lf->agent_id, policy);
+
+    if (pm_send_db(msg, response, socket) == 0) {
+        if (!strcmp(response, "empty")){
+            retval = 1;
+        }
+        else if (strstr(response, "err")){
+            retval = -1;
+        } else {
+            retval = 0;
+        }
+    }
+    
     return retval;
 }
 
@@ -906,13 +936,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     char file_path[OS_MAXSTR];
     snprintf(file_path, OS_MAXSTR -1, "%s/%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR, file->valuestring);
 
-    os_malloc(33*sizeof(char), hash_file);
+    os_malloc(65*sizeof(char), hash_file);
 
-    if(OS_MD5_File(file_path, hash_file, OS_TEXT) != 0){
-        merror("Unable to open the file %s to extract the MD5", file->valuestring);
+    if(OS_SHA256_File(file_path, hash_file, OS_TEXT) != 0){
+        merror("Unable to open the file %s to extract the SHA256", file->valuestring);
     }
     else{
-        mdebug2("MD5 of the file %s: %s",file->valuestring, hash_file);
+        mdebug2("SHA256 of the file %s: %s",file->valuestring, hash_file);
     }
 
     result_db = FindPolicyInfo(lf,policy_id->valuestring,socket);
