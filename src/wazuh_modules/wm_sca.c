@@ -11,7 +11,7 @@
 
 #include "wmodules.h"
 #include <os_net/os_net.h>
-#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
 
@@ -99,7 +99,7 @@ static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
 
 OSHash **cis_db;
-char **last_md5;
+char **last_sha256;
 cis_db_hash_info_t *cis_db_for_hash;
 
 static w_queue_t * request_queue;
@@ -175,8 +175,8 @@ void * wm_sca_main(wm_sca_t * data) {
     /* Create summary hash for each policy file */
     if(data->profile){
         for(i = 0; data->profile[i]; i++) {
-            os_realloc(last_md5, (i + 2) * sizeof(char *), last_md5);
-            os_calloc(1,sizeof(os_md5),last_md5[i]);
+            os_realloc(last_sha256, (i + 2) * sizeof(char *), last_sha256);
+            os_calloc(1,sizeof(os_sha256),last_sha256[i]);
         }
     }
 
@@ -525,7 +525,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 if(integrity_hash) {
                     wm_delay(1000 * data->summary_delay);
                     wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash,first_scan,cis_db_index);
-                    snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
+                    snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash);
                     os_free(integrity_hash);
                 }
 
@@ -2555,7 +2555,6 @@ static void wm_sca_free_hash_data(cis_db_info_t *event) {
 }
 
 static char *wm_sca_hash_integrity(int policy_index) {
-    os_md5 md5_hash;
     char *str = NULL;
 
     int i;
@@ -2569,9 +2568,10 @@ static char *wm_sca_hash_integrity(int policy_index) {
     }
 
     if(str) {
-        OS_MD5_Str(str,-1,md5_hash);
+        os_sha256 hash;
+        OS_SHA256_String(str, hash);
         os_free(str);
-        return strdup(md5_hash);
+        return strdup(hash);
     }
 
     return NULL;
