@@ -16,12 +16,16 @@ class WazuhException(Exception):
 
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
-        1000: 'Wazuh Internal Error',
+        1000: {'message': 'Wazuh Internal Error',
+               'remediation': ''
+               },
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
         1004: 'Malformed command output ',
-        1005: 'Error reading file',
+        1005: {'message': 'Error reading file',
+               'remediation': ''
+               },
         1006: 'File/directory does not exist',
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
@@ -29,7 +33,9 @@ class WazuhException(Exception):
         1013: 'Unable to connect with socket',
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
-        1016: 'Error moving file',
+        1016: {'message': 'Error moving file',
+               'remediation': 'Please, ensure file and destiny folder have right permissions'
+               },
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
@@ -44,8 +50,12 @@ class WazuhException(Exception):
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
         1111: "Remote group file updates are only available in 'agent.conf' file",
-        1112: "Empty files aren't supported",
-        1113: "XML syntax error",
+        1112: {'message': 'Empty files are not supported',
+               'remediation': 'Please, provide a non-empty file'
+               },
+        1113: {'message': 'XML syntax error',
+               'remediation': 'Please, ensure file content has correct XML'
+               },
         1114: "Wazuh syntax error",
         1115: "Error executing verify-agent-conf",
 
@@ -146,13 +156,23 @@ class WazuhException(Exception):
 
         # Manager:
         1900: 'Error restarting manager',
-        1901: '\'execq\' socket has not been created',
-        1902: 'Could not connect to \'execq\' socket',
+        1901: {'message': '\'execq\' socket has not been created',
+               'remediation': ''
+               },
+        1902: {'message': 'Could not connect to \'execq\' socket',
+               'remediation': ''
+               },
         1903: 'Error deleting temporary file from API',
         1904: 'Bad data from \'execq\'',
-        1905: 'File was not updated because it already exists',
-        1906: 'File does not exist',
-        1907: 'File could not be deleted',
+        1905: {'message': 'File could not be updated, it already exists',
+               'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
+               },
+        1906: {'message': 'File does not exist',
+               'remediation': 'Please, provide a different file or make sure provided file path is correct'
+               },
+        1907: {'message': 'File could not be deleted',
+               'remediation': 'Please, ensure you have the right file permissions'
+               },
 
         # Database:
         2000: 'No such database file',
