@@ -44,7 +44,7 @@ typedef struct _monitor_config {
 
     // Rotation options
     unsigned int enabled:1;
-    char *format;
+    char **format;
     int max_size;
     int interval;
     int rotate;
