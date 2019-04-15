@@ -8,7 +8,7 @@
  * Foundation.
  */
 
-/* Read MySQL logs */
+/* Read MongoDB logs */
 
 #include "shared.h"
 #include "logcollector.h"
