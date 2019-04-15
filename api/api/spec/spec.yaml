@@ -2355,14 +2355,11 @@ components:
       name: list_status
       description: Filters by list status. Use commas to enter multiple statuses.
       schema:
-        type: array
-        items:
-          type: string
-          enum:
-          - enabled
-          - disabled
-          - all
-        minItems: 1
+        type: string
+        enum:
+        - enabled
+        - disabled
+        - all
     title:
       in: query
       name: title

@@ -128,8 +128,6 @@ class Rule:
 
     @staticmethod
     def __check_status(status):
-        if isinstance(status, list):
-            status = status[0]
         if status is None:
             return Rule.S_ALL
         elif status in [Rule.S_ALL, Rule.S_ENABLED, Rule.S_DISABLED]:
