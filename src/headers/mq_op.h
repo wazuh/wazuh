@@ -31,6 +31,7 @@
 #define SYSCOLLECTOR_MQ  'd'
 #define CISCAT_MQ        'e'
 #define WIN_EVT_MQ       'f'
+#define MONGODB_MQ       'g'
 
 #define MAX_OPENQ_ATTEMPS 15
 

@@ -66,6 +66,9 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it);
 /* Read postgresql log format */
 void *read_postgresql_log(logreader *lf, int *rc, int drop_it);
 
+/* Read postgresql log format */
+void *read_mongodb_log(logreader *lf, int *rc, int drop_it);
+
 /* read multi line logs */
 void *read_multiline(logreader *lf, int *rc, int drop_it);
 
