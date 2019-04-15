@@ -15,6 +15,7 @@
 #define localtime_r(x, y) localtime_s(y, x)
 #endif
 
+
 int log_compress;
 int keep_log_days;
 int day_wait;
@@ -30,12 +31,27 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     time_t now = time(NULL);
     struct tm tm;
     int today;
+
+    // Deprecated
     log_compress = getDefine_Int("monitord", "compress", 0, 1);
+    mwarn("The option 'log_compress' is deprecated. Please, use the 'logging' configuration block instead.");
+
+    // Deprecated
     keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
+    mwarn("The option 'keep_log_days' is deprecated. Please, use the 'logging' configuration block instead.");
+
+    // Deprecated
     day_wait = getDefine_Int("monitord", "day_wait", 0, 600);
+    mwarn("The option 'day_wait' is deprecated. Please, use the 'logging' configuration block instead.");
+
+    // Deprecated
     size_rotate_read = getDefine_Int("monitord", "size_rotate", 0, 4096);
     unsigned long size_rotate = (unsigned long) size_rotate_read * 1024 * 1024;
+    mwarn("The option 'size_rotate_read' is deprecated. Please, use the 'logging' configuration block instead.");
+
+    // Deprecated
     daily_rotations = getDefine_Int("monitord", "daily_rotations", 1, 256);
+    mwarn("The option 'daily_rotations' is deprecated. Please, use the 'logging' configuration block instead.");
 
     mdebug1("Log rotating thread started.");
 

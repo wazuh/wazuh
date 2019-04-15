@@ -368,7 +368,6 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                         }
                     }
                     OS_ClearNode(rotation_children);
-                    OS_ClearNode(children);
                 } else {
                     merror(XML_ELEMNULL);
                     OS_ClearNode(children);
