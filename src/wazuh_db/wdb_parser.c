@@ -72,6 +72,11 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
 
+        if (wdb->removed) {
+            minfo("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+            return 0;
+        }
+
         mdebug2("Agent %s query: %s", sagent_id, query);
 
         if (next = wstr_chr(query, ' '), next) {
@@ -239,6 +244,16 @@ int wdb_parse(char * input, char * output) {
                     result = -1;
                 }
             }
+        } else if (strcmp(query, "remove") == 0) {
+            if (wdb_remove_database(wdb) < 0) {
+                mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
+                snprintf(output, OS_MAXSTR + 1, "err Cannot begin transaction");
+                result = -1;
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok");
+                result = -1;
+            }
+            return result;
         } else if (strcmp(query, "begin") == 0) {
             if (wdb_begin2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot begin transaction.", sagent_id);

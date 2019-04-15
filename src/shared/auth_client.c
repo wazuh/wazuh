@@ -12,11 +12,14 @@
 #include "shared.h"
 #include <os_net/os_net.h>
 #include <external/cJSON/cJSON.h>
+#include "wazuhdb_op.h"
 
 // Remove agent. Returns 0 on success or -1 on error.
 int auth_remove_agent(int sock, const char *id, int json_format) {
     char buffer[OS_MAXSTR + 1];
     char *output;
+    char wdbquery[OS_SIZE_128 + 1];
+    char *wdboutput;
     int result;
     ssize_t length;
     cJSON *response;
@@ -28,6 +31,14 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
     cJSON_AddItemToObject(request, "arguments", arguments);
     cJSON_AddStringToObject(request, "function", "remove");
     cJSON_AddStringToObject(arguments, "id", id);
+
+    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
+    wdb_send_query(wdbquery, &wdboutput);
+
+    if (wdboutput) {
+        minfo("Wazuh-db output delete: '%s'", wdboutput);
+        os_free(wdboutput);
+    }
 
     output = cJSON_PrintUnformatted(request);
 

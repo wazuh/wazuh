@@ -14,6 +14,7 @@
 #include "wazuh_db/wdb.h"
 #include "addagent/manage_agents.h" // FILE_SIZE
 #include "external/cJSON/cJSON.h"
+#include "wazuhdb_op.h"
 
 #ifndef WIN32
 
@@ -414,11 +415,12 @@ void wm_sync_agents() {
         for (i = 0; agents[i] != -1; i++) {
             snprintf(id, 9, "%03d", agents[i]);
 
-            if (OS_IsAllowedID(&keys, id) == -1)
+            if (OS_IsAllowedID(&keys, id) == -1) {
                 if (wdb_remove_agent(agents[i]) < 0) {
                     mtdebug1(WM_DATABASE_LOGTAG, "Couldn't remove agent %s", id);
                 }
             }
+        }
 
         free(agents);
     }

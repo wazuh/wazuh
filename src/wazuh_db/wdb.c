@@ -562,6 +562,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
+    wdb->removed = 0;
     return wdb;
 }
 
@@ -811,4 +812,35 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     }
 
     return result;
+}
+
+/* Delete database. Returns 0 on success or -1 on error. */
+int wdb_remove_database(wdb_t *wdb) {
+    char path[OS_FLSIZE + 1];
+    int i;
+
+    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->agent_id);
+
+    for (i = 0; i < WDB_STMT_SIZE; i++) {
+        if (wdb->stmt[i]) {
+            sqlite3_finalize(wdb->stmt[i]);
+        }
+    }
+
+    if (sqlite3_close_v2(wdb->db) != SQLITE_OK) {
+        merror("DB(%s) wdb_close(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
+        return -1;
+    }
+
+    // Avoid creating the bd again after deleting it.
+    wdb->removed = 1;
+    os_free(wdb->agent_id);
+    pthread_mutex_destroy(&wdb->mutex);
+
+    if (remove(path)) {
+        mwarn("Couldn'n delete wazuh database: '%s'", path);
+        return -1;
+    }
+
+    return 0;
 }

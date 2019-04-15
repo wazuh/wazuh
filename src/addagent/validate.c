@@ -11,6 +11,7 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
+#include "wazuhdb_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
 #endif
@@ -70,6 +71,8 @@ int OS_RemoveAgent(const char *u_id) {
     char *buffer;
     char buf_curline[OS_BUFFER_SIZE];
     struct stat fp_stat;
+    char wdbquery[OS_SIZE_128 + 1];
+    char *wdboutput;
 
     id_exist = IDExist(u_id, 1);
 
@@ -157,6 +160,17 @@ int OS_RemoveAgent(const char *u_id) {
         delete_agentinfo(u_id, full_name);
         free(full_name);
     }
+
+    // Remove DB from wazuh-db
+
+    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
+    wdb_send_query(wdbquery, &wdboutput);
+
+    if (wdboutput) {
+        minfo("Wazuh-db output delete: '%s'", wdboutput);
+        os_free(wdboutput);
+    }
+
 
     /* Remove counter for ID */
     OS_RemoveCounter(u_id);
