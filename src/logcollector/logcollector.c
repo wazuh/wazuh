@@ -24,12 +24,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
 static void files_lock_init(void);
 static void check_text_only();
-#ifndef WIN32
 static int check_pattern_expand(int do_seek);
-#else 
-static int check_pattern_expand(int do_seek);
-#endif
-
 static void check_pattern_expand_excluded();
 
 /* Global variables */
@@ -105,6 +100,10 @@ void LogCollectorStart()
     set_sockets();
     files_lock_init();
 
+    // Check for expanded files
+    check_pattern_expand(1);
+    check_pattern_expand_excluded();
+
 #ifndef WIN32
     /* To check for inode changes */
     struct stat tmp_stat;
@@ -116,7 +115,7 @@ void LogCollectorStart()
 
     /* Check for ASCII, UTF-8 */
     check_text_only();
-   
+
     /* Set the files mutexes */
     w_set_file_mutexes();
 #else
@@ -137,10 +136,6 @@ void LogCollectorStart()
     if (isVista) {
         win_read_vista_sec();
     }
-
-    check_pattern_expand(1);
-
-    check_pattern_expand_excluded();
 
     /* Check for ASCII, UTF-8 */
     check_text_only();
@@ -604,7 +599,7 @@ void LogCollectorStart()
                         minfo(FORGET_FILE, current->file);
                         current->exists = 0;
                     };
-                        
+
                     current->ign++;
 
                     CloseHandle(h1);
@@ -1116,7 +1111,7 @@ int check_pattern_expand(int do_seek) {
                     if(!ex_file) {
                         minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
                     }
-                   
+
                     os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
                     if (i) {
                         memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
@@ -1189,7 +1184,7 @@ static void check_pattern_expand_excluded() {
                     } else {
                         result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
                     }
-                        
+
                     if (result) {
                         merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
                     } else {
@@ -1280,7 +1275,7 @@ int check_pattern_expand(int do_seek) {
                             if (i) {
                                 memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
                             }
-                         
+
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
                             globs[j].gfiles[i].fp = NULL;
@@ -2003,7 +1998,7 @@ static void check_pattern_expand_excluded() {
             if (!globs[j].exclude_path) {
                 continue;
             }
-        
+
             /* Check for files to exclude */
             hFind = FindFirstFile(globs[j].exclude_path, &ffd);
 
@@ -2049,7 +2044,7 @@ static void check_pattern_expand_excluded() {
                             } else {
                                 result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
                             }
-                                
+
                             if (result) {
                                 merror_exit(REM_ERROR,full_path);
                             } else {

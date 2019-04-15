@@ -391,7 +391,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 time_t l_time = time(0);
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
-                
+
                 p = localtime(&l_time);
                 ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
                 if (ret != 0) {
@@ -410,9 +410,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             log_config->config = logf;
             FindClose(hFind);
             return 0;
-        }
-#endif
-#ifndef WIN32
+#else
         if (strchr(logf[pl].file, '*') ||
             strchr(logf[pl].file, '?') ||
             strchr(logf[pl].file, '[')) {
@@ -437,7 +435,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 time_t l_time = time(0);
                 char excluded_path_date[PATH_MAX] = {0};
                 size_t ret;
-                
+
                 p = localtime(&l_time);
                 ret = strftime(excluded_path_date, PATH_MAX, logf[pl].exclude, p);
                 if (ret != 0) {
@@ -456,12 +454,9 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             log_config->config = logf;
 
             return 0;
-        } else if (strchr(logf[pl].file, '%'))
-#else
-        if (strchr(logf[pl].file, '%'))
-#endif  /* WIN32 */
-        /* We need the format file (based on date) */
-        {
+#endif
+        } else if (strchr(logf[pl].file, '%')) {
+            /* We need the format file (based on date) */
             struct tm *p;
             time_t l_time = time(0);
             char lfile[OS_FLSIZE + 1];
