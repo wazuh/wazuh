@@ -53,6 +53,7 @@ class LocalClientHandler(client.AbstractClient):
         """
         Errors from the cluster come already formatted into JSON format. Therefore they must be returned the same
         """
+        self.response = data
         self.response_available.set()
         return data
 
