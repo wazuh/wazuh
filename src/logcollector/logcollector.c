@@ -108,11 +108,6 @@ void LogCollectorStart()
     /* To check for inode changes */
     struct stat tmp_stat;
 
-    check_pattern_expand(1);
-
-
-    check_pattern_expand_excluded();
-
     /* Check for ASCII, UTF-8 */
     check_text_only();
 
@@ -142,8 +137,6 @@ void LogCollectorStart()
 
     w_mutexattr_init(&win_el_mutex_attr);
     w_mutexattr_settype(&win_el_mutex_attr, PTHREAD_MUTEX_ERRORCHECK);
-
-
 #endif
 
     mdebug1("Entering LogCollectorStart().");
