@@ -1,12 +1,12 @@
 /*
  * SQL Schema AWS tests
  * Copyright (C) 2015-2019, Wazuh Inc.
- * April 1, 2019.
+ * April 15, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE 'cloudtrail' (
+CREATE TABLE 'config' (
     bucket_path 'text' NOT NULL,
     aws_account_id 'text' NOT NULL,
     aws_region 'text' NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE 'cloudtrail' (
     created_date 'integer' NOT NULL,
     PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -25,11 +25,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0030Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020505Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -39,11 +39,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0000Z_aaab.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020515Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -53,11 +53,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0000Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020510Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -67,11 +67,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0005Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020520Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -81,11 +81,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0020Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020525Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -95,11 +95,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0010Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020530Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -109,11 +109,11 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0025Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020500Z.json.gz',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'config' (
     bucket_path,
     aws_account_id,
     aws_region,
@@ -123,7 +123,7 @@ INSERT INTO 'cloudtrail' (
     'test-bucket/',
     '123456789',
     'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz',
+    'config/AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_ConfigHistory_20190415T020535Z.json.gz',
     DATETIME('now'),
     '');
 
