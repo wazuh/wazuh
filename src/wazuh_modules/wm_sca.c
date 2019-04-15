@@ -2151,7 +2151,6 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
     char * final_str_process = NULL;
     char * final_str_registry = NULL;
     char * final_str_command = NULL;
-    char * final_str_ref = NULL;
     while(i < 255) {
 
         if(p_alert_msg[i]) {
@@ -2163,13 +2162,11 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                 *alert_file = '\0';
                 alert_file++;
                 wm_strcat(&final_str_file,alert_file,',');
-                final_str_ref = final_str_file;
             } else if (alert_directory){
                 alert_directory+= 10;
                 *alert_directory = '\0';
                 alert_directory++;
                 wm_strcat(&final_str_directory,alert_directory,',');
-                final_str_ref = final_str_directory;
             } else {
                 char *alert_process = strstr(p_alert_msg[i],"Process:");
                 if(alert_process){
@@ -2177,7 +2174,6 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                     *alert_process = '\0';
                     alert_process++;
                     wm_strcat(&final_str_process,alert_process,',');
-                    final_str_ref = final_str_process;
                 } else {
                     char *alert_registry = strstr(p_alert_msg[i],"Registry:");
                     if(alert_registry){
@@ -2185,7 +2181,6 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                         *alert_registry = '\0';
                         alert_registry++;
                         wm_strcat(&final_str_registry,alert_registry,',');
-                        final_str_ref = final_str_registry;
                     } else {
                         char *alert_command = strstr(p_alert_msg[i],"Command:");
                         if(alert_command) {
@@ -2193,7 +2188,6 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
                             *alert_command = '\0';
                             alert_command++;
                             wm_strcat(&final_str_command,alert_command,',');
-                            final_str_ref = final_str_command;
                         }
                     }
                 }
@@ -2204,37 +2198,31 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
         i++;
     }
 
-    cJSON *array = cJSON_CreateArray();
-    char *element; 
-    while ((element = strtok_r(final_str_ref, ",", &final_str_ref))){
-        cJSON_AddItemToArray(array, cJSON_CreateString(strdup(element)));
-    }
-    
     if(final_str_file) {
-        cJSON_AddItemToObject(check, "file", array);
+        cJSON_AddStringToObject(check, "file", final_str_file);
         os_free(final_str_file);
     }
 
     if(final_str_directory) {
-        cJSON_AddItemToObject(check, "directory", array);
+        cJSON_AddStringToObject(check, "directory", final_str_directory);
         os_free(final_str_directory);
     }
 
     if(final_str_process) {
-       cJSON_AddItemToObject(check, "process", array);
+       cJSON_AddStringToObject(check, "process", final_str_process);
        os_free(final_str_process);
     }
 
     if(final_str_registry) {
-       cJSON_AddItemToObject(check, "registry", array);
+       cJSON_AddStringToObject(check, "registry", final_str_registry);
        os_free(final_str_registry);
     }
 
     if(final_str_command) {
-       cJSON_AddItemToObject(check, "command", array);
+       cJSON_AddStringToObject(check, "command", final_str_command);
        os_free(final_str_command);
     }
-    
+
     cJSON_AddStringToObject(check, "result", result);
 
     if(!policy_id->valuestring) {
