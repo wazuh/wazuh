@@ -157,11 +157,21 @@ int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,
     sqlite3_bind_text(stmt, 9, process, -1, NULL);
     sqlite3_bind_text(stmt, 10, registry, -1, NULL);
     sqlite3_bind_text(stmt, 11, reference, -1, NULL);
-    sqlite3_bind_text(stmt, 12, result, -1, NULL);
+    if (!result) {
+        sqlite3_bind_text(stmt, 12, "", -1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 12, result, -1, NULL);
+    }
     sqlite3_bind_text(stmt, 13, policy_id, -1, NULL);
     sqlite3_bind_text(stmt, 14, command, -1, NULL);
-    sqlite3_bind_text(stmt, 15, status, -1, NULL);
-    sqlite3_bind_text(stmt, 16, reason, -1, NULL);
+
+    if (!status && !reason) {
+        sqlite3_bind_text(stmt, 15, "", -1, NULL);
+        sqlite3_bind_text(stmt, 16, "", -1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 15, status, -1, NULL);
+        sqlite3_bind_text(stmt, 16, reason, -1, NULL);
+    }
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -723,10 +733,20 @@ int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id, char * status
 
     stmt = wdb->stmt[WDB_STMT_SCA_UPDATE];
 
-    sqlite3_bind_text(stmt, 1, result,-1, NULL);
+    if (!strcmp(result,"(null)")) {
+        sqlite3_bind_text(stmt, 1, "",-1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 1, result,-1, NULL);
+    }
+
     sqlite3_bind_int(stmt, 2, scan_id);
-    sqlite3_bind_text(stmt, 3, status,-1, NULL);
-    sqlite3_bind_text(stmt, 4, reason,-1, NULL);
+    if (!strcmp(status,"(null)") && !strcmp(reason,"(null)")) {
+        sqlite3_bind_text(stmt, 3, "",-1, NULL);
+        sqlite3_bind_text(stmt, 4, "",-1, NULL);
+    } else {
+        sqlite3_bind_text(stmt, 3, status,-1, NULL);
+        sqlite3_bind_text(stmt, 4, reason,-1, NULL);
+    }
     sqlite3_bind_int(stmt, 5, id);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
