@@ -44,12 +44,12 @@ typedef struct _monitor_config {
 
     // Rotation options
     unsigned int enabled:1;
+    unsigned int rotation_enabled:1;
+    unsigned int compress_rotation:1;
     char **format;
     long int max_size;
     long int interval;
     int rotate;
-    unsigned int rotation_enabled:1;
-    unsigned int compress_rotation:1;
 
     char **agents;
     report_config **reports;

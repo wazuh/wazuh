@@ -109,7 +109,7 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
     if (new_day || (!new_day && !rotate_json)) {
 
         /* Count rotated log files of the current day */
-        while(!IsFile(compressed_path)){
+        while(!IsFile(compressed_path) || !IsFile(new_path)){
             counter++;
             snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
@@ -154,7 +154,7 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
         snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
 
         /* Count rotated log files of the current day */
-        while(!IsFile(compressed_path)) {
+        while(!IsFile(compressed_path) || !IsFile(new_path_json)) {
             counter++;
             snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter);
             snprintf(compressed_path, PATH_MAX, "%s.gz", new_path_json);
