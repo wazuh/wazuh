@@ -66,8 +66,11 @@ int LogCollectorConfig(const char *cfgfile)
         return OS_SIZELIM;
     }
 #else
-    /* Limit files on Windows as file descriptors are shared */
-    maximum_files = WIN32_MAX_FILES;
+    if (maximum_files > WIN32_MAX_FILES) {
+        /* Limit files on Windows as file descriptors are shared */
+        maximum_files = WIN32_MAX_FILES;
+        mdebug1("The maximum number of files to monitor cannot exceed %d in Windows, so it will be limited.", WIN32_MAX_FILES);
+    }
 #endif
 
     if (ReadConfig(modules, cfgfile, &log_config, NULL) < 0) {
