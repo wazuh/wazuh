@@ -910,7 +910,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                     if (!data->remote_commands && remote_policy) {
                         mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
-                        sprintf(inv_check_reasons[n_reason],"Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
+                        os_malloc(OS_MAXSTR,inv_check_reasons[n_reason]);
+                        sprintf(inv_check_reasons[n_reason],"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled.", value);
                         n_reason++;
                         found = 2;
                     }
