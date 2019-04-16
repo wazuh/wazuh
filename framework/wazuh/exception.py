@@ -30,8 +30,12 @@ class WazuhException(Exception):
         1010: 'Unable to connect to queue',
         1011: 'Error communicating with queue',
         1012: 'Invalid message to queue',
-        1013: 'Unable to connect with socket',
-        1014: 'Error communicating with socket',
+        1013: {'message': 'Unable to connect with socket',
+               'remediation': ''
+               },
+        1014: {'message': 'Error communicating with socket',
+               'remediation': ''
+               },
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: {'message': 'Error moving file',
                'remediation': 'Please, ensure file and destiny folder have right permissions'
@@ -159,11 +163,13 @@ class WazuhException(Exception):
         1901: {'message': '\'execq\' socket has not been created',
                'remediation': ''
                },
-        1902: {'message': 'Could not connect to \'execq\' socket',
+        1902: {'message': 'Connection to \'execq\' socket failed',
                'remediation': ''
                },
         1903: 'Error deleting temporary file from API',
-        1904: 'Bad data from \'execq\'',
+        1904: {'message': 'Bad data from \'execq\'',
+               'remediation': ''
+               },
         1905: {'message': 'File could not be updated, it already exists',
                'remediation': 'Please, provide a different file or set overwrite=True to overwrite actual file'
                },
