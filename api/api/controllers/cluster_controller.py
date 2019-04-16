@@ -681,3 +681,34 @@ def get_conf_validation_node(node_id, pretty=False, wait_for_complete=False):
     data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
+
+
+@exception_handler
+def get_node_config(node_id, component, configuration, wait_for_complete=False):
+    """Get active configuration in node node_id [on demand]
+
+    Returns the requested configuration.
+
+    :param wait_for_complete: Disable timeout response
+    :param node_id: Cluster node name.
+    :param component: Specified component.
+    :param component: Specified configuration.
+    """
+
+    # WIP
+
+    f_kwargs = {'agent_id': node_id,
+                'component': component,
+                'configuration': configuration
+                }
+
+    dapi = DistributedAPI(f=cluster.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200

@@ -6018,6 +6018,47 @@ paths:
         default:
           $ref: '#/components/responses/ResponseError'
 
+  /cluster/{node_id}/configuration/{component}/{configuration}:
+    get:
+      tags:
+        - cluster
+      summary: Get active configuration in node node_id
+      description: Returns the requested configuration in JSON format.
+      operationId: api.controllers.cluster_controller.get_node_config
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/node_id'
+        - $ref: '#/components/parameters/component'
+        - $ref: '#/components/parameters/configuration'
+
+      responses:
+        '200':
+          description: 'Configuration is OK'
+
+        '400':
+          description: 'Error in configuration'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiError'
+                  - type: object
+                    properties:
+                      errors:
+                        type: array
+                        items:
+                          type: string
+              example:
+                type: "about:blank"
+                title: "Bad configuration"
+                detail: "Wazuh configuration has not been properly set"
+                errors:
+                  - "(1230): Invalid element in the configuration: 'hello'."
+                  - "(1202): Configuration error at '/var/ossec/etc/ossec.conf'."
+        default:
+          $ref: '#/components/responses/ResponseError'
+
   /lists:
     get:
       tags:
