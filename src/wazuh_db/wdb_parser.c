@@ -843,19 +843,18 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_policy_sha256") == 0) {
 
         char *policy;
-        char result_found[32 + 1] = {0};
+        char result_found[OS_MAXSTR + 1] = {0};
 
         curr = next;
         policy = curr;
 
         result = wdb_sca_policy_sha256(wdb, policy, result_found);
-
         switch (result) {
             case 0:
-                snprintf(output, OS_MAXSTR + 1, "empty");
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "%s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");

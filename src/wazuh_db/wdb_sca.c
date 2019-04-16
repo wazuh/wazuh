@@ -517,7 +517,6 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output) {
     }
 
     stmt = wdb->stmt[WDB_STMT_SCA_POLICY_SHA256];
-
     sqlite3_bind_text(stmt, 1, id, -1, NULL);
 
     switch (sqlite3_step(stmt)) {

@@ -397,7 +397,7 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *resp
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy_sha256 %s", lf->agent_id, policy);
 
     if (pm_send_db(msg, response, socket) == 0) {
-        if (!strcmp(response, "empty")){
+        if (!strcmp(response, "ok not found")){
             retval = 1;
         }
         else if (strstr(response, "err")){
@@ -406,7 +406,7 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *resp
             retval = 0;
         }
     }
-    
+
     return retval;
 }
 
@@ -933,6 +933,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     char *references_db = NULL;
     char *description_db = NULL;
     char *hash_file;
+    char *old_hash;
     char file_path[OS_MAXSTR];
     snprintf(file_path, OS_MAXSTR -1, "%s/%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR, file->valuestring);
 
@@ -976,6 +977,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             }
             break;
         default:
+            os_malloc(65 * sizeof(char), old_hash);
+            if(FindPolicySHA256(lf, policy_id->valuestring, socket, old_hash) == 0){
+                if(strcmp(hash_file, old_hash)){
+                    DeletePolicyCheck(lf, policy_id->valuestring, socket);
+                    DeletePolicy(lf, policy_id->valuestring, socket);
+                    PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
+                }
+            }
+            else{
+                merror("Error searching for the Hash of the policy %s", policy->valuestring);
+            }
             break;
     }
 
