@@ -73,26 +73,30 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
             if (cur_bucket->aws_account_id && cur_bucket->type && cur_bucket->aws_account_alias) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: [%s] %s (%s)", cur_bucket->type, cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis: [%s] %s (%s)", cur_bucket->bucket, cur_bucket->type,
+                    cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
             } else if (cur_bucket->aws_account_id && cur_bucket->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: [%s] %s", cur_bucket->type, cur_bucket->aws_account_id);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis: [%s] %s", cur_bucket->bucket, cur_bucket->type,
+                    cur_bucket->aws_account_id);
             } else if (cur_bucket->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: [%s]", cur_bucket->type);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis: [%s]", cur_bucket->bucket, cur_bucket->type);
             } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: %s", cur_bucket->bucket);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis", cur_bucket->bucket);
             }
             wm_aws_run_s3(cur_bucket);
         }
 
         for (cur_service = aws_config->services; cur_service; cur_service = cur_service->next) {
             if (cur_service->aws_account_id && cur_service->type && cur_service->aws_account_alias) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: [%s] %s (%s)", cur_service->type, cur_service->aws_account_alias, cur_service->aws_account_id);
+                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis: [%s] %s (%s)", cur_service->type, cur_service->type,
+                    cur_service->aws_account_alias, cur_service->aws_account_id);
             } else if (cur_service->aws_account_id && cur_service->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: [%s] %s", cur_service->type, cur_service->aws_account_id);
+                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis: [%s] %s", cur_service->type, cur_service->type,
+                    cur_service->aws_account_id);
             } else if (cur_service->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: [%s] ", cur_service->type);
+                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis: [%s] ", cur_service->type, cur_service->type);
             } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: %s", cur_service->type);
+                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis", cur_service->type);
             }
             wm_aws_run_service(cur_service);
         }
