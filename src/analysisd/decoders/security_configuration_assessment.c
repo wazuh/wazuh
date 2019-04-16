@@ -767,6 +767,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *failed = NULL;
     cJSON *score = NULL;
     cJSON *hash = NULL;
+    cJSON *hash_file = NULL;
     cJSON *file = NULL;
     cJSON *policy = NULL;
     cJSON *first_scan = NULL;
@@ -782,6 +783,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     failed = cJSON_GetObjectItem(event,"failed");
     score = cJSON_GetObjectItem(event,"score");
     hash = cJSON_GetObjectItem(event,"hash");
+    hash_file = cJSON_GetObjectItem(event, "hash_file");
     file = cJSON_GetObjectItem(event,"file");
     policy = cJSON_GetObjectItem(event,"name");
     first_scan = cJSON_GetObjectItem(event,"first_scan");
@@ -845,6 +847,15 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     }
 
     if(!hash->valuestring) {
+        merror("Malformed JSON: field 'hash' must be a string");
+        return;
+    }
+
+    if(!hash_file){
+        return;
+    }
+
+    if(!hash_file->valuestring) {
         merror("Malformed JSON: field 'hash' must be a string");
         return;
     }
@@ -935,19 +946,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     char *references_db = NULL;
     char *description_db = NULL;
-    char *hash_file;
     char *old_hash = NULL;
-    char file_path[OS_MAXSTR];
-    snprintf(file_path, OS_MAXSTR -1, "%s/%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR, file->valuestring);
-
-    os_malloc(65*sizeof(char), hash_file);
-
-    if(OS_SHA256_File(file_path, hash_file, OS_TEXT) != 0){
-        merror("Unable to open the file %s to extract the SHA256", file->valuestring);
-    }
-    else{
-        mdebug2("SHA256 of the file %s: %s",file->valuestring, hash_file);
-    }
 
     result_db = FindPolicyInfo(lf,policy_id->valuestring,socket);
     
@@ -973,7 +972,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 description_db = description->valuestring;
             }
 
-            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file);
+            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file->valuestring);
             if (result_event < 0)
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
@@ -982,20 +981,15 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         default:
             os_calloc(OS_MAXSTR, sizeof(char), old_hash);
             if(FindPolicySHA256(lf, policy_id->valuestring, socket, old_hash) == 0){
-                minfo("Old Hash: %s  <<>> New hash: %s",old_hash, hash_file);
-                if(strcmp(hash_file, old_hash)){
+                if(strcmp(hash_file->valuestring, old_hash)){
                     DeletePolicyCheck(lf, policy_id->valuestring, socket);
                     DeletePolicy(lf, policy_id->valuestring, socket);
                     PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
                 }
             }
-            else{
-                merror("Error searching for the Hash of the policy %s", policy->valuestring);
-            }
             break;
     }
 
-    os_free(hash_file);
     os_free(hash_scan_info);
 
     char *wdb_response = NULL;
