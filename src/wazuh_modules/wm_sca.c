@@ -743,6 +743,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     char *value;
     char *name = NULL;
     int n_reason = 0;
+    int rules_number = 0;
 
     int ret_val = 0;
     int id_check_p = 0;
@@ -830,6 +831,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
                 nbuf = p_check->valuestring;
                 mdebug2("Rule is: %s",nbuf);
+                rules_number++;
 
                 /* Get value to look for */
                 value = wm_sca_get_value(nbuf, &type);
@@ -1095,6 +1097,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         } else {
                             dir = NULL;
                         }
+                        rules_number++;
                     }
                 }
 
@@ -1190,6 +1193,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 if (n_reason > 0) {
                     os_free(inv_check_reasons[n_reason-1]);
+                    if (rules_number > 1) {
+                        while (rules_number > 1) {
+                            os_free(inv_check_reasons[n_reason - rules_number]);
+                            rules_number--;
+                        }
+                    }
                 }
 
                 if (requirements_scan == 1){
@@ -1235,6 +1244,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
                 if (n_reason > 0) {
                     os_free(inv_check_reasons[n_reason-1]);
+
+                    if (rules_number > 1) {
+                        while (rules_number > 1) {
+                            os_free(inv_check_reasons[n_reason - rules_number]);
+                            rules_number--;
+                        }
+                    }
                 }
 
                 j = 0;
@@ -1296,6 +1312,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 if (n_reason > 0) {
                     os_free(inv_check_reasons[n_reason-1]);
+
+                    if (rules_number > 1) {
+                        while (rules_number > 1) {
+                            os_free(inv_check_reasons[n_reason - rules_number]);
+                            rules_number--;
+                        }
+                    }
                 }
 
                 if (requirements_scan == 1){
@@ -1303,6 +1326,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     goto clean_return;
                 }
             }
+
+            rules_number = 0;
 
             /* End if we don't have anything else */
             if (!nbuf) {
@@ -1315,11 +1340,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         id_check_p++;
     }
 
-    os_free(inv_check_reasons);
-
 /* Clean up memory */
 clean_return:
     os_free(name);
+    os_free(inv_check_reasons);
 
     return ret_val;
 
@@ -1599,8 +1623,8 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
     ret_val = 0;
 
 cleanup:
-    if (&inv_check_reasons[n_reason] == NULL) {
-            sprintf(inv_check_reasons[n_reason], "-");
+    if (ret_val != 2) {
+        os_free(inv_check_reasons[n_reason]);
     }
 
     return ret_val;
