@@ -99,8 +99,11 @@ a human readable message is shown, the new field `message` will be used instead.
 * In response, `data` key is now moved to new `message` key
 
 ## Cache
-### DELETE /cache (Clear group cache)
-* Changed path to **/cache/:group_id** because this path is used in other endpoint.
+### DELETE /cache 
+### GET /cache 
+### DELETE /cache{group} (Clear group cache)
+### GET /cache/config 
+* All cache endpoints have been removed
 
 ### GET /lists
 * Parameter **status** renamed to **list_status**
@@ -200,3 +203,7 @@ a human readable message is shown, the new field `message` will be used instead.
 
 ### /syscollector/:agent_id/netiface
 * Added **agent_id** parameter.
+
+## Version
+### GET /version 
+* Removed endpoint

@@ -126,6 +126,10 @@ components:
           minimum: 1
           description: Number of items that couldn't do the requested operation. Only returned when it's higher than 0.
 
+    GroupId:
+      type: string
+      format: alphanumeric
+
     ## Agents models
     ExtraAgentFields:
       type: object
@@ -312,47 +316,6 @@ components:
         config:
           type: object
           description: Group configuration. The fields on this object depend on the actual group configuration.
-
-    ## Cache models
-    GroupCache:
-      type: object
-      required:
-      - all
-      - group
-      properties:
-        all:
-          type: array
-          items:
-            type: string
-        group:
-          type: object
-          properties:
-            agents:
-              type: array
-              items:
-                type: string
-
-    GroupId:
-      type: string
-      format: alphanumeric
-
-    CacheConfig:
-      type: object
-      properties:
-        debug:
-          type: boolean
-        defaultDuration:
-          type: integer
-        enabled:
-          type: boolean
-        appendKey:
-          type: array
-          items:
-            type: string
-        jsonp:
-          type: boolean
-        redisClient:
-          type: boolean
 
     ## CisCat models
     CiscatResults:
@@ -2103,14 +2066,6 @@ components:
           enum:
           - json
           - xml
-    group_cache:
-      in: path
-      name: group
-      description: Cache group.
-      required: true
-      schema:
-        type: string
-        format: alphanumeric
     group_id:
       in: path
       name: group_id
@@ -3018,8 +2973,6 @@ tags:
     description: 'Agents Active Response'
   - name: agents
     description: 'Agents management related operations'
-  - name: cache
-    description: 'API cache management'
   - name: ciscat
     description: 'Retrieve information from CIS-CAT scans.'
   - name: cluster
@@ -4734,129 +4687,6 @@ paths:
                   totalItems: 1
                   items:
                     - ubuntu
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /cache/:
-    delete:
-      tags:
-        - cache
-      summary: 'Clear entire cache'
-      description: 'Clears entire cache'
-      operationId: api.controllers.cache_controller.delete_cache
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Cache delete'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupCache'
-              example:
-                data:
-                  all:
-                    -
-                  groups:
-    get:
-      tags:
-        - cache
-      summary: 'Get cache index'
-      description: 'Returns current cache index.'
-      operationId: api.controllers.cache_controller.get_cache
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Cache index'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupCache'
-              example:
-                data:
-                  all:
-                    -
-                  groups:
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /cache/{group}:
-    delete:
-      tags:
-        - cache
-      summary: 'Clear group cache'
-      description: 'Clears cache of the specified group.'
-      operationId: api.controllers.cache_controller.delete_cache_group
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/group_cache'
-      responses:
-        '200':
-          description: 'Cache group delete'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/GroupCache'
-              example:
-                data:
-                  all:
-                    - /agents/stats/distinct?pretty&fields=os.platform
-                  groups:
-                    agents:
-                      - /agents/stats/distinct?pretty&fields=os.platform
-        default:
-          $ref: '#/components/responses/ResponseError'
-
-  /cache/config:
-    get:
-      tags:
-        - cache
-      summary: 'Return cache configuration.'
-      description: 'Returns cache configuration.'
-      operationId: api.controllers.cache_controller.get_cache_config
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: 'Cache index'
-          content:
-            application/json:
-              schema:
-                allOf:
-                - $ref: '#/components/schemas/ApiResponse'
-                - type: object
-                  properties:
-                    data:
-                      $ref: '#/components/schemas/CacheConfig'
-              example:
-                data:
-                  debug: false
-                  defaultDuration: 750
-                  enabled: false
-                  appendKey:
-                    -
-                  jsonp: false
-                  redisClient: false
         default:
           $ref: '#/components/responses/ResponseError'
 
