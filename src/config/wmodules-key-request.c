@@ -82,7 +82,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         }
         else if(!strcmp(nodes[i]->element, XML_TIMEOUT))
         {
-            key_request->timeout = strtoul(nodes[i]->content, NULL, 0);
+            key_request->timeout = atol(nodes[i]->content);
 
             if (key_request->timeout < 1 || key_request->timeout >= UINT_MAX) {
                 merror("Invalid interval at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
@@ -93,7 +93,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_THREADS))
         {
-            key_request->threads = strtoul(nodes[i]->content, NULL, 0);
+            key_request->threads = atol(nodes[i]->content);
 
             if (key_request->threads < 1 || key_request->threads > 32) {
                 merror("Invalid number of threads at module '%s'", WM_KEY_REQUEST_CONTEXT.name);
@@ -102,7 +102,7 @@ int wm_key_request_read(xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_QUEUE_SIZE))
         {
-            key_request->queue_size = strtoul(nodes[i]->content, NULL, 0);
+            key_request->queue_size = atol(nodes[i]->content);
 
             if (key_request->queue_size < 1 || key_request->queue_size > 220000) {
                 merror("Invalid queue size at module '%s'", WM_KEY_REQUEST_CONTEXT.name);

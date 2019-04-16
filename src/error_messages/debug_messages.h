@@ -55,5 +55,9 @@
 #define VU_UNEXP_JSON_KEY     "(5492): Unexpected JSON key: '%s'."
 #define VU_ENDING_UPDATE      "(5494): The update of the feeds ended successfully."
 #define VU_DOWNLOAD_FAIL      "(5495): The download can not be completed. Retrying in %d seconds."
+#define VU_ANAL_ACC_REPORTS   "(5501): Analyzing accumulated reports for %s in %s."
+#define VU_DISC_ACC_REPORTS   "(5502): Discarding report %s with check %s because %s is higher."
+#define VU_ADD_ACC_REPORTS    "(5503): Setting report %s with check %s because %s is lower."
+#define VU_NO_VER_REPORT      "(5504): There is no check version in %s, so the vulnerability will be reported directly."
 
 #endif

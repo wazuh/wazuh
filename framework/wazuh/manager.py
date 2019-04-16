@@ -17,12 +17,16 @@ from shutil import move, Error
 from typing import Dict
 from xml.dom.minidom import parseString
 from xml.parsers.expat import ExpatError
+from typing import Dict
+import fcntl
 
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
+execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
 
 
 def status() -> Dict:
@@ -33,30 +37,30 @@ def status() -> Dict:
 
     processes = ['ossec-agentlessd', 'ossec-analysisd', 'ossec-authd', 'ossec-csyslogd', 'ossec-dbd', 'ossec-monitord',
                  'ossec-execd', 'ossec-integratord', 'ossec-logcollector', 'ossec-maild', 'ossec-remoted',
-                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd']
+                 'ossec-reportd', 'ossec-syscheckd', 'wazuh-clusterd', 'wazuh-modulesd', 'wazuh-db']
 
-    data = {}
+    data, pidfile_regex, run_dir = {}, re.compile(r'.+\-(\d+)\.pid$'), join(common.ossec_path, 'var/run')
     for process in processes:
-        data[process] = 'stopped'
-
-        process_pid_files = glob("{0}/var/run/{1}-*.pid".format(common.ossec_path, process))
-
-        for pid_file in process_pid_files:
-            m = re.match(r'.+\-(\d+)\.pid$', pid_file)
-
-            pid = "NA"
-            if m and m.group(1):
-                pid = m.group(1)
-
-            if exists(pid_file) and exists('/proc/{0}'.format(pid)):
-                data[process] = 'running'
-                break
+        pidfile = glob(join(run_dir, f"{process}-*.pid"))
+        if exists(join(run_dir, f'{process}.failed')):
+            data[process] = 'failed'
+        elif exists(join(run_dir, f'.restart')):
+            data[process] = 'restarting'
+        elif exists(join(run_dir, f'{process}.start')):
+            data[process] = 'starting'
+        elif pidfile:
+            process_pid = pidfile_regex.match(pidfile[0]).group(1)
+            # if a pidfile exists but the process is not running, it means the process crashed and
+            # wasn't able to remove its own pidfile.
+            data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
+        else:
+            data[process] = 'stopped'
 
     return data
 
 
 def __get_ossec_log_fields(log):
-    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+):\s(\S+):\s(.*)$")
+    regex_category = re.compile(r"^(\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d)\s(\S+)(?:\[.*)?:\s(DEBUG|INFO|CRITICAL|ERROR|WARNING):(.*)$")
 
     match = re.search(regex_category, log)
 
@@ -69,8 +73,6 @@ def __get_ossec_log_fields(log):
         if "rootcheck" in category:  # Unify rootcheck category
             category = "ossec-rootcheck"
 
-        if "(" in category:  # Remove ()
-            category = re.sub(r"\(\d\d\d\d\)", "", category)
     else:
         return None
 
@@ -124,7 +126,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             else:
                 continue
         else:
-            if logs:
+            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
     if search:
@@ -237,12 +239,15 @@ def upload_xml(xml_file, path):
             # beauty xml file
             xml = parseString('<root>' + xml_file + '</root>')
             # remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
+            indent = '  '  # indent parameter for toprettyxml function
+            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent=indent).split('\n')[2:-2])) + '\n'
             # revert xml.dom replacings
             # (https://github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305)
             pretty_xml = pretty_xml.replace("&amp;", "&").replace("&lt;", "<").replace("&quot;", "\"", ) \
-                .replace("&gt;", ">").replace('&apos', "'")
-            tmp_file.write(pretty_xml)
+                .replace("&gt;", ">").replace('&apos;', "'")
+            # delete two first spaces of each line
+            final_xml = re.sub(fr'^{indent}', '', pretty_xml, flags=re.MULTILINE)
+            tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
@@ -289,8 +294,11 @@ def upload_list(list_file, path):
         # create temporary file
         with open(tmp_file_path, 'w') as tmp_file:
             # write json in tmp_file_path
-            for element in list_file.split('\n')[:-1]:
-                tmp_file.write(element + '\n')
+            for element in list_file.splitlines():
+                # skip empty lines
+                if not element:
+                    continue
+                tmp_file.write(element.strip() + '\n')
         chmod(tmp_file_path, 0o640)
     except IOError:
         raise WazuhException(1005)
@@ -309,24 +317,68 @@ def upload_list(list_file, path):
     return 'File updated successfully'
 
 
-def get_file(path):
+def get_file(path, validation=False):
     """
-    Returns a file as dictionary.
+    Returns the content of a file.
     :param path: Relative path of file from origin
-    :return: File as string.
+    :return: Content file.
     """
 
-    file_path = join(common.ossec_path, path)
+    full_path = join(common.ossec_path, path)
+
+    # validate CDB lists files
+    if validation and re.match(r'^etc/lists', path) and not validate_cdb_list(path):
+        raise WazuhException(1800, {'path': path})
+
+    # validate XML files
+    if validation and not validate_xml(path):
+        raise WazuhException(1113)
 
     try:
-        with open(file_path) as f:
+        with open(full_path) as f:
             output = f.read()
     except IOError:
         raise WazuhException(1005)
-    except Exception:
-        raise WazuhException(1000)
 
     return output
+
+def validate_xml(path):
+    """
+    Validates a XML file
+    :param path: Relative path of file from origin
+    :return: True if XML is OK, False otherwise
+    """
+    full_path = join(common.ossec_path, path)
+    try:
+        with open(full_path) as f:
+            parseString('<root>' + f.read() + '</root>')
+    except IOError:
+        raise WazuhException(1005)
+    except ExpatError:
+        return False
+
+    return True
+
+def validate_cdb_list(path):
+    """
+    Validates a CDB list
+    :param path: Relative path of file from origin
+    :return: True if CDB list is OK, False otherwise
+    """
+    full_path = join(common.ossec_path, path)
+    regex_cdb = re.compile(r'^[^:]+:[^:]*$')
+    try:
+        with open(full_path) as f:
+            for line in f:
+                # skip empty lines
+                if not line.strip():
+                    continue
+                if not re.match(regex_cdb, line):
+                    return False
+    except IOError:
+        raise WazuhException(1005)
+
+    return True
 
 
 def delete_file(path):
@@ -357,25 +409,31 @@ def restart():
 
     :return: Confirmation message.
     """
-    # execq socket path
-    socket_path = common.EXECQ
-    # msg for restarting Wazuh manager
-    msg = 'restart-wazuh '
-    # initialize socket
-    if exists(socket_path):
-        try:
-            conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            conn.connect(socket_path)
-        except socket.error:
-            raise WazuhException(1902)
-    else:
-        raise WazuhException(1901)
-
+    lock_file = open(execq_lockfile, 'a+')
+    fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        conn.send(msg.encode())
-        conn.close()
-    except socket.error:
-        raise WazuhException(1014)
+        # execq socket path
+        socket_path = common.EXECQ
+        # msg for restarting Wazuh manager
+        msg = 'restart-wazuh '
+        # initialize socket
+        if exists(socket_path):
+            try:
+                conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                conn.connect(socket_path)
+            except socket.error:
+                raise WazuhException(1902)
+        else:
+            raise WazuhException(1901)
+
+        try:
+            conn.send(msg.encode())
+            conn.close()
+        except socket.error as e:
+            raise WazuhException(1014, str(e))
+    finally:
+        fcntl.lockf(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
     return "Restarting manager"
 
@@ -411,65 +469,71 @@ def validation():
 
     :return: Confirmation message.
     """
-    # sockets path
-    api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
-    execq_socket_path = common.EXECQ
-    # msg for checking Wazuh configuration
-    execq_msg = 'check-manager-configuration '
-
-    # remove api_socket if exists
+    lock_file = open(execq_lockfile, 'a+')
+    fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-        remove(api_socket_path)
-    except OSError:
-        if exists(api_socket_path):
-            raise WazuhException(1014)
+        # sockets path
+        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
+        execq_socket_path = common.EXECQ
+        # msg for checking Wazuh configuration
+        execq_msg = 'check-manager-configuration '
 
-    # up API socket
-    try:
-        api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        api_socket.bind(api_socket_path)
-        # timeout
-        api_socket.settimeout(5)
-    except socket.error:
-        raise WazuhException(1013)
-
-    # connect to execq socket
-    if exists(execq_socket_path):
+        # remove api_socket if exists
         try:
-            execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            execq_socket.connect(execq_socket_path)
+            remove(api_socket_path)
+        except OSError as e:
+            if exists(api_socket_path):
+                raise WazuhException(1014, str(e))
+
+        # up API socket
+        try:
+            api_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            api_socket.bind(api_socket_path)
+            # timeout
+            api_socket.settimeout(5)
         except socket.error:
             raise WazuhException(1013)
-    else:
-        raise WazuhException(1901)
 
-    # send msg to execq socket
-    try:
-        execq_socket.send(execq_msg.encode())
-        execq_socket.close()
-    except socket.error:
-        raise WazuhException(1014)
+        # connect to execq socket
+        if exists(execq_socket_path):
+            try:
+                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+                execq_socket.connect(execq_socket_path)
+            except socket.error:
+                raise WazuhException(1013)
+        else:
+            raise WazuhException(1901)
+
+        # send msg to execq socket
+        try:
+            execq_socket.send(execq_msg.encode())
+            execq_socket.close()
+        except socket.error as e:
+            raise WazuhException(1014, str(e))
+        finally:
+            execq_socket.close()
+
+        # if api_socket receives a message, configuration is OK
+        try:
+            buffer = bytearray()
+            # receive data
+            datagram = api_socket.recv(4096)
+            buffer.extend(datagram)
+        except socket.timeout as e:
+            raise WazuhException(1014, str(e))
+        finally:
+            api_socket.close()
+            # remove api_socket
+            if exists(api_socket_path):
+                remove(api_socket_path)
+
+        try:
+            response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
+        except (KeyError, json.decoder.JSONDecodeError) as e:
+            raise WazuhException(1904, str(e))
     finally:
-        execq_socket.close()
-
-    # if api_socket receives a message, configuration is OK
-    try:
-        buffer = bytearray()
-        # receive data
-        datagram = api_socket.recv(4096)
-        buffer.extend(datagram)
-    except socket.timeout:
-        raise WazuhException(1014)
-    finally:
-        api_socket.close()
-        # remove api_socket
-        if exists(api_socket_path):
-            remove(api_socket_path)
-
-    try:
-        response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-    except (KeyError, json.decoder.JSONDecodeError):
-        raise WazuhException(1904)
+        fcntl.lockf(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
     return response
 
@@ -495,3 +559,10 @@ def _parse_execd_output(output: str) -> Dict:
         response = {'status': 'OK'}
 
     return response
+
+
+def get_config(component, config):
+    """
+    Returns active configuration loaded in manager
+    """
+    return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
