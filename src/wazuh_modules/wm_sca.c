@@ -1827,7 +1827,7 @@ static int wm_check_registry_entry(char * const value, wm_sca_t * const data)
     char *entry = wm_sca_get_pattern(value);
     char *pattern = entry ? wm_sca_get_pattern(entry) : NULL;
 
-    minfo("Checking registry: '%s\\%s'...", value, entry);
+    mdebug1("Checking registry: '%s\\%s'...", value, entry);
     
     char _b_msg[OS_SIZE_1024 + 1];
     _b_msg[OS_SIZE_1024] = '\0';
@@ -1837,10 +1837,10 @@ static int wm_check_registry_entry(char * const value, wm_sca_t * const data)
 
     const int ret = wm_sca_is_registry(value, entry, pattern);
     if (ret == 1) {
-        minfo("registry found.");
+        mdebug2("registry found.");
         return 1;
     } else if (ret == -1) {
-        minfo("registry not found.");
+        mdebug2("registry not found.");
     }
 
     return 0;
