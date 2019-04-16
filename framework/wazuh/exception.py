@@ -32,6 +32,7 @@ class WazuhException(Exception):
         1014: {'message': 'Error communicating with socket',
                'remediation': ''},
         1015: 'Error agent version is null. Was the agent ever connected?',
+<<<<<<< HEAD
         1016: {'message': 'Error moving file',
                'remediation': ''},
 
@@ -48,6 +49,19 @@ class WazuhException(Exception):
                               ' to get more information about how to configure Wazuh manager'},
         1104: {'message': 'Invalid type',
                'remediation': ''},
+=======
+        1016: 'Error moving file',
+        1017: 'Wazuh is restarting',
+        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
+        1019: 'There is a failed process. Review that before using the API.',
+
+        # Configuration: 1100 - 1199
+        1100: 'Error checking configuration',
+        1101: 'Requested component does not exist',
+        1102: 'Invalid section',
+        1103: 'Invalid field in section',
+        1104: 'Invalid type',
+>>>>>>> dev-flask-poc
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in `ossec.conf`',
                'remediation': 'visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html)'
@@ -63,6 +77,9 @@ class WazuhException(Exception):
         1114: {'message': 'Wazuh syntax error',
                'remediation': ''},
         1115: "Error executing verify-agent-conf",
+        1116: "Requested component configuration does not exist",
+        1117: "Unable to connect with component. The component might be disabled.",
+        1118: "Could not request component configuration",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -105,11 +122,12 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
-        1650: 'Active response - Bad arguments',
+        1650: 'Active response - Command not specified',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
-        1653: 'Active response - Agent not available',
+        1653: 'Active response - Agent ID not specified',
         1654: 'Unable to clear rootcheck database',
+        1655: 'Active response - Command not available',
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -149,7 +167,7 @@ class WazuhException(Exception):
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
-        1734: 'Error unsetting agent group',
+        1734: 'Agent does not belong to the specified group',
         1735: 'Agent version is not compatible with this feature',
         1736: 'Error getting all groups',
         1737: 'Maximum number of groups per multigroup is 256',
@@ -160,6 +178,10 @@ class WazuhException(Exception):
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
+        1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
+        1746: "Could not parse current client.keys file",
+        1747: "Could not remove agent group assigment from database",
+        1748: "Could not remove agent files",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',

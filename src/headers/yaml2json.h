@@ -16,6 +16,6 @@
 
 int yaml_parse_stdin(yaml_document_t * document);
 int yaml_parse_file(const char * path, yaml_document_t * document);
-cJSON * yaml2json(yaml_document_t * document);
+cJSON * yaml2json(yaml_document_t * document, int quoted_float_as_string );
 
 #endif

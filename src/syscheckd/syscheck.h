@@ -106,7 +106,6 @@ void audit_reload_rules(void);
 int audit_health_check(int audit_socket);
 void clean_rules(void);
 int filterkey_audit_events(char *buffer);
-int filterpath_audit_events(char *path);
 extern W_Vector *audit_added_dirs;
 extern volatile int audit_thread_active;
 extern volatile int whodata_alerts;
@@ -136,5 +135,16 @@ int read_links(const char *dir_name, int dir_position, int max_depth, unsigned i
 #endif
 size_t syscom_dispatch(char *command, char ** output);
 size_t syscom_getconfig(const char * section, char ** output);
+
+#ifdef WIN_WHODATA
+int w_update_sacl(const char *obj_path);
+#endif
+
+int print_hash_table();
+int fim_delete_hashes(char *file_name);
+
+#ifdef WIN32
+#define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
+#endif
 
 #endif
