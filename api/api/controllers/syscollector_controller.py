@@ -5,7 +5,7 @@
 import asyncio
 import logging
 
-from api.util import remove_nones_to_dict
+from api.util import remove_nones_to_dict, exception_handler
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.syscollector as syscollector
 
@@ -14,6 +14,7 @@ loop = asyncio.get_event_loop()
 logger = logging.getLogger('syscollector')
 
 
+@exception_handler
 def get_hardware_info(agent_id, pretty=False, wait_for_complete=False,
     select=None):
     """
@@ -42,6 +43,7 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface_name=None,
     proto=None, address=None, broadcast=None, netmask=None):
@@ -92,6 +94,7 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, adapter=None,
     type=None, state=None, mtu=None, tx_packets=None, rx_packets=None,
@@ -161,6 +164,7 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, iface=None,
     type=None, gateway=None, dhcp=None):
@@ -208,6 +212,7 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_os_info(agent_id, pretty=False, wait_for_complete=False,
     select=None):
     """
@@ -236,6 +241,7 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, vendor=None,
     name=None, architecture=None, format=None, package_version=None):
@@ -286,6 +292,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, pid=None,
     protocol=None, local_ip=None, local_port=None, remote_ip=None,
@@ -341,6 +348,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
     return data, 200
 
 
+@exception_handler
 def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
     offset=0, limit=None, select=None, sort=None, search=None, process_pid=None,
     process_state=None, ppid=None, egroup=None, euser=None, fgroup=None,
