@@ -41,6 +41,8 @@ void* wm_aws_main(wm_aws *aws_config) {
     wm_aws_service *cur_service;
     time_t time_start;
     time_t time_sleep = 0;
+    char *log_info;
+
 
     wm_aws_setup(aws_config);
     mtinfo(WM_AWS_LOGTAG, "Module AWS started");
@@ -73,7 +75,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
 
-            char *log_info = NULL;
+            log_info = NULL;
 
             wm_strcat(&log_info, "Executing Bucket Analysis: (Bucket:", '\0');
             wm_strcat(&log_info, cur_bucket->bucket, ' ');
@@ -117,7 +119,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         for (cur_service = aws_config->services; cur_service; cur_service = cur_service->next) {
 
-            char *log_info = NULL;
+            log_info = NULL;
 
             wm_strcat(&log_info, "Executing Service Analysis: (Service:", '\0');
             wm_strcat(&log_info, cur_service->type, ' ');
