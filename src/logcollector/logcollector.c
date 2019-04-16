@@ -572,7 +572,7 @@ void LogCollectorStart()
                 } else {
 #ifdef WIN32
                     if (!current->command && strcmp(current->logformat,EVENTCHANNEL) && strcmp(current->logformat,EVENTLOG)) {
-                        
+
                         HANDLE h1;
 
                         h1 = CreateFile(current->file, GENERIC_READ,
@@ -1203,9 +1203,9 @@ static void check_pattern_expand_excluded() {
 
                         if(!file) {
                             OSHash_Add(excluded_files,g.gl_pathv[glob_offset],(void *)1);
+                            minfo(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
                         }
 
-                        mdebug2(EXCLUDE_FILE,g.gl_pathv[glob_offset]);
                         mdebug2(CURRENT_FILES, current_files, maximum_files);
                     }
                 }
@@ -2080,6 +2080,7 @@ static void check_pattern_expand_excluded() {
 
                                 if(!file) {
                                     OSHash_Add(excluded_files,full_path,(void *)1);
+                                    minfo(EXCLUDE_FILE,full_path);
                                 }
 
                                 mdebug2(EXCLUDE_FILE,full_path);
