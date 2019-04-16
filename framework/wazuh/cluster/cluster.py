@@ -464,6 +464,14 @@ def unmerge_agent_info(merge_type, path_file, filename):
             yield dst_agent_info_path + '/' + name, data, st_mtime
 
 
+def get_config_ondemand(node_id, component, configuration):
+    # WIP
+
+    config_cluster = read_config()
+
+    pass
+
+
 class ClusterFilter(logging.Filter):
     """
     Adds cluster related information into cluster logs.

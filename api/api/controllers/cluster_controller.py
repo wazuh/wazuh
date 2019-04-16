@@ -702,7 +702,7 @@ def get_node_config(node_id, component, configuration, wait_for_complete=False):
                 'configuration': configuration
                 }
 
-    dapi = DistributedAPI(f=cluster.get_config,
+    dapi = DistributedAPI(f=cluster.get_config_ondemand,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=False,
