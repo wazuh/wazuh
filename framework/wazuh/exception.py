@@ -82,8 +82,12 @@ class WazuhException(Exception):
         1402: 'Invalid order. Order must be \'asc\' or \'desc\'',
         1403: 'Sort field invalid',  # Also, in DB
         1404: 'A field must be specified to order the data',
-        1405: 'Specified limit exceeds maximum allowed (1000)',
-        1406: '0 is not a valid limit',
+        1405: {'message': 'Specified limit exceeds maximum allowed',
+               'remediation': 'Please select a limit between 1 and 1000'
+               },
+        1406: {'message': '0 is not a valid limit',
+               'remediation': 'Please select a limit between 1 and 1000'
+               },
         1407: 'query does not match expected format',
         1408: 'Field does not exist.',
         1409: 'Invalid query operator.',
@@ -183,7 +187,9 @@ class WazuhException(Exception):
         1725: {'message': 'Error registering a new agent',
                'remediation': 'Please check all data and try again'
                },
-        1726: 'Ossec authd is not running',
+        1726: {'message': 'Ossec authd is not running',
+               'remediation': 'Please, visit our documentation to get more information: [official documentation](https://documentation.wazuh.com/current/user-manual/agents/registering-agents/register-agent-authd.html)'
+               },
         1727: {'message': 'Error listing group files',
                'remediation': 'Please, use this request: GET /agents/groups/:group_id/files to get the group files and verify what is the problem'
                },

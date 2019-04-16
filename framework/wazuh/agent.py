@@ -309,10 +309,10 @@ class Agent:
 
         if limit:
             if limit > common.maximum_database_limit:
-                raise WazuhException(1405, str(limit))
+                raise WazuhError(1405, str(limit))
             query += ' limit {} offset {}'.format(limit, offset)
         elif limit == 0:
-            raise WazuhException(1406)
+            raise WazuhError(1406)
 
         if sort and sort['fields']:
             str_order = "desc" if sort['order'] == 'asc' else "asc"
@@ -368,7 +368,7 @@ class Agent:
             agent_info = self.get_basic_information()
 
             if self.status.lower() != 'active':
-                raise WazuhException(1707, '{0} - {1}'.format(self.id, self.status))
+                raise WazuhError(1707, '{0} - {1}'.format(self.id, self.status))
 
             oq = OssecQueue(common.ARQUEUE)
             ret_msg = oq.send_msg_to_agent(OssecQueue.RESTART_AGENTS, self.id)
@@ -406,7 +406,7 @@ class Agent:
 
         if self.use_only_authd():
             if not is_authd_running:
-                raise WazuhException(1726)
+                raise WazuhInternalError(1726)
 
         if not is_authd_running:
             data = self._remove_manual(backup, purge)
@@ -585,7 +585,7 @@ class Agent:
 
         if self.use_only_authd():
             if not is_authd_running:
-                raise WazuhException(1726)
+                raise WazuhInternalError(1726)
 
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
