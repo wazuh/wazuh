@@ -2756,8 +2756,12 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
     }
 
 #endif
-
-    snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
+    // If we're rotating ossec.log or ossec.json, we must add the ossec prefix before the year
+    if(!strncmp(base_dir, "/logs", strlen(base_dir))){
+        snprintf(year_dir, PATH_MAX, "%s/ossec/%d", base_dir, tm.tm_year + 1900);
+    } else {
+        snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
+    }
     snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS_ROT[tm.tm_mon]);
     snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
     snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
