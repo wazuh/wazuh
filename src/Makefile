@@ -1136,7 +1136,7 @@ client_agent_o := $(client_agent_c:.c=.o)
 client-agent/%.o: client-agent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"ossec-agentd\" -c $^ -o $@
 
-ossec-agentd: ${client_agent_o} monitord/rotate_log.o
+ossec-agentd: ${client_agent_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 #### addagent ######

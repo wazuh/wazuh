@@ -33,6 +33,7 @@ static char __alogfile[OS_FLSIZE + 1];
 static char __flogfile[OS_FLSIZE + 1];
 static char __jlogfile[OS_FLSIZE + 1];
 static char __ejlogfile[OS_FLSIZE + 1];
+struct timespec local_timespec;
 
 // Open a valid log or die. No return on error.
 static FILE * openlog(FILE * fp, char path[OS_FLSIZE + 1], const char * logdir, int year, const char * month, const char * tag, int day, const char * ext, const char * lname, int * counter, int rotate);
@@ -60,6 +61,8 @@ void OS_InitLog()
     _fflog = NULL;
     _jflog = NULL;
     _ejflog = NULL;
+
+    gettime(&local_timespec);
 
     /* Set the umask */
     umask(0027);
@@ -159,44 +162,21 @@ void OS_RotateLogs(int day,int year,char *mon) {
     char c_elogfile[OS_FLSIZE + 1];
     char *previous_log = NULL;
 
-    if (Config.rotate_interval && c_time - __crt_rsec > Config.rotate_interval) {
-        // If timespan exceeded the rotation time and the file isn't empty
-        if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > 0) {
-            memset(c_elogfile, '\0', OS_FLSIZE + 1);
-            snprintf(c_elogfile, OS_FLSIZE, "%s.gz", __elogfile);
-            os_strdup(__elogfile, previous_log);
-            _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
-            w_compress_gzfile(previous_log, c_elogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-            }
-            os_free(previous_log);
-        }
+    gettime(&local_timespec);
 
-        if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > 0) {
-            memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
-            snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", __ejlogfile);
-            os_strdup(__ejlogfile, previous_log);
-            _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
-            w_compress_gzfile(previous_log, c_ejflogfile);
-            w_rotate_log(previous_log, 1, 1, 1, 1, 1);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
-            }
-            os_free(previous_log);
-        }
-
+    // alerts.log and alerts.json rotation block by interval time
+    if(Config.alerts_enabled && Config.alerts_rotation_enabled && Config.alerts_interval > 0 && local_timespec.tv_sec - __crt_rsec > Config.alerts_interval) {
         if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > 0) {
             memset(c_alogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_alogfile, OS_FLSIZE, "%s.gz", __alogfile);
             os_strdup(__alogfile, previous_log);
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
-            w_compress_gzfile(previous_log, c_alogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            if(Config.alerts_compress_rotation) {
+                w_compress_gzfile(previous_log, c_alogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
             }
             os_free(previous_log);
         }
@@ -206,81 +186,124 @@ void OS_RotateLogs(int day,int year,char *mon) {
             snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", __jlogfile);
             os_strdup(__jlogfile, previous_log);
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
-            w_compress_gzfile(previous_log, c_jlogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            if(Config.alerts_compress_rotation) {
+                w_compress_gzfile(previous_log, c_jlogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
             }
             os_free(previous_log);
         }
-
-        if (_fflog && ftell(_fflog) > 0) {
-            _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, TRUE);
-        }
-
-        __crt_rsec = c_time;
-    } else if (Config.max_output_size && c_time - __crt_rsec > Config.min_rotate_interval) {
-        // Or if timespan from last rotation is enough and the file is too big
-
-        if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > Config.max_output_size) {
+        __crt_rsec = local_timespec.tv_sec;
+    }
+    // archives.log and archives.json rotation block by interval time
+    if(Config.archives_enabled && Config.archives_rotation_enabled && Config.archives_interval > 0 && local_timespec.tv_sec - __crt_rsec > Config.archives_interval) {
+        if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > 0) {
             memset(c_elogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_elogfile, OS_FLSIZE, "%s.gz", __elogfile);
             os_strdup(__elogfile, previous_log);
             _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
-            w_compress_gzfile(previous_log, c_elogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            if(Config.archives_compress_rotation) {
+                w_compress_gzfile(previous_log, c_elogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
             }
             os_free(previous_log);
-            __crt_rsec = c_time;
         }
 
-        if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > Config.max_output_size) {
+        if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > 0) {
             memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", __ejlogfile);
             os_strdup(__ejlogfile, previous_log);
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
-            w_compress_gzfile(previous_log, c_ejflogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            if(Config.archives_compress_rotation) {
+                w_compress_gzfile(previous_log, c_ejflogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
             }
             os_free(previous_log);
-            __crt_rsec = c_time;
         }
+    }
 
-        if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > Config.max_output_size) {
+    // alerts.log and alerts.json rotation block by size
+    if(Config.alerts_enabled && Config.alerts_rotation_enabled && Config.alerts_max_size) {
+        if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > 0) {
             memset(c_alogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_alogfile, OS_FLSIZE, "%s.gz", __alogfile);
             os_strdup(__alogfile, previous_log);
+            // Rotate only if the size of the file is bigger than max_size
+            // TODO
             _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, TRUE);
-            w_compress_gzfile(previous_log, c_alogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            if(Config.alerts_compress_rotation) {
+                w_compress_gzfile(previous_log, c_alogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
             }
             os_free(previous_log);
-            __crt_rsec = c_time;
+            __crt_rsec = local_timespec.tv_sec;
         }
 
-        if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > Config.max_output_size) {
+        if (_jflog && !fseek(_jflog, 0, SEEK_END) && ftell(_jflog) > 0) {
             memset(c_jlogfile, '\0', OS_FLSIZE + 1);
             snprintf(c_jlogfile, OS_FLSIZE, "%s.gz", __jlogfile);
             os_strdup(__jlogfile, previous_log);
+            // Rotate only if the size of the file is bigger than max_size
+            // TODO
             _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, TRUE);
-            w_compress_gzfile(previous_log, c_jlogfile);
-            /* Remove uncompressed file */
-            if(unlink(previous_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+            if(Config.alerts_compress_rotation) {
+                w_compress_gzfile(previous_log, c_jlogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
             }
             os_free(previous_log);
-            __crt_rsec = c_time;
+            __crt_rsec = local_timespec.tv_sec;
+        }
+    }
+    // archives.log and archives.json rotation block by size
+    if(Config.archives_enabled && Config.archives_rotation_enabled && Config.archives_max_size) {
+        if (_eflog && !fseek(_eflog, 0, SEEK_END) && ftell(_eflog) > 0) {
+            memset(c_elogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_elogfile, OS_FLSIZE, "%s.gz", __elogfile);
+            os_strdup(__elogfile, previous_log);
+            // Rotate only if the size of the file is bigger than max_size
+            // TODO
+            _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, TRUE);
+            if(Config.archives_compress_rotation) {
+                w_compress_gzfile(previous_log, c_elogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
+            }
+            os_free(previous_log);
+            __crt_rsec = local_timespec.tv_sec;
         }
 
-        if (_fflog && ftell(_fflog) > Config.max_output_size) {
-            _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, TRUE);
-            __crt_rsec = c_time;
+        if (_ejflog && !fseek(_ejflog, 0, SEEK_END) && ftell(_ejflog) > 0) {
+            memset(c_ejflogfile, '\0', OS_FLSIZE + 1);
+            snprintf(c_ejflogfile, OS_FLSIZE, "%s.gz", __ejlogfile);
+            os_strdup(__ejlogfile, previous_log);
+            // Rotate only if the size of the file is bigger than max_size
+            // TODO
+            _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
+            if(Config.archives_compress_rotation) {
+                w_compress_gzfile(previous_log, c_ejflogfile);
+                /* Remove uncompressed file */
+                if(unlink(previous_log) == -1) {
+                    merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
+                }
+            }
+            os_free(previous_log);
+            __crt_rsec = local_timespec.tv_sec;
         }
     }
 }
