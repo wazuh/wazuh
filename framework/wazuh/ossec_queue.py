@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh import common
 import socket
 
@@ -35,17 +35,17 @@ class OssecQueue:
             length_send_buffer = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF)
             if length_send_buffer < OssecQueue.MAX_MSG_SIZE:
                 self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, OssecQueue.MAX_MSG_SIZE)
-        except:
-            raise WazuhException(1010, self.path)
+        except Exception:
+            raise WazuhInternalError(1010, self.path)
 
     def _send(self, msg):
         try:
             sent = self.socket.send(msg)
 
             if sent == 0:
-                raise WazuhException(1011, self.path)
-        except:
-            raise WazuhException(1011, self.path)
+                raise WazuhInternalError(1011, self.path)
+        except Exception:
+            raise WazuhInternalError(1011, self.path)
 
     def close(self):
         self.socket.close()
@@ -84,7 +84,7 @@ class OssecQueue:
         if msg_type == OssecQueue.AR_TYPE:
 
             if not agent_id:
-                raise WazuhException(1653)
+                raise WazuhError(1653)
 
             if agent_id != "000":
                 # Example restart 'msg': restart-ossec0 - null (from_the_server) (no_rule_id)
@@ -95,7 +95,7 @@ class OssecQueue:
             # Send message
             try:
                 self._send(socket_msg.encode())
-            except:
+            except Exception:
                 raise WazuhException(1652)
 
             return "Command sent."

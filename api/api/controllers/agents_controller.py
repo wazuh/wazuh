@@ -14,12 +14,13 @@ from ..models.agent_inserted import AgentInserted
 from ..models.agent_added import AgentAdded
 from wazuh.exception import WazuhException
 from ..util import remove_nones_to_dict, exception_handler
-
+import pydevd
+pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
-
-def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=None, status=None, older_than=None):  # noqa: E501
+@exception_handler
+def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
     """Delete agents
 
     Removes agents, using a list of them or a criterion based on the status or time of the last connection. The Wazuh API must be restarted after removing an agent.  # noqa: E501
@@ -40,7 +41,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
     :rtype: AgentAllItemsAffected
     """
 
-    f_kwargs = {'list_agent_ids': list_agents,
+    f_kwargs = {'list_agent_ids': list_agents_ids,
                 'purge': purge,
                 'status': status,
                 'older_than': older_than
@@ -58,7 +59,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
 
     return data, 200
 
-
+@exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
                    status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
                    version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
@@ -140,7 +141,6 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     return data, 200
 
-
 @exception_handler
 def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
     """Restarts all agents
@@ -164,7 +164,7 @@ def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
 
     return data, 200
 
-
+@exception_handler
 def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     """
     Add a new agent into the cluster.
@@ -203,7 +203,7 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
 
     return data, 200
 
-
+@exception_handler
 def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):  # noqa: E501
     """Get an agent
 
@@ -236,7 +236,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False): 
 
     return data, 200
 
-
+@exception_handler
 def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
     """Get an agent
 
@@ -269,7 +269,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # 
 
     return data, 200
 
-
+@exception_handler
 def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get active configuration
 
@@ -307,7 +307,7 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
 
     return data, 200
 
-
+@exception_handler
 def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove all agent groups.
 
@@ -336,7 +336,7 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa
 
     return data, 200
 
-
+@exception_handler
 def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get agent configuration sync status.
 
@@ -366,7 +366,7 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E5
 
     return data, 200
 
-
+@exception_handler
 def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove a single group of an agent.
 
@@ -626,7 +626,7 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
 
     return data, 200
 
-
+@exception_handler
 def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove multiple agents from a specified group. 
     
@@ -697,7 +697,7 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False): 
 
     return data, 200
 
-
+@exception_handler
 def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # noqa: E501
     """Removes a list of groups. 
     
@@ -769,7 +769,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
 
     return data, 200
 
-
+@exception_handler
 def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove group. 
     

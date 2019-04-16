@@ -1,22 +1,619 @@
-#Request with xml
 ---
-test_name: POST /agents
+test_name: DELETE /agents
 
-includes:
-  - !include common.yaml
+marks:
+  - usefixtures:
+      - test_example
 
 stages:
-  - name: Add new agent
+  - name: Try remove not existing agents
 
     request:
-      url: http://localhost:55000/agents/groups/dmz/configuration
-      method: POST
-      headers:
-        content-type: application/xml
-      files:
-        body: "agent.conf.xml"
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: 998,999
+
     response:
-      status_code: 200 
+      status_code: 200
       body:
         error: 0
-        data: "Agent configuration was updated successfully"
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1701
+                message: "Agent does not exist: 998"
+              id: '998'
+            - error:
+                code: 1701
+                message: "Agent does not exist: 999"
+              id: '999'
+          msg: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 2
+
+    delay_after: 11
+    
+  - name: Try remove agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: '000'
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1731
+                message: !anystr
+              id: '000'
+          msg: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 1
+
+  - name: Try remove agent by name
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: '000'
+
+    response:
+      status_code: 400
+
+  - name: Remove agents
+
+    request:
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: 004,005
+        older_than: '10s'
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: ["004","005"]
+          msg: All selected agents were removed
+          older_than: 10s
+          total_affected_agents: 2
+
+---
+test_name: DELETE /agents/:agent_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000
+      method: DELETE
+
+    response: &error_delete_agent
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 9011
+                message: "Agent ID not found"
+              id: '000'
+          msg: Some agents were not removed
+
+  - name: Try remove not existing agent
+
+    request:
+      url: http://localhost:55000/agents/999
+      method: DELETE
+
+    response:
+      <<: *error_delete_agent
+      body:
+        data:
+          failed_ids:
+            - id: '999'
+
+  - name: Try remove agent by name
+
+    request:
+      url: http://localhost:55000/agents/bad_id
+      method: DELETE
+
+    response:
+      status_code: 400
+
+  - name: Create an agent to delete
+
+    request:
+      url: http://localhost:55000/agents/newAgent
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          id: !anystr
+          key: !anystr
+
+  - name: Remove an agent
+
+    request:
+      url: http://localhost:55000/agents/006
+      method: DELETE
+      params:
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: ["006"]
+          msg: All selected agents were removed
+
+
+---
+test_name: DELETE /agents/:agent_id/group
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove group from agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000/group
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1734
+        message: "Error unsetting agent group: Agent 000 doesn't belong to any group"
+
+  - name: Try remove group not exist agent
+
+    request:
+      url: http://localhost:55000/agents/999/group
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: 'Agent does not exist: 999'
+
+  - name: Try remove group bad agent ID
+
+    request:
+      url: http://localhost:55000/agents/bad_id/group
+      method: DELETE
+
+    response:
+      status_code: 400
+
+  - name: Remove groups
+
+    request:
+      url: http://localhost:55000/agents/001/group
+      method: DELETE
+      params:
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: Group unset for agent '001'.
+
+---
+test_name: DELETE /agents/:agent_id/group/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove group from agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1734
+        message: "Error unsetting agent group: Agent 000 doesn't belong to any group"
+
+  - name: Try remove group not exist agent
+
+    request:
+      url: http://localhost:55000/agents/999/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 1701
+        message: 'Agent does not exist: 999'
+
+  - name: Try remove group bad agent ID
+
+    request:
+      url: http://localhost:55000/agents/bad_id/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 400
+
+  - name: Remove not exist group
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: DELETE
+      params:
+        purge: True
+
+    response:
+      status_code: 200
+      body:
+        error: 1734
+        message: "Error unsetting agent group: Agent 001 doesn't belong to group dmz"
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmz
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmz' created."
+
+  - name: Put group to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmz' added to agent '001'."
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmz' unset for agent '001'."
+
+---
+test_name: DELETE /agents/group/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not exist group
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: 001,002
+
+    response:
+      status_code: 200
+      body:
+        error: 1710
+        message: The group does not exist
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest' created."
+
+  - name: Put group to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmztest
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest' added to agent '001'."
+
+  - name: Try remove group agent 000
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: '000'
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - '000'
+          msg: Some agents were not removed to group dmztest
+
+  - name: Try remove group not exist agents
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: 998,999
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - '998'
+            - '999'
+          msg: Some agents were not removed to group dmztest
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/group/dmztest
+      method: DELETE
+      params:
+        list_agents: '001'
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: 
+            - '001'
+          msg: All selected agents were removed to group dmztest
+
+---
+test_name: DELETE /agents/groups
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not exist groups
+
+    request:
+      url: http://localhost:55000/agents/groups
+      method: DELETE
+      params:
+        list_groups: dmztest1,dmztest2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest1"
+              id: dmztest1
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest2"
+              id: dmztest2
+          ids: []
+          msg: Some groups were not removed
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' created."
+    
+  - name: Create other new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest2' created."
+
+  - name: Put group 1 to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' added to agent '001'."
+
+  - name: Put group 2 to agent
+
+    request:
+      url: http://localhost:55000/agents/002/group/dmztest2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest2' added to agent '002'."
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/groups
+      method: DELETE
+      params:
+        list_groups: dmztest1,dmztest2
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents:
+            - '001'
+            - '002'
+          ids:
+            - dmztest1
+            - dmztest2
+          msg: All selected groups were removed
+
+---
+test_name: DELETE /agents/groups/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
+
+stages:
+  - name: Try remove not exist groups
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest1"
+              id: dmztest1
+          ids: []
+          msg: Some groups were not removed
+
+  - name: Create new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' created."
+    
+  - name: Create other new group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest2' created."
+
+  - name: Put group to agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmztest1
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data: "Group 'dmztest1' added to agent '001'."
+
+  - name: Remove group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest1
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents:
+            - '001'
+          ids:
+            - dmztest1
+          msg: All selected groups were removed
+
+  - name: Remove other group
+
+    request:
+      url: http://localhost:55000/agents/groups/dmztest2
+      method: DELETE
+
+    response:
+      status_code: 200
+      body:
+        error: 0
+        data:
+          affected_agents: []
+          ids:
+            - dmztest2
+          msg: All selected groups were removed
+ 

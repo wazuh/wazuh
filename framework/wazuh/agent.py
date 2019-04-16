@@ -9,7 +9,7 @@ from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, sort_array, search_array, chmod_r, chown_r, WazuhVersion, plain_dict_to_nested_dict, \
                         get_fields_to_nest, get_hash, WazuhDBQuery, WazuhDBQueryDistinct, WazuhDBQueryGroupBy, mkdir_with_mode, \
                         md5
-from wazuh.exception import WazuhException, WazuhInternalError
+from wazuh.exception import WazuhException, WazuhInternalError, WazuhError
 from wazuh.ossec_queue import OssecQueue
 from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
@@ -271,7 +271,7 @@ class Agent:
         try:
             data = db_query.run()['items'][0]
         except IndexError:
-            raise WazuhException(1701, self.id)
+            raise WazuhError(1701, self.id)
 
         list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
 
@@ -785,10 +785,10 @@ class Agent:
         """
 
         if group_id.lower() == "default":
-            raise WazuhException(1712)
+            raise WazuhError(1712)
 
         if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
+            raise WazuhError(1710, group_id)
 
         ids = list(map(operator.itemgetter('id'), Agent.get_agent_group(group_id=group_id, limit=None)['items']))
 
@@ -1035,8 +1035,11 @@ class Agent:
         failed_ids = []
         affected_agents = []
         try:
-            Agent(agent_id).remove(backup, purge)
-            affected_agents.append(agent_id)
+            if (agent_id == "000"):
+                raise WazuhError(1703)
+            else:
+                Agent(agent_id).remove(backup, purge)
+                affected_agents.append(agent_id)
         except Exception as e:
             failed_ids.append(create_exception_dic(agent_id, e))
 
@@ -1047,9 +1050,9 @@ class Agent:
 
         final_dict = {}
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents}
+            final_dict = {'message': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1077,12 +1080,15 @@ class Agent:
         if list_agent_ids != "all":
             for id in list_agent_ids:
                 try:
-                    my_agent = Agent(id)
-                    my_agent._load_info_from_DB()
-                    if id not in id_purgeable_agents:
-                        raise WazuhException(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
-                    my_agent.remove(backup, purge)
-                    affected_agents.append(id)
+                    if id == "000":
+                        raise WazuhError(1703)
+                    else:
+                        my_agent = Agent(id)
+                        my_agent._load_info_from_DB()
+                        if id not in id_purgeable_agents:
+                            raise WazuhError(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
+                        my_agent.remove(backup, purge)
+                        affected_agents.append(id)
                 except Exception as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
@@ -1101,11 +1107,11 @@ class Agent:
             message = 'Some agents were not removed'
 
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids,
+            final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids,
                           'older_than': older_than, 'total_affected_agents':len(affected_agents),
                           'total_failed_ids':len(failed_ids)}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'older_than': older_than,
+            final_dict = {'message': message, 'affected_agents': affected_agents, 'older_than': older_than,
                           'total_affected_agents':len(affected_agents)}
 
         return final_dict
@@ -1123,7 +1129,7 @@ class Agent:
         """
         # check length of agent name
         if len(name) > 128:
-            raise WazuhException(1738)
+            raise WazuhError(1738)
 
         new_agent = Agent(name=name, ip=ip, force=force_time)
         return {'id': new_agent.id, 'key': new_agent.key}
@@ -1568,7 +1574,7 @@ class Agent:
 
         # Input Validation of group_id
         if not InputValidator().group(group_id):
-            raise WazuhException(1722)
+            raise WazuhError(1722)
 
         # Connect DB
         db_global = glob(common.database_path_global)
@@ -1582,7 +1588,7 @@ class Agent:
             for id in group_id:
 
                 if id.lower() == "default":
-                    raise WazuhException(1712)
+                    raise WazuhError(1712)
 
                 try:
                     removed = Agent._remove_single_group(id)
@@ -1593,7 +1599,7 @@ class Agent:
                     failed_ids.append(create_exception_dic(id, e))
         else:
             if group_id.lower() == "default":
-                raise WazuhException(1712)
+                raise WazuhError(1712)
 
             try:
                 removed = Agent._remove_single_group(group_id)
@@ -1679,11 +1685,11 @@ class Agent:
 
         # raise an exception if agent_list_id is empty
         if len(agent_id_list) < 1:
-            raise WazuhException(1732)
+            raise WazuhError(1732)
 
         # raise an exception if group not exists
         if not Agent.group_exists(group_id):
-            raise WazuhException(1710)
+            raise WazuhError(1710)
 
         for agent_id in agent_id_list:
             try:
@@ -1700,9 +1706,9 @@ class Agent:
             final_dict = {}
 
             if failed_ids:
-                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+                final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
             else:
-                final_dict = {'msg': message, 'affected_agents': affected_agents}
+                final_dict = {'message': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1847,7 +1853,7 @@ class Agent:
             group_list = group_name.split(',')
             # check agent belongs to group group_id
             if group_id not in group_list:
-                raise WazuhException(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
+                raise WazuhError(1734, "Agent {} doesn't belong to group {}".format(agent_id, group_id))
             # remove group from group_list
             group_list.remove(group_id)
             if len(group_list) > 1:
@@ -1859,7 +1865,7 @@ class Agent:
             Agent.unset_all_groups_agent(agent_id, True, multigroup_name)
             return "Group '{}' unset for agent '{}'.".format(group_id, agent_id)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            raise WazuhError(1734, "Agent {} doesn't belong to any group".format(agent_id))
 
 
     @staticmethod
@@ -1900,7 +1906,7 @@ class Agent:
 
             return "Group unset for agent '{0}'.".format(agent_id)
         else:
-            raise WazuhException(1734, "Agent {} doesn't belong to any group".format(agent_id))
+            raise WazuhError(1734, "Agent {} doesn't belong to any group".format(agent_id))
 
 
     @staticmethod
@@ -2547,20 +2553,20 @@ class Agent:
         :return: Loaded configuration in JSON.
         """
         if not component or not configuration:
-            raise WazuhException(1307)
+            raise WazuhError(1307)
 
         my_agent = Agent(agent_id)
         my_agent._load_info_from_DB()
 
         if my_agent.status != "Active":
-            raise WazuhException(1740)
+            raise WazuhError(1740)
 
         return my_agent.getconfig(component=component, configuration=configuration)
 
     @staticmethod
     def get_sync_group(agent_id):
         if agent_id == "000":
-            raise WazuhException(1703)
+            raise WazuhError(1703)
         else:
             try:
                 # Check if agent exists and it is active
@@ -2578,5 +2584,7 @@ class Agent:
             except (IOError, KeyError):
                 # the file can't be opened and therefore the group has not been synced
                 return {'synced': False}
-            except Exception as e:
-                raise WazuhException(1739, str(e))
+            except (WazuhError) as e:
+                raise WazuhError(e.code)
+            except Exception:
+                raise WazuhError(1739)

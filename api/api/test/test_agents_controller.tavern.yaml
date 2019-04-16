@@ -1,8 +1,13 @@
+#DELETE /agents test
 ---
 test_name: DELETE /agents
 
+marks:
+  - usefixtures:
+      - test_example
+
 stages:
-  - name: Try remove not exist agents
+  - name: Try remove not existing agents
 
     request:
       url: http://localhost:55000/agents
@@ -30,6 +35,8 @@ stages:
           total_affected_agents: 0
           total_failed_ids: 2
 
+    delay_after: 11
+    
   - name: Try remove agent 000 (manager)
 
     request:
@@ -54,35 +61,16 @@ stages:
           total_affected_agents: 0
           total_failed_ids: 1
 
-  - name: Create an agent to delete
+  - name: Try remove agent by name
 
     request:
-      url: http://localhost:55000/agents/newAgent
-      method: PUT
+      url: http://localhost:55000/agents
+      method: DELETE
+      params:
+        list_agents: '000'
 
     response:
-      status_code: 200
-      body:
-        error: 0
-        data:
-          id: !anystr
-          key: !anystr
-
-  - name: Create other agent to delete
-
-    request:
-      url: http://localhost:55000/agents/newAgent2
-      method: PUT
-
-    response:
-      status_code: 200
-      body:
-        error: 0
-        data:
-          id: !anystr
-          key: !anystr
-    
-    delay_after: 11
+      status_code: 400
 
   - name: Remove agents
 
@@ -107,6 +95,10 @@ stages:
 ---
 test_name: DELETE /agents/:agent_id
 
+marks:
+  - usefixtures:
+      - test_example
+
 stages:
   - name: Try remove agent 000 (manager)
 
@@ -127,7 +119,7 @@ stages:
               id: '000'
           msg: Some agents were not removed
 
-  - name: Try remove not exist agent
+  - name: Try remove not existing agent
 
     request:
       url: http://localhost:55000/agents/999
@@ -162,7 +154,7 @@ stages:
         data:
           id: !anystr
           key: !anystr
-    
+
   - name: Remove an agent
 
     request:
@@ -179,8 +171,13 @@ stages:
           affected_agents: ["006"]
           msg: All selected agents were removed
 
+
 ---
 test_name: DELETE /agents/:agent_id/group
+
+marks:
+  - usefixtures:
+      - test_example
 
 stages:
   - name: Try remove group from agent 000 (manager)
@@ -232,6 +229,10 @@ stages:
 
 ---
 test_name: DELETE /agents/:agent_id/group/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
 
 stages:
   - name: Try remove group from agent 000 (manager)
@@ -319,6 +320,10 @@ stages:
 
 ---
 test_name: DELETE /agents/group/:group_id
+
+marks:
+  - usefixtures:
+      - test_example
 
 stages:
   - name: Try remove not exist group
@@ -415,6 +420,10 @@ stages:
 
 ---
 test_name: DELETE /agents/groups
+
+marks:
+  - usefixtures:
+      - test_example
 
 stages:
   - name: Try remove not exist groups
@@ -515,6 +524,10 @@ stages:
 ---
 test_name: DELETE /agents/groups/:group_id
 
+marks:
+  - usefixtures:
+      - test_example
+
 stages:
   - name: Try remove not exist groups
 
@@ -604,7 +617,8 @@ stages:
           ids:
             - dmztest2
           msg: All selected groups were removed
-          
+ 
+#GET /agents test        
 ---
 test_name: Get all agent
 

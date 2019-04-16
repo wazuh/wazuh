@@ -95,7 +95,9 @@ class WazuhException(Exception):
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
-        1701: 'Agent does not exist',
+        1701: {'message': 'Agent does not exist',
+               'remediation': 'Please, make the following call to find all available agent `curl -u foo:bar -X GET "http://localhost:55000/agents?select=id"`'
+               },
         1702: 'Unable to restart agent(s)',
         1703: 'Action not available for Manager (Agent 000)',
         1704: 'Unable to load requested info from agent db',
@@ -104,7 +106,9 @@ class WazuhException(Exception):
         1707: 'Impossible to restart agent due to it is not active',
         1708: 'There is an agent with the same ID',
         1709: 'Too short key size (<64)',
-        1710: 'The group does not exist',
+        1710: {'message': 'The group does not exist',
+               'remediation': 'Please, make the following call to find all available groups `curl -u foo:bar -X GET "http://localhost:55000/agents/groups"`'
+               },
         1711: 'The group already exists',
         1712: 'Default group is not removable',
         1713: 'Error accessing repository',
@@ -214,7 +218,7 @@ class WazuhException(Exception):
         self._cmd_error = cmd_error
         self._dapi_errors = {} if dapi_errors is None else deepcopy(dapi_errors)
 
-        error_details = self.ERRORS[self._code]
+        error_details = self.ERRORS[self._code] if not cmd_error else extra_message
         if isinstance(error_details, dict):
             code_message, code_remediation = error_details.get('message', ''), error_details.get('remediation', None)
         else:
@@ -231,7 +235,7 @@ class WazuhException(Exception):
         else:
             self._message = extra_message
 
-        self._remediation = code_remediation if extra_remediation is None else f"{code_remediation}. {extra_remediation}"
+        self._remediation = code_remediation if extra_remediation is None else f"{code_remediation}.{extra_remediation}"
 
     def __str__(self):
         return "Error {0} - {1}".format(self._code, self._message)
