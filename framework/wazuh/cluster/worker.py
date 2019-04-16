@@ -236,7 +236,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             agents_ids_sublist = list(filter(lambda x: x != '0', agents_ids_sublist))
             # Get info from DB
             agent_info = Agent.get_agents_overview(q=",".join(["id={}".format(i) for i in agents_ids_sublist]),
-                                                   select={'fields': ['ip', 'id', 'name']}, limit=None)['items']
+                                                   select=['ip', 'id', 'name'], limit=None)['items']
             logger.debug2("Removing files from agents {}".format(', '.join(agents_ids_sublist)))
 
             # Remove agent files that need agent name and ip

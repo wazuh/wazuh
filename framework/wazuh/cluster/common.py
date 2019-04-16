@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import hashlib
+import json
 import logging
 import os
 import random
@@ -10,8 +11,10 @@ import struct
 import traceback
 import cryptography.fernet
 from typing import Tuple, Dict, Callable
-from wazuh import exception, common
+from wazuh import exception, common, Wazuh
 from wazuh.cluster import cluster
+import wazuh.results as wresults
+from importlib import import_module
 
 
 class Response:
@@ -576,3 +579,66 @@ def asyncio_exception_handler(loop, context: Dict):
     """
     logging.error("Unhandled exception: {} {}".format(str(context['exception']), context['message']))
     logging.debug(traceback.format_exc())
+
+
+class WazuhJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+
+        if callable(obj):
+            result = {'__callable__': {}}
+            attributes = result['__callable__']
+            if hasattr(obj, '__name__'):
+                attributes['__name__'] = obj.__name__
+            if hasattr(obj, '__module__'):
+                attributes['__module__'] = obj.__module__
+            if hasattr(obj, '__qualname__'):
+                attributes['__qualname__'] = obj.__qualname__
+            if hasattr(obj, '__self__'):
+                if isinstance(obj.__self__, Wazuh):
+                    attributes['__wazuh__'] = obj.__self__.to_dict()
+            attributes['__type__'] = type(obj).__name__
+            return result
+        elif isinstance(obj, exception.WazuhException):
+            result = {'__wazuh_exception__': {'__class__': obj.__class__.__name__,
+                                              '__object__': obj.to_dict()}}
+            return result
+        elif isinstance(obj, wresults.WazuhResult):
+            result = {'__wazuh_result__': {'__class__': obj.__class__.__name__,
+                                           '__object__': obj.to_dict()}
+                      }
+            return result
+        return json.JSONEncoder.default(self, obj)
+
+
+def as_wazuh_object(dct: Dict):
+    try:
+        if '__callable__' in dct:
+            encoded_callable = dct['__callable__']
+            funcname = encoded_callable['__name__']
+            if '__wazuh__' in encoded_callable:
+                # Encoded Wazuh instance method
+                wazuh_dict = encoded_callable['__wazuh__']
+                wazuh = Wazuh(ossec_path=wazuh_dict.get('path', '/var/ossec'))
+                return getattr(wazuh, funcname)
+            else:
+                # Encoded function or static method
+                qualname = encoded_callable['__qualname__'].split('.')
+                classname = qualname[0] if len(qualname) > 1 else None
+                module_path = encoded_callable['__module__']
+                module = import_module(module_path)
+                if classname is None:
+                    return getattr(module, funcname)
+                else:
+                    return getattr(getattr(module, classname), funcname)
+        elif '__wazuh_exception__' in dct:
+            wazuh_exception = dct['__wazuh_exception__']
+            return getattr(exception, wazuh_exception['__class__']).from_dict(wazuh_exception['__object__'])
+        elif '__wazuh_result__' in dct:
+            wazuh_result = dct['__wazuh_result__']
+            return getattr(wresults, wazuh_result['__class__']).from_dict(wazuh_result['__object__'])
+        return dct
+
+    except (KeyError, AttributeError):
+        raise exception.WazuhInternalError(1000,
+                                           extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
+                                           cmd_error=True)

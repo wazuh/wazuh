@@ -4,20 +4,20 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import argparse
 import os
-import sys
 import ssl
+import sys
 
 import connexion
-from flask_cors import CORS
-
-from api import alogging, encoder, configuration, __path__ as api_path
-from api import validator  # To register custom validators (do not remove)
 from api.api_exception import APIException
 from api.constants import CONFIG_FILE_PATH
 from api.util import to_relative_path
+from flask_caching import Cache
+from flask_cors import CORS
 from wazuh import common, pyDaemonModule, Wazuh
 from wazuh.cluster import __version__, __author__, __ossec_name__, __licence__
 
+from api import alogging, encoder, configuration, __path__ as api_path
+from api import validator  # To register custom validators (do not remove)
 
 #
 # Aux functions
@@ -32,7 +32,7 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
-def main(cors, port, host, ssl_context, main_logger):
+def main(cache_conf, cors, port, host, ssl_context, main_logger):
     app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
     app.app.json_encoder = encoder.JSONEncoder
     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
@@ -41,6 +41,13 @@ def main(cors, port, host, ssl_context, main_logger):
     if cors:
         # add CORS support
         CORS(app.app)
+    # add Cache support
+    if cache_conf['enabled']:
+        app.app.config['CACHE_TYPE'] = 'simple'
+        app.app.config['CACHE_DEFAULT_TIMEOUT'] = cache_conf['time']/1000
+    else:
+        app.app.config['CACHE_TYPE'] = 'null'
+    app.app.cache = Cache(app.app)
     try:
         app.run(port=port, host=host, ssl_context=ssl_context)
     except Exception as e:
@@ -51,6 +58,8 @@ def main(cors, port, host, ssl_context, main_logger):
 # Main
 #
 if __name__ == '__main__':
+    my_wazuh = Wazuh(get_init=True)
+
     parser = argparse.ArgumentParser()
     ####################################################################################################################
     parser.add_argument('-f', help="Run in foreground", action='store_true', dest='foreground')
@@ -59,8 +68,6 @@ if __name__ == '__main__':
     parser.add_argument('-c', help="Configuration file to use", type=str, metavar='config', dest='config_file',
                         default=common.ossec_conf)
     args = parser.parse_args()
-
-    my_wazuh = Wazuh(get_init=True)
 
     configuration = configuration.read_config()
     if args.test_config:
@@ -106,6 +113,6 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main(configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
+        main(configuration['cache'], configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
     except KeyboardInterrupt:
         main_logger.info("SIGINT received. Bye!")
