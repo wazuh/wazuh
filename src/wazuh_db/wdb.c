@@ -189,6 +189,9 @@ wdb_t * wdb_open_agent2(int agent_id) {
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
         // Checking if database was removed to avoid create it again
         if (wdb->remove) {
+            w_mutex_lock(&wdb->mutex);
+            wdb->last = time(NULL);
+            w_mutex_unlock(&wdb->mutex);
             w_mutex_unlock(&pool_mutex);
             return wdb;
         }
