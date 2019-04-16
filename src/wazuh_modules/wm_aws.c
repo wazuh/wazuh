@@ -132,7 +132,7 @@ void* wm_aws_main(wm_aws *aws_config) {
                 wm_strcat(&log_info, cur_service->aws_account_alias, ' ');
             }
 
-            if (cur_service->aws_account_id) {
+            if (cur_service->aws_profile) {
                 wm_strcat(&log_info, ", Profile:", '\0');
                 wm_strcat(&log_info, cur_service->aws_profile, ' ');
             }
