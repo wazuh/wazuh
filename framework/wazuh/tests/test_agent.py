@@ -165,6 +165,38 @@ def test_get_agents_overview_status_olderthan(test_data, status, older_than, tot
                 Agent.get_agents_overview(**kwargs)
 
 
+@pytest.mark.parametrize('agent_id, component, configuration, expected_exception', [
+    ('100', 'logcollector', 'internal', 1701),
+    ('005', 'logcollector', 'internal', 1740),
+    ('002', 'logcollector', 'internal', 1735),
+    ('000', None, None, 1307),
+    ('000', 'random', 'random', 1101),
+    ('000', 'analysis', 'internal', 1117),
+    ('000', 'analysis', 'internal', 1118),
+    ('000', 'analysis', 'random', 1116),
+    ('000', 'analysis', 'internal', None)
+])
+@patch('wazuh.configuration.OssecSocket')
+def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, configuration, expected_exception):
+    """
+    Tests get_config function error cases.
+    """
+    if expected_exception == 1117:
+        ossec_socket_mock.side_effect = Exception('Boom!')
+
+    ossec_socket_mock.return_value.receive.return_value = b'string_without_spaces' if expected_exception == 1118 \
+        else (b'random random' if expected_exception is not None else b'ok {"message":"value"}')
+
+    with patch('sqlite3.connect') as mock_db:
+        mock_db.return_value = test_data.global_db
+        if expected_exception:
+            with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
+                Agent.get_config(agent_id=agent_id, component=component, configuration=configuration)
+        else:
+            res = Agent.get_config(agent_id=agent_id, component=component, configuration=configuration)
+            assert res == {"message": "value"}
+
+
 @pytest.mark.parametrize('backup', [
     False,
     True

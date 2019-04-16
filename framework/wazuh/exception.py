@@ -35,7 +35,7 @@ class WazuhException(Exception):
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
-        1101: 'Error getting configuration',
+        1101: 'Requested component does not exist',
         1102: 'Invalid section',
         1103: 'Invalid field in section',
         1104: 'Invalid type',
@@ -50,6 +50,9 @@ class WazuhException(Exception):
         1113: "XML syntax error",
         1114: "Wazuh syntax error",
         1115: "Error executing verify-agent-conf",
+        1116: "Requested component configuration does not exist",
+        1117: "Unable to connect with component. The component might be disabled.",
+        1118: "Could not request component configuration",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -89,11 +92,12 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
-        1650: 'Active response - Bad arguments',
+        1650: 'Active response - Command not specified',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
-        1653: 'Active response - Agent not available',
+        1653: 'Active response - Agent ID not specified',
         1654: 'Unable to clear rootcheck database',
+        1655: 'Active response - Command not available',
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',

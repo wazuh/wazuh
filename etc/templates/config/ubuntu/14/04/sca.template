@@ -1,0 +1,14 @@
+  <sca>
+    <enabled>yes</enabled>
+    <scan_on_start>yes</scan_on_start>
+    <interval>12h</interval>
+    <skip_nfs>yes</skip_nfs>
+
+    <policies>
+      <policy>cis_debianlinux7-8_L1_rcl.yml</policy>
+      <policy>cis_debianlinux7-8_L2_rcl.yml</policy>
+      <policy>system_audit_rcl.yml</policy>
+      <policy>system_audit_ssh.yml</policy>
+      <policy>system_audit_pw.yml</policy>
+    </policies>
+  </sca>

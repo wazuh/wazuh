@@ -46,7 +46,6 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
             wdb = new_wdb ? new_wdb : wdb;
         }
         break;
-        break;
     case 3:
         //Updated to last version
         break;

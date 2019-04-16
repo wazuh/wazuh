@@ -149,7 +149,7 @@ functions = {
         'is_async': False
     },
     '/agents/groups/:group_id/configuration': {
-        'function': configuration.get_agent_conf,
+        'function': Agent.get_agent_conf,
         'type': 'local_master',
         'is_async': False
     },
@@ -159,7 +159,7 @@ functions = {
         'is_async': False
     },
     '/agents/groups/:group_id/files/:filename': {
-        'function': configuration.get_file_conf,
+        'function': Agent.get_file_conf,
         'type': 'local_master',
         'is_async': False
     },
@@ -179,12 +179,12 @@ functions = {
         'is_async': False
     },
     'POST/agents/groups/:group_id/configuration': {
-        'function': configuration.upload_group_file,
+        'function': Agent.upload_group_file,
         'type': 'local_master',
         'is_async': False
     },
     'POST/agents/groups/:group_id/files/:file_name': {
-        'function': configuration.upload_group_file,
+        'function': Agent.upload_group_file,
         'type': 'local_master',
         'is_async': False
     },
@@ -234,6 +234,11 @@ functions = {
     },
     '/manager/status': {
         'function': manager.status,
+        'type': 'local_any',
+        'is_async': False
+    },
+    '/manager/config/:component/:configuration': {
+        'function': manager.get_config,
         'type': 'local_any',
         'is_async': False
     },
@@ -341,6 +346,11 @@ functions = {
     },
     '/cluster/:node_id/status': {
         'function': manager.status,
+        'type': 'distributed_master',
+        'is_async': False
+    },
+    '/cluster/:node_id/config/:component/:configuration': {
+        'function': manager.get_config,
         'type': 'distributed_master',
         'is_async': False
     },

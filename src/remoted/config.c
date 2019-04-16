@@ -31,6 +31,9 @@ int guess_agent_group;
 int group_data_flush;
 unsigned receive_chunk;
 int buffer_relax;
+int tcp_keepidle;
+int tcp_keepintvl;
+int tcp_keepcnt;
 
 /* Read the config file (the remote access) */
 int RemotedConfig(const char *cfgfile, remoted *cfg)
@@ -151,6 +154,9 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"group_data_flush",group_data_flush);
     cJSON_AddNumberToObject(remoted,"receive_chunk",receive_chunk);
     cJSON_AddNumberToObject(remoted,"buffer_relax",buffer_relax);
+    cJSON_AddNumberToObject(remoted,"tcp_keepidle",tcp_keepidle);
+    cJSON_AddNumberToObject(remoted,"tcp_keepintvl",tcp_keepintvl);
+    cJSON_AddNumberToObject(remoted,"tcp_keepcnt",tcp_keepcnt);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
