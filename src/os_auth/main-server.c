@@ -996,7 +996,6 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
                         minfo("Duplicated IP '%s' (%s). Saving backup.", srcip, id_exist);
 
                         snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id_exist);
-                        minfo("fixwdb: %s", wdbquery);
                         wdb_send_query(wdbquery, &wdboutput);
 
                         if (wdboutput) {
