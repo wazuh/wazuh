@@ -352,7 +352,7 @@ void LogCollectorStart()
                             // Only expanded files that have been deleted will be forgotten
 
                             if (j >= 0) {
-                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
                                     mdebug2(CURRENT_FILES, current_files, maximum_files);
@@ -427,7 +427,7 @@ void LogCollectorStart()
 
                             // Only expanded files that have been deleted will be forgotten
                             if (j >= 0) {
-                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
                                     mdebug2(CURRENT_FILES, current_files, maximum_files);
@@ -482,7 +482,7 @@ void LogCollectorStart()
 
                         // Only expanded files that have been deleted will be forgotten
                         if (j >= 0) {
-                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                 merror(REM_ERROR, current->file);
                             } else {
                                 mdebug2(CURRENT_FILES, current_files, maximum_files);
@@ -599,7 +599,7 @@ void LogCollectorStart()
 
                     // Only expanded files that have been deleted will be forgotten
                     if (j >= 0) {
-                        if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
+                        if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
                             merror(REM_ERROR, current->file);
                         } else {
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
@@ -954,6 +954,18 @@ int update_current(logreader **current, int *i, int *j)
             }
         }
     } else {
+
+        /* Check boundaries */
+        if ( *i > globs[*j].num_files) {
+            *i=-1;
+            (*j)++;
+             if(!globs[*j].gpath) {
+                return LEAVE_IT;
+            } else {
+                return NEXT_IT;
+            }
+        }
+        
         /* Check expanded files */
         *current = &globs[*j].gfiles[*i];
         if (!(*current)->file) {
@@ -1116,6 +1128,7 @@ int check_pattern_expand(int do_seek) {
                     globs[j].gfiles[i + 1].file = NULL;
                     globs[j].gfiles[i + 1].target = NULL;
                     current_files++;
+                    globs[j].num_files++;
                     mdebug2(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
@@ -1173,9 +1186,9 @@ static void check_pattern_expand_excluded() {
                     int result;
 
                     if (j < 0) {
-                        result = Remove_Localfile(&logff, k, 0, 1);
+                        result = Remove_Localfile(&logff, k, 0, 1,NULL);
                     } else {
-                        result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
+                        result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
                     }
 
                     if (result) {
@@ -1292,6 +1305,7 @@ int check_pattern_expand(int do_seek) {
                             globs[j].gfiles[i + 1].file = NULL;
                             globs[j].gfiles[i + 1].target = NULL;
                             current_files++;
+                            globs[j].num_files++;
                             mdebug2(CURRENT_FILES, current_files, maximum_files);
                             if  (!i && !globs[j].gfiles[i].read) {
                                 set_read(&globs[j].gfiles[i], i, j);
@@ -1332,9 +1346,9 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 mwarn(DUP_FILE, current->file);
                 int result;
                 if (j < 0) {
-                    result = Remove_Localfile(&logff, i, 0, 1);
+                    result = Remove_Localfile(&logff, i, 0, 1,NULL);
                 } else {
-                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0);
+                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j]);
                 }
                 if (result) {
                     merror_exit(REM_ERROR, current->file);
@@ -1967,9 +1981,9 @@ static void check_text_only() {
                 #endif
                 int result = 0;
                 if (j < 0) {
-                    result = Remove_Localfile(&logff, i, 0, 1);
+                    result = Remove_Localfile(&logff, i, 0, 1, NULL);
                 } else {
-                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0);
+                    result = Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j]);
                 }
 
                 if (result) {
@@ -2049,9 +2063,9 @@ static void check_pattern_expand_excluded() {
                             int result;
 
                             if (j < 0) {
-                                result = Remove_Localfile(&logff, k, 0, 1);
+                                result = Remove_Localfile(&logff, k, 0, 1, NULL);
                             } else {
-                                result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0);
+                                result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0, &globs[j]);
                             }
 
                             if (result) {

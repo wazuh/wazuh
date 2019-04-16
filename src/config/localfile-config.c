@@ -402,7 +402,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 os_strdup(logf[pl].exclude, log_config->globs[gl].exclude_path);
             }
 
-            if (Remove_Localfile(&logf, pl, 0, 0)) {
+            if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
                 merror(REM_ERROR, logf[pl].file);
                 FindClose(hFind);
                 return (OS_INVALID);
@@ -447,7 +447,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
 
             globfree(&g);
-            if (Remove_Localfile(&logf, pl, 0, 0)) {
+            if (Remove_Localfile(&logf, pl, 0, 0,NULL)) {
                 merror(REM_ERROR, logf[pl].file);
                 return (OS_INVALID);
             }
@@ -588,7 +588,7 @@ void Free_Logreader(logreader * logf) {
     }
 }
 
-int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf) {
     if (*logf) {
         int size = 0;
         while ((*logf)[size].file || (!gl && (*logf)[size].logformat)) {
@@ -614,7 +614,7 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
 
             (*logf)[size - 1].file = NULL;
             (*logf)[size - 1].fp = NULL;
-
+            
             if(!gl) {
                 (*logf)[size - 1].target = NULL;
                 (*logf)[size - 1].ffile = NULL;
@@ -626,6 +626,11 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr) {
             if (!size)
                 size = 1;
             os_realloc(*logf, size*sizeof(logreader), *logf);
+
+            if(gl && globf) {
+                (*globf).num_files--;
+            }
+
             current_files--;
             return 0;
         }

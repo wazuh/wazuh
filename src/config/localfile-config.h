@@ -91,6 +91,7 @@ typedef struct _logreader {
 typedef struct _logreader_glob {
     char *gpath;
     char *exclude_path;
+    int num_files;
     logreader *gfiles;
 } logreader_glob;
 
@@ -109,6 +110,6 @@ void Free_Localfile(logreader_config * config);
 void Free_Logreader(logreader * config);
 
 /* Removes a specific localfile of an array */
-int Remove_Localfile(logreader **logf, int i, int gl, int fr);
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
 
 #endif /* __CLOGREADER_H */
