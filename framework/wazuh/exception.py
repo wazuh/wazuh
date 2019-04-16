@@ -120,7 +120,7 @@ class WazuhException(Exception):
                'remediation': 'Please, make the following call to find all available agent `curl -u foo:bar -X GET "http://localhost:55000/agents?select=id"`'
                },
         1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists and is active'
+               'remediation': 'Please make sure the agent exists and is active and is not the manager'
                },
         1703: {'message': 'Action not available',
                'remediation': 'This action is not available for Manager (Agent 000)'
