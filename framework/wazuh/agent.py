@@ -42,6 +42,7 @@ def create_exception_dic(id, e):
 
     if isinstance(e, WazuhException):
         exception_dic['error']['code'] = e.code
+        exception_dic['error']['remediation'] = e.remediation
     else:
         exception_dic['error']['code'] = 1000
 
@@ -757,10 +758,6 @@ class Agent:
 
                 # Overwrite client.keys
                 move(f_keys_temp, common.client_keys)
-            except WazuhException as ex:
-                fcntl.lockf(lock_file, fcntl.LOCK_UN)
-                lock_file.close()
-                raise ex
             except Exception as ex:
                 fcntl.lockf(lock_file, fcntl.LOCK_UN)
                 lock_file.close()
@@ -925,14 +922,14 @@ class Agent:
                     try:
                         Agent(id).restart()
                         affected_agents.append(id)
-                    except WazuhError(1702) as e:
-                        failed_ids.append(create_exception_dic(id, e))
+                    except Exception as e:
+                        failed_ids.append(create_exception_dic(id, WazuhError(1702)))
             else:
                 try:
                     Agent(agent_id).restart()
                     affected_agents.append(agent_id)
-                except WazuhError(1702) as e:
-                    failed_ids.append(create_exception_dic(agent_id, e))
+                except Exception as e:
+                    failed_ids.append(create_exception_dic(agent_id, WazuhError(1702)))
             if not failed_ids:
                 message = 'All selected agents were restarted'
             else:
@@ -1037,8 +1034,8 @@ class Agent:
         try:
             Agent(agent_id).remove(backup, purge)
             affected_agents.append(agent_id)
-        except WazuhError(1731) as e:
-            failed_ids.append(create_exception_dic(agent_id, e))
+        except Exception as e:
+            failed_ids.append(create_exception_dic(agent_id, WazuhError(1731)))
 
         if not failed_ids:
             message = 'All selected agents were removed'
@@ -1083,8 +1080,8 @@ class Agent:
                         raise WazuhError(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
                     my_agent.remove(backup, purge)
                     affected_agents.append(id)
-                except WazuhError(1731) as e:
-                    failed_ids.append(create_exception_dic(id, e))
+                except Exception as e:
+                    failed_ids.append(create_exception_dic(id, WazuhError(1731)))
         else:
             for id in id_purgeable_agents:
                 try:
@@ -1092,8 +1089,8 @@ class Agent:
                     my_agent._load_info_from_DB()
                     my_agent.remove(backup, purge)
                     affected_agents.append(id)
-                except WazuhError(1731) as e:
-                    failed_ids.append(create_exception_dic(id, e))
+                except Exception as e:
+                    failed_ids.append(create_exception_dic(id, WazuhError(1731)))
 
         if not failed_ids:
             message = 'All selected agents were removed' if affected_agents else "No agents were removed"
@@ -1585,8 +1582,8 @@ class Agent:
                     ids.append(id)
                     affected_agents += removed['affected_agents']
                     Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
-                except WazuhError(1741) as e:
-                    failed_ids.append(create_exception_dic(id, e))
+                except Exception as e:
+                    failed_ids.append(create_exception_dic(id, WazuhError(1741)))
         else:
             if group_id.lower() == "default":
                 raise WazuhError(1712)
@@ -1596,8 +1593,8 @@ class Agent:
                 ids.append(group_id)
                 affected_agents += removed['affected_agents']
                 Agent.remove_multi_group({group_id.lower()})
-            except WazuhError(1741) as e:
-                failed_ids.append(create_exception_dic(group_id, e))
+            except Exception as e:
+                failed_ids.append(create_exception_dic(group_id, WazuhError(1741)))
 
         if not failed_ids:
             message = 'All selected groups were removed'
