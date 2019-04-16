@@ -22,9 +22,23 @@ static int _dev_total;
 
 
 static int read_dev_file(const char *file_name)
-{
+{   /* Do not look for the user ignored paths and files */
+    if (rootcheck.ignore) {
+        if (check_ignore(file_name, &rootcheck)) {
+            return (0);
+        }
+        else {
+            char *_file_name = strrchr(file_name, '/');
+            if (*_file_name == '/') {
+                _file_name++;
+                if (check_ignore(_file_name, &rootcheck)) {
+                    return(0);    
+                }
+            }
+        }
+    }
     struct stat statbuf;
-
+    
     if (lstat(file_name, &statbuf) < 0) {
         return (-1);
     }

@@ -116,9 +116,8 @@ void check_rc_files(const char *basedir, FILE *fp)
                 *nbuf = '\0';
             }
         }
-
+       
         _total++;
-
         /* Check if it is a file to search everywhere */
         if (*file == '*') {
             /* Maximum number of global files reached */
@@ -132,7 +131,12 @@ void check_rc_files(const char *basedir, FILE *fp)
                 if (*file == '/') {
                     file++;
                 }
-
+                /* Do not look for the user ignored files */
+                if (rootcheck.ignore) {
+                    if (check_ignore(file, &rootcheck)) {
+                        continue;
+                    }
+                }
                 rk_sys_file[rk_sys_count] = strdup(file);
                 rk_sys_name[rk_sys_count] = strdup(name);
 
@@ -161,6 +165,24 @@ void check_rc_files(const char *basedir, FILE *fp)
         }
 
         snprintf(file_path, OS_SIZE_1024, "%s/%s", basedir, file);
+
+        minfo("FULL PATH  %s ",file_path);
+
+        char * _file_name = strrchr(file_path, '/');
+        _file_name++;
+        minfo("NAME  %s ",_file_name);
+
+        char _path[OS_SIZE_1024 + 1];
+        snprintf(_path, OS_SIZE_1024 ,file_path );
+        _path[strlen(file) - strlen(_file_name)] = '\0';
+
+        minfo("ONLY ROUTE  %s ",_path);
+
+        if (rootcheck.ignore) {  
+            if (check_ignore(file_path, &rootcheck) || check_ignore(_file_name, &rootcheck) || check_ignore(_path,&rootcheck )) {
+                continue;
+            }
+        }
 
         if (is_file(file_path)) {
             char op_msg[OS_SIZE_1024 + 1];

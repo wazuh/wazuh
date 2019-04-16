@@ -253,17 +253,21 @@ void rootcheck_connect() {
 #endif
 }
 
-/* Do not look for the user ignored files and paths */
+/* Do not look for the user ignored paths */
  int check_ignore(const char *path_to_ignore, rkconfig *rootcheck) {
     int i, ignore = 0;
 
     for (i = 0; rootcheck->ignore[i] != NULL; i++) {
-
+        
         int lenght = strlen(path_to_ignore);
+        int lenght_ignore = strlen(rootcheck->ignore[i]);
+
         char _path_to_ignore[lenght+1];
         snprintf( _path_to_ignore, lenght+2, "%s/", path_to_ignore);
-
-        if (strcmp(rootcheck->ignore[i], path_to_ignore) == 0 || strcmp( rootcheck->ignore[i],  _path_to_ignore) == 0  ) {
+        if (strncmp(_path_to_ignore, rootcheck->ignore[i], lenght_ignore) == 0) {
+            break;
+        }
+        if (strcmp(rootcheck->ignore[i], path_to_ignore) == 0 || strcmp(rootcheck->ignore[i], _path_to_ignore) == 0) {
             break;
         }
     }

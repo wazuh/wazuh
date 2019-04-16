@@ -34,7 +34,7 @@ static int read_sys_file(const char *file_name, int do_read)
     if (rootcheck.ignore) {
         if (check_ignore(file_name, &rootcheck)) {
             return (0);
-        }
+        }    
     }
 #ifdef WIN32
     /* Check for NTFS ADS on Windows */
@@ -277,6 +277,11 @@ static int read_sys_dir(const char *dir_name, int do_read)
                 break;
             }
 
+            if (rootcheck.ignore) {
+                if (check_ignore(entry->d_name, &rootcheck)) {
+                    break;
+                }
+            }
             if (strcmp(rk_sys_file[i], entry->d_name) == 0) {
                 char op_msg[OS_SIZE_1024 + 1];
 
