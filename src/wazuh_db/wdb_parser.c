@@ -923,10 +923,10 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        hash_file = curr;
+        references = curr;
         *next++ = '\0';
 
-        references = next;
+        hash_file = next;
         if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references,hash_file), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");

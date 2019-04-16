@@ -30,7 +30,7 @@
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
-static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *response);
+static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response);
 static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *wdb_response);
 static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
@@ -385,10 +385,10 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
     return retval;
 }
 
-static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *response) {
+static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response) {
 
     char *msg = NULL;
-    response = NULL;
+    char *response = NULL;
     int retval = -1;
 
     os_calloc(OS_MAXSTR, sizeof(char), msg);
@@ -403,10 +403,13 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *resp
         else if (strstr(response, "err")){
             retval = -1;
         } else {
+            char *result_checks = response + 9;
+            snprintf(wdb_response,OS_MAXSTR,"%s",result_checks);
             retval = 0;
         }
     }
 
+    free(response);
     return retval;
 }
 
@@ -933,7 +936,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     char *references_db = NULL;
     char *description_db = NULL;
     char *hash_file;
-    char *old_hash;
+    char *old_hash = NULL;
     char file_path[OS_MAXSTR];
     snprintf(file_path, OS_MAXSTR -1, "%s/%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR, file->valuestring);
 
@@ -977,8 +980,9 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             }
             break;
         default:
-            os_malloc(65 * sizeof(char), old_hash);
+            os_calloc(OS_MAXSTR, sizeof(char), old_hash);
             if(FindPolicySHA256(lf, policy_id->valuestring, socket, old_hash) == 0){
+                minfo("Old Hash: %s  <<>> New hash: %s",old_hash, hash_file);
                 if(strcmp(hash_file, old_hash)){
                     DeletePolicyCheck(lf, policy_id->valuestring, socket);
                     DeletePolicy(lf, policy_id->valuestring, socket);

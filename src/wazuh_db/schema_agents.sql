@@ -228,8 +228,8 @@ CREATE TABLE IF NOT EXISTS sca_policy (
    file TEXT,
    id TEXT,
    description TEXT,
-   hash_file TEXT,
-   `references` TEXT
+   `references` TEXT,
+   hash_file TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sca_scan_info (
