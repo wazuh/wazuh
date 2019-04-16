@@ -119,6 +119,10 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
             snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 1));
+
+            if (strcmp(output, "failed") && strcmp(output,"passed")) {
+                snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 2));
+            }
             return 1;
             break;
         case SQLITE_DONE:

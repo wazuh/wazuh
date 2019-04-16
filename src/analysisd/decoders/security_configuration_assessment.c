@@ -1234,7 +1234,7 @@ static int CheckPoliciesJSON(cJSON *event,cJSON **policies) {
 }
 
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,cJSON *status,cJSON *reason,char *old_result,cJSON *command) {
-    
+
     fillData(lf, "sca.type", "check");
 
     if(scan_id) {

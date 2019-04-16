@@ -66,7 +66,7 @@ static const char *SQL_STMT[] = {
     "SELECT fim_first_check FROM scan_info WHERE module = ?;",
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
     "SELECT fim_third_check FROM scan_info WHERE module = ?;",
-    "SELECT id,result FROM sca_check WHERE id = ?;",
+    "SELECT id,result,status FROM sca_check WHERE id = ?;",
     "UPDATE sca_check SET result = ?, scan_id = ?, status = ?, reason = ? WHERE id = ?;",
     "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
