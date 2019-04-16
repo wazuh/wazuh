@@ -654,6 +654,8 @@ void wdb_commit_old() {
             mdebug2("Committing database for agent %s", node->agent_id);
             if (node->remove) {
                 wdb_close(node);
+                w_mutex_unlock(&pool_mutex);
+                return;
             } else {
                 wdb_commit2(node);
             }
