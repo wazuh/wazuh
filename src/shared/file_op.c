@@ -2721,7 +2721,7 @@ int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int m
         }
 
         /* Valid ASCII */
-        if (b[0] < 0x80) {
+        if (b[0] == 0x09 || b[0] == 0x0A || b[0] == 0x0D || (0x20 <= b[0] && b[0] <= 0x7E)) {
             if (fseek(fp,-nbytes + 1,SEEK_CUR) < 0) {
                 merror(FSEEK_ERROR, file, errno, strerror(errno));
             }
