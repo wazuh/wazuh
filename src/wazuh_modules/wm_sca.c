@@ -1884,6 +1884,13 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, wm
     f_name[PATH_MAX + 1] = '\0';
 
     dp = opendir(dir);
+
+    if (errno == 2 && file != NULL){
+        os_malloc(OS_MAXSTR, inv_check_reasons[*n_reason]);
+        sprintf(inv_check_reasons[*n_reason], "Directory %s not found", dir);
+        (*n_reason)++;
+        return (2);
+    }
     if (!dp) {
         return (0);
     }
