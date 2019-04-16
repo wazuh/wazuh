@@ -110,6 +110,25 @@ typedef struct __Config {
     int rotate_interval;
     int min_rotate_interval;
     ssize_t max_output_size;
+
+    // Rotation options for archives
+    unsigned int archives_enabled:1;
+    unsigned int archives_rotation_enabled:1;
+    unsigned int archives_compress_rotation:1;
+    char **archives_format;
+    long int archives_max_size;
+    long int archives_interval;
+    int archives_rotate;
+
+    // Rotation options for alerts
+    unsigned int alerts_enabled:1;
+    unsigned int alerts_rotation_enabled:1;
+    unsigned int alerts_compress_rotation:1;
+    char **alerts_format;
+    long int alerts_max_size;
+    long int alerts_interval;
+    int alerts_rotate;
+
     long queue_size;
 } _Config;
 

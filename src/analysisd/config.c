@@ -94,6 +94,7 @@ int GlobalConf(const char *cfgfile)
     modules |= CRULES;
     modules |= CALERTS;
     modules |= CCLUSTER;
+    modules |= CROTANALYSD;
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||

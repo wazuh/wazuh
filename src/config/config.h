@@ -33,7 +33,8 @@
 #define CBUFFER       002000000
 #define CCLUSTER      004000000
 #define CSOCKET       010000000
-#define CROTATION     020000000
+#define CROTMONITORD  020000000
+#define CROTANALYSD   040000000
 
 #define UDP_PROTO   6
 #define TCP_PROTO   17
@@ -77,6 +78,7 @@ int Read_Authd(XML_NODE node, void *d1, void *d2);
 int Read_Cluster(XML_NODE node, void *d1, void *d2);
 int Read_Socket(XML_NODE node, void *d1, void *d2);
 int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
+int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */
 int Test_Syscheck(const char * path);
