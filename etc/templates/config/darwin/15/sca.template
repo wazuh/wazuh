@@ -1,0 +1,13 @@
+  <sca>
+    <enabled>yes</enabled>
+    <scan_on_start>yes</scan_on_start>
+    <interval>12h</interval>
+    <skip_nfs>yes</skip_nfs>
+
+    <policies>
+      <policy>cis_apple_macOS_10.11.yml</policy>
+      <policy>system_audit_rcl_mac.yml</policy>
+      <policy>system_audit_ssh.yml</policy>
+    </policies>
+  </sca>
+  

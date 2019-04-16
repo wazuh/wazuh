@@ -85,7 +85,7 @@ int auth_add_agent(int sock, char *id, const char *name, const char *ip, const c
 char * get_agent_id_from_name(const char *agent_name);
 
 /* Check control module availability */
-#ifdef __linux__
+#if defined (__linux__) || defined (__MACH__)
 int control_check_connection();
 #endif
 

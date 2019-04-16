@@ -21,350 +21,379 @@ ID: 87900 - 87999
      <rule id="87901" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^create$</field>
-        <description>Container $(docker.Actor.Attributes.name) created</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87902" level="5">
         <if_sid>87900</if_sid>
         <field name="docker.status">^destroy$</field>
-        <description>Container $(docker.Actor.Attributes.name) destroyed</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) destroyed</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87903" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^start$</field>
-        <description>Container $(docker.Actor.Attributes.name) started</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) started</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87904" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^stop$</field>
-        <description>Container $(docker.Actor.Attributes.name) stopped</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) stopped</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87905" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^pause$</field>
-        <description>Container $(docker.Actor.Attributes.name) paused</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) paused</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87906" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^unpause$</field>
-        <description>Container $(docker.Actor.Attributes.name) unpaused</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) unpaused</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87907" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^exec_start: </field>
-        <description>Command launched in container $(docker.Actor.Attributes.name). Action: "$(docker.Action)"</description>
+        <description>Docker: Command launched in container $(docker.Actor.Attributes.name). Action: "$(docker.Action)"</description>
+        <group>gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87908" level="5">
         <if_sid>87907</if_sid>
         <field name="docker.status">^exec_start: bash $|^exec_start: /bin/bash $|^exec_start: sh $|^exec_start: dash $|^exec_start: /bin/dash $</field>
-        <description>Started shell session in container $(docker.Actor.Attributes.name)</description>
+        <description>Docker: Started shell session in container $(docker.Actor.Attributes.name)</description>
+        <group>pci_dss_10.2.7,gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87909" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^restart$</field>
-        <description>Container $(docker.Actor.Attributes.name) restarted</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) restarted</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87910" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^extract-to-dir$</field>
-        <description>Copied a file from host to $(docker.Actor.Attributes.name)</description>
+        <description>Docker: Copied a file from host to $(docker.Actor.Attributes.name)</description>
+        <group>gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87911" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^archive-path$</field>
-        <description>Copied a file from $(docker.Actor.Attributes.name) to host</description>
+        <description>Docker: Copied a file from $(docker.Actor.Attributes.name) to host</description>
+        <group>gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87912" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^volume$</field>
-        <description>Docker volume action</description>
+        <description>Docker: Docker volume action</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87913" level="3">
         <if_sid>87912</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>Volume created in $(docker.Actor.Attributes.driver)</description>
+        <description>Docker: Volume created in $(docker.Actor.Attributes.driver)</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87914" level="7">
         <if_sid>87912</if_sid>
         <field name="docker.Action">^destroy$</field>
-        <description>Volume destroyed in $(docker.Actor.Attributes.driver)</description>
+        <description>Docker: Volume destroyed in $(docker.Actor.Attributes.driver)</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87915" level="3">
         <if_sid>87912</if_sid>
         <field name="docker.Action">^mount$</field>
-        <description>Volume mounted on $(docker.Actor.Attributes.destination)</description>
+        <description>Docker: Volume mounted on $(docker.Actor.Attributes.destination)</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87916" level="5">
         <if_sid>87912</if_sid>
         <field name="docker.Action">^unmount$</field>
-        <description>Volume unmounted from $(docker.Actor.Attributes.driver)</description>
+        <description>Docker: Volume unmounted from $(docker.Actor.Attributes.driver)</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87917" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^commit$</field>
-        <description>Committed an image from container $(docker.Actor.Attributes.name)</description>
+        <description>Docker: Committed an image from container $(docker.Actor.Attributes.name)</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87918" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^tag$</field>
-        <description>Image $(docker.Actor.Attributes.name) tagged</description>
+        <description>Docker: Image $(docker.Actor.Attributes.name) tagged</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87919" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^untag$</field>
-        <description>Image $(docker.Actor.Attributes.name) untagged</description>
+        <description>Docker: Image $(docker.Actor.Attributes.name) untagged</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87920" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^import$</field>
-        <description>Image created from imported data</description>
+        <description>Docker: Image created from imported data</description>
+        <group>pci_dss_10.2.7,gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87921" level="7">
         <if_sid>87900</if_sid>
         <field name="docker.status">^delete$</field>
-        <description>Container $(docker.Actor.Attributes.name) deleted</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) deleted</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87922" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^attach$</field>
-        <description>Attached local standard input, output, and error streams to container $(docker.Actor.Attributes.name)</description>
+        <description>Docker: Attached local standard input, output, and error streams to container $(docker.Actor.Attributes.name)</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87923" level="5">
         <if_sid>87900</if_sid>
         <field name="docker.status">^export$</field>
-        <description>Filesystem of container $(docker.Actor.Attributes.name) exported</description>
+        <description>Docker: Filesystem of container $(docker.Actor.Attributes.name) exported</description>
+        <group>pci_dss_10.2.7,gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87924" level="7">
         <if_sid>87900</if_sid>
         <field name="docker.status">^kill$|^die$</field>
-        <description>Container $(docker.Actor.Attributes.name) received the action: $(docker.status)</description>
+        <description>Docker: Container $(docker.Actor.Attributes.name) received the action: $(docker.status)</description>
+        <group>gdpr_IV_32.2,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87925" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^update$</field>
-        <description>Configuration of container $(docker.Actor.Attributes.name) updated</description>
+        <description>Docker: Configuration of container $(docker.Actor.Attributes.name) updated</description>
+        <group>pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87926" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^top$</field>
-        <description>Running processes of container $(docker.Actor.Attributes.name) displayed</description>
+        <description>Docker: Running processes of container $(docker.Actor.Attributes.name) displayed</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87927" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^network$</field>
-        <description>Group of network events</description>
+        <description>Docker: Group of network events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87928" level="3">
         <if_sid>87927</if_sid>
         <field name="docker.Action">^connect$</field>
-        <description>Network $(docker.Actor.Attributes.name) connected</description>
+        <description>Docker: Network $(docker.Actor.Attributes.name) connected</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87929" level="4">
         <if_sid>87927</if_sid>
         <field name="docker.Action">^disconnect$</field>
-        <description>Network $(docker.Actor.Attributes.name) disconnected</description>
+        <description>Docker: Network $(docker.Actor.Attributes.name) disconnected</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87930" level="3">
         <if_sid>87927</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>Network $(docker.Actor.Attributes.name) created</description>
+        <description>Docker: Network $(docker.Actor.Attributes.name) created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87931" level="5">
         <if_sid>87927</if_sid>
         <field name="docker.Action">^destroy$</field>
-        <description>Network $(docker.Actor.Attributes.name) deleted</description>
+        <description>Docker: Network $(docker.Actor.Attributes.name) deleted</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87932" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^pull$</field>
-        <description>Image or repository $(docker.Actor.Attributes.name) pulled</description>
+        <description>Docker: Image or repository $(docker.Actor.Attributes.name) pulled</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87933" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^load$</field>
-        <description>Image loaded</description>
+        <description>Docker: Image loaded</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87934" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^save$</field>
-        <description>Image saved</description>
+        <description>Docker: Image saved</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87935" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^rename$</field>
-        <description>Container renamed from $(docker.Actor.Attributes.oldName) to $(docker.Actor.Attributes.name)</description>
+        <description>Docker: Container renamed from $(docker.Actor.Attributes.oldName) to $(docker.Actor.Attributes.name)</description>
+        <group>pci_dss_10.2.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87936" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^config$</field>
-        <description>Group of Docker config events</description>
+        <description>Docker: Group of Docker config events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87937" level="3">
         <if_sid>87936</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>$(docker.Actor.Attributes.name) config created</description>
+        <description>Docker: $(docker.Actor.Attributes.name) config created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87938" level="5">
         <if_sid>87936</if_sid>
         <field name="docker.Action">^remove$</field>
-        <description>$(docker.Actor.Attributes.name) config deleted</description>
+        <description>Docker: $(docker.Actor.Attributes.name) config deleted</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87939" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^secret$</field>
-        <description>Group of Docker secret events</description>
+        <description>Docker: Group of Docker secret events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87940" level="3">
         <if_sid>87939</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>Secret '$(docker.Actor.Attributes.name)' created</description>
+        <description>Docker: Secret '$(docker.Actor.Attributes.name)' created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87941" level="3">
         <if_sid>87939</if_sid>
         <field name="docker.Action">^remove$</field>
-        <description>Secret '$(docker.Actor.Attributes.name)' removed</description>
+        <description>Docker: Secret '$(docker.Actor.Attributes.name)' removed</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87942" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^plugin$</field>
-        <description>Group of Docker plugin events</description>
+        <description>Docker: Group of Docker plugin events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87943" level="3">
         <if_sid>87942</if_sid>
         <field name="docker.Action">^pull$</field>
-        <description>Plugin $(docker.Actor.Attributes.name) pulled</description>
+        <description>Docker: Plugin $(docker.Actor.Attributes.name) pulled</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87944" level="3">
         <if_sid>87942</if_sid>
         <field name="docker.Action">^enable$</field>
-        <description>Plugin $(docker.Actor.Attributes.name) enabled</description>
+        <description>Docker: Plugin $(docker.Actor.Attributes.name) enabled</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87945" level="3">
         <if_sid>87942</if_sid>
         <field name="docker.Action">^disable$</field>
-        <description>Plugin $(docker.Actor.Attributes.name) disabled</description>
+        <description>Docker: Plugin $(docker.Actor.Attributes.name) disabled</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87946" level="3">
         <if_sid>87942</if_sid>
         <field name="docker.Action">^remove$</field>
-        <description>Plugin $(docker.Actor.Attributes.name) removed</description>
+        <description>Docker: Plugin $(docker.Actor.Attributes.name) removed</description>
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87947" level="3">
         <if_sid>87942</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>Plugin $(docker.Actor.Attributes.name) created</description>
+        <description>Docker: Plugin $(docker.Actor.Attributes.name) created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87948" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^node$</field>
-        <description>Group of Docker plugin events</description>
+        <description>Docker: Group of Docker node events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87949" level="3">
         <if_sid>87948</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>Node created</description>
+        <description>Docker: Node created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87950" level="3">
         <if_sid>87948</if_sid>
         <field name="docker.Action">^update$</field>
-        <description>Node updated</description>
+        <description>Docker: Node updated</description>
+        <group>pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
@@ -372,56 +401,62 @@ ID: 87900 - 87999
         <if_sid>87950</if_sid>
         <field name="docker.Actor.Attributes.role.new">\.+</field>
         <field name="docker.Actor.Attributes.role.old">\.+</field>
-        <description>Role for node $(docker.Actor.Attributes.name) has changed from $(docker.Actor.Attributes.role.old) to $(docker.Actor.Attributes.role.new)</description>
+        <description>Docker: Role for node $(docker.Actor.Attributes.name) has changed from $(docker.Actor.Attributes.role.old) to $(docker.Actor.Attributes.role.new)</description>
+        <group>pci_dss_10.2.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87952" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^resize$</field>
-        <description>Container $(docker.Actor.Attributes.image) resized terminal size to $(docker.Actor.Attributes.width)x$(docker.Actor.Attributes.height)</description>
+        <description>Docker: Container $(docker.Actor.Attributes.image) resized terminal size to $(docker.Actor.Attributes.width)x$(docker.Actor.Attributes.height)</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87953" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^checkpoint$</field>
-        <description>Checkpoint set at container $(docker.Actor.Attributes.name)</description>
+        <description>Docker: Checkpoint set at container $(docker.Actor.Attributes.name)</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87954" level="0">
         <if_sid>87900</if_sid>
         <field name="docker.Type">^service$</field>
-        <description>Group of service events</description>
+        <description>Docker: Group of service events</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87955" level="3">
         <if_sid>87954</if_sid>
         <field name="docker.Action">^create$</field>
-        <description>Service $(docker.Actor.Attributes.name) created</description>
+        <description>Docker: Service $(docker.Actor.Attributes.name) created</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87956" level="3">
         <if_sid>87954</if_sid>
         <field name="docker.Action">^update$</field>
-        <description>Service $(docker.Actor.Attributes.name) updated</description>
+        <description>Docker: Service $(docker.Actor.Attributes.name) updated</description>
+        <group>pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87957" level="5">
         <if_sid>87954</if_sid>
         <field name="docker.Action">^remove$</field>
-        <description>Service $(docker.Actor.Attributes.name) deleted</description>
+        <description>Docker: Service $(docker.Actor.Attributes.name) deleted</description>+
+        <group>pci_dss_10.2.7,pci_dss_11.5,</group>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87958" level="3">
         <if_sid>87900</if_sid>
         <field name="docker.status">^push$</field>
-        <description>Image $(docker.Actor.Attributes.name) pushed</description>
+        <description>Docker: Image $(docker.Actor.Attributes.name) pushed</description>
+        <group>pci_dss_10.2.7,</group>
         <options>no_full_log</options>
     </rule>
 </group>
