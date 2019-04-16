@@ -166,7 +166,7 @@ int OS_RemoveAgent(const char *u_id) {
     wdb_send_query(wdbquery, &wdboutput);
 
     if (wdboutput) {
-        minfo("Wazuh-db output delete: '%s'", wdboutput);
+        mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
         os_free(wdboutput);
     }
 

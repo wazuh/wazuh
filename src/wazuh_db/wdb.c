@@ -188,7 +188,7 @@ wdb_t * wdb_open_agent2(int agent_id) {
 
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
         // Checking if database was removed to avoid create it again
-        if (wdb->removed) {
+        if (wdb->remove) {
             w_mutex_unlock(&pool_mutex);
             return wdb;
         }
@@ -567,7 +567,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
-    wdb->removed = 0;
+    wdb->remove = 0;
     return wdb;
 }
 
@@ -649,7 +649,7 @@ void wdb_commit_old() {
 
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
             mdebug2("Committing database for agent %s", node->agent_id);
-            if (node->removed) {
+            if (node->remove) {
                 wdb_close(node);
             } else {
                 wdb_commit2(node);
@@ -733,7 +733,7 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
 }
 
 int wdb_close(wdb_t * wdb) {
-    char path[OS_FLSIZE + 1];
+    char path[OS_FLSIZE];
     int result;
     int i;
 
@@ -752,16 +752,15 @@ int wdb_close(wdb_t * wdb) {
 
         result = sqlite3_close_v2(wdb->db);
 
-        if (wdb->removed) {
-            minfo("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
-            if (remove(path)) {
-                mwarn("Couldn'n delete wazuh database: '%s'", path);
-                return -1;
-            }
-        }
-
         if (result == SQLITE_OK) {
-            minfo("Removing wdb structure'%s'", wdb->agent_id);
+            if (wdb->remove) {
+                mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
+                if (remove(path)) {
+                    mwarn("Couldn'n delete wazuh database: '%s'", path);
+                    return -1;
+                }
+            }
+
             wdb_pool_remove(wdb);
             wdb_destroy(wdb);
             return 0;
@@ -836,11 +835,9 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 }
 
 /* Delete database. Returns 0 on success or -1 on error. */
-int wdb_remove_database(wdb_t *wdb) {
-    // Avoid creating the bd again after deleting it.
-    wdb->removed = 1;
+void wdb_remove_database(wdb_t *wdb) {
+    // Marked for deletion. Avoid creating the bd again after deleting it.
+    wdb->remove = 1;
     wdb->transaction = 1;
     wdb_leave(wdb);
-
-    return 0;
 }

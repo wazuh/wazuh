@@ -18,7 +18,7 @@
 int auth_remove_agent(int sock, const char *id, int json_format) {
     char buffer[OS_MAXSTR + 1];
     char *output;
-    char wdbquery[OS_SIZE_128 + 1];
+    char wdbquery[OS_SIZE_128];
     char *wdboutput;
     int result;
     ssize_t length;
@@ -74,7 +74,6 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
             wdb_send_query(wdbquery, &wdboutput);
 
             if (wdboutput) {
-                minfo("Wazuh-db output delete: '%s'", wdboutput);
                 os_free(wdboutput);
             }
         }
