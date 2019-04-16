@@ -180,6 +180,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
             os_strdup(__ejlogfile, previous_log);
             _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, TRUE);
             w_compress_gzfile(previous_log, c_ejflogfile);
+            w_rotate_log(previous_log, 1, 1, 1, 1, 1);
             /* Remove uncompressed file */
             if(unlink(previous_log) == -1) {
                 merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));

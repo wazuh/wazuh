@@ -12,6 +12,7 @@
 #define _REPORTSCONFIG_H
 
 #include "report_op.h"
+#include "../headers/file_op.h"
 
 /* Structure for the report */
 typedef struct _report_config {
