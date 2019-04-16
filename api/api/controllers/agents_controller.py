@@ -19,6 +19,7 @@ loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
 
+@exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge=None, status=None, older_than=None):  # noqa: E501
     """Delete agents
 
@@ -59,6 +60,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents=None, purge
     return data, 200
 
 
+@exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
                    status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
                    version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
@@ -166,6 +168,7 @@ def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     """
     Add a new agent into the cluster.
@@ -205,6 +208,7 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):  # noqa: E501
     """Get an agent
 
@@ -238,6 +242,7 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False): 
     return data, 200
 
 
+@exception_handler
 def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
     """Get an agent
 
@@ -271,6 +276,7 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # 
     return data, 200
 
 
+@exception_handler
 def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get active configuration
 
@@ -309,6 +315,7 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
     return data, 200
 
 
+@exception_handler
 def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove all agent groups.
 
@@ -338,6 +345,7 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa
     return data, 200
 
 
+@exception_handler
 def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get agent configuration sync status.
 
@@ -368,6 +376,7 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E5
     return data, 200
 
 
+@exception_handler
 def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove a single group of an agent.
 
@@ -400,6 +409,7 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
     return data, 200
 
 
+@exception_handler
 def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=False, wait_for_complete=False):  # noqa: E501
     """Add agent group.
 
@@ -435,6 +445,7 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
     return data, 200
 
 
+@exception_handler
 def get_agent_key(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get agent key.
 
@@ -464,6 +475,7 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):  # noqa: E50
     return data, 200
 
 
+@exception_handler
 def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Restart an agent.
 
@@ -599,6 +611,7 @@ def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E
     return data, 200
 
 
+@exception_handler
 def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False):  # noqa: E501
     """Get upgrade result from agent.
 
@@ -631,6 +644,7 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
     return data, 200
 
 
+@exception_handler
 def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove multiple agents from a specified group. 
     
@@ -663,6 +677,7 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
     return data, 200
 
 
+@exception_handler
 def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False, agent_id_list=None):  # noqa: E501
     """Add multiple agents to a group
     
@@ -702,6 +717,7 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False, a
     return data, 200
 
 
+@exception_handler
 def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # noqa: E501
     """Removes a list of groups. 
     
@@ -732,6 +748,7 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
     return data, 200
 
 
+@exception_handler
 def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
     """Get all groups. 
     
@@ -774,6 +791,7 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     return data, 200
 
 
+@exception_handler
 def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Remove group. 
     
@@ -804,6 +822,7 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, status=None, q=''):  # noqa: E501
     """Remove group. 
     
@@ -857,6 +876,7 @@ def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0
     return data, 200
 
 
+@exception_handler
 def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     """Create a group.
 
@@ -886,6 +906,7 @@ def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Get group configuration. 
     
@@ -922,6 +943,7 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
     return data, 200
 
 
+@exception_handler
 def post_group_config(body, group_id, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Update group configuration. 
     
@@ -967,6 +989,7 @@ def post_group_config(body, group_id, pretty=False, wait_for_complete=False, off
     return data, 200
 
 
+@exception_handler
 def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, hash='md5'):  # noqa: E501
     """Get group file. 
     
@@ -1012,6 +1035,7 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
     return data, 200
 
 
+@exception_handler
 def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, type=None, format=None):  # noqa: E501
     """Get group file. 
     
@@ -1051,6 +1075,7 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
     return data, 200
 
 
+@exception_handler
 def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=False, offset=0, limit=None):  # noqa: E501
     """Update group configuration. 
     
@@ -1099,6 +1124,7 @@ def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=F
     return data, 200
 
 
+@exception_handler
 def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     """Get group file. 
     
@@ -1143,6 +1169,7 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
     """Get an agent by its name
     
@@ -1176,6 +1203,7 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
     return data, 200
 
 
+@exception_handler
 def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, q=''):
     """Get agents without group.
 
@@ -1221,6 +1249,7 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=No
     return data, 200
 
 
+@exception_handler
 def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, q=''):
     """Get outdated agents.
 
@@ -1260,6 +1289,7 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
     return data, 200
 
 
+@exception_handler
 def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     """Restart a list of agents.
     
@@ -1299,6 +1329,7 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None, fields=None, q=''):
     """Get distinct fields in agents.
 
@@ -1347,6 +1378,7 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
     return data, 200
 
 
+@exception_handler
 def get_agent_summary(pretty=False, wait_for_complete=False,):  # noqa: E501
     """Get agents summary.
 
@@ -1373,6 +1405,7 @@ def get_agent_summary(pretty=False, wait_for_complete=False,):  # noqa: E501
     return data, 200
 
 
+@exception_handler
 def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None, search=None, q=''):
     """Get OS summary.
 
