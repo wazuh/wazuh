@@ -117,7 +117,7 @@ class WazuhException(Exception):
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
         1701: {'message': 'Agent does not exist',
-               'remediation': 'PLease, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/command-line/register.html)'
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/command-line/register.html)'
                ' if you want to create an agent'
                },
         1702: {'message': 'Unable to restart agent(s)',
@@ -226,7 +226,9 @@ class WazuhException(Exception):
         1740: {'message': 'Action only available for active agents',
                'remediation': 'Please activate the agent to be able to synchronize'
                },
-        1741: 'Could not remove multigroup',
+        1741: {'message': 'Could not remove multigroup',
+               'remediation': 'Cannot remove multigroup'
+               },
         1742: 'Error running XML syntax validator',
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',

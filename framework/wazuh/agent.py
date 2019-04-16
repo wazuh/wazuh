@@ -925,13 +925,13 @@ class Agent:
                     try:
                         Agent(id).restart()
                         affected_agents.append(id)
-                    except Exception as e:
+                    except WazuhError(1702) as e:
                         failed_ids.append(create_exception_dic(id, e))
             else:
                 try:
                     Agent(agent_id).restart()
                     affected_agents.append(agent_id)
-                except Exception as e:
+                except WazuhError(1702) as e:
                     failed_ids.append(create_exception_dic(agent_id, e))
             if not failed_ids:
                 message = 'All selected agents were restarted'
@@ -1037,7 +1037,7 @@ class Agent:
         try:
             Agent(agent_id).remove(backup, purge)
             affected_agents.append(agent_id)
-        except Exception as e:
+        except WazuhError(1731) as e:
             failed_ids.append(create_exception_dic(agent_id, e))
 
         if not failed_ids:
@@ -1083,7 +1083,7 @@ class Agent:
                         raise WazuhError(1731, "The agent has a status different to '{}' or the specified time frame 'older_than {}' does not apply.".format(status, older_than))
                     my_agent.remove(backup, purge)
                     affected_agents.append(id)
-                except Exception as e:
+                except WazuhError(1731) as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
             for id in id_purgeable_agents:
@@ -1092,7 +1092,7 @@ class Agent:
                     my_agent._load_info_from_DB()
                     my_agent.remove(backup, purge)
                     affected_agents.append(id)
-                except Exception as e:
+                except WazuhError(1731) as e:
                     failed_ids.append(create_exception_dic(id, e))
 
         if not failed_ids:
@@ -1278,7 +1278,7 @@ class Agent:
                 conn.execute(query, request)
                 id_group = conn.fetch()
 
-                if id_group == None:
+                if id_group is None:
                     continue
 
                 id_group = id_group[0]
@@ -1310,8 +1310,6 @@ class Agent:
                 data = sort_array(data, sort['fields'], sort['order'])
             else:
                 data = sort_array(data, ['name'])
-        except WazuhException as e:
-            raise e
         except Exception as e:
             raise WazuhInternalError(1736, str(e))
 
@@ -1464,8 +1462,6 @@ class Agent:
                 data = sort_array(data, ["filename"])
 
             return {'items': cut_array(data, offset, limit), 'totalItems': len(data)}
-        except WazuhException as e:
-            raise e
         except Exception as e:
             raise WazuhInternalError(1727, str(e))
 
@@ -1589,7 +1585,7 @@ class Agent:
                     ids.append(id)
                     affected_agents += removed['affected_agents']
                     Agent.remove_multi_group(set(map(lambda x: x.lower(), group_id)))
-                except Exception as e:
+                except WazuhError(1741) as e:
                     failed_ids.append(create_exception_dic(id, e))
         else:
             if group_id.lower() == "default":
@@ -1600,7 +1596,7 @@ class Agent:
                 ids.append(group_id)
                 affected_agents += removed['affected_agents']
                 Agent.remove_multi_group({group_id.lower()})
-            except Exception as e:
+            except WazuhError(1741) as e:
                 failed_ids.append(create_exception_dic(group_id, e))
 
         if not failed_ids:
@@ -2201,7 +2197,7 @@ class Agent:
         if self.os['platform']=="windows" and int(self.os['major']) < 6:
             raise WazuhInternalError(1721, self.os['name'])
 
-        if wpk_repo == None:
+        if wpk_repo is None:
             wpk_repo = common.wpk_repo_url
 
         if not wpk_repo.endswith('/'):
