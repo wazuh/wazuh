@@ -955,10 +955,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                     mdebug2("Running command: '%s'.", f_value);
                     if (wm_sca_read_command(f_value, pattern,data)) {
-                        mdebug2("Command returned pass.");
+                        mdebug2("Command returned found.");
                         found = 1;
                     } else {
-                        mdebug2("Command returned fail.");
+                        mdebug2("Command returned not found.");
                     }
                     char _b_msg[OS_SIZE_1024 + 1];
                     _b_msg[OS_SIZE_1024] = '\0';
