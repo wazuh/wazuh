@@ -57,6 +57,7 @@ static pthread_mutexattr_t win_el_mutex_attr;
 static pthread_rwlock_t files_update_rwlock;
 
 static OSHash *excluded_files = NULL;
+static OSHash *excluded_binaries = NULL;
 
 static char *rand_keepalive_str(char *dst, int size)
 {
@@ -94,6 +95,12 @@ void LogCollectorStart()
     /* Create store data */
     excluded_files = OSHash_Create();
     if (!excluded_files) {
+        merror_exit(LIST_ERROR);
+    }
+
+    /* Create store for binaries data */
+    excluded_binaries = OSHash_Create();
+    if (!excluded_binaries) {
         merror_exit(LIST_ERROR);
     }
 
@@ -1115,28 +1122,57 @@ int check_pattern_expand(int do_seek) {
                 if (!found) {
                     retval = 1;
                     char *ex_file = OSHash_Get(excluded_files,g.gl_pathv[glob_offset]);
+                    int added = 0;
 
                     if(!ex_file) {
                         minfo(NEW_GLOB_FILE, globs[j].gpath, g.gl_pathv[glob_offset]);
+
+                        os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                        if (i) {
+                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                        }
+
+                        os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
+                        w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
+                        globs[j].gfiles[i].fp = NULL;
+                        globs[j].gfiles[i].exists = 1;
+                        globs[j].gfiles[i + 1].file = NULL;
+                        globs[j].gfiles[i + 1].target = NULL;
+                        current_files++;
+                        globs[j].num_files++;
+                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        if  (!i && !globs[j].gfiles[i].read) {
+                            set_read(&globs[j].gfiles[i], i, j);
+                        } else {
+                            handle_file(i, j, do_seek, 1);
+                        }
+
+                        added = 1;
                     }
 
-                    os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                    if (i) {
-                        memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                    }
-                    os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
-                    w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
-                    globs[j].gfiles[i].fp = NULL;
-                    globs[j].gfiles[i].exists = 1;
-                    globs[j].gfiles[i + 1].file = NULL;
-                    globs[j].gfiles[i + 1].target = NULL;
-                    current_files++;
-                    globs[j].num_files++;
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
-                    if  (!i && !globs[j].gfiles[i].read) {
-                        set_read(&globs[j].gfiles[i], i, j);
-                    } else {
-                        handle_file(i, j, do_seek, 1);
+                    char *file_excluded_binary = OSHash_Get(excluded_binaries,g.gl_pathv[glob_offset]);
+
+                    /* This file could have to non binary file */
+                    if (file_excluded_binary && !added) {
+                        os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                        if (i) {
+                            memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                        }
+
+                        os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
+                        w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
+                        globs[j].gfiles[i].fp = NULL;
+                        globs[j].gfiles[i].exists = 1;
+                        globs[j].gfiles[i + 1].file = NULL;
+                        globs[j].gfiles[i + 1].target = NULL;
+                        current_files++;
+                        globs[j].num_files++;
+                        mdebug2(CURRENT_FILES, current_files, maximum_files);
+                        if  (!i && !globs[j].gfiles[i].read) {
+                            set_read(&globs[j].gfiles[i], i, j);
+                        } else {
+                            handle_file(i, j, do_seek, 1);
+                        }
                     }
                 }
                 glob_offset++;
@@ -1274,6 +1310,7 @@ int check_pattern_expand(int do_seek) {
 
                         if (!found) {
                             retval = 1;
+                            int added = 0;
 
                             char *ex_file = OSHash_Get(excluded_files,full_path);
 
@@ -1294,26 +1331,53 @@ int check_pattern_expand(int do_seek) {
                                 CloseHandle(h1);
 
                                 minfo(NEW_GLOB_FILE, globs[j].gpath, full_path);
+
+                                os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                                if (i) {
+                                    memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                                }
+
+                                os_strdup(full_path, globs[j].gfiles[i].file);
+                                w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
+                                globs[j].gfiles[i].fp = NULL;
+                                globs[j].gfiles[i].exists = 1;
+                                globs[j].gfiles[i + 1].file = NULL;
+                                globs[j].gfiles[i + 1].target = NULL;
+                                current_files++;
+                                globs[j].num_files++;
+                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                if  (!i && !globs[j].gfiles[i].read) {
+                                    set_read(&globs[j].gfiles[i], i, j);
+                                } else {
+                                    handle_file(i, j, do_seek, 1);
+                                }
+
+                                added = 1;
                             }
 
-                            os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
-                            if (i) {
-                                memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
-                            }
+                            char *file_excluded_binary = OSHash_Get(excluded_binaries,full_path);
 
-                            os_strdup(full_path, globs[j].gfiles[i].file);
-                            w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
-                            globs[j].gfiles[i].fp = NULL;
-                            globs[j].gfiles[i].exists = 1;
-                            globs[j].gfiles[i + 1].file = NULL;
-                            globs[j].gfiles[i + 1].target = NULL;
-                            current_files++;
-                            globs[j].num_files++;
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            if  (!i && !globs[j].gfiles[i].read) {
-                                set_read(&globs[j].gfiles[i], i, j);
-                            } else {
-                                handle_file(i, j, do_seek, 1);
+                            /* This file could have to non binary file */
+                            if (file_excluded_binary && !added) {
+                                os_realloc(globs[j].gfiles, (i +2)*sizeof(logreader), globs[j].gfiles);
+                                if (i) {
+                                    memcpy(&globs[j].gfiles[i], globs[j].gfiles, sizeof(logreader));
+                                }
+
+                                os_strdup(full_path, globs[j].gfiles[i].file);
+                                w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
+                                globs[j].gfiles[i].fp = NULL;
+                                globs[j].gfiles[i].exists = 1;
+                                globs[j].gfiles[i + 1].file = NULL;
+                                globs[j].gfiles[i + 1].target = NULL;
+                                current_files++;
+                                globs[j].num_files++;
+                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                if  (!i && !globs[j].gfiles[i].read) {
+                                    set_read(&globs[j].gfiles[i], i, j);
+                                } else {
+                                    handle_file(i, j, do_seek, 1);
+                                }
                             }
                         }
                     }
@@ -1998,6 +2062,14 @@ static void check_text_only() {
                     if(!file_excluded) {
                         OSHash_Add(excluded_files,file_name,(void *)1);
                     }
+
+                    /* Add to binary hash table */
+                    char *file_excluded_binary = OSHash_Get(excluded_binaries,file_name);
+
+                    if (!file_excluded_binary) {
+                        OSHash_Add(excluded_binaries,file_name,(void *)1);
+                    }
+
                 }
                 i--;
             } else {
