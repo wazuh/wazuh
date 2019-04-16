@@ -1,129 +1,112 @@
 /*
  * SQL Schema AWS tests
  * Copyright (C) 2015-2019, Wazuh Inc.
- * April 1, 2019.
+ * April 15, 2019.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE 'cloudtrail' (
+CREATE TABLE 'custom' (
     bucket_path 'text' NOT NULL,
     aws_account_id 'text' NOT NULL,
-    aws_region 'text' NOT NULL,
     log_key 'text' NOT NULL,
     processed_date 'text' NOT NULL,
     created_date 'integer' NOT NULL,
-    PRIMARY KEY (bucket_path, aws_account_id, aws_region, log_key));
+    PRIMARY KEY (bucket_path, aws_account_id, log_key));
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0030Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-09-16-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0000Z_aaab.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-10-16-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0000Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-11-16-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0005Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-19-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0020Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-12-16-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0010Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-17-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T0025Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-08-16-03.zip',
     DATETIME('now'),
     '');
 
-INSERT INTO 'cloudtrail' (
+INSERT INTO 'custom' (
     bucket_path,
     aws_account_id,
-    aws_region,
     log_key,
     processed_date,
     created_date) VALUES (
     'test-bucket/',
     '123456789',
-    'us-east-1',
-    'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz',
+    'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-18-03.zip',
     DATETIME('now'),
     '');
 

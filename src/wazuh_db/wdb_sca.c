@@ -10,7 +10,7 @@
  */
 
 #include "wdb.h"
-#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 
 static const char *SQL_INSERT_PM = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (datetime(?, 'unixepoch', 'localtime'), datetime(?, 'unixepoch', 'localtime'), ?, ?, ?);";
 static const char *SQL_UPDATE_PM = "UPDATE pm_event SET date_last = datetime(?, 'unixepoch', 'localtime') WHERE log = ?;";
@@ -747,9 +747,9 @@ int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output) {
 end:
     if(has_result) {
         if(str) {
-            os_md5 md5_hash;
-            OS_MD5_Str(str,-1,md5_hash);
-            snprintf(output,OS_MAXSTR,"%s",md5_hash);
+            os_sha256 hash;
+            OS_SHA256_String(str,hash);
+            snprintf(output,OS_MAXSTR,"%s",hash);
             os_free(str);
         }
         return 1;

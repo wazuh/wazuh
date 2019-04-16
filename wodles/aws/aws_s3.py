@@ -1772,7 +1772,7 @@ class AWSCustomBucket(AWSBucket):
                     error_msg=e))
             sys.exit(10)
 
-    def db_maintenance(self):
+    def db_maintenance(self, **kwargs):
         debug("+++ DB Maintenance", 1)
         try:
             if self.db_count_custom() > self.retain_db_records:

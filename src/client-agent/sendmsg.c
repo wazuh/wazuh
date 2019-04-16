@@ -46,7 +46,11 @@ int send_msg(const char *msg, ssize_t msg_length)
         error = WSAGetLastError();
         merror(SEND_ERROR, "server", win_strerror(error));
 #else
-        merror(SEND_ERROR, "server", strerror(error));
+        if(error == EPIPE) {
+            mdebug2(TCP_EPIPE);
+        } else {
+            merror(SEND_ERROR, "server", strerror(error));
+        }
 #endif
         sleep(1);
     }
