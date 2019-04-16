@@ -571,45 +571,48 @@ void LogCollectorStart()
                     }
                 } else {
 #ifdef WIN32
-                    HANDLE h1;
+                    if (!current->command && strcmp(current->logformat,EVENTCHANNEL) && strcmp(current->logformat,EVENTLOG)) {
+                        
+                        HANDLE h1;
 
-                    h1 = CreateFile(current->file, GENERIC_READ,
-                                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-                    if (h1 == INVALID_HANDLE_VALUE) {
-                        if (current->h) {
-                            CloseHandle(current->h);
+                        h1 = CreateFile(current->file, GENERIC_READ,
+                                        FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+                        if (h1 == INVALID_HANDLE_VALUE) {
+                            if (current->h) {
+                                CloseHandle(current->h);
+                            }
+                            mdebug1(FILE_ERROR, current->file);
+                        } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
+                            if (current->h) {
+                                CloseHandle(current->h);
+                            }
+                            mdebug1(FILE_ERROR, current->file);
                         }
-                        merror(FILE_ERROR, current->file);
-                    } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
-                        if (current->h) {
-                            CloseHandle(current->h);
-                        }
-                        merror(FILE_ERROR, current->file);
-                    }
 
-                    if (current->exists==1) {
-                        minfo(FORGET_FILE, current->file);
-                        current->exists = 0;
-                    };
+                        if (current->exists==1) {
+                            minfo(FORGET_FILE, current->file);
+                            current->exists = 0;
+                        };
 
-                    current->ign++;
+                        current->ign++;
 
-                    CloseHandle(h1);
+                        CloseHandle(h1);
 
-                    // Only expanded files that have been deleted will be forgotten
-                    if (j >= 0) {
-                        if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
-                            merror(REM_ERROR, current->file);
+                        // Only expanded files that have been deleted will be forgotten
+                        if (j >= 0) {
+                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
+                                merror(REM_ERROR, current->file);
+                            } else {
+                                mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                i--;
+                                continue;
+                            }
+                        } else if (open_file_attempts) {
+                            mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
                         } else {
-                            mdebug2(CURRENT_FILES, current_files, maximum_files);
-                            i--;
-                            continue;
+                            mdebug1(OPEN_UNABLE, current->file);
                         }
-                    } else if (open_file_attempts) {
-                        mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
-                    } else {
-                        mdebug1(OPEN_UNABLE, current->file);
                     }
 #endif
                 }
