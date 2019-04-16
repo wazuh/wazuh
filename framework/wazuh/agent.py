@@ -1115,7 +1115,7 @@ class Agent:
 
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
-        :param force: Remove old agent with same IP if disconnected since <force> seconds.
+        :param force_time: Remove old agent with same IP if disconnected since <force> seconds.
         :return: Agent ID.
         """
         # check length of agent name
@@ -1190,7 +1190,7 @@ class Agent:
         :param name: name of the new agent.
         :param ip: IP of the new agent. It can be an IP, IP/NET or ANY.
         :param key: name of the new agent.
-        :param force: Remove old agent with same IP if disconnected since <force_time> seconds.
+        :param force_time: Remove old agent with same IP if disconnected since <force_time> seconds.
         :return: Agent ID.
         """
 

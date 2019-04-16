@@ -121,7 +121,7 @@ class WazuhException(Exception):
                ' if you want to create an agent'
                },
         1702: {'message': 'Unable to restart agent(s)',
-               'remediation': 'Please make sure the agent exists and is active'
+               'remediation': 'Please make sure the agent exists and is active and is not the manager'
                },
         1703: {'message': 'Action not available',
                'remediation': 'This action is not available for Manager (Agent 000)'
