@@ -251,7 +251,7 @@ int wdb_parse(char * input, char * output) {
                 result = -1;
             } else {
                 snprintf(output, OS_MAXSTR + 1, "ok");
-                result = -1;
+                result = 0;
             }
             return result;
         } else if (strcmp(query, "begin") == 0) {

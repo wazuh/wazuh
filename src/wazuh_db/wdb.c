@@ -187,6 +187,11 @@ wdb_t * wdb_open_agent2(int agent_id) {
     w_mutex_lock(&pool_mutex);
 
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
+        // Checking if database was removed to avoid create it again
+        if (wdb->removed) {
+            w_mutex_unlock(&pool_mutex);
+            return wdb;
+        }
         goto success;
     }
 
@@ -567,7 +572,7 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
 }
 
 void wdb_destroy(wdb_t * wdb) {
-    free(wdb->agent_id);
+    os_free(wdb->agent_id);
     pthread_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
@@ -644,7 +649,11 @@ void wdb_commit_old() {
 
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
             mdebug2("Committing database for agent %s", node->agent_id);
-            wdb_commit2(node);
+            if (node->removed) {
+                wdb_close(node);
+            } else {
+                wdb_commit2(node);
+            }
         }
 
         w_mutex_unlock(&node->mutex);
@@ -724,8 +733,11 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
 }
 
 int wdb_close(wdb_t * wdb) {
+    char path[OS_FLSIZE + 1];
     int result;
     int i;
+
+    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->agent_id);
 
     if (wdb->refcount == 0) {
         if (wdb->transaction) {
@@ -740,7 +752,16 @@ int wdb_close(wdb_t * wdb) {
 
         result = sqlite3_close_v2(wdb->db);
 
+        if (wdb->removed) {
+            minfo("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
+            if (remove(path)) {
+                mwarn("Couldn'n delete wazuh database: '%s'", path);
+                return -1;
+            }
+        }
+
         if (result == SQLITE_OK) {
+            minfo("Removing wdb structure'%s'", wdb->agent_id);
             wdb_pool_remove(wdb);
             wdb_destroy(wdb);
             return 0;
@@ -816,31 +837,10 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 
 /* Delete database. Returns 0 on success or -1 on error. */
 int wdb_remove_database(wdb_t *wdb) {
-    char path[OS_FLSIZE + 1];
-    int i;
-
-    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->agent_id);
-
-    for (i = 0; i < WDB_STMT_SIZE; i++) {
-        if (wdb->stmt[i]) {
-            sqlite3_finalize(wdb->stmt[i]);
-        }
-    }
-
-    if (sqlite3_close_v2(wdb->db) != SQLITE_OK) {
-        merror("DB(%s) wdb_close(): %s", wdb->agent_id, sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-
     // Avoid creating the bd again after deleting it.
     wdb->removed = 1;
-    os_free(wdb->agent_id);
-    pthread_mutex_destroy(&wdb->mutex);
-
-    if (remove(path)) {
-        mwarn("Couldn'n delete wazuh database: '%s'", path);
-        return -1;
-    }
+    wdb->transaction = 1;
+    wdb_leave(wdb);
 
     return 0;
 }

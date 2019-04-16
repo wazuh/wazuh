@@ -162,7 +162,6 @@ int OS_RemoveAgent(const char *u_id) {
     }
 
     // Remove DB from wazuh-db
-
     snprintf(wdbquery, OS_SIZE_128, "agent %s remove", u_id);
     wdb_send_query(wdbquery, &wdboutput);
 

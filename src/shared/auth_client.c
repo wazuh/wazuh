@@ -32,14 +32,6 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
     cJSON_AddStringToObject(request, "function", "remove");
     cJSON_AddStringToObject(arguments, "id", id);
 
-    snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
-    wdb_send_query(wdbquery, &wdboutput);
-
-    if (wdboutput) {
-        minfo("Wazuh-db output delete: '%s'", wdboutput);
-        os_free(wdboutput);
-    }
-
     output = cJSON_PrintUnformatted(request);
 
     if (OS_SendSecureTCP(sock, strlen(output), output) < 0) {
@@ -77,6 +69,14 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
             result = -1;
         } else {
             result = 0;
+
+            snprintf(wdbquery, OS_SIZE_128, "agent %s remove", id);
+            wdb_send_query(wdbquery, &wdboutput);
+
+            if (wdboutput) {
+                minfo("Wazuh-db output delete: '%s'", wdboutput);
+                os_free(wdboutput);
+            }
         }
 
         cJSON_Delete(response);
