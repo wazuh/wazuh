@@ -78,7 +78,13 @@ void* wm_aws_main(wm_aws *aws_config) {
             log_info = NULL;
 
             wm_strcat(&log_info, "Executing Bucket Analysis: (Bucket:", '\0');
-            wm_strcat(&log_info, cur_bucket->bucket, ' ');
+            if (cur_bucket->bucket) {
+                wm_strcat(&log_info, cur_bucket->bucket, ' ');
+            }
+            else {
+                wm_strcat(&log_info, "unknown_bucket", ' ');
+            }
+
 
             if (cur_bucket->trail_prefix) {
                 wm_strcat(&log_info, ", Path:", '\0');
@@ -122,7 +128,13 @@ void* wm_aws_main(wm_aws *aws_config) {
             log_info = NULL;
 
             wm_strcat(&log_info, "Executing Service Analysis: (Service:", '\0');
-            wm_strcat(&log_info, cur_service->type, ' ');
+            if (cur_service->type) {
+                wm_strcat(&log_info, cur_service->type, ' ');
+            }
+            else {
+                wm_strcat(&log_info, "unknown_type", ' ');
+            }
+
 
             if (cur_service->aws_account_id) {
                 wm_strcat(&log_info, ", Account ID:", '\0');
