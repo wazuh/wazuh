@@ -133,6 +133,10 @@ void * syscom_main(__attribute__((unused)) void * arg) {
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
+        case OS_SOCKTERR:
+            merror("At syscom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            break;
+
         case -1:
             merror("At syscom_main(): OS_RecvSecureTCP(): %s", strerror(errno));
             break;

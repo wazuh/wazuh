@@ -1,0 +1,647 @@
+# Security Configuration assessment
+# Checks for Microsoft Office 2016
+# Copyright (C) 2015-2019, Wazuh Inc.
+#
+# This program is a free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on
+# Australian Cyber Security Centre Hardening Microsoft Office Guide - May 2018 (https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf)
+# Center for Internet Security Microsoft Office 2016 v1.1.0 - 11-30-2016
+
+policy:
+  id: "acsc_office2016"
+  file: "acsc_office2016_rcl.yml"
+  name: "System audit for Office 2016 vulnerabilities"
+  description: "Guidance for establishing a secure configuration for Office 2016 vulnerabilities."
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+
+requirements:
+  title: "Check that the installed Office is version 2016"
+  description: "Requirements for running the CIS benchmark against Office 2016"
+  condition: "any required"
+  rules:
+     - 'r:HKLM\Software\Microsoft\Office\16.0\Word\InstallRoot::Path;'
+
+checks:
+# ACSC - Attack Surface Reduction
+ - id: 10000
+   title: "Ensure Attack Surface Reduction is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> ExploitGuard_ASR_Rules -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR -> !ExploitGuard_ASR_Rules;'
+ - id: 10001
+   title: "Ensure 'Block executable content from email client and webmail' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550 -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550;'
+ - id: 10002
+   title: "Ensure 'block Office applications from creating child processes' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D4F940AB-401B-4EFC-AADC-AD5F3C50688A -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !D4F940AB-401B-4EFC-AADC-AD5F3C50688A;'
+ - id: 10003
+   title: "Ensure 'block Office applications from creating executable content' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 3B576869-A4EC-4529-8536-B80A7769E899 -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !3B576869-A4EC-4529-8536-B80A7769E899;'
+ - id: 10004
+   title: "Ensure 'block Office applications from injecting code into other processes' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84 -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84;'
+ - id: 10005
+   title: "Ensure 'block JavaScript and VBScript from launching downloaded executable content' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> D3E037E1-3EB8-44C8-A917-57927947596D -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !D3E037E1-3EB8-44C8-A917-57927947596D;'
+ - id: 10006
+   title: "Ensure 'block execution of potentially obfuscated scripts' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 5BEB7EFE-FD9A-4556-801D-275E5FFC04CC -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !5BEB7EFE-FD9A-4556-801D-275E5FFC04CC;'
+ - id: 10007
+   title: "Ensure 'block Win32 API calls from Office macro' is set to 'Enabled'"
+   description: "Attack Surface Reduction (ASR)2is a new security feature introduced in Microsoft Windows 10, version 1709 as partof Windows Defender Exploit Guard. It is designed to combat the threat of malware exploiting legitimate functionality in Microsoft Office applications. In order to use ASR, Windows Defender Antivirus must be configured as the primary real-time antivirus scanning engine on workstations."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> 92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B -> !1;'
+     - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules -> !92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B;'
+# ACSC - Active X
+ - id: 10008
+   title: "Ensure 'Disable All Active X' is set to 'Enabled'"
+   description: "While ActiveX controls can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, ActiveX controls should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\common\security -> disableallactivex -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\common\security -> !disableallactivex;'
+# ACSC - Add-ins
+ - id: 10009
+   title: "Ensure 'Block all unmanaged add-ins' is set to 'Enabled' for Excel"
+   description: "While add-ins can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, add-in use should be managed."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency -> restricttolist -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency -> !restricttolist;'
+ - id: 10010
+   title: "Ensure 'List of managed add-ins' is set to 'Enabled' for Excel"
+   description: "While add-ins can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, add-in use should be managed."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency\addinlist -> policyon -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\resiliency\addinlist -> !policyon;'
+ - id: 10011
+   title: "Ensure 'Block all unmanaged add-ins' is set to 'Enabled' for PowerPoint"
+   description: "While add-ins can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, add-in use should be managed."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency -> restricttolist -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency -> !restricttolist;'
+ - id: 10012
+   title: "Ensure 'List of managed add-ins' is set to 'Enabled' for PowerPoint"
+   description: "While add-ins can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, add-in use should be managed."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency\addinlist -> policyon -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\resiliency\addinlist -> !policyon;'
+ - id: 10013
+   title: "Ensure 'Block all unmanaged add-ins' is set to 'Enabled' for Word"
+   description: "While add-ins can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, add-in use should be managed."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency -> restricttolist -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency -> !restricttolist;'
+ - id: 10014
+   title: "Ensure 'List of managed add-ins' is set to 'Enabled' for Word"
+   description: "While add-ins can be used for legitimate business purposes to provide additional functionality for Microsoft Office, they can also be used by an adversary to gain unauthorised access to sensitive information or to execute malicious code. To reduce this risk, add-in use should be managed."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency\addinlist -> policyon -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\resiliency\addinlist -> !policyon;'
+# ACSC - Extension Hardening
+ - id: 10015
+   title: "Ensure if Extension Hardening functionality in Microsoft Excel is enabled"
+   description: "Extension Hardening mitigates a number of scenarios whereby an adversary would deceive users into opening malicious Microsoft Excel files. By default, users will be warned when file content or MIME type doesn’t match the file extension;however, users can still allow such files to open. As such, it is important that only Microsoft Excel files that pass integrity checks are allowed to be opened. To reduce this risk, Extension Hardening functionality should be enabled for Microsoft Excel."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security -> extensionhardening -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security -> !extensionhardening;'
+# ACSC - File Type Blocking
+ - id: 10016
+   title: "Ensure dBase III / IV files are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> dbasefiles -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !dbasefiles;'
+ - id: 10017
+   title: "Ensure Dif and Sylk files are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock ->	difandsylkfiles -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !difandsylkfiles;'
+ - id: 10018
+   title: "Ensure Excel 2 macrosheets and add-in files are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl2macros -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl2macros;'
+ - id: 10019
+   title: "Ensure Excel 2 worksheets are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock ->	xl2worksheets -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl2worksheets;'
+ - id: 10020
+   title: "Ensure Excel 3 macrosheets and add-in files are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl3macros -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl3macros;'
+ - id: 10021
+   title: "Ensure Excel 3 worksheets and add-in files are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl3worksheets -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl3worksheets;'
+ - id: 10022
+   title: "Ensure Excel 4 macrosheets and add-in files are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl4macros -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl4macros;'
+ - id: 10023
+   title: "Ensure Excel 4 workbooks are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl4workbooks -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl4workbooks;'
+ - id: 10024
+   title: "Ensure Excel 4 worksheets are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl4worksheets -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl4worksheets;'
+ - id: 10025
+   title: "Ensure Excel 95 workbooks are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl95workbooks -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl95workbooks;'
+ - id: 10026
+   title: "Ensure Excel 95-97 workbooks and templates are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> xl9597workbooksandtemplates -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !xl9597workbooksandtemplates;'
+ - id: 10027
+   title: "Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> openinprotectedview -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !openinprotectedview;'
+ - id: 10028
+   title: "Ensure Web pages and Excel 2003 XML spreadsheets are blocked in Microsoft Excel"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock ->	htmlandxmlssfiles -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\fileblock -> !htmlandxmlssfiles;'
+# CIS 2.22 - Office Converters
+ - id: 10029
+   title: "Ensure 'Block Opening of Pre-Release Versions of File Formats New to PowerPoint Through the Compatibility Pack for Office and PowerPoint Converter' is set to Enabled"
+   description: "This policy setting controls whether users with the Microsoft Office Compatibility Pack for Word, Excel, and PowerPoint File Formats installed can open Office Open XML files saved with pre-release versions of PowerPoint. PowerPoint Open XML files usually have the following extensions: .pptx, .pptm, .potx, .potm, .ppsx, .ppsm, .ppam, .thmx, .xml.  The recommended state for this setting is: Enabled."
+   rationale: "The Microsoft Office Compatibility Pack for Word, Excel, and PowerPoint File Formats enables users of Microsoft PowerPoint 2000, PowerPoint 2002, and Office PowerPoint 2003 to open files saved in the Office Open XML format used by PowerPoint. PowerPoint Open XML files usually have the following extensions: .pptx, .pptm, .potx, .potm, .ppsx, .ppsm, .ppam, .thmx, .xml. By default, the Compatibility Pack does not open files that were saved in pre-release versions of the new Office Open XML format, which underwent some minor changes prior to the final release of PowerPoint. If this configuration is changed through a registry modification or by some other mechanism, users with the Compatibility Pack installed can open files saved by some pre-release versions of PowerPoint, but not by others, which can lead to inconsistent file opening functionality."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Enabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Office 2016 Converters\\Block Opening of Pre-Release Versions of File Formats New to PowerPoint 2016 Through the Compatibility Pack for Office 2013 and PowerPoint 2016 Converter"
+   compliance:
+    - cis: "2.22.1"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> powerpoint12betafilesfromconverters -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> !powerpoint12betafilesfromconverters;'
+# ACSC - File Type Blocking (Cont'd)
+ - id: 10030
+   title: "Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Powerpoint"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> openinprotectedview -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\fileblock -> !openinprotectedview;'
+ - id: 10031
+   title: "Ensure Set default file block behavior is set to 'Enabled' (Blocked files are not opened) in Microsoft Word"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> openinprotectedview -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !openinprotectedview;'
+ - id: 10032
+   title: "Ensure Word 2 and earlier binary documents and templates are blocked in Microsoft Word"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word2files -> !2;'
+ - id: 10033
+   title: "Ensure Word 6.0 binary documents and templates are blocked in Microsoft Word"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word60files -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !word60files;'
+ - id: 10034
+   title: "Ensure Word 95 binary documents and templates are blocked in Microsoft Word"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word95files -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !word95files;'
+ - id: 10035
+   title: "Ensure Word 97 binary documents and templates are blocked in Microsoft Word"
+   description: "File Type Blocking can be used to block insecure file types such as legacy, binary and beta file types from opening in Microsoft Office. By failing to block such file types, an adversary can exploit vulnerabilities in these file types to execute malicious code on workstations. To reduce this risk, insecure file types should be prevented from opening in Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> word97files -> !2;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\fileblock -> !word97files;'
+# ACSC - Hidden Markup
+ - id: 10036
+   title: "Ensure Make hidden markup visible is set to 'Enabled' in Microsoft PowerPoint"
+   description: "To assist users in collaborating on the development of Microsoft Office files, Microsoft Office allows users to track changes relating to insertions, deletions and formatting of content, as well as providing the ability to make comments. Users may choose to either view or hide these markups. If markup content is hidden, users may be unaware that sensitive changes or comments may still be included when Microsoft Office files are distributed to external parties or released into the public domain. To reduce this risk, users should be made aware of hidden markup in Microsoft Office files."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\options -> markupopensave -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\options -> !markupopensave;'
+ - id: 10037
+   title: "Ensure Make hidden markup visible is set to 'Enabled' in Microsoft Word"
+   description: "To assist users in collaborating on the development of Microsoft Office files, Microsoft Office allows users to track changes relating to insertions, deletions and formatting of content, as well as providing the ability to make comments. Users may choose to either view or hide these markups. If markup content is hidden, users may be unaware that sensitive changes or comments may still be included when Microsoft Office files are distributed to external parties or released into the public domain. To reduce this risk, users should be made aware of hidden markup in Microsoft Office files."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\options -> showmarkupopensave -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\options -> !showmarkupopensave;'
+# ACSC - Office File Validation
+ - id: 10038
+   title: "Ensure Turn off error reporting for files that fail file validation is set to 'Enabled' in Microsoft Office"
+   description: "Office File Validation (OFV) checks that the format of a Microsoft Office file conforms to an expected standard. By default, Microsoft Office files that fail OFV checking will be opened in Protected View, with users given the option to enable editing. Alternatively, OFV can be configured to open Microsoft Office files in Protected View in an enforced read-only state or simply block them from opening. If Microsoft Office is configured to disable OFV, users may be unaware that they are opening a Microsoft Office file that may be malicious in nature. To reduce this risk, OFV functionality should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\security\filevalidation -> disablereporting -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\security\filevalidation -> !disablereporting;'
+ - id: 10039
+   title: "Ensure Turn off file validation ins set to 'Disabled' in Microsoft Excel"
+   description: "Office File Validation (OFV) checks that the format of a Microsoft Office file conforms to an expected standard. By default, Microsoft Office files that fail OFV checking will be opened in Protected View, with users given the option to enable editing. Alternatively, OFV can be configured to open Microsoft Office files in Protected View in an enforced read-only state or simply block them from opening. If Microsoft Office is configured to disable OFV, users may be unaware that they are opening a Microsoft Office file that may be malicious in nature. To reduce this risk, OFV functionality should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> enableonload -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> !enableonload;'
+ - id: 10040
+   title: "Ensure Turn off file validation ins set to 'Disabled' in Microsoft PowerPoint"
+   description: "Office File Validation (OFV) checks that the format of a Microsoft Office file conforms to an expected standard. By default, Microsoft Office files that fail OFV checking will be opened in Protected View, with users given the option to enable editing. Alternatively, OFV can be configured to open Microsoft Office files in Protected View in an enforced read-only state or simply block them from opening. If Microsoft Office is configured to disable OFV, users may be unaware that they are opening a Microsoft Office file that may be malicious in nature. To reduce this risk, OFV functionality should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> enableonload -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> !enableonload;'
+ - id: 10041
+   title: "Ensure Turn off file validation ins set to 'Disabled' in Microsoft Word"
+   description: "Office File Validation (OFV) checks that the format of a Microsoft Office file conforms to an expected standard. By default, Microsoft Office files that fail OFV checking will be opened in Protected View, with users given the option to enable editing. Alternatively, OFV can be configured to open Microsoft Office files in Protected View in an enforced read-only state or simply block them from opening. If Microsoft Office is configured to disable OFV, users may be unaware that they are opening a Microsoft Office file that may be malicious in nature. To reduce this risk, OFV functionality should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> enableonload -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> !enableonload;'
+# ACSC - Protected View
+ - id: 10042
+   title: "Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Excel"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> disableinternetfilesinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableinternetfilesinpv;'
+ - id: 10043
+   title: "Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft Excel"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> disableunsafelocationsinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableunsafelocationsinpv;'
+ - id: 10044
+   title: "Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft Excel"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> openinprotectedview -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\filevalidation -> !openinprotectedview;'
+ - id: 10045
+   title: "Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Excel"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> disableattachmentsinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\protectedview -> !disableattachmentsinpv;'
+ - id: 10046
+   title: "Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft PowerPoint"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> disableinternetfilesinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableinternetfilesinpv;'
+ - id: 10047
+   title: "Ensure Do not open files in unsafe locations in Protected View is set to 'Disabled' in Microsoft PowerPoint"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> disableunsafelocationsinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableunsafelocationsinpv;'
+ - id: 10048
+   title: "Ensure Set document behaviour if file validation fails is set to 'Enabled' (Block files) in Microsoft PowerPoint"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> openinprotectedview -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\filevalidation -> !openinprotectedview;'
+ - id: 10049
+   title: "Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft PowerPoint"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> disableattachmentsinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\protectedview -> !disableattachmentsinpv;'
+ - id: 10050
+   title: "Ensure Do not open files from the Internet zone in Protected View is set to 'Disabled' in Microsoft Word"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableinternetfilesinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableinternetfilesinpv;'
+ - id: 10051
+   title: "Ensure Do not open files in unsafe locations in Protected View  is set to 'Disabled' in Microsoft Word"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableunsafelocationsinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> !disableunsafelocationsinpv;'
+ - id: 10052
+   title: "Ensure Set document behaviour if file validation fails is set to 'Enable' (Block files) in Microsoft Word"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> openinprotectedview -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\filevalidation -> !openinprotectedview;'
+ - id: 10053
+   title: "Ensure Turn off Protected View for attachments opened from Outlook is set to 'Disabled' in Microsoft Word"
+   description: "Protected View can be used to open Microsoft Office files from untrusted locations in a sandboxed environment. By default, Protected View is enabled for Microsoft Office files that have been downloaded from the Internet, opened from a defined unsafe location or opened as an attachment from Microsoft Outlook. However, organisations can choose to disable Protected View for any or all of these scenarios. If so, an adversary could exploit any of these avenues to deliver a malicious Microsoft Office file to a user’s workstation. To reduce this risk, Protected View should be enabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> disableattachmentsinpv -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\protectedview -> !disableattachmentsinpv;'
+# ACSC - Trusted Documents
+ - id: 10054
+   title: "Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Excel"
+   description: "Macros, ActiveX controls and other active content in trusted documents are assumed to be safe by Microsoft Office. An adversary can exploit this trust by modifying trusted documents to contain malicious code. To reduce this risk, trusted documents should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> disabletrusteddocuments -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> !disabletrusteddocuments;'
+ - id: 10055
+   title: "Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Excel"
+   description: "Macros, ActiveX controls and other active content in trusted documents are assumed to be safe by Microsoft Office. An adversary can exploit this trust by modifying trusted documents to contain malicious code. To reduce this risk, trusted documents should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> disablenetworktrusteddocuments -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\excel\security\trusted documents -> !disablenetworktrusteddocuments;'
+ - id: 10056
+   title: "Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Powerpoint"
+   description: "Macros, ActiveX controls and other active content in trusted documents are assumed to be safe by Microsoft Office. An adversary can exploit this trust by modifying trusted documents to contain malicious code. To reduce this risk, trusted documents should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> disabletrusteddocuments -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> !disabletrusteddocuments;'
+ - id: 10057
+   title: "Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Powerpoint"
+   description: "Macros, ActiveX controls and other active content in trusted documents are assumed to be safe by Microsoft Office. An adversary can exploit this trust by modifying trusted documents to contain malicious code. To reduce this risk, trusted documents should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> disablenetworktrusteddocuments -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\powerpoint\security\trusted documents -> disabletrusteddocuments -> !disablenetworktrusteddocuments;'
+ - id: 10058
+   title: "Ensure Turn off trusted documents is set to 'Enabled' in Microsoft Word"
+   description: "Macros, ActiveX controls and other active content in trusted documents are assumed to be safe by Microsoft Office. An adversary can exploit this trust by modifying trusted documents to contain malicious code. To reduce this risk, trusted documents should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> disabletrusteddocuments -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> !disabletrusteddocuments;'
+ - id: 10059
+   title: "Ensure Turn off Trusted Documents on the network is set to 'Enabled' in Microsoft Word"
+   description: "Macros, ActiveX controls and other active content in trusted documents are assumed to be safe by Microsoft Office. An adversary can exploit this trust by modifying trusted documents to contain malicious code. To reduce this risk, trusted documents should be disabled for Microsoft Office."
+   references:
+    - https://acsc.gov.au/publications/protect/Hardening_MS_Office_2016.pdf
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> disablenetworktrusteddocuments -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\word\security\trusted documents -> !disablenetworktrusteddocuments;'
+# CIS 2.24 - Privacy
+ - id: 10060
+   title: "Ensure 'Disable Opt-in Wizard on First Run' is set to Enabled"
+   description: "This policy setting controls whether users see the Opt-in Wizard the first time they run a Microsoft Office application.  The recommended state for this setting is: Enabled."
+   rationale: "By default, the Opt-in Wizard displays the first time users run a Microsoft Office application, which allows them to opt into Internet-based services that will help improve their Office experience, such as Microsoft Update, the Customer Experience Improvement Program, Office Diagnostics, and Online Help. If your organization has policies that govern the use of such external resources, allowing users to opt in to these services might cause them to violate the policies."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Enabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Privacy\\Trust Center\\Disable Opt-in Wizard on First Run"
+   compliance:
+    - cis: "2.24.1.1"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\general -> shownfirstrunoptin -> !1;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\general -> !shownfirstrunoptin;'
+ - id: 10061
+   title: "Ensure 'Enable Customer Experience Improvement Program' is set to Disabled"
+   description: "This policy setting controls whether users can participate in the Microsoft Office Customer Experience Improvement Program to help improve Microsoft Office. When users choose to participate in the Customer Experience Improvement Program (CEIP), Office applications automatically send information to Microsoft about how the applications are used. This information is combined with other CEIP data to help Microsoft solve problems and to improve the products and features customers use most often. This feature does not collect users' names, addresses, or any other identifying information except the IP address that is used to send the data.  The recommended state for this setting is: Disabled"
+   rationale: "When users choose to participate in the Customer Experience Improvement Program (CEIP), Office applications automatically send information to Microsoft about how the applications are used. This information is combined with other CEIP data to help Microsoft solve problems and to improve the products and features customers use most often. This feature does not collect users' names, addresses, or any other identifying information except the IP address that is used to send the data.  By default, users have the opportunity to opt into participation in the CEIP the first time they run an Office application. If your organization has policies that govern the use of external resources such as the CEIP, allowing users to opt in to the program might cause them to violate these policies."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Disabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Privacy\\Trust Center\\Enable Customer Experience Improvement Program"
+   compliance:
+    - cis: "2.24.1.2"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> qmenable -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> !qmenable;'
+ - id: 10062
+   title: "Ensure 'Allow including screenshot with Office Feedback' is set to Disabled"
+   description: "This policy setting manages whether the Office Feedback Tool (a.k.a. Send a Smile) allows the user to send a screenshot of their desktop with their feedback to Microsoft. The Office Feedback Tool allows users to provide Microsoft feedback regarding their positive and negative experiences when using Office.  The recommended state for this setting is: Disabled."
+   rationale: "Due to privacy concerns, users should not be able to send data to any third party unless approved by the System Administrators."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Disabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Privacy\\Trust Center\\Allow including screenshot with Office Feedback"
+   compliance:
+    - cis: "2.24.1.3"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback -> 	includescreenshot -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback ->  !includescreenshot;'
+ - id: 10063
+   title: "Ensure 'Send Office Feedback' is set to Disabled"
+   description: "This policy setting manages the Office Feedback Tool (a.k.a. Send a Smile). The Office Feedback Tool allows users to provide Microsoft feedback regarding their positive and negative experiences when using Office.  The recommended state for this setting is: Disabled."
+   rationale: "Due to privacy concerns, users should not be able to send data to any third party unless approved by the System Administrators."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Disabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Privacy\\Trust Center\\Send Office Feedback"
+   compliance:
+    - cis: "2.24.1.4"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback -> enabled -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common\feedback -> !enabled;'
+ - id: 10064
+   title: "Ensure 'Send personal information' is set to Disabled"
+   description: "This policy setting controls whether users can send personal information to Office. When users choose to send information Office applications automatically send information to Office."
+   rationale: "Due to privacy concerns, users should not be able to send data to any third party unless approved by the System Administrators."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Disabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Privacy\\Trust Center\\Send personal information"
+   compliance:
+    - cis: "2.24.1.5"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> sendcustomerdata -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> !sendcustomerdata;'
+ - id: 10065
+   title: "Ensure Set 'Automatically Receive Small Updates to Improve Reliability' is set to Disabled"
+   description: "This policy setting controls whether Microsoft Office Diagnostics is enabled. Office Diagnostics enables Microsoft to diagnose system problems by periodically downloading a small file to the computer.  If you enable this policy setting, Office Diagnostics collects information about specific errors and the IP address of the computer. Office Diagnostics does not transmit any personally identifiable information to Microsoft other than the IP address of the computer requesting the update.  If you disable this policy setting, users will not receive updates from Office Diagnostics.  If you do not configure this policy setting, this policy setting is not enabled, but users have the opportunity to opt into receiving updates from Office Diagnostics the first time they run an Office application.  The recommended state for this setting is: Disabled."
+   rationale: "Office Diagnostics is used to improve the user experience by periodically downloading a small file to the computer with updated help information about specific problems. If Office Diagnostics is enabled, it collects information about specific errors and the IP address of the computer. When new help information is available, that help information is downloaded to the computer that experienced the related problems. Office Diagnostics does not transmit any personally identifiable information to Microsoft other than the IP address of the computer requesting the update.  By default, users have the opportunity to opt into receiving updates from Office Diagnostics the first time they run a Office application. If your organization has policies that govern the use of external resources such as Office Diagnostics, allowing users to opt in to this feature might cause them to violate these policies."
+   remediation: "To implement the recommended configuration state, set the following Group Policy setting to Disabled.  User Configuration\\Administrative Templates\\Microsoft Office 2016\\Privacy\\Trust Center\\Automatically Receive Small Updates to Improve Reliability"
+   compliance:
+    - cis: "2.24.1.6"
+   condition: any
+   rules:
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> updatereliabilitydata -> !0;'
+     - 'r:HKEY_CURRENT_USER\software\policies\microsoft\office\16.0\common -> !updatereliabilitydata;'

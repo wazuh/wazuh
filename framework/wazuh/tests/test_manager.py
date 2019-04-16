@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import patch, mock_open
 
 from wazuh.exception import WazuhException
-from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file
+from wazuh.manager import upload_file, get_file, restart, validation, status, delete_file, ossec_log
 
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -20,7 +20,7 @@ class InitManager:
         Sets up necessary environment to test manager functions
         """
         # path for temporary API files
-        self.api_tmp_path = os.path.join(os.getcwd(), 'tests/data/tmp')
+        self.api_tmp_path = os.path.join(test_data_path, 'tmp')
         # rules
         self.input_rules_file = 'test_rules.xml'
         self.output_rules_file = 'uploaded_test_rules.xml'
@@ -41,7 +41,10 @@ def test_manager():
 
 @pytest.mark.parametrize('process_status', [
     'running',
-    'stopped'
+    'stopped',
+    'failed',
+    'restarting',
+    'starting'
 ])
 @patch('wazuh.manager.exists')
 @patch('wazuh.manager.glob')
@@ -53,14 +56,21 @@ def test_status(manager_glob, manager_exists, test_manager, process_status):
     :param manager_glob: mock of glob.glob function
     :param manager_exists: mock of os.path.exists function
     :param test_manager: pytest fixture
-    :param process_status: status to test (valid values: running/stopped).
+    :param process_status: status to test (valid values: running/stopped/failed/restarting).
     :return:
     """
     def mock_glob(path_to_check):
         return [path_to_check.replace('*', '0234')] if process_status == 'running' else []
 
+    def mock_exists(path_to_check):
+        if path_to_check == '/proc/0234':
+            return process_status == 'running'
+        else:
+            return path_to_check.endswith(f'.{process_status.replace("ing","").replace("re", "")}') or \
+                   path_to_check.endswith(f'.{process_status.replace("ing","")}')
+
     manager_glob.side_effect = mock_glob
-    manager_exists.return_value = True
+    manager_exists.side_effect = mock_exists
     manager_status = status()
     assert isinstance(manager_status, dict)
     assert all(process_status == x for x in manager_status.values())
@@ -86,7 +96,8 @@ def test_restart_ok(test_manager):
 @patch('random.randint', return_value=0)
 @patch('wazuh.manager.chmod')
 @patch('wazuh.manager.move')
-def test_upload_file(move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
+@patch('wazuh.manager.remove')
+def test_upload_file(remove_mock, move_mock, chmod_mock, mock_rand, mock_time, test_manager, input_file, output_file):
     """
     Tests uploading a file to the manager
     """
@@ -103,6 +114,7 @@ def test_upload_file(move_mock, chmod_mock, mock_rand, mock_time, test_manager, 
     m.assert_any_call(os.path.join(test_data_path, input_file))
     move_mock.assert_called_once_with(os.path.join(test_manager.api_tmp_path, 'api_tmp_file_0_0.xml'),
                                       os.path.join(test_data_path, output_file))
+    remove_mock.assert_called_once_with(os.path.join(test_data_path, input_file))
 
 
 @patch('wazuh.manager.exists', return_value=False)
@@ -167,3 +179,46 @@ def test_delete_file(test_manager):
     with patch('wazuh.manager.exists', return_value=False):
         with pytest.raises(WazuhException, match='.* 1906 .*'):
             delete_file('/test/file')
+
+
+ossec_log_file = """2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:501 at wm_get_os_arch(): DEBUG: Detected architecture from Linux |ip-10-0-1-141.us-west-1.compute.internal |3.10.0-957.1.3.el7.x86_64 |#1 SMP Thu Nov 29 14:49:43 UTC 2018 |x86_64: x86_64
+2019/03/26 20:14:37 wazuh-modulesd:database[27799] wm_database.c:695 at wm_sync_agentinfo(): DEBUG: wm_sync_agentinfo(4): 0.091 ms.
+2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: Starting evaluation.
+2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit.
+2019/03/26 19:49:15 ossec-execd: ERROR: (1210): Queue '/var/ossec/queue/alerts/execa' not accessible: 'No such file or directory'.
+2019/03/26 17:07:32 wazuh-modulesd:aws-s3[13155] wmodules-aws.c:186 at wm_aws_read(): ERROR: Invalid bucket type 'inspector'. Valid ones are 'cloudtrail', 'config', 'custom', 'guardduty' or 'vpcflow'
+2019/04/11 12:51:40 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
+2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Returned exit code 7
+2019/04/11 12:53:37 wazuh-modulesd:aws-s3: WARNING: Bucket:  -  Unexpected error querying/working with objects in S3: db_maintenance() got an unexpected keyword argument 'aws_account_id'
+
+2019/04/11 12:53:37 wazuh-modulesd:aws-s3: INFO: Executing Bucket Analysis: wazuh-aws-wodle
+2019/03/27 10:42:06 wazuh-modulesd:syscollector: INFO: This is a 
+multiline log
+2019/03/26 13:03:11 ossec-csyslogd: INFO: Remote syslog server not configured. Clean exit."""
+
+
+@pytest.mark.parametrize('category, type_log, totalItems', [
+    ('all', 'all', 12),
+    ('wazuh-modulesd:database', 'all', 2),
+    ('wazuh-modulesd:syscollector', 'all', 2),
+    ('wazuh-modulesd:aws-s3', 'all', 5),
+    ('ossec-execd', 'all', 1),
+    ('ossec-csyslogd', 'all', 2),
+    ('random', 'all', 0),
+    ('all', 'info', 6),
+    ('all', 'error', 2),
+    ('all', 'debug', 2),
+    ('all', 'random', 0),
+    ('all', 'warning', 2)
+])
+def test_ossec_log(test_manager, category, type_log, totalItems):
+    """
+    Tests reading ossec.log file contents
+    """
+    with patch('wazuh.manager.tail') as tail_patch:
+        tail_patch.return_value = ossec_log_file.splitlines()
+        logs = ossec_log(category=category, type_log=type_log)
+        assert logs['totalItems'] == totalItems
+        assert all(log['description'][-1] != '\n' for log in logs['items'])
+        if category != 'all' and category != 'wazuh-modulesd:syscollector':
+            assert all('\n' not in log['description'] for log in logs['items'])

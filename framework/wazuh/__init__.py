@@ -84,7 +84,7 @@ class Wazuh:
 
         try:
             with open(self.OSSEC_INIT, 'r') as f:
-                line_regex = re.compile('(^\w+)="(.+)"')
+                line_regex = re.compile(r'(^\w+)="(.+)"')
                 for line in f:
                     match = line_regex.match(line)
                     if match and len(match.groups()) == 2:
@@ -127,7 +127,7 @@ class Wazuh:
         ruleset_version_file = "{0}/ruleset/VERSION".format(self.path)
         try:
             with open(ruleset_version_file, 'r') as f:
-                line_regex = re.compile('(^\w+)="(.+)"')
+                line_regex = re.compile(r'(^\w+)="(.+)"')
                 for line in f:
                     match = line_regex.match(line)
                     if match and len(match.groups()) == 2:

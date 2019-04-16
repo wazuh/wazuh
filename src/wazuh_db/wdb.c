@@ -67,26 +67,29 @@ static const char *SQL_STMT[] = {
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
     "SELECT fim_third_check FROM scan_info WHERE module = ?;",
     "SELECT id,result FROM sca_check WHERE id = ?;",
-    "UPDATE sca_check SET result = ? WHERE id = ?;",
-    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);",
+    "UPDATE sca_check SET result = ?, scan_id = ? WHERE id = ?;",
+    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
     "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,score,hash) VALUES (?,?,?,?,?,?,?,?);",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
     "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
     "SELECT name FROM sca_global WHERE name = ?;",
     "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
     "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM sca_policy WHERE id = ?;",
     "INSERT INTO sca_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
     "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
-    "SELECT result FROM sca_check WHERE scan_id = ? ORDER BY id;",
+    "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
     "SELECT id FROM sca_policy;",
     "DELETE FROM sca_policy WHERE id = ?;",
     "DELETE FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_scan_info WHERE policy_id = ?;",
     "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
-    "SELECT id FROM sca_check WHERE policy_id = ?;"
+    "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "SELECT id FROM sca_check WHERE policy_id = ?;",
+    "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
 };
 
 sqlite3 *wdb_global = NULL;

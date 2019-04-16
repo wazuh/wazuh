@@ -45,11 +45,11 @@ int fim_find_child_depth(const char *parent, const char *child) {
 
     char *diff_str;
 
-    if(parent[length_A - 1] == PATH_SEP){
+    if(parent[length_A - 1] == PATH_SEP && length_A >= 2 && parent[length_A - 2] != ':') {
         p_first[length_A - 1] = '\0';
     }
 
-    if(child[length_B - 1] == PATH_SEP){
+    if(child[length_B - 1] == PATH_SEP && length_B >= 2 && child[length_B - 2] != ':') {
         p_second[length_B - 1] = '\0';
     }
 
@@ -86,7 +86,7 @@ int fim_find_child_depth(const char *parent, const char *child) {
 
     os_free(p_first);
     os_free(p_second);
-    return child_depth;
+    return child_depth ? child_depth : 1;
 }
 
 void normalize_path(char * path) {
@@ -1004,7 +1004,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
         goto end;
     }
 
-    if (!has_dacl) {
+    if (!has_dacl || !f_acl) {
         mdebug1("'%s' has no DACL, so no permits can be extracted.", file_path);
         goto end;
     }
@@ -1032,10 +1032,7 @@ int w_get_file_permissions(const char *file_path, char *permissions, int perm_si
                 continue;
             }
         }
-        *permissions = '\0';
-        retval = -3;
-        mdebug1("The parameters of ACE number %d could not be extracted. %d bytes remaining.", i, perm_size);
-        goto end;
+        mdebug1("The parameters of ACE number %d from '%s' could not be extracted. %d bytes remaining.", i, file_path, perm_size);
     }
 
     mdebug2("The ACL extracted from '%s' is [%s].", file_path, permissions);
@@ -1046,6 +1043,7 @@ end:
 
 int copy_ace_info(void *ace, char *perm, int perm_size) {
     SID *sid;
+    char *sid_str = NULL;
     char *account_name = NULL;
     char *domain_name = NULL;
     int mask;
@@ -1074,16 +1072,23 @@ int copy_ace_info(void *ace, char *perm, int perm_size) {
 		return 0;
 	}
 
+
     if (error = w_get_account_info(sid, &account_name, &domain_name), error) {
         mdebug2("No information could be extracted from the account linked to the SID. Error: %d.", error);
-        goto end;
+        if (!ConvertSidToStringSid(sid, &sid_str)) {
+            mdebug2("Could not extract the SID.");
+            goto end;
+        }
     }
 
     if (written + 1 < perm_size) {
-        written = snprintf(perm, perm_size, "|%s,%d,%d", account_name, ace_type, mask);
+        written = snprintf(perm, perm_size, "|%s,%d,%d", sid_str ? sid_str : account_name, ace_type, mask);
     }
 
 end:
+    if (sid_str) {
+        LocalFree(sid_str);
+    }
     free(account_name);
     free(domain_name);
     return written;
