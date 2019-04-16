@@ -1173,6 +1173,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
             }
 
             /* Alert if necessary */
+            int i = 0;
             if (g_found == 1) {
                 char **p_alert_msg = data->alert_msg;
                 if (!requirements_scan) {
@@ -1190,7 +1191,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                 }
 
-                for (int i=0; data->alert_msg[i]; i++){
+                for (i=0; data->alert_msg[i]; i++){
                     free(data->alert_msg[i]);
                     data->alert_msg[i] = NULL;
                 }
@@ -1216,7 +1217,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     }
                 }
 
-                for (int i=0; data->alert_msg[i]; i++){
+                for (i=0; data->alert_msg[i]; i++){
                     free(data->alert_msg[i]);
                     data->alert_msg[i] = NULL;
                 }
