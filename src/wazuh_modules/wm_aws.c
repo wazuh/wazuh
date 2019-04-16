@@ -72,31 +72,58 @@ void* wm_aws_main(wm_aws *aws_config) {
         time_start = time(NULL);
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
-            if (cur_bucket->aws_account_id && cur_bucket->type && cur_bucket->aws_account_alias) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis: [%s] %s (%s)", cur_bucket->bucket, cur_bucket->type,
-                    cur_bucket->aws_account_alias, cur_bucket->aws_account_id);
-            } else if (cur_bucket->aws_account_id && cur_bucket->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis: [%s] %s", cur_bucket->bucket, cur_bucket->type,
-                    cur_bucket->aws_account_id);
-            } else if (cur_bucket->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis: [%s]", cur_bucket->bucket, cur_bucket->type);
+            if (cur_bucket->trail_prefix && cur_bucket->aws_account_id && cur_bucket->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Path: %s, Type: %s, Account ID: %s, Account Alias: %s)",
+                    cur_bucket->bucket, cur_bucket->trail_prefix, cur_bucket->type, cur_bucket->aws_account_id,
+                    cur_bucket->aws_account_alias);
+            } else if (cur_bucket->trail_prefix && cur_bucket->aws_account_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Path: %s, Type: %s, Account ID: %s)",
+                    cur_bucket->bucket, cur_bucket->trail_prefix, cur_bucket->type, cur_bucket->aws_account_id);
+            } else if (cur_bucket->trail_prefix && cur_bucket->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Path: %s, Type: %s, Account Alias: %s)",
+                    cur_bucket->bucket, cur_bucket->trail_prefix, cur_bucket->type, cur_bucket->aws_account_alias);
+            } else if (cur_bucket->trail_prefix && cur_bucket->aws_profile) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Path: %s, Type: %s, Profile: %s)",
+                    cur_bucket->bucket, cur_bucket->trail_prefix, cur_bucket->type, cur_bucket->aws_profile);
+            } else if (cur_bucket->trail_prefix && cur_bucket->aws_organization_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Path: %s, Type: %s, Organization ID: %s)",
+                    cur_bucket->bucket, cur_bucket->trail_prefix, cur_bucket->type, cur_bucket->aws_organization_id);
+            } else if (cur_bucket->aws_account_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Type: %s, Account ID: %s)",
+                    cur_bucket->bucket, cur_bucket->type, cur_bucket->aws_account_id);
+            } else if (cur_bucket->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Type: %s, Account Alias: %s)",
+                    cur_bucket->bucket, cur_bucket->type, cur_bucket->aws_account_alias);
+            } else if (cur_bucket->aws_profile) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Type: %s, Profile: %s)",
+                    cur_bucket->bucket, cur_bucket->type, cur_bucket->aws_profile);
+            } else if (cur_bucket->aws_organization_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Type: %s, Organization ID: %s)",
+                    cur_bucket->bucket, cur_bucket->type, cur_bucket->aws_organization_id);
+            } else if (cur_bucket->trail_prefix) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Path: %s, Type: %s)",
+                    cur_bucket->bucket, cur_bucket->trail_prefix, cur_bucket->type);
             } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Bucket %s Analysis", cur_bucket->bucket);
+                mtinfo(WM_AWS_LOGTAG, "Executing Bucket Analysis: (Bucket: %s, Type: %s)", cur_bucket->bucket, cur_bucket->type);
             }
             wm_aws_run_s3(cur_bucket);
         }
 
         for (cur_service = aws_config->services; cur_service; cur_service = cur_service->next) {
-            if (cur_service->aws_account_id && cur_service->type && cur_service->aws_account_alias) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis: [%s] %s (%s)", cur_service->type, cur_service->type,
-                    cur_service->aws_account_alias, cur_service->aws_account_id);
-            } else if (cur_service->aws_account_id && cur_service->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis: [%s] %s", cur_service->type, cur_service->type,
-                    cur_service->aws_account_id);
-            } else if (cur_service->type) {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis: [%s] ", cur_service->type, cur_service->type);
+            if (cur_service->aws_account_id && cur_service->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: (Service: %s, Account ID: %s, Account Alias: %s)",
+                    cur_service->type, cur_service->aws_account_id, cur_service->aws_account_alias);
+            } else if (cur_service->aws_account_id) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: (Service: %s, Account ID: %s)",
+                    cur_service->type, cur_service->aws_account_id);
+            } else if (cur_service->aws_account_alias) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: (Service: %s, Account Alias: %s)",
+                    cur_service->type, cur_service->aws_account_alias);
+            } else if (cur_service->aws_profile) {
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: (Service: %s, Profile: %s)",
+                    cur_service->type, cur_service->aws_profile);
             } else {
-                mtinfo(WM_AWS_LOGTAG, "Executing Service %s Analysis", cur_service->type);
+                mtinfo(WM_AWS_LOGTAG, "Executing Service Analysis: (Service: %s)", cur_service->type);
             }
             wm_aws_run_service(cur_service);
         }
