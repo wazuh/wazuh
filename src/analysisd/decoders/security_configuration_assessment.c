@@ -1365,24 +1365,36 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         fillData(lf, "sca.check.references", reference->valuestring);
     }
 
+    char *array_buffer = NULL;
+
     if(file){
-        fillData(lf, "sca.check.file", file->valuestring);
+        csv_list_to_json_str_array(file->valuestring, &array_buffer);
+        fillData(lf, "sca.check.file", array_buffer);
+        os_free(array_buffer);
     }
 
     if(directory) {
-        fillData(lf, "sca.check.directory", directory->valuestring);
+        csv_list_to_json_str_array(directory->valuestring, &array_buffer);
+        fillData(lf, "sca.check.directory", array_buffer);
+        os_free(array_buffer);
     }
 
     if(registry) {
-        fillData(lf, "sca.check.registry", registry->valuestring);
+        csv_list_to_json_str_array(registry->valuestring, &array_buffer);
+        fillData(lf, "sca.check.registry", array_buffer);
+        os_free(array_buffer);
     }
 
     if(process){
-        fillData(lf, "sca.check.process", process->valuestring);
+        csv_list_to_json_str_array(process->valuestring, &array_buffer);
+        fillData(lf, "sca.check.process", array_buffer);
+        os_free(array_buffer);
     }
 
     if(command){
-        fillData(lf, "sca.check.command", command->valuestring);
+        csv_list_to_json_str_array(command->valuestring, &array_buffer);
+        fillData(lf, "sca.check.command", array_buffer);
+        os_free(array_buffer);
     }
 
     if(result) {
