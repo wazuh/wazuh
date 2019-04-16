@@ -11,9 +11,9 @@
 #include "manage_agents.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha256/sha256_op.h"
-#include "wazuhdb_op.h"
 #ifndef CLIENT
 #include "wazuh_db/wdb.h"
+#include "wazuhdb_op.h"
 #endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
@@ -60,6 +60,8 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
 
     return OS_AddKey(keys, id, name, ip ? ip : "any", key);
 }
+
+#ifndef CLIENT
 
 int OS_RemoveAgent(const char *u_id) {
     FILE *fp;
@@ -177,6 +179,9 @@ int OS_RemoveAgent(const char *u_id) {
     OS_RemoveAgentGroup(u_id);
     return 1;
 }
+
+#endif
+
 
 int OS_IsValidID(const char *id)
 {

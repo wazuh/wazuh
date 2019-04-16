@@ -8,6 +8,8 @@
  * Foundation.
  */
 
+#ifndef CLIENT
+
 #include "wazuhdb_op.h"
 
 
@@ -94,3 +96,5 @@ int wdb_send_query(char *wazuhdb_query, char **output) {
 
     return retval;
 }
+
+#endif

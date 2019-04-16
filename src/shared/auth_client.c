@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#ifndef CLIENT
+
 #include "shared.h"
 #include <os_net/os_net.h>
 #include <external/cJSON/cJSON.h>
@@ -83,3 +85,5 @@ int auth_remove_agent(int sock, const char *id, int json_format) {
 
     return result;
 }
+
+#endif
