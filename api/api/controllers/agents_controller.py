@@ -14,8 +14,7 @@ from ..models.agent_inserted import AgentInserted
 from ..models.agent_added import AgentAdded
 from wazuh.exception import WazuhException
 from ..util import remove_nones_to_dict, exception_handler
-import pydevd
-pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
+
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 

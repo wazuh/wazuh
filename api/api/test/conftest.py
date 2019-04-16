@@ -2,7 +2,7 @@ import pytest
 import time
 import os
 
-@pytest.fixture(name="test_example", scope="session")
+@pytest.fixture(name="agents_test", scope="session")
 def fix_test():
     os.system("docker-compose up --build -d")
     time.sleep(60)
