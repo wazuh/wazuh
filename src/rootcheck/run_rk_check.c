@@ -66,7 +66,7 @@ void run_rk_check()
 
 #ifndef WIN32
     /* On non-Windows, always start at / */
-    char basedir[] = "";
+    char basedir[] = "/";
 #else
     /* On Windows, always start at C:\ */
     char basedir[] = "C:\\";

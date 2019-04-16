@@ -30,12 +30,6 @@ static int read_sys_file(const char *file_name, int do_read)
 
     _sys_total++;
 
-    /* Ignoring user specified files */
-    if (rootcheck.ignore) {
-        if (check_ignore(file_name, &rootcheck)) {
-            return (0);
-        }    
-    }
 #ifdef WIN32
     /* Check for NTFS ADS on Windows */
     os_check_ads(file_name);
@@ -169,13 +163,6 @@ static int read_sys_dir(const char *dir_name, int do_read)
         return (-1);
     }
 
-    /* Ignore user-supplied list */
-    if (rootcheck.ignore) {
-        if (check_ignore(dir_name, &rootcheck)) {
-            return(1);
-        }
-    }
-
     /* Should we check for NFS? */
     if(rootcheck.skip_nfs)
     {
@@ -244,10 +231,15 @@ static int read_sys_dir(const char *dir_name, int do_read)
         }
 
         /* Create new file + path string */
-        if (strcmp(dir_name, "/") == 0) {
-            snprintf(f_name, PATH_MAX + 1, "/%s", entry->d_name);
+        if (strlen(dir_name) == 1 && *dir_name == PATH_SEP) {
+            snprintf(f_name, PATH_MAX + 1, "%c%s", PATH_SEP, entry->d_name);
         } else {
-            snprintf(f_name, PATH_MAX + 1, "%s/%s", dir_name, entry->d_name);
+            snprintf(f_name, PATH_MAX + 1, "%s%c%s", dir_name, PATH_SEP, entry->d_name);
+        }
+
+        /* Ignore the /proc and /sys filesystems */
+        if (check_ignore(f_name) || !strcmp(f_name, "/proc") || !strcmp(f_name, "/sys")) {
+            continue;
         }
 
         /* Check if file is a directory */
@@ -277,11 +269,6 @@ static int read_sys_dir(const char *dir_name, int do_read)
                 break;
             }
 
-            if (rootcheck.ignore) {
-                if (check_ignore(entry->d_name, &rootcheck)) {
-                    break;
-                }
-            }
             if (strcmp(rk_sys_file[i], entry->d_name) == 0) {
                 char op_msg[OS_SIZE_1024 + 1];
 
@@ -292,11 +279,6 @@ static int read_sys_dir(const char *dir_name, int do_read)
 
                 notify_rk(ALERT_ROOTKIT_FOUND, op_msg);
             }
-        }
-
-        /* Ignore the /proc and /sys filesystems */
-        if ((strcmp(f_name, "/proc") == 0) || (strcmp(f_name, "/sys") == 0)) {
-            continue;
         }
 
         read_sys_file(f_name, do_read);
@@ -355,6 +337,7 @@ static int read_sys_dir(const char *dir_name, int do_read)
 void check_rc_sys(const char *basedir)
 {
     char file_path[OS_SIZE_1024 + 1];
+    char dir_path[OS_SIZE_1024 + 1];
 
     mtdebug1(ARGV0, "Starting on check_rc_sys");
 
@@ -385,31 +368,23 @@ void check_rc_sys(const char *basedir)
         /* Scan only specific directories */
         int _i;
 #ifndef WIN32
-        const char *(dirs_to_scan[]) = {"/bin", "/sbin", "/usr/bin",
-                                        "/usr/sbin", "/dev", "/lib",
-                                        "/etc", "/root", "/var/log",
-                                        "/var/mail", "/var/lib", "/var/www",
-                                        "/usr/lib", "/usr/include",
-                                        "/tmp", "/boot", "/usr/local",
-                                        "/var/tmp", "/sys", NULL
+        const char *(dirs_to_scan[]) = {"bin", "sbin", "usr/bin",
+                                        "usr/sbin", "dev", "lib",
+                                        "etc", "root", "var/log",
+                                        "var/mail", "var/lib", "var/www",
+                                        "usr/lib", "usr/include",
+                                        "tmp", "boot", "usr/local",
+                                        "var/tmp", "sys", NULL
                                        };
 
 #else
-        const char *(dirs_to_scan[]) = {"C:\\WINDOWS", "C:\\Program Files", NULL};
+        const char *(dirs_to_scan[]) = {"WINDOWS", "Program Files", NULL};
 #endif
 
         _i = 0;
         while (dirs_to_scan[_i] != NULL) {
-#ifndef WIN32
-            snprintf(file_path, OS_SIZE_1024, "%s%s",
-                     basedir,
-                     dirs_to_scan[_i]);
-            read_sys_dir(file_path, rootcheck.readall);
-
-#else
-            read_sys_dir(dirs_to_scan[_i], rootcheck.readall);
-#endif
-
+            snprintf(dir_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, dirs_to_scan[_i]);
+            read_sys_dir(dir_path, rootcheck.readall);
             _i++;
         }
     }
