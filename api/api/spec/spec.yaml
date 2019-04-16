@@ -7184,7 +7184,7 @@ paths:
       - rules
       summary: Get information about all Wazuh rules.
       description: Returns a list containing information about each rule such as file where it's defined, description, rule group, status, etc.
-      operationId: api.controllers.rules_controllers.get_rules
+      operationId: api.controllers.rules_controller.get_rules
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7264,7 +7264,7 @@ paths:
       - rules
       summary: Filters rules by ID.
       description: Filters results of /rules endpoint filtering by ID.
-      operationId: api.controllers.rules_controllers.get_rules_id
+      operationId: api.controllers.rules_controller.get_rules_id
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7321,7 +7321,7 @@ paths:
       - rules
       summary: Get all rule groups names.
       description: Returns a list containing all rule groups names.
-      operationId: api.controllers.rules_controllers.get_rules_groups
+      operationId: api.controllers.rules_controller.get_rules_groups
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7365,7 +7365,7 @@ paths:
       - rules
       summary: Get all PCI requirements.
       description: Returns all PCI requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controllers.get_rules_pci
+      operationId: api.controllers.rules_controller.get_rules_pci
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7409,7 +7409,7 @@ paths:
       - rules
       summary: Get all GDPR requirements.
       description: Returns all PCI requirements names defined in the Wazuh ruleset.
-      operationId: api.controllers.rules_controllers.get_rules_gdpr
+      operationId: api.controllers.rules_controller.get_rules_gdpr
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -7453,7 +7453,7 @@ paths:
       - rules
       summary: Get all files which defines rules.
       description: Returns a list containing all files used to define rules and their status.
-      operationId: api.controllers.rules_controllers.get_rules_files
+      operationId: api.controllers.rules_controller.get_rules_files
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
