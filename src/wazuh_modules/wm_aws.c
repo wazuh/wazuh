@@ -109,6 +109,7 @@ void* wm_aws_main(wm_aws *aws_config) {
             }
 
             wm_strcat(&log_info, ")", '\0');
+
             mtinfo(WM_AWS_LOGTAG, log_info);
             wm_aws_run_s3(cur_bucket);
             free(log_info);
@@ -137,6 +138,7 @@ void* wm_aws_main(wm_aws *aws_config) {
             }
 
             wm_strcat(&log_info, ")", '\0');
+
             mtinfo(WM_AWS_LOGTAG, log_info);
             wm_aws_run_service(cur_service);
             free(log_info);
