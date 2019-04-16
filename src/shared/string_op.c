@@ -178,12 +178,32 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        cJSON_AddItemToObject(root, key, cJSON_Parse(value));
+        int value_len = 0;
+        if (value[0] == '['
+            && (value_len = strnlen(value, OS_MAXSTR))
+            && value[value_len - 1] == ']') 
+        {
+            cJSON_AddItemToObject(root, key, cJSON_Parse(value));
+        } else {
+            cJSON_AddStringToObject(root, key, value);
+        }
     }
 }
 
-// Searches haystack for needle. Returns 1 if needle is found in haystack.
+void csv_list_to_json_str_array(char * const csv_list, char **buffer) 
+{
+    cJSON *array = cJSON_CreateArray();
+    char *remaining_str = csv_list;
+    char *element = NULL;
+    while ((element = strtok_r(remaining_str, ",", &remaining_str))){
+        cJSON *obj = cJSON_CreateString(element);
+        cJSON_AddItemToArray(array, obj);
+    }
+    *buffer = cJSON_Print(array);
+    cJSON_Delete(array);
+}
 
+// Searches haystack for needle. Returns 1 if needle is found in haystack.
 int w_str_in_array(const char * needle, const char ** haystack) {
     int i;
 
