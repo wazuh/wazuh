@@ -1,0 +1,214 @@
+---
+test_name: PUT /agents/groups/:group_name
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create a group called webserver
+
+    request:
+      url: http://localhost:55000/agents/groups/webserver
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'webserver' created."
+
+  - name: Create a group called webserver that exist
+
+    request:
+      url: http://localhost:55000/agents/groups/webserver
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        code: 1711
+        dapi_errors:
+          master-node:
+            "error": "The group already exists: webserver"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "The group already exists: webserver"
+        remediation: "Please, another group ID"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Create a group called ;group (is not alphanumeric)
+
+    request:
+      url: http://localhost:55000/agents/groups/;group
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Create a group called dmz
+
+    request:
+      url: http://localhost:55000/agents/groups/dmz
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'dmz' created."
+
+---
+test_name: PUT /agents/:agent_id/group/:group_id
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Add group to an agent
+    request:
+      url: http://localhost:55000/agents/001/group/dmz
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'dmz' added to agent '001'."
+
+  - name: Add group to an agent
+
+    request:
+      url: http://localhost:55000/agents/001/group/webserver
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'webserver' added to agent '001'."
+
+  - name: Bad agent name
+
+    request:
+      url: http://localhost:55000/agents/001;/group/webserver
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Agent does not exist
+
+    request:
+      url: http://localhost:55000/agents/1568/group/webserver
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        code: 1701
+        dapi_errors:
+          master-node:
+            "error": "Agent does not exist: 1568"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Agent does not exist: 1568"
+        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Replace parameter
+
+    request:
+      url: http://localhost:55000/agents/001/group/dmz?force_single_group=true
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'dmz' set to agent '001'."
+
+---
+test_name: PUT /agents/restart
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Restart all agents
+
+    request:
+      url: http://localhost:55000/agents/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Restarting all agents"
+
+  - name: Restart an agent
+
+    request:
+      url: http://localhost:55000/agents/001/restart
+      method: PUT
+
+    response:
+      status_code: 500
+      body:
+        code: 1000
+        dapi_errors:
+          master-node:
+            "error": "Duplicated name"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Wazuh Internal Error: Error 9008 - Duplicated name"
+        status: 500
+        title: "Wazuh Internal Error"
+        type: "about:blank"
+
+---
+test_name: PUT /agents
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create a agent called new_agent
+
+    request:
+      url: http://localhost:55000/agents/new_agent
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Create a agent called new_agent that exist
+
+    request:
+      url: http://localhost:55000/agents/new_agent
+      method: PUT
+
+    response:
+      status_code: 500
+      body:
+        code: 1000
+        dapi_errors:
+          master-node:
+            "error": "Duplicated name"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Wazuh Internal Error: Error 9008 - Duplicated name"
+        status: 500
+        title: "Wazuh Internal Error"
+        type: "about:blank"
