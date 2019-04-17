@@ -642,6 +642,12 @@ endif
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS)
 
+ifneq (${TARGET},winagent)
+ifneq (${TARGET},agent)
+external: build_python
+endif
+endif
+
 test_external:
 ifeq ($(wildcard external/*/*),)
 	$(error No external directory found. Run "make deps" before compiling external libraries)
@@ -1409,16 +1415,41 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: build_python install_python install_dependencies install_framework
+wpython: install_dependencies install_framework
+
+ifeq (${uname_S},Darwin)
+WLIBPYTHON=libpython3.7m.dylib
+else
+WLIBPYTHON=libpython3.7m.so.1.0
+endif
 
 build_python:
+ifeq (${uname_S},Darwin)
+ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
+	export WPATH_LIB="@executable_path/../../../lib"
+	export SOURCE_PATH=${ROUTE_PATH}
+	export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI}
+	export INSTALL_NAME_DIR=${ROUTE_PATH}
+	export DYLD_LIBRARY_PATH=${ROUTE_PATH}
+	mkdir -p ${ROUTE_PATH}/../lib && cp ${WAZUHEXT_LIB} ${ROUTE_PATH}/../lib
+	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Xlinker -rpath -Xlinker @executable_path/../../../lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	install_name_tool -change ${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	install_name_tool -change ${WPYTHON_DIR}/lib/libpython3.7m.dylib @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	rm -rf ${ROUTE_PATH}/../lib
+endif
+else
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+endif
+endif
+
+ifndef DISABLE_SHARED
+build_python: $(WAZUHEXT_LIB)
 endif
 
 install_python:
 	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
-	ln -fs ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
+	find ${WPYTHON_DIR} -name "*${WLIBPYTHON}" -exec ln -f {} ${PREFIX}/lib/${WLIBPYTHON} \;
 
 python_dependencies := requirements.txt
 
@@ -1426,7 +1457,7 @@ install_dependencies: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 
-install_framework:
+install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
 
@@ -1596,7 +1627,7 @@ endif
 
 clean-wpython:
 ifneq ($(wildcard external/cpython/*),)
-	cd ${EXTERNAL_CPYTHON} && make clean && make distclean
+	-cd ${EXTERNAL_CPYTHON} && ${MAKE} clean && ${MAKE} distclean
 endif
 
 clean-deps:

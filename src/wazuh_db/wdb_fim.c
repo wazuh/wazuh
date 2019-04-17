@@ -292,6 +292,7 @@ int wdb_syscheck_load(wdb_t * wdb, const char * file, char * output, size_t size
         sum.sha256 = (char *)sqlite3_column_text(stmt, 11);
         sum.date_alert = (long)sqlite3_column_int64(stmt, 12);
         sum.attrs = (unsigned int)sqlite3_column_int(stmt, 13);
+        sum.symbolic_path = (char *)sqlite3_column_text(stmt, 14);
 
         if (*str_perm != '|') {
             sum.perm = strtol(str_perm, NULL, 8);
@@ -429,6 +430,7 @@ int wdb_fim_insert_entry(wdb_t * wdb, const char * file, int ftype, const sk_sum
     sqlite3_bind_int64(stmt, 12, sum->inode);
     sqlite3_bind_text(stmt, 13, sum->sha256, -1, NULL);
     sqlite3_bind_int(stmt, 14, sum->attrs);
+    sqlite3_bind_text(stmt, 15, sum->symbolic_path, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return 0;
@@ -464,7 +466,8 @@ int wdb_fim_update_entry(wdb_t * wdb, const char * file, const sk_sum_t * sum) {
     sqlite3_bind_int64(stmt, 11, sum->inode);
     sqlite3_bind_text(stmt, 12, sum->sha256, -1, NULL);
     sqlite3_bind_int(stmt, 13, sum->attrs);
-    sqlite3_bind_text(stmt, 14, file, -1, NULL);
+    sqlite3_bind_text(stmt, 14, sum->symbolic_path, -1, NULL);
+    sqlite3_bind_text(stmt, 15, file, -1, NULL);
 
     if (sqlite3_step(stmt) == SQLITE_DONE) {
         return sqlite3_changes(wdb->db);

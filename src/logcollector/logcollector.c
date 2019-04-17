@@ -83,9 +83,6 @@ void LogCollectorStart()
     char keepalive[1024];
     logreader *current;
 
-    total_files = 0;
-    current_files = 0;
-
     set_sockets();
     files_lock_init();
 
@@ -258,7 +255,7 @@ void LogCollectorStart()
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
-    mdebug2(CURRENT_FILES, current_files, maximum_files);
+    mdebug1(CURRENT_FILES, current_files, maximum_files);
 
 #ifndef WIN32
     // Start com request thread
@@ -327,7 +324,7 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
@@ -402,7 +399,7 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
@@ -988,7 +985,7 @@ int check_pattern_expand(int do_seek) {
                     globs[j].gfiles[i + 1].file = NULL;
                     globs[j].gfiles[i + 1].target = NULL;
                     current_files++;
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
                     } else {
@@ -1034,7 +1031,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 if (result) {
                     merror_exit(REM_ERROR, current->file);
                 } else {
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                 }
                 d_control = NEXT_IT;
                 break;

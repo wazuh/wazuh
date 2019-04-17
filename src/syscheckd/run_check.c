@@ -25,8 +25,12 @@
 
 /* Prototypes */
 static void send_sk_db(int first_scan);
-
-
+#ifndef WIN32
+static void *symlink_checker_thread(__attribute__((unused)) void * data);
+static void update_link_monitoring(int pos, char *old_path, char *new_path);
+static void unlink_files(OSHashNode **row, OSHashNode **node, void *data);
+static void send_silent_del(char *path);
+#endif
 
 /* Send a message related to syscheck change/addition */
 int send_syscheck_msg(const char *msg)
@@ -117,6 +121,7 @@ static void send_sk_db(int first_start)
 
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
+        minfo("Ending syscheck scan. Database completed.");
     }
 }
 
@@ -180,7 +185,6 @@ void start_daemon()
     if (syscheck.scan_time || syscheck.scan_day) {
         /* At least once a week */
         syscheck.time = 604800;
-        rootcheck.time = 604800;
     }
     /* Printing syscheck properties */
 
@@ -330,7 +334,7 @@ void start_daemon()
 }
 
 /* Read file information and return a pointer to the checksum */
-int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata_evt * evt)
+int c_read_file(const char *file_name, const char *linked_file, const char *oldsum, char *newsum, whodata_evt * evt)
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
@@ -365,7 +369,15 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     {
         char alert_msg[OS_SIZE_6144 + 1];
         char wd_sum[OS_SIZE_6144 + 1];
+        int pos;
 
+#ifdef WIN_WHODATA
+        // If this flag is enable, the remove event will be notified at another point
+        if (evt && evt->ignore_remove_event) {
+            mdebug2("The '%s' file does not exist, but this will be notified when the corresponding event is received.", file_name);
+            return 0;
+        }
+#endif
         alert_msg[sizeof(alert_msg) - 1] = '\0';
 
         // Extract the whodata sum here to not include it in the hash table
@@ -374,12 +386,11 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
         }
 
         /* Find tag position for the evaluated file name */
-        int pos = find_dir_pos(file_name, 1, 0, 0);
-
-        //Alert for deleted file
-        snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", file_name);
-        send_syscheck_msg(alert_msg);
-
+        if (pos = find_dir_pos(file_name, 1, 0, 0), pos >= 0) {
+            //Alert for deleted file
+            snprintf(alert_msg, sizeof(alert_msg), "-1!%s:%s:%s: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", linked_file ? linked_file : "", file_name);
+            send_syscheck_msg(alert_msg);
+        }
 
 #ifndef WIN32
         if(evt && evt->inode) {
@@ -494,10 +505,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
     {
         if (sha1sum || md5sum || sha256sum) {
             /* Generate checksums of the file */
-            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                strncpy(sf_sum, "n/a", 4);
-                strncpy(mf_sum, "n/a", 4);
-                strncpy(sf256_sum, "n/a", 4);
+            if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
+                return 0;
             }
         }
     }
@@ -509,10 +518,8 @@ int c_read_file(const char *file_name, const char *oldsum, char *newsum, whodata
             if (S_ISREG(statbuf_lnk.st_mode)) {
                 if (sha1sum || md5sum || sha256sum) {
                     /* Generate checksums of the file */
-                    if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY) < 0) {
-                        strncpy(sf_sum, "n/a", 4);
-                        strncpy(mf_sum, "n/a", 4);
-                        strncpy(sf256_sum, "n/a", 4);
+                    if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
+                        return 0;
                     }
                 }
             }
@@ -663,3 +670,107 @@ void log_realtime_status(int next) {
         }
     }
 }
+
+void symlink_checker_init() {
+#ifndef WIN32
+    minfo("Starting symbolic link updater.");
+
+    w_create_thread(symlink_checker_thread, NULL);
+#endif
+}
+
+#ifndef WIN32
+static void *symlink_checker_thread(__attribute__((unused)) void * data) {
+    int checker_sleep = getDefine_Int("syscheck", "symlink_scan_interval", 1, 2592000);
+    int i;
+    char *real_path;
+    char *conv_link;
+
+    syscheck.sym_checker_interval = checker_sleep;
+    mdebug1("Configured symbolic links will be checked every %d seconds.", checker_sleep);
+
+    while (1) {
+        sleep(checker_sleep);
+        mdebug1("Checking if the symbolic links have changed...");
+
+        for (i = 0; syscheck.dir[i]; i++) {
+            if (syscheck.converted_links[i]) {
+                if (real_path = realpath(syscheck.dir[i], NULL), !real_path) {
+                    continue;
+                }
+
+                conv_link = get_converted_link_path(i);
+
+                if (strcmp(real_path, conv_link)) {
+                    minfo("Updating the symbolic link from '%s': '%s' to '%s'.", syscheck.dir[i], conv_link, real_path);
+                    update_link_monitoring(i, conv_link, real_path);
+                } else {
+                    mdebug1("The symbolic link of '%s' has not changed.", syscheck.dir[i]);
+                }
+
+                free(conv_link);
+                free(real_path);
+            }
+        }
+
+        mdebug1("Links check finalized.");
+    }
+
+    return NULL;
+}
+
+
+static void update_link_monitoring(int pos, char *old_path, char *new_path) {
+    w_rwlock_wrlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+    free( syscheck.converted_links[pos]);
+    os_strdup(new_path, syscheck.converted_links[pos]);
+    w_rwlock_unlock((pthread_rwlock_t *)&syscheck.fp->mutex);
+
+    // Scan for new files
+    read_dir(new_path, NULL, pos, NULL, syscheck.recursion_level[pos], 0, '+');
+
+    // Remove unlink files
+    OSHash_It_ex(syscheck.fp, 2, (void *) old_path, unlink_files);
+}
+
+
+static void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
+    char *dir = (char *) data;
+
+    if (!strncmp(dir, (*node)->key, strlen(dir))) {
+        syscheck_node *s_node = (syscheck_node *) (*node)->data;
+        OSHashNode *r_node = *node;
+
+        mdebug2("File '%s' was inside the unlinked directory '%s'. It will be notified.", (*node)->key, dir);
+
+        send_silent_del((*node)->key);
+
+        if ((*node)->next) {
+            (*node)->next->prev = (*node)->prev;
+        }
+
+        if ((*node)->prev) {
+            (*node)->prev->next = (*node)->next;
+        }
+
+        *node = (*node)->next;
+
+        // If the node is the first and last node of the row
+        if (*row == r_node) {
+            *row = r_node->next;
+        }
+
+        free(r_node->key);
+        free(r_node);
+        free(s_node->checksum);
+        free(s_node);
+    }
+}
+
+static void send_silent_del(char *path) {
+    char del_msg[OS_SIZE_6144 + 1];
+
+    snprintf(del_msg, OS_SIZE_6144, "-1!:::::::::::::+ %s", path);
+    send_syscheck_msg(del_msg);
+}
+#endif

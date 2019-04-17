@@ -55,6 +55,7 @@ static void read_internal(int debug_level)
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
     syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
+    syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
@@ -91,11 +92,11 @@ int fim_initialize() {
 #endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
-    
+
     if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) merror_exit("At fim_initialize(): OSHash_Create() failed");
-    
+
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
-    
+
     return 0;
 }
 
@@ -182,9 +183,10 @@ int Start_win32_Syscheck()
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
-            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            if (syscheck.tag[r] != NULL)
+            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof
+            if (syscheck.tag && syscheck.tag[r] != NULL) {
                 mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
+            }
             r++;
         }
 
@@ -413,7 +415,13 @@ int main(int argc, char **argv)
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
-            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+
+            if (!syscheck.converted_links[r]) {
+                minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            } else {
+                minfo(FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.converted_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            }
+
             if (syscheck.tag && syscheck.tag[r] != NULL)
                 mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
             r++;

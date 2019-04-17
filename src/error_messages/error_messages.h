@@ -100,6 +100,7 @@
 #define SEND_DISCON     "(1245): Sending message to disconnected agent '%s'."
 #define SHARED_ERROR    "(1246): Unable to send file '%s' to agent ID '%s'."
 #define TCP_NOT_SUPPORT "(1247): TCP not supported for this operating system."
+#define TCP_EPIPE       "(1248): Unable to send message. Connection has been closed by remote server."
 
 #define MAILQ_ERROR     "(1221): No Mail queue at %s"
 #define IMSG_ERROR      "(1222): Invalid msg: %s"

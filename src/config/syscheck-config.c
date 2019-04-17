@@ -12,7 +12,6 @@
 #include "syscheck-config.h"
 #include "config.h"
 
-
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg,
         const char *restrictfile, int recursion_limit, const char *tag, int overwrite)
 {
@@ -70,28 +69,23 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
 #endif
         if (syscheck->dir == NULL) {
             os_calloc(2, sizeof(char *), syscheck->dir);
-            syscheck->dir[pl + 1] = NULL;
-            os_strdup(entry, syscheck->dir[pl]);
+            os_strdup(entry, syscheck->dir[0]);
 
 #ifdef WIN32
             os_calloc(2, sizeof(whodata_dir_status), syscheck->wdata.dirs_status);
-            memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
+            os_calloc(2, sizeof(char *), syscheck->converted_links);
+            set_linked_path(syscheck, entry, 0);
+
             os_calloc(2, sizeof(int), syscheck->opts);
-            syscheck->opts[pl] = vals;
-            syscheck->opts[pl + 1] = 0;
+            syscheck->opts[0] = vals;
 
             os_calloc(2, sizeof(OSMatch *), syscheck->filerestrict);
-            syscheck->filerestrict[pl] = NULL;
-            syscheck->filerestrict[pl + 1] = NULL;
 
             os_calloc(2, sizeof(int), syscheck->recursion_level);
-            syscheck->recursion_level[pl] = recursion_limit;
-            syscheck->recursion_level[pl + 1] = 0;
+            syscheck->recursion_level[0] = recursion_limit;
 
             os_calloc(2, sizeof(char *), syscheck->tag);
-            syscheck->tag[pl] = NULL;
-            syscheck->tag[pl + 1] = NULL;
         } else if (overwrite < 0) {
             while (syscheck->dir[pl] != NULL) {
                 pl++;
@@ -105,6 +99,11 @@ int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, 
                     syscheck->wdata.dirs_status);
             memset(syscheck->wdata.dirs_status + pl, 0, 2 * sizeof(whodata_dir_status));
 #endif
+
+            os_realloc(syscheck->converted_links, (pl + 2) * sizeof(char *), syscheck->converted_links);
+            set_linked_path(syscheck, entry, pl);
+            syscheck->converted_links[pl + 1] = NULL;
+
             os_realloc(syscheck->opts, (pl + 2) * sizeof(int),
                        syscheck->opts);
             syscheck->opts[pl] = vals;
@@ -920,19 +919,19 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                     free(tag);
                     return (OS_INVALID);
                 }
-                
+
             } else if (strcmp(arch, "64bit") == 0) {
                 if (!read_reg(syscheck, node[i]->content, ARCH_64BIT, tag)) {
                     free(tag);
                     return (OS_INVALID);
                 }
-                
+
             } else {
                 if (!read_reg(syscheck, node[i]->content, ARCH_32BIT, tag)) {
                     free(tag);
                     return (OS_INVALID);
                 }
-                
+
             }
 
             if (tag)
@@ -1514,3 +1513,24 @@ char* check_ascci_hex (char *input) {
     }
     return output;
 }
+
+#ifdef WIN32
+void set_linked_path(__attribute__((unused)) syscheck_config *syscheck, __attribute__((unused)) const char *entry, __attribute__((unused)) int position) {}
+#else
+void set_linked_path(syscheck_config *syscheck, const char *entry, int position) {
+    char *linked_path;
+
+    if (linked_path = realpath(entry, NULL), !linked_path) {
+        mdebug1("Could not check the real path of '%s'.", entry);
+        return;
+    }
+
+    if (!strcmp(linked_path, entry)) {
+        mdebug2("'%s' is not a symbolic link.", linked_path);
+        free(linked_path);
+        return;
+    }
+
+    syscheck->converted_links[position] = linked_path;
+}
+#endif

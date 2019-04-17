@@ -227,7 +227,7 @@ int main(int argc, char **argv)
                 decodersfiles = Config.decoders;
                 while ( decodersfiles && *decodersfiles) {
                     if (!test_config) {
-                        minfo("Reading decoder file %s.", *decodersfiles);
+                        mdebug1("Reading decoder file %s.", *decodersfiles);
                     }
                     if (!ReadDecodeXML(*decodersfiles)) {
                         merror_exit(CONFIG_ERROR, *decodersfiles);

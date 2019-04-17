@@ -652,6 +652,11 @@ char *get_win_agent_ip(){
             }
         }
     }
+
+    if (pAddresses) {
+        win_free((HLOCAL)pAddresses);
+    }
+
     return agent_ip;
 }
 

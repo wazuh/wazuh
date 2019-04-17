@@ -16,6 +16,7 @@
 #define FIM_DISABLED                        "(6001): File integrity monitoring disabled."
 #define FIM_MONITORING_REGISTRY             "(6002): Monitoring registry entry: '%s%s'."
 #define FIM_MONITORING_DIRECTORY            "(6003): Monitoring directory: '%s', with options '%s'."
+#define FIM_MONITORING_LDIRECTORY           "(6003): Monitoring directory: '%s' (%s), with options '%s'."
 #define FIM_NO_DIFF                         "(6004): No diff for file: '%s'"
 #define FIM_WAITING_QUEUE                   "(6005): Cannot connect to queue '%s' (%d)'%s'. Waiting %d seconds to reconnect."
 #define FIM_PRINT_IGNORE_ENTRY              "(6206): Ignore '%s' entry '%s'"
