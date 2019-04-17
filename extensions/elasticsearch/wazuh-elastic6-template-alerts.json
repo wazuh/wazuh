@@ -1137,6 +1137,14 @@
                   "type": "keyword",
                   "doc_values": "true"
                 },
+                "invalid": {
+                  "type": "integer",
+                  "doc_values": "true"
+                },
+                "total_checks": {
+                  "type": "integer",
+                  "doc_values": "true"
+                },
                 "score": {
                   "type": "keyword",
                   "doc_values": "true"
@@ -1200,6 +1208,14 @@
                       "doc_values": "true"
                     },
                     "result": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "status": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "reason": {
                       "type": "keyword",
                       "doc_values": "true"
                     },
