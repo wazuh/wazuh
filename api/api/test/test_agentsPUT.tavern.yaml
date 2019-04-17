@@ -162,7 +162,11 @@ stages:
       method: PUT
 
     response:
-#      TODO
+      data:
+        affected_agents: [
+          "001"
+        ]
+        message: "All selected agents were restarted"
 
   - name: Restart agent with bad id
 
@@ -171,18 +175,11 @@ stages:
       method: PUT
 
       response:
-    #      TODO
         status_code: 400
         body:
-          code: 1701
-          dapi_errors:
-            master-node:
-              "error": "Agent does not exist: 1568"
-              "logfile": "WAZUH_HOME/logs/api.log"
-          detail: "Agent does not exist: 1568"
-          remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+          detail: !anystr
           status: 400
-          title: "Wazuh Error"
+          title: "Bad Request"
           type: "about:blank"
 
 
