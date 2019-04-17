@@ -143,7 +143,7 @@ typedef struct whodata {
     OSHash *ignored_paths;              // Files or directories marked as ignored
     OSHash *directories;                // Directories checked by whodata mode
     int interval_scan;                  // Time interval between scans of the checking thread
-    int whodata_setup;
+    int whodata_setup;                  // Worth 1 when there is some directory configured with whodata
     whodata_dir_status *dirs_status;    // Status list
     char **device;                       // Hard disk devices
     char **drive;                        // Drive letter
