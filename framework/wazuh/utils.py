@@ -503,6 +503,12 @@ def load_wazuh_xml(xml_path):
     # < characters should be scaped as &lt; unless < is starting a <tag> or a comment
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
+    # replace \< by &lt;
+    data = re.sub(r'\\<', '&lt;', data)
+
+    # replace \> by &gt;
+    data = re.sub(r'\\>', '&gt;', data)
+
     # & characters should be scaped if they don't represent an &entity;
     data = re.sub(r"&(?!(amp|lt|gt|apos|quot);)", "&amp;", data)
 
@@ -665,9 +671,10 @@ class WazuhDBQuery(object):
         self.q = query
         self.legacy_filters = filters
         self.inverse_fields = {v: k for k, v in self.fields.items()}
-        if not glob.glob(db_path):
-            raise WazuhException(1600)
-        self.conn = Connection(db_path)
+        if db_path:
+            if not glob.glob(db_path):
+                raise WazuhException(1600)
+            self.conn = Connection(db_path)
 
 
     def _add_limit_to_query(self):
@@ -767,7 +774,7 @@ class WazuhDBQuery(object):
         Parses legacy filters.
         """
         # some legacy filters can contain multiple values to filter separated by commas. That must split in a list.
-        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else [value]
+        legacy_filters_as_list = {name: value.split(',') if isinstance(value, str) else (value if isinstance(value, list) else [value])
                                   for name, value in self.legacy_filters.items()}
         # each filter is represented using a dictionary containing the following fields:
         #   * Value     -> Value to filter by
@@ -842,7 +849,8 @@ class WazuhDBQuery(object):
 
 
     def _get_data(self):
-        self.conn.execute(self.query.format(','.join(map(lambda x: self.fields[x], self.select['fields'] | self.min_select_fields))), self.request)
+        self.conn.execute(self.query.format(','.join(map(lambda x: f"{self.fields[x]} as '{x}'",
+                                                         self.select['fields'] | self.min_select_fields))), self.request)
 
 
     def _format_data_into_dictionary(self):

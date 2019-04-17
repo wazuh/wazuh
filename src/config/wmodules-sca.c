@@ -214,6 +214,12 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
                         policy->enabled = enabled;
                         policy->policy_id= NULL;
+
+                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
+                            policy->remote = 1;
+                        } else {
+                            policy->remote = 0;
+                        }
                         
                         os_strdup(children[j]->content,policy->profile);
                         sca->profile[profiles] = policy;
@@ -274,14 +280,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             sca->interval = WM_DEF_INTERVAL;  // 1 day
             mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_SCA_CONTEXT.name);
         }
-    }
-
-    sca->request_db_interval = getDefine_Int("sca","request_db_interval",0,60) * 60;
-
-    /* Maximum request interval is the scan interval */
-    if(sca->request_db_interval > sca->interval) {
-       sca->request_db_interval = sca->interval;
-       minfo("The request_db_interval is higher than the interval.");
     }
 
     return 0;

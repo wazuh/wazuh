@@ -47,6 +47,10 @@ int LogCollectorConfig(const char *cfgfile)
     reload_interval = getDefine_Int("logcollector", "reload_interval", 1, 86400);
     reload_delay = getDefine_Int("logcollector", "reload_delay", 0, 30000);
 
+    /* Current and total files counter */
+    total_files = 0;
+    current_files = 0;
+
     if (force_reload && reload_interval < vcheck_files) {
         mwarn("Reload interval (%d) must be greater or equal than the checking interval (%d).", reload_interval, vcheck_files);
     }

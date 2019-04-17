@@ -89,9 +89,6 @@ void LogCollectorStart()
     char keepalive[1024];
     logreader *current;
 
-    total_files = 0;
-    current_files = 0;
-
     /* Create store data */
     excluded_files = OSHash_Create();
     if (!excluded_files) {
@@ -293,7 +290,7 @@ void LogCollectorStart()
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
-    mdebug2(CURRENT_FILES, current_files, maximum_files);
+    mdebug1(CURRENT_FILES, current_files, maximum_files);
 
 #ifndef WIN32
     // Start com request thread
@@ -362,7 +359,7 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
@@ -437,7 +434,7 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
@@ -1413,7 +1410,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 if (result) {
                     merror_exit(REM_ERROR, current->file);
                 } else {
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                 }
                 d_control = NEXT_IT;
                 break;

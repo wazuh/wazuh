@@ -8,5 +8,6 @@
       <policy>cis_rhel6_linux_rcl.yml</policy>
       <policy>system_audit_rcl.yml</policy>
       <policy>system_audit_ssh.yml</policy>
+      <policy>system_audit_pw.yml</policy>
     </policies>
   </sca>

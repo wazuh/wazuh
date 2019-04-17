@@ -838,10 +838,6 @@ void OS_RemoveAgentGroup(const char *id)
             }
 
         }
-#ifndef CLIENT
-        /* Remove from the 'belongs' table groups which the agent belongs to*/
-        wdb_delete_agent_belongs(atoi(id));
-#endif
 
         if(fp){
             fclose(fp);
