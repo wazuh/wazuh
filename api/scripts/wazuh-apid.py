@@ -32,26 +32,30 @@ def print_version():
     print("\n{} {} - {}\n\n{}".format(__ossec_name__, __version__, __author__, __licence__))
 
 
-def main(cache_conf, cors, port, host, ssl_context, main_logger):
-    app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
-    app.app.json_encoder = encoder.JSONEncoder
-    app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
-    app.app.logger = main_logger
-    app.app.before_request(alogging.set_request_user_logs)
-    if cors:
-        # add CORS support
-        CORS(app.app)
-    # add Cache support
-    if cache_conf['enabled']:
-        app.app.config['CACHE_TYPE'] = 'simple'
-        app.app.config['CACHE_DEFAULT_TIMEOUT'] = cache_conf['time']/1000
-    else:
-        app.app.config['CACHE_TYPE'] = 'null'
-    app.app.cache = Cache(app.app)
-    try:
-        app.run(port=port, host=host, ssl_context=ssl_context)
-    except Exception as e:
-        main_logger.error("Error starting API server: {}".format(e))
+app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
+app.app.json_encoder = encoder.JSONEncoder
+app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
+
+# def main(cache_conf, cors, port, host, ssl_context, main_logger):
+#     app = connexion.App(__name__, specification_dir=os.path.join(api_path[0], 'spec'))
+#     app.app.json_encoder = encoder.JSONEncoder
+#     app.add_api('spec.yaml', arguments={'title': 'Wazuh API'})
+#     # app.app.logger = main_logger
+#     # app.app.before_request(alogging.set_request_user_logs)
+#     if cors:
+#         # add CORS support
+#         CORS(app.app)
+#     # add Cache support
+#     if cache_conf['enabled']:
+#         app.app.config['CACHE_TYPE'] = 'simple'
+#         app.app.config['CACHE_DEFAULT_TIMEOUT'] = cache_conf['time']/1000
+#     else:
+#         app.app.config['CACHE_TYPE'] = 'null'
+#     app.app.cache = Cache(app.app)
+#     try:
+#         app.run(port=port, host=host, ssl_context=ssl_context)
+#     except Exception as e:
+#         main_logger.error("Error starting API server: {}".format(e))
 
 
 #
@@ -113,6 +117,11 @@ if __name__ == '__main__':
     pyDaemonModule.create_pid('wazuh-apid', os.getpid())
 
     try:
-        main(configuration['cache'], configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
-    except KeyboardInterrupt:
-        main_logger.info("SIGINT received. Bye!")
+        app.run(ssl_context=ssl_context)
+    except Exception as e:
+        main_logger.error("Error starting API server: {}".format(e))
+
+    # try:
+    #     main(configuration['cache'], configuration['cors'], configuration['port'], configuration['host'], ssl_context, main_logger)
+    # except KeyboardInterrupt:
+    #     main_logger.info("SIGINT received. Bye!")
