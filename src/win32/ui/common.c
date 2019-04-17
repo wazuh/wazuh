@@ -425,6 +425,7 @@ int set_ossec_server(char *ip, HWND hwnd)
                        "Error -- Failure Setting IP", MB_OK);
             return (0);
         }
+        free(s_ip);
         config_inst.server_type = SERVER_HOST_USED;
         xml_pt = xml_serveraddr;
     } else {
