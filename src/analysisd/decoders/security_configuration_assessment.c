@@ -982,11 +982,11 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                         case 0:
                             /* Delete checks */
                             DeletePolicyCheck(lf, policy_id->valuestring, socket);
-                            mdebug2("Policy '%s' deleted. Requesting SCA new scan", policy_id->valuestring);
                             PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
+                            minfo("Policy '%s' outdated. Latest scan requested to the SCA module.", policy_id->valuestring);
                             break;
                         default:
-                            mdebug1("Error deleting policy with id '%s' from database",policy_id->valuestring);
+                            merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
                             break;
                     }
                 }
@@ -1307,7 +1307,7 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
                                 break;
 
                             default:
-                                mdebug1("Error deleting policy with id '%s' from database",p_id);
+                                merror("Unable to purge DB content for policy '%s'", p_id);
                                 break;
                         }
                     }
