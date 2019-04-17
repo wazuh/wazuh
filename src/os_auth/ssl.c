@@ -181,7 +181,7 @@ int load_ca_cert(SSL_CTX *ctx, const char *ca_cert)
  */
 int verify_callback(int ok, X509_STORE_CTX *store)
 {
-    char data[256];
+    char issuer[256], subject[256];
 
     if (!ok) {
         X509 *cert = X509_STORE_CTX_get_current_cert(store);
@@ -190,11 +190,10 @@ int verify_callback(int ok, X509_STORE_CTX *store)
 
         merror("Problem with certificate at depth %i", depth);
 
-        X509_NAME_oneline(X509_get_issuer_name(cert), data, 256);
-        merror("issuer =  %s", data);
+        X509_NAME_oneline(X509_get_issuer_name(cert), issuer, 256);
+        X509_NAME_oneline(X509_get_subject_name(cert), subject, 256);
 
-        X509_NAME_oneline(X509_get_subject_name(cert), data, 256);
-        merror("subject =  %s", data);
+        merror("issuer =  %s, subject =  %s", issuer, subject);
 
         merror("%i:%s", err, X509_verify_cert_error_string(err));
     }

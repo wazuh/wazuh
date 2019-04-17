@@ -346,8 +346,10 @@ int main(int argc, char **argv)
     ERR_clear_error();
     ret = SSL_connect(ssl);
     if (ret <= 0) {
-        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(ssl, ret));
+        merror("SSL error (%d). Connection refused by the manager. Maybe the port or certificate specified is incorrect. Exiting.", SSL_get_error(ssl, ret));
+    #ifdef DEBUG
         ERR_print_errors_fp(stderr);  // This function empties the error queue
+    #endif
         free(buf);
         exit(1);
     }
