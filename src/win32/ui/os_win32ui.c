@@ -240,10 +240,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                                 free(decd_to_write);
                                 free(decd_buf);
                             }
-                        } else {
-                            GlobalFree(buf);
                         }
-
+                        GlobalFree(buf);
                     } /* Finished adding AUTH KEY */
 
                     /* Re-print messages */
