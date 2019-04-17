@@ -157,6 +157,9 @@ main () {
         edit_value_tag "port" ${WAZUH_SERVER_PORT}
         edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
+
+    elif [ -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_MANAGER_IP} ]; then
+        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: ERROR: The agent is already registered." >> ${DIRECTORY}/logs/ossec.log
     fi
 
     if [ ! -s ${DIRECTORY}/etc/client.keys ] && [ ! -z ${WAZUH_AUTHD_SERVER} ]; then
