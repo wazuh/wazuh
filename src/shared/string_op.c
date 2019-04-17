@@ -178,10 +178,11 @@ void W_JSON_AddField(cJSON *root, const char *key, const char *value) {
 
         free(current);
     } else if (!cJSON_GetObjectItem(root, key)) {
-        int value_len = 0;
-        if (value[0] == '['
-            && (value_len = strnlen(value, OS_MAXSTR))
-            && value[value_len - 1] == ']') 
+        char *string_end =  NULL;
+        if (*value == '[' && 
+           (string_end = memchr(value, '\0', OS_MAXSTR)) &&
+           (string_end != NULL) &&
+           (']' == *(string_end - 1)))
         {
             cJSON_AddItemToObject(root, key, cJSON_Parse(value));
         } else {
