@@ -243,8 +243,9 @@ int realtime_start()
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
     syscheck.realtime->dirtb = OSHash_Create();
-    if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
-
+    if (syscheck.realtime->dirtb == NULL) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+    }
     syscheck.realtime->fd = -1;
 
 #ifdef INOTIFY_ENABLED
@@ -314,7 +315,9 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
                         merror_exit("Out of memory. Exiting.");
                     }
 
-                    if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) merror_exit("Out of memory. Exiting.");
+                    if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) {
+                        merror_exit("Out of memory. Exiting.");
+                    }
                     mdebug1(FIM_REALTIME_NEWDIRECTORY, ndir);
                 }
             }
@@ -463,8 +466,9 @@ int realtime_start()
     os_calloc(1, sizeof(rtfim), syscheck.realtime);
 
     syscheck.realtime->dirtb = OSHash_Create();
-    if (syscheck.realtime->dirtb == NULL) merror_exit(MEM_ERROR, errno, strerror(errno));
-
+    if (syscheck.realtime->dirtb == NULL) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+    }
     OSHash_SetFreeDataPointer(syscheck.realtime->dirtb, (void (*)(void *))free_win32rtfim_data);
 
     syscheck.realtime->fd = -1;
@@ -581,8 +585,9 @@ int realtime_adddir(const char *dir, int whodata)
         /* Add final elements to the hash */
         os_strdup(dir, rtlocald->dir);
         os_strdup(dir, rtlocald->overlap.Pointer);
-        if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) merror_exit("Out of memory. Exiting.");
-
+        if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
+            merror_exit("Out of memory. Exiting.");
+        }
         /* Add directory to be monitored */
         realtime_win32read(rtlocald);
     }
