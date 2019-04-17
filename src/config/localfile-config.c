@@ -374,15 +374,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             hFind = FindFirstFile(logf[pl].file, &ffd);
 
             if (INVALID_HANDLE_VALUE == hFind) {
-                merror(GLOB_ERROR, logf[pl].file);
-            } else {
-                os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
-                os_strdup(logf[pl].file, log_config->globs[gl].gpath);
-                memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
-                os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
-                memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
-                log_config->globs[gl].gfiles->file = NULL;
+                minfo(GLOB_ERROR_WIN, logf[pl].file);
             }
+
+            os_realloc(log_config->globs, (gl + 2)*sizeof(logreader_glob), log_config->globs);
+            os_strdup(logf[pl].file, log_config->globs[gl].gpath);
+            memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
+            os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
+            memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+            log_config->globs[gl].gfiles->file = NULL;
 
             /* Wildcard exclusion, check for date */
             if (logf[pl].exclude && strchr(logf[pl].exclude, '%')) {

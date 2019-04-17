@@ -54,6 +54,7 @@
 #define KQUEUE_ERROR   "(1138): Could not handle kqueue descriptor."
 #define FTELL_ERROR     "(1139): Could not get position from file '%s' due to [(%d)-(%s)]."
 #define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
+#define GLOB_ERROR_WIN "(1141): Glob error. Invalid pattern: '%s' or no files found."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."

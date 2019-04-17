@@ -597,13 +597,6 @@ void LogCollectorStart()
                             mdebug1(FILE_ERROR, current->file);
                         }
 
-                        if (current->exists==1) {
-                            minfo(FORGET_FILE, current->file);
-                            current->exists = 0;
-                        };
-
-                        current->ign++;
-
                         CloseHandle(h1);
 
                         // Only expanded files that have been deleted will be forgotten
@@ -1271,7 +1264,7 @@ int check_pattern_expand(int do_seek) {
             hFind = FindFirstFile(globs[j].gpath, &ffd);
 
             if (INVALID_HANDLE_VALUE == hFind) {
-                mdebug1(GLOB_ERROR,globs[j].gpath);
+                mdebug1(GLOB_ERROR_WIN,globs[j].gpath);
                 continue;
             }
 
@@ -2101,7 +2094,7 @@ static void check_pattern_expand_excluded() {
             hFind = FindFirstFile(globs[j].exclude_path, &ffd);
 
             if (INVALID_HANDLE_VALUE == hFind) {
-                mdebug1(GLOB_ERROR,globs[j].exclude_path);
+                mdebug1(GLOB_ERROR_WIN,globs[j].exclude_path);
                 continue;
             }
 
