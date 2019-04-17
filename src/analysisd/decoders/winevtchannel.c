@@ -79,9 +79,7 @@ int DecodeWinevt(Eventinfo *lf){
     int ret_val = 0;
     char *categoryId = NULL;
     char *subcategoryId = NULL;
-    char *auditPolicyChanges = NULL;
-    int categoryId_n;
-    int subcategoryId_n;
+    char *auditPolicyChangesId = NULL;
     cJSON *final_event = cJSON_CreateObject();
     cJSON *json_event = cJSON_CreateObject();
     cJSON *json_system_in = cJSON_CreateObject();
@@ -105,8 +103,6 @@ int DecodeWinevt(Eventinfo *lf){
     char *end_msg = NULL;
     char *next = NULL;
     char *severityValue = NULL;
-    char *category = NULL;
-    char *subcategory = NULL;
     char *join_data = NULL;
     char *join_data2 = NULL;
     char aux = 0;
@@ -256,30 +252,28 @@ int DecodeWinevt(Eventinfo *lf){
                                             if (categoryId){
                                                 os_free(categoryId);
                                             }
-                                            categoryId = wstr_replace(filtered_string, "%%", "");
+                                            os_strdup(filtered_string, categoryId);
 
                                         // Save subcategory ID
                                         } else if (!strcmp(child_attr[p]->values[l], "subcategoryId")){
                                             if (subcategoryId){
                                                 os_free(subcategoryId);
                                             }
-                                            subcategoryId = wstr_replace(filtered_string, "%%", "");
-
-                                        // Ignore subcategory Guid
-                                        } else if (!strcmp(child_attr[p]->values[l], "subcategoryGuid")){
+                                            os_strdup(filtered_string, subcategoryId);
+                                        }
 
                                         // Save Audit Policy Changes
-                                        } else if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
-                                            if (auditPolicyChanges){
-                                                os_free(auditPolicyChanges);
+                                        if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
+                                            if (auditPolicyChangesId){
+                                                os_free(auditPolicyChangesId);
                                             }
-                                            auditPolicyChanges = wstr_replace(filtered_string, "%%", "");
-                                        // Get other fields
+                                            os_strdup(filtered_string, auditPolicyChangesId);
+                                            cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChangesId", filtered_string);
                                         } else {
                                             cJSON_AddStringToObject(json_eventdata_in, child_attr[p]->values[l], filtered_string);
                                         }
-                                        os_free(filtered_string);
 
+                                        os_free(filtered_string);
                                         break;
 
                                     } else if(child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
@@ -386,8 +380,16 @@ int DecodeWinevt(Eventinfo *lf){
                 // Event category, subcategory and Audit Policy Changes
 
                 if (categoryId && subcategoryId){
-                    categoryId_n = strtol(categoryId, NULL, 10);
-                    subcategoryId_n = strtol(subcategoryId, NULL, 10);
+                    
+                    char *category = NULL;
+                    char *subcategory = NULL;
+                    int categoryId_n;
+                    int subcategoryId_n;
+                    char * filtered_categoryId = wstr_replace(categoryId, "%%", "");
+                    char * filtered_subcategoryId = wstr_replace(subcategoryId, "%%", "");
+
+                    categoryId_n = strtol(filtered_categoryId, NULL, 10);
+                    subcategoryId_n = strtol(filtered_subcategoryId, NULL, 10);
 
                     switch (categoryId_n) {
                         case 8272:
@@ -409,7 +411,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Other System Events";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8273:
@@ -449,7 +451,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Group Membership";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8274:
@@ -498,7 +500,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Central Policy Staging";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8275:
@@ -514,7 +516,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Other Privilege Use Events";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8276:
@@ -539,7 +541,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Token Right Adjusted Events";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8277:
@@ -564,7 +566,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Other Policy Change Events";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8278:
@@ -589,7 +591,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Other Account Management Events";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8279:
@@ -608,7 +610,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Detailed Directory Service Replication";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         case 8280:
@@ -627,27 +629,37 @@ int DecodeWinevt(Eventinfo *lf){
                                     subcategory = "Kerberos Authentication Service";
                                     break;
                                 default:
-                                    subcategory = "Not defined";
+                                    break;
                             }
                             break;
                         default:
-                            subcategory = "Not defined";
-                            category = "Not defined";
+                            break;
                     }
-                }
+                    if (category) {
+                        cJSON_AddStringToObject(json_eventdata_in, "category", category);
+                    }
+                    if (subcategory) {
+                        cJSON_AddStringToObject(json_eventdata_in, "subcategory", subcategory);
+                    }
 
-                cJSON_AddStringToObject(json_eventdata_in, "category", category);
-                cJSON_AddStringToObject(json_eventdata_in, "subcategory", subcategory);
+                    os_free(categoryId);
+                    os_free(subcategoryId);
+                    os_free(filtered_categoryId);
+                    os_free(filtered_subcategoryId);
+                }
             }
 
-            if (auditPolicyChanges) {
+            if (auditPolicyChangesId) {
                 int audit_split_n = 0;
                 char **audit_split;
                 char *audit_pol_changes = NULL;
                 char *audit_final_field = NULL;
                 int i = 0;
 
-                audit_split = OS_StrBreak(',', auditPolicyChanges, 4);
+                char * filtered_changes = wstr_replace(auditPolicyChangesId, "%%", "");
+                os_free(auditPolicyChangesId);
+
+                audit_split = OS_StrBreak(',', filtered_changes, 4);
 
                 while (audit_split[i]) {
                     audit_split_n = strtol(audit_split[i], NULL, 10);
@@ -666,13 +678,14 @@ int DecodeWinevt(Eventinfo *lf){
                             wm_strcat(&audit_pol_changes, "Failure added", ',');
                             break;
                         default:
-                            wm_strcat(&audit_pol_changes, "Not defined", ',');
+                            break;
                     }
 
                     i++;
                 }
                 audit_final_field = wstr_replace(audit_pol_changes, ",", ", ");
                 cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChanges", audit_final_field);
+                os_free(filtered_changes);
                 os_free(audit_pol_changes);
                 os_free(audit_final_field);
                 free_strarray(audit_split);
@@ -753,6 +766,8 @@ int DecodeWinevt(Eventinfo *lf){
 
         if(n_elements > 0){
             cJSON_AddItemToObject(json_event, "eventdata", json_eventdata_in);
+        } else {
+            cJSON_Delete(json_eventdata_in);
         }
         cJSON_Delete(element);
     }
@@ -791,7 +806,7 @@ cleanup:
     os_free(returned_event);
     os_free(categoryId);
     os_free(subcategoryId);
-    os_free(auditPolicyChanges);
+    os_free(auditPolicyChangesId);
     if (xml_init){
         OS_ClearXML(&xml);
     }

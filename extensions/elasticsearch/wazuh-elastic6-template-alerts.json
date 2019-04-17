@@ -1386,6 +1386,34 @@
                     "parentImage": {
                       "type": "keyword",
                       "doc_values": "true"
+                    },
+                    "categoryId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategoryId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategoryGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "auditPolicyChangesId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "category": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategory": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "auditPolicyChanges": {
+                      "type": "keyword",
+                      "doc_values": "true"
                     }
                   }
                 },
