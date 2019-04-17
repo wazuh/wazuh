@@ -634,6 +634,7 @@ char *get_win_agent_ip(){
                             if (metric && metric->valueint < min_metric) {
                                 cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                                 cJSON *address = cJSON_GetArrayItem(addresses,0);
+                                free(agent_ip);
                                 os_strdup(address->valuestring, agent_ip);
                                 min_metric = metric->valueint;
                             }
@@ -641,6 +642,7 @@ char *get_win_agent_ip(){
                         else{
                             cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                             cJSON *address = cJSON_GetArrayItem(addresses,0);
+                            free(agent_ip);
                             os_strdup(address->valuestring, agent_ip);
                             free(string);
                             cJSON_Delete(object);
