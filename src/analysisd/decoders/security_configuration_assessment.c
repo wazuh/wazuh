@@ -393,15 +393,14 @@ static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_
     snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy_sha256 %s", lf->agent_id, policy);
 
     if (pm_send_db(msg, response, socket) == 0) {
-        if (!strcmp(response, "ok not found")){
-            retval = 1;
-        }
-        else if (strstr(response, "err")){
-            retval = -1;
-        } else {
+        if (!strncmp(response, "ok found", 8)) {
             char *result_checks = response + 9;
             snprintf(wdb_response,OS_MAXSTR,"%s",result_checks);
             retval = 0;
+        } else if (!strcmp(response, "ok not found")) {
+            retval = 1;
+        } else {
+            retval = -1;
         }
     }
 
@@ -978,11 +977,21 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             os_calloc(OS_MAXSTR, sizeof(char), old_hash);
             if(FindPolicySHA256(lf, policy_id->valuestring, socket, old_hash) == 0){
                 if(strcmp(hash_file->valuestring, old_hash)){
-                    DeletePolicyCheck(lf, policy_id->valuestring, socket);
-                    DeletePolicy(lf, policy_id->valuestring, socket);
-                    PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
+                    int delete_status = DeletePolicy(lf, policy_id->valuestring, socket);
+                    switch (delete_status) {
+                        case 0:
+                            /* Delete checks */
+                            DeletePolicyCheck(lf, policy_id->valuestring, socket);
+                            mdebug2("Policy '%s' deleted. Requesting SCA new scan", policy_id->valuestring);
+                            PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
+                            break;
+                        default:
+                            mdebug1("Error deleting policy with id '%s' from database",policy_id->valuestring);
+                            break;
+                    }
                 }
             }
+            os_free(old_hash);
             break;
     }
 

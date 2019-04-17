@@ -2044,12 +2044,7 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
         cJSON_AddStringToObject(json_summary, "hash", "error_calculating_hash");
     }
 
-    if(integrity_hash_file){
-        cJSON_AddStringToObject(json_summary, "hash_file", integrity_hash_file);
-    }
-    else {
-        cJSON_AddStringToObject(json_summary, "hash_file", "error_on_hash_file");
-    }
+    cJSON_AddStringToObject(json_summary, "hash_file", integrity_hash_file);
 
     if (first_scan) {
         cJSON_AddNumberToObject(json_summary, "first_scan", first_scan);
