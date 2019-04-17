@@ -162,17 +162,29 @@ stages:
       method: PUT
 
     response:
-      status_code: 500
-      body:
-        code: 1000
-        dapi_errors:
-          master-node:
-            "error": "Duplicated name"
-            "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Wazuh Internal Error: Error 9008 - Duplicated name"
-        status: 500
-        title: "Wazuh Internal Error"
-        type: "about:blank"
+#      TODO
+
+  - name: Restart agent with bad id
+
+    request:
+      url: http://localhost:55000/agents/abc/restart
+      method: PUT
+
+      response:
+    #      TODO
+        status_code: 400
+        body:
+          code: 1701
+          dapi_errors:
+            master-node:
+              "error": "Agent does not exist: 1568"
+              "logfile": "WAZUH_HOME/logs/api.log"
+          detail: "Agent does not exist: 1568"
+          remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+          status: 400
+          title: "Wazuh Error"
+          type: "about:blank"
+
 
 ---
 test_name: PUT /agents
