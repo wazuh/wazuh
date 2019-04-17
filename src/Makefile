@@ -24,6 +24,7 @@ EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
+EXTERNAL_MSGPACK=external/msgpack/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -217,7 +218,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
 
 
 
@@ -579,7 +580,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -623,10 +624,12 @@ LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
+MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
+EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
@@ -793,6 +796,20 @@ $(EXTERNAL_AUDIT)Makefile:
 
 	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
+#### msgpack #########
+
+ifneq (${TARGET},winagent)
+msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
+msgpack_o := $(msgpack_c:.c=.o)
+
+${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+
+$(MSGPACK_LIB): ${msgpack_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+endif
+
 ################################
 #### External dependencies  ####
 ################################
@@ -829,7 +846,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -972,6 +989,12 @@ crypto_sha256_o := $(crypto_sha256_c:.c=.o)
 os_crypto/sha256/%.o: os_crypto/sha256/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+crypto_sha512_c := os_crypto/sha512/sha512_op.c
+crypto_sha512_o := $(crypto_sha512_c:.c=.o)
+
+os_crypto/sha512/%.o: os_crypto/sha512/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
 crypto_aes_c := os_crypto/aes/aes_op.c
 crypto_aes_o := $(crypto_aes_c:.c=.o)
 
@@ -1016,6 +1039,7 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_sha1_o} \
 					 ${crypto_md5_sha1_sha256_o} \
 					 ${crypto_sha256_o} \
+					 ${crypto_sha512_o} \
 					 ${crypto_aes_o} \
 					 ${crypto_hmac_o} \
 					 ${crypto_signature_o}
@@ -1511,6 +1535,9 @@ tap_os_zlib: tests/tap_os_zlib.o
 tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
+tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
 test_valgrind: build_tests
 	${MAKE} run_tests
 
@@ -1619,6 +1646,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
+	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean

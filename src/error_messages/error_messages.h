@@ -54,6 +54,7 @@
 #define KQUEUE_ERROR   "(1138): Could not handle kqueue descriptor."
 #define FTELL_ERROR     "(1139): Could not get position from file '%s' due to [(%d)-(%s)]."
 #define FCLOSE_ERROR  "(1140): Could not close file '%s' due to [(%d)-(%s)]."
+#define GLOB_ERROR_WIN "(1141): Glob error. Invalid pattern: '%s' or no files found."
 
 /* COMMON ERRORS */
 #define CONN_ERROR      "(1201): No remote connection configured."
@@ -190,10 +191,16 @@
 #define NEW_GLOB_FILE   "(1957): New file that matches the '%s' pattern: '%s'."
 #define DUP_FILE        "(1958): Log file '%s' is duplicated."
 #define FORGET_FILE     "(1959): File '%s' no longer exists."
+#ifndef WIN32
 #define FILE_LIMIT      "(1960): File limit has been reached (%d). Please reduce the number of files or increase \"logcollector.max_files\"."
+#else
+#define FILE_LIMIT      "(1960): File limit has been reached (%d)."
+#endif
 #define CURRENT_FILES   "(1961): Files being monitored: %i/%i."
 #define OPEN_ATTEMPT    "(1962): Unable to open file '%s'. Remaining attempts: %d"
 #define OPEN_UNABLE     "(1963): Unable to open file '%s'."
+#define NON_TEXT_FILE   "(1964): File '%s' is not ASCII or UTF-8 encoded."
+#define EXCLUDE_FILE    "(1965): File excluded: '%s'."
 
 /* Encryption/auth errors */
 #define INVALID_KEY     "(1401): Error reading authentication key: '%s'."

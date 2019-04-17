@@ -69,13 +69,18 @@ typedef struct _logreader {
     char *alias;
     char future;
     char *query;
+    int filter_binary;
+    int ucs2;
     outformat ** out_format;
     char **target;
     logtarget * log_target;
     int duplicated;
+    char *exclude;
     wlabel_t *labels;
     pthread_mutex_t mutex;
     int exists;
+    unsigned int age;
+    char *age_str;
 
     void *(*read)(struct _logreader *lf, int *rc, int drop_it);
 
@@ -85,6 +90,8 @@ typedef struct _logreader {
 
 typedef struct _logreader_glob {
     char *gpath;
+    char *exclude_path;
+    int num_files;
     logreader *gfiles;
 } logreader_glob;
 
@@ -103,6 +110,6 @@ void Free_Localfile(logreader_config * config);
 void Free_Logreader(logreader * config);
 
 /* Removes a specific localfile of an array */
-int Remove_Localfile(logreader **logf, int i, int gl, int fr);
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
 
 #endif /* __CLOGREADER_H */
