@@ -744,6 +744,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     char *name = NULL;
     int n_reason = 0;
     int rules_number = 0;
+    int dir_number = 0;
 
     int ret_val = 0;
     int id_check_p = 0;
@@ -1097,7 +1098,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         } else {
                             dir = NULL;
                         }
-                        rules_number++;
+                        dir_number++;
                     }
                 }
 
@@ -1199,6 +1200,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                             rules_number--;
                         }
                     }
+
+                    if (dir_number > 1) {
+                        while (dir_number > 1) {
+                            os_free(inv_check_reasons[n_reason - dir_number]);
+                            dir_number--;
+                        }
+                    }
                 }
 
                 if (requirements_scan == 1){
@@ -1251,6 +1259,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                             rules_number--;
                         }
                     }
+
+                    if (dir_number > 1) {
+                        while (dir_number > 1) {
+                            os_free(inv_check_reasons[n_reason - dir_number]);
+                            dir_number--;
+                        }
+                    }
                 }
 
                 j = 0;
@@ -1287,7 +1302,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         }
 
                         if(event){
-                            if(wm_sca_check_hash(cis_db[cis_db_index],NULL,profile,event,id_check_p,cis_db_index) && !requirements_scan) {
+                            if(wm_sca_check_hash(cis_db[cis_db_index],"",profile,event,id_check_p,cis_db_index) && !requirements_scan) {
                                 wm_sca_send_event_check(data,event);
                             }
                             cJSON_Delete(event);
@@ -1319,6 +1334,13 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                             rules_number--;
                         }
                     }
+
+                    if (dir_number > 1) {
+                        while (dir_number > 1) {
+                            os_free(inv_check_reasons[n_reason - dir_number]);
+                            dir_number--;
+                        }
+                    }
                 }
 
                 if (requirements_scan == 1){
@@ -1328,6 +1350,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
             }
 
             rules_number = 0;
+            dir_number = 0;
 
             /* End if we don't have anything else */
             if (!nbuf) {
