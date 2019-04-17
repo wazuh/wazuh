@@ -55,6 +55,7 @@ src/win32/*.exe
 src/win32/LICENSE.txt
 src/win32/default-local_internal_options.conf
 src/win32/default-ossec.conf
+src/win32/default-ossec-pre6.conf
 src/win32/help_win.txt
 src/win32/internal_options.conf
 src/win32/restart-ossec.cmd

@@ -4,3 +4,5 @@ rules/0355-amazon-ec2_rules.xml
 rules/0370-amazon-iam_rules.xml
 rules/0465-amazon-s3_rules.xml
 rules/0470-suricata_rules.xml
+rules/0520-vulnerability-detector.xml
+rules/0565-ms_ipsec_rules_json.xml

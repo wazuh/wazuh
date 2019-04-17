@@ -400,6 +400,7 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
 
         /* Build "RCPT TO" msg */
         while (1) {
+            if (mail->to == NULL) break;
             if (mail->to[i] == NULL) {
                 if (i == 0) {
                     merror(INTERNAL_ERROR);
@@ -469,14 +470,16 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         free(msg);
     }
 
-    /* Building "From" and "To" in the e-mail header */
-    memset(snd_msg, '\0', 128);
-    snprintf(snd_msg, 127, TO, mail->to[0]);
+    if (mail->to) {
+        /* Building "From" and "To" in the e-mail header */
+        memset(snd_msg, '\0', 128);
+        snprintf(snd_msg, 127, TO, mail->to[0]);
 
-    if (sendmail) {
-        fprintf(sendmail, "%s", snd_msg);
-    } else {
-        OS_SendTCP(socket, snd_msg);
+        if (sendmail) {
+            fprintf(sendmail, "%s", snd_msg);
+        } else {
+            OS_SendTCP(socket, snd_msg);
+        }
     }
 
     memset(snd_msg, '\0', 128);
@@ -499,24 +502,26 @@ int OS_Sendmail(MailConfig *mail, struct tm *p)
         }
     }
 
-    /* Add CCs */
-    if (mail->to[1]) {
-        i = 1;
-        while (1) {
-            if (mail->to[i] == NULL) {
-                break;
+    if (mail->to) {
+        /* Add CCs */
+        if (mail->to[1]) {
+            i = 1;
+            while (1) {
+                if (mail->to[i] == NULL) {
+                    break;
+                }
+
+                memset(snd_msg, '\0', 128);
+                snprintf(snd_msg, 127, TO, mail->to[i]);
+
+                if (sendmail) {
+                    fprintf(sendmail, "%s", snd_msg);
+                } else {
+                    OS_SendTCP(socket, snd_msg);
+                }
+
+                i++;
             }
-
-            memset(snd_msg, '\0', 128);
-            snprintf(snd_msg, 127, TO, mail->to[i]);
-
-            if (sendmail) {
-                fprintf(sendmail, "%s", snd_msg);
-            } else {
-                OS_SendTCP(socket, snd_msg);
-            }
-
-            i++;
         }
     }
 
