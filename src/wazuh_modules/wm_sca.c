@@ -970,7 +970,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #ifdef WIN32
                 /* Check for a registry entry */
                 else if (type == WM_SCA_TYPE_REGISTRY) {
-                    found = wm_check_registry_entry(value, data);
+                    found = wm_check_registry_entry(value);
 
                     char _b_msg[OS_SIZE_1024 + 1];
                     _b_msg[OS_SIZE_1024] = '\0';
