@@ -135,10 +135,4 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 
 int checkBinaryFile(const char *f_name);
 
-void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
-void OS_CompressLog(const char *logfile);
-void remove_old_logs(const char *base_dir, int keep_log_days);
-void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
-void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
-
 #endif /* __FILE_H */
