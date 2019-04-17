@@ -615,6 +615,7 @@ char *get_win_agent_ip(){
                             dwRetVal = GetLastError();
                             mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
                         }
+                        FreeLibrary(sys_library);
                     }
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     string = _get_network_vista(pCurrAddresses, 0, NULL);
