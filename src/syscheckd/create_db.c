@@ -268,7 +268,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
         os_free(wd_sum);
         os_free(alert_msg);
         free(esc_linked_file);
-
         return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, '-'));
     }
 
@@ -304,6 +303,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
                             os_free(wd_sum);
                             os_free(alert_msg);
+                            free(esc_linked_file);
                             return 0;
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
@@ -336,6 +336,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
             {
                 os_free(wd_sum);
                 os_free(alert_msg);
+                free(esc_linked_file);
                 return 0;
             }
         }
