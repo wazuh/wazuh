@@ -340,7 +340,6 @@ static int wm_sca_start(wm_sca_t * data) {
 
         if (data->scan_day) {
             int interval = 0, i = 0;
-            status = 0;
             interval = data->interval / 60;   // interval in num of months
 
             do {
@@ -778,7 +777,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
     char final_file[2048 + 1];
-    char *value;
     char *name = NULL;
     int ret_val = 0;
     int id_check_p = 0;
@@ -840,7 +838,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         }
 
         if (name == NULL || condition == WM_SCA_COND_INV) {
-            merror(WM_SCA_INVALID_RKCL_NAME, name);
+            merror(WM_SCA_INVALID_RKCL_NAME, name ? name : "NULL!");
             ret_val = 1;
             goto clean_return;
         }
@@ -850,14 +848,16 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
             int g_found = 0;
             int not_found = 0;
-
+            char *rule_cp = NULL;
             cJSON_ArrayForEach(p_check,p_checks)
             {
+                /* this free is responsible of freeing the copy of the previous rule if
+                the loop 'continues', i.e, does not reach the end of its block. */
+                os_free(rule_cp);
                 mdebug2("Checking entry: '%s'.", name);
 
                 int negate = 0;
                 int found = 0;
-                value = NULL;
 
                 if(!p_check->valuestring) {
                     mdebug1("Field 'rule' must be a string.");
@@ -868,14 +868,14 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 mdebug2("Rule is: %s",nbuf);
 
                 /* Make a copy of the rule */
-                char *rule_cp;
                 os_strdup(nbuf, rule_cp);
 
-                /* Get value to look for */
-                value = wm_sca_get_value(rule_cp, &type);
-
+                /* Get value to look for. char *value is a reference
+                to rule_cp memory. Do not release value!  */
+                char *value = wm_sca_get_value(rule_cp, &type);
                 if (value == NULL) {
-                    mdebug1(WM_SCA_INVALID_RKCL_VALUE, nbuf);
+                    merror(WM_SCA_INVALID_RKCL_VALUE, nbuf);
+                    os_free(rule_cp);
                     goto clean_return;
                 }
 
@@ -1092,9 +1092,11 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         g_found = -1;
                     }
                 }
-
-                os_free(rule_cp);
             }
+
+            /* if the loop breaks, rule_cp shall be released.
+               Also frees the the memory for the last iteration */
+            os_free(rule_cp);
 
             if (condition & WM_SCA_COND_NON) {
                 if (not_found == -1){ g_found = 0;} else {g_found = 1;}
@@ -1429,12 +1431,14 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
 
         char **output_line;
         output_line = OS_StrBreak('\n', cmd_output, 256);
-        os_free(cmd_output);
 
         if(!output_line) {
             mdebug1("Command output '%s' has not ending line  '\n' character",cmd_output);
+            os_free(cmd_output);
             return 0;
         }
+
+        os_free(cmd_output);
 
         int i;
         for (i=0; output_line[i] != NULL; i++) {

@@ -67,39 +67,60 @@ int send_rootcheck_msg(const char *msg)
 /* Send syscheck db to the server */
 static void send_sk_db(int first_start)
 {
+#ifdef WIN_WHODATA
+    HANDLE t_hdle;
+    long unsigned int t_id;
+#endif
+
     if (!syscheck.dir[0]) {
         return;
     }
 
     log_realtime_status(2);
-    minfo("Starting syscheck scan.");
+    minfo(FIM_FREQUENCY_STARTED);
 
     /* Send first start scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_SFS);
         sleep(syscheck.tsleep * 5);
         create_db();
+        minfo(FIM_FREQUENCY_ENDED);
     } else {
         send_syscheck_msg(HC_FIM_DB_SS);
         sleep(syscheck.tsleep * 5);
         run_dbcheck();
+        minfo(FIM_FREQUENCY_ENDED);
     }
     sleep(syscheck.tsleep * 5);
 #ifdef WIN32
     /* Check for registry changes on Windows */
+    minfo(FIM_WINREGISTRY_START);
     os_winreg_check();
     sleep(syscheck.tsleep * 5);
+    minfo(FIM_WINREGISTRY_ENDED);
 #endif
 
     /* Send end scan control message */
     if(first_start) {
         send_syscheck_msg(HC_FIM_DB_EFS);
+
+        // Running whodata-audit
 #ifdef ENABLE_AUDIT
         audit_set_db_consistency();
 #endif
+
+        // Running whodata-windows
+#ifdef WIN_WHODATA
+    if (syscheck.wdata.whodata_setup && !run_whodata_scan()) {
+        minfo(FIM_WHODATA_START);
+        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
+            merror(FIM_ERROR_CHECK_THREAD);
+        }
+    }
+#endif
+
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
-        minfo("Ending syscheck scan. Database completed.");
     }
 }
 
@@ -146,11 +167,11 @@ void start_daemon()
     pri.sched_priority = 0;
     status = sched_setscheduler(0, SCHED_BATCH, &pri);
 
-    mdebug1("Setting SCHED_BATCH returned: %d", status);
+    mdebug1(FIM_SCHED_BATCH, status);
 #endif
 
 #ifdef DEBUG
-    minfo("Starting daemon...");
+    minfo(FIM_DAEMON_STARTED);
 #endif
 
     /* Some time to settle */
@@ -167,7 +188,7 @@ void start_daemon()
     /* Printing syscheck properties */
 
     if (!syscheck.disabled) {
-        minfo("Syscheck scan frequency: %d seconds", syscheck.time);
+        minfo(FIM_FREQUENCY_TIME, syscheck.time);
         /* Will create the db to store syscheck data */
         if (syscheck.scan_on_start) {
             send_sk_db(first_start);
@@ -283,7 +304,7 @@ void start_daemon()
             run_now = select(syscheck.realtime->fd + 1, &rfds,
                              NULL, NULL, &selecttime);
             if (run_now < 0) {
-                merror("Select failed (for realtime fim).");
+                merror(FIM_ERROR_SELECT);
                 sleep(SYSCHECK_WAIT);
             } else if (run_now == 0) {
                 /* Timeout */
@@ -297,7 +318,7 @@ void start_daemon()
         if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
             log_realtime_status(1);
             if (WaitForSingleObjectEx(syscheck.realtime->evt, SYSCHECK_WAIT * 1000, TRUE) == WAIT_FAILED) {
-                merror("WaitForSingleObjectEx failed (for realtime fim).");
+                merror(FIM_ERROR_REALTIME_WAITSINGLE_OBJECT);
                 sleep(SYSCHECK_WAIT);
             } else {
                 sleep(syscheck.tsleep);
@@ -352,7 +373,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 #ifdef WIN_WHODATA
         // If this flag is enable, the remove event will be notified at another point
         if (evt && evt->ignore_remove_event) {
-            mdebug2("The '%s' file does not exist, but this will be notified when the corresponding event is received.", file_name);
+            mdebug2(FIM_WHODATA_FILENOEXIST, file_name);
             return 0;
         }
 #endif
@@ -360,7 +381,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
         // Extract the whodata sum here to not include it in the hash table
         if (extract_whodata_sum(evt, wd_sum, OS_SIZE_6144)) {
-            merror("The whodata sum for '%s' file could not be included in the alert as it is too large.", file_name);
+            merror(FIM_ERROR_WHODATA_SUM_MAX, file_name);
         }
 
         /* Find tag position for the evaluated file name */
@@ -578,7 +599,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         int error;
         char perm_unescaped[OS_SIZE_6144 + 1];
         if (error = w_get_file_permissions(file_name, perm_unescaped, OS_SIZE_6144), error) {
-            merror("It was not possible to extract the permissions of '%s'. Error: %d.", file_name, error);
+            merror(FIM_ERROR_EXTRACT_PERM, file_name, error);
         } else {
             str_perm = escape_perm_sum(perm_unescaped);
         }
@@ -631,19 +652,19 @@ void log_realtime_status(int next) {
     switch (status) {
     case 0:
         if (next == 1) {
-            minfo("Starting syscheck real-time monitoring.");
+            minfo(FIM_REALTIME_STARTED);
             status = next;
         }
         break;
     case 1:
         if (next == 2) {
-            minfo("Pausing syscheck real-time monitoring.");
+            minfo(FIM_REALTIME_PAUSED);
             status = next;
         }
         break;
     case 2:
         if (next == 1) {
-            minfo("Resuming syscheck real-time monitoring.");
+            minfo(FIM_REALTIME_RESUMED);
             status = next;
         }
     }
@@ -651,8 +672,6 @@ void log_realtime_status(int next) {
 
 void symlink_checker_init() {
 #ifndef WIN32
-    minfo("Starting symbolic link updater.");
-
     w_create_thread(symlink_checker_thread, NULL);
 #endif
 }
@@ -665,11 +684,11 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *conv_link;
 
     syscheck.sym_checker_interval = checker_sleep;
-    mdebug1("Configured symbolic links will be checked every %d seconds.", checker_sleep);
+    minfo(FIM_LINKCHECK_START, checker_sleep);
 
     while (1) {
         sleep(checker_sleep);
-        mdebug1("Checking if the symbolic links have changed...");
+        minfo(FIM_LINKCHECK_START, checker_sleep);
 
         for (i = 0; syscheck.dir[i]; i++) {
             if (syscheck.converted_links[i]) {
@@ -680,10 +699,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 conv_link = get_converted_link_path(i);
 
                 if (strcmp(real_path, conv_link)) {
-                    minfo("Updating the symbolic link from '%s': '%s' to '%s'.", syscheck.dir[i], conv_link, real_path);
+                    minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], conv_link, real_path);
                     update_link_monitoring(i, conv_link, real_path);
                 } else {
-                    mdebug1("The symbolic link of '%s' has not changed.", syscheck.dir[i]);
+                    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
                 }
 
                 free(conv_link);
@@ -691,7 +710,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
             }
         }
 
-        mdebug1("Links check finalized.");
+        mdebug1(FIM_LINKCHECK_FINALIZE);
     }
 
     return NULL;
@@ -719,7 +738,7 @@ static void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
         syscheck_node *s_node = (syscheck_node *) (*node)->data;
         OSHashNode *r_node = *node;
 
-        mdebug2("File '%s' was inside the unlinked directory '%s'. It will be notified.", (*node)->key, dir);
+        mdebug2(FIM_LINKCHECK_FILE, (*node)->key, dir);
 
         send_silent_del((*node)->key);
 
