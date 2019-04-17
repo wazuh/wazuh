@@ -606,9 +606,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
             for (j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if(strcmp(children[j]->content, "yes") == 0) {
-                        Config->alerts_enabled = 1;
+                        Config->archives_enabled = 1;
                     } else if(strcmp(children[j]->content, "no") == 0) {
-                        Config->alerts_enabled = 0;
+                        Config->archives_enabled = 0;
                     } else {
                         merror(XML_VALUEERR,children[j]->element,children[j]->content);
                         OS_ClearNode(children);
@@ -622,15 +622,15 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
 
                     while (format) {
                         if (*format && !strncmp(format, "json", strlen(format))) {
-                            Config->alerts_format[format_it] = "json";
-                            os_realloc(Config->alerts_format, (format_it + 2) * sizeof(char *), Config->alerts_format);
-                            Config->alerts_format[format_it + 1] = NULL;
+                            Config->archives_format[format_it] = "json";
+                            os_realloc(Config->archives_format, (format_it + 2) * sizeof(char *), Config->archives_format);
+                            Config->archives_format[format_it + 1] = NULL;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else if (*format && !strncmp(format, "plain", strlen(format))) {
-                            Config->alerts_format[format_it] = "plain";
-                            os_realloc(Config->alerts_format, (format_it + 2) * sizeof(char *), Config->alerts_format);
-                            Config->alerts_format[format_it + 1] = NULL;
+                            Config->archives_format[format_it] = "plain";
+                            os_realloc(Config->archives_format, (format_it + 2) * sizeof(char *), Config->archives_format);
+                            Config->archives_format[format_it + 1] = NULL;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else {
@@ -648,22 +648,22 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                     for (k = 0; rotation_children[k]; k++) {
                         if (strcmp(rotation_children[k]->element, xml_max_size) == 0) {
                             char c;
-                            switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->alerts_max_size, &c)) {
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->archives_max_size, &c)) {
                                 case 1:
                                     break;
                                 case 2:
                                     switch (c) {
                                         case 'G':
                                         case 'g':
-                                            Config->alerts_max_size *= 1073741824;
+                                            Config->archives_max_size *= 1073741824;
                                             break;
                                         case 'M':
                                         case 'm':
-                                            Config->alerts_max_size *= 1048576;
+                                            Config->archives_max_size *= 1048576;
                                             break;
                                         case 'K':
                                         case 'k':
-                                            Config->alerts_max_size *= 1024;
+                                            Config->archives_max_size *= 1024;
                                             break;
                                         case 'B':
                                         case 'b':
@@ -680,7 +680,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (Config->alerts_max_size < 1000000) {
+                            if (Config->archives_max_size < 1000000) {
                                 merror("The minimum allowed value for '%s' is 1 MiB.", rotation_children[k]->element);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
@@ -688,19 +688,19 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_interval) == 0) {
                             char c;
-                            switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->alerts_interval, &c)) {
+                            switch (sscanf(rotation_children[k]->content, "%ld%c", &Config->archives_interval, &c)) {
                                 case 1:
                                     break;
                                 case 2:
                                     switch (c) {
                                         case 'd':
-                                            Config->alerts_interval *= 86400;
+                                            Config->archives_interval *= 86400;
                                             break;
                                         case 'h':
-                                            Config->alerts_interval *= 3600;
+                                            Config->archives_interval *= 3600;
                                             break;
                                         case 'm':
-                                            Config->alerts_interval *= 60;
+                                            Config->archives_interval *= 60;
                                             break;
                                         case 's':
                                             break;
@@ -716,7 +716,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     OS_ClearNode(children);
                                     return (OS_INVALID);
                             }
-                            if (Config->alerts_interval < 0) {
+                            if (Config->archives_interval < 0) {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
@@ -724,7 +724,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
-                            Config->alerts_rotate = strtol(rotation_children[k]->content, &end, 10);
+                            Config->archives_rotate = strtol(rotation_children[k]->content, &end, 10);
                             if (*end != '\0') {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(rotation_children);
@@ -733,9 +733,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_enabled) == 0) {
                             if(strcmp(rotation_children[k]->content, "yes") == 0) {
-                                Config->alerts_rotation_enabled = 1;
+                                Config->archives_rotation_enabled = 1;
                             } else if(strcmp(rotation_children[k]->content, "no") == 0) {
-                                Config->alerts_rotation_enabled = 0;
+                                Config->archives_rotation_enabled = 0;
                             } else {
                                 merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(children);
@@ -743,9 +743,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_compress) == 0) {
                             if(strcmp(rotation_children[k]->content, "yes") == 0) {
-                                Config->alerts_compress_rotation = 1;
+                                Config->archives_compress_rotation = 1;
                             } else if(strcmp(rotation_children[k]->content, "no") == 0) {
-                                Config->alerts_compress_rotation = 0;
+                                Config->archives_compress_rotation = 0;
                             } else {
                                 merror(XML_VALUEERR,rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(children);
