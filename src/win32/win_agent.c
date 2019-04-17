@@ -89,7 +89,9 @@ int main(int argc, char **argv)
         mypath[0] = '.';
         mypath[1] = '\0';
     }
-    chdir(mypath);
+    if (chdir(mypath) < 0) {
+        merror_exit(CHDIR_ERROR, mypath, errno, strerror(errno));
+    }
     getcwd(mypath, OS_MAXSTR - 1);
     snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
 
