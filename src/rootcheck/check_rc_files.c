@@ -161,17 +161,12 @@ void check_rc_files(const char *basedir, FILE *fp)
 
         snprintf(file_path, OS_SIZE_1024, "%s/%s", basedir, file);
 
-        minfo("FULL PATH  %s ",file_path);
-
         char * _file_name = strrchr(file_path, '/');
         _file_name++;
-        minfo("NAME  %s ",_file_name);
 
         char _path[OS_SIZE_1024 + 1];
         strncpy(_path, file_path, OS_SIZE_1024 + 1);
         _path[strlen(file) - strlen(_file_name)] = '\0';
-
-        minfo("ONLY ROUTE  %s ",_path);
 
         if (check_ignore(file_path)) {
             continue;
