@@ -127,7 +127,8 @@ class WazuhException(Exception):
                'remediation': 'Valid types are "master" and "worker"'},
         1729: 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and Never Connected.',
         1730: {'message': 'Node does not exist',
-               'remediation': 'Make sure the name is correct and that the node is up.'},
+               'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
+                              '[`cluster_control -l`](https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
@@ -193,20 +194,28 @@ class WazuhException(Exception):
         3020: 'Timeout sending request',
         3021: 'Timeout executing API request',
         3022: 'Unknown node ID',
-        3023: 'Worker node is not connected to master',
+        3023: {'message': 'Worker node is not connected to master',
+               'remediation': 'Check the cluster.log file to see if there are connection errors. '
+                              'Restart the `wazuh-manager` service.'},
         3024: "Length of command exceeds limit",
         3025: {'message': "Could not decrypt message",
-               'remediation': "Check the cluster key is correct"},
+               'remediation': "Check the cluster key is correct in the worker's "
+                              "[ossec.conf](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#key)"
+                              " is the same that the master's."},
         3026: "Error sending request: Memory error. Request chunk size divided by 2.",
         3027: "Unknown received task name",
         3028: {'message': "Worker node ID already exists",
-               'remediation': "Change one of the two worker names with the same name and restart the node"},
+               'remediation': "Change one of the two [worker names](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#node-name)"
+                              " and restart the `wazuh-manager` service."},
         3029: {"message": "Connected worker with same name as the master",
-               "remediation": "Change the worker name and restart the node"},
+               "remediation": "Change the [worker name](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#node-name)"
+                              " and restart the `wazuh-manager` service in the node"},
         3030: {'message': 'Worker does not belong to the same cluster',
-               'remediation': "Change the tag <cluster> in the worker configuration to match the master's"},
+               'remediation': "Change the [cluster name](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#name)"
+                              " in the worker configuration to match the master's and restart the `wazuh-manager` service"},
         3031: {'message': "Worker and master versions are not the same",
-               'remediation': "Update both master and worker to the same version."},
+               'remediation': "[Update](https://documentation.wazuh.com/current/installation-guide/upgrading/index.html)"
+                              " both master and worker to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
         3033: "Payload length exceeds limit",
         3034: "Error sending file. File not found."
