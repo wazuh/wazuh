@@ -1024,11 +1024,6 @@ int create_db()
 {
     int i = 0;
     char sym_link_thread = 0;
-#ifdef WIN_WHODATA
-    int enable_who_scan = 0;
-    HANDLE t_hdle;
-    long unsigned int t_id;
-#endif
 
     if (!syscheck.fp) {
         merror_exit("Unable to create syscheck database. Exiting.");
@@ -1096,21 +1091,6 @@ int create_db()
     /* Duplicate hash table to check for deleted files */
     syscheck.last_check = OSHash_Duplicate(syscheck.fp);
     w_mutex_unlock(&lastcheck_mutex);
-
-#if defined (INOTIFY_ENABLED) || defined (WIN32)
-    if (syscheck.realtime && (syscheck.realtime->fd >= 0)) {
-        minfo("Real time file monitoring engine started.");
-    }
-#endif
-#ifdef WIN_WHODATA
-    if (enable_who_scan && !run_whodata_scan()) {
-        minfo("Whodata auditing engine started.");
-        if (t_hdle = CreateThread(NULL, 0, state_checker, NULL, 0, &t_id), !t_hdle) {
-            merror("Could not create the Whodata check thread.");
-        }
-    }
-#endif
-    minfo("Finished creating syscheck database (pre-scan completed).");
 
     if (sym_link_thread) {
         symlink_checker_init();

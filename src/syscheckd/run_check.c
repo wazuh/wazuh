@@ -121,7 +121,6 @@ static void send_sk_db(int first_start)
 
     } else {
         send_syscheck_msg(HC_FIM_DB_ES);
-        minfo("Ending syscheck scan. Database completed.");
     }
 }
 
