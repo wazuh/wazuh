@@ -43,7 +43,7 @@ static int CheckEventJSON(cJSON *event,cJSON **scan_id,cJSON **id,cJSON **name,c
 static int CheckPoliciesJSON(cJSON *event,cJSON **policies);
 static int CheckDumpJSON(cJSON *event,cJSON **elements_sent,cJSON **policy_id,cJSON **scan_id);
 static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *name,cJSON *title,cJSON *description,cJSON *rationale,cJSON *remediation,cJSON *compliance,cJSON *reference,cJSON *file,cJSON *directory,cJSON *process,cJSON *registry,cJSON *result,cJSON *status,cJSON *reason,char *old_result,cJSON *command);
-static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id);
+static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *invalid,cJSON *total_checks,cJSON *score,cJSON *file,cJSON *policy_id);
 static void PushDumpRequest(char * agent_id, char * policy_id);
 static int pm_send_db(char *msg, char *response, int *sock);
 static void *RequestDBThread();
@@ -822,7 +822,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 /* Compare hash with previous hash */
                 if(strcmp(hash_md5,hash->valuestring)) {
-                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
                 }
             }
             break;
@@ -836,7 +836,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
                 /* Compare hash with previous hash */
                 if(strcmp(hash_md5,hash->valuestring)) {
-                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
+                    FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,invalid,total_checks,score,file,policy_id);
                 }
             }
             
@@ -1354,7 +1354,7 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
     }
 }
 
-static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *score,cJSON *file,cJSON *policy_id) {
+static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *description,cJSON *pass,cJSON *failed,cJSON *invalid,cJSON *total_checks,cJSON *score,cJSON *file,cJSON *policy_id) {
     
     fillData(lf, "sca.type", "summary");
 
@@ -1403,6 +1403,30 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
         } 
 
         fillData(lf, "sca.failed", value);
+    }
+
+    if(invalid) {
+        char value[OS_SIZE_128];
+
+        if(invalid->valueint >= 0){
+            sprintf(value, "%d", invalid->valueint);
+        } else if (invalid->valuedouble >= 0) {
+            sprintf(value, "%lf", invalid->valuedouble);
+        }
+
+        fillData(lf, "sca.invalid", value);
+    }
+
+    if(total_checks) {
+        char value[OS_SIZE_128];
+
+        if(total_checks->valueint >= 0){
+            sprintf(value, "%d", total_checks->valueint);
+        } else if (total_checks->valuedouble >= 0) {
+            sprintf(value, "%lf", total_checks->valuedouble);
+        }
+
+        fillData(lf, "sca.total_checks", value);
     }
 
     if(score) {
