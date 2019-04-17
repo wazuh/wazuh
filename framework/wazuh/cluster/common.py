@@ -195,7 +195,7 @@ class Handler(asyncio.Protocol):
         """
         cmd_len = len(command)
         if cmd_len > self.cmd_len:
-            raise exception.WazuhClusterError(3024, command)
+            raise exception.WazuhClusterError(3024, extra_message=command)
 
         # adds - to command until it reaches cmd length
         command = command + b' ' + b'-' * (self.cmd_len - cmd_len - 1)
@@ -260,7 +260,7 @@ class Handler(asyncio.Protocol):
         :return: response from peer.
         """
         if len(data) > self.request_chunk:
-            raise exception.WazuhClusterError(f"Error sending request '{command}': Max payload length exceeded")
+            raise exception.WazuhClusterError(3033)
 
         response = Response()
         msg_counter = self.next_counter()
@@ -271,7 +271,7 @@ class Handler(asyncio.Protocol):
             self.request_chunk //= 2
             raise exception.WazuhClusterError(3026)
         except Exception as e:
-            raise exception.WazuhClusterError(3000, f"Error sending request: {e}")
+            raise exception.WazuhClusterError(3018, extra_message=str(e))
         try:
             response_data = await asyncio.wait_for(response.read(), timeout=self.cluster_items['intervals']['communication']['timeout_cluster_request'])
         except asyncio.TimeoutError:
@@ -287,7 +287,7 @@ class Handler(asyncio.Protocol):
         :return: response message.
         """
         if not os.path.exists(filename):
-            raise exception.WazuhClusterError(f"File {filename} not found.")
+            raise exception.WazuhClusterError(3034, extra_message=filename)
 
         filename = filename.encode()
         relative_path = filename.replace(common.ossec_path.encode(), b'')
@@ -515,7 +515,7 @@ class Handler(asyncio.Protocol):
         try:
             exc = json.loads(data.decode(), object_hook=as_wazuh_object)
         except json.JSONDecodeError as e:
-            exc = exception.WazuhClusterError(3000, data.decode())
+            exc = exception.WazuhClusterError(3000, extra_message=data.decode())
 
         return exc
 
@@ -544,7 +544,7 @@ class WazuhCommon:
     def end_receiving_file(self, task_and_file_names: str) -> Tuple[bytes, bytes]:
         task_name, filename = task_and_file_names.split(' ', 1)
         if task_name not in self.sync_tasks:
-            raise exception.WazuhClusterError(3027, task_name)
+            raise exception.WazuhClusterError(3027, extra_message=task_name)
 
         self.sync_tasks[task_name].filename = os.path.join(common.ossec_path, filename)
         self.sync_tasks[task_name].received_information.set()

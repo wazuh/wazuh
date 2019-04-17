@@ -164,7 +164,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             elif client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             else:
-                raise exception.WazuhException(3022, client)
+                raise exception.WazuhClusterError(3022, extra_message=client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
 

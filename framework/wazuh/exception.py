@@ -208,6 +208,8 @@ class WazuhException(Exception):
         3031: {'message': "Worker and master versions are not the same",
                'remediation': "Update both master and worker to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
+        3033: "Payload length exceeds limit",
+        3034: "Error sending file. File not found."
 
         # > 9000: Authd
     }
