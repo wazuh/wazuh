@@ -69,7 +69,7 @@ void run_rk_check()
     char basedir[] = "";
 #else
     /* On Windows, always start at C:\ */
-    char basedir[] = "C:\\";
+    char basedir[] = "C:";
 #endif
 
     /* Set basedir */
@@ -119,7 +119,6 @@ void run_rk_check()
 
             else {
                 check_rc_files(rootcheck.basedir, fp);
-
                 fclose(fp);
             }
         }

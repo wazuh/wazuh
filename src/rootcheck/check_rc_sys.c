@@ -351,6 +351,8 @@ void check_rc_sys(const char *basedir)
         /* Scan the whole file system -- may be slow */
 #ifndef WIN32
         snprintf(file_path, 3, "%s", "/");
+#else
+        snprintf(file_path, 5, "%s", "C:\\");
 #endif
         read_sys_dir(file_path, rootcheck.readall, 0);
     } else {
