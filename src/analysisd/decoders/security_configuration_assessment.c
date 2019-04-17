@@ -18,10 +18,6 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
-<<<<<<< HEAD
-=======
-#include "os_crypto/md5/md5_op.h"
->>>>>>> 559b08132... Change MD5 to SHA256 and provide fucntionality to retrieve the SHA256 of a policy from the DB
 #include "os_crypto/sha256/sha256_op.h"
 #include "string_op.h"
 #include "../../remoted/remoted.h"
