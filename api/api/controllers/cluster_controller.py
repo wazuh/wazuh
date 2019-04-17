@@ -695,7 +695,7 @@ def get_node_config(node_id, component, configuration, wait_for_complete=False, 
     :param configuration: Specified configuration.
     """
     f_kwargs = {'component': component,
-                'configuration': configuration,
+                'config': configuration,
                 'agent_id': node_id
                 }
 
