@@ -2401,10 +2401,13 @@ static char *wm_sca_hash_integrity_file(char *policy_name) {
 
     char *hash_file = NULL;
     char file_path[OS_MAXSTR];
-    snprintf(file_path, OS_MAXSTR -1, "%s/%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR,policy_name);
+    if(policy_name[0] == '/') {
+        sprintf(file_path,"%s", policy_name);
+    } else {
+        sprintf(file_path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, policy_name);
+    }
 
     os_malloc(65*sizeof(char), hash_file);
-
     if(OS_SHA256_File(file_path, hash_file, OS_TEXT) != 0){
         merror("Unable to open the file %s to extract the SHA256", policy_name);
         os_free(hash_file);
