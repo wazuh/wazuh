@@ -634,6 +634,9 @@ class AWSBucket(WazuhIntegration):
         if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
 
+        if 'tags' in event['aws'] and not isinstance(event['aws']['tags'], dict):
+            event['aws']['tags'] = {'value': event['aws']['tags']}
+
         return event
 
     def decompress_file(self, log_key):
