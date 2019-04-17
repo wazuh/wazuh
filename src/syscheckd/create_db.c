@@ -784,6 +784,11 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     size_t dir_size;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
 
+    if (!dir_name) {
+        merror(NULL_ERROR);
+        return OS_INVALID;
+    }
+
     if(max_depth < 0){
         mdebug2("Max level of recursion reached. File '%s' out of bounds.", dir_name);
         return 0;
@@ -817,9 +822,8 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     opts = syscheck.opts[dir_position];
 
     /* Directory should be valid */
-    if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
+    if (dir_size = strlen(dir_name), dir_size > PATH_MAX) {
         free(f_name);
-        merror(NULL_ERROR);
         return (-1);
     }
 
