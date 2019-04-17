@@ -204,6 +204,7 @@ typedef struct _config {
     OSMatch **nodiff_regex;         /* regex of files/dirs to never output diff */
 
     char **dir;                     /* array of directories to be scanned */
+    char **converted_links;                       /* array of converted links directories */
     OSMatch **filerestrict;
     int *recursion_level;
 
@@ -223,6 +224,7 @@ typedef struct _config {
     int max_audit_entries;          /* Maximum entries for Audit (whodata) */
     char **audit_key;               // Listen audit keys
     int audit_healthcheck;          // Startup health-check for whodata
+    int sym_checker_interval;
 
     OSHash *fp;
     OSHash *last_check;
@@ -237,6 +239,8 @@ typedef struct _config {
 
 
 int dump_syscheck_entry(syscheck_config *syscheck, const char *entry, int vals, int reg, const char *restrictfile, int recursion_level, const char *tag, int overwrite) __attribute__((nonnull(1, 2)));
+
+void set_linked_path(syscheck_config *syscheck, const char *entry, int position);
 
 char *syscheck_opts2str(char *buf, int buflen, int opts);
 

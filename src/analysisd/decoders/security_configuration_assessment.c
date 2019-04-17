@@ -18,7 +18,7 @@
 #include "plugin_decoders.h"
 #include "wazuh_modules/wmodules.h"
 #include "os_net/os_net.h"
-#include "os_crypto/md5/md5_op.h"
+#include "os_crypto/sha256/sha256_op.h"
 #include "string_op.h"
 #include "../../remoted/remoted.h"
 #include <time.h>
@@ -836,13 +836,13 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     int result_event = 0;
     char *hash_scan_info = NULL;
-    os_md5 hash_md5 = {0};
+    os_sha256 hash_sha256 = {0};
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
     
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
     int scan_id_old = 0;
-    sscanf(hash_scan_info,"%s %d",hash_md5,&scan_id_old);
+    sscanf(hash_scan_info, "%s %d", hash_sha256, &scan_id_old);
 
     switch (result_db)
     {
@@ -858,7 +858,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             } else {
 
                 /* Compare hash with previous hash */
-                if(strcmp(hash_md5,hash->valuestring)) {
+                if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                     }
@@ -878,7 +878,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             } else {
 
                 /* Compare hash with previous hash */
-                if(strcmp(hash_md5,hash->valuestring)) {
+                if(strcmp(hash_sha256, hash->valuestring)) {
                     if (!first_scan) {
                         FillScanInfo(lf,pm_scan_id,policy,description,passed,failed,score,file,policy_id);
                        
@@ -954,7 +954,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             /* Integrity check */
             if(strcmp(wdb_response,hash->valuestring)) {
 
-                mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash->valuestring);
+                mdebug2("SHA256 from DB: %s SHA256 from summary: %s",wdb_response,hash->valuestring);
                 mdebug2("Requesting DB dump");
 
                 if (!first_scan) {
@@ -991,7 +991,7 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
                 break;
         }
 
-        /* Check the new md5 */
+        /* Check the new sha256 */
         char *wdb_response = NULL;
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
@@ -1000,18 +1000,18 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
         if (!result_db)
         {   
             char *hash_scan_info = NULL;
-            os_md5 hash_md5 = {0};
+            os_sha256 hash_sha256 = {0};
             os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
             
             int result_db_hash = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
-            sscanf(hash_scan_info,"%s",hash_md5);
+            sscanf(hash_scan_info, "%s", hash_sha256);
 
             if(!result_db_hash) {
             
                 /* Integrity check */
-                if(strcmp(wdb_response,hash_md5)) {
+                if(strcmp(wdb_response, hash_sha256)) {
 
-                    mdebug2("MD5 from DB: %s MD5 from summary: %s",wdb_response,hash_md5);
+                    mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
                     mdebug2("Requesting DB dump");
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);
                 }
@@ -1365,24 +1365,36 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         fillData(lf, "sca.check.references", reference->valuestring);
     }
 
+    char *array_buffer = NULL;
+
     if(file){
-        fillData(lf, "sca.check.file", file->valuestring);
+        csv_list_to_json_str_array(file->valuestring, &array_buffer);
+        fillData(lf, "sca.check.file", array_buffer);
+        os_free(array_buffer);
     }
 
     if(directory) {
-        fillData(lf, "sca.check.directory", directory->valuestring);
+        csv_list_to_json_str_array(directory->valuestring, &array_buffer);
+        fillData(lf, "sca.check.directory", array_buffer);
+        os_free(array_buffer);
     }
 
     if(registry) {
-        fillData(lf, "sca.check.registry", registry->valuestring);
+        csv_list_to_json_str_array(registry->valuestring, &array_buffer);
+        fillData(lf, "sca.check.registry", array_buffer);
+        os_free(array_buffer);
     }
 
     if(process){
-        fillData(lf, "sca.check.process", process->valuestring);
+        csv_list_to_json_str_array(process->valuestring, &array_buffer);
+        fillData(lf, "sca.check.process", array_buffer);
+        os_free(array_buffer);
     }
 
     if(command){
-        fillData(lf, "sca.check.command", command->valuestring);
+        csv_list_to_json_str_array(command->valuestring, &array_buffer);
+        fillData(lf, "sca.check.command", array_buffer);
+        os_free(array_buffer);
     }
 
     if(result) {

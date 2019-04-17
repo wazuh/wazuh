@@ -40,6 +40,13 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
         }
         /* Fallthrough */
     case 2:
+        mdebug2("Updating database for agent %s to version 3", wdb->agent_id);
+        if(result = wdb_sql_exec(wdb, schema_upgrade_v3_sql), result == -1) {
+            new_wdb = wdb_backup(wdb, version);
+            wdb = new_wdb ? new_wdb : wdb;
+        }
+        break;
+    case 3:
         //Updated to last version
         break;
     default:

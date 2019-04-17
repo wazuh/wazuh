@@ -800,12 +800,12 @@ add_whodata_evt:
 
                                     // Notify removed files
                                     mdebug1("Directory '%s' has been moved or removed.", dir_path);
-                                    OSHash_It_ex(syscheck.fp, (void *) w_evt, whodata_remove_folder);
+                                    OSHash_It_ex(syscheck.fp, 1, (void *) w_evt, whodata_remove_folder);
                                     free(dir_path);
                                     w_evt->path = saved_path;
 
                                     // Find new files
-                                    read_dir(syscheck.dir[w_evt->dir_position], w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0);
+                                    read_dir(syscheck.dir[w_evt->dir_position], NULL, w_evt->dir_position, w_evt, syscheck.recursion_level[w_evt->dir_position], 0, '-');
 
                                     last_mdir_tm = now;
                                     free(last_mdir);
@@ -823,7 +823,7 @@ add_whodata_evt:
                             if (pos = find_dir_pos(w_evt->path, 1, CHECK_WHODATA, 1), pos >= 0) {
                                 int diff = fim_find_child_depth(syscheck.dir[pos], w_evt->path);
                                 int depth = syscheck.recursion_level[pos] - diff;
-                                read_dir(w_evt->path, pos, w_evt, depth, 0);
+                                read_dir(w_evt->path, NULL, pos, w_evt, depth, 0, '-');
                             }
 
                             mdebug1("The '%s' directory has been scanned after detecting event of new files.", w_evt->path);
@@ -1112,7 +1112,7 @@ void send_whodata_del(whodata_evt *w_evt, char remove_hash) {
         pos = find_dir_pos(w_evt->path, 1, 0, 0);
     }
 
-    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
+    snprintf(del_msg, PATH_MAX + OS_SIZE_6144 + 6, "-1!%s:%s:: %s", wd_sum, syscheck.tag[pos] ? syscheck.tag[pos] : "", w_evt->path);
     send_syscheck_msg(del_msg);
     whodata_rlist_add(w_evt->path);
 }
@@ -1767,15 +1767,19 @@ void whodata_remove_folder(OSHashNode **row, OSHashNode **node, void *data) {
         w_file.path = (*node)->key;
         send_whodata_del(&w_file, 0);
 
+        if ((*node)->next) {
+            (*node)->next->prev = (*node)->prev;
+        }
+
         if ((*node)->prev) {
             (*node)->prev->next = (*node)->next;
         }
 
-        *node = NULL;
+        *node = (*node)->next;
 
-        // If the node is the first node of the row
+        // If the node is the first and last node of the row
         if (*row == r_node) {
-            *row = NULL;
+            *row = r_node->next;
         }
 
         free(r_node->key);
