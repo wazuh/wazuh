@@ -1801,6 +1801,19 @@ void w_free_event_info(Eventinfo *lf) {
 void * w_writer_thread(__attribute__((unused)) void * args ){
     Eventinfo *lf = NULL;
 
+    int should_logall_plain = 0;
+    int should_logall_json = 0;
+    int format_it = 0;
+
+    while (Config.archives_format[format_it]) {
+        if (Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "json", strlen(Config.archives_format[format_it]))) {
+            should_logall_json = 1;
+        } else if (*Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "plain", strlen(Config.archives_format[format_it]))) {
+            should_logall_plain = 1;
+        }
+        format_it++;
+    }
+
     while(1){
         /* Receive message from queue */
         if (lf = queue_pop_ex(writer_queue), lf) {
@@ -1808,10 +1821,10 @@ void * w_writer_thread(__attribute__((unused)) void * args ){
             w_mutex_lock(&writer_threads_mutex);
 
             /* If configured to log all, do it */
-            if (Config.logall){
+            if (Config.logall || should_logall_plain){
                 OS_Store(lf);
             }
-            if (Config.logall_json){
+            if (Config.logall_json || should_logall_json){
                 jsonout_output_archive(lf);
             }
 
@@ -2187,6 +2200,19 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
     Eventinfo *lf_cpy = NULL;
     Eventinfo *lf_logall = NULL;
 
+    int should_logall_plain = 0;
+    int should_logall_json = 0;
+    int format_it = 0;
+
+    while (Config.archives_format[format_it]) {
+        if (Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "json", strlen(Config.archives_format[format_it]))) {
+            should_logall_json = 1;
+        } else if (*Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "plain", strlen(Config.archives_format[format_it]))) {
+            should_logall_plain = 1;
+        }
+        format_it++;
+    }
+
     /* Stats */
     RuleInfo *stats_rule = NULL;
 
@@ -2450,7 +2476,7 @@ void * w_process_event_thread(__attribute__((unused)) void * id){
 
         w_inc_processed_events();
 
-        if (Config.logall || Config.logall_json){
+        if (Config.logall || Config.logall_json || should_logall_json || should_logall_plain){
             if (!lf_logall) {
                 os_calloc(1, sizeof(Eventinfo), lf_logall);
                 w_copy_event_for_log(lf, lf_logall);
@@ -2576,17 +2602,42 @@ void * w_writer_log_firewall_thread(__attribute__((unused)) void * args ){
 
 void w_log_flush(){
 
+    int should_logall_plain = 0;
+    int should_logall_json = 0;
+    int should_log_alerts_plain = 0;
+    int should_log_alerts_json = 0;
+    int format_it = 0;
+
+    while (Config.archives_format[format_it]) {
+        if (Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "json", strlen(Config.archives_format[format_it]))) {
+            should_logall_json = 1;
+        } else if (*Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "plain", strlen(Config.archives_format[format_it]))) {
+            should_logall_plain = 1;
+        }
+        format_it++;
+    }
+
+    format_it = 0;
+
+    while (Config.alerts_format[format_it]) {
+        if (Config.alerts_format[format_it] && !strncmp(Config.alerts_format[format_it], "json", strlen(Config.alerts_format[format_it]))) {
+            should_logall_json = 1;
+        } else if (*Config.alerts_format[format_it] && !strncmp(Config.alerts_format[format_it], "plain", strlen(Config.alerts_format[format_it]))) {
+            should_logall_plain = 1;
+        }
+        format_it++;
+    }
     /* Flush archives.log and archives.json */
-    if (Config.logall){
+    if (Config.logall || should_logall_plain){
         OS_Store_Flush();
     }
 
-    if (Config.logall_json){
+    if (Config.logall_json || should_logall_json){
         jsonout_output_archive_flush();
     }
 
     /* Flush alerts.json */
-    if (Config.jsonout_output) {
+    if (Config.jsonout_output || should_log_alerts_json) {
         jsonout_output_event_flush();
     }
 
@@ -2594,7 +2645,7 @@ void w_log_flush(){
         OS_CustomLog_Flush();
     }
 
-    if(Config.alerts_log){
+    if(Config.alerts_log || should_log_alerts_plain){
         OS_Log_Flush();
     }
 
