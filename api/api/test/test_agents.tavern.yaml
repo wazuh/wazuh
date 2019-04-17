@@ -549,3 +549,132 @@ stages:
         ids:
           - dmztest2
         message: All selected groups were removed
+
+---
+test_name: GET /agents
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Basic response agents
+
+    request: &get_agents
+      url: http://localhost:55000/agents
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Pagination
+
+    request:
+      <<: *get_agents
+      params: 
+        offset: 0
+        limit: 1
+
+    response:
+      status_code: 200
+      save:
+        body:
+          expected_os_platform: items.os.platform
+          expected_os_version: items.os.version
+          expected_manager_host: items.manager
+      body:
+        items:
+          - status: Active
+            id: '000'
+        totalItems: !anyint
+
+  - name: Try show agents with limit 0
+
+    request:
+      <<: *get_agents
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+
+  #Solve problems with sort and search params
+
+  - name: Selection
+
+    request:
+      <<: *get_agents
+      params: 
+        select: 'dateAdd,mergedSum'
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with not allowed selector
+
+    request:
+      <<: *get_agents
+      params:
+        select: param_test
+
+    response:
+      status_code: 400
+
+  - name: Version
+
+    request:
+      <<: *get_agents
+      params: 
+        version: 'Wazuhv3.9.0'
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  #Not work properly
+  - name: OS Platform
+
+    request:
+      <<: *get_agents
+      params: 
+        os_platform: "{expected_os_platform:s}"
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: OS Version
+
+    request:
+      <<: *get_agents
+      params: 
+        os_platform: expected_os_version
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: ManagerHost
+
+    request:
+      <<: *get_agents
+      params: 
+        manager: expected_manager_host
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint

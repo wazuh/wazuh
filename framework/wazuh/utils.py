@@ -4,7 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.database import Connection
 from wazuh import common
 from tempfile import mkstemp
@@ -714,7 +714,7 @@ class WazuhDBQuery(object):
             set_select_fields = set(select_fields)
             set_fields_keys = set(self.fields.keys()) - self.extra_fields
             if not set_select_fields.issubset(set_fields_keys):
-                raise WazuhException(1724, "Allowed select fields: {0}. Fields {1}". \
+                raise WazuhError(1724, "Allowed select fields: {0}. Fields {1}". \
                                      format(', '.join(self.fields.keys()), ', '.join(set_select_fields - set_fields_keys)))
 
             select_fields = set_select_fields
