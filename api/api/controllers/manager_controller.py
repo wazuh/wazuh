@@ -7,6 +7,7 @@ import logging
 
 from wazuh import manager
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('agents_controller')
@@ -199,3 +200,30 @@ def get_conf_validation(pretty=False, wait_for_complete=False):
     :param wait_for_complete: Disable timeout response
     """
     pass
+
+
+@exception_handler
+def get_manager_config_ondemand(component, configuration, pretty=False, wait_for_complete=False):
+    """Get active configuration in manager for one component [on demand]
+
+    Returns the requested configuration.
+
+    :param wait_for_complete: Disable timeout response
+    :param component: Specified component.
+    :param configuration: Specified configuration.
+    """
+    f_kwargs = {'component': component,
+                'config': configuration
+                }
+
+    dapi = DistributedAPI(f=manager.get_config,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          pretty=pretty,
+                          logger=logger
+                          )
+    data = loop.run_until_complete(dapi.distribute_function())
+
+    return data, 200
