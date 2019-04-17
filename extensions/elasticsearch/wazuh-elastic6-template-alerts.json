@@ -1130,15 +1130,15 @@
                   "doc_values": "true"
                 },
                 "passed": {
-                  "type": "keyword",
+                  "type": "integer",
                   "doc_values": "true"
                 },
                 "failed": {
-                  "type": "keyword",
+                  "type": "integer",
                   "doc_values": "true"
                 },
                 "score": {
-                  "type": "keyword",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "check": {
