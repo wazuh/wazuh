@@ -95,6 +95,7 @@ const wm_context WM_SCA_CONTEXT = {
 static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
 static unsigned int summary_invalid = 0;
+static unsigned int summary_checks = 0;
 
 OSHash **cis_db;
 char **last_md5;
@@ -765,17 +766,16 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     }
 #endif
     cJSON *profile = NULL;
-    int check_count = 0;
 
     cJSON_ArrayForEach(profile,profile_check){
 
-        if(!cis_db_for_hash[cis_db_index].elem[check_count]) {
-            os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (check_count + 2), cis_db_for_hash[cis_db_index].elem);
-            cis_db_for_hash[cis_db_index].elem[check_count] = NULL;
-            cis_db_for_hash[cis_db_index].elem[check_count + 1] = NULL;
+        if(!cis_db_for_hash[cis_db_index].elem[summary_checks]) {
+            os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (summary_checks + 2), cis_db_for_hash[cis_db_index].elem);
+            cis_db_for_hash[cis_db_index].elem[summary_checks] = NULL;
+            cis_db_for_hash[cis_db_index].elem[summary_checks + 1] = NULL;
         }
 
-        check_count++;
+        summary_checks++;
 
         c_title = cJSON_GetObjectItem(profile, "title");
         c_condition = cJSON_GetObjectItem(profile, "condition");
@@ -914,7 +914,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     if (!data->remote_commands && remote_policy) {
                         mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                         os_malloc(OS_MAXSTR,inv_check_reasons[n_reason]);
-                        sprintf(inv_check_reasons[n_reason],"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled.", value);
+                        sprintf(inv_check_reasons[n_reason],"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", value);
                         n_reason++;
                         found = 2;
                     }
@@ -1534,7 +1534,7 @@ static int wm_sca_check_file(char *file, char *pattern,wm_sca_t * data, int n_re
             full_negate = wm_sca_pt_check_negate(pattern);
 
             if (!w_is_file(file)) {
-                sprintf(inv_check_reasons[n_reason], "File %s not found.", file);
+                sprintf(inv_check_reasons[n_reason], "File %s not found", file);
                 ret_val = 2;
                 goto cleanup;
             }
@@ -1676,10 +1676,10 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, int
         if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
             if (result_code == EXECVE_ERROR) {
                 mdebug1("Can't run command(%s): path is invalid or file has insufficient permissions.",command);
-                sprintf(inv_check_reasons[n_reason], "Can't run command(%s): path is invalid or file has insufficient permissions.",command);
+                sprintf(inv_check_reasons[n_reason], "Can't run command(%s): path is invalid or file has insufficient permissions",command);
             } else if (result_code == 1) {
                 mdebug1("Timeout overtaken running command (%s).", command);
-                sprintf(inv_check_reasons[n_reason], "Timeout overtaken running command (%s).", command);
+                sprintf(inv_check_reasons[n_reason], "Timeout overtaken running command (%s)", command);
             } else {
                 mdebug1("Error executing [%s]", command);
                 sprintf(inv_check_reasons[n_reason], "Error executing [%s]", command);
@@ -2335,11 +2335,11 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
 
     float passedf = passed;
     float failedf = failed;
-    float invalidf = invalid;
-    float score = ((passedf/(failedf+passedf+invalidf))) * 100;
-    int total_checks = passed + failed + invalid;
+    float score = ((passedf/(failedf+passedf))) * 100;
 
-    cJSON_AddNumberToObject(json_summary, "total_checks", total_checks);
+    // Decrement summary_checks not to count the requirements check
+    summary_checks--;
+    cJSON_AddNumberToObject(json_summary, "total_checks", summary_checks);
     cJSON_AddNumberToObject(json_summary, "score", score);
 
     cJSON_AddNumberToObject(json_summary, "start_time", start_time);
@@ -2557,9 +2557,11 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
        os_free(final_str_command);
     }
 
-    if (!result && reason != NULL) {
+    if (!result) {
         cJSON_AddStringToObject(check, "status", "Not applicable");
-        cJSON_AddStringToObject(check, "reason", reason);
+        if (reason) {
+            cJSON_AddStringToObject(check, "reason", reason);
+        }
     } else {
         cJSON_AddStringToObject(check, "result", result);
     }
