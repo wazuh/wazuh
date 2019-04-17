@@ -326,7 +326,7 @@ static int wm_fluent_unpack(wm_fluent_t * fluent, msgpack_unpacker * unp, msgpac
 static wm_fluent_helo_t * wm_fluent_recv_helo(wm_fluent_t * fluent) {
     msgpack_unpacker unp;
     msgpack_unpacked result;
-    wm_fluent_helo_t * helo;
+    wm_fluent_helo_t * helo = NULL;
     msgpack_object * array;
     msgpack_object_kv * map;
     unsigned int i;
