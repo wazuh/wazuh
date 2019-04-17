@@ -162,6 +162,7 @@ void AgentdStart(const char *dir, int uid, int gid, const char *user, const char
 
     // Ignore SIGPIPE signal to prevent the process from crashing
     struct sigaction act;
+    memset(&act, 0, sizeof(act));
     act.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &act, NULL);
 
