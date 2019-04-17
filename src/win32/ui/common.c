@@ -193,11 +193,13 @@ int config_read(__attribute__((unused)) HWND hwnd)
         os_strdup(buffer, config_inst.version);
     }
 
+    free(tmp_str);
     if (tmp_str = cat_file(REVISION_FILE, NULL), tmp_str) {
         snprintf(buffer, sizeof(buffer), "Revision %s", tmp_str);
         os_strdup(buffer, config_inst.revision);
     }
 
+    free(tmp_str);
     /* Get number of messages sent */
     tmp_str = cat_file(SENDER_FILE, NULL);
     if (tmp_str) {
@@ -219,6 +221,7 @@ int config_read(__attribute__((unused)) HWND hwnd)
         free(to_free);
     }
 
+    free(tmp_str);
     /* Get agent ID, name and IP */
     tmp_str = cat_file(AUTH_FILE, NULL);
     if (tmp_str) {
@@ -252,6 +255,7 @@ int config_read(__attribute__((unused)) HWND hwnd)
                 }
             }
         }
+        free(tmp_str);
     }
 
     if (config_inst.agentip == NULL) {
