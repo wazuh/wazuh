@@ -312,11 +312,11 @@ int realtime_adddir(const char *dir, __attribute__((unused)) int whodata)
 
                     ndir = strdup(dir);
                     if (ndir == NULL) {
-                        merror_exit("Out of memory. Exiting.");
+                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
                     }
 
                     if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, ndir)) {
-                        merror_exit("Out of memory. Exiting.");
+                        merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
                     }
                     mdebug1(FIM_REALTIME_NEWDIRECTORY, ndir);
                 }
@@ -509,7 +509,7 @@ int realtime_adddir(const char *dir, int whodata)
         int type;
 
         if (!syscheck.wdata.fd && whodata_audit_start()) {
-            merror_exit("At realtime_adddir(): OSHash_Create() failed");
+            merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "realtime_adddir()", strerror(errno));
         }
 
         // This parameter is used to indicate if the file is going to be monitored in Whodata mode,
@@ -586,7 +586,7 @@ int realtime_adddir(const char *dir, int whodata)
         os_strdup(dir, rtlocald->dir);
         os_strdup(dir, rtlocald->overlap.Pointer);
         if (!OSHash_Add_ex(syscheck.realtime->dirtb, wdchar, rtlocald)) {
-            merror_exit("Out of memory. Exiting.");
+            merror_exit(FIM_CRITICAL_ERROR_OUT_MEM);
         }
         /* Add directory to be monitored */
         realtime_win32read(rtlocald);

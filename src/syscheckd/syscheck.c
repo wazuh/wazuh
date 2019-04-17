@@ -93,8 +93,9 @@ int fim_initialize() {
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
 
-    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) merror_exit("At fim_initialize(): OSHash_Create() failed");
-
+    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) {
+        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()", strerror(errno));
+    }
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
 
     return 0;
@@ -183,7 +184,7 @@ int Start_win32_Syscheck()
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
-            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof
+            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
             if (syscheck.tag && syscheck.tag[r] != NULL) {
                 mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
             }

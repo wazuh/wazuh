@@ -114,7 +114,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At syscom_main(): select(): %s", strerror(errno));
+                merror_exit(FIM_CRITICAL_ERROR_SELECT, "syscom_main()", strerror(errno));
             }
 
             continue;

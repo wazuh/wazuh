@@ -52,7 +52,7 @@ int Read_Syscheck_Config(const char *cfgfile)
 #endif
     syscheck.prefilter_cmd  = NULL;
 
-    mdebug1("Reading Configuration [%s]", cfgfile);
+    mdebug1(FIM_CONFIGURATION_FILE, cfgfile);
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &syscheck, NULL) < 0) {

@@ -52,4 +52,9 @@
 #define FIM_WINREGISTRY_START               "(6231): Registry integrity monitoring scan started"
 #define FIM_WINREGISTRY_ENDED               "(6232): Registry integrity monitoring scan ended"
 
+#define FIM_LINKCHECK_START                 "(6233): Starting symbolic link updater. Interval '%d'."
+#define FIM_LINKCHECK_CHANGED               "(6234): Updating the symbolic link from '%s': '%s' to '%s'."
+
+#define FIM_WHODATA_VOLUMES                 "(6236): Analyzing Windows volumes"
+
 #endif

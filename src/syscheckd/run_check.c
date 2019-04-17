@@ -373,7 +373,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 #ifdef WIN_WHODATA
         // If this flag is enable, the remove event will be notified at another point
         if (evt && evt->ignore_remove_event) {
-            mdebug2("The '%s' file does not exist, but this will be notified when the corresponding event is received.", file_name);
+            mdebug2(FIM_WHODATA_FILENOEXIST, file_name);
             return 0;
         }
 #endif
@@ -672,8 +672,6 @@ void log_realtime_status(int next) {
 
 void symlink_checker_init() {
 #ifndef WIN32
-    minfo("Starting symbolic link updater.");
-
     w_create_thread(symlink_checker_thread, NULL);
 #endif
 }
@@ -686,11 +684,11 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *conv_link;
 
     syscheck.sym_checker_interval = checker_sleep;
-    mdebug1("Configured symbolic links will be checked every %d seconds.", checker_sleep);
+    minfo(FIM_LINKCHECK_START, checker_sleep);
 
     while (1) {
         sleep(checker_sleep);
-        mdebug1("Checking if the symbolic links have changed...");
+        minfo(FIM_LINKCHECK_START, checker_sleep);
 
         for (i = 0; syscheck.dir[i]; i++) {
             if (syscheck.converted_links[i]) {
@@ -701,10 +699,10 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                 conv_link = get_converted_link_path(i);
 
                 if (strcmp(real_path, conv_link)) {
-                    minfo("Updating the symbolic link from '%s': '%s' to '%s'.", syscheck.dir[i], conv_link, real_path);
+                    minfo(FIM_LINKCHECK_CHANGED, syscheck.dir[i], conv_link, real_path);
                     update_link_monitoring(i, conv_link, real_path);
                 } else {
-                    mdebug1("The symbolic link of '%s' has not changed.", syscheck.dir[i]);
+                    mdebug1(FIM_LINKCHECK_NOCHANGE, syscheck.dir[i]);
                 }
 
                 free(conv_link);
@@ -712,7 +710,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
             }
         }
 
-        mdebug1("Links check finalized.");
+        mdebug1(FIM_LINKCHECK_FINALIZE);
     }
 
     return NULL;
@@ -740,7 +738,7 @@ static void unlink_files(OSHashNode **row, OSHashNode **node, void *data) {
         syscheck_node *s_node = (syscheck_node *) (*node)->data;
         OSHashNode *r_node = *node;
 
-        mdebug2("File '%s' was inside the unlinked directory '%s'. It will be notified.", (*node)->key, dir);
+        mdebug2(FIM_LINKCHECK_FILE, (*node)->key, dir);
 
         send_silent_del((*node)->key);
 

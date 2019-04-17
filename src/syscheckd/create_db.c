@@ -346,7 +346,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
  #ifdef WIN_WHODATA
             if (evt && evt->scan_directory == 1) {
                 if (w_update_sacl(file_name)) {
-                    mdebug1("Could not refresh the SACL of '%s'. Its event will not be reported.", file_name);
+                    mdebug1(FIM_SCAL_NOREFRESH, file_name);
                     goto end;
                 }
             }
@@ -791,7 +791,7 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
 
 #ifdef WIN32
     if (check_removed_file(dir_name)) {
-        mdebug2("'%s' will not be read.", dir_name);
+        mdebug2(FIM_DISCARD_RECYCLEBIN, dir_name);
         return 0;
     }
 #endif
@@ -869,13 +869,13 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
 #else
         if (defaultfilesn[di] == NULL) {
 #endif
-            mdebug1("Cannot open '%s': %s ", dir_name, strerror(errno));
+            mdebug1(FIM_PATH_NOT_OPEN, dir_name, strerror(errno));
         } else {
             free(f_name);
             return 0;
         }
 #else
-        mdebug1("Cannot open '%s': %s ", dir_name, strerror(errno));
+        mdebug1(FIM_PATH_NOT_OPEN, dir_name, strerror(errno));
 
 #endif /* WIN32 */
         free(f_name);
@@ -1026,7 +1026,7 @@ int create_db()
     char sym_link_thread = 0;
 
     if (!syscheck.fp) {
-        merror_exit("Unable to create syscheck database. Exiting.");
+        merror_exit(FIM_CRITICAL_ERROR_DB);
     }
 
     if (!OSHash_setSize_ex(syscheck.fp, 2048)) {
@@ -1323,7 +1323,7 @@ void replace_linked_path(const char *file_name, int dir_position, char *linked_f
 
     if (!strncmp(real_path, file_name, real_size)) {
         snprintf(linked_file, PATH_MAX, "%s%s", dir_path, file_name + real_size);
-        mdebug2("Replacing the symbolic link: '%s' -> '%s'.", file_name, linked_file);
+        mdebug2(FIM_WHODATA_REPLACELINK, file_name, linked_file);
     }
 
     free(dir_path);

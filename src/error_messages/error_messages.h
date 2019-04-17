@@ -414,6 +414,26 @@
 #define FIM_INVALID_ATTRIBUTE                       "(6679): Invalid attribute '%s' for directory option."
 #define FIM_INVALID_OPTION                          "(6680): Invalid option '%s' for attribute '%s'"
 #define FIM_WHODATA_PARAMETER                       "(6681): Invalid parameter type (%ld) for '%s'."
+#define FIM_ERROR_WHODATA_WIN_ARCH                  "(6682): Error reading 'Architecture' from Windows registry. (Error %u)"
+#define FIM_ERROR_WHODATA_WIN_SIDERROR              "(6683): Could not obtain the sid of Everyone. Error '%lu'."
+#define FIM_ERROR_WHODATA_OPEN_TOKEN                "(6684): OpenProcessToken() failed. Error '%lu'."
+#define FIM_ERROR_WHODATA_ACTIVATE_PRIV             "(6685): The privilege could not be activated. Error: '%ld'."
+#define FIM_ERROR_WHODATA_GETNAMEDSECURITY          "(6686): GetNamedSecurityInfo() failed. Error '%ld'"
+#define FIM_ERROR_WHODATA_SACL_SIZE                 "(6687): The size of the '%s' SACL could not be obtained."
+#define FIM_ERROR_WHODATA_SACL_MEMORY               "(6688): No memory could be reserved for the new SACL of '%s'."
+#define FIM_ERROR_WHODATA_SACL_NOCREATE             "(6689): The new SACL for '%s' could not be created. Error: '%ld'."
+#define FIM_ERROR_WHODATA_ACE_MEMORY                "(6690): No memory could be reserved for the new ACE of '%s'. Error: '%ld'."
+#define FIM_ERROR_WHODATA_COPY_SID                  "(6691): Could not copy the everyone SID for '%s'. Error: '%d-%ld'."
+#define FIM_ERROR_WHODATA_ACE_NOOBTAIN              "(6692): The ACE number %i for '%s' could not be obtained."
+#define FIM_ERROR_WHODATA_ACE_NUMBER                "(6693): The ACE number %i of '%s' could not be copied to the new ACL."
+#define FIM_ERROR_WHODATA_ACE_NOADDED               "(6694): The new ACE could not be added to '%s'. Error: '%ld'."
+#define FIM_ERROR_WHODATA_SETNAMEDSECURITY          "(6695): SetNamedSecurityInfo() failed. Error: '%lu'"
+
+#define FIM_CRITICAL_ERROR_DB                       "(6696): Unable to create syscheck database. Exiting."
+#define FIM_CRITICAL_ERROR_OUT_MEM                  "(6697): Out of memory. Exiting."
+#define FIM_CRITICAL_ERROR_HASH_CREATE              "(6698): At '%s': OSHash_Create() failed '%s'. Exiting."
+#define FIM_CRITICAL_ERROR_SELECT                   "(6699): At '%s': select(): %s. Exiting."
+
 
 /* Verbose messages */
 #define STARTUP_MSG "Started (pid: %d)."
