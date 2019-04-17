@@ -696,7 +696,7 @@ def get_node_config(node_id, component, configuration, wait_for_complete=False, 
     """
     f_kwargs = {'component': component,
                 'config': configuration,
-                'agent_id': node_id
+                'node_id': node_id
                 }
 
     dapi = DistributedAPI(f=manager.get_config,

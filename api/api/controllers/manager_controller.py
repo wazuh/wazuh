@@ -218,7 +218,7 @@ def get_manager_config_ondemand(component, configuration, pretty=False, wait_for
 
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
+                          request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           pretty=pretty,

@@ -561,8 +561,8 @@ def _parse_execd_output(output: str) -> Dict:
     return response
 
 
-def get_config(component, config, agent_id='000'):
+def get_config(component, config):
     """
     Returns active configuration loaded in manager
     """
-    return configuration.get_active_configuration(agent_id=agent_id, component=component, configuration=config)
+    return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
