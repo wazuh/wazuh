@@ -591,6 +591,17 @@ char *get_win_agent_ip(){
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
         }
 
+        if (checkVista()) {
+            if (sys_library = LoadLibrary("syscollector_win_ext.dll"), sys_library) {
+                _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
+                if (!_get_network_vista){
+                    dwRetVal = GetLastError();
+                    mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
+                    goto end;
+                }
+            }
+        }
+
         if (dwRetVal == NO_ERROR) {
             pCurrAddresses = pAddresses;
             while (pCurrAddresses) {
@@ -608,15 +619,6 @@ char *get_win_agent_ip(){
                 }
 
                 if (checkVista()) {
-                    sys_library = LoadLibrary("syscollector_win_ext.dll");
-                    if (sys_library != NULL){
-                        _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
-                        if (!_get_network_vista){
-                            dwRetVal = GetLastError();
-                            mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
-                        }
-                        FreeLibrary(sys_library);
-                    }
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     string = _get_network_vista(pCurrAddresses, 0, NULL);
                 } else {
@@ -656,6 +658,11 @@ char *get_win_agent_ip(){
                 pCurrAddresses = pCurrAddresses->Next;
             }
         }
+    }
+
+end:
+    if (sys_library) {
+        FreeLibrary(sys_library);
     }
 
     if (pAddresses) {
