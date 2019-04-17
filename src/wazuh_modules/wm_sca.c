@@ -2401,12 +2401,21 @@ static char *wm_sca_hash_integrity_file(char *policy_name) {
 
     char *hash_file = NULL;
     char file_path[OS_MAXSTR];
+#ifdef WIN32
+    if (policy_name[1] && policy_name[2]) {
+        if ((policy_name[1] == ':') || (policy_name[0] == '\\' && policy_name[1] == '\\')) {
+            sprintf(file_path,"%s", policy_name);
+        } else{
+            sprintf(file_path,"%s\\%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, policy_name);
+        }
+    }
+#else
     if(policy_name[0] == '/') {
         sprintf(file_path,"%s", policy_name);
     } else {
         sprintf(file_path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, policy_name);
     }
-
+#endif
     os_malloc(65*sizeof(char), hash_file);
     if(OS_SHA256_File(file_path, hash_file, OS_TEXT) != 0){
         merror("Unable to open the file %s to extract the SHA256", policy_name);
