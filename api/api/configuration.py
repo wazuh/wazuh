@@ -95,7 +95,7 @@ def read_config(config_file=common.api_config_path) -> Dict:
         configuration = default_configuration
     else:
         dict_to_lowercase(configuration)
-        configuration = fill_dict(default_configuration, configuration)
+        configuration = fill_dict(default_configuration, configuration['wazuh-api'])
 
     # append ossec_path to all paths in configuration
     append_ossec_path(configuration, [('logs', 'path'), ('https', 'key'), ('https', 'cert'), ('https', 'ca')])
