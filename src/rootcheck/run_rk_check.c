@@ -73,10 +73,10 @@ void run_rk_check()
 #endif
 
     /* Set basedir */
-    if (rootcheck.basedir == NULL) {
+    if (rootcheck.basedir == NULL || !strlen(rootcheck.basedir)) {
         rootcheck.basedir = strdup(basedir);
     } else {
-        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == '/') {
+        if (rootcheck.basedir[strlen(rootcheck.basedir)-1] == PATH_SEP) {
             rootcheck.basedir[strlen(rootcheck.basedir)-1] = '\0';
         }
     }
