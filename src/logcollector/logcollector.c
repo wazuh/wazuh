@@ -576,7 +576,8 @@ void LogCollectorStart()
                 } else {
 #ifdef WIN32
                     if (!current->command && strcmp(current->logformat,EVENTCHANNEL) && strcmp(current->logformat,EVENTLOG)) {
-
+                        
+                        int file_exists = 1;
                         HANDLE h1;
 
                         h1 = CreateFile(current->file, GENERIC_READ,
@@ -587,23 +588,27 @@ void LogCollectorStart()
                                 CloseHandle(current->h);
                             }
                             mdebug1(FILE_ERROR, current->file);
+                            file_exists = 0;
                         } else if (GetFileInformationByHandle(h1, &lpFileInformation) == 0) {
                             if (current->h) {
                                 CloseHandle(current->h);
                             }
                             mdebug1(FILE_ERROR, current->file);
+                            file_exists = 0;
                         }
 
                         CloseHandle(h1);
 
                         // Only expanded files that have been deleted will be forgotten
                         if (j >= 0) {
-                            if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
-                                merror(REM_ERROR, current->file);
-                            } else {
-                                mdebug2(CURRENT_FILES, current_files, maximum_files);
-                                i--;
-                                continue;
+                            if (!file_exists) {
+                                if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0, &globs[j])) {
+                                    merror(REM_ERROR, current->file);
+                                } else {
+                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    i--;
+                                    continue;
+                                }
                             }
                         } else if (open_file_attempts) {
                             mdebug1(OPEN_ATTEMPT, current->file, open_file_attempts - current->ign);
