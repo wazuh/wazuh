@@ -16,7 +16,17 @@ import boto3
 ALERTS_FILE = '/var/ossec/logs/alerts/alerts.json'
 LOGS_DIR = '/var/ossec/logs'
 
-IGNORE_RULES = ['11', '5108', '80350', '80351', '80352', '80353', '80354', '80355']
+IGNORE_RULES = [
+    '11', '5108',
+    '80200', '80201', '80202', '80203', '80204', '80205', '80206', '80207', '80208', '80209', # AWS Cloudtrail
+    '80250', '80251', '80252', '80253', '80254', '80255', '80256', '80257', '80258', '80259', # AWS Cloudtrail
+    '80300', '80301', '80302', '80303', '80304', '80305', '80306', '80307', '80308', '80309', # AWS Guard Duty
+    '80350', '80351', '80352', '80353', '80354', '80355', '80356', '80357', '80358', '80359', # AWS Macie
+    '80400', '80401', '80402', '80403', '80404', '80405', '80406', '80407', '80408', '80409', # AWS VPC Flow
+    '80450', '80451', '80452', '80453', '80454', '80455', '80456', '80457', '80458', '80459', # AWS Config
+    '80480', '80481', '80482', '80483', '80484', '80485', '80486', '80487', '80488', '80489', # AWS Trusted Advisor
+    '80490', '80491', '80492', '80493', '80494', '80495', '80496', '80497', '80498', '80499', # AWS KMS
+]
 LEVEL_THRESHOLD = 5
 
 BATCH_SIZE = 40    # not used when running as integrations plugin,  set to 0 for debuging
@@ -25,7 +35,12 @@ DEBUG = 0
 RAISE_ON_ERROR = False  # (Debuging)
 NOSEND = False
 # NOSEND = True # do not sent to AWS (Debuging)
-skip = 0           # skip X input alert (Debuging)
+# skip = 0           # skip X input alert (Debuging)
+
+try: # check whether python knows about 'basestring'
+    basestring
+except NameError: # no, it doesn't (it's Python3); use 'str' instead
+    basestring = str
 
 
 
@@ -97,7 +112,7 @@ class Wazuh_to_SecHub(object):
         self.ignore_rules = kwargs.get('ignore_rules', IGNORE_RULES)
         self.level_threshold = int(kwargs.get('level_threshold', LEVEL_THRESHOLD))
 
-        self.debug = kwargs.get('debug', 0)
+        self.debug = kwargs.get('debug', DEBUG)
 
         # self.in_file = kwargs.get('in_file', None)
         # self.in_src = kwargs.get('in_src', None)
@@ -640,7 +655,7 @@ class Wazuh_to_SecHub(object):
         #
         f['ProductFields'] = {
             'ProviderName': 'Wazuh',
-            'ProviderVersion': '3.8.2',
+            # 'ProviderVersion': '3.8.2',
             'Service_Name': 'OSSEC',
             'CompanyName': 'Wazuh.com',
             'ProductName': 'Wazuh/Ossec',
@@ -648,9 +663,12 @@ class Wazuh_to_SecHub(object):
             # 'count': str(j['rule']['firedtimes']),
         }
 
-	# we do this because of the 50 line limit and 1024 line length limit for ProductFields
+        # we do this because of the 50 line limit and 1024 line length limit for ProductFields
         for k in j:
-            f['ProductFields']['Wazuh' + str(k)] = json.dumps(j[k])
+            if isinstance(j[k], (basestring, int)):
+                f['ProductFields']['Wazuh' + str(k)] = str(j[k])
+            else:
+                f['ProductFields']['Wazuh' + str(k)] = json.dumps(j[k])
 
         # hack
         # if Severity text is defined save it to ProductFields:SeverityLabel
@@ -744,6 +762,11 @@ class Wazuh_to_SecHub(object):
 
         f_data = self.to_finding_fmt(alert_json)
 
+        if self.debug > 2:
+            print "\n\n"
+            pprint.pprint(alert_json)
+            print "\nfindings VV\n", pprint.pformat(f_data), "\n\n"
+
         self.queue_findings(f_data)
 
         r = self.send_findings()
@@ -779,7 +802,7 @@ class Wazuh_to_SecHub(object):
 
             cnt += 1
 
-            # debug
+            # skip X input alert (Debuging)
             # if skip and c < skip:
             #    continue
 
@@ -803,7 +826,7 @@ class Wazuh_to_SecHub(object):
 
             resp = self.queue_findings(f_data)
 
-	    # Debuging
+            # Debuging
             # is Title ever missing?
             # if not f_data['Title']:
             #     print "Title", f_data['Title']
