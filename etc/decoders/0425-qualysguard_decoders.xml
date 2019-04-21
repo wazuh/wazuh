@@ -7,7 +7,7 @@
 
 
 <decoder name="qualysguard">
-	<prematch>^"\d\d\d\d\d\d,""\w+"",""\d\d/\d\d/\d\d\d\d \(Overdue\)"",""\d+.\d+.\d+.\d+""</prematch>
+	<prematch>^"\d\d\d\d\d\d,""\w+"",""\d\d/\d\d/\d\d\d\d \(Overdue\)"",""\S+""</prematch>
 </decoder>
 
 <!--
@@ -24,7 +24,7 @@ EXAMPLE WITHOUT NETBIOS_HOSTNAME
 
 <decoder name="qualys_fields">
 	<parent>qualysguard</parent>
-	<regex>"(\d\d\d\d\d\d),""(\w+)"",""(\d\d/\d\d/\d\d\d\d \(Overdue\))"",""(\d+.\d+.\d+.\d+)"",</regex>
+	<regex>"(\d\d\d\d\d\d),""(\w+)"",""(\d\d/\d\d/\d\d\d\d \(Overdue\))"",""(\S+)"",</regex>
 	<order>qualysguard.ticket, qualysguard.state, qualysguard.due_date, qualysguard.ip</order>
 </decoder>
 
