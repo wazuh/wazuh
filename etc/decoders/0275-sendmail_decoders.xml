@@ -45,14 +45,14 @@
 <decoder name="sendmail-reject-nodns">
   <parent>sendmail-reject</parent>
   <prematch>relay=[</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]|^(\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*:\w*:\w*:\w*)]</regex>
+  <regex offset="after_prematch">^(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
 <decoder name="sendmail-reject-dns">
   <parent>sendmail-reject</parent>
   <prematch>relay=\S+ [</prematch>
-  <regex offset="after_prematch">^(\d+.\d+.\d+.\d+)]|^(\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*:\w*:\w*)]|^(\w*:\w*:\w*:\w*:\w*:\w*:\w*:\w*)]</regex>
+  <regex offset="after_prematch">^(\S+)]</regex>
   <order>srcip</order>
 </decoder>
 
