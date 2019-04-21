@@ -16,7 +16,7 @@
 <decoder name="identity_guard-aud6001">
     <parent>identity_guard</parent>
     <prematch offset="after_parent">[AUD6001]</prematch>
-    <regex offset="after_parent">^[(\.+)] [\.+] [(\.+)] [\.+] User (\S+) failed authentication. Authentication Type: (\S+), Default Password: (\S+), Remote Address: (\d+.\d+.\d+.\d+)</regex>
+    <regex offset="after_parent">^[(\.+)] [\.+] [(\.+)] [\.+] User (\S+) failed authentication. Authentication Type: (\S+), Default Password: (\S+), Remote Address: (\S+)</regex>
     <order>identity_guard.type,identity_guard.id,srcuser,identity_guard.authenticationtype,identity_guard.defaultpassword,srcip</order>
 </decoder>
 
