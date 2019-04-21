@@ -22,13 +22,13 @@
   - Sun Aug 16 16:26:21 2015 [pid 4976] [ftpuser] OK RENAME: Client "172.28.5.129", "/index.php /4444index.php"
 <decoder name="vsftpd">
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
-  <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_prematch">Client "(\S+)"$</regex>
   <order>srcip</order>
 </decoder>
 <decoder name="vsftpd">
   <program_name>^vsftpd</program_name>
   <prematch>^\w\w\w \w\w\w\s+\d+ \S+ \d+ [pid \d+] </prematch>
-  <regex offset="after_prematch">Client "(\d+.\d+.\d+.\d+)"$</regex>
+  <regex offset="after_prematch">Client "(\S+)"$</regex>
   <order>srcip</order>
 </decoder>
 -->
