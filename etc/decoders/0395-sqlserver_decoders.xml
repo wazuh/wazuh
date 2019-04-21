@@ -50,7 +50,7 @@
 <decoder name="sqlserver-loginsuccess">
     <parent>sqlserver</parent>
     <prematch offset="after_parent">Login succeeded for user </prematch>
-    <regex offset="after_prematch">'(\.*)'\.+[CLIENT: (\d+.\d+.\d+.\d+)]|'(\.*)'\.+[CLIENT: (\S+)]</regex>
+    <regex offset="after_prematch">'(\.*)'\.+[CLIENT: (\S+)]|'(\.*)'\.+[CLIENT: (\S+)]</regex>
     <order>srcuser,srcip</order>
 </decoder>
 
@@ -61,7 +61,7 @@
 <decoder name="sqlserver-loginfailed">
     <parent>sqlserver</parent>
     <prematch offset="after_parent">Login failed for user </prematch>
-    <regex offset="after_prematch">'(\.*)'\.+[CLIENT: (\d+.\d+.\d+.\d+)]|'(\.*)'\.+[CLIENT: (\S+)]</regex>
+    <regex offset="after_prematch">'(\.*)'\.+[CLIENT: (\S+)]|'(\.*)'\.+[CLIENT: (\S+)]</regex>
     <order>srcuser,srcip</order>
 </decoder>
 
