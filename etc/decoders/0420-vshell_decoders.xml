@@ -23,7 +23,7 @@
 <decoder name="vshell-rejected">
   <parent>windows-date-format</parent>
   <prematch>VShellSSH2 dbg </prematch>
-  <regex offset="after_prematch">(\d+.\d+.\d+.\d+) rejected by Deny Hosts file </regex>
+  <regex offset="after_prematch">(\S+) rejected by Deny Hosts file </regex>
   <order>srcip</order>
 </decoder>
 
