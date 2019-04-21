@@ -53,21 +53,21 @@
 <decoder name="owncloud-failed1">
   <parent>owncloud</parent>
   <prematch>Login failed: user </prematch>
-  <regex offset="after_prematch">^'(\w+)' , wrong password, IP:(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">^'(\w+)' , wrong password, IP:(\S+)</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="owncloud-failed2">
   <parent>owncloud</parent>
   <prematch>Login failed: </prematch>
-  <regex offset="after_prematch">^'(\w+)' \(Remote IP: '(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">^'(\w+)' \(Remote IP: '(\S+)</regex>
   <order>user, srcip</order>
 </decoder>
 
 <decoder name="owncloud-malicious">
   <parent>owncloud</parent>
   <prematch>Passed filename is not valid, might be malicious </prematch>
-  <regex offset="after_prematch">;ip:"(\d+.\d+.\d+.\d+)|;ip:\\"(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_prematch">;ip:"(\S+)|;ip:\\"(\S+)</regex>
   <order>srcip</order>
 </decoder>
 
