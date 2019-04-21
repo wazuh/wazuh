@@ -36,7 +36,7 @@
 
   <rule id="86804" level="10">
     <if_sid>86800</if_sid>
-    <regex>Connection from (\d+.\d+.\d+.\d+) rejected by Deny Hosts file</regex>
+    <regex>Connection from (\S+) rejected by Deny Hosts file</regex>
     <description>Host is trying to connect to VShell server but exists in the deny file.</description>
     <group>gdpr_IV_35.7.d,</group>
   </rule>
