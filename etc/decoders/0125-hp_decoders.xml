@@ -41,6 +41,6 @@ Jun  8 11:54:52 HP-5500EI-HO %%10SHELL/4/LOGINAUTHFAIL(t): Trap 1.1.1.1.1.1.2550
 
 <decoder name="hp_5500_fields">
     <parent>hp_5500</parent>
-    <regex offset="after_regex">from (\d+.\d+.\d+.\d+)</regex>
+    <regex offset="after_regex">from (\S+)</regex>
     <order>srcip</order>
 </decoder>
