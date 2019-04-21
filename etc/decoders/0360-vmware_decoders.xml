@@ -30,8 +30,8 @@
 
 <decoder name="vmware-extra">
   <parent>vmware</parent>
-  <regex offset="after_regex">^: User (\w+)@(\d+.\d+.\d+.\d+)</regex>
-  <regex> logged |^: Failed login \w+ for (\w+)@(\d+.\d+.\d+.\d+)</regex>
+  <regex offset="after_regex">^: User (\w+)@(\S+)</regex>
+  <regex> logged |^: Failed login \w+ for (\w+)@(\S+)</regex>
   <order>user, srcip</order>
 </decoder>
 
