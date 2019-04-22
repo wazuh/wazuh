@@ -156,9 +156,8 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT Message, WPARAM wParam,
                             if (set_ossec_server(buf, hwnd)) {
                                 chd = 1;
                             }
-                        } else {
-                            GlobalFree(buf);
                         }
+                        GlobalFree(buf);
                     }
 
                     /* Get auth key */

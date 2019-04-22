@@ -123,9 +123,17 @@ void config_clear()
         free(config_inst.revision);
     }
 
+    if (config_inst.agentname) {
+        free(config_inst.agentname);
+    }
+
+    if (config_inst.agentip) {
+        free(config_inst.agentip);
+    }
+
     /* Initialize config instance */
     config_inst.dir = NULL;
-    config_inst.key = FL_NOKEY;
+    config_inst.key = strdup(FL_NOKEY);
     config_inst.server = strdup(FL_NOSERVER);
     config_inst.config = NULL;
 
@@ -144,7 +152,7 @@ void init_config()
 {
     /* Initialize config instance */
     config_inst.dir = NULL;
-    config_inst.key = FL_NOKEY;
+    config_inst.key = strdup(FL_NOKEY);
     config_inst.server = NULL;
     config_inst.config = NULL;
 
@@ -221,14 +229,15 @@ int config_read(__attribute__((unused)) HWND hwnd)
         free(to_free);
     }
 
-    free(tmp_str);
     /* Get agent ID, name and IP */
     tmp_str = cat_file(AUTH_FILE, NULL);
     if (tmp_str) {
+        char *to_free = tmp_str;
         /* Get base 64 */
+        free(config_inst.key);
         config_inst.key = encode_base64(strlen(tmp_str), tmp_str);
         if (config_inst.key == NULL) {
-            config_inst.key = FL_NOKEY;
+            config_inst.key = strdup(FL_NOKEY);
         }
 
         /* Get ID */
@@ -254,14 +263,18 @@ int config_read(__attribute__((unused)) HWND hwnd)
                     *tmp_str = '\0';
                 }
             }
+
+            config_inst.agentid = strdup(config_inst.agentid);
+            config_inst.agentname = strdup(config_inst.agentname);
+            config_inst.agentip = strdup(config_inst.agentip);
         }
-        free(tmp_str);
+        free(to_free);
     }
 
     if (config_inst.agentip == NULL) {
         config_inst.agentid = strdup(ST_NOTSET);
         config_inst.agentname = strdup("Auth key not imported.");
-        config_inst.agentip = ST_NOTSET;
+        config_inst.agentip = strdup(ST_NOTSET);
 
         config_inst.status = ST_MISSING_IMPORT;
     }
