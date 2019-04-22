@@ -8,7 +8,7 @@ find_path () {
     for PART in $PATH; do
         if test -x "$PART/$1"; then
             echo $PART/$1
-			break
+	    break
         fi
     done
 }
