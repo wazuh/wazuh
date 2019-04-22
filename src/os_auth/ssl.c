@@ -137,19 +137,25 @@ int load_cert_and_key(SSL_CTX *ctx, const char *cert, const char *key)
 
     if (!(SSL_CTX_use_certificate_chain_file(ctx, cert))) {
         merror("Unable to read certificate file: %s", cert);
+#ifdef DEBUG
         ERR_print_errors_fp(stderr);
+#endif
         return 0;
     }
 
     if (!(SSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM))) {
         merror("Unable to read private key file: %s", key);
+#ifdef DEBUG
         ERR_print_errors_fp(stderr);
+#endif
         return 0;
     }
 
     if (!SSL_CTX_check_private_key(ctx)) {
         merror("Unable to verify private key file");
+#ifdef DEBUG
         ERR_print_errors_fp(stderr);
+#endif
         return 0;
     }
 
@@ -193,7 +199,7 @@ int verify_callback(int ok, X509_STORE_CTX *store)
         X509_NAME_oneline(X509_get_issuer_name(cert), issuer, 256);
         X509_NAME_oneline(X509_get_subject_name(cert), subject, 256);
 
-        merror("issuer =  %s, subject =  %s", issuer, subject);
+        merror("Manager cert - issuer: %s, subject: %s", issuer, subject);
 
         merror("%i:%s", err, X509_verify_cert_error_string(err));
     }

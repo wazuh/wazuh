@@ -137,7 +137,9 @@ static int ssl_error(const SSL *ssl, int ret)
                 usleep(100 * 1000);
                 return (0);
             default:
+#ifdef DEBUG
                 ERR_print_errors_fp(stderr);
+#endif
                 return (1);
         }
     }
@@ -1116,7 +1118,9 @@ void* run_dispatcher(__attribute__((unused)) void *arg) {
             if (ret < 0) {
                 merror("SSL write error (%d)", ret);
                 merror("Agent key not saved for %s", agentname);
+#ifdef DEBUG
                 ERR_print_errors_fp(stderr);
+#endif
                 OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
             } else {
                 /* Add pending key to write */

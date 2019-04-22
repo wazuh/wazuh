@@ -346,12 +346,14 @@ int main(int argc, char **argv)
     ERR_clear_error();
     ret = SSL_connect(ssl);
     if (ret <= 0) {
-        merror("SSL error (%d). Connection refused by the manager. Maybe the port or certificate specified is incorrect. Exiting.", SSL_get_error(ssl, ret));
-    #ifdef DEBUG
-        ERR_print_errors_fp(stderr);  // This function empties the error queue
-    #endif
-        free(buf);
-        exit(1);
+
+#ifdef DEBUG
+    merror("SSL error (%d)",  SSL_get_error(ssl, ret))
+    ERR_print_errors_fp(stderr);  // This function empties the error queue
+#endif
+    merror("Connection refused by the manager. Maybe the port or certificate specified is incorrect. Exiting.");
+    free(buf);
+    exit(1);
     }
 
     minfo("Connected to %s:%d", ipaddress, port);
@@ -412,7 +414,9 @@ int main(int argc, char **argv)
     ret = SSL_write(ssl, buf, strlen(buf));
     if (ret < 0) {
         merror("SSL write error (unable to send message.)");
+#ifdef DEBUG
         ERR_print_errors_fp(stderr);
+#endif
         free(buf);
         exit(1);
     }

@@ -134,7 +134,9 @@ int main(int argc, char **argv)
     ret = SSL_connect(ssl);
     if (ret <= 0) {
         printf("SSL connect error\n");
+#ifdef DEBUG
         ERR_print_errors_fp(stderr);
+#endif
         exit(1);
     }
 
@@ -143,7 +145,9 @@ int main(int argc, char **argv)
     ret = SSL_write(ssl, TEST, sizeof(TEST));
     if (ret < 0) {
         printf("SSL write error\n");
+#ifdef DEBUG
         ERR_print_errors_fp(stderr);
+#endif
         exit(1);
     }
 
