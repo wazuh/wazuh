@@ -264,11 +264,11 @@ void rootcheck_connect() {
     for (i = 0; rootcheck.ignore[i] != NULL; i++) {
         if (rootcheck.ignore_sregex[i]) {
             if (OSMatch_Execute(path_to_ignore, strlen(path_to_ignore), rootcheck.ignore_sregex[i])) {
-                mdebug1("File '%s' matches the '%s' pattern, so it will be ignored.", path_to_ignore, rootcheck.ignore_sregex[i]->raw);
+                mdebug1("'%s' matches the '%s' pattern, so it will be ignored.", path_to_ignore, rootcheck.ignore_sregex[i]->raw);
                 return 1;
             }
         } else if (!strcmp(path_to_ignore, rootcheck.ignore[i])) {
-            mdebug1("The '%s' file has been marked as ignored", path_to_ignore);
+            mdebug1("'%s' has been marked as ignored", path_to_ignore);
             return 1;
         }
     }
