@@ -2053,7 +2053,7 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     mdebug1("Sending summary event for file: '%s", file->valuestring);
 
     if (last_summary_json[id]) {
-        os_free(last_summary_json[id]);
+        cJSON_Delete(last_summary_json[id]);
     }
 
     last_summary_json[id] = cJSON_Duplicate(json_summary,1);
