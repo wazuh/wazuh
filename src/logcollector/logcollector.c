@@ -40,6 +40,7 @@ int sample_log_length;
 int force_reload;
 int reload_interval;
 int reload_delay;
+int free_excluded_files_interval;
 
 static int _cday = 0;
 int N_INPUT_THREADS = N_MIN_INPUT_THREADS;
@@ -85,6 +86,7 @@ void LogCollectorStart()
     int i = 0, j = -1, tg;
     int f_check = 0;
     int f_reload = 0;
+    int f_free_excluded = 0;
     IT_control f_control = 0;
     char keepalive[1024];
     logreader *current;
@@ -299,6 +301,32 @@ void LogCollectorStart()
 
     /* Daemon loop */
     while (1) {
+
+        /* Free hash table content for excluded files */
+        if (f_free_excluded >= free_excluded_files_interval) {
+            w_rwlock_wrlock(&files_update_rwlock);
+
+            mdebug1("Free excluded files hash table");
+
+            OSHash_Free(excluded_files);
+            excluded_files = OSHash_Create();
+
+            if (!excluded_files) {
+                merror_exit(LIST_ERROR);
+            }
+
+            OSHash_Free(excluded_binaries);
+            excluded_binaries = OSHash_Create();
+
+            if (!excluded_binaries) {
+                merror_exit(LIST_ERROR);
+            }
+
+            f_free_excluded = 0;
+
+            w_rwlock_unlock(&files_update_rwlock);
+        }
+
         if (f_check >= vcheck_files) {
             w_rwlock_wrlock(&files_update_rwlock);
             int i;
@@ -700,6 +728,7 @@ void LogCollectorStart()
         sleep(1);
 
         f_check++;
+        f_free_excluded++;
     }
 }
 
