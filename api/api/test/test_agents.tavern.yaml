@@ -1016,3 +1016,116 @@ stages:
     
     response:
       status_code: 400
+
+---
+test_name: GET /agents/:agent_id
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Basic response agent
+
+    request: &get_agents
+      url: http://localhost:55000/agents/000
+      method: GET
+
+    response:
+      status_code: 200
+      body: 
+        dateAdd: !anystr
+        id: "000"
+        ip: !anystr
+        lastKeepAlive: !anystr
+        manager: !anystr
+        name: !anystr
+        node_name: !anystr
+        os:
+          arch: !anystr
+          codename: !anystr
+          major: !anystr
+          minor: !anystr
+          name: !anystr
+          platform: !anystr
+          uname: !anystr
+          version: !anystr
+        registerIP: !anystr
+        status: !anystr
+        version: !anystr
+
+  - name: Try show not existing agent
+
+    request:
+      url: http://localhost:55000/agents/999
+      method: GET
+
+    response:
+      status_code: 400
+      body:
+        code: 1701
+        dapi_errors:
+          master-node:
+            "error": "Agent does not exist: 999"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Agent does not exist: 999"
+        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Filter select one field
+
+    request:
+      <<: *get_agents
+      params: 
+        select: 'os.platform'
+    
+    response:
+      status_code: 200
+      body:
+        os:
+          platform: !anystr
+  
+  - name: Filter select multiple fields
+
+    request:
+      <<: *get_agents
+      params: 
+        select: 'dateAdd,status'
+    
+    response:
+      status_code: 200
+      body:
+        dateAdd: !anystr
+        status: !anystr
+
+  - name: Try show agents with not allowed selector
+
+    request:
+      <<: *get_agents
+      params:
+        select: param_test
+
+    response:
+      status_code: 400
+      body:
+        code: 1724
+        dapi_errors:
+          master-node:
+            "error": "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Try show agents with not allowed selector (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        select: param_ñ_test
+
+    response:
+      status_code: 400
