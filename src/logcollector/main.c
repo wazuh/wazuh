@@ -54,7 +54,6 @@ int main(int argc, char **argv)
     const char *cfg = DEFAULTCPATH;
     gid_t gid;
     const char *group = GROUPGLOBAL;
-    lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
 
     /* Setup random */
     srandom_init();
@@ -107,6 +106,10 @@ int main(int argc, char **argv)
     /* Check current debug_level
      * Command line setting takes precedence
      */
+
+#ifndef WIN32
+    lc_debug_level = getDefine_Int("logcollector", "debug", 0, 2);
+
     if (debug_level == 0) {
         /* Get debug level */
         debug_level = lc_debug_level;
@@ -115,6 +118,7 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+#endif
 
     /* Init message queue */
     w_msg_hash_queues_init();

@@ -49,7 +49,7 @@ void init_magic(magic_t *cookie_ptr)
 #endif /* USE_MAGIC */
 
 /* Read syscheck internal options */
-static void read_internal(int debug_level)
+static void read_internal(__attribute__((unused))int debug_level)
 {
     syscheck.tsleep = (unsigned int) getDefine_Int("syscheck", "sleep", 0, 64);
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
@@ -59,7 +59,6 @@ static void read_internal(int debug_level)
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
-#endif
     sys_debug_level = getDefine_Int("syscheck", "debug", 0, 2);
 
     /* Check current debug_level
@@ -72,6 +71,7 @@ static void read_internal(int debug_level)
             debug_level--;
         }
     }
+#endif
 
     return;
 }
