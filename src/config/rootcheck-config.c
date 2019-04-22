@@ -167,7 +167,11 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                     return OS_INVALID;
                 }
                 os_calloc(1, sizeof(OSMatch), rootcheck->ignore_sregex[j]);
+#ifndef WIN32
                 if (!OSMatch_Compile(rootcheck->ignore[j], rootcheck->ignore_sregex[j], 0)) {
+#else
+                if (!OSMatch_Compile(rootcheck->ignore[j], rootcheck->ignore_sregex[j], OS_CASE_SENSITIVE)) {
+#endif
                     merror(REGEX_COMPILE, rootcheck->ignore[j], rootcheck->ignore_sregex[j]->error);
                     return OS_INVALID;
                 }
