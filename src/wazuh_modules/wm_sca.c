@@ -48,7 +48,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
 static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash, int first_scan,int id);  // Send summary
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan,int id);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
@@ -57,6 +57,7 @@ static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
+static char *wm_sca_hash_integrity_file(const char *file);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
@@ -520,14 +521,18 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
+                mdebug1("Calculating hash for policy file '%s'", data->profile[i]->profile);
+                char * integrity_hash_file = wm_sca_hash_integrity_file(path);
+
                 time_end = time(NULL);
 
                 /* Send summary */
-                if(integrity_hash) {
+                if(integrity_hash && integrity_hash_file) {
                     wm_delay(1000 * data->summary_delay);
-                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash,first_scan,cis_db_index);
+                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash, integrity_hash_file, first_scan,cis_db_index);
                     snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash);
                     os_free(integrity_hash);
+                    os_free(integrity_hash_file);
                 }
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
@@ -1991,7 +1996,7 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size)
 }
 #endif
 
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash, int first_scan,int id) {
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash,char *integrity_hash_file, int first_scan,int id) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
@@ -2044,6 +2049,8 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
         cJSON_AddStringToObject(json_summary, "hash", "error_calculating_hash");
     }
 
+    cJSON_AddStringToObject(json_summary, "hash_file", integrity_hash_file);
+
     if (first_scan) {
         cJSON_AddNumberToObject(json_summary, "first_scan", first_scan);
     }
@@ -2051,7 +2058,7 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     mdebug1("Sending summary event for file: '%s", file->valuestring);
 
     if (last_summary_json[id]) {
-        os_free(last_summary_json[id]);
+        cJSON_Delete(last_summary_json[id]);
     }
 
     last_summary_json[id] = cJSON_Duplicate(json_summary,1);
@@ -2283,6 +2290,7 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
     char id_hashed[OS_SIZE_128];
     int ret_add = 0;
     cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+    int alert = 1;
 
     if(!pm_id) {
         return 0;
@@ -2294,49 +2302,20 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
 
     sprintf(id_hashed, "%d", pm_id->valueint);
 
-    hashed_result = OSHash_Get(cis_db_hash,id_hashed);
+    hashed_result = OSHash_Get(cis_db_hash, id_hashed);
 
-    if(hashed_result){
-        if(strcmp(result,hashed_result->result) == 0) {
-            return 0;
-        } else {
-            cis_db_info_t *elem;
+    cis_db_info_t *elem;
 
-            os_calloc(1,sizeof(cis_db_info_t),elem);
-            os_strdup(result,elem->result);
+    os_calloc(1, sizeof(cis_db_info_t), elem);
+    os_strdup(result, elem->result);
 
-            cJSON *obj = cJSON_Duplicate(event,1);
-            elem->event = NULL;
+    cJSON *obj = cJSON_Duplicate(event,1);
+    elem->event = NULL;
 
-            if(obj) {
-                elem->event = obj;
-                if (ret_add = OSHash_Update(cis_db_hash,id_hashed,elem), ret_add != 1) {
-                    merror("Unable to update hash table for check: %d", pm_id->valueint);
-                    os_free(elem->result);
-                    cJSON_Delete(elem->event);
-                    os_free(elem);
-                    return 0;
-                }
+    if(obj) {
+        elem->event = obj;
 
-                cis_db_for_hash[policy_index].elem[check_index] = elem;
-                return 1;
-            }
-
-            os_free(elem->result);
-            os_free(elem);
-            return 0;
-        }
-    } else {
-        cis_db_info_t *elem;
-
-        os_calloc(1,sizeof(cis_db_info_t),elem);
-        os_strdup(result,elem->result);
-
-        cJSON *obj = cJSON_Duplicate(event,1);
-        elem->event = NULL;
-
-        if(obj) {
-            elem->event = obj;
+        if (!hashed_result) {
             if (ret_add = OSHash_Add(cis_db_hash,id_hashed,elem), ret_add != 2) {
                 merror("Unable to update hash table for check: %d", pm_id->valueint);
                 os_free(elem->result);
@@ -2344,13 +2323,29 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
                 os_free(elem);
                 return 0;
             }
-            cis_db_for_hash[policy_index].elem[check_index] = elem;
-            return 1;
+        } else {
+            if(strcmp(result,hashed_result->result) == 0) {
+                alert = 0;
+            }
+
+            if (ret_add = OSHash_Update(cis_db_hash,id_hashed,elem), ret_add != 1) {
+                merror("Unable to update hash table for check: %d", pm_id->valueint);
+                os_free(elem->result);
+                cJSON_Delete(elem->event);
+                os_free(elem);
+                return 0;
+            }
         }
-        os_free(elem->result);
-        os_free(elem);
-        return 0;
+
+        cis_db_for_hash[policy_index].elem[check_index] = elem;
+        return alert;
+
     }
+
+    os_free(elem->result);
+    os_free(elem);
+    return 0;
+
 }
 
 static void wm_sca_free_hash_data(cis_db_info_t *event) {
@@ -2388,6 +2383,20 @@ static char *wm_sca_hash_integrity(int policy_index) {
     }
 
     return NULL;
+}
+
+static char *wm_sca_hash_integrity_file(const char *file) {
+
+    char *hash_file = NULL;
+    os_malloc(65*sizeof(char), hash_file);
+
+    if(OS_SHA256_File(file, hash_file, OS_TEXT) != 0){
+        merror("Unable to calculate SHA256 for file '%s'", file);
+        os_free(hash_file);
+        return NULL;
+    }
+
+    return hash_file;
 }
 
 static void *wm_sca_dump_db_thread(wm_sca_t * data) {
@@ -2453,7 +2462,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 }
             }
 
-            sleep(5);
+            wm_delay(5000);
            
             int elements_sent = i - 1;
             mdebug1("Sending end of dump control event");

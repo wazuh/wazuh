@@ -839,6 +839,28 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "query_policy_sha256") == 0) {
+
+        char *policy;
+        char result_found[OS_MAXSTR + 1] = {0};
+
+        curr = next;
+        policy = curr;
+
+        result = wdb_sca_policy_sha256(wdb, policy, result_found);
+        switch (result) {
+            case 0:
+                snprintf(output, OS_MAXSTR + 1, "ok not found");
+                break;
+            case 1:
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
+                break;
+            default:
+                mdebug1("Cannot query Security Configuration Assessment.");
+                snprintf(output, OS_MAXSTR + 1, "err Cannot query policy scan");
+        }
+
+        return result;
     } else if (strcmp(curr, "insert_policy") == 0) {
 
         char *name;
@@ -846,6 +868,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         char *id;
         char *description;
         char *references;
+        char *hash_file;
 
         curr = next;
         if (next = strchr(curr, '|'), !next) {
@@ -891,8 +914,19 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         description = curr;
         *next++ = '\0';
 
-        references = next;
-        if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references), result < 0) {
+        curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+        references = curr;
+        *next++ = '\0';
+
+        hash_file = next;
+        if (result = wdb_sca_policy_info_save(wdb,name,file,id,description,references,hash_file), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment global information.");
         } else {
