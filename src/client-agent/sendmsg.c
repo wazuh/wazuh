@@ -31,11 +31,15 @@ int send_msg(const char *msg, ssize_t msg_length)
     /* Send msg_size of crypt_msg */
     if (agt->server[agt->rip_id].protocol == UDP_PROTO) {
         retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+#ifndef WIN32
         error = errno;
+#endif
     } else {
         w_mutex_lock(&send_mutex);
         retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+#ifndef WIN32
         error = errno;
+#endif
         w_mutex_unlock(&send_mutex);
     }
 

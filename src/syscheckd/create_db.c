@@ -269,7 +269,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
         os_free(wd_sum);
         os_free(alert_msg);
         free(esc_linked_file);
-
         return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, '-'));
     }
 
@@ -305,6 +304,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                         if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
                             os_free(wd_sum);
                             os_free(alert_msg);
+                            free(esc_linked_file);
                             return 0;
                         }
                     } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
@@ -337,6 +337,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
             {
                 os_free(wd_sum);
                 os_free(alert_msg);
+                free(esc_linked_file);
                 return 0;
             }
         }
@@ -784,6 +785,11 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     size_t dir_size;
     char linked_read_file[PATH_MAX + 1] = {'\0'};
 
+    if (!dir_name) {
+        merror(NULL_ERROR);
+        return OS_INVALID;
+    }
+
     if(max_depth < 0) {
         mdebug1(FIM_MAX_RECURSION_LEVEL, dir_name);
         return 0;
@@ -817,9 +823,8 @@ int read_dir(const char *dir_name, const char *link, int dir_position, whodata_e
     opts = syscheck.opts[dir_position];
 
     /* Directory should be valid */
-    if ((dir_name == NULL) || ((dir_size = strlen(dir_name)) > PATH_MAX)) {
+    if (dir_size = strlen(dir_name), dir_size > PATH_MAX) {
         free(f_name);
-        merror(NULL_ERROR);
         return (-1);
     }
 
