@@ -159,14 +159,6 @@ int main(int argc, char **argv)
     mwarn("The option 'rotate_log' is deprecated. Please, use the 'logging' configuration block instead.");
 
     // Deprecated
-    mond.rotate_alerts = (unsigned int)getDefine_Int("monitord", "rotate_alerts", 0, 1);
-    mwarn("The option 'rotate_alerts' is deprecated. Please, use the 'logging' configuration block instead.");
-
-    // Deprecated
-    mond.rotate_archives = (unsigned int)getDefine_Int("monitord", "rotate_archives", 0, 1);
-    mwarn("The option 'rotate_archives' is deprecated. Please, use the 'logging' configuration block instead.");
-
-    // Deprecated
     mond.keep_log_days = getDefine_Int("monitord", "keep_log_days", 0, 500);
     mwarn("The option 'keep_log_days' is deprecated. Please, use the 'logging' configuration block instead.");
 

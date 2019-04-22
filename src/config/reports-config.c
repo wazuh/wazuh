@@ -210,16 +210,13 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
 
     /* Zero the elements */
     rotation_config->enabled = 0;
-    rotation_config->format = NULL;
     rotation_config->max_size = 0;
     rotation_config->interval = 0;
     rotation_config->rotate = 0;
     rotation_config->rotation_enabled = 1;
     rotation_config->compress_rotation = 1;
-
-    if(!rotation_config->format) {
-        os_calloc(1, sizeof(char *), rotation_config->format);
-    }
+    rotation_config->ossec_log_plain = 0;
+    rotation_config->ossec_log_json = 0;
 
     /* Reading the XML */
     while (node[i]) {
@@ -254,15 +251,11 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
 
                     while (format) {
                         if (*format && !strncmp(format, "json", strlen(format))) {
-                            rotation_config->format[format_it] = "json";
-                            os_realloc(rotation_config->format, (format_it + 2) * sizeof(char *), rotation_config->format);
-                            rotation_config->format[format_it + 1] = NULL;
+                            rotation_config->ossec_log_json = 1;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else if (*format && !strncmp(format, "plain", strlen(format))) {
-                            rotation_config->format[format_it] = "plain";
-                            os_realloc(rotation_config->format, (format_it + 2) * sizeof(char *), rotation_config->format);
-                            rotation_config->format[format_it + 1] = NULL;
+                            rotation_config->ossec_log_plain = 1;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else {

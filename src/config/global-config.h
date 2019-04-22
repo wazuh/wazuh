@@ -115,7 +115,8 @@ typedef struct __Config {
     unsigned int archives_enabled:1;
     unsigned int archives_rotation_enabled:1;
     unsigned int archives_compress_rotation:1;
-    char **archives_format;
+    unsigned int archives_log_json:1;
+    unsigned int archives_log_plain:1;
     long int archives_max_size;
     long int archives_interval;
     int archives_rotate;
@@ -124,7 +125,8 @@ typedef struct __Config {
     unsigned int alerts_enabled:1;
     unsigned int alerts_rotation_enabled:1;
     unsigned int alerts_compress_rotation:1;
-    char **alerts_format;
+    unsigned int alerts_log_json:1;
+    unsigned int alerts_log_plain:1;
     long int alerts_max_size;
     long int alerts_interval;
     int alerts_rotate;

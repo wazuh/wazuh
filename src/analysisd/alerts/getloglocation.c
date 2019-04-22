@@ -79,35 +79,24 @@ int OS_GetLogLocation(int day,int year,char *mon)
     /* For the events */
     _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
 
-    int should_logall_json = 0;
-    int should_log_alerts_json = 0;
-    int format_it = 0;
 
-    while (Config.archives_format[format_it]) {
-        if (Config.archives_format[format_it] && !strncmp(Config.archives_format[format_it], "json", strlen(Config.archives_format[format_it]))) {
-            should_logall_json = 1;
-        }
-        format_it++;
+    /* For the events in plain format */
+    if (Config.logall || (Config.archives_enabled && Config.archives_log_plain)) {
+        _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
     }
 
-    format_it = 0;
-
-    while (Config.alerts_format[format_it]) {
-        if (Config.alerts_format[format_it] && !strncmp(Config.alerts_format[format_it], "json", strlen(Config.alerts_format[format_it]))) {
-            should_log_alerts_json = 1;
-        }
-        format_it++;
-    }
-
-    /* For the events in JSON */
-    if (Config.logall_json || (Config.archives_enabled && should_logall_json)) {
+    /* For the events in JSON format*/
+    if (Config.logall_json || (Config.archives_enabled && Config.archives_log_json)) {
         _ejflog = openlog(_ejflog, __ejlogfile, EVENTS, year, mon, "archive", day, "json", EVENTSJSON_DAILY, &__ejcounter, FALSE);
     }
 
-    /* For the alerts logs */
-    _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
+    /* For the alerts in plain format */
+    if (Config.alerts_log || (Config.alerts_enabled && Config.alerts_log_plain)) {
+        _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
+    }
 
-    if (Config.jsonout_output || (Config.alerts_enabled && should_log_alerts_json)) {
+    /* For the alerts in JSON format */
+    if (Config.jsonout_output || (Config.alerts_enabled && Config.alerts_log_json)) {
         _jflog = openlog(_jflog, __jlogfile, ALERTS, year, mon, "alerts", day, "json", ALERTSJSON_DAILY, &__jcounter, FALSE);
     }
 

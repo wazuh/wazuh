@@ -29,8 +29,6 @@ typedef struct _monitor_config {
     unsigned int sign:1;
     unsigned int monitor_agents:1;
     unsigned int rotate_log:1;
-    unsigned int rotate_alerts:1;
-    unsigned int rotate_archives:1;
     unsigned int delete_old_agents:1;
     int a_queue;
     int keep_log_days;
@@ -46,7 +44,8 @@ typedef struct _monitor_config {
     unsigned int enabled:1;
     unsigned int rotation_enabled:1;
     unsigned int compress_rotation:1;
-    char **format;
+    unsigned int ossec_log_plain:1;
+    unsigned int ossec_log_json:1;
     long int max_size;
     long int interval;
     int rotate;

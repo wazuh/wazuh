@@ -398,27 +398,22 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
 
     /* Zero the elements */
     Config->alerts_enabled = 0;
-    Config->alerts_format = NULL;
     Config->alerts_max_size = 0;
     Config->alerts_interval = 0;
     Config->alerts_rotate = 0;
     Config->alerts_rotation_enabled = 1;
     Config->alerts_compress_rotation = 1;
+    Config->alerts_log_plain = 0;
+    Config->alerts_log_json = 0;
 
     Config->archives_enabled = 0;
-    Config->archives_format = NULL;
     Config->archives_max_size = 0;
     Config->archives_interval = 0;
     Config->archives_rotate = 0;
     Config->archives_rotation_enabled = 1;
     Config->archives_compress_rotation = 1;
-
-    if(!Config->alerts_format) {
-        os_calloc(1, sizeof(char *), Config->alerts_format);
-    }
-    if(!Config->archives_format) {
-        os_calloc(1, sizeof(char *), Config->archives_format);
-    }
+    Config->archives_log_plain = 0;
+    Config->archives_log_json = 0;
 
     /* Reading the XML */
     while (node[i]) {
@@ -453,15 +448,11 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
 
                     while (format) {
                         if (*format && !strncmp(format, "json", strlen(format))) {
-                            Config->alerts_format[format_it] = "json";
-                            os_realloc(Config->alerts_format, (format_it + 2) * sizeof(char *), Config->alerts_format);
-                            Config->alerts_format[format_it + 1] = NULL;
+                            Config->alerts_log_json = 1;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else if (*format && !strncmp(format, "plain", strlen(format))) {
-                            Config->alerts_format[format_it] = "plain";
-                            os_realloc(Config->alerts_format, (format_it + 2) * sizeof(char *), Config->alerts_format);
-                            Config->alerts_format[format_it + 1] = NULL;
+                            Config->alerts_log_plain = 1;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else {
@@ -602,7 +593,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
                 mdebug1("Empty configuration for module '%s'.", node[i]->element);
             }
-            /* Read the configuration inside alerts tag */
+            /* Read the configuration inside archives tag */
             for (j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if(strcmp(children[j]->content, "yes") == 0) {
@@ -622,15 +613,11 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
 
                     while (format) {
                         if (*format && !strncmp(format, "json", strlen(format))) {
-                            Config->archives_format[format_it] = "json";
-                            os_realloc(Config->archives_format, (format_it + 2) * sizeof(char *), Config->archives_format);
-                            Config->archives_format[format_it + 1] = NULL;
+                            Config->archives_log_json = 1;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else if (*format && !strncmp(format, "plain", strlen(format))) {
-                            Config->archives_format[format_it] = "plain";
-                            os_realloc(Config->archives_format, (format_it + 2) * sizeof(char *), Config->archives_format);
-                            Config->archives_format[format_it + 1] = NULL;
+                            Config->archives_log_plain = 1;
                             format = strtok(NULL, delim);
                             format_it++;
                         } else {
