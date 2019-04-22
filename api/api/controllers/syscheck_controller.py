@@ -44,13 +44,12 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
                        limit=None, select=None, sort=None, search=None,
                        summary=False, md5=None, sha1=None, sha256=None):
     """
-
+    :param agent_id: Agent ID
+    :type agent_id: str
     :param pretty: Show results in human-readable format 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
-    :param agent_id: Agent ID
-    :type agent_id: str
     :param offset: First element to return in the collection
     :type offset: int
     :param limit: Maximum number of elements to return
@@ -61,8 +60,6 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :type status: List[str]
     :param summary: Returns a summary grouping by filename.
     :type summary: bool
     :param md5: Filters files with the specified MD5 checksum.
