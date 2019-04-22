@@ -2285,6 +2285,7 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
     char id_hashed[OS_SIZE_128];
     int ret_add = 0;
     cJSON *pm_id = cJSON_GetObjectItem(profile, "id");
+    int alert = 1;
 
     if(!pm_id) {
         return 0;
@@ -2296,49 +2297,20 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
 
     sprintf(id_hashed, "%d", pm_id->valueint);
 
-    hashed_result = OSHash_Get(cis_db_hash,id_hashed);
+    hashed_result = OSHash_Get(cis_db_hash, id_hashed);
 
-    if(hashed_result){
-        if(strcmp(result,hashed_result->result) == 0) {
-            return 0;
-        } else {
-            cis_db_info_t *elem;
+    cis_db_info_t *elem;
 
-            os_calloc(1,sizeof(cis_db_info_t),elem);
-            os_strdup(result,elem->result);
+    os_calloc(1, sizeof(cis_db_info_t), elem);
+    os_strdup(result, elem->result);
 
-            cJSON *obj = cJSON_Duplicate(event,1);
-            elem->event = NULL;
+    cJSON *obj = cJSON_Duplicate(event,1);
+    elem->event = NULL;
 
-            if(obj) {
-                elem->event = obj;
-                if (ret_add = OSHash_Update(cis_db_hash,id_hashed,elem), ret_add != 1) {
-                    merror("Unable to update hash table for check: %d", pm_id->valueint);
-                    os_free(elem->result);
-                    cJSON_Delete(elem->event);
-                    os_free(elem);
-                    return 0;
-                }
+    if(obj) {
+        elem->event = obj;
 
-                cis_db_for_hash[policy_index].elem[check_index] = elem;
-                return 1;
-            }
-
-            os_free(elem->result);
-            os_free(elem);
-            return 0;
-        }
-    } else {
-        cis_db_info_t *elem;
-
-        os_calloc(1,sizeof(cis_db_info_t),elem);
-        os_strdup(result,elem->result);
-
-        cJSON *obj = cJSON_Duplicate(event,1);
-        elem->event = NULL;
-
-        if(obj) {
-            elem->event = obj;
+        if (!hashed_result) {
             if (ret_add = OSHash_Add(cis_db_hash,id_hashed,elem), ret_add != 2) {
                 merror("Unable to update hash table for check: %d", pm_id->valueint);
                 os_free(elem->result);
@@ -2346,13 +2318,29 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
                 os_free(elem);
                 return 0;
             }
-            cis_db_for_hash[policy_index].elem[check_index] = elem;
-            return 1;
+        } else {
+            if(strcmp(result,hashed_result->result) == 0) {
+                alert = 0;
+            }
+
+            if (ret_add = OSHash_Update(cis_db_hash,id_hashed,elem), ret_add != 1) {
+                merror("Unable to update hash table for check: %d", pm_id->valueint);
+                os_free(elem->result);
+                cJSON_Delete(elem->event);
+                os_free(elem);
+                return 0;
+            }
         }
-        os_free(elem->result);
-        os_free(elem);
-        return 0;
+
+        cis_db_for_hash[policy_index].elem[check_index] = elem;
+        return alert;
+
     }
+
+    os_free(elem->result);
+    os_free(elem);
+    return 0;
+
 }
 
 static void wm_sca_free_hash_data(cis_db_info_t *event) {
@@ -2484,7 +2472,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 }
             }
 
-            sleep(5);
+            wm_delay(5000);
            
             int elements_sent = i - 1;
             mdebug1("Sending end of dump control event");
