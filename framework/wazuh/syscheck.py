@@ -129,6 +129,11 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
                   "uid", "type"}
     summary_parameters = {"date", "mtime", "file"}
 
+    if sort is not None:
+        for element in sort['fields']:
+            if element not in parameters:
+                raise WazuhError(1403, ', '.join(set(sort['fields']) - parameters), "Allowed fields are: {0}".format(', '.join(parameters)))
+
     if select is None:
         select = summary_parameters if summary else parameters
     else:
