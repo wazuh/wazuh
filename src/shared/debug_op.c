@@ -226,12 +226,16 @@ static void _log(int level, const char *tag, const char * file, int line, const 
 void os_logging_config(){
   OS_XML xml;
   const char * xmlf[] = {"ossec_config", "logging", "log_format", NULL};
+  const char * new_log_format[] = {"ossec_config", "logging", "log", "format", NULL};
+  const char * xml_enabled[] = {"ossec_config", "logging", "log", "enabled", NULL};
   char * logformat;
+  char * logenabled;
   char ** parts = NULL;
   int i;
 
   pid = (int)getpid();
   flags.read = 1;
+
 
   if (OS_ReadXML(chroot_flag ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
     flags.log_plain = 1;
@@ -240,7 +244,17 @@ void os_logging_config(){
     merror_exit(XML_ERROR, chroot_flag ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
   }
 
-  logformat = OS_GetOneContentforElement(&xml, xmlf);
+  if(logenabled = OS_GetOneContentforElement(&xml, xml_enabled), logenabled) {
+      if(!strncmp(logenabled, "no", strlen(logenabled))) {
+        flags.log_plain = 0;
+        flags.log_json = 0;
+        minfo("Logging has been disabled for both 'ossec.log' and 'ossec.json'.");
+      }
+  }
+
+  if(logformat = OS_GetOneContentforElement(&xml, new_log_format), !logformat) {
+    logformat = OS_GetOneContentforElement(&xml, xmlf);
+  }
 
   if (!logformat || logformat[0] == '\0'){
 
