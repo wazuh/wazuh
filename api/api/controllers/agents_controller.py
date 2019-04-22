@@ -12,6 +12,7 @@ from wazuh.cluster.dapi.dapi import DistributedAPI
 from ..models.agent_list_model import AgentList
 from ..models.agent_inserted import AgentInserted
 from ..models.agent_added import AgentAdded
+from ..util import parse_api_param
 from wazuh.exception import WazuhException
 from ..util import remove_nones_to_dict, exception_handler
 
@@ -60,7 +61,7 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
 
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
-                   status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
+                   agent_status=None, q='', older_than=None, os_platform=None, os_version=None, os_name=None, manager=None,
                    version=None, group=None, node_name=None, name=None, ip=None):  # noqa: E501
     """Get all agents
 
@@ -80,8 +81,8 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :type sort: str
     :param search: Looks for elements with the specified string
     :type search: str
-    :param status: Filters by agent status. Use commas to enter multiple statuses.
-    :type status: List[str]
+    :param agent_status: Filters by agent status. Use commas to enter multiple statuses.
+    :type agent_status: List[str]
     :param q: Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;Active&amp;quot;
     :type q: str
     :param older_than: Filters out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’, ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never connected agents, uses the register date. 
@@ -109,11 +110,11 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': sort,
-                'search': search,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'select': select,
                 'filters': {
-                    'status': status,
+                    'status': agent_status,
                     'older_than': older_than,
                     'os.platform': os_platform,
                     'os.version': os_version,

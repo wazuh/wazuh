@@ -582,9 +582,13 @@ stages:
       status_code: 200
       save:
         body:
-          expected_os_platform: items.os.platform
-          expected_os_version: items.os.version
-          expected_manager_host: items.manager
+          expected_os_platform: items.0.os.platform
+          expected_os_version: items.0.os.version
+          expected_os_name: items.0.os.name
+          expected_manager_host: items.0.manager
+          expected_node_name: items.0.node_name
+          expected_name: items.0.name
+          expected_ip: items.0.ip
       body:
         items:
           - status: Active
@@ -601,9 +605,70 @@ stages:
     response:
       status_code: 400
 
-  #Solve problems with sort and search params
+  - name: Sort
 
-  - name: Selection
+    request:
+      <<: *get_agents
+      params:
+        sort: -id
+
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with wrong sort
+
+    request:
+      <<: *get_agents
+      params:
+        sort: -wrong_sort
+
+    response:
+      status_code: 400
+
+  - name: Search
+
+    request:
+      <<: *get_agents
+      params:
+        search: '000'
+
+    response:
+      status_code: 200
+      body:
+        items: !anything
+          id: '000'
+        totalItems: !anyint
+
+  - name: Try show agents with wrong search
+
+    request:
+      <<: *get_agents
+      params:
+        search: wrong_search
+
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter select one field
+
+    request:
+      <<: *get_agents
+      params: 
+        select: 'os.platform'
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+  
+  - name: Filter select multiple fields
 
     request:
       <<: *get_agents
@@ -626,7 +691,17 @@ stages:
     response:
       status_code: 400
 
-  - name: Version
+  - name: Try show agents with not allowed selector (invalid character)
+
+    request:
+      <<: *get_agents
+      params:
+        select: param_ñ_test
+
+    response:
+      status_code: 400
+
+  - name: Filter by agent version
 
     request:
       <<: *get_agents
@@ -639,8 +714,20 @@ stages:
         items: !anything
         totalItems: !anyint
 
-  #Not work properly
-  - name: OS Platform
+  - name: Try show agents with not existed version
+
+    request:
+      <<: *get_agents
+      params: 
+        version: 'TestVersion'
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent OS Platform
 
     request:
       <<: *get_agents
@@ -652,13 +739,26 @@ stages:
       body:
         items: !anything
         totalItems: !anyint
-
-  - name: OS Version
+  
+  - name: Try show agents with not existed OS Platform
 
     request:
       <<: *get_agents
       params: 
-        os_platform: expected_os_version
+        os_platform: test_platform
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent OS Version
+
+    request:
+      <<: *get_agents
+      params: 
+        os_version: "{expected_os_version:s}"
     
     response:
       status_code: 200
@@ -666,7 +766,124 @@ stages:
         items: !anything
         totalItems: !anyint
 
-  - name: ManagerHost
+  - name: Try show agents with not existed OS Version
+
+    request:
+      <<: *get_agents
+      params: 
+        os_version: test_version
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent OS Name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_name: "{expected_os_name:s}"
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with not existed OS Name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_name: test_name
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent Node Name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_platform: "{expected_node_name:s}"
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+  
+  - name: Try show agents with not existed Node Name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_platform: test_node_name
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_version: "{expected_name:s}"
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with not existed agent name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_version: test_name
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent IP
+
+    request:
+      <<: *get_agents
+      params: 
+        os_name: "{expected_ip:s}"
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with not existed OS Name
+
+    request:
+      <<: *get_agents
+      params: 
+        os_name: test_ip
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent ManagerHost
 
     request:
       <<: *get_agents
@@ -678,3 +895,124 @@ stages:
       body:
         items: !anything
         totalItems: !anyint
+  
+  - name: Try show agents with not existed ManagerHost
+
+    request:
+      <<: *get_agents
+      params: 
+        manager: test_manager
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter by agent status
+
+    request:
+      <<: *get_agents
+      params: 
+        agent_status: active
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+  
+  - name: Filter by agent status 2
+
+    request:
+      <<: *get_agents
+      params: 
+        agent_status: active,neverconnected
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with not existed status
+
+    request:
+      <<: *get_agents
+      params: 
+        agent_status: test_status
+    
+    response:
+      status_code: 400
+
+  - name: Filter agents by group
+
+    request:
+      <<: *get_agents
+      params: 
+        group: default
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+  
+  - name: Try show agents with not existed group
+
+    request:
+      <<: *get_agents
+      params: 
+        group: test_group
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 0
+
+  - name: Filter agents by query
+
+    request:
+      <<: *get_agents
+      params: 
+        q: group=default;lastKeepAlive<1d
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with bad query
+
+    request:
+      <<: *get_agents
+      params: 
+        q: group=default;lastKeepAe<1d
+    
+    response:
+      status_code: 400
+
+  - name: Filter agents by older param
+
+    request:
+      <<: *get_agents
+      params: 
+        older_than: 10s
+    
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: !anyint
+
+  - name: Try show agents with bad older_than
+
+    request:
+      <<: *get_agents
+      params: 
+        older_than: bad_time
+    
+    response:
+      status_code: 400
