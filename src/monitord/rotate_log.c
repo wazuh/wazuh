@@ -52,9 +52,9 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
         minfo("Running daily rotation of log files.");
     else {
         if (rotate_json)
-            minfo("Rotating 'ossec.json' file: Maximum size reached.");
+            minfo("Rotating 'ossec.json' file.");
         else
-            minfo("Rotating 'ossec.log' file: Maximum size reached.");
+            minfo("Rotating 'ossec.log' file.");
     }
 
     if (new_day)
@@ -88,7 +88,11 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
 
 #endif
 
-    snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
+    if(!strncmp(base_dir, "/logs", strlen(base_dir))){
+        snprintf(year_dir, PATH_MAX, "%s/ossec/%d", base_dir, tm.tm_year + 1900);
+    } else {
+        snprintf(year_dir, PATH_MAX, "%s/%d", base_dir, tm.tm_year + 1900);
+    }
     snprintf(month_dir, PATH_MAX, "%s/%s", year_dir, MONTHS[tm.tm_mon]);
     snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
     snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);

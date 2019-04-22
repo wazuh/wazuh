@@ -13,7 +13,8 @@
 
 /* Global variables */
 monitor_config mond;
-
+static int __ossec_rsec;
+struct timespec m_timespec;
 
 void Monitord()
 {
@@ -23,6 +24,10 @@ void Monitord()
 
     char path_ossec[PATH_MAX];
     char path_ossec_json[PATH_MAX];
+
+    /* Get current time before starting */
+    gettime(&m_timespec);
+    __ossec_rsec = m_timespec.tv_sec;
 
     struct stat buf;
     off_t size;
@@ -78,6 +83,7 @@ void Monitord()
     while (1) {
         tm = time(NULL);
         p = localtime(&tm);
+        gettime(&m_timespec);
         counter++;
 
 #ifndef LOCAL
@@ -96,8 +102,9 @@ void Monitord()
             if(mond.rotation_enabled) {
                 if(mond.ossec_log_plain) {
                     w_rotate_log(path_ossec, mond.compress_rotation, mond.keep_log_days, 1, 1, mond.daily_rotations);
-                } else if(mond.ossec_log_json) {
-                    w_rotate_log(path_ossec, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations);
+                }
+                if(mond.ossec_log_json) {
+                    w_rotate_log(path_ossec_json, mond.compress_rotation, mond.keep_log_days, 1, 0, mond.daily_rotations);
                 }
             }
 
@@ -108,24 +115,36 @@ void Monitord()
             today = p->tm_mday;
             thismonth = p->tm_mon;
             thisyear = p->tm_year + 1900;
-        } else if (mond.rotation_enabled && mond.max_size > 0) {
-            if ((stat(path_ossec, &buf) == 0) && mond.ossec_log_plain) {
-                size = buf.st_size;
-                /* If log file reachs maximum size, rotate ossec.log */
-                if ( (long) size >= mond.max_size) {
-                    w_rotate_log(path_ossec, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations);
+        } else if (mond.rotation_enabled) {
+            if(mond.max_size > 0) {
+                if ((stat(path_ossec, &buf) == 0) && mond.ossec_log_plain) {
+                    size = buf.st_size;
+                    /* If log file reachs maximum size, rotate ossec.log */
+                    if ( (long) size >= mond.max_size) {
+                        w_rotate_log(path_ossec, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations);
+                        __ossec_rsec = m_timespec.tv_sec;
+                    }
+                }
+                if ((stat(path_ossec_json, &buf) == 0) && mond.ossec_log_json) {
+                    size = buf.st_size;
+                    /* If log file reachs maximum size, rotate ossec.json */
+                    if ( (long) size >= mond.max_size) {
+                        w_rotate_log(path_ossec_json, mond.compress_rotation, mond.keep_log_days, 0, 1, mond.daily_rotations);
+                        __ossec_rsec = m_timespec.tv_sec;
+                    }
                 }
             }
-
-            if ((stat(path_ossec_json, &buf) == 0) && mond.ossec_log_json) {
-                size = buf.st_size;
-                /* If log file reachs maximum size, rotate ossec.log */
-                if ( (long) size >= mond.max_size) {
+            if (mond.rotation_enabled && mond.interval > 0 && m_timespec.tv_sec - __ossec_rsec > mond.interval) {
+                if(mond.ossec_log_plain) {
+                    w_rotate_log(path_ossec, mond.compress_rotation, mond.keep_log_days, 0, 0, mond.daily_rotations);
+                    __ossec_rsec = m_timespec.tv_sec;
+                }
+                if(mond.ossec_log_json) {
                     w_rotate_log(path_ossec_json, mond.compress_rotation, mond.keep_log_days, 0, 1, mond.daily_rotations);
+                    __ossec_rsec = m_timespec.tv_sec;
                 }
             }
         }
-
         sleep(1);
     }
 }
