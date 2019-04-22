@@ -31,6 +31,7 @@ from json import loads
 from functools import reduce
 import errno
 import requests
+import ipaddress
 
 def create_exception_dic(id, e):
     """
@@ -588,6 +589,19 @@ class Agent:
             if not is_authd_running:
                 raise WazuhInternalError(1726)
 
+        ip = ip.lower()
+        if ip != 'any':
+            if ip.find('/') > 0:
+                try:
+                    ipaddress.ip_network(ip)
+                except:
+                    WazuhError(1706, ip)
+            else:
+                try:
+                    ipaddress.ip_address(ip)
+                except:
+                    raise WazuhError(1706, ip)
+
         if not is_authd_running:
             data = self._add_manual(name, ip, id, key, force)
         else:
@@ -615,12 +629,39 @@ class Agent:
         if id:
             id = id.zfill(3)
 
-        ip = ip.lower()
-
         if key and len(key) < 64:
             raise WazuhError(1709)
 
         force = force if type(force) == int else int(force)
+
+        # Checks if the values are added
+        lock_file = open("{}/var/run/.api_lock".format(common.ossec_path), 'a+')
+        fcntl.lockf(lock_file, fcntl.LOCK_EX)
+        with open(common.client_keys) as f_k:
+            try:
+                for line in f_k.readlines():
+                    if not line.strip():  # ignore empty lines
+                        continue
+
+                    if line[0] in ('# '):  # starts with # or ' '
+                        continue
+
+                    line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+
+                    if id and id == line_data[0]:
+                        raise WazuhError(1708, id)
+                    if name == line_data[1]:
+                        if force < 0:
+                            raise WazuhError(1705, name)
+                        else:
+                            check_remove = 1
+                    if ip != 'any' and ip == line_data[2]:
+                        if force < 0:
+                            raise WazuhError(1706, ip)
+                        else:
+                            check_remove = 2
+            except WazuhError as e:
+                raise e
 
         msg = ""
         if name and ip:
@@ -657,8 +698,6 @@ class Agent:
         # Check arguments
         if id:
             id = id.zfill(3)
-
-        ip = ip.lower()
 
         if key and len(key) < 64:
             raise WazuhError(1709)
@@ -1201,7 +1240,7 @@ class Agent:
         """
 
         new_agent = Agent(name=name, ip=ip, id=id, key=key, force=force_time)
-        return {'id': new_agent.id, 'key': new_agent.compute_key()}
+        return {'id': new_agent.id, 'key': new_agent.key}
 
 
     @staticmethod

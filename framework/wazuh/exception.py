@@ -129,7 +129,7 @@ class WazuhException(Exception):
         1705: {'message': 'There is an agent with the same name',
                'remediation': 'Please choose another name'
                },
-        1706: {'message': 'There is an agent with the same IP',
+        1706: {'message': 'There is an agent with the same IP or the IP is invalid',
                'remediation': 'Please choose another IP'
                },
         1707: {'message': 'Impossible to restart agent due to it is not active',

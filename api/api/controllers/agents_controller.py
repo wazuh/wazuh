@@ -18,6 +18,9 @@ from ..util import remove_nones_to_dict, exception_handler
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
+# import pydevd_pycharm
+# pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
+
 @exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
     """Delete agents
@@ -28,8 +31,8 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
-    :param list_agents: Array of agent ID’s
-    :type list_agents: List[str]
+    :param list_agents_ids: Array of agent ID’s
+    :type list_agents_ids: List[str]
     :param purge: Delete an agent from the key store
     :type purge: bool
     :param status: Filters by agent status. Use commas to enter multiple statuses.
@@ -1141,6 +1144,12 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
         return 'ERROR', 400
 
     f_kwargs = {**{}, **agent_inserted_model.to_dict()}
+    try:
+        f_kwargs['id'] = connexion.request.get_json()['id']
+        f_kwargs['key'] = connexion.request.get_json()['key']
+    except:
+        # The user has not entered the key or the id or both
+        pass
 
     dapi = DistributedAPI(f=Agent.insert_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

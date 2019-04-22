@@ -3257,7 +3257,6 @@ paths:
                     minimum: 1
                 required:
                 - name
-                - ip
       responses:
         '200':
           description: 'Add an agent'
@@ -4325,6 +4324,8 @@ paths:
                     description: Remove the old agent with the same IP if disconnected since <force_time> seconds.
                     type: integer
                     format: int32
+                required:
+                  - name
               example:
                 name: NewHost_2
                 ip: 10.0.10.10
