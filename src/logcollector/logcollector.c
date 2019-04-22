@@ -306,7 +306,7 @@ void LogCollectorStart()
         if (f_free_excluded >= free_excluded_files_interval) {
             w_rwlock_wrlock(&files_update_rwlock);
 
-            mdebug1("Free excluded files hash table");
+            mdebug1("Refreshing excluded files list.");
 
             OSHash_Free(excluded_files);
             excluded_files = OSHash_Create();
