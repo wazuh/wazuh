@@ -954,6 +954,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             if(references) {
                 if(!references->valuestring) {
                     merror("Malformed JSON: field 'references' must be a string");
+                    os_free(hash_scan_info);
                     return;
                 }
                 references_db = references->valuestring;
@@ -962,6 +963,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             if(description) {
                 if(!description->valuestring) {
                     merror("Malformed JSON: field 'description' must be a string");
+                    os_free(hash_scan_info);
                     return;
                 }
                 description_db = description->valuestring;
