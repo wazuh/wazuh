@@ -57,7 +57,7 @@ static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
 static char *wm_sca_hash_integrity(int policy_index);
-static char *wm_sca_hash_integrity_file(char *policy_name);
+static char *wm_sca_hash_integrity_file(const char *file);
 static void wm_sca_free_hash_data(cis_db_info_t *event);
 static void * wm_sca_dump_db_thread(wm_sca_t * data);
 static void wm_sca_send_policies_scanned(wm_sca_t * data);
@@ -522,7 +522,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 }
                 mdebug1("Calculating hash for scanned results.");
                 char * integrity_hash = wm_sca_hash_integrity(cis_db_index);
-                char * integrity_hash_file = wm_sca_hash_integrity_file(data->profile[i]->profile);                
+                mdebug1("Calculating hash for policy file '%s'", data->profile[i]->profile);
+                char * integrity_hash_file = wm_sca_hash_integrity_file(path);
 
                 time_end = time(NULL);
 
@@ -2380,28 +2381,13 @@ static char *wm_sca_hash_integrity(int policy_index) {
     return NULL;
 }
 
-static char *wm_sca_hash_integrity_file(char *policy_name) {
+static char *wm_sca_hash_integrity_file(const char *file) {
 
     char *hash_file = NULL;
-    char file_path[OS_MAXSTR];
-#ifdef WIN32
-    if (policy_name[1] && policy_name[2]) {
-        if ((policy_name[1] == ':') || (policy_name[0] == '\\' && policy_name[1] == '\\')) {
-            sprintf(file_path,"%s", policy_name);
-        } else{
-            sprintf(file_path,"%s\\%s",SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, policy_name);
-        }
-    }
-#else
-    if(policy_name[0] == '/') {
-        sprintf(file_path,"%s", policy_name);
-    } else {
-        sprintf(file_path,"%s/%s",DEFAULTDIR SECURITY_CONFIGURATION_ASSESSMENT_DIR, policy_name);
-    }
-#endif
     os_malloc(65*sizeof(char), hash_file);
-    if(OS_SHA256_File(file_path, hash_file, OS_TEXT) != 0){
-        merror("Unable to open the file %s to extract the SHA256", policy_name);
+
+    if(OS_SHA256_File(file, hash_file, OS_TEXT) != 0){
+        merror("Unable to calculate SHA256 for file '%s'", file);
         os_free(hash_file);
         return NULL;
     }
