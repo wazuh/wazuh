@@ -231,3 +231,17 @@ stages:
         status: 500
         title: "Wazuh Internal Error"
         type: "about:blank"
+
+  - name: Create a agent with invalid name
+
+    request:
+      url: http://localhost:55000/agents/new_agent;
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        status: 400
+        detail: !anystr
+        title: "Bad Request"
+        type: "about:blank"

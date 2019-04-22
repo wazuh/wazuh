@@ -1,0 +1,58 @@
+---
+test_name: POST /agents/restart
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Restart all agents
+
+    request:
+      url: http://localhost:55000/agents/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Restarting all agents"
+
+  - name: Restart an agent
+
+    request:
+      url: http://localhost:55000/agents/001/restart
+      method: PUT
+
+    response:
+      data:
+        affected_agents: [
+          "001"
+        ]
+        message: "All selected agents were restarted"
+
+  - name: Restart agent with bad id
+
+    request:
+      url: http://localhost:55000/agents/abc/restart
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Try to restart manager
+
+    request:
+      url: http://localhost:55000/agents/000/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Some agents were not restarted"
+
+---
