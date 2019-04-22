@@ -166,7 +166,7 @@ stages:
         affected_agents: [
           "001"
         ]
-        message: "All selected agents were restarted"
+      message: "All selected agents were restarted"
 
   - name: Restart agent with bad id
 
@@ -174,14 +174,24 @@ stages:
       url: http://localhost:55000/agents/abc/restart
       method: PUT
 
-      response:
-        status_code: 400
-        body:
-          detail: !anystr
-          status: 400
-          title: "Bad Request"
-          type: "about:blank"
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
 
+  - name: Try to restart manager
+
+    request:
+      url: http://localhost:55000/agents/000/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Some agents were not restarted"
 
 ---
 test_name: PUT /agents
