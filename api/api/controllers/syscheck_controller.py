@@ -6,7 +6,7 @@ import asyncio
 import connexion
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.syscheck as syscheck
 
@@ -81,7 +81,7 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
                'sha256': sha256, 'hash': hash_, 'file': file_}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'summary': summary, 'filters': filters}
 
     dapi = DistributedAPI(f=syscheck.files,
