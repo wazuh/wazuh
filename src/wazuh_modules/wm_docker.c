@@ -103,11 +103,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
     if (docker_conf->flags.enabled) cJSON_AddStringToObject(wm_docker,"disabled","no"); else cJSON_AddStringToObject(wm_docker,"disabled","yes");
     if (docker_conf->flags.run_on_start) cJSON_AddStringToObject(wm_docker,"run_on_start","yes"); else cJSON_AddStringToObject(wm_docker,"run_on_start","no");
     cJSON_AddNumberToObject(wm_docker,"interval",docker_conf->interval);
-    if (docker_conf->attempts) {
-        cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
-    } else {
-        cJSON_AddNumberToObject(wm_docker, "attempts", 5);
-    }
+    cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
     cJSON_AddItemToObject(root,"docker-listener",wm_docker);
 
     return root;
