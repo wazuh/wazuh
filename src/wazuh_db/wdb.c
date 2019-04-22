@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wazuh_modules/wmodules.h"
 
 #ifdef WIN32
 #define getuid() 0
@@ -845,4 +846,36 @@ void wdb_remove_database(wdb_t *wdb) {
     wdb->remove = 1;
     wdb->transaction = 1;
     wdb_leave(wdb);
+}
+
+int wdb_remove_multiple_agents(char *agent_list) {
+    wdb_t *wdb;
+    char **agents;
+    char *next;
+    long int agent_id;
+    int n = 0;
+
+    agents = wm_strtok(agent_list);
+
+    while (agents && agents[n]) {
+        next = agents[n + 1];
+        agent_id = strtol(agents[n], &next, 10);
+        if ((errno == ERANGE) || (errno != 0 && agent_id == 0) || *next) {
+            mwarn("Invalid agent ID '%s'\n", agents[n]);
+        } else {
+            if (wdb = wdb_open_agent2(agent_id), !wdb) {
+                return -1;
+            }
+
+            if (wdb->remove) {
+                mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+                return 0;
+            }
+            wdb_remove_database(wdb);
+        }
+        n++;
+    }
+
+    free(agents);
+    return 0;
 }
