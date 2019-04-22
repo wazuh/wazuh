@@ -72,7 +72,9 @@ class WazuhException(Exception):
         1400: 'Invalid offset',
         1401: 'Invalid limit',
         1402: 'Invalid order. Order must be \'asc\' or \'desc\'',
-        1403: 'Sort field invalid',  # Also, in DB
+        1403: {'message': 'Not a valid sort field ',
+               'remediation': 'Please, use only allowed sort fields'
+               },
         1404: 'A field must be specified to order the data',
         1405: 'Specified limit exceeds maximum allowed (1000)',
         1406: '0 is not a valid limit',
