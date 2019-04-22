@@ -2687,3 +2687,39 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 
     return 0;
 }
+
+// Fills the given rotation list. Returns 0 on success or -1 on failure.
+int fill_rotation_list(OSList *list, char *dirname, int year, const char *month, int day){
+    DIR *dir;
+    struct dirent *dp;
+    char path[OS_FLSIZE];
+    dir = opendir(dirname);
+    RotationNode *node;
+    os_calloc(1, sizeof(node), node);
+    int file_index = 0;
+
+    if (!dir) {
+        merror("Couldn't open directory '%s': %s.", dirname, strerror(errno));
+        return -1;
+    }
+
+    while (dp = readdir(dir), dp) {
+        // Skip "." and ".."
+        if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' || (dp->d_name[1] == '.' && dp->d_name[2] == '\0'))) {
+            continue;
+        }
+        memset(path, '\0', OS_FLSIZE + 1);
+        snprintf(path, OS_FLSIZE+1, "%s/%s", dirname, dp->d_name);
+        if(!IsDir(path)) {
+            fill_rotation_list(list, path, year, month, day);
+        } else if(!IsFile(path)) {
+            os_strdup(path, node->path);
+            node->rotation_index = file_index;
+            file_index++;
+            OSList_AddData(list, node);
+        }
+    }
+
+    closedir(dir);
+    return 0;
+}

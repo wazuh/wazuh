@@ -15,7 +15,20 @@
 monitor_config mond;
 static int __ossec_rsec;
 struct timespec m_timespec;
-
+const char * MONTHS[] = {
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+};
 void Monitord()
 {
     time_t tm;
@@ -79,6 +92,9 @@ void Monitord()
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
+    OSList_Create();
+    fill_rotation_list(mond.ossec_rotation_files, OSSECLOGS, p->tm_year, MONTHS[p->tm_mon], p->tm_mday);
+
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
@@ -93,6 +109,7 @@ void Monitord()
             counter = 0;
         }
 #endif
+
 
         /* Day changed, deal with log files */
         if (today != p->tm_mday) {

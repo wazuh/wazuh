@@ -31,6 +31,11 @@ typedef struct File {
     FILE *fp;
 } File;
 
+typedef struct RotationNode {
+    char *path;
+    int rotation_index;
+} RotationNode;
+
 /* Set the program name - must be done before *anything* else */
 void OS_SetName(const char *name) __attribute__((nonnull));
 
@@ -135,4 +140,6 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst);
 
 int checkBinaryFile(const char *f_name);
 
+// Fills the given rotation list. Returns 0 on success or -1 on failure.
+int fill_rotation_list(OSList *list, char *dirname, int year, const char *month, int day);
 #endif /* __FILE_H */

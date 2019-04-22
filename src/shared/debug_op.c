@@ -291,9 +291,6 @@ void os_logging_config(){
         free(logformat);
         OS_ClearXML(&xml);
     }
-    if(flags.log_plain || flags.log_json) {
-        mwarn("The option 'log_format' is deprecated. Please, use the 'format' option instead.");
-    }
 }
 
 cJSON *getLoggingConfig(void) {

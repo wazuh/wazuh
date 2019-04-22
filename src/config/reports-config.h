@@ -46,6 +46,7 @@ typedef struct _monitor_config {
     unsigned int compress_rotation:1;
     unsigned int ossec_log_plain:1;
     unsigned int ossec_log_json:1;
+    OSList *ossec_rotation_files;
     long int max_size;
     long int interval;
     int rotate;
