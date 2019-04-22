@@ -45,9 +45,9 @@ else
 fi    
 
 
-ls "`which curl`" > /dev/null 2>&1
+ls "`command -v curl`" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
-    ls "`which wget`" > /dev/null 2>&1
+    ls "`command -v wget`" > /dev/null 2>&1
     if [ $? = 0 ]; then
         wget --keep-session-cookies --http-user=$TWITTERUSER --http-password=$TWITTERPASS --post-data="source=$SOURCE&$REQUESTUSER$REQUESTMSG" $SITE 2>>${PWD}/../logs/active-responses.log
         exit 0;

@@ -8,7 +8,7 @@ PI=""
 PL=""
 
 # Look for MySQL
-ls "`which mysql 2>/dev/null`" > /dev/null 2>&1
+ls "`command -v mysql 2>/dev/null`" > /dev/null 2>&1
 if [ $? = 0 ]; then
     # Check if mysql_config is installed to use it
     mysql_config --port > /dev/null 2>&1
@@ -45,7 +45,7 @@ if [ $? = 0 ]; then
 fi
 
 # Look for PostgreSQL
-ls "`which psql 2>/dev/null`" > /dev/null 2>&1
+ls "`command -v psql 2>/dev/null`" > /dev/null 2>&1
 if [ $? = 0 ]; then
     # Check if pg_config is installed to use it
     pg_config --version > /dev/null 2>&1

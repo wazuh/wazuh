@@ -12,7 +12,7 @@
 
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 DAEMON=/usr/local/bin/ossec2snorby/ossec2snorby.pl
-PERLPATH=`which perl` || { echo "  [ERROR]:perl not found."; exit 1; }
+PERLPATH=`command -v perl` || { echo "  [ERROR]:perl not found."; exit 1; }
 NAME="ossec2snorby.pl"
 DESC="Ossec2Snorby Output Processor"
 PIDFILE="/var/run/ossec2snorby.pid"

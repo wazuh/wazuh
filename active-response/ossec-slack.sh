@@ -37,9 +37,9 @@ ALERTFULL=`grep -A 10 "$ALERTTIME" ${PWD}/../logs/alerts/alerts.log | grep -v "\
 
 PAYLOAD='{"channel": "'"$CHANNEL"'", "username": "'"$SLACKUSER"'", "text": "'"${ALERTFULL}"'"}'
 
-ls "`which curl`" > /dev/null 2>&1
+ls "`command -v curl`" > /dev/null 2>&1
 if [ ! $? = 0 ]; then
-    ls "`which wget`" > /dev/null 2>&1
+    ls "`command -v wget`" > /dev/null 2>&1
     if [ $? = 0 ]; then
         wget --keep-session-cookies --post-data="${PAYLOAD}" ${SITE} 2>>${PWD}/../logs/active-responses.log
         exit 0;

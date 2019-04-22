@@ -27,7 +27,7 @@ if [ "X${UNAME}" = "XFreeBSD" ]; then
 # Darwin
 elif [ "X${UNAME}" = "XDarwin" ]; then
     # Is pfctl present?
-    if which pfctl > /dev/null; then
+    if command -v pfctl > /dev/null; then
         echo "Firewall detected: PF";
         FILE="pf.sh";
     else

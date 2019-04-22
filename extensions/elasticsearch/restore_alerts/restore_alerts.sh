@@ -65,8 +65,8 @@ exec_cmd_bash() {
 
 install_logstash () {
     # Check package manager
-    YUM_CMD=$(which yum)
-    APT_GET_CMD=$(which apt-get)
+    YUM_CMD=$(command -v yum)
+    APT_GET_CMD=$(command -v apt-get)
 
     # Add Elastic Stack repository
     if [[ ! -z $YUM_CMD ]]; then
