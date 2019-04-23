@@ -12,6 +12,7 @@
 #define __CROOTCHECK_H
 
 #include <stdio.h>
+#include "os_regex/os_regex.h"
 
 #define RK_CONF_UNPARSED -2
 #define RK_CONF_UNDEFINED -1
@@ -23,6 +24,7 @@ typedef struct _rkconfig {
     char *rootkit_trojans;
     char **unixaudit;
     char **ignore;
+    OSMatch **ignore_sregex;
     char *winaudit;
     char *winmalware;
     char *winapps;
