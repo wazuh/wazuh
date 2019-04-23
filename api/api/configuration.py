@@ -91,7 +91,7 @@ def read_config(config_file=common.api_config_path) -> Dict:
         configuration = None
 
     # if any value is missing from user's cluster configuration, add the default one:
-    if configuration is None:
+    if 'wazuh-api' not in configuration.keys():
         configuration = default_configuration
     else:
         dict_to_lowercase(configuration)
