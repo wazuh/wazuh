@@ -426,23 +426,64 @@ stages:
         title: "Wazuh Error"
         type: "about:blank"
 
-#---
-#test_name: POST /agents/groups/{group_id}/files/{file_name}
-#
-#marks:
-#  - usefixtures:
-#      - agents_test
-#
-#stages:
-#  - name: Write the agent.conf file
+---
+test_name: POST /agents/groups/{group_id}/configuration
+
+includes:
+  - !include common.yaml
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf2
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'testagentconf2' created."
+
+  - name: Write the agent.conf file
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: "Agent configuration was updated successfully"
+
+#  - name: Error bad group
 #
 #    request:
-#      url: http://localhost:55000/agents/groups/testsagentconf/files/agent.conf
-#      method: POST
-#      json:
+#      url: http://localhost:55000/agents/groups/noexist/configuration
+#        method: POST
+#        headers:
+#          content-type: "application/xml"
+#        data:
+#          "{file_xml:s}"
 #
-#    response:
-#      status_code: 200
-#      body:
-
+#        response:
+#          status_code: 500
+#          body:
+#            code: 1000
+#            dapi_errors:
+#              master-node:
+#                "error": "There is an agent with the same IP or the IP is invalid: 333.333.333.333"
+#                "logfile": "WAZUH_HOME/logs/api.log"
+#            detail: "There is an agent with the same IP or the IP is invalid: 333.333.333.333"
+#            remediation: "Please choose another IP"
+#            status: 400
+#            title: "Wazuh Error"
+#            type: "about:blank"
 ---

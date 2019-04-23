@@ -10,7 +10,7 @@ from os import remove, path as os_path
 import re
 from shutil import move
 from xml.dom.minidom import parseString
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
@@ -475,7 +475,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     """
     if group_id:
         if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
+            raise WazuhError(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.shared_path, group_id)
 
@@ -487,7 +487,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
     agent_conf += "/{0}".format(agent_conf_name)
 
     if not os_path.exists(agent_conf):
-        raise WazuhException(1006, agent_conf)
+        raise WazuhError(1006, agent_conf)
 
     try:
 
@@ -503,7 +503,7 @@ def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filenam
 
             data = _agentconf2json(xml_data)
     except Exception as e:
-        raise WazuhException(1101, str(e))
+        raise WazuhInternalError(1101, str(e))
 
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
 
