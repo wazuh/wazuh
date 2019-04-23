@@ -479,7 +479,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
     if (exists) {
-        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s|%s|%s|%d", lf->agent_id, id, result, status, reason, scan_id);
+        snprintf(msg, OS_MAXSTR - 1, "agent %s sca update %d|%s|%s|%s|%d", lf->agent_id, id, result ? result : "", status ? status : "", reason ? reason : "", scan_id);
     }
     else {
         char *json_event = cJSON_PrintUnformatted(event);
