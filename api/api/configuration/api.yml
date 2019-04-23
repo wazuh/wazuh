@@ -48,10 +48,11 @@ wazuh-api:
 # uWSGI server configuration
 uwsgi:
   http: localhost:55000
-  wsgi-file: /var/ossec/bin/wazuh-apid
-  callable: app
+  wsgi-file: /var/ossec/bin/api
+  callable: wazuh_api
   single-interpreter: true
   enable-threads: true
   master: 1
   processes: 4
   threads: 4
+  die-on-term: true
