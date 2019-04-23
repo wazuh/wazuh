@@ -52,3 +52,24 @@ def test_null_values_are_removed(wdb_mock):
         mywdb = WazuhDBConnection()
         received = mywdb._send("test")
         assert received == {"a": "a", "c": [1, 2, 3], "d": {}}
+
+
+@pytest.mark.parametrize('content', [
+    b'ok {"agents": {"001": "Ok"}}',
+    b'ok {"agents": {"0ad": "Invalid agent ID"}}',
+    b'ok {"agents": {"001": "DB waiting for deletion"}}',
+    b'ok {"agents": {"001": "DB not found"}}'
+])
+@patch('wazuh.wdb.WazuhDBConnection')
+def test_remove_agents_database(wdb_mock, content):
+    """
+    Tests delete_agents_db method handle exceptions properly
+    """
+    def recv_mock(size_to_receive):
+        return bytes(len(content)) if size_to_receive == 4 else content
+
+    with patch('socket.socket.recv', side_effect=recv_mock):
+        mywdb = WazuhDBConnection()
+        received = mywdb.delete_agents_db(['001', '002'])
+        assert(isinstance(received, dict))
+        assert("agents" in received)
