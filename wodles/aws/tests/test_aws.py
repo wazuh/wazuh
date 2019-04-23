@@ -75,27 +75,32 @@ def test_metadata_version_services(mocked_db, class_):
         assert(metadata_version == ins.wazuh_version)
 
 
-@pytest.mark.parametrize('class_', [
-    aws_s3.AWSCloudTrailBucket,
+@pytest.mark.parametrize('class_, sql_file, db_name', [
+    (aws_s3.AWSCloudTrailBucket, 'schema_cloudtrail_test.sql', 'cloudtrail'),
+    (aws_s3.AWSConfigBucket, 'schema_config_test.sql', 'config'),
+    (aws_s3.AWSVPCFlowBucket, 'schema_vpcflow_test.sql', 'vpcflow'),
+    (aws_s3.AWSCustomBucket, 'schema_custom_test.sql', 'custom'),
+    (aws_s3.AWSGuardDutyBucket, 'schema_guardduty_test.sql', 'guardduty'),
 ])
-@patch('sqlite3.connect', side_effect=get_fake_s3_db('schema_cloudtrail_test.sql'))
-def test_cloudtrail_db_maintenance(mocked_db, class_):
+def test_db_maintenance(class_, sql_file, db_name):
     """
     Checks DB maintenance
     """
-    account_id = '123456789'
-    region = 'us-east-1'
-    sql_get_first_log_key = "SELECT log_key FROM cloudtrail ORDER BY log_key ASC LIMIT 1;"
-    sql_get_last_log_key = "SELECT log_key FROM cloudtrail ORDER BY log_key DESC LIMIT 1;"
-    sql_count_cloudtrail = "SELECT COUNT(*) FROM cloudtrail WHERE aws_region='{region}' \
-                            AND aws_account_id='{account_id}';"
-
-    with patch(f'aws_s3.{class_.__name__}.get_client'):
+    with patch(f'aws_s3.{class_.__name__}.get_client'), \
+        patch('sqlite3.connect', side_effect=get_fake_s3_db(sql_file)):
         ins = class_(**{'reparse': False, 'access_key': None, 'secret_key': None,
                         'profile': None, 'iam_role_arn': None, 'bucket': 'test-bucket',
                         'only_logs_after': '19700101', 'skip_on_error': True,
                         'account_alias': None, 'prefix': '',
                         'delete_file': False, 'aws_organization_id': None})
+
+        account_id = '123456789'
+        ins.aws_account_id = account_id  # set 'aws_account_id' for custom buckets
+        flow_log_id = 'fl-1234'  # set 'flow_log_id' for VPC buckets
+        region = 'us-east-1'  # not necessary for custom buckets as GuardDuty
+        sql_get_first_log_key = f'SELECT log_key FROM {db_name} ORDER BY log_key ASC LIMIT 1;'
+        sql_get_last_log_key = f'SELECT log_key FROM {db_name} ORDER BY log_key DESC LIMIT 1;'
+        sql_count = f'SELECT COUNT(*) FROM {db_name};'
 
         # get oldest log_key before execute maintenance
         query = ins.db_connector.execute(sql_get_first_log_key)
@@ -106,27 +111,36 @@ def test_cloudtrail_db_maintenance(mocked_db, class_):
         last_log_key_before = query.fetchone()[0]
 
         # maintenance when retain_db_records is bigger than elements in DB
-        ins.db_maintenance(account_id, region)
-        query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
-                                         account_id=account_id))
+        if class_.__name__ == 'AWSVPCFlowBucket':
+            ins.db_maintenance(aws_account_id=account_id, aws_region=region,
+                               flow_log_id=flow_log_id)
+        else:
+            ins.db_maintenance(aws_account_id=account_id, aws_region=region)
+        query = ins.db_connector.execute(sql_count.format(account_id=account_id))
         data = query.fetchone()[0]
 
         assert(data == 8)
 
         # maintenance when retain_db_records is smaller than elements in DB
         ins.retain_db_records = 6
-        ins.db_maintenance(account_id, region)
-        query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
-                                         account_id=account_id))
+        if class_.__name__ == 'AWSVPCFlowBucket':
+            ins.db_maintenance(aws_account_id=account_id, aws_region=region,
+                               flow_log_id=flow_log_id)
+        else:
+            ins.db_maintenance(aws_account_id=account_id, aws_region=region)
+        query = ins.db_connector.execute(sql_count.format(account_id=account_id))
         data = query.fetchone()[0]
 
         assert(data == ins.retain_db_records)
 
         # maintenance when retain_db_records is smaller than elements in DB
         ins.retain_db_records = 3
-        ins.db_maintenance(account_id, region)
-        query = ins.db_connector.execute(sql_count_cloudtrail.format(region=region, \
-                                         account_id=account_id))
+        if class_.__name__ == 'AWSVPCFlowBucket':
+            ins.db_maintenance(aws_account_id=account_id, aws_region=region,
+                               flow_log_id=flow_log_id)
+        else:
+            ins.db_maintenance(aws_account_id=account_id, aws_region=region)
+        query = ins.db_connector.execute(sql_count.format(account_id=account_id))
         data = query.fetchone()[0]
 
         assert(data == ins.retain_db_records)

@@ -870,7 +870,11 @@ int wm_sync_file(const char *dirname, const char *fname) {
         }
 
         if (stat(path, &buffer) < 0) {
-            mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
+            if (errno == ENOENT) {
+                mtdebug2(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
+            } else {
+                mterror(WM_DATABASE_LOGTAG, FSTAT_ERROR, path, errno, strerror(errno));
+            }
             return -1;
         }
     }

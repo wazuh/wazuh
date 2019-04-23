@@ -6,7 +6,7 @@
  * and/or modify it under the terms of GPLv2.
  */
 
- CREATE TABLE 'cloudtrail' (
+CREATE TABLE 'cloudtrail' (
     bucket_path 'text' NOT NULL,
     aws_account_id 'text' NOT NULL,
     aws_region 'text' NOT NULL,

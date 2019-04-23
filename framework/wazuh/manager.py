@@ -125,7 +125,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             else:
                 continue
         else:
-            if logs:
+            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
     if search:

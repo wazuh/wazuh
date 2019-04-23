@@ -106,6 +106,7 @@ typedef enum sk_syscheck {
     SK_PPID,
     SK_PROC_ID,
     SK_TAG,
+    SK_SYM_PATH,
     SK_NFIELDS
 } sk_syscheck;
 
@@ -121,6 +122,7 @@ typedef struct __sdb {
     char mtime[OS_FLSIZE + 1];
     char inode[OS_FLSIZE + 1];
     char attrs[OS_SIZE_1024 + 1];
+    char sym_path[OS_FLSIZE + 1];
 
     // Whodata fields
     char user_id[OS_FLSIZE + 1];
@@ -169,8 +171,10 @@ typedef struct sk_sum_t {
     long mtime;
     long inode;
     char *tag;
+    char *symbolic_path;
     sk_sum_wdata wdata;
     int changes;
+    char silent;
     long date_alert;
 } sk_sum_t;
 
@@ -201,6 +205,8 @@ void normalize_path(char *path);
 //Return an attr from checksum
 char *get_attr_from_checksum(char *checksum, int attr);
 
+char *escape_syscheck_field(char *field);
+
 #ifndef WIN32
 
 const char *get_user(__attribute__((unused)) const char *path, int uid, __attribute__((unused)) char **sid);
@@ -217,7 +223,6 @@ unsigned int w_get_file_attrs(const char *file_path);
 int w_get_file_permissions(const char *file_path, char *permissions, int perm_size);
 const char *get_group(__attribute__((unused)) int gid);
 char *escape_perm_sum(char *sum);
-
 
 #endif
 

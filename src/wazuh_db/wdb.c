@@ -24,13 +24,13 @@ static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
-    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes FROM fim_entry WHERE file = ?;",
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
-    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ? WHERE file = ?;",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
     "DELETE FROM fim_entry WHERE file = ?;",
     "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
-    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes FROM fim_entry WHERE date < ?;",
+    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -75,10 +75,12 @@ static const char *SQL_STMT[] = {
     "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
     "SELECT name FROM sca_global WHERE name = ?;",
     "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
     "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
     "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM sca_policy WHERE id = ?;",
-    "INSERT INTO sca_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
+    "SELECT hash_file FROM sca_policy WHERE id = ?;",
+    "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
     "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
     "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
     "SELECT id FROM sca_policy;",
@@ -86,6 +88,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_scan_info WHERE policy_id = ?;",
     "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     "SELECT id FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
 };

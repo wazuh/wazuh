@@ -171,10 +171,9 @@ def test_get_agents_overview_status_olderthan(test_data, status, older_than, tot
     ('002', 'logcollector', 'internal', 1735),
     ('000', None, None, 1307),
     ('000', 'random', 'random', 1101),
-    ('000', 'analysis', 'rules', 1101),
-    ('000', 'analysis', 'internal', 1013),
-    ('000', 'analysis', 'internal', 1014),
-    ('000', 'analysis', 'internal', 1101),
+    ('000', 'analysis', 'internal', 1117),
+    ('000', 'analysis', 'internal', 1118),
+    ('000', 'analysis', 'random', 1116),
     ('000', 'analysis', 'internal', None)
 ])
 @patch('wazuh.configuration.OssecSocket')
@@ -182,10 +181,10 @@ def test_get_config_error(ossec_socket_mock, test_data, agent_id, component, con
     """
     Tests get_config function error cases.
     """
-    if expected_exception == 1013:
+    if expected_exception == 1117:
         ossec_socket_mock.side_effect = Exception('Boom!')
 
-    ossec_socket_mock.return_value.receive.return_value = b'string_without_spaces' if expected_exception == 1014 \
+    ossec_socket_mock.return_value.receive.return_value = b'string_without_spaces' if expected_exception == 1118 \
         else (b'random random' if expected_exception is not None else b'ok {"message":"value"}')
 
     with patch('sqlite3.connect') as mock_db:

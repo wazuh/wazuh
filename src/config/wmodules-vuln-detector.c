@@ -36,11 +36,11 @@ static const char *XML_UPDATE_REDHAT_OVAL = "update_redhat_oval";
 static const char *XML_VERSION = "version";
 
 int format_os_version(char *OS, char **os_name, char **os_ver) {
-    char OS_cpy[OS_SIZE_1024];
-    char distr[OS_SIZE_128];
-    char sec_distr[OS_SIZE_128];
-    char thi_distr[OS_SIZE_128];
-    char inv_distr[OS_SIZE_128];
+    char OS_cpy[OS_SIZE_1024] = {'\0'};
+    char distr[OS_SIZE_128] = {'\0'};
+    char sec_distr[OS_SIZE_128] = {'\0'};
+    char thi_distr[OS_SIZE_128] = {'\0'};
+    char inv_distr[OS_SIZE_128] = {'\0'};
     char *ver;
     char *ver_end;
     int size;
