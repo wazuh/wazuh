@@ -131,6 +131,7 @@ int main(int argc, char **argv)
     if (argc < 2) {
         printf("%s: Invalid syntax.\n", argv[0]);
         printf("Try: '%s <file_name>'\n\n", argv[0]);
+        return 0;
     }
 
     /* Look for the quiet option */
