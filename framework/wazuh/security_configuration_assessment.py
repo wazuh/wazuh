@@ -23,6 +23,7 @@ fields_translation_sca = {'policy_id': 'policy_id',
                           'pass': 'pass',
                           'fail': 'fail',
                           'score': 'score',
+                          'hash_file': 'hash_file',
                           'end_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(end_scan, 'unixepoch'))",
                           'start_scan': "strftime('%Y-%m-%d %H:%M:%S', datetime(start_scan, 'unixepoch'))"
                           }
