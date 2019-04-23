@@ -6,7 +6,7 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-CREATE TABLE sca_policy (name TEXT, file TEXT, id TEXT, description TEXT, `references` TEXT);
+CREATE TABLE sca_policy (name TEXT, file TEXT, id TEXT, description TEXT, `references` TEXT, hash_file TEXT);
 
 CREATE TABLE sca_scan_info (id INTEGER PRIMARY KEY, start_scan INTEGER, end_scan INTEGER,
                             policy_id TEXT REFERENCES sca_policy (id), pass INTEGER, fail INTEGER, score INTEGER,
@@ -27,9 +27,9 @@ CREATE TABLE sca_check_rules (id_check INTEGER REFERENCES sca_check (id), type T
 CREATE INDEX id_check_rules_index ON sca_check_rules (id_check);
 
 
-INSERT INTO sca_policy VALUES('CIS benchmark for Debian/Linux','cis_debian_linux_rcl.yml','cis_debian','This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned.','https://www.cisecurity.org/cis-benchmarks/');
-INSERT INTO sca_policy VALUES('System audit for web-related vulnerabilities','system_audit_rcl.yml','system_audit','Guidance for establishing a secure configuration for web-related vulnerabilities.','(null)');
-INSERT INTO sca_policy VALUES('System audit for SSH hardening','system_audit_ssh.yml','system_audit_ssh','Guidance for establishing a secure configuration for SSH service vulnerabilities.','https://www.ssh.com/ssh/');
+INSERT INTO sca_policy VALUES('CIS benchmark for Debian/Linux','cis_debian_linux_rcl.yml','cis_debian','This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux systems running on x86 and x64 platforms. Many lists are included including filesystem types, services, clients, and network protocols. Not all items in these lists are guaranteed to exist on all distributions and additional similar items may exist which should be considered in addition to those explicitly mentioned.','https://www.cisecurity.org/cis-benchmarks/', 'asdfasdfasdfasdfasdfasdfasdfasdfas');
+INSERT INTO sca_policy VALUES('System audit for web-related vulnerabilities','system_audit_rcl.yml','system_audit','Guidance for establishing a secure configuration for web-related vulnerabilities.','(null)', 'asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfas');
+INSERT INTO sca_policy VALUES('System audit for SSH hardening','system_audit_ssh.yml','system_audit_ssh','Guidance for establishing a secure configuration for SSH service vulnerabilities.','https://www.ssh.com/ssh/', 'asdfasdfasdfasdfasdfasdfasdfasdfasdfaasdfasdfasasdfas');
 
 
 INSERT INTO sca_scan_info VALUES(4261713,1554818833,1554818833,'system_audit',76,0,100,'9cb618b94a97c1ed9e9eebfa0e24ba3c');
