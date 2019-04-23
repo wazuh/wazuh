@@ -396,27 +396,6 @@ def restart():
 
     :return: Confirmation message.
     """
-<<<<<<< HEAD
-    # execq socket path
-    socket_path = common.EXECQ
-    # msg for restarting Wazuh manager
-    msg = 'restart-wazuh '
-    # initialize socket
-    if exists(socket_path):
-        try:
-            conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-            conn.connect(socket_path)
-        except socket.error:
-            raise WazuhInternalError(1902)
-    else:
-        raise WazuhInternalError(1901)
-
-    try:
-        conn.send(msg.encode())
-        conn.close()
-    except socket.error:
-        raise WazuhInternalError(1014)
-=======
     lock_file = open(execq_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
@@ -430,19 +409,18 @@ def restart():
                 conn = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
                 conn.connect(socket_path)
             except socket.error:
-                raise WazuhException(1902)
+                raise WazuhInternalError(1902)
         else:
-            raise WazuhException(1901)
+            raise WazuhInternalError(1901)
 
         try:
             conn.send(msg.encode())
             conn.close()
         except socket.error as e:
-            raise WazuhException(1014, str(e))
+            raise WazuhInternalError(1014)
     finally:
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
->>>>>>> dev-flask-poc
 
     return "Restarting manager"
 
@@ -481,7 +459,6 @@ def validation():
     lock_file = open(execq_lockfile, 'a+')
     fcntl.lockf(lock_file, fcntl.LOCK_EX)
     try:
-<<<<<<< HEAD
         remove(api_socket_path)
     except OSError:
         if exists(api_socket_path):
@@ -498,15 +475,6 @@ def validation():
 
     # connect to execq socket
     if exists(execq_socket_path):
-=======
-        # sockets path
-        api_socket_path = join(common.ossec_path, 'queue/alerts/execa')
-        execq_socket_path = common.EXECQ
-        # msg for checking Wazuh configuration
-        execq_msg = 'check-manager-configuration '
-
-        # remove api_socket if exists
->>>>>>> dev-flask-poc
         try:
             remove(api_socket_path)
         except OSError as e:
@@ -520,7 +488,6 @@ def validation():
             # timeout
             api_socket.settimeout(5)
         except socket.error:
-<<<<<<< HEAD
             raise WazuhInternalError(1013)
     else:
         raise WazuhInternalError(1901)
@@ -552,50 +519,6 @@ def validation():
         response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
     except (KeyError, json.decoder.JSONDecodeError):
         raise WazuhInternalError(1904)
-=======
-            raise WazuhException(1013)
-
-        # connect to execq socket
-        if exists(execq_socket_path):
-            try:
-                execq_socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-                execq_socket.connect(execq_socket_path)
-            except socket.error:
-                raise WazuhException(1013)
-        else:
-            raise WazuhException(1901)
-
-        # send msg to execq socket
-        try:
-            execq_socket.send(execq_msg.encode())
-            execq_socket.close()
-        except socket.error as e:
-            raise WazuhException(1014, str(e))
-        finally:
-            execq_socket.close()
-
-        # if api_socket receives a message, configuration is OK
-        try:
-            buffer = bytearray()
-            # receive data
-            datagram = api_socket.recv(4096)
-            buffer.extend(datagram)
-        except socket.timeout as e:
-            raise WazuhException(1014, str(e))
-        finally:
-            api_socket.close()
-            # remove api_socket
-            if exists(api_socket_path):
-                remove(api_socket_path)
-
-        try:
-            response = _parse_execd_output(buffer.decode('utf-8').rstrip('\0'))
-        except (KeyError, json.decoder.JSONDecodeError) as e:
-            raise WazuhException(1904, str(e))
-    finally:
-        fcntl.lockf(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
->>>>>>> dev-flask-poc
 
     return response
 
