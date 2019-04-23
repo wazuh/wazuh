@@ -400,7 +400,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->alerts_enabled = 0;
     Config->alerts_max_size = 0;
     Config->alerts_interval = 0;
-    Config->alerts_rotate = 0;
+    Config->alerts_rotate = 1;
     Config->alerts_rotation_enabled = 1;
     Config->alerts_compress_rotation = 1;
     Config->alerts_log_plain = 0;
@@ -409,7 +409,7 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->archives_enabled = 0;
     Config->archives_max_size = 0;
     Config->archives_interval = 0;
-    Config->archives_rotate = 0;
+    Config->archives_rotate = 1;
     Config->archives_rotation_enabled = 1;
     Config->archives_compress_rotation = 1;
     Config->archives_log_plain = 0;
@@ -547,6 +547,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
                             Config->alerts_rotate = strtol(rotation_children[k]->content, &end, 10);
+                            if(Config->alerts_rotate < 1) {
+                                mwarn("Minimum value for 'rotate' not allowed. It will be set to 1.");
+                            }
                             if (*end != '\0') {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(rotation_children);
@@ -712,6 +715,9 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                         } else if(strcmp(rotation_children[k]->element, xml_rotate) == 0) {
                             char *end;
                             Config->archives_rotate = strtol(rotation_children[k]->content, &end, 10);
+                            if(Config->archives_rotate < 1) {
+                                mwarn("Minimum value for 'rotate' not allowed. It will be set to 1.");
+                            }
                             if (*end != '\0') {
                                 merror(XML_VALUEERR, rotation_children[k]->element, rotation_children[k]->content);
                                 OS_ClearNode(rotation_children);

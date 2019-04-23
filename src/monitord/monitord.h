@@ -28,7 +28,7 @@ void generate_reports(int cday, int cmon, int cyear, const struct tm *p);
 void monitor_agents(void);
 void OS_SignLog(const char *logfile, const char *logfile_old, const char * ext);
 void OS_CompressLog(const char *logfile);
-void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations);
+char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations );
 int delete_old_agent(const char *agent_id);
 
 /* Parse readed config into JSON format */

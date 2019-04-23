@@ -212,7 +212,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     rotation_config->enabled = 0;
     rotation_config->max_size = 0;
     rotation_config->interval = 0;
-    rotation_config->rotate = 0;
+    rotation_config->rotate = 1;
     rotation_config->rotation_enabled = 1;
     rotation_config->compress_rotation = 1;
     rotation_config->ossec_log_plain = 0;
@@ -355,6 +355,9 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 OS_ClearNode(rotation_children);
                                 OS_ClearNode(children);
                                 return OS_INVALID;
+                            }
+                            if(rotation_config->rotate < 1) {
+                                mwarn("Minimum value for 'rotate' not allowed. It will be set to 1.");
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_enabled) == 0) {
                             if(strcmp(rotation_children[k]->content, "yes") == 0) {

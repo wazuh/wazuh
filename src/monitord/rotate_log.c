@@ -35,7 +35,7 @@ static void remove_old_logs(const char *base_dir, int keep_log_days);
 static void remove_old_logs_y(const char * base_dir, int year, time_t threshold);
 static void remove_old_logs_m(const char * base_dir, int year, int month, time_t threshold);
 
-void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
+char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, int rotate_json, int daily_rotations) {
     char year_dir[PATH_MAX];
     char month_dir[PATH_MAX];
     char new_path[PATH_MAX];
@@ -131,7 +131,7 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
                     if (rename_ex(old_rename_path, rename_path) != 0) {
                         merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         os_free(dir);
-                        return;
+                        return NULL;
                     }
                     counter++;
                     snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
@@ -176,7 +176,7 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
                     if (rename_ex(old_rename_path, rename_path) != 0) {
                         merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
                         os_free(dir);
-                        return;
+                        return NULL;
                     }
                     counter++;
                     snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
@@ -201,6 +201,7 @@ void w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day, 
     // Remove old compressed files
     remove_old_logs(base_dir, keep_log_days);
     os_free(dir);
+    return rotate_json ? new_path_json : new_path;
 }
 
 void remove_old_logs(const char *base_dir, int keep_log_days) {

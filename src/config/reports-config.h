@@ -50,6 +50,8 @@ typedef struct _monitor_config {
     long int max_size;
     long int interval;
     int rotate;
+    rotation_list *log_list_plain;
+    rotation_list *log_list_json;
 
     char **agents;
     report_config **reports;
