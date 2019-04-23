@@ -308,7 +308,7 @@ int wdb_parse(char * input, char * output) {
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);
-            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            snprintf(output, OS_MAXSTR + 1, "err No agents id provided");
             return -1;
         }
         return result;

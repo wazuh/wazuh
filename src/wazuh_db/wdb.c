@@ -843,9 +843,11 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 /* Delete database. Returns 0 on success or -1 on error. */
 void wdb_remove_database(wdb_t *wdb) {
     // Marked for deletion. Avoid creating the bd again after deleting it.
-    wdb->remove = 1;
-    wdb->transaction = 1;
-    wdb_leave(wdb);
+    if (wdb) {
+        wdb->remove = 1;
+        wdb->transaction = 1;
+        wdb_leave(wdb);
+    }
 }
 
 cJSON *wdb_remove_multiple_agents(char *agent_list) {
@@ -854,10 +856,15 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     wdb_t *wdb;
     char **agents;
     char *next;
+    char *json_formated;
     char path[PATH_MAX];
     char agent[OS_SIZE_128];
     long int agent_id;
     int n = 0;
+
+    if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
+        return json_agents;
+    }
 
     response = cJSON_CreateObject();
     cJSON_AddItemToObject(response, "agents", json_agents = cJSON_CreateObject());
@@ -866,43 +873,54 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
     agents = wm_strtok(agent_list);
 
     while (agents && agents[n]) {
-        next = agents[n + 1];
-        agent_id = strtol(agents[n], &next, 10);
+        if (strcmp(agents[n], "") != 0) {
+            next = agents[n + 1];
+            agent_id = strtol(agents[n], &next, 10);
 
-        // Check for valid ID
-        if ((errno == ERANGE) || (errno != 0 && agent_id == 0) || *next) {
-            mwarn("Deleting database. Invalid agent ID '%s'\n", agents[n]);
-            cJSON_AddStringToObject(json_agents, agents[n], "Invalid agent ID");
-        } else {
-            snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
-            snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
-
-            // Check if file not exists
-            if (access(path, F_OK) != -1 && strcmp(agent, "000") != 0) {
-                if (wdb = wdb_open_agent2(agent_id), !wdb) {
-                    cJSON_AddStringToObject(json_agents, agent, "Can't open DB");
-                    n++;
-                    continue;
-                }
-
-                if (wdb->remove) {
-                    mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
-                    cJSON_AddStringToObject(json_agents, agent, "DB waiting for deletion");
-                    n++;
-                    continue;
-                }
-
-                cJSON_AddStringToObject(json_agents, agent, "Ok");
-                wdb_remove_database(wdb);
-                minfo("Agent %s. Database marked for deletion", agents[n]);
+            // Check for valid ID
+            if ((errno == ERANGE) || (errno == EINVAL) || *next) {
+                mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
+                cJSON_AddStringToObject(json_agents, agents[n], "Invalid agent ID");
             } else {
-                cJSON_AddStringToObject(json_agents, agent, "DB not found");
+                snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
+                snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
+
+                if (strcmp(agent, "000") != 0) {
+                    // Check if file not exists
+                    if (access(path, F_OK) != -1) {
+                        if (wdb = wdb_open_agent2(agent_id), !wdb) {
+                            mdebug1("Removing db for agent '%s'", agent);
+                            if (remove(path)) {
+                                mwarn("Couldn'n delete wazuh database: '%s'", path);
+                            }
+                            n++;
+                            continue;
+                        }
+
+                        if (wdb->remove) {
+                            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+                            cJSON_AddStringToObject(json_agents, agent, "DB waiting for deletion");
+                            n++;
+                            continue;
+                        }
+
+                        cJSON_AddStringToObject(json_agents, agent, "ok");
+                        wdb_remove_database(wdb);
+                        minfo("Agent %s. Database marked for deletion", agents[n]);
+                    } else {
+                        cJSON_AddStringToObject(json_agents, agent, "DB not found");
+                    }
+                } else {
+                    cJSON_AddStringToObject(json_agents, agent, "Can't delete");
+                }
             }
         }
         n++;
     }
 
     free(agents);
-    mdebug1("Deleting databases. JSON output: %s", cJSON_PrintUnformatted(response));
+    json_formated = cJSON_PrintUnformatted(response);
+    mdebug1("Deleting databases. JSON output: %s", json_formated);
+    os_free(json_formated);
     return response;
 }
