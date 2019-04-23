@@ -2558,7 +2558,7 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
        os_free(final_str_command);
     }
 
-    if (!result) {
+    if (!strcmp(result, "")) {
         cJSON_AddStringToObject(check, "status", "Not applicable");
         if (reason) {
             cJSON_AddStringToObject(check, "reason", reason);
