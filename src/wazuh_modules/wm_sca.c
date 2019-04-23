@@ -43,8 +43,8 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash);  // Send summary
+static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy, int *checks_number);  // Do scan
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, int checks_number);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
@@ -95,7 +95,6 @@ const wm_context WM_SCA_CONTEXT = {
 static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
 static unsigned int summary_invalid = 0;
-static unsigned int summary_checks = 0;
 
 OSHash **cis_db;
 char **last_md5;
@@ -380,6 +379,7 @@ static int wm_sca_start(wm_sca_t * data) {
 static void wm_sca_read_files(wm_sca_t * data) {
     FILE *fp;
     int i = 0;
+    int checks_number = 0;
 
     /* Read every policy monitoring file */
     if(data->profile){
@@ -491,7 +491,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements) {
-                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote) == 0){
+                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote, &checks_number) == 0){
                     requirements_satisfied = 1;
                 }
             }
@@ -508,7 +508,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
-                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote) != 0) {
+                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote, &checks_number) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -518,7 +518,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 /* Send summary */
                 if(integrity_hash) {
                     wm_delay(1000 * data->summary_delay);
-                    wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash);
+                    wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash, checks_number);
                     snprintf(last_md5[cis_db_index] ,sizeof(os_md5),"%s",integrity_hash);
                     os_free(integrity_hash);
                 }
@@ -734,7 +734,7 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy) {
+static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy, int *checks_number) {
 
     int type = 0, condition = 0;
     char *nbuf = NULL;
@@ -766,16 +766,17 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     }
 #endif
     cJSON *profile = NULL;
+    int check_count = 0;
 
     cJSON_ArrayForEach(profile,profile_check){
 
-        if(!cis_db_for_hash[cis_db_index].elem[summary_checks]) {
-            os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (summary_checks + 2), cis_db_for_hash[cis_db_index].elem);
-            cis_db_for_hash[cis_db_index].elem[summary_checks] = NULL;
-            cis_db_for_hash[cis_db_index].elem[summary_checks + 1] = NULL;
+        if(!cis_db_for_hash[cis_db_index].elem[check_count]) {
+            os_realloc(cis_db_for_hash[cis_db_index].elem, sizeof(cis_db_info_t *) * (check_count + 2), cis_db_for_hash[cis_db_index].elem);
+            cis_db_for_hash[cis_db_index].elem[check_count] = NULL;
+            cis_db_for_hash[cis_db_index].elem[check_count + 1] = NULL;
         }
 
-        summary_checks++;
+        check_count++;
 
         c_title = cJSON_GetObjectItem(profile, "title");
         c_condition = cJSON_GetObjectItem(profile, "condition");
@@ -1296,9 +1297,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                         cJSON *event = NULL;
                         if (n_reason > 0){
-                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,NULL,inv_check_reasons[n_reason-1]);
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"",inv_check_reasons[n_reason-1]);
                         } else {
-                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,NULL,NULL);
+                            event = wm_sca_build_event(profile,policy,p_alert_msg,id,"",NULL);
                         }
 
                         if(event){
@@ -1362,6 +1363,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
         id_check_p++;
     }
+
+    *checks_number = check_count;
 
 /* Clean up memory */
 clean_return:
@@ -2294,7 +2297,7 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size)
 }
 #endif
 
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed, unsigned int invalid, cJSON *policy,int start_time,int end_time,char * integrity_hash) {
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed, unsigned int invalid, cJSON *policy,int start_time,int end_time,char * integrity_hash, int checks_number) {
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
@@ -2337,9 +2340,7 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     float failedf = failed;
     float score = ((passedf/(failedf+passedf))) * 100;
 
-    // Decrement summary_checks not to count the requirements check
-    summary_checks--;
-    cJSON_AddNumberToObject(json_summary, "total_checks", summary_checks);
+    cJSON_AddNumberToObject(json_summary, "total_checks", checks_number);
     cJSON_AddNumberToObject(json_summary, "score", score);
 
     cJSON_AddNumberToObject(json_summary, "start_time", start_time);
