@@ -878,11 +878,12 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     char *hash_scan_info = NULL;
     os_sha256 hash_sha256 = {0};
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
-    
+
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
     int scan_id_old = 0;
     sscanf(hash_scan_info, "%s %d", hash_sha256, &scan_id_old);
+    os_free(hash_scan_info);
 
     switch (result_db)
     {
@@ -954,7 +955,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             if(references) {
                 if(!references->valuestring) {
                     merror("Malformed JSON: field 'references' must be a string");
-                    os_free(hash_scan_info);
                     return;
                 }
                 references_db = references->valuestring;
@@ -963,7 +963,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             if(description) {
                 if(!description->valuestring) {
                     merror("Malformed JSON: field 'description' must be a string");
-                    os_free(hash_scan_info);
                     return;
                 }
                 description_db = description->valuestring;
@@ -996,8 +995,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             os_free(old_hash);
             break;
     }
-
-    os_free(hash_scan_info);
 
     char *wdb_response = NULL;
     os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
