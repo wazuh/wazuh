@@ -196,13 +196,21 @@ def get_packages(offset=0, limit=common.database_limit, select=None, filters={},
 
 
 def get_os(filters={}, offset=0, limit=common.database_limit, select={}, search={}, sort={}):
-    return _get_agent_items(func=get_os_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_os_agent, offset=0, limit=limit, select=select,
                             filters=filters, search=search, sort=sort)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    return result
 
 
 def get_hardware(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
-    return _get_agent_items(func=get_hardware_agent, offset=offset, limit=limit, select=select,
+    result = _get_agent_items(func=get_hardware_agent, offset=0, limit=limit, select=select,
                             filters=filters, search=search, sort=sort)
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    return result
 
 
 def get_processes(offset=0, limit=common.database_limit, select=None, sort=None, filters={}, search={}):
