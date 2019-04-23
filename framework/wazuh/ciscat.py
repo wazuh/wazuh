@@ -20,5 +20,11 @@ def get_results_agent(agent_id, offset=0, limit=common.database_limit, select={}
 
 
 def get_ciscat_results(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}):
-    return _get_agent_items(func=get_results_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True)
+
+    result = _get_agent_items(func=get_results_agent, offset=0, limit=limit, select=select,
+                              filters=filters, search=search, sort=sort, array=True)
+
+    if offset:
+        result['items'] = result['items'][offset:]
+
+    return result
