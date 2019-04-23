@@ -531,9 +531,10 @@ static void wm_sca_read_files(wm_sca_t * data) {
                     wm_delay(1000 * data->summary_delay);
                     wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash, integrity_hash_file, first_scan,cis_db_index);
                     snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash);
-                    os_free(integrity_hash);
-                    os_free(integrity_hash_file);
                 }
+
+                os_free(integrity_hash);
+                os_free(integrity_hash_file);
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
