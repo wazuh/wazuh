@@ -525,14 +525,15 @@ class Agent:
                 ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
-            for agent_file, backup_file in filter(path.exists, agent_files):
-                if not backup:
-                    if path.isdir(agent_file):
-                        rmtree(agent_file)
-                    else:
-                        remove(agent_file)
-                elif not path.exists(backup_file):
-                    rename(agent_file, backup_file)
+            for agent_file, backup_file in agent_files:
+                if path.exists(agent_file):
+                    if not backup:
+                        if path.isdir(agent_file):
+                            rmtree(agent_file)
+                        else:
+                            remove(agent_file)
+                    elif not path.exists(backup_file):
+                        rename(agent_file, backup_file)
 
             # Overwrite client.keys
             move(f_keys_temp, common.client_keys)
