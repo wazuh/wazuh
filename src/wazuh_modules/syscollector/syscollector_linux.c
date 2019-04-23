@@ -556,9 +556,9 @@ char * sys_rpm_packages(int queue_fd, const char* LOCATION, int random_id){
         }
 
         if (epoch) {
-            snprintf(final_version, V_LENGTH - 1, "%d:%s-%s", epoch, version, release);
+            snprintf(final_version, V_LENGTH, "%d:%s-%s", epoch, version, release);
         } else {
-            snprintf(final_version, V_LENGTH - 1, "%s-%s", version, release);
+            snprintf(final_version, V_LENGTH, "%s-%s", version, release);
         }
         cJSON_AddStringToObject(package, "version", final_version);
 
