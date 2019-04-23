@@ -704,6 +704,9 @@ int main_analysisd(int argc, char **argv)
     // Start com request thread
     w_create_thread(asyscom_main, NULL);
 
+    mwarn("The following options will be deprecated in the next version: max_output_size and rotate_interval. "
+          "Please, use the 'logging' configuration block instead.");
+
     /* Going to main loop */
     OS_ReadMSG(m_queue);
 

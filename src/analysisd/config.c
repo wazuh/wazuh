@@ -109,14 +109,6 @@ int GlobalConf(const char *cfgfile)
         Config.memorysize = 2048;
     }
 
-    if(Config.max_output_size) {
-        mwarn("The option 'max_output_size' is deprecated. Please, use the 'logging' configuration block instead.");
-    }
-
-    if(Config.rotate_interval) {
-        mwarn("The option 'rotate_interval' is deprecated. Please, use the 'logging' configuration block instead.");
-    }
-
     if (Config.rotate_interval && (Config.rotate_interval < Config.min_rotate_interval || Config.rotate_interval > 86400)) {
         merror("Rotate interval setting must be between %d seconds and one day.", Config.min_rotate_interval);
         return (OS_INVALID);

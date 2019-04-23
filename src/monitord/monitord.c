@@ -92,9 +92,8 @@ void Monitord()
     // Start com request thread
     w_create_thread(moncom_main, NULL);
 
-    OSList_Create();
-    fill_rotation_list(mond.ossec_rotation_files, OSSECLOGS, p->tm_year, MONTHS[p->tm_mon], p->tm_mday);
-
+    mwarn("The following internal options will be deprecated in the next version: compress, rotate_log, keep_log_days, day_wait, size_rotate_read and daily_rotations."
+          "Please, use the 'logging' configuration block instead.");
     /* Main monitor loop */
     while (1) {
         tm = time(NULL);
