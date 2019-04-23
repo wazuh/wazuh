@@ -1207,6 +1207,10 @@
                       "type": "keyword",
                       "doc_values": "true"
                     },
+                    "command": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
                     "result": {
                       "type": "keyword",
                       "doc_values": "true"
