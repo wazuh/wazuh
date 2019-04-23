@@ -300,7 +300,11 @@ int wdb_parse(char * input, char * output) {
         *next++ = '\0';
 
         if(strcmp(query, "remove") == 0) {
-            wdb_remove_multiple_agents(next);
+            data = wdb_remove_multiple_agents(next);
+            out = cJSON_PrintUnformatted(data);
+            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            os_free(out);
+            cJSON_Delete(data);
         } else {
             mdebug1("Invalid DB query syntax.");
             mdebug2("DB query error near: %s", query);

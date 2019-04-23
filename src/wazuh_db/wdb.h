@@ -294,8 +294,8 @@ int wdb_update_groups(const char *dirname);
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
 
-/* Remove agents databases from id's list. */ 
-int wdb_remove_multiple_agents(char *agent_list);
+/* Remove agents databases from id's list. */
+cJSON *wdb_remove_multiple_agents(char *agent_list);
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name);
