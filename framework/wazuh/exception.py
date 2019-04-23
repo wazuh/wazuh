@@ -32,7 +32,6 @@ class WazuhException(Exception):
         1014: {'message': 'Error communicating with socket',
                'remediation': ''},
         1015: 'Error agent version is null. Was the agent ever connected?',
-<<<<<<< HEAD
         1016: {'message': 'Error moving file',
                'remediation': ''},
 
@@ -49,19 +48,6 @@ class WazuhException(Exception):
                               ' to get more information about how to configure Wazuh manager'},
         1104: {'message': 'Invalid type',
                'remediation': ''},
-=======
-        1016: 'Error moving file',
-        1017: 'Wazuh is restarting',
-        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
-        1019: 'There is a failed process. Review that before using the API.',
-
-        # Configuration: 1100 - 1199
-        1100: 'Error checking configuration',
-        1101: 'Requested component does not exist',
-        1102: 'Invalid section',
-        1103: 'Invalid field in section',
-        1104: 'Invalid type',
->>>>>>> dev-flask-poc
         1105: 'Error reading API configuration',
         1106: {'message': 'Requested section not present in `ossec.conf`',
                'remediation': 'visit [official documentation](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/index.html)'
