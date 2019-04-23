@@ -12,6 +12,8 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
+#define WDB_RESPONSE_BEGIN_SIZE 16
+
 int wdb_parse(char * input, char * output) {
     char * actor;
     char * id;
@@ -289,7 +291,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     char * checksum;
-    char buffer[OS_MAXSTR + 1];
+    char buffer[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE];
     int ftype;
     int result;
     long ts;
@@ -445,11 +447,11 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     if (strcmp(curr, "query") == 0) {
 
         int pm_id;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         pm_id = strtol(curr,NULL,10);
-        
+
         result = wdb_sca_find(wdb, pm_id, result_found);
 
         switch (result) {
@@ -664,7 +666,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_global") == 0) {
 
         char *name;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         name = curr;
@@ -676,7 +678,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -752,7 +754,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_results") == 0) {
 
         char * policy_id;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy_id = curr;
@@ -775,7 +777,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_scan") == 0) {
 
         char *policy_id;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy_id = curr;
@@ -797,7 +799,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "query_policies") == 0) {
 
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
 
@@ -819,7 +821,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_policy") == 0) {
 
         char *policy;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy = curr;
@@ -842,7 +844,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_policy_sha256") == 0) {
 
         char *policy;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy = curr;
