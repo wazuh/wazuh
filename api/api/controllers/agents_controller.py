@@ -18,8 +18,6 @@ from ..util import remove_nones_to_dict, exception_handler
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
-# import pydevd_pycharm
-# pydevd_pycharm.settrace('localhost', port=12345, stdoutToServer=True, stderrToServer=True)
 
 @exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501

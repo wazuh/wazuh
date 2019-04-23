@@ -10,7 +10,7 @@ from os import remove, path as os_path
 import re
 from shutil import move
 from xml.dom.minidom import parseString
-from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.exception import WazuhError, WazuhInternalError
 from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
@@ -350,7 +350,7 @@ def _rcl2json(filepath):
             data['controls'].append(item)
 
     except Exception as e:
-        raise WazuhException(1101, str(e))
+        raise WazuhError(1101, str(e))
 
     return data
 
@@ -380,7 +380,7 @@ def _rootkit_files2json(filepath):
                     data.append(new_check)
 
     except Exception as e:
-        raise WazuhException(1101, str(e))
+        raise WazuhError(1101, str(e))
 
     return data
 
@@ -416,7 +416,7 @@ def _rootkit_trojans2json(filepath):
 
 
     except Exception as e:
-        raise WazuhException(1101, str(e))
+        raise WazuhError(1101, str(e))
 
     return data
 
@@ -447,22 +447,22 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
         # Parse XML to JSON
         data = _ossecconf2json(xml_data)
     except Exception as e:
-        raise WazuhException(1101, str(e))
+        raise WazuhError(1101, str(e))
 
     if section:
         try:
             data = data[section]
         except KeyError as e:
             if section not in conf_sections.keys():
-                raise WazuhException(1102, e.args[0])
+                raise WazuhError(1102, e.args[0])
             else:
-                raise WazuhException(1106, e.args[0])
+                raise WazuhError(1106, e.args[0])
 
     if section and field:
         try:
             data = data[field]  # data[section][field]
         except:
-            raise WazuhException(1103)
+            raise WazuhError(1103)
 
     return data
 
@@ -515,8 +515,8 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     :return: agent.conf as dictionary.
     """
     if group_id:
-        #if not Agent.multi_group_exists(group_id):
-            #raise WazuhException(1710, group_id)
+        if not Agent.multi_group_exists(group_id):
+            raise WazuhError(1710, group_id)
 
         agent_conf = "{0}/{1}".format(common.multi_groups_path, group_id)
 
@@ -528,7 +528,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
     agent_conf += "/{0}".format(agent_conf_name)
 
     if not os_path.exists(agent_conf):
-        raise WazuhException(1006, agent_conf)
+        raise WazuhError(1006, agent_conf)
 
     try:
         # Read XML
@@ -537,7 +537,7 @@ def get_agent_conf_multigroup(group_id=None, offset=0, limit=common.database_lim
         # Parse XML to JSON
         data = _agentconf2json(xml_data)
     except Exception as e:
-        raise WazuhException(1101, str(e))
+        raise WazuhError(1101, str(e))
 
 
     return {'totalItems': len(data), 'items': cut_array(data, offset, limit)}
@@ -552,7 +552,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
 
     if group_id:
         if not Agent.group_exists(group_id):
-            raise WazuhException(1710, group_id)
+            raise WazuhError(1710, group_id)
 
         file_path = "{0}/{1}".format(common.shared_path, filename) \
                     if filename == 'ar.conf' else \
@@ -561,7 +561,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
         file_path = "{0}/{1}".format(common.shared_path, filename)
 
     if not os_path.exists(file_path):
-        raise WazuhException(1006, file_path)
+        raise WazuhError(1006, file_path)
 
     types = {
         'conf': get_agent_conf,
@@ -578,7 +578,7 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
             else:
                 data = types[type_conf](file_path)
         else:
-            raise WazuhException(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
+            raise WazuhError(1104, "{0}. Valid types: {1}".format(type_conf, types.keys()))
     else:
         if filename == "agent.conf":
             data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
@@ -605,7 +605,7 @@ def parse_internal_options(high_name, low_name):
         return config
 
     if not os_path.exists(common.internal_options):
-        raise WazuhException(1107)
+        raise WazuhInternalError(1107)
 
     # Check if the option exists at local internal options
     if os_path.exists(common.local_internal_options):
@@ -619,17 +619,17 @@ def parse_internal_options(high_name, low_name):
         return get_config(common.internal_options).get('root',
                             '{0}.{1}'.format(high_name, low_name))
     except NoOptionError as e:
-        raise WazuhException(1108, e.args[0])
+        raise WazuhInternalError(1108, e.args[0])
 
 
 def get_internal_options_value(high_name, low_name, max, min):
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
-        raise WazuhException(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
+        raise WazuhError(1109, 'Option: {}.{}. Value: {}'.format(high_name, low_name, option))
 
     option = int(option)
     if option < min or option > max:
-        raise WazuhException(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
+        raise WazuhError(1110, 'Max value: {}. Min value: {}. Found: {}.'.format(max, min, option))
 
     return option
 
@@ -643,7 +643,7 @@ def upload_group_configuration(group_id, file_content):
     """
     # check if the group exists
     if not Agent.group_exists(group_id):
-        raise WazuhException(1710)
+        raise WazuhError(1710, group_id)
 
     # path of temporary files for parsing xml input
     tmp_file_path = '{}/tmp/api_tmp_file_{}_{}.xml'.format(common.ossec_path, time.time(), random.randint(0, 1000))
@@ -661,7 +661,7 @@ def upload_group_configuration(group_id, file_content):
                                    .replace("&gt;", ">")
             tmp_file.write(pretty_xml)
     except Exception as e:
-        raise WazuhException(1113, str(e))
+        raise WazuhError(1113, str(e))
 
     try:
 
@@ -678,18 +678,18 @@ def upload_group_configuration(group_id, file_content):
             output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
                                               r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
             if output_regex:
-                raise WazuhException(1114, ' '.join(output_regex))
+                raise WazuhError(1114, ' '.join(output_regex))
             else:
-                raise WazuhException(1115, e.output.decode())
+                raise WazuhError(1115, e.output.decode())
         except Exception as e:
-            raise WazuhException(1743, str(e))
+            raise WazuhInternalError(1743, str(e))
 
         # move temporary file to group folder
         try:
             new_conf_path = "{}/{}/agent.conf".format(common.shared_path, group_id)
             move(tmp_file_path, new_conf_path)
         except Exception as e:
-            raise WazuhException(1017, str(e))
+            raise WazuhInternalError(1017, str(e))
 
         return 'Agent configuration was updated successfully'
     except Exception as e:
@@ -709,8 +709,8 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
     
     if file_name == 'agent.conf':
         if len(file_data) == 0:
-            raise WazuhException(1112)
+            raise WazuhError(1112)
 
         return upload_group_configuration(group_id, file_data)
     else:
-        raise WazuhException(1111)
+        raise WazuhError(1111)

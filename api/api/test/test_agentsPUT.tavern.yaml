@@ -220,16 +220,16 @@ stages:
       method: PUT
 
     response:
-      status_code: 500
+      status_code: 400
       body:
-        code: 1000
+        code: 1705
         dapi_errors:
           master-node:
-            "error": "Duplicated name"
+            "error": "There is an agent with the same name: new_agent"
             "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Wazuh Internal Error: Error 9008 - Duplicated name"
-        status: 500
-        title: "Wazuh Internal Error"
+        detail: "There is an agent with the same name: new_agent"
+        status: 400
+        title: "Wazuh Error"
         type: "about:blank"
 
   - name: Create a agent with invalid name
