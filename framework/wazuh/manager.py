@@ -83,7 +83,9 @@ def __get_ossec_log_fields(log):
     return datetime.strptime(date, '%Y/%m/%d %H:%M:%S'), category, type_log.lower(), description
 
 
-def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.database_limit, sort=None, search=None):
+def ossec_log(type_log='all', category='all', months=3, offset=0,
+              limit=common.database_limit, sort=None, search=None,
+              api_request=False):
     """
     Gets logs from ossec.log.
 
@@ -144,7 +146,12 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
     else:
         logs = sort_array(logs, order='desc', sort_by=['timestamp'])
 
-    return {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
+    result = {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
+
+    if api_request:
+        return WazuhResult({'data': result})
+
+    return result
 
 
 def ossec_log_summary(months=3):

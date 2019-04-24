@@ -452,8 +452,12 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
     """
-    f_kwargs = {'node_id': node_id, 'offset': offset, 'limit': limit,
-                'sort': sort, 'search':search, 'category': category,
+    f_kwargs = {'node_id': node_id,
+                'offset': offset,
+                'limit': limit,
+                'sort': sort,
+                'search':search,
+                'category': category,
                 'type_log': type_log}
 
     dapi = DistributedAPI(f=manager.ossec_log,

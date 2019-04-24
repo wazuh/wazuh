@@ -776,71 +776,146 @@ stages:
         status_code: 200
         body:
           data:
-            total_events_decoded: !anyint
-            syscheck_events_decoded: !anyint
-            syscheck_edps: !anyint
-            syscollector_events_decoded: !anyint
-            syscollector_edps: !anyint
-            rootcheck_events_decoded: !anyint
-            rootcheck_edps: !anyint
-            sca_events_decoded: !anyint
-            sca_edps: !anyint
-            hostinfo_events_decoded: !anyint
-            hostinfo_edps: !anyint
-            winevt_events_decoded: !anyint
-            winevt_edps: !anyint
-            other_events_decoded: !anyint
-            other_events_edps: !anyint
-            events_processed: !anyint
-            events_edps: !anyint
-            events_received: !anyint
-            events_dropped: !anyint
-            alerts_written: !anyint
-            firewall_written: !anyint
-            fts_written: !anyint
-            syscheck_queue_usage: !anyint
-            syscheck_queue_size: !anyint
-            syscollector_queue_usage: !anyint
-            syscollector_queue_size: !anyint
-            rootcheck_queue_usage: !anyint
-            rootcheck_queue_size: !anyint
-            sca_queue_usage: !anyint
-            sca_queue_size: !anyint
-            hostinfo_queue_usage: !anyint
-            hostinfo_queue_size: !anyint
-            winevt_queue_usage: !anyint
-            winevt_queue_size: !anyint
-            event_queue_usage: !anyint
-            event_queue_size: !anyint
-            rule_matching_queue_usage: !anyint
-            rule_matching_queue_size: !anyint
-            alerts_queue_usage: !anyint
-            alerts_queue_size: !anyint
-            firewall_queue_usage: !anyint
-            firewall_queue_size: !anyint
-            statistical_queue_usage: !anyint
-            statistical_queue_size: !anyint
-            archives_queue_usage: !anyint
-            archives_queue_size: !anyint
+            total_events_decoded: !anyfloat
+            syscheck_events_decoded: !anyfloat
+            syscheck_edps: !anyfloat
+            syscollector_events_decoded: !anyfloat
+            syscollector_edps: !anyfloat
+            rootcheck_events_decoded: !anyfloat
+            rootcheck_edps: !anyfloat
+            sca_events_decoded: !anyfloat
+            sca_edps: !anyfloat
+            hostinfo_events_decoded: !anyfloat
+            hostinfo_edps: !anyfloat
+            winevt_events_decoded: !anyfloat
+            winevt_edps: !anyfloat
+            other_events_decoded: !anyfloat
+            other_events_edps: !anyfloat
+            events_processed: !anyfloat
+            events_edps: !anyfloat
+            events_received: !anyfloat
+            events_dropped: !anyfloat
+            alerts_written: !anyfloat
+            firewall_written: !anyfloat
+            fts_written: !anyfloat
+            syscheck_queue_usage: !anyfloat
+            syscheck_queue_size: !anyfloat
+            syscollector_queue_usage: !anyfloat
+            syscollector_queue_size: !anyfloat
+            rootcheck_queue_usage: !anyfloat
+            rootcheck_queue_size: !anyfloat
+            sca_queue_usage: !anyfloat
+            sca_queue_size: !anyfloat
+            hostinfo_queue_usage: !anyfloat
+            hostinfo_queue_size: !anyfloat
+            winevt_queue_usage: !anyfloat
+            winevt_queue_size: !anyfloat
+            event_queue_usage: !anyfloat
+            event_queue_size: !anyfloat
+            rule_matching_queue_usage: !anyfloat
+            rule_matching_queue_size: !anyfloat
+            alerts_queue_usage: !anyfloat
+            alerts_queue_size: !anyfloat
+            firewall_queue_usage: !anyfloat
+            firewall_queue_size: !anyfloat
+            statistical_queue_usage: !anyfloat
+            statistical_queue_size: !anyfloat
+            archives_queue_usage: !anyfloat
+            archives_queue_size: !anyfloat
 
-#  - name: Remoted stats (master)
-#
-#    request:
-#      url: http://localhost:55000/cluster/{node_id}/stats/remoted
-#      method: GET
-#      params:
-#        node_id: master
-#
-#    response:
-#        status_code: 200
-#        body:
-#          queue_size: !anyint
-#          total_queue_size: !anyint
-#          tcp_sessions: !anyint
-#          evt_count: !anyint
-#          ctrl_msg_count: !anyint
-#          discarded_count: !anyint
-#          msg_sent: !anyint
-#          recv_bytes: !anyint
-#
+  - name: Analysisd stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/analysisd
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            total_events_decoded: !anyfloat
+            syscheck_events_decoded: !anyfloat
+            syscheck_edps: !anyfloat
+            syscollector_events_decoded: !anyfloat
+            syscollector_edps: !anyfloat
+            rootcheck_events_decoded: !anyfloat
+            rootcheck_edps: !anyfloat
+            sca_events_decoded: !anyfloat
+            sca_edps: !anyfloat
+            hostinfo_events_decoded: !anyfloat
+            hostinfo_edps: !anyfloat
+            winevt_events_decoded: !anyfloat
+            winevt_edps: !anyfloat
+            other_events_decoded: !anyfloat
+            other_events_edps: !anyfloat
+            events_processed: !anyfloat
+            events_edps: !anyfloat
+            events_received: !anyfloat
+            events_dropped: !anyfloat
+            alerts_written: !anyfloat
+            firewall_written: !anyfloat
+            fts_written: !anyfloat
+            syscheck_queue_usage: !anyfloat
+            syscheck_queue_size: !anyfloat
+            syscollector_queue_usage: !anyfloat
+            syscollector_queue_size: !anyfloat
+            rootcheck_queue_usage: !anyfloat
+            rootcheck_queue_size: !anyfloat
+            sca_queue_usage: !anyfloat
+            sca_queue_size: !anyfloat
+            hostinfo_queue_usage: !anyfloat
+            hostinfo_queue_size: !anyfloat
+            winevt_queue_usage: !anyfloat
+            winevt_queue_size: !anyfloat
+            event_queue_usage: !anyfloat
+            event_queue_size: !anyfloat
+            rule_matching_queue_usage: !anyfloat
+            rule_matching_queue_size: !anyfloat
+            alerts_queue_usage: !anyfloat
+            alerts_queue_size: !anyfloat
+            firewall_queue_usage: !anyfloat
+            firewall_queue_size: !anyfloat
+            statistical_queue_usage: !anyfloat
+            statistical_queue_size: !anyfloat
+            archives_queue_usage: !anyfloat
+            archives_queue_size: !anyfloat
+
+  - name: Remoted stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/remoted
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            queue_size: !anyfloat
+            total_queue_size: !anyfloat
+            tcp_sessions: !anyfloat
+            evt_count: !anyfloat
+            ctrl_msg_count: !anyfloat
+            discarded_count: !anyfloat
+            msg_sent: !anyfloat
+            recv_bytes: !anyfloat
+
+  - name: Remoted stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/remoted
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            queue_size: !anyfloat
+            total_queue_size: !anyfloat
+            tcp_sessions: !anyfloat
+            evt_count: !anyfloat
+            ctrl_msg_count: !anyfloat
+            discarded_count: !anyfloat
+            msg_sent: !anyfloat
+            recv_bytes: !anyfloat
+
 
