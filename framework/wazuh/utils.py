@@ -741,7 +741,7 @@ class WazuhDBQuery(object):
         if self.limit:
             if self.limit > common.maximum_database_limit:
                 raise WazuhException(1405, str(self.limit))
-            self.query += f' LIMIT :limit OFFSET :offset'
+            self.query += ' LIMIT :limit OFFSET :offset'
             self.request['offset'] = self.offset
             self.request['limit'] = self.limit
         elif self.limit == 0:  # 0 is not a valid limit
@@ -891,14 +891,6 @@ class WazuhDBQuery(object):
 
             self.query += ('))' if curr_level > q_filter['level'] else ')') + ' {} '.format(q_filter['separator'])
             curr_level = q_filter['level']
-
-    def _substitute_params(self):
-        """
-        Substitute request parameters in query. This is only necessary when the backend is wdb. Sqlite substitutes
-        parameters by itself.
-        """
-        for k, v in self.request.items():
-            self.query = self.query.replace(f':{k}', f"{v}" if isinstance(v, int) else f"'{v}'")
 
     def _get_total_items(self):
         self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
