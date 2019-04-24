@@ -19,6 +19,7 @@ from ..util import remove_nones_to_dict, exception_handler
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
+
 @exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
     """Delete agents
@@ -1142,6 +1143,12 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
         return 'ERROR', 400
 
     f_kwargs = {**{}, **agent_inserted_model.to_dict()}
+    try:
+        f_kwargs['id'] = connexion.request.get_json()['id']
+        f_kwargs['key'] = connexion.request.get_json()['key']
+    except:
+        # The user has not entered the key or the id or both
+        pass
 
     dapi = DistributedAPI(f=Agent.insert_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
