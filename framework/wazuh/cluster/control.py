@@ -11,7 +11,8 @@ from wazuh.results import WazuhResult
 
 
 async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
-                    sort=None, search=None, select=None, filter_type='all'):
+                    sort=None, search=None, select=None, filter_type='all',
+                    api_request=False):
     arguments = {'filter_node': filter_node, 'offset': offset, 'limit': limit, 'sort': sort, 'search': search,
                  'select': select, 'filter_type': filter_type}
     result = json.loads(await local_client.execute(command=b'get_nodes',
@@ -21,7 +22,10 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
     if isinstance(result, Exception):
         raise result
 
-    return WazuhResult({'data': result})
+    if api_request:
+        return WazuhResult({'data': result})
+
+    return result
 
 
 async def get_node(filter_node=None, select=None, api_request=False):
