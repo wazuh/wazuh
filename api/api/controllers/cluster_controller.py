@@ -34,7 +34,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
     :type wait_for_complete: bool
     :rtype: object
     """
-    f_kwargs = {}
+    f_kwargs = {'api_request': True}
 
     dapi = DistributedAPI(f=cluster.get_node,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

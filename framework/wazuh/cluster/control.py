@@ -36,8 +36,7 @@ async def get_node(filter_node=None, select=None, api_request=False):
     if len(node_info_array['items']) > 0:
         if api_request:
             return WazuhResult({'data': node_info_array['items'][0]})
-        else:
-            return node_info_array['items'][0]
+        return node_info_array['items'][0]
     else:
         return {}
 

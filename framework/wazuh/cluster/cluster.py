@@ -148,13 +148,16 @@ def read_config(config_file=common.ossec_conf):
     return config_cluster
 
 
-def get_node():
+def get_node(api_request=False):
     data = {}
     config_cluster = read_config()
 
     data["node"]    = config_cluster["node_name"]
     data["cluster"] = config_cluster["name"]
     data["type"]    = config_cluster["node_type"]
+
+    if api_request:
+        return WazuhResult({'data': data})
 
     return data
 
