@@ -918,4 +918,94 @@ stages:
             msg_sent: !anyfloat
             recv_bytes: !anyfloat
 
+---
+test_name: GET /cluster/{node_id}/logs
+strict:
+  - body
 
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items: !anything
+            totalItems: !anyint
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items: !anything
+            totalItems: !anyint
+
+  - name: Filters -> limit=3 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        limit: 3
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - &cluster_log
+                description: !anystr
+                level: !anystr
+                tag: !anystr
+                timestamp: !anystr
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> limit=4 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      params:
+        limit: 4
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> limit=2, sort=timestamp (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        limit: 2
+        sort: timestamp
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
