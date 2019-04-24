@@ -7,7 +7,7 @@ from wazuh.syscollector import get_item_agent, _get_agent_items
 
 
 def get_results_agent(agent_id, offset=0, limit=common.database_limit, select={}, search={}, sort={}, filters={},
-                      nested=True, array=True, query=''):
+                      nested=True, array=True, q=''):
     offset = int(offset)
     limit = int(limit)
 
@@ -18,9 +18,9 @@ def get_results_agent(agent_id, offset=0, limit=common.database_limit, select={}
 
     return get_item_agent(agent_id=agent_id, offset=offset, limit=limit, select=select, search=search, sort=sort,
                           filters=filters, valid_select_fields=valid_select_fields, table=table, nested=nested,
-                          array=array, query=query)
+                          array=array, query=q)
 
 
-def get_ciscat_results(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}, query=''):
+def get_ciscat_results(offset=0, limit=common.database_limit, select=None, filters={}, search={}, sort={}, q=''):
     return _get_agent_items(func=get_results_agent, offset=offset, limit=limit, select=select,
-                            filters=filters, search=search, sort=sort, array=True, query=query)
+                            filters=filters, search=search, sort=sort, array=True, query=q)
