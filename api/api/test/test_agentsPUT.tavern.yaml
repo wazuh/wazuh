@@ -166,7 +166,7 @@ stages:
         affected_agents: [
           "001"
         ]
-        message: "All selected agents were restarted"
+      message: "All selected agents were restarted"
 
   - name: Restart agent with bad id
 
@@ -174,14 +174,24 @@ stages:
       url: http://localhost:55000/agents/abc/restart
       method: PUT
 
-      response:
-        status_code: 400
-        body:
-          detail: !anystr
-          status: 400
-          title: "Bad Request"
-          type: "about:blank"
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
 
+  - name: Try to restart manager
+
+    request:
+      url: http://localhost:55000/agents/000/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Some agents were not restarted"
 
 ---
 test_name: PUT /agents
@@ -210,14 +220,28 @@ stages:
       method: PUT
 
     response:
-      status_code: 500
+      status_code: 400
       body:
-        code: 1000
+        code: 1705
         dapi_errors:
           master-node:
-            "error": "Duplicated name"
+            "error": "There is an agent with the same name: new_agent"
             "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Wazuh Internal Error: Error 9008 - Duplicated name"
-        status: 500
-        title: "Wazuh Internal Error"
+        detail: "There is an agent with the same name: new_agent"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Create a agent with invalid name
+
+    request:
+      url: http://localhost:55000/agents/new_agent;
+      method: PUT
+
+    response:
+      status_code: 400
+      body:
+        status: 400
+        detail: !anystr
+        title: "Bad Request"
         type: "about:blank"

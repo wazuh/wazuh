@@ -1,0 +1,752 @@
+---
+test_name: POST /agents
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create new agent
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Name already present
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost"
+        ip: "any"
+
+    response:
+      status_code: 400
+      body:
+        code: 1705
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same name: NewAgentPost"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same name: NewAgentPost"
+        remediation: "Please choose another name"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Missing field name
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        ip: "any"
+
+    response:
+      status_code: 400
+      body:
+        detail: "'name' is a required property"
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Invalid field
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        extrafield: "invalid"
+        name: "testagentpost"
+        ip: "any"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Missing IP parameter
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost2"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Create an agent with specified IP
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost3"
+        ip: "100.100.100.100"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Create an agent with duplicated IP
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost4"
+        ip: "100.100.100.100"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same IP or the IP is invalid: 100.100.100.100"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same IP or the IP is invalid: 100.100.100.100"
+        remediation: "Please choose another IP"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Create an agent with invalid IP
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost5"
+        ip: "A.B.C.D"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same IP or the IP is invalid: a.b.c.d"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same IP or the IP is invalid: a.b.c.d"
+        remediation: "Please choose another IP"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Create an agent with invalid IP 2
+
+    request:
+      url: http://localhost:55000/agents
+      method: POST
+      json:
+        name: "NewAgentPost5"
+        ip: "333.333.333.333"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same IP or the IP is invalid: 333.333.333.333"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same IP or the IP is invalid: 333.333.333.333"
+        remediation: "Please choose another IP"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+---
+test_name: POST /agents/insert
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create new agent with this fields
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Name already present
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsert"
+        ip: "any"
+        id: "751"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1705
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same name: NewAgentPostInsert"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same name: NewAgentPostInsert"
+        remediation: "Please choose another name"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: ID already in use
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsertI"
+        ip: "any"
+        id: "750"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1708
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same ID: 750"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same ID: 750"
+        remediation: "Please choose another ID"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Invalid key
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsert1"
+        ip: "any"
+        id: "752"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64EXTRA"
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Missing fields
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        ip: "any"
+
+    response:
+      status_code: 400
+      body:
+        detail: "'name' is a required property"
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Extra field
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsertExtra"
+        ip: "any"
+        id: "753"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+        extra: "Nothing"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Automatic IP
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsertNOIP"
+        id: "754"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Manual IP
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsertMIP"
+        id: "755"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Duplicated ID
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsertDIP"
+        id: "756"
+        ip: "120.130.140.150"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same IP or the IP is invalid: 120.130.140.150"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same IP or the IP is invalid: 120.130.140.150"
+        remediation: "Please choose another IP"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Create new agent
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsert4"
+        id: "760"
+        ip: "192.246.247.249"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 200
+      body:
+        id: !anystr
+        key: !anystr
+
+  - name: Bad IP
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "192.246.247.d"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same IP or the IP is invalid: 192.246.247.d"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same IP or the IP is invalid: 192.246.247.d"
+        remediation: "Please choose another IP"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Bad IP 2
+
+    request:
+      url: http://localhost:55000/agents/insert
+      method: POST
+      json:
+        name: "NewAgentPostInsert"
+        id: "760"
+        ip: "333.333.333.333"
+        key: "1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64"
+
+    response:
+      status_code: 400
+      body:
+        code: 1706
+        dapi_errors:
+          master-node:
+            "error": "There is an agent with the same IP or the IP is invalid: 333.333.333.333"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "There is an agent with the same IP or the IP is invalid: 333.333.333.333"
+        remediation: "Please choose another IP"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+---
+test_name: POST /agents/groups/{group_id}/configuration
+
+includes:
+  - !include common.yaml
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf2
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'testagentconf2' created."
+
+  - name: Write the agent.conf file
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: "Agent configuration was updated successfully"
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/noexist/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+        dapi_errors:
+          master-node:
+            "error": "The group does not exist: noexist"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "The group does not exist: noexist"
+        remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1112
+        dapi_errors:
+          master-node:
+            "error": "Empty files aren't supported"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Empty files aren't supported"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors:
+          master-node:
+            "error": "XML syntax error: mismatched tag: line 1, column 292"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "XML syntax error: mismatched tag: line 1, column 292"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1114
+        dapi_errors:
+          master-node:
+            "error": !anystr
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: !anystr
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+# This test can not be performed at the moment, you have to check how to repeat a variable several times in order to make the XML file too much.
+#  - name: Too big XML
+#
+#    request:
+#      url: http://localhost:55000/agents/groups/testagentconf2/configuration
+#      method: POST
+#      headers:
+#        content-type: "application/xml"
+#      data:
+#        "{file_xml:s}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1114
+#        dapi_errors:
+#          master-node:
+#            "error": !anystr
+#            "logfile": "WAZUH_HOME/logs/api.log"
+#        detail: !anystr
+#        status: 400
+#        title: "Wazuh Error"
+#        type: "about:blank"
+---
+test_name: POST /agents/groups/{group_id}/files/agent.conf
+
+includes:
+  - !include common.yaml
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Create the group testagentconf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: "Group 'testagentconf' created."
+
+  - name: Send new configuration
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 200
+      body:
+        message: "Agent configuration was updated successfully"
+
+  - name: Error on bad group
+
+    request:
+      url: http://localhost:55000/agents/groups/asdfg/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1710
+        dapi_errors:
+          master-node:
+            "error": "The group does not exist: asdfg"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "The group does not exist: asdfg"
+        remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Error on empty conf
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1112
+        dapi_errors:
+          master-node:
+            "error": "Empty files aren't supported"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Empty files aren't supported"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Only agent conf allowed
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/aaaaaa
+      method: POST
+      headers:
+        content-type: "application/xml"
+
+    response:
+      status_code: 400
+      body:
+        code: 1111
+        dapi_errors:
+          master-node:
+            "error": "Remote group file updates are only available in 'agent.conf' file"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Remote group file updates are only available in 'agent.conf' file"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Invalid conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{invalid_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1113
+        dapi_errors:
+          master-node:
+            "error": "XML syntax error: mismatched tag: line 1, column 292"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "XML syntax error: mismatched tag: line 1, column 292"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Wrong conf detected
+
+    request:
+      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+      method: POST
+      headers:
+        content-type: "application/xml"
+      data:
+        "{wrong_file_xml:s}"
+
+    response:
+      status_code: 400
+      body:
+        code: 1114
+        dapi_errors:
+          master-node:
+            "error": !anystr
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: !anystr
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+# This test can not be performed at the moment, you have to check how to repeat a variable several times in order to make the XML file too much.
+#  - name: Too big XML
+#
+#    request:
+#      url: http://localhost:55000/agents/groups/testagentconf/files/agent.conf
+#      method: POST
+#      headers:
+#        content-type: "application/xml"
+#      data:
+#        "{file_xml:s}"
+#
+#    response:
+#      status_code: 400
+#      body:
+#        code: 1114
+#        dapi_errors:
+#          master-node:
+#            "error": !anystr
+#            "logfile": "WAZUH_HOME/logs/api.log"
+#        detail: !anystr
+#        status: 400
+#        title: "Wazuh Error"
+#        type: "about:blank"
+---

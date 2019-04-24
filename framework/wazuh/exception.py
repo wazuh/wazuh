@@ -38,19 +38,26 @@ class WazuhException(Exception):
                },
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
+        1017: {'message: Destination route not found'
+               'remediation: Please check the permissions on the route and try again'},
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
         1101: {'message': 'Error getting configuration',
                'remediation': 'Please, check your configuration file and try again'
                },
-        1102: 'Invalid section',
-        1103: 'Invalid field in section',
+        1102: {'message: Invalid section'
+               'remediation: Please check that all sections of the configuration file are correct'},
+        1103: {'message: Invalid field in section'
+               'remediation: Please check the configuration and try again'},
         1104: 'Invalid type',
         1105: 'Error reading API configuration',
-        1106: 'Requested section not present in configuration',
-        1107: 'Internal options file not found',
-        1108: 'Value not found in internal_options.conf',
+        1106: {'message: Requested section not present in configuration'
+               'remediation: Please check the desired section in the configuration file'},
+        1107: {'message: Internal options file not found'
+               'remediation: Check that the file internal_options.conf exists'},
+        1108: {'message: Value not found in internal_options.conf'
+               'remediation: Check the values in your internal_options.conf file'},
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
         1111: "Remote group file updates are only available in 'agent.conf' file",
@@ -129,7 +136,7 @@ class WazuhException(Exception):
         1705: {'message': 'There is an agent with the same name',
                'remediation': 'Please choose another name'
                },
-        1706: {'message': 'There is an agent with the same IP',
+        1706: {'message': 'There is an agent with the same IP or the IP is invalid',
                'remediation': 'Please choose another IP'
                },
         1707: {'message': 'Impossible to restart agent due to it is not active',
