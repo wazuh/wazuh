@@ -178,7 +178,7 @@ void OS_RotateLogs(int day,int year,char *mon) {
     // If more than interval time has passed and the interval rotation is set for any log
     if((Config.alerts_interval || Config.archives_interval)) {
         // If the rotation for alerts is enabled
-        if(Config.alerts_rotation_enabled && Config.archives_interval > 0 && local_timespec.tv_sec - __alerts_rsec > Config.alerts_interval) {
+        if(Config.alerts_rotation_enabled && Config.alerts_interval > 0 && local_timespec.tv_sec - __alerts_rsec > Config.alerts_interval) {
             // Rotate alerts.log
             if (_aflog && !fseek(_aflog, 0, SEEK_END) && ftell(_aflog) > 0) {
                 memset(c_alogfile, '\0', OS_FLSIZE + 1);

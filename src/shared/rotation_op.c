@@ -40,7 +40,7 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
     rotation_node *year_list;
 
     if(!strncmp(tag, "logs", strlen(tag))) {
-        TAG = OSSECLOGS;
+        TAG = OSSECLOG;
     } else if(!strncmp(tag, "alerts", strlen(tag))) {
         TAG = ALERTS;
     } if(!strncmp(tag, "archives", strlen(tag))) {

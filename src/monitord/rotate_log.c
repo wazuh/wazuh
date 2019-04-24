@@ -44,6 +44,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     char compressed_path[PATH_MAX];
     char rename_path[PATH_MAX];
     char old_rename_path[PATH_MAX];
+    char tag[OS_FLSIZE];
     struct tm tm;
     time_t now;
     int counter = 0;
@@ -68,14 +69,13 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     char base_dir[PATH_MAX];
 
     // ossec.log
-    snprintf(old_path, PATH_MAX, "%s", LOGFILE);
+    snprintf(new_path, PATH_MAX, "%s", LOGFILE);
     // ossec.json
-    snprintf(old_path_json, PATH_MAX, "%s", LOGJSONFILE);
+    snprintf(new_path_json, PATH_MAX, "%s", LOGJSONFILE);
     // logs
     strcpy(base_dir, "logs");
 #else
     char *base_dir;
-    char tag[OS_FLSIZE];
     os_strdup(old_file, dir);
     base_dir = dirname(dir);
     if(!strncmp(old_file, LOGFILE, strlen(LOGFILE)) || !strncmp(old_file, LOGJSONFILE, strlen(LOGJSONFILE))){
@@ -87,7 +87,6 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     }
 
 #endif
-
     if(!strncmp(base_dir, "/logs", strlen(base_dir))){
         snprintf(year_dir, PATH_MAX, "%s/ossec/%d", base_dir, tm.tm_year + 1900);
     } else {
@@ -97,6 +96,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
     snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
     snprintf(compressed_path, PATH_MAX, "%s.gz", new_path);
+
 
      // Create folders
 

@@ -118,8 +118,8 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define DEFAULTDIR      "/var/ossec"
 #endif
 
-#ifndef OSSECLOGS
-#define OSSECLOGS       "/logs/ossec"
+#ifndef OSSECLOG
+#define OSSECLOG       "/logs/ossec"
 #endif
 
 /* Default queue */
