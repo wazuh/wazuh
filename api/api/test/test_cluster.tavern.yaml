@@ -296,6 +296,24 @@ stages:
               status: !anything
 
 ---
+test_name: GET /cluster/status
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/status
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          enabled: "yes"
+          running: "yes"
+
+---
 #test_name: GET /cluster/{node_id}/stats
 #stages:
 #  - name: Cluster stats (master)
