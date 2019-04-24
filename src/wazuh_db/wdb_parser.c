@@ -72,6 +72,11 @@ int wdb_parse(char * input, char * output) {
             return -1;
         }
 
+        if (wdb->remove) {
+            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+            return 0;
+        }
+
         mdebug2("Agent %s query: %s", sagent_id, query);
 
         if (next = wstr_chr(query, ' '), next) {
@@ -239,6 +244,11 @@ int wdb_parse(char * input, char * output) {
                     result = -1;
                 }
             }
+        } else if (strcmp(query, "remove") == 0) {
+            wdb_remove_database(wdb);
+            snprintf(output, OS_MAXSTR + 1, "ok");
+
+            return result;
         } else if (strcmp(query, "begin") == 0) {
             if (wdb_begin2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
@@ -277,6 +287,30 @@ int wdb_parse(char * input, char * output) {
             result = -1;
         }
         wdb_leave(wdb);
+        return result;
+    } else if (strcmp(actor, "wazuhdb") == 0) {
+        query = next;
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            return -1;
+        }
+        *next++ = '\0';
+
+        if(strcmp(query, "remove") == 0) {
+            data = wdb_remove_multiple_agents(next);
+            out = cJSON_PrintUnformatted(data);
+            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            os_free(out);
+            cJSON_Delete(data);
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err No agents id provided");
+            return -1;
+        }
         return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
