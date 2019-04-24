@@ -314,6 +314,31 @@ stages:
           running: "yes"
 
 ---
+test_name: GET /cluster/config
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/config
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          name: !anystr
+          node_name: !anystr
+          node_type: !anystr
+          key: !anystr
+          port: !anyint
+          bind_addr: !anystr
+          nodes: !anything
+          hidden: "no"
+          disabled: false
+
+---
 #test_name: GET /cluster/{node_id}/stats
 #stages:
 #  - name: Cluster stats (master)
