@@ -22,6 +22,7 @@ import fcntl
 
 from wazuh import common
 from wazuh.exception import WazuhException
+from wazuh.results import WazuhResult
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 from wazuh import configuration
 
@@ -29,7 +30,7 @@ _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
 
 
-def status() -> Dict:
+def status(api_request: bool=False) -> Dict:
     """
     Returns the Manager processes that are running.
     :return: Dictionary (keys: status, daemon).
@@ -55,6 +56,9 @@ def status() -> Dict:
             data[process] = 'running' if exists(join('/proc', process_pid)) else 'failed'
         else:
             data[process] = 'stopped'
+
+    if api_request:
+        return WazuhResult({'data': data})
 
     return data
 

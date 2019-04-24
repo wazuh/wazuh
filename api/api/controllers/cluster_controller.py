@@ -226,7 +226,8 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id}
+    f_kwargs = {'node_id': node_id,
+                'api_request': True}
 
     dapi = DistributedAPI(f=manager.status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
