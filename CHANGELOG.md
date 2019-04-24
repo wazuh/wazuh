@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 - New module to perform **Security Configuration Assessment** scans. ([#2598](https://github.com/wazuh/wazuh/pull/2598))
+- New **Logcollector** features. ([#2929](https://github.com/wazuh/wazuh/pull/2929))
+  - Let Logcollector filter files by content. ([#2796](https://github.com/wazuh/wazuh/issues/2796))
+  - Added a pattern exclusion option to Logcollector. ([#2797](https://github.com/wazuh/wazuh/issues/2797))
+  - Let Logcollector filter files by date. ([#2799](https://github.com/wazuh/wazuh/issues/2799))
+  - Let logcollector support wildcards on Windows. ([#2898](https://github.com/wazuh/wazuh/issues/2898))
+- **Fluent forwarder** for agents. ([#2828](https://github.com/wazuh/wazuh/issues/2828))
 - Collect network and port inventory for Windows XP/Server 2003. ([#2464](https://github.com/wazuh/wazuh/pull/2464))
 - Included inventory fields as dynamic fields in events to use them in rules. ([#2441](https://github.com/wazuh/wazuh/pull/2441))
 - Added an option _startup_healthcheck_ in FIM so that the the who-data health-check is optional. ([#2323](https://github.com/wazuh/wazuh/pull/2323))
@@ -78,6 +84,8 @@ All notable changes to this project will be documented in this file.
 - Fixed error in Whodata when one of the file permissions cannot be extracted. ([#2940](https://github.com/wazuh/wazuh/pull/2940))
 - Fixed System32 and SysWOW64 event processing in Whodata. ([#2935](https://github.com/wazuh/wazuh/pull/2935))
 - Fixed Syscheck hang when monitoring system directories. ([#3059](https://github.com/wazuh/wazuh/pull/3059))
+- Fixed the package inventory for MAC OS X. ([#3035](https://github.com/wazuh/wazuh/pull/3035))
+- Translated the Audit Policy fields from IDs for Windows events. ([#2950](https://github.com/wazuh/wazuh/pull/2950))
 
 
 ## [v3.8.2]

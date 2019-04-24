@@ -2700,6 +2700,244 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
     return 0;
 }
 
+/* Check if the file is ASCII or UTF-8 encoded */
+int is_ascii_utf8(const char * file, unsigned int max_lines_ascii,unsigned int max_chars_utf8) {
+    int is_ascii = 1;
+    int retval = 0;
+    char *buffer = NULL;
+    unsigned int lines_readed_ascii = 0;
+    unsigned int chars_readed_utf8 = 0;
+    fpos_t begin; 
+    FILE *fp;
+
+    fp = fopen(file,"r");
+
+    if (!fp) {
+        mdebug1(OPEN_UNABLE, file);
+        retval = 1;
+        goto end;
+    }
+
+    fgetpos(fp,&begin);
+
+    os_calloc(OS_MAXSTR + 1,sizeof(char),buffer);
+
+    /* ASCII */
+    while (fgets(buffer, OS_MAXSTR, fp)) {
+        int i;
+        unsigned char *c = (unsigned char *)buffer;
+
+        if (lines_readed_ascii >= max_lines_ascii) {
+            break;
+        }
+
+        lines_readed_ascii++;
+
+        for (i = 0; i < OS_MAXSTR; i++) {
+            if( c[i] >= 0x80 ) {
+                is_ascii = 0;
+                break;
+            }
+        }
+
+        if (!is_ascii) {
+            break;
+        }
+    }
+
+    if (is_ascii) {
+        goto end;
+    }
+
+    /* UTF-8 */
+    fsetpos(fp, &begin);
+    unsigned char b[4] = {0};
+    size_t nbytes = 0;
+
+    while (nbytes = fread(b,sizeof(char),4,fp), nbytes) {
+
+        if (chars_readed_utf8 >= max_chars_utf8) {
+            break;
+        }
+
+        chars_readed_utf8++;
+
+        /* Check for UTF-8 BOM */
+        if (b[0] == 0xEF && b[1] == 0xBB && b[2] == 0xBF) {
+            if (fseek(fp,-1,SEEK_CUR) < 0) {
+                merror(FSEEK_ERROR, file, errno, strerror(errno));
+            }
+            goto next;
+        }
+
+        /* Valid ASCII */
+        if (b[0] == 0x09 || b[0] == 0x0A || b[0] == 0x0D || (0x20 <= b[0] && b[0] <= 0x7E)) {
+            if (fseek(fp,-nbytes + 1,SEEK_CUR) < 0) {
+                merror(FSEEK_ERROR, file, errno, strerror(errno));
+            }
+            goto next;
+        }
+
+        /* Two bytes UTF-8 */
+        if (b[0] >= 0xC2 && b[0] <= 0xDF) {
+            if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                if (fseek(fp,-2,SEEK_CUR) < 0) {
+                    merror(FSEEK_ERROR, file, errno, strerror(errno));
+                }
+                goto next;
+            }
+        } 
+
+        /* Exclude overlongs */
+        if ( b[0] == 0xE0 ) {
+            if ( b[1] >= 0xA0 && b[1] <= 0xBF) {
+                if ( b[2] >= 0x80 && b[2] <= 0xBF ) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
+                    goto next;
+                }
+            }
+        }
+
+        /* Three bytes UTF-8 */
+        if ((b[0] >= 0xE1 && b[0] <= 0xEC) || b[0] == 0xEE || b[0] == 0xEF) {
+            if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
+                    goto next;
+                }
+            } 
+        } 
+
+        /* Exclude surrogates */
+        if (b[0] == 0xED) {
+            if ( b[1] >= 0x80 && b[1] <= 0x9F) {
+                if ( b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (fseek(fp,-1,SEEK_CUR) < 0 ) {
+                        merror(FSEEK_ERROR, file, errno, strerror(errno));
+                    }
+                    goto next;
+                }
+            }
+        }
+
+        /* Four bytes UTF-8 plane 1-3 */
+        if (b[0] == 0xF0) {
+            if (b[1] >= 0x90 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (b[3] >= 0x80 && b[3] <= 0xBF) {
+                        goto next;
+                    }
+                }
+            }
+        }
+
+        /* Four bytes UTF-8 plane 4-15*/
+        if (b[0] >= 0xF1 && b[0] <= 0xF3) {
+            if (b[1] >= 0x80 && b[1] <= 0xBF) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (b[3] >= 0x80 && b[3] <= 0xBF) {
+                        goto next;
+                    }
+                }
+            }
+        }
+
+        /* Four bytes UTF-8 plane 16 */
+        if (b[0] == 0xF4) {
+            if (b[1] >= 0x80 && b[1] <= 0x8F) {
+                if (b[2] >= 0x80 && b[2] <= 0xBF) {
+                    if (b[3] >= 0x80 && b[3] <= 0xBF) {
+                        goto next;
+                    }
+                }
+            }
+        }
+
+        retval = 1;
+        goto end;
+
+next:
+        memset(b,0,4);
+        continue;
+    }
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
+    os_free(buffer);
+
+    return retval;
+}
+
+int is_usc2(const char * file) {
+    int retval = 0;
+    FILE *fp;
+
+    fp = fopen(file,"r");
+
+    if (!fp) {
+        mdebug1(OPEN_UNABLE, file);
+        retval = 1;
+        goto end;
+    }
+
+    /* UCS-2 */
+    unsigned char b[2] = {0};
+    size_t nbytes = 0;
+
+    while (nbytes = fread(b,sizeof(char),2,fp), nbytes) {
+        
+        /* Check for UCS-2 LE BOM */
+        if (b[0] == 0xFF && b[1] == 0xFE) {
+            retval = UCS2_LE;
+            goto end;
+        }
+
+        /* Check for UCS-2 BE BOM */
+        if (b[0] == 0xFE && b[1] == 0xFF) {
+            retval = UCS2_BE;
+            goto end;
+        }
+
+        retval = 0;
+        goto end;
+    }
+
+end:
+    if (fp) {
+        fclose(fp);
+    }
+
+    return retval;
+}
+
+#ifdef WIN32
+DWORD FileSizeWin(const char * file) {
+    HANDLE h1;
+    BY_HANDLE_FILE_INFORMATION lpFileInfo;
+
+    h1 = CreateFile(file, GENERIC_READ,
+                    FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h1 == INVALID_HANDLE_VALUE) {
+        merror(FILE_ERROR, file);
+    } else if (GetFileInformationByHandle(h1, &lpFileInfo) == 0) {
+        CloseHandle(h1);
+        merror(FILE_ERROR, file);
+    } else {
+        CloseHandle(h1);
+        return lpFileInfo.nFileSizeHigh + lpFileInfo.nFileSizeLow;
+    }
+
+    return -1;
+}
+#endif
+
 #ifndef WIN32
 size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout){
 

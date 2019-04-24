@@ -26,6 +26,7 @@
 static int FindEventcheck(Eventinfo *lf, int pm_id, int *socket,char *wdb_response);
 static int FindScanInfo(Eventinfo *lf, char *policy_id, int *socket,char *wdb_response);
 static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket);
+static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response);
 static int FindCheckResults(Eventinfo *lf, char * policy_id, int *socket,char *wdb_response);
 static int FindPoliciesIds(Eventinfo *lf, int *socket,char *wdb_response);
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket);
@@ -35,7 +36,7 @@ static int SaveEventcheck(Eventinfo *lf, int exists, int *socket, __attribute__(
 static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id, int pm_start_scan, int pm_end_scan, int pass,int failed, int score,char * hash,int update);
 static int SaveCompliance(Eventinfo *lf,int *socket, int id_check, char *key, char *value);
 static int SaveRules(Eventinfo *lf,int *socket, int id_check, char *type, char *rule);
-static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references);
+static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file);
 static void HandleCheckEvent(Eventinfo *lf,int *socket,cJSON *event);
 static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event);
 static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event);
@@ -380,6 +381,33 @@ static int FindPolicyInfo(Eventinfo *lf, char *policy, int *socket) {
     return retval;
 }
 
+static int FindPolicySHA256(Eventinfo *lf, char *policy, int *socket, char *wdb_response) {
+
+    char *msg = NULL;
+    char *response = NULL;
+    int retval = -1;
+
+    os_calloc(OS_MAXSTR, sizeof(char), msg);
+    os_calloc(OS_MAXSTR, sizeof(char), response);
+
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca query_policy_sha256 %s", lf->agent_id, policy);
+
+    if (pm_send_db(msg, response, socket) == 0) {
+        if (!strncmp(response, "ok found", 8)) {
+            char *result_checks = response + 9;
+            snprintf(wdb_response,OS_MAXSTR,"%s",result_checks);
+            retval = 0;
+        } else if (!strcmp(response, "ok not found")) {
+            retval = 1;
+        } else {
+            retval = -1;
+        }
+    }
+
+    free(response);
+    return retval;
+}
+
 static int DeletePolicy(Eventinfo *lf, char *policy, int *socket) {
     char *msg = NULL;
     char *response = NULL;
@@ -527,7 +555,7 @@ static int SaveScanInfo(Eventinfo *lf,int *socket, char * policy_id,int scan_id,
     }
 }
 
-static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references) {
+static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char * id,char *description,char * references, char *hash_file) {
     
     char *msg = NULL;
     char *response = NULL;
@@ -535,7 +563,7 @@ static int SavePolicyInfo(Eventinfo *lf,int *socket, char *name,char *file, char
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
-    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references);
+    snprintf(msg, OS_MAXSTR - 1, "agent %s sca insert_policy %s|%s|%s|%s|%s|%s",lf->agent_id,name,file,id,description,references,hash_file);
    
     if (pm_send_db(msg, response, socket) == 0)
     {
@@ -734,6 +762,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     cJSON *failed = NULL;
     cJSON *score = NULL;
     cJSON *hash = NULL;
+    cJSON *hash_file = NULL;
     cJSON *file = NULL;
     cJSON *policy = NULL;
     cJSON *first_scan = NULL;
@@ -749,6 +778,7 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
     failed = cJSON_GetObjectItem(event,"failed");
     score = cJSON_GetObjectItem(event,"score");
     hash = cJSON_GetObjectItem(event,"hash");
+    hash_file = cJSON_GetObjectItem(event, "hash_file");
     file = cJSON_GetObjectItem(event,"file");
     policy = cJSON_GetObjectItem(event,"name");
     first_scan = cJSON_GetObjectItem(event,"first_scan");
@@ -816,6 +846,15 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+    if(!hash_file){
+        return;
+    }
+
+    if(!hash_file->valuestring) {
+        merror("Malformed JSON: field 'hash' must be a string");
+        return;
+    }
+
     if(!file){
         return;
     }
@@ -834,15 +873,17 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
         return;
     }
 
+
     int result_event = 0;
     char *hash_scan_info = NULL;
     os_sha256 hash_sha256 = {0};
     os_calloc(OS_MAXSTR,sizeof(char),hash_scan_info);
-    
+
     int result_db = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
 
     int scan_id_old = 0;
     sscanf(hash_scan_info, "%s %d", hash_sha256, &scan_id_old);
+    os_free(hash_scan_info);
 
     switch (result_db)
     {
@@ -901,6 +942,8 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
 
     char *references_db = NULL;
     char *description_db = NULL;
+    char *old_hash = NULL;
+
     result_db = FindPolicyInfo(lf,policy_id->valuestring,socket);
     
     switch (result_db)
@@ -909,7 +952,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
         case 1: // It not exists, insert
-            
             if(references) {
                 if(!references->valuestring) {
                     merror("Malformed JSON: field 'references' must be a string");
@@ -926,18 +968,33 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 description_db = description->valuestring;
             }
 
-            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db);
+            result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file->valuestring);
             if (result_event < 0)
             {
                 merror("Error storing scan policy monitoring information for agent %s", lf->agent_id);
             }
-            
             break;
         default:
+            os_calloc(OS_MAXSTR, sizeof(char), old_hash);
+            if(FindPolicySHA256(lf, policy_id->valuestring, socket, old_hash) == 0){
+                if(strcmp(hash_file->valuestring, old_hash)){
+                    int delete_status = DeletePolicy(lf, policy_id->valuestring, socket);
+                    switch (delete_status) {
+                        case 0:
+                            /* Delete checks */
+                            DeletePolicyCheck(lf, policy_id->valuestring, socket);
+                            PushDumpRequest(lf->agent_id, policy_id->valuestring, 1);
+                            minfo("Policy '%s' outdated. Latest scan requested to the SCA module.", policy_id->valuestring);
+                            break;
+                        default:
+                            merror("Unable to purge DB content for policy '%s'", policy_id->valuestring);
+                            break;
+                    }
+                }
+            }
+            os_free(old_hash);
             break;
     }
-
-    os_free(hash_scan_info);
 
     char *wdb_response = NULL;
     os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
@@ -1249,7 +1306,7 @@ static void HandlePoliciesInfo(Eventinfo *lf,int *socket,cJSON *event) {
                                 break;
 
                             default:
-                                mdebug1("Error deleting policy with id '%s' from database",p_id);
+                                merror("Unable to purge DB content for policy '%s'", p_id);
                                 break;
                         }
                     }
@@ -1365,24 +1422,36 @@ static void FillCheckEventInfo(Eventinfo *lf,cJSON *scan_id,cJSON *id,cJSON *nam
         fillData(lf, "sca.check.references", reference->valuestring);
     }
 
+    char *array_buffer = NULL;
+
     if(file){
-        fillData(lf, "sca.check.file", file->valuestring);
+        csv_list_to_json_str_array(file->valuestring, &array_buffer);
+        fillData(lf, "sca.check.file", array_buffer);
+        os_free(array_buffer);
     }
 
     if(directory) {
-        fillData(lf, "sca.check.directory", directory->valuestring);
+        csv_list_to_json_str_array(directory->valuestring, &array_buffer);
+        fillData(lf, "sca.check.directory", array_buffer);
+        os_free(array_buffer);
     }
 
     if(registry) {
-        fillData(lf, "sca.check.registry", registry->valuestring);
+        csv_list_to_json_str_array(registry->valuestring, &array_buffer);
+        fillData(lf, "sca.check.registry", array_buffer);
+        os_free(array_buffer);
     }
 
     if(process){
-        fillData(lf, "sca.check.process", process->valuestring);
+        csv_list_to_json_str_array(process->valuestring, &array_buffer);
+        fillData(lf, "sca.check.process", array_buffer);
+        os_free(array_buffer);
     }
 
     if(command){
-        fillData(lf, "sca.check.command", command->valuestring);
+        csv_list_to_json_str_array(command->valuestring, &array_buffer);
+        fillData(lf, "sca.check.command", array_buffer);
+        os_free(array_buffer);
     }
 
     if(result) {
