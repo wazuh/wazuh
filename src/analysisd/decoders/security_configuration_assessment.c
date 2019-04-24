@@ -919,7 +919,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             merror("Error querying policy monitoring database for agent %s", lf->agent_id);
             break;
         case 0: // It exists, update
-
             result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,1);
             if (result_event < 0)
             {
@@ -939,7 +938,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
             }
             break;
         case 1: // It not exists, insert
-            
             result_event = SaveScanInfo(lf,socket,policy_id->valuestring,pm_scan_id->valueint,pm_scan_start->valueint,pm_scan_end->valueint,passed->valueint,failed->valueint,invalid->valueint,total_checks->valueint,score->valueint,hash->valuestring,0);
             if (result_event < 0)
             {
@@ -995,7 +993,6 @@ static void HandleScanInfo(Eventinfo *lf,int *socket,cJSON *event) {
                 }
                 description_db = description->valuestring;
             }
-
             result_event = SavePolicyInfo(lf,socket,policy->valuestring,file->valuestring,policy_id->valuestring,description_db,references_db,hash_file->valuestring);
             if (result_event < 0)
             {
@@ -1081,7 +1078,6 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
         os_calloc(OS_MAXSTR,sizeof(char),wdb_response);
 
         result_db = FindCheckResults(lf,policy_id->valuestring,socket,wdb_response);
-
         if (!result_db)
         {   
             char *hash_scan_info = NULL;
@@ -1090,12 +1086,10 @@ static void HandleDumpEvent(Eventinfo *lf,int *socket,cJSON *event) {
             
             int result_db_hash = FindScanInfo(lf,policy_id->valuestring,socket,hash_scan_info);
             sscanf(hash_scan_info, "%s", hash_sha256);
-
             if(!result_db_hash) {
             
                 /* Integrity check */
                 if(strcmp(wdb_response, hash_sha256)) {
-
                     mdebug2("SHA256 from DB: %s SHA256 from summary: %s", wdb_response, hash_sha256);
                     mdebug2("Requesting DB dump");
                     PushDumpRequest(lf->agent_id,policy_id->valuestring,0);

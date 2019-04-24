@@ -696,20 +696,12 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             }
         }
 
-        if (result_check){
-            if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check->valuestring ? result_check->valuestring : NULL,policy_id->valuestring,command ? command->valuestring : NULL,NULL,NULL), result < 0) {
-                mdebug1("Cannot save Security Configuration Assessment information.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
+        
+        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check ? result_check->valuestring : "",policy_id->valuestring,command ? command->valuestring : NULL,status ? status->valuestring : NULL,reason ? reason->valuestring : NULL), result < 0) {
+            mdebug1("Cannot save Security Configuration Assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
         } else {
-            if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,NULL,policy_id->valuestring,command ? command->valuestring : NULL,status->valuestring ? status->valuestring : NULL,reason->valuestring ? reason->valuestring : NULL), result < 0) {
-                mdebug1("Cannot save Security Configuration Assessment information.");
-                snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
-            } else {
-                snprintf(output, OS_MAXSTR + 1, "ok");
-            }
+            snprintf(output, OS_MAXSTR + 1, "ok");
         }
 
         cJSON_Delete(event);
