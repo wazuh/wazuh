@@ -110,6 +110,9 @@ static wm_sca_t * data_win;
 
 cJSON **last_summary_json = NULL;
 
+/* Multiple readers / one write mutex */
+static pthread_rwlock_t dump_rwlock;
+
 // Module main function. It won't return
 void * wm_sca_main(wm_sca_t * data) {
     // If module is disabled, exit
@@ -195,6 +198,8 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
 
     request_queue = queue_init(1024);
+
+    w_rwlock_init(&dump_rwlock, NULL);
 
 #ifndef WIN32
     w_create_thread(wm_sca_request_thread, data);
@@ -510,9 +515,12 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements_satisfied) {
+                w_rwlock_rdlock(&dump_rwlock);
+
                 time_t time_start = 0;
                 time_t time_end = 0;
                 time_start = time(NULL);
+
 
                 minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
 
@@ -538,6 +546,8 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Evaluation finished for policy '%s'.",data->profile[i]->profile);
                 wm_sca_reset_summary();
+                
+                w_rwlock_unlock(&dump_rwlock);
             }
 
             w_del_plist(plist);
@@ -2441,6 +2451,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             }
           
             int scan_id = -1;
+            w_rwlock_wrlock(&dump_rwlock);
 
             for(i = 0; cis_db_for_hash[request->policy_index].elem[i]; i++) {
                 cis_db_info_t *event;
@@ -2483,6 +2494,8 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             }
 
             mdebug1("Finished dumping scan results to SCA DB for policy index '%u'",request->policy_index);
+
+            w_rwlock_unlock(&dump_rwlock);
             os_free(request);
         }
     }
