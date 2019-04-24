@@ -458,7 +458,8 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                 'sort': sort,
                 'search':search,
                 'category': category,
-                'type_log': type_log}
+                'type_log': type_log,
+                'api_request': True}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
