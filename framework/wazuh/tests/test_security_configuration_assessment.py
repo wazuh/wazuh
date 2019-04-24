@@ -107,7 +107,7 @@ class TestPolicyMonitoring(TestCase):
             sca = result['items']
             assert(isinstance(sca, list))
             assert(len(sca) > 0)
-            assert(set(sca[0].keys()) == set(cols_returned_from_db_sca_check) | {'compliance'})
+            assert(set(sca[0].keys()).issubset(set(fields_translation_sca_check.keys()) | {'compliance', 'rules'}))
 
             compliance = sca[0]['compliance']
             assert(isinstance(compliance, list))
@@ -123,3 +123,16 @@ class TestPolicyMonitoring(TestCase):
             sca = result['items']
             assert(isinstance(sca, list))
             assert(len(sca) == 0)
+
+    @patch('socket.socket')
+    @patch('wazuh.common.wdb_path', test_data_path)
+    def test_sca_checks_select_and_q(self, mock):
+        """
+        Tests filtering using q parameter and selecting multiple fields
+        """
+        with patch('wazuh.utils.WazuhDBConnection') as mock_wdb:
+            mock_wdb.return_value = InitWDBSocketMock(sql_schema_file='schema_sca_test.sql')
+            result = get_sca_checks('cis_debian', agent_id='000', q="rules.type!=file",
+                                    select={'fields': ['compliance', 'policy_id', 'result', 'rules']})
+            assert result['items'][0]['rules'][0]['type'] != 'file'
+            assert set(result['items'][0].keys()).issubset({'compliance', 'policy_id', 'result', 'rules'})

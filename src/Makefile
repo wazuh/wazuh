@@ -24,6 +24,7 @@ EXTERNAL_CURL=external/curl/
 EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_CPYTHON=external/cpython/
+EXTERNAL_MSGPACK=external/msgpack/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -217,7 +218,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include
 
 
 
@@ -579,7 +580,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml
+test_programs = tap_os_crypto tap_os_net tap_os_regex tap_shared tap_os_zlib tap_os_xml tap_fluentd_forwarder
 
 WINDOWS_BINS:=win32/ossec-agent.exe win32/ossec-agent-eventchannel.exe win32/ossec-rootcheck.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/add-localfile.exe win32/os_win32ui.exe win32/agent-auth.exe
 
@@ -623,10 +624,12 @@ LIBYAML_LIB = $(EXTERNAL_LIBYAML)src/.libs/libyaml.a
 LIBCURL_LIB = $(EXTERNAL_CURL)lib/.libs/libcurl.a
 AUDIT_LIB = $(EXTERNAL_AUDIT)lib/.libs/libaudit.a
 LIBFFI_LIB = $(EXTERNAL_LIBFFI)server/.libs/libffi.a
+MSGPACK_LIB = $(EXTERNAL_MSGPACK)libmsgpack.a
 
 EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB)
 
 ifneq (${TARGET},winagent)
+EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBCURL_LIB) $(LIBFFI_LIB)
 endif
@@ -641,6 +644,12 @@ endif
 
 .PHONY: external test_external
 external: test_external $(EXTERNAL_LIBS)
+
+ifneq (${TARGET},winagent)
+ifneq (${TARGET},agent)
+external: build_python
+endif
+endif
 
 test_external:
 ifeq ($(wildcard external/*/*),)
@@ -787,6 +796,20 @@ $(EXTERNAL_AUDIT)Makefile:
 
 	cd $(EXTERNAL_AUDIT) && ./autogen.sh && ./configure CFLAGS=-fPIC --with-libcap-ng=no
 
+#### msgpack #########
+
+ifneq (${TARGET},winagent)
+msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
+msgpack_o := $(msgpack_c:.c=.o)
+
+${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
+
+$(MSGPACK_LIB): ${msgpack_o}
+	${OSSEC_LINK} $@ $^
+	${OSSEC_RANLIB} $@
+endif
+
 ################################
 #### External dependencies  ####
 ################################
@@ -823,7 +846,7 @@ endif
 endif
 
 
-EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace
+EXTERNAL_RES := cJSON $(CPYTHON) curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack
 EXTERNAL_DIR :=  $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
 
@@ -966,6 +989,12 @@ crypto_sha256_o := $(crypto_sha256_c:.c=.o)
 os_crypto/sha256/%.o: os_crypto/sha256/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
+crypto_sha512_c := os_crypto/sha512/sha512_op.c
+crypto_sha512_o := $(crypto_sha512_c:.c=.o)
+
+os_crypto/sha512/%.o: os_crypto/sha512/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
+
 crypto_aes_c := os_crypto/aes/aes_op.c
 crypto_aes_o := $(crypto_aes_c:.c=.o)
 
@@ -1010,6 +1039,7 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_sha1_o} \
 					 ${crypto_md5_sha1_sha256_o} \
 					 ${crypto_sha256_o} \
+					 ${crypto_sha512_o} \
 					 ${crypto_aes_o} \
 					 ${crypto_hmac_o} \
 					 ${crypto_signature_o}
@@ -1409,16 +1439,41 @@ ifneq (,$(filter ${OPTIMIZE_CPYTHON},yes y Y 1))
 CPYTHON_FLAGS=--enable-optimizations
 endif
 
-wpython: build_python install_python install_dependencies install_framework
+wpython: install_dependencies install_framework
+
+ifeq (${uname_S},Darwin)
+WLIBPYTHON=libpython3.7m.dylib
+else
+WLIBPYTHON=libpython3.7m.so.1.0
+endif
 
 build_python:
+ifeq (${uname_S},Darwin)
+ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python.exe))
+	export WPATH_LIB="@executable_path/../../../lib"
+	export SOURCE_PATH=${ROUTE_PATH}
+	export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI}
+	export INSTALL_NAME_DIR=${ROUTE_PATH}
+	export DYLD_LIBRARY_PATH=${ROUTE_PATH}
+	mkdir -p ${ROUTE_PATH}/../lib && cp ${WAZUHEXT_LIB} ${ROUTE_PATH}/../lib
+	cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Xlinker -rpath -Xlinker @executable_path/../../../lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	install_name_tool -change ${WLIBPYTHON} @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	install_name_tool -change ${WPYTHON_DIR}/lib/libpython3.7m.dylib @rpath/../lib/${WLIBPYTHON} -id @rpath/../lib/${WLIBPYTHON} external/cpython/${WLIBPYTHON}
+	rm -rf ${ROUTE_PATH}/../lib
+endif
+else
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ./configure --prefix="${WPYTHON_DIR}" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH}/ -lwazuhext -Wl,-rpath,${PREFIX}/lib" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="-L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+endif
+endif
+
+ifndef DISABLE_SHARED
+build_python: $(WAZUHEXT_LIB)
 endif
 
 install_python:
 	cd ${EXTERNAL_CPYTHON} && export WPATH_LIB=${PREFIX}/lib && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && ${MAKE} install
-	ln -fs ${WPYTHON_DIR}/lib/libpython3.7m.so.1.0 ${PREFIX}/lib/
+	find ${WPYTHON_DIR} -name "*${WLIBPYTHON}" -exec ln -f {} ${PREFIX}/lib/${WLIBPYTHON} \;
 
 python_dependencies := requirements.txt
 
@@ -1426,7 +1481,7 @@ install_dependencies: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/pip3 install -r ${python_dependencies} --index-url=file://${ROUTE_PATH}/${EXTERNAL_CPYTHON}/Dependencies/simple
 
 
-install_framework:
+install_framework: install_python
 	cd ../framework && ${WPYTHON_DIR}/bin/python3 setup.py install --prefix=${WPYTHON_DIR}
 
 
@@ -1478,6 +1533,9 @@ tap_os_zlib: tests/tap_os_zlib.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 tap_os_xml: tests/tap_os_xml.o ${os_xml_o}
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+
+tap_fluentd_forwarder: tests/tap_fluentd_forwarder.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 test_valgrind: build_tests
@@ -1588,6 +1646,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -f $(sqlite_o) $(EXTERNAL_SQLITE)/libsqlite3.*
 	-cd ${EXTERNAL_AUDIT} && make distclean
 	-cd ${EXTERNAL_LIBFFI} && make clean
+	rm -f $(msgpack_o) $(EXTERNAL_MSGPACK)libmsgpack.a
 
 ifneq ($(wildcard external/libdb/build_unix/*),)
 	cd ${EXTERNAL_LIBDB} && make realclean
@@ -1596,7 +1655,7 @@ endif
 
 clean-wpython:
 ifneq ($(wildcard external/cpython/*),)
-	cd ${EXTERNAL_CPYTHON} && make clean && make distclean
+	-cd ${EXTERNAL_CPYTHON} && ${MAKE} clean && ${MAKE} distclean
 endif
 
 clean-deps:

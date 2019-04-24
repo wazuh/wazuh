@@ -80,8 +80,8 @@ int wdb_parse(char * input, char * output) {
 
         if (strcmp(query, "syscheck") == 0) {
             if (!next) {
-                mdebug1("DB(%s) Invalid Syscheck query syntax.", sagent_id);
-                mdebug2("DB(%s) Syscheck query error near: %s", sagent_id, query);
+                mdebug1("DB(%s) Invalid FIM query syntax.", sagent_id);
+                mdebug2("DB(%s) FIM query error near: %s", sagent_id, query);
                 snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", query);
                 result = -1;
             } else {
@@ -295,9 +295,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     long ts;
 
     if (next = wstr_chr(input, ' '), !next) {
-        mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
-        mdebug2("DB(%s) Syscheck query: %s", wdb->agent_id, input);
-        snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", input);
+        mdebug2("DB(%s) Invalid FIM query syntax: %s", wdb->agent_id, input);
+        snprintf(output, OS_MAXSTR + 1, "err Invalid FIM query syntax, near '%.32s'", input);
         return -1;
     }
 
@@ -306,7 +305,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
     if (strcmp(curr, "scan_info_get") == 0) {
         if (result = wdb_scan_info_get(wdb, "fim", next, &ts), result < 0) {
-            mdebug1("DB(%s) Cannot get fim scan info.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot get FIM scan info.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot get fim scan info.");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %ld", ts);
@@ -361,7 +360,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "load") == 0) {
         if (result = wdb_syscheck_load(wdb, next, buffer, sizeof(buffer)), result < 0) {
-            mdebug1("DB(%s) Cannot load Syscheck.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot load FIM.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot load Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok %s", buffer);
@@ -370,7 +369,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "delete") == 0) {
         if (result = wdb_fim_delete(wdb, next), result < 0) {
-            mdebug1("DB(%s) Cannot delete Syscheck entry.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot delete FIM entry.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot delete Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -381,8 +380,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         curr = next;
 
         if (next = wstr_chr(curr, ' '), !next) {
-            mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
-            mdebug2("DB(%s) Syscheck query: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -394,8 +393,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         } else if (strcmp(curr, "registry") == 0) {
             ftype = WDB_FILE_TYPE_REGISTRY;
         } else {
-            mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
-            mdebug2("DB(%s) Syscheck query: %s", wdb->agent_id, curr);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug2("DB(%s) FIM query: %s", wdb->agent_id, curr);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
             return -1;
         }
@@ -403,8 +402,8 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         checksum = next;
 
         if (next = wstr_chr(checksum, ' '), !next) {
-            mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
-            mdebug2("Syscheck query: %s", checksum);
+            mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
+            mdebug2("FIM query: %s", checksum);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", checksum);
             return -1;
         }
@@ -412,7 +411,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
         *next++ = '\0';
 
         if (result = wdb_syscheck_save(wdb, ftype, checksum, next), result < 0) {
-            mdebug1("DB(%s) Cannot save Syscheck.", wdb->agent_id);
+            mdebug1("DB(%s) Cannot save FIM.", wdb->agent_id);
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Syscheck");
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
@@ -420,7 +419,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
 
         return result;
     } else {
-        mdebug1("DB(%s) Invalid Syscheck query syntax.", wdb->agent_id);
+        mdebug1("DB(%s) Invalid FIM query syntax.", wdb->agent_id);
         mdebug2("DB query error near: %s", curr);
         snprintf(output, OS_MAXSTR + 1, "err Invalid Syscheck query syntax, near '%.32s'", curr);
         return -1;
@@ -528,6 +527,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         cJSON *directory;
         cJSON *process;
         cJSON *registry;
+        cJSON *command;
         cJSON *reference;
         cJSON *result_check;
         cJSON *policy_id;
@@ -633,6 +633,12 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 mdebug1("Malformed JSON: field 'registry' must be a string");
                 return -1;
             }
+
+            command = cJSON_GetObjectItem(check, "command");
+            if( command && !command->valuestring ) {
+                mdebug1("Malformed JSON: field 'command' must be a string");
+                return -1;
+            }
             
             if( result_check = cJSON_GetObjectItem(check, "result"), !result_check) {
                 mdebug1("Malformed JSON: field 'result' not found");
@@ -645,7 +651,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             }
         }
 
-        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check->valuestring ? result_check->valuestring : NULL,policy_id->valuestring), result < 0) {
+        if (result = wdb_sca_save(wdb,id->valueint,scan_id->valueint,title->valuestring,description ? description->valuestring : NULL,rationale ? rationale->valuestring : NULL,remediation ? remediation->valuestring : NULL,file ? file->valuestring : NULL,directory ? directory->valuestring : NULL,process ? process->valuestring : NULL,registry ? registry->valuestring : NULL,reference ? reference->valuestring : NULL ,result_check->valuestring ? result_check->valuestring : NULL,policy_id->valuestring,command ? command->valuestring : NULL), result < 0) {
             mdebug1("Cannot save Security Configuration Assessment information.");
             snprintf(output, OS_MAXSTR + 1, "err Cannot save Security Configuration Assessment information.");
         } else {
@@ -721,6 +727,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
             wdb_sca_check_compliances_delete(wdb);
+            wdb_sca_check_rules_delete(wdb);
         }
 
         return result;
@@ -738,6 +745,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         } else {
             snprintf(output, OS_MAXSTR + 1, "ok");
             wdb_sca_check_compliances_delete(wdb);
+            wdb_sca_check_rules_delete(wdb);
         }
 
         return result;
@@ -990,6 +998,46 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         }
 
         return result;
+    } else if (strcmp(curr, "insert_rules") == 0){
+
+
+         int id_check;
+        char *type;
+        char *rule;
+
+         curr = next;
+
+         if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+         id_check = strtol(curr,NULL,10);
+        *next++ = '\0';
+
+         curr = next;
+        if (next = strchr(curr, '|'), !next) {
+            mdebug1("Invalid Security Configuration Assessment query syntax.");
+            mdebug2("Security Configuration Assessment query: %s", curr);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid configuration assessment query syntax, near '%.32s'", curr);
+            return -1;
+        }
+
+         type = curr;
+        *next++ = '\0';
+
+         rule = next;
+        if (result = wdb_sca_rules_save(wdb,id_check,type,rule), result < 0) {
+            mdebug1("Cannot save configuration assessment information.");
+            snprintf(output, OS_MAXSTR + 1, "err Cannot save configuration assessment global information.");
+        } else {
+            snprintf(output, OS_MAXSTR + 1, "ok");
+        }
+
+         return result;
+
     } else if (strcmp(curr, "insert_compliance") == 0) {
 
         int id_check;

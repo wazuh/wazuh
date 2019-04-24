@@ -37,6 +37,19 @@ CREATE TABLE IF NOT EXISTS agent (
 CREATE INDEX IF NOT EXISTS agent_name ON agent (name);
 CREATE INDEX IF NOT EXISTS agent_ip ON agent (ip);
 
+CREATE TABLE IF NOT EXISTS `group`
+    (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT
+    );
+
+CREATE TABLE IF NOT EXISTS belongs
+    (
+    id_agent INTEGER,
+    id_group INTEGER,
+    PRIMARY KEY (id_agent, id_group)
+);
+
 -- manager
 INSERT INTO agent (id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_platform, os_uname, os_arch,
                    version, manager_host, node_name, date_add, last_keepalive, status, `group`) VALUES
@@ -63,7 +76,7 @@ INSERT INTO agent (id, name, register_ip, internal_key, os_name, os_version, os_
                    'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747f', 'Ubuntu','16.04.1 LTS','16','04',
                    'Xenial','ubuntu',
                    'Linux |agent-1 |4.15.0-43-generic |#46-Ubuntu SMP Thu Dec 6 14:45:28 UTC 2018 |x86_64','x86_64',
-                   'Wazuh v3.8.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
+                   'Wazuh v3.6.2','ab73af41699f13fgt81903b5f23d8d00','f8d49771911ed9d5c45bdfa40babd065','master',
                    'node01',datetime(CURRENT_TIMESTAMP, '-3 days', 'localtime'),
                     datetime(CURRENT_TIMESTAMP, '-10 minutes', 'localtime'),'updated');
 

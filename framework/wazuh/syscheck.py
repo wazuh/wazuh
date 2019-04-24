@@ -13,7 +13,7 @@ from wazuh import common
 from datetime import datetime
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
-from wazuh.utils import WazuhDBQuery, WazuhDBBackend, get_fields_to_nest, plain_dict_to_nested_dict
+from wazuh.utils import WazuhDBQuery, WazuhDBBackend
 
 def run(agent_id=None, all_agents=False):
     """

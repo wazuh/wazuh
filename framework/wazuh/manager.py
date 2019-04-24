@@ -22,6 +22,7 @@ import fcntl
 from wazuh import common
 from wazuh.exception import WazuhException
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
+from wazuh import configuration
 
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
@@ -124,7 +125,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0, limit=common.d
             else:
                 continue
         else:
-            if logs:
+            if logs and line and log_category == logs[-1]['tag'] and level == logs[-1]['level']:
                 logs[-1]['description'] += "\n" + line
 
     if search:
@@ -557,3 +558,10 @@ def _parse_execd_output(output: str) -> Dict:
         response = {'status': 'OK'}
 
     return response
+
+
+def get_config(component, config):
+    """
+    Returns active configuration loaded in manager
+    """
+    return configuration.get_active_configuration(agent_id='000', component=component, configuration=config)

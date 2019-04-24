@@ -22,9 +22,9 @@
 /* Maximum body size */
 #define BODY_SIZE           OS_MAXSTR + OS_SIZE_1024
 
-#define SMS_SUBJECT         "OSSEC %d - %d - %s"
-#define MAIL_SUBJECT        "OSSEC Notification - %s - Alert level %d"
-#define MAIL_SUBJECT_FULL   "OSSEC Alert - %s - Level %d - %s"
+#define SMS_SUBJECT         "Wazuh %d - %d - %s"
+#define MAIL_SUBJECT        "Wazuh notification - %s - Alert level %d"
+#define MAIL_SUBJECT_FULL   "Wazuh alert - %s - Level %d - %s"
 
 /* Full subject without ossec in the name */
 #ifdef CLEANFULL

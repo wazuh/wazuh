@@ -79,7 +79,11 @@ OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
 OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 
+/*
+ * Safe iteration of the hash Table
+ * Mode: 0 (read it), 1 (write it), 2 (write it with delay)
+*/
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
-void OSHash_It_ex(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
+void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
 
 #endif

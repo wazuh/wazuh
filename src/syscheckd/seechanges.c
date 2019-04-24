@@ -20,6 +20,9 @@
 static char *gen_diff_alert(const char *filename, time_t alert_diff_time) __attribute__((nonnull));
 static int seechanges_dupfile(const char *old, const char *current) __attribute__((nonnull));
 static int seechanges_createpath(const char *filename) __attribute__((nonnull));
+#ifdef WIN32
+static char *adapt_win_fc_output(char *command_output);
+#endif
 
 static const char *STR_MORE_CHANGES = "More changes...";
 
@@ -89,7 +92,7 @@ int is_text(magic_t cookie, const void *buf, size_t len)
 
     if (!magic) {
         const char *err = magic_error(cookie);
-        merror("magic_buffer: %s", err ? err : "unknown");
+        merror(FIM_ERROR_LIBMAGIC_BUFFER, err ? err : "unknown");
         return (1); // TODO default to true?
     } else {
         if (strncmp(magic, "text/", 5) == 0) {
@@ -158,7 +161,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     fp = fopen(path, "rb");
     if (!fp) {
-        merror("Unable to generate diff alert.");
+        merror(FIM_ERROR_GENDIFF_OPEN);
         return (NULL);
     }
 
@@ -168,7 +171,7 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
 
     switch (n) {
     case 0:
-        merror("Unable to generate diff alert (fread).");
+        merror(FIM_ERROR_GENDIFF_READ);
         return (NULL);
     case OS_MAXSTR - OS_SK_HEADER - 1:
         buf[n] = '\0';
@@ -184,17 +187,12 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     }
 
 #ifdef WIN32
-    diff_str = strchr(buf, '\n');
-
-    if (!diff_str) {
-        merror("Unable to find second line of alert string.");
+    if (diff_str = adapt_win_fc_output(buf), !diff_str) {
         return NULL;
     }
 
-    diff_str++;
-
 #else
-    diff_str = buf;
+    os_strdup(buf, diff_str);
 #endif
 
     snprintf(
@@ -207,10 +205,10 @@ static char *gen_diff_alert(const char *filename, time_t alert_diff_time)
     );
 
     if (w_compress_gzfile(filename, compressed_file) != 0) {
-        mwarn("Cannot create a snapshot of file '%s'", filename);
+        mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
     }
 
-    return (strdup(diff_str));
+    return diff_str;
 }
 
 static int seechanges_dupfile(const char *old, const char *current)
@@ -244,7 +242,7 @@ static int seechanges_dupfile(const char *old, const char *current)
         buf[n] = '\0';
 
         if (fwrite(buf, 1, n, fpw) != n) {
-            merror("Unable to write data on file '%s'", current);
+            merror(FIM_ERROR_GENDIFF_WRITING_DATA, current);
             break;
         }
     } while ((n = fread(buf, 1, 2048, fpr)) > 0);
@@ -272,7 +270,7 @@ static int seechanges_createpath(const char *filename)
     tmpstr = strtok(buffer + PATH_OFFSET, "/");
 #endif
     if (!tmpstr) {
-        merror("Invalid path name: '%s'", filename);
+        merror(FIM_ERROR_GENDIFF_INVALID_PATH, filename);
         free(buffer);
         return (0);
     }
@@ -350,7 +348,7 @@ char *seechanges_addfile(const char *filename)
     if (w_uncompress_gzfile(compressed_file, old_location) != 0) {
         seechanges_createpath(old_location);
         if (w_compress_gzfile(filename, compressed_file) != 0) {
-            mwarn("Cannot create a snapshot of file '%s'", filename);
+            mwarn(FIM_WARN_GENDIFF_SNAPSHOT, filename);
         }
         return (NULL);
     }
@@ -390,7 +388,7 @@ char *seechanges_addfile(const char *filename)
     }
 
     if (seechanges_dupfile(filename, old_location) != 1) {
-        merror("Unable to create snapshot for %s", filename);
+        merror(FIM_ERROR_GENDIFF_CREATE_SNAPSHOT, filename);
         return (NULL);
     }
 
@@ -416,12 +414,12 @@ char *seechanges_addfile(const char *filename)
         char* nodiff_message = "<Diff truncated because nodiff option>";
         fdiff = fopen(diff_location, "wb");
         if (!fdiff){
-            merror("Unable to open file for writing `%s`", diff_location);
+            merror(FIM_ERROR_GENDIFF_OPEN_FILE, diff_location);
             goto cleanup;
         }
 
         if (fwrite(nodiff_message, strlen(nodiff_message) + 1, 1, fdiff) < 1) {
-            merror("Unable to write data on file '%s'", diff_location);
+            merror(FIM_ERROR_GENDIFF_WRITING_DATA, diff_location);
         }
         fclose(fdiff);
         /* Success */
@@ -434,7 +432,7 @@ char *seechanges_addfile(const char *filename)
         diff_location_filtered = filter(diff_location);
 
         if (!(tmp_location_filtered && old_location_filtered && diff_location_filtered)) {
-            mdebug1("Diff execution skipped for containing insecure characters.");
+            mdebug1(FIM_DIFF_SKIPPED);
             goto cleanup;
         }
 
@@ -444,7 +442,7 @@ char *seechanges_addfile(const char *filename)
 #ifndef WIN32
             "diff \"%s\" \"%s\" > \"%s\" 2> /dev/null",
 #else
-            "fc \"%s\" \"%s\" > \"%s\" 2> nul",
+            "fc /n \"%s\" \"%s\" > \"%s\" 2> nul",
 #endif
             tmp_location_filtered,
             old_location_filtered,
@@ -457,7 +455,7 @@ char *seechanges_addfile(const char *filename)
         int pstatus = system(diff_cmd);
         if (pstatus < 0 || pstatus > 1) {
 #endif
-            merror("Unable to run `%s`", diff_cmd);
+            merror(FIM_ERROR_GENDIFF_COMMAND, diff_cmd);
             goto cleanup;
         }
 
@@ -481,3 +479,66 @@ cleanup:
     /* Generate alert */
     return (gen_diff_alert(filename, new_date_of_change));
 }
+
+#ifdef WIN32
+
+char *adapt_win_fc_output(char *command_output) {
+    char *adapted_output;
+    char *line;
+    char *next_line;
+    const char *line_tag = ":  ";
+    const char *split_tag = "---";
+    char line_mode = 0; // 0: waiting for section, 1: remove, 2: add
+    char first_line = 0;
+    size_t line_tag_size = strlen(line_tag);
+    size_t written = 0;
+
+    if (line = strchr(command_output, '\n'), !line) {
+        merror(FIM_ERROR_GENDIFF_SECONDLINE_MISSING);
+        return NULL;
+    }
+
+    os_calloc(OS_MAXSTR + 1, sizeof(char), adapted_output);
+
+    while (line) {
+        next_line = strstr(++line, "\r\n");
+
+        if (*line == '*') {
+            if (next_line) {
+                next_line++;
+            }
+
+            if (!line_mode) {
+                if (first_line) {
+                    written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+                }
+                first_line = 1;
+            } else if (line_mode == 1) {
+                written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s\n", split_tag);
+            }
+
+            line_mode = (line_mode + 1) % 3;
+            goto next_it;
+        }
+
+        if (next_line) {
+            *(next_line++) = '\0';
+            *next_line = '\0';
+        }
+
+        if (line = strstr(line, line_tag), !line) {
+            goto next_it;
+        } else {
+            line += line_tag_size;
+        }
+
+        written += snprintf(adapted_output + written, OS_MAXSTR - written, "%s%s%s", line_mode == 1 ? "< " : "> ", line, next_line ? "\n" : "");
+
+next_it:
+        line = next_line;
+    }
+
+    return adapted_output;
+}
+
+#endif

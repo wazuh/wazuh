@@ -95,6 +95,7 @@ void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder) {
     fim_decoder->fields[SK_PPID] = "ppid";
     fim_decoder->fields[SK_PROC_ID] = "process_id";
     fim_decoder->fields[SK_TAG] = "tag";
+    fim_decoder->fields[SK_SYM_PATH] = "symbolic_path";
 }
 
 // Initialize the necessary information to process the syscheck information
@@ -103,6 +104,7 @@ void sdb_clean(_sdb *localsdb) {
     *localsdb->size = '\0';
     *localsdb->perm = '\0';
     *localsdb->attrs = '\0';
+    *localsdb->sym_path = '\0';
     *localsdb->owner = '\0';
     *localsdb->gowner = '\0';
     *localsdb->md5 = '\0';
@@ -140,9 +142,9 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
      * or
      * 'checksum'!'extradata' 'filename'
      * or
-     *                                             |v2.1       v3.4   |v3.4         v3.6  |
-     *                                             |->         |->    |->           |->   |
-     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags filename\nreportdiff"
+     *                                             |v2.1       v3.4   |v3.4         |v3.6 |v3.9
+     *                                             |->         |->    |->           |->   |->
+     * "size:permision:uid:gid:md5:sha1:uname:gname:mtime:inode:sha256!w:h:o:d:a:t:a:tags:symbolic_path:silent filename\nreportdiff"
      *  ^^^^^^^^^^^^^^^^^^^^^^^^^^^checksum^^^^^^^^^^^^^^^^^^^^^^^^^^^!^^^^extradata^^^^^ filename\n^^^diff^^^'
      */
     sdb_clean(sdb);
@@ -154,7 +156,7 @@ int DecodeSyscheck(Eventinfo *lf, _sdb *sdb)
         case -1:
             return (-1);
         case 0:
-            merror(SK_INV_MSG);
+            merror(FIM_INVALID_MESSAGE);
             return (-1);
         default:
             return(0);
@@ -214,6 +216,7 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
     char *old_check_sum = NULL;
     char *response = NULL;
     char *check_sum = NULL;
+    char *sym_path = NULL;
     sk_sum_t oldsum = { .size = NULL };
     sk_sum_t newsum = { .size = NULL };
     time_t *end_first_scan = NULL;
@@ -319,14 +322,20 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
                 *ttype = "file";
             }
 
-            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck save %s %s!%d:%ld %s",
+            if (newsum.symbolic_path) {
+                sym_path = escape_syscheck_field(newsum.symbolic_path);
+            }
+
+            snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck save %s %s!%d:%ld:%s %s",
                     lf->agent_id,
                     *ttype,
                     new_check_sum,
                     changes,
                     lf->time.tv_sec,
+                    sym_path ? sym_path : "",
                     f_name
             );
+            os_free(sym_path);
             os_free(response);
             response = NULL;
             db_result = send_query_wazuhdb(wazuhdb_query, &response, sdb);
@@ -378,25 +387,30 @@ int fim_db_search(char *f_name, char *c_sum, char *w_sum, Eventinfo *lf, _sdb *s
             goto exit_fail;
     }
 
-    sk_fill_event(lf, f_name, &newsum);
+    if (!newsum.silent) {
+        sk_fill_event(lf, f_name, &newsum);
 
-    /* Dyanmic Fields */
-    lf->nfields = SK_NFIELDS;
-    for (i = 0; i < SK_NFIELDS; i++) {
-        os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
-    }
+        /* Dyanmic Fields */
+        lf->nfields = SK_NFIELDS;
+        for (i = 0; i < SK_NFIELDS; i++) {
+            os_strdup(lf->decoder_info->fields[i], lf->fields[i].key);
+        }
 
-    if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
-        //No changes in checksum
-        goto exit_ok;
+        if(fim_alert(f_name, &oldsum, &newsum, lf, sdb) == -1) {
+            //No changes in checksum
+            goto exit_ok;
+        }
+        sk_sum_clean(&newsum);
+        sk_sum_clean(&oldsum);
+        os_free(response);
+        os_free(new_check_sum);
+        os_free(old_check_sum);
+        os_free(wazuhdb_query);
+
+        return (1);
+    } else {
+        mdebug2("Ignoring FIM event on '%s'.", f_name);
     }
-    sk_sum_clean(&newsum);
-    sk_sum_clean(&oldsum);
-    os_free(response);
-    os_free(new_check_sum);
-    os_free(old_check_sum);
-    os_free(wazuhdb_query);
-    return (1);
 
 exit_ok:
     sk_sum_clean(&newsum);
@@ -704,6 +718,13 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             break;
     }
 
+    /* Symbolic path message */
+    if (newsum->symbolic_path && *newsum->symbolic_path) {
+        snprintf(localsdb->sym_path, OS_FLSIZE, "Symbolic path: '%s'.\n", newsum->symbolic_path);
+    } else {
+        *localsdb->sym_path = '\0';
+    }
+
     // Provide information about the file
     comment_buf = snprintf(localsdb->comment, OS_MAXSTR, "File"
             " '%.756s' "
@@ -723,9 +744,11 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
             "%s"
             "%s"
             "%s"
+            "%s"
             "%s",
             f_name,
             msg_type,
+            localsdb->sym_path,
             localsdb->size,
             localsdb->perm,
             localsdb->owner,
@@ -751,9 +774,10 @@ int fim_alert (char *f_name, sk_sum_t *oldsum, sk_sum_t *newsum, Eventinfo *lf, 
     }
 
     if(lf->data) {
-        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "What changed:\n%s",
+        snprintf(localsdb->comment+comment_buf, OS_MAXSTR-comment_buf, "%s",
                 lf->data);
-        os_strdup(lf->data, lf->diff);
+        lf->diff = lf->data;
+        lf->data = NULL;
     }
 
     // Create a new log message
@@ -889,7 +913,7 @@ int fim_control_msg(char *key, time_t value, Eventinfo *lf, _sdb *sdb) {
         snprintf(msg, OS_SIZE_128, "end_scan");
     }
 
-    if (msg) {
+    if (*msg != '\0') {
         os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
 
         snprintf(wazuhdb_query, OS_SIZE_6144, "agent %s syscheck scan_info_update %s %ld",
