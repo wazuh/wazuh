@@ -5,10 +5,11 @@ stages:
   - name: Try to show the rules of the system
 
     request:
-      url: http://127.0.0.1:55000/rules
+      url: http://localhost:55000/rules
       method: GET
       params:
         limit: 2
+        offset: 0
 
     response:
       status_code: 200
@@ -50,17 +51,11 @@ stages:
           }
         ]
         totalItems: 2168
----
 
----
-
-test_name: GET /rules
-
-stages:
   - name: Try to show the rules of the system with a existent state
 
     request:
-      url: http://127.0.0.1:55000/rules
+      url: http://localhost:55000/rules
       method: GET
       params:
         list_status: disabled
@@ -124,17 +119,10 @@ stages:
         ]
         totalItems: 2
 
----
-
----
-
-test_name: GET /rules
-
-stages:
-  - name: Try to show the rules of the system with a non-existent state
+  - name: Try to get all rules with limit = 0
 
     request:
-      url: http://127.0.0.1:55000/rules
+      url: http://localhost:55000/rules
       method: GET
       params:
         list_status: notexist
@@ -146,38 +134,343 @@ stages:
         status: 400
         title: "Bad Request"
         type: "about:blank"
----
 
----
-
-test_name: GET /rules
-
-stages:
-  - name: Try to show the rules by levels
+  - name: Sort the rules
 
     request:
-      url: http://127.0.0.1:55000/rules
+      url: http://localhost:55000/rules
       method: GET
       params:
-        level: 2
+        sort: -file
+        limit: 2
 
     response:
       status_code: 200
       body:
-#        items: !anystr
+        items: [
+          {
+            "description": "sshd: authentication failed from IP 1.1.1.1.",
+            "details": {
+              "if_sid": "5716",
+              "srcip": "1.1.1.1"
+            },
+            "file": "local_rules.xml",
+            "gdpr": [],
+            "groups": [
+              "authentication_failed",
+              "local",
+              "syslog",
+              "sshd"
+            ],
+            "id": 100001,
+            "level": 5,
+            "path": "etc/rules",
+            "pci": [
+              "10.2.4",
+              "10.2.5"
+            ],
+            "status": "enabled"
+          },
+          {
+            "description": "Group of Security Configuration Assessment rules",
+            "details": {
+              "category": "ossec",
+              "decoded_as": "sca",
+              "options": "no_full_log"
+            },
+            "file": "0570-sca_rules.xml",
+            "gdpr": [
+              "IV_35.7.d"
+            ],
+            "groups": [
+              "wazuh",
+              "sca"
+            ],
+            "id": 19000,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 2168
+
+  - name: Search in rules
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        search: web
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Generic template for all web rules.",
+            "details": {
+              "category": "web-log",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "web-log"
+            ],
+            "id": 4,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "Generic template for all web proxy rules.",
+            "details": {
+              "category": "squid",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "squid"
+            ],
+            "id": 5,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 119
+
+  - name: Invalid parameter
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        noexist: nothing
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) noexist not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Invalid status
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        list_status: aCtIvE
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Invalid parameters - Extra fields
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        list_status: enabled
+        random: True
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Filters status
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        list_status: enabled
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Generic template for all syslog rules.",
+            "details": {
+              "category": "syslog",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "syslog"
+            ],
+            "id": 1,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "Generic template for all firewall rules.",
+            "details": {
+              "category": "firewall",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "firewall"
+            ],
+            "id": 2,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 2166
+
+  - name: Try to show the rules of the system with a non-existent state
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        list_status: notexist
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter group
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        group: web
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Apache messages grouped.",
+            "details": {
+              "decoded_as": "apache-errorlog"
+            },
+            "file": "0250-apache_rules.xml",
+            "gdpr": [],
+            "groups": [
+              "apache",
+              "web"
+            ],
+            "id": 30100,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "Apache error messages grouped.",
+            "details": {
+              "if_sid": "30100",
+              "match": "^[error] "
+            },
+            "file": "0250-apache_rules.xml",
+            "gdpr": [],
+            "groups": [
+              "apache",
+              "web"
+            ],
+            "id": 30101,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 107
+
+  - name: Try to show the rules by levels
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        level: 2
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Windows application monitor event.",
+            "details": {
+              "if_sid": "510",
+              "match": "^Application Found"
+            },
+            "file": "0015-ossec_rules.xml",
+            "gdpr": [],
+            "groups": [
+              "rootcheck",
+              "ossec"
+            ],
+            "id": 514,
+            "level": 2,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "File missing. Root access unrestricted.",
+            "details": {
+              "match": "^Couldn't open /etc/securetty"
+            },
+            "file": "0020-syslog_rules.xml",
+            "gdpr": [
+              "IV_35.7.d"
+            ],
+            "groups": [
+              "gpg13_4.1",
+              "syslog",
+              "errors"
+            ],
+            "id": 1001,
+            "level": 2,
+            "path": "ruleset/rules",
+            "pci": [
+              "10.2.4"
+            ],
+            "status": "enabled"
+          }
+        ]
         totalItems: 50
 
----
-
----
-
-test_name: GET /rules
-
-stages:
   - name: Try to show the rules by levels (invalid interval)
 
     request:
-      url: http://127.0.0.1:55000/rules
+      url: http://localhost:55000/rules
       method: GET
       params:
         level: 2-4-5
@@ -189,6 +482,243 @@ stages:
         status: 400
         title: "Bad Request"
         type: "about:blank"
+
+  - name: Filter path
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        path: ruleset/rules
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Generic template for all syslog rules.",
+            "details": {
+              "category": "syslog",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "syslog"
+            ],
+            "id": 1,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "Generic template for all firewall rules.",
+            "details": {
+              "category": "firewall",
+              "noalert": "1"
+            },
+            "file": "0010-rules_config.xml",
+            "gdpr": [],
+            "groups": [
+              "firewall"
+            ],
+            "id": 2,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 2167
+
+  - name: Filter file
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        file: 0350-amazon_rules.xml
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "AWS alert.",
+            "details": {
+              "decoded_as": "json",
+              "integration": "aws"
+            },
+            "file": "0350-amazon_rules.xml",
+            "gdpr": [],
+            "groups": [
+              "amazon",
+              "aws"
+            ],
+            "id": 80200,
+            "level": 0,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).",
+            "details": {
+              "aws.source": "cloudtrail",
+              "if_sid": "80200",
+              "list": {
+                "field": "aws.eventName",
+                "lookup": "match_key",
+                "name": "etc/lists/amazon/aws-eventnames"
+              }
+            },
+            "file": "0350-amazon_rules.xml",
+            "gdpr": [
+              "IV_35.7.d"
+            ],
+            "groups": [
+              "aws_cloudtrail",
+              "amazon",
+              "aws"
+            ],
+            "id": 80202,
+            "level": 3,
+            "path": "ruleset/rules",
+            "pci": [
+              "10.6.1"
+            ],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 43
+
+  - name: Filter pci
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        pci: 11.4
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Log file size reduced.",
+            "details": {
+              "if_sid": "500",
+              "match": "^ossec: File size reduced"
+            },
+            "file": "0015-ossec_rules.xml",
+            "gdpr": [
+              "IV_35.7.d"
+            ],
+            "groups": [
+              "attacks",
+              "gpg13_10.1",
+              "ossec"
+            ],
+            "id": 592,
+            "level": 8,
+            "path": "ruleset/rules",
+            "pci": [
+              "10.5.2",
+              "11.4"
+            ],
+            "status": "enabled"
+          },
+          {
+            "description": "Host Blocked by firewall-drop.sh Active Response",
+            "details": {
+              "if_sid": "600",
+              "script": "firewall-drop.sh",
+              "type": "add"
+            },
+            "file": "0015-ossec_rules.xml",
+            "gdpr": [
+              "IV_35.7.d"
+            ],
+            "groups": [
+              "active_response",
+              "gpg13_4.13",
+              "ossec"
+            ],
+            "id": 601,
+            "level": 3,
+            "path": "ruleset/rules",
+            "pci": [
+              "11.4"
+            ],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 270
+
+  - name: Filter gdpr
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        gdpr: II_5.1.f
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "description": "Syscheck Audit: $(extra_data)",
+            "details": {
+              "if_sid": "500",
+              "match": "^ossec: Audit:"
+            },
+            "file": "0015-ossec_rules.xml",
+            "gdpr": [
+              "II_5.1.f",
+              "IV_35.7.d"
+            ],
+            "groups": [
+              "syscheck",
+              "ossec"
+            ],
+            "id": 517,
+            "level": 7,
+            "path": "ruleset/rules",
+            "pci": [],
+            "status": "enabled"
+          },
+          {
+            "description": "Integrity checksum changed.",
+            "details": {
+              "category": "ossec",
+              "decoded_as": "syscheck_integrity_changed"
+            },
+            "file": "0015-ossec_rules.xml",
+            "gdpr": [
+              "II_5.1.f"
+            ],
+            "groups": [
+              "syscheck",
+              "gpg13_4.11",
+              "ossec"
+            ],
+            "id": 550,
+            "level": 7,
+            "path": "ruleset/rules",
+            "pci": [
+              "11.5"
+            ],
+            "status": "enabled"
+          }
+        ]
+        totalItems: 23
+
 ---
 
 ---
@@ -196,44 +726,215 @@ stages:
 test_name: GET /rules/pci
 
 stages:
-  - name: Try to show the rules by requeriment (pci, gdpr)
+  - name: Try to show the rules by requeriment pci
 
     request:
-      url: http://127.0.0.1:55000/rules/pci
+      url: http://localhost:55000/rules/pci
       method: GET
 
     response:
       status_code: 200
       body:
         totalItems: 38
----
 
----
+  - name: Try to show the rules by requeriment pci, limit and offset
 
+    request:
+      url: http://localhost:55000/rules/pci
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          "1.1.1"
+        ]
+        totalItems: 38
+
+  - name: Try to show the rules by requeriment pci, limit = 0
+
+    request:
+      url: http://localhost:55000/rules/pci
+      method: GET
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter sort
+
+    request:
+      url: http://localhost:55000/rules/pci
+      method: GET
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 38
+
+  - name: Filter search
+
+    request:
+      url: http://localhost:55000/rules/pci
+      method: GET
+      params:
+        search: 10
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          "10.1",
+          "10.2.1",
+          "10.2.2",
+          "10.2.4",
+          "10.2.5",
+          "10.2.6",
+          "10.2.7",
+          "10.4",
+          "10.5.2",
+          "10.5.5",
+          "10.6",
+          "10.6.1",
+          "6.5.10"
+        ]
+        totalItems: 13
+
+  - name: Invalid filter
+
+    request:
+      url: http://localhost:55000/rules/pci
+      method: GET
+      params:
+        random: True
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) random not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+---
 test_name: GET /rules/gdpr
 
 stages:
-  - name: Try to show the rules by requeriment (pci, gdpr)
+  - name: Try to show the rules by requeriment gdpr
 
     request:
-      url: http://127.0.0.1:55000/rules/gdpr
+      url: http://localhost:55000/rules/gdpr
       method: GET
 
     response:
       status_code: 200
       body:
+        items: [
+          "II_5.1.f",
+          "IV_30.1.g",
+          "IV_32.2",
+          "IV_35.7.d"
+        ]
         totalItems: 4
----
 
----
+  - name: Try to show the rules by requeriment gdpr, limit = 1, offset = 0
 
-test_name: GET /rules/XgdprY
+    request:
+      url: http://localhost:55000/rules/gdpr
+      method: GET
+      params:
+        limit: 1
+        offset: 0
 
-stages:
+    response:
+      status_code: 200
+      body:
+        items: [
+          "II_5.1.f"
+        ]
+        totalItems: 4
+
+  - name: Try to show the rules by requeriment gdpr, limit = 0
+
+    request:
+      url: http://localhost:55000/rules/gdpr
+      method: GET
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter sort
+
+    request:
+      url: http://localhost:55000/rules/gdpr
+      method: GET
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          "IV_35.7.d",
+          "IV_32.2",
+          "IV_30.1.g",
+          "II_5.1.f"
+        ]
+        totalItems: 4
+
+  - name: Filter search
+
+    request:
+      url: http://localhost:55000/rules/gdpr
+      method: GET
+      params:
+        search: 30
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          "IV_30.1.g"
+        ]
+        totalItems: 1
+
+  - name: Invalid filter
+
+    request:
+      url: http://localhost:55000/rules/gdpr
+      method: GET
+      params:
+        random: True
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) random not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
   - name: Try to show the rules by invalid requeriment (XgdprY)
 
     request:
-      url: http://127.0.0.1:55000/rules/XgdprY
+      url: http://localhost:55000/rules/XgdprY
       method: GET
 
     response:
@@ -253,63 +954,346 @@ stages:
   - name: Try to show the groups of rules
 
     request:
-      url: http://127.0.0.1:55000/rules/groups
+      url: http://localhost:55000/rules/groups
       method: GET
 
     response:
       status_code: 200
       body:
         totalItems: 318
----
 
----
-
-test_name: GET /rules/{id}
-
-stages:
-  - name: Try to show a rule with a existent id
+  - name: Try to show the groups of rules, limit and offset
 
     request:
-      url: http://127.0.0.1:55000/rules/1
+      url: http://localhost:55000/rules/groups
+      method: GET
+      params:
+        offset: 0
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          "access_control"
+        ]
+        totalItems: 318
+
+  - name: Try to show the groups of rules, limit = 0
+
+    request:
+      url: http://localhost:55000/rules/groups
+      method: GET
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter sort
+
+    request:
+      url: http://localhost:55000/rules/groups
+      method: GET
+      params:
+        sort: "-"
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 318
+
+  - name: Filter search
+
+    request:
+      url: http://localhost:55000/rules/groups
+      method: GET
+      params:
+        search: web
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          "web",
+          "web-log",
+          "web_scan"
+        ]
+        totalItems: 3
+
+  - name: Invalid filter
+
+    request:
+      url: http://localhost:55000/rules/groups
+      method: GET
+      params:
+        random: nothing
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) random not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+---
+
+---
+test_name: GET /rules/files
+
+stages:
+  - name: Get the rules files
+
+    request:
+      url: http://localhost:55000/rules/files
       method: GET
 
     response:
       status_code: 200
       body:
-        items: {
-          "description": "Generic template for all syslog rules.",
-          "details": {
-            "category": "syslog",
-            "noalert": "1"
+        totalItems: 112
+
+  - name: Get the rules files, limit = 1, offset = 0
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "file": "0010-rules_config.xml",
+            "path": "ruleset/rules",
+            "status": "enabled"
+          }
+        ]
+        totalItems: 112
+
+  - name: Get the rules files, limit = 0
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter sort
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        sort: "-file"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "file": "local_rules.xml",
+            "path": "etc/rules",
+            "status": "enabled"
+          }
+        ]
+        totalItems: 112
+
+  - name: Filter search
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        search: web
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "file": "0245-web_rules.xml",
+            "path": "ruleset/rules",
+            "status": "enabled"
           },
+          {
+            "file": "0270-web_appsec_rules.xml",
+            "path": "ruleset/rules",
+            "status": "enabled"
+          }
+        ]
+        totalItems: 2
+
+  - name: Invalid filter
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        random: True
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) random not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Invalid filter - Extra field
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        list_status: enabled
+        random: True
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) random not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Filter status
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        list_status: enabled
+
+    response:
+      status_code: 200
+      body:
+        items: !anything
+        totalItems: 112
+
+  - name: Filter status again
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        list_status: enabled
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "file": "0010-rules_config.xml",
+            "path": "ruleset/rules",
+            "status": "enabled"
+          }
+        ]
+        totalItems: 112
+
+  - name: Filter search enabled
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        search: enabled
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items: [
+          {
+            "file": "0010-rules_config.xml",
+            "path": "ruleset/rules",
+            "status": "enabled"
+          }
+        ]
+        totalItems: 111
+
+  - name: Filter download
+
+    request:
+      url: http://localhost:55000/rules/files
+      method: GET
+      params:
+        download: 0350-amazon_rules.xml
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items: [
+        {
           "file": "0010-rules_config.xml",
-          "gdpr": [],
-          "groups": [
-            "syslog"
-          ],
-          "id": 1,
-          "level": 0,
           "path": "ruleset/rules",
-          "pci": [],
           "status": "enabled"
         }
-        totalItems: 1
+        ]
+        totalItems: 111
 ---
 
----
-
-test_name: GET /rules/{id}
-
-stages:
-  - name: Try to show a rule with a nonexistent id
-
-    request:
-      url: http://127.0.0.1:55000/rules/999999999
-      method: GET
-
-    response:
-      status_code: 200
-      body:
-        items: []
-        totalItems: 0
----
+#---
+#
+#test_name: GET /rules/{id}
+#
+#stages:
+#  - name: Try to show a rule with a existent id
+#
+#    request:
+#      url: http://localhost:55000/rules/1
+#      method: GET
+#
+#    response:
+#      status_code: 200
+#      body:
+#        items: {
+#          "description": "Generic template for all syslog rules.",
+#          "details": {
+#            "category": "syslog",
+#            "noalert": "1"
+#          },
+#          "file": "0010-rules_config.xml",
+#          "gdpr": [],
+#          "groups": [
+#            "syslog"
+#          ],
+#          "id": 1,
+#          "level": 0,
+#          "path": "ruleset/rules",
+#          "pci": [],
+#          "status": "enabled"
+#        }
+#        totalItems: 1
+#
+#  - name: Try to show a rule with a nonexistent id
+#
+#    request:
+#      url: http://localhost:55000/rules/999999999
+#      method: GET
+#
+#    response:
+#      status_code: 200
+#      body:
+#        items: []
+#        totalItems: 0
+#---

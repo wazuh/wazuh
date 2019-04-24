@@ -9,7 +9,7 @@ import logging
 from api.models.list_metadata import ListMetadata
 from api.models.rules_files_model import RulesFiles
 from api.models.rules_model import Rules as RulesModel
-from api.util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
 from wazuh.exception import WazuhException, WazuhError
@@ -50,6 +50,13 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :param gdpr: Filters by GDPR requirement.
     :type gdpr: str
     """
+
+    if sort:
+        sort = parse_api_param(sort, 'sort')
+
+    if search:
+        search = parse_api_param(search, 'search')
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search, 'status': list_status, 'group': group,
                 'level': level, 'file': file, 'path': path,
@@ -94,6 +101,13 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
     :param search: Looks for elements with the specified string
     :type search: str
     """
+
+    if sort:
+        sort = parse_api_param(sort, 'sort')
+
+    if search:
+        search = parse_api_param(search, 'search')
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search}
 
@@ -127,6 +141,13 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
     :param search: Looks for elements with the specified string
     :type search: str
     """
+
+    if sort:
+        sort = parse_api_param(sort, 'sort')
+
+    if search:
+        search = parse_api_param(search, 'search')
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search}
 
@@ -160,6 +181,13 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param search: Looks for elements with the specified string
     :type search: str
     """
+
+    if sort:
+        sort = parse_api_param(sort, 'sort')
+
+    if search:
+        search = parse_api_param(search, 'search')
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search}
 
@@ -201,6 +229,13 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :param download: Download the specified file.
     :type download: str
     """
+
+    if sort:
+        sort = parse_api_param(sort, 'sort')
+
+    if search:
+        search = parse_api_param(search, 'search')
+
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search, 'status': status, 'file':file,
                 'path': path, 'download': download}
