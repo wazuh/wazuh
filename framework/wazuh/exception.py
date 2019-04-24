@@ -195,9 +195,9 @@ class WazuhException(Exception):
         3021: 'Timeout executing API request',
         3022: 'Unknown node ID',
         3023: {'message': 'Worker node is not connected to master',
-               'remediation': 'Check the cluster.log file to see if there are connection errors. '
-                              'Restart the `wazuh-manager` service.'},
-        3024: "Length of command exceeds limit",
+               'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
+                              'connection errors. Restart the `wazuh-manager` service.'},
+        3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
         3025: {'message': "Could not decrypt message",
                'remediation': "Check the cluster key is correct in the worker's "
                               "[ossec.conf](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#key)"
@@ -217,7 +217,7 @@ class WazuhException(Exception):
                'remediation': "[Update](https://documentation.wazuh.com/current/installation-guide/upgrading/index.html)"
                               " both master and worker to the same version."},
         3032: "Could not forward DAPI request. Connection not available.",
-        3033: "Payload length exceeds limit",
+        3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
         3034: "Error sending file. File not found."
 
         # > 9000: Authd
