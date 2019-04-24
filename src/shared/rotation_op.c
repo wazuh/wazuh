@@ -95,24 +95,12 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
 rotation_node *get_rotation_node_list(char *dir_name, rotation_node **last_node, int *count, char *tag, char *ext) {
     DIR *dir;
     rotation_node *list = NULL;
-    rotation_node *node_it;
 
     if (dir = opendir(dir_name), !dir) {
         return NULL;
     }
 
     list = !last_node ? get_sorted_year(dir) : get_sorted_file(dir, dir_name, last_node, count, tag, ext);
-
-    // if (list) {
-
-    //     for (node_it = list; node_it; node_it = node_it->next) {
-    //         if (last_node) {
-    //             minfo("~~~~~~~~~- [%d][%d] [%s]\n", node_it->first_value, node_it->second_value, node_it->string_value);
-    //         } else {
-    //             minfo("~~~~~~~~~- [%d]\n", node_it->first_value);
-    //         }
-    //     }
-    // }
 
     closedir(dir);
 
@@ -300,7 +288,7 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
             char compressed_log[OS_FLSIZE+3];
             snprintf(compressed_log, OS_FLSIZE+3, "%s.gz", list->first->string_value);
             if(unlink(compressed_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", list->first->string_value, strerror(errno));
+                merror("Unable to delete '%s' due to '%s'", compressed_log, strerror(errno));
             } else {
                 mdebug2("Removing the rotated file '%s'.", list->first->string_value);
             }

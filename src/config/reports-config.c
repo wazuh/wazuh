@@ -357,7 +357,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                 return OS_INVALID;
                             }
                             if(rotation_config->rotate < 1) {
-                                mwarn("Minimum value for 'rotate' not allowed. It will be set to 1.");
+                                mwarn("Minimum value for 'rotate' in <logs> not allowed. It will be set to 1.");
                             }
                         } else if(strcmp(rotation_children[k]->element, xml_enabled) == 0) {
                             if(strcmp(rotation_children[k]->content, "yes") == 0) {
