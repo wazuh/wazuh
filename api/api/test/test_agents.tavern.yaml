@@ -67,6 +67,11 @@ stages:
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Remove agents
 
@@ -132,6 +137,11 @@ stages:
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Remove an agent
 
@@ -164,6 +174,17 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1734
+        dapi_errors:
+          master-node:
+            "error": "Error unsetting agent group: Agent 000 doesn't belong to any group"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Error unsetting agent group: Agent 000 doesn't belong to any group"
+        remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Try remove group not exist agent
 
@@ -173,6 +194,17 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1701
+        dapi_errors:
+          master-node:
+            "error": "Agent does not exist: 999"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Agent does not exist: 999"
+        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Try remove group bad agent ID
 
@@ -182,6 +214,11 @@ stages:
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Remove groups
 
@@ -212,6 +249,17 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1734
+        dapi_errors:
+          master-node:
+            "error": "Error unsetting agent group: Agent 000 doesn't belong to any group"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Error unsetting agent group: Agent 000 doesn't belong to any group"
+        remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Try remove group not exist agent
 
@@ -221,6 +269,17 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1701
+        dapi_errors:
+          master-node:
+            "error": "Agent does not exist: 999"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Agent does not exist: 999"
+        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Try remove group bad agent ID
 
@@ -230,6 +289,11 @@ stages:
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Remove not exist group
 
@@ -241,6 +305,17 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1734
+        dapi_errors:
+          master-node:
+            "error": "Error unsetting agent group: Agent 001 doesn't belong to group dmz"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Error unsetting agent group: Agent 001 doesn't belong to group dmz"
+        remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Create new group
 
@@ -293,6 +368,17 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1710
+        dapi_errors:
+          master-node:
+            "error": "The group does not exist"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "The group does not exist"
+        remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Create new group
 
@@ -387,13 +473,13 @@ stages:
         failed_ids:
           - error:
               code: 1710
-              message: !anystr
-              remediation: !anystr
+              message: "The group does not exist: dmztest1"
+              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
             id: dmztest1
           - error:
               code: 1710
-              message: !anystr
-              remediation: !anystr
+              message: "The group does not exist: dmztest2"
+              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
             id: dmztest2
         ids: []
         message: Some groups were not removed
@@ -482,8 +568,8 @@ stages:
         failed_ids:
           - error:
               code: 1710
-              message: !anystr
-              remediation: !anystr
+              message: "The group does not exist: dmztest1"
+              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
             id: dmztest1
         ids: []
         message: Some groups were not removed
@@ -574,7 +660,7 @@ stages:
 
     request:
       <<: *get_agents
-      params: 
+      params:
         offset: 0
         limit: 1
 
@@ -604,6 +690,11 @@ stages:
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Sort
 
@@ -627,6 +718,16 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1403
+        dapi_errors:
+          master-node:
+            "error": !anystr
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: !anystr
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Search
 
@@ -674,7 +775,7 @@ stages:
       <<: *get_agents
       params: 
         select: 'dateAdd,mergedSum'
-    
+
     response:
       status_code: 200
       body:
@@ -690,6 +791,16 @@ stages:
 
     response:
       status_code: 400
+      body:
+        code: 1724
+        dapi_errors:
+          master-node:
+            "error": "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Not a valid select field: Allowed select fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Fields param_test"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Try show agents with not allowed selector (invalid character)
 
@@ -700,6 +811,11 @@ stages:
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+          status: 400
+          title: Bad Request
+          type: about:blank
 
   - name: Filter by agent version
 
@@ -707,7 +823,7 @@ stages:
       <<: *get_agents
       params: 
         version: 'Wazuhv3.9.0'
-    
+
     response:
       status_code: 200
       body:
@@ -733,7 +849,7 @@ stages:
       <<: *get_agents
       params: 
         os_platform: "{expected_os_platform:s}"
-    
+
     response:
       status_code: 200
       body:
@@ -889,7 +1005,7 @@ stages:
       <<: *get_agents
       params: 
         manager: expected_manager_host
-    
+
     response:
       status_code: 200
       body:
@@ -944,6 +1060,11 @@ stages:
     
     response:
       status_code: 400
+      body:
+        detail: !anystr
+          status: 400
+          title: Bad Request
+          type: about:blank
 
   - name: Filter agents by group
 
@@ -993,6 +1114,16 @@ stages:
     
     response:
       status_code: 400
+      body:
+        code: 1408
+        dapi_errors:
+          master-node:
+            "error": "Field does not exist.: Available fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Field: lastKeepAe"
+            "logfile": "WAZUH_HOME/logs/api.log"
+        detail: "Field does not exist.: Available fields: id, name, ip, status, os.name, os.version, os.platform, version, manager, dateAdd, group, mergedSum, configSum, os.codename, os.major, os.minor, os.uname, os.arch, os.build, node_name, lastKeepAlive, internal_key, registerIP. Field: lastKeepAe"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
 
   - name: Filter agents by older param
 
@@ -1016,6 +1147,11 @@ stages:
     
     response:
       status_code: 400
+      body:
+        detail: !anystr
+          status: 400
+          title: Bad Request
+          type: about:blank
 
 ---
 test_name: GET /agents/:agent_id
@@ -1027,7 +1163,7 @@ marks:
 stages:
   - name: Basic response agent
 
-    request: &get_agents
+    request: &get_agent
       url: http://localhost:55000/agents/000
       method: GET
 
@@ -1077,7 +1213,7 @@ stages:
   - name: Filter select one field
 
     request:
-      <<: *get_agents
+      <<: *get_agent
       params: 
         select: 'os.platform'
     
@@ -1090,7 +1226,7 @@ stages:
   - name: Filter select multiple fields
 
     request:
-      <<: *get_agents
+      <<: *get_agent
       params: 
         select: 'dateAdd,status'
     
@@ -1103,7 +1239,7 @@ stages:
   - name: Try show agents with not allowed selector
 
     request:
-      <<: *get_agents
+      <<: *get_agent
       params:
         select: param_test
 
@@ -1123,9 +1259,14 @@ stages:
   - name: Try show agents with not allowed selector (invalid character)
 
     request:
-      <<: *get_agents
+      <<: *get_agent
       params:
         select: param_ñ_test
 
     response:
       status_code: 400
+      body:
+        detail: !anystr
+          status: 400
+          title: Bad Request
+          type: about:blank

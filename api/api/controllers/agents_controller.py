@@ -29,8 +29,8 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
     :type pretty: bool
     :param wait_for_complete: Disable timeout response 
     :type wait_for_complete: bool
-    :param list_agents: Array of agent ID’s
-    :type list_agents: List[str]
+    :param list_agents_ids: Array of agent ID’s
+    :type list_agents_ids: List[str]
     :param purge: Delete an agent from the key store
     :type purge: bool
     :param status: Filters by agent status. Use commas to enter multiple statuses.
