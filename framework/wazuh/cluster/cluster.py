@@ -173,7 +173,9 @@ def get_status_json():
     enabled = {'enabled': 'no' if check_cluster_status() else 'yes'}
     running = {'running': 'yes' if status()['wazuh-clusterd'] == 'running' else 'no'}
 
-    return WazuhResult('data': {**enabled, **running})
+    status = {**enabled, **running}
+
+    return WazuhResult({'data': status})
 
 
 #
