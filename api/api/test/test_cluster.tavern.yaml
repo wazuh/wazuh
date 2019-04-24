@@ -492,6 +492,144 @@ stages:
           syscollector: !anything
           vulnerability-detector: !anything
 
+  - name: Filters -> section=rootcheck (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      params:
+        section: rootcheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          check_dev: !anystr
+          check_files: !anystr
+          check_if: !anystr
+          check_pids: !anystr
+          check_ports: !anystr
+          check_sys: !anystr
+          check_trojans: !anystr
+          check_unixaudit: !anystr
+          disabled: !anystr
+          frequency: !anystr
+          rootkit_files: !anything
+          rootkit_trojans: !anystr
+          skip_nfs: !anystr
+          system_audit: !anything
+
+  - name: Filters -> section=syscheck (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      params:
+        section: syscheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alert_new_files: !anystr
+          auto_ignore: !anything
+          directories: !anything
+          disabled: !anystr
+          frequency: !anystr
+          ignore: !anything
+          nodiff: !anything
+          restart_audit: !anystr
+          scan_on_start: !anystr
+          skip_nfs: !anystr
+
+  - name: Filters -> section=syscollector (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+      params:
+        section: syscollector
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+          hardware: !anystr
+          interval: !anystr
+          network: !anystr
+          os: !anystr
+          packages: !anystr
+          ports : !anything
+          processes: !anystr
+          scan_on_start: !anystr
+
+  - name: Filters -> section=rootcheck (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      params:
+        section: rootcheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          check_dev: !anystr
+          check_files: !anystr
+          check_if: !anystr
+          check_pids: !anystr
+          check_ports: !anystr
+          check_sys: !anystr
+          check_trojans: !anystr
+          check_unixaudit: !anystr
+          disabled: !anystr
+          frequency: !anystr
+          rootkit_files: !anything
+          rootkit_trojans: !anystr
+          skip_nfs: !anystr
+          system_audit: !anything
+
+  - name: Filters -> section=syscheck (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      params:
+        section: syscheck
+
+    response:
+      status_code: 200
+      body:
+        data:
+          alert_new_files: !anystr
+          auto_ignore: !anything
+          directories: !anything
+          disabled: !anystr
+          frequency: !anystr
+          ignore: !anything
+          nodiff: !anything
+          restart_audit: !anystr
+          scan_on_start: !anystr
+          skip_nfs: !anystr
+
+  - name: Filters -> section=syscollector (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+      params:
+        section: syscollector
+
+    response:
+      status_code: 200
+      body:
+        data:
+          disabled: !anystr
+          hardware: !anystr
+          interval: !anystr
+          network: !anystr
+          os: !anystr
+          packages: !anystr
+          ports : !anything
+          processes: !anystr
+          scan_on_start: !anystr
+
 ---
 #test_name: GET /cluster/{node_id}/stats
 #stages:
