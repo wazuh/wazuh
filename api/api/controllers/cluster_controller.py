@@ -456,7 +456,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                 'offset': offset,
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(sort, 'search'),
+                'search': parse_api_param(search, 'search'),
                 'category': category,
                 'type_log': type_log,
                 'api_request': True}

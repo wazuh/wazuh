@@ -999,13 +999,49 @@ stages:
       method: GET
       params:
         limit: 2
-        sort: timestamp
+        sort: -timestamp
 
     response:
         status_code: 200
         body:
           data:
             items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> limit=1, sort=timestamp (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      params:
+        limit: 1
+        sort: +timestamp
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> offset=2, limit=3 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        limit: 3
+        offset: 2
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
               - <<: *cluster_log
               - <<: *cluster_log
             totalItems: !anyint
