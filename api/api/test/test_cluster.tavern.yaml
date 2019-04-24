@@ -37,12 +37,12 @@ stages:
             -
               ip: !anystr
               version: !anystr
-              type: worker
+              type: master
               name: !anystr
             -
               ip: !anystr
               version: !anystr
-              type: master
+              type: worker
               name: !anystr
 
   - name: Retrieve all elements with limit=0
@@ -246,21 +246,54 @@ stages:
             -
               type: !anystr
 
-#  - name: Wrong select
-#
-#    request:
-#      url: http://localhost:55000/cluster/nodes
-#      method: GET
-#      params:
-#        select: wrong_field
-#
-#    response:
-#      status_code: 400
-#      body:
-#        detail: !anystr
-#        status: 400
-#        title: !anystr
-#        type: !anystr
+  - name: Wrong select
+
+    request:
+      url: http://localhost:55000/cluster/nodes
+      method: GET
+      params:
+        select: wrong_field
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        detail: !anystr
+        status: 500  ## should be 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /cluster/healthcheck
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/cluster/healthcheck
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          n_connected_nodes: 1
+          nodes:
+            master:
+              info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+            worker-1:
+              info:
+                name: !anystr
+                ip: !anystr
+                version: !anystr
+                type: !anystr
+                n_active_agents: !anyint
+              status: !anything
 
 ---
 #test_name: GET /cluster/{node_id}/stats
@@ -277,32 +310,12 @@ stages:
 #        status_code: 200
 #        data:
 #          body:
-#            - hour:
-#              alerts:
-#                - sigid:
-#                  level:
-#                  times:
-#                - sigid:
-#                  level:
-#                  times:
-#                - sigid:
-#                  level:
-#                  times:
-#              totalAlerts:
-#              events:
-#              firewall:
-#            - hour:
-#              alerts:
-#                - sigid:
-#                  level:
-#                  times:
-#                - sigid:
-#                  level:
-#                  times:
-#              totalAlerts:
-#              events:
-#              syscheck:
-#              firewall:
+#            alerts: !anything
+#            events: !anyint
+#            hour: !anyint
+#            syscheck: !anyint
+#            firewall: !anyint
+#            totalAlerts: !anyint
 
 #  - name: Cluster stats (worker)
 #

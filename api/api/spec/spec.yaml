@@ -4919,8 +4919,8 @@ paths:
                                 $ref: '#/components/schemas/Healthcheck'
               example:
                 data:
-                  totalItems: 2
-                  items:
+                  n_connected_nodes: 2
+                  nodes:
                     - name: "node01"
                       info:
                         ip: "172.17.0.100"
