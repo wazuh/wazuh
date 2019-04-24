@@ -59,7 +59,7 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
             DIR *dir;
             snprintf(month_path, PATH_MAX, "%s/%d/%s", logs_path, year_it->first_value, MONTHS[i]);
             if (dir = opendir(month_path), dir) {
-                rotation_node *last_file_node;
+                rotation_node *last_file_node = NULL;
                 int count = 0;
 
                 closedir(dir);
@@ -76,6 +76,9 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
 
                     rot_list->last = last_file_node;
                     rot_list->count += count;
+                    if(!last_file_node) {
+                        rot_list->last = rot_list->first;
+                    }
                 }
             }
         }
@@ -84,9 +87,6 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
         free(r_year);
     }
 
-    // for (file_it = rot_list->first, i = 0; file_it; file_it = file_it->next, i++) {
-    //     minfo("~~~~~~~~~====~~%d) [%s]\n", i, file_it->string_value);
-    // }
 
     return rot_list;
 }
@@ -173,7 +173,8 @@ rotation_node *get_sorted_file(DIR *dir, char *dir_base, rotation_node **last_no
     snprintf(pattern, PATH_MAX, "ossec-%s-%%d-%%d.", tag);
 
     while (entry = readdir(dir), entry) {
-        int first, second;
+        int first = 0;
+        int second = 0;
 
         if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
             continue;
@@ -224,6 +225,11 @@ rotation_node *get_sorted_file(DIR *dir, char *dir_base, rotation_node **last_no
                 if (list == higher) {
                     list = node;
                 }
+
+                if(!*last_node) {
+                    *last_node = higher;
+                }
+
             } else {
                 node->prev = node_it;
                 node_it->next = node;
@@ -279,7 +285,9 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
     os_strdup(value, new_node->string_value);
 
     new_node->prev = list->last;
-    list->last->next = new_node;
+    if(list->last) {
+        list->last->next = new_node;
+    }
     list->last = new_node;
     list->count++;
 

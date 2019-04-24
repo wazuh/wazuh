@@ -201,7 +201,10 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     // Remove old compressed files
     remove_old_logs(base_dir, keep_log_days);
     os_free(dir);
-    return rotate_json ? new_path_json : new_path;
+    if(rotate_json)
+        return strdup(new_path_json);
+    else
+        return strdup(new_path);
 }
 
 void remove_old_logs(const char *base_dir, int keep_log_days) {

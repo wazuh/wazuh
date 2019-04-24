@@ -250,6 +250,7 @@ void os_logging_config(){
             flags.log_json = 0;
             minfo("Logging has been disabled for both 'ossec.log' and 'ossec.json'.");
         }
+        os_free(logenabled);
     }
 
     if(logformat = OS_GetOneContentforElement(&xml, new_log_format), !logformat) {
