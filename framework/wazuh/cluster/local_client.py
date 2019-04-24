@@ -25,7 +25,8 @@ class LocalClientHandler(client.AbstractClient):
 
     def connection_made(self, transport):
         """
-        Defines process of connecting to the server
+        Defines process of connecting to the server. A hello is not necessary because the local server generates a
+        random name for the local client.
 
         :param transport: socket to write data on
         """
@@ -80,7 +81,7 @@ class LocalClientHandler(client.AbstractClient):
 
 class LocalClient(client.AbstractClientManager):
     """
-    Inicializes variables, connects to the server, sends a request, waits for a response and disconnects.
+    Initializes variables, connects to the server, sends a request, waits for a response and disconnects.
     """
     def __init__(self, command: bytes, data: bytes, wait_for_complete: bool):
         """

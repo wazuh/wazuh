@@ -228,7 +228,8 @@ class AbstractClient(common.Handler):
 
     async def performance_test_client(self, test_size: int):
         """
-        Sends a request to the server with a big payload. Checks the master replies with a payload of the same length
+        Sends a request to the server with a big payload. Checks the master replies with a payload of the same length.
+        Only for development and testing purposes.
         :param test_size: Payload length
         :return: None
         """
@@ -246,6 +247,7 @@ class AbstractClient(common.Handler):
         """
         Sends lots of requests to the server at the same time. Measures the time the server needed to reply all
         requests.
+        Only for development and testing purposes.
         :param n_msgs: Number of requests to send
         :return:
         """
@@ -260,6 +262,7 @@ class AbstractClient(common.Handler):
     async def send_file_task(self, filename: str):
         """
         Tests the send file protocol
+        Only for development and testing purposes.
         :param filename: Filename to send
         :return: None
         """
@@ -272,6 +275,7 @@ class AbstractClient(common.Handler):
     async def send_string_task(self, string_size: int):
         """
         Tests the send big string protocol
+        Only for development and testing purposes.
         :param string_size: String length
         :return: None
         """

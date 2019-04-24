@@ -457,7 +457,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         received_filename = self.sync_tasks[task_name].filename
         if received_filename == 'Error':
             logger.info("Stopping synchronization process: worker files weren't correctly received.")
-            return b"Stopping synchronization process: worker files weren't correctly received."
+            return
         logger.debug("Received file from worker: '{}'".format(received_filename))
 
         files_checksums, decompressed_files_path = cluster.decompress_files(received_filename)
