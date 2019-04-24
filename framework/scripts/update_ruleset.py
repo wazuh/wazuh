@@ -556,7 +556,7 @@ def usage():
     msg = """
     Update ruleset
     Github repository: https://github.com/wazuh/wazuh-ruleset
-    Full documentation: http://documentation.wazuh.com/en/latest/wazuh_ruleset.html
+    Full documentation: https://documentation.wazuh.com/current/user-manual/ruleset/index.html
 
     Usage: ./update_ruleset                  # Update Decoders, Rules and Rootchecks
            ./update_ruleset -b               # Restore last backup
