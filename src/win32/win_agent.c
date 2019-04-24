@@ -661,9 +661,6 @@ char *get_win_agent_ip(){
     }
 
 end:
-    if (sys_library) {
-        FreeLibrary(sys_library);
-    }
 
     if (pAddresses) {
         win_free((HLOCAL)pAddresses);
