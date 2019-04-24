@@ -541,23 +541,23 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             return -1;
         }
 
-        cJSON *id;
-        cJSON *scan_id;
-        cJSON *title;
-        cJSON *description;
-        cJSON *rationale;
-        cJSON *remediation;
-        cJSON *file;
-        cJSON *directory;
-        cJSON *process;
-        cJSON *registry;
-        cJSON *command;
-        cJSON *reference;
-        cJSON *result_check;
-        cJSON *policy_id;
-        cJSON *check;
-        cJSON *status;
-        cJSON *reason;
+        cJSON *id = NULL;
+        cJSON *scan_id = NULL;
+        cJSON *title = NULL;
+        cJSON *description = NULL;
+        cJSON *rationale = NULL;
+        cJSON *remediation = NULL;
+        cJSON *file = NULL;
+        cJSON *directory = NULL;
+        cJSON *process = NULL;
+        cJSON *registry = NULL;
+        cJSON *command = NULL;
+        cJSON *reference = NULL;
+        cJSON *result_check = NULL;
+        cJSON *policy_id = NULL;
+        cJSON *check = NULL;
+        cJSON *status = NULL;
+        cJSON *reason = NULL;
 
         if( scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
             mdebug1("Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
