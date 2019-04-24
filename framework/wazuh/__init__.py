@@ -5,6 +5,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from wazuh import common
+from wazuh.results import WazuhResult
 from wazuh.utils import execute
 from wazuh.database import Connection
 from time import strftime
@@ -72,7 +73,7 @@ class Wazuh:
             return self.to_dict() == other.to_dict()
         return False
 
-    def to_dict(self):
+    def to_dict(self, api_request=False):
         return {'path': self.path, 'version': self.version, 'compilation_date': self.installation_date, 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
 
     def get_ossec_init(self):
@@ -143,6 +144,8 @@ class Wazuh:
             self.tz_offset = None
             self.tz_name = None
 
+        if api_request:
+            return WazuhResult({'data': self.to_dict()})
         return self.to_dict()
 
 

@@ -318,13 +318,37 @@ test_name: GET /cluster/{node_id}/status
 
 stages:
 
-  - name: Request
+  - name: Request (master)
 
     request:
-      url: http://localhost:55000/cluster/{node_id}/status
+      url: http://localhost:55000/cluster/master/status
       method: GET
-      params:
-        node_id: master
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anystr
+          ossec-analysisd: !anystr
+          ossec-authd: !anystr
+          ossec-csyslogd: !anystr
+          ossec-dbd: !anystr
+          ossec-monitord: !anystr
+          ossec-execd: !anystr
+          ossec-integratord: !anystr
+          ossec-logcollector: !anystr
+          ossec-maild: !anystr
+          ossec-remoted: !anystr
+          ossec-reportd: !anystr
+          ossec-syscheckd: !anystr
+          wazuh-clusterd: !anystr
+          wazuh-modulesd: !anystr
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/status
+      method: GET
 
     response:
       status_code: 200
