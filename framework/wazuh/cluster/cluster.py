@@ -84,7 +84,7 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
-def read_config(config_file=common.ossec_conf):
+def read_config(config_file=common.ossec_conf, api_request=False):
     cluster_default_configuration = {
         'disabled': False,
         'node_type': 'master',
@@ -144,6 +144,9 @@ def read_config(config_file=common.ossec_conf):
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
         config_cluster['node_type'] = 'worker'
+
+    if api_request:
+        return WazuhResult({'data': config_cluster})
 
     return config_cluster
 
