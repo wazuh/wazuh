@@ -78,6 +78,34 @@ def clear(agent_id=None, all_agents=False):
     return "Syscheck database deleted"
 
 
+class WazuhDBQuerySyscheck(WazuhDBQuery):
+
+    def __init__(self, agent_id, default_sort_field='mtime', *args, **kwargs):
+        super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field=default_sort_field, count=True,
+                         get_data=True, date_fields={'mtime', 'date'}, *args, **kwargs)
+
+    def _filter_date(self, date_filter, filter_db_name):
+        # dates are stored as timestamps
+        date_filter['value'] = int(time.mktime(time.strptime(date_filter['value'], "%Y-%m-%d")))
+        self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'],
+                                                                date_filter['field'])
+        self.request[date_filter['field']] = date_filter['value']
+
+    def _format_data_into_dictionary(self):
+        def format_fields(field_name, value):
+            if field_name == 'mtime' or field_name == 'date':
+                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+            if field_name == 'end' or field_name == 'start':
+                return 'ND' if not value else datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                return value
+
+        self._data = [{key: format_fields(key, value) for key, value in item.items() if key in self.select['fields']}
+                      for item in self._data]
+
+        return super()._format_data_into_dictionary()
+
+
 def last_scan(agent_id):
     """
     Gets the last scan of the agent.
@@ -100,47 +128,32 @@ def last_scan(agent_id):
         else:
             db_agent = db_agent[0]
         conn = Connection(db_agent)
+
+        data = {}
         # end time
-        query = "SELECT date_last, log FROM pm_event WHERE log LIKE '% syscheck scan.'"
+        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Ending rootcheck scan.'"
         conn.execute(query)
+        for tuple in conn:
+            data['end'] = tuple['max(date_last)'] if tuple['max(date_last)'] is not None else "ND"
 
-        return {'end' if log.startswith('End') else 'start': date_last for date_last, log in conn}
+        # start time
+        query = "SELECT max(date_last) FROM pm_event WHERE log = 'Starting rootcheck scan.'"
+        conn.execute(query)
+        for tuple in conn:
+            data['start'] = tuple['max(date_last)'] if tuple['max(date_last)'] is not None else "ND"
+
+        return data
     else:
-        fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
-                                                          filters={'module': 'fim'})[0]
-        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        # if start is 'ND', end will be as well.
-        return {'start': start, 'end': 'ND' if start == 'ND' else end}
+        fim_scan_info = WazuhDBQuerySyscheck(agent_id=agent_id, query='module=fim', offset=0, sort=None, search=None,
+                                             limit=common.database_limit, select={'fields': ['end', 'start']},
+                                             fields={'end': 'end_scan', 'start': 'start_scan', 'module': 'module'},
+                                             table='scan_info', default_sort_field='start_scan').run()['items'][0]
+
+        return fim_scan_info
 
 
-class WazuhDBQuerySyscheck(WazuhDBQuery):
-
-    def __init__(self, agent_id, *args, **kwargs):
-        super().__init__(backend=WazuhDBBackend(agent_id), default_sort_field='mtime', count=True, get_data=True,
-                         date_fields={'mtime', 'date'}, *args, **kwargs)
-
-    def _filter_date(self, date_filter, filter_db_name):
-        # dates are stored as timestamps
-        date_filter['value'] = int(time.mktime(time.strptime(date_filter['value'], "%Y-%m-%d")))
-        self.query += "{0} IS NOT NULL AND {0} {1} :{2}".format(self.fields[filter_db_name], date_filter['operator'],
-                                                                date_filter['field'])
-        self.request[date_filter['field']] = date_filter['value']
-
-    def _format_data_into_dictionary(self):
-        def format_fields(field_name, value):
-            if field_name == 'mtime' or field_name == 'date':
-                return datetime.utcfromtimestamp(value).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                return value
-
-        self._data = [{key: format_fields(key, value) for key, value in item.items() if key in self.select['fields']}
-                      for item in self._data]
-
-        return super()._format_data_into_dictionary()
-
-
-def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q=''):
+def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}, q='',
+          summary=False):
     """
     Return a list of files from the database that match the filters
 
@@ -162,12 +175,6 @@ def files(agent_id=None, offset=0, limit=common.database_limit, sort=None, searc
     if 'hash' in filters:
         q = f'(md5={filters["hash"]},sha1={filters["hash"]},sha256={filters["hash"]})' + ('' if not q else ';' + q)
         del filters['hash']
-
-    if 'summary' in filters:
-        summary = filters['summary']
-        del filters['summary']
-    else:
-        summary = False
 
     return WazuhDBQuerySyscheck(agent_id=agent_id, offset=offset, limit=limit, sort=sort, search=search,
                                 filters=filters, query=q, select=select, table='fim_entry',
