@@ -154,7 +154,7 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
     return result
 
 
-def ossec_log_summary(months=3):
+def ossec_log_summary(months=3, api_request=False):
     """
     Summary of ossec.log.
 
@@ -191,6 +191,10 @@ def ossec_log_summary(months=3):
                 categories[category][log_type] += 1
             else:
                 continue
+
+    if api_request:
+        return WazuhResult({'data': categories})
+
     return categories
 
 

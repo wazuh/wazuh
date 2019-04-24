@@ -999,7 +999,7 @@ stages:
       method: GET
       params:
         limit: 2
-        sort: -timestamp
+        sort: timestamp
 
     response:
         status_code: 200
@@ -1010,14 +1010,14 @@ stages:
               - <<: *cluster_log
             totalItems: !anyint
 
-  - name: Filters -> limit=1, sort=timestamp (worker)
+  - name: Filters -> limit=1, sort=-level (worker)
 
     request:
       url: http://localhost:55000/cluster/worker-1/logs
       method: GET
       params:
         limit: 1
-        sort: +timestamp
+        sort: -level
 
     response:
         status_code: 200
@@ -1045,3 +1045,161 @@ stages:
               - <<: *cluster_log
               - <<: *cluster_log
             totalItems: !anyint
+
+  - name: Filters -> offset=5, limit=2 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs
+      method: GET
+      params:
+        limit: 2
+        offset: 5
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> type_log=warning, limit=2 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        limit: 2
+        type_log: warning
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> offset=1, type_log=warning, limit=3 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        limit: 3
+        offset: 4
+        type_log: info
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> category=ossec-analysisd, limit=1 (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        category: ossec-analysisd
+        limit: 1
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+            totalItems: !anyint
+
+  - name: Filters -> category=ossec-syscheckd, limit=2 (worker)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs
+      method: GET
+      params:
+        category: ossec-syscheckd
+        limit: 2
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *cluster_log
+              - <<: *cluster_log
+            totalItems: !anyint
+
+---
+test_name: GET /cluster/{node_id}/logs/summary
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/logs/summary
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anything
+          ossec-analysisd: !anything
+          ossec-authd: !anything
+          ossec-authd: !anything
+          ossec-csyslogd: !anything
+          ossec-dbd: !anything
+          ossec-execd: !anything
+          ossec-integratord: !anything
+          ossec-logcollector: !anything
+          ossec-monitord: !anything
+          ossec-remoted: !anything
+          ossec-rootcheck: !anything
+          ossec-syscheckd: !anything
+          wazuh-db: !anything
+          wazuh-modulesd: !anything
+          wazuh-modulesd:ciscat: !anything
+          wazuh-modulesd:database: !anything
+          wazuh-modulesd:download: !anything
+          wazuh-modulesd:oscap: !anything
+          wazuh-modulesd:osquery: !anything
+          wazuh-modulesd:syscollector: !anything
+
+- name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/logs/summary
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anything
+          ossec-analysisd: !anything
+          ossec-authd: !anything
+          ossec-authd: !anything
+          ossec-csyslogd: !anything
+          ossec-dbd: !anything
+          ossec-execd: !anything
+          ossec-integratord: !anything
+          ossec-logcollector: !anything
+          ossec-monitord: !anything
+          ossec-remoted: !anything
+          ossec-rootcheck: !anything
+          ossec-syscheckd: !anything
+          wazuh-db: !anything
+          wazuh-modulesd: !anything
+          wazuh-modulesd:ciscat: !anything
+          wazuh-modulesd:database: !anything
+          wazuh-modulesd:download: !anything
+          wazuh-modulesd:oscap: !anything
+          wazuh-modulesd:osquery: !anything
+          wazuh-modulesd:syscollector: !anything
