@@ -177,7 +177,7 @@ def get_status(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {}
+    f_kwargs = {'api_request': True}
 
     dapi = DistributedAPI(f=cluster.get_status_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
