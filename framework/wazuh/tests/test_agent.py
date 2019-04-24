@@ -206,7 +206,7 @@ def test_get_basic_information(test_data, select, a_id, a_ip, a_status):
 
 @pytest.mark.parametrize('fields, expected_items', [
     ({'fields': ['os.platform']}, [{'count': 2}, {'os': {'platform': 'ubuntu'}, 'count': 4}]),
-    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'count': 2}, {'version': 'Wazuh v3.8.2', 'count': 3}]),
+    ({'fields': ['version']}, [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.6.2', 'count': 1}, {'count': 2}, {'version': 'Wazuh v3.8.2', 'count': 2}]),
     ({'fields': ['os.platform', 'os.major']}, [{'os': {'major': '16', 'platform': 'ubuntu'}, 'count': 1}, {'count': 2}, {'os': {'major': '18', 'platform': 'ubuntu'}, 'count': 3}])
 ])
 def test_get_distinct_agents(test_data, fields, expected_items):
@@ -297,9 +297,9 @@ def test_remove_manual(chmod_r_mock, makedirs_mock, rename_mock, isdir_mock, isf
     """
     Test the _remove_manual function
     """
-    client_keys_text = '\n'.join([f'{str(aid).zfill(3)} {name} {ip} {key}' for aid, name, ip, key in
-                                  test_data.global_db.execute(
-                                      'select id, name, register_ip, internal_key from agent where id > 0')])
+    client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3)} {row["name"]} {row["register_ip"]} {row["internal_key"]}'
+                                  for row in test_data.global_db.execute(
+                                                'select id, name, register_ip, internal_key from agent where id > 0')])
 
     with patch('wazuh.agent.open', mock_open(read_data=client_keys_text)) as m:
         with patch('sqlite3.connect') as mock_db:
@@ -346,8 +346,8 @@ def test_remove_manual_error(chmod_r_mock, makedirs_mock, rename_mock, isdir_moc
     """
     Test the _remove_manual function error cases
     """
-    client_keys_text = '\n'.join([f'{str(aid).zfill(3)} {name} {ip} '
-                                  f'{key + "" if expected_exception != 1746 else " random"}' for aid, name, ip, key in
+    client_keys_text = '\n'.join([f'{str(row["id"]).zfill(3)} {row["name"]} {row["register_ip"]} '
+                                  f'{row["internal_key"] + "" if expected_exception != 1746 else " random"}' for row in
                                   test_data.global_db.execute(
                                       'select id, name, register_ip, internal_key from agent where id > 0')])
 
