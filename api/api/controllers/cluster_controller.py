@@ -103,7 +103,8 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
     :param select: Select which fields to return (separated by comma)
     """
     f_kwargs = {'filter_node': node_id,
-                'select': select}
+                'select': select,
+                'api_request': True}
 
     dapi = DistributedAPI(f=cluster_control.get_node,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
