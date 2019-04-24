@@ -56,7 +56,7 @@ async def get_health(filter_node=None, api_request=False):
     if api_request:
         return WazuhResult({'data': result})
 
-    else result
+    return result
 
 
 async def get_agents(filter_node=None, filter_status=None):
