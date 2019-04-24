@@ -48,7 +48,7 @@ async def get_health(filter_node=None):
                         object_hook=as_wazuh_object)
     if isinstance(result, Exception):
         raise result
-    return result
+    return WazuhResult({'data': result})
 
 
 async def get_agents(filter_node=None, filter_status=None):

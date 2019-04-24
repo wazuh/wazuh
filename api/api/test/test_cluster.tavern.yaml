@@ -12,9 +12,10 @@ stages:
     response:
       status_code: 200
       body:
-        cluster: wazuh
-        node: master
-        type: master
+        data:
+          cluster: wazuh
+          node: master
+          type: master
 
 ---
 test_name: GET /cluster/nodes
