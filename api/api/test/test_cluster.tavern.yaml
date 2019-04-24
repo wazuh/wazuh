@@ -414,7 +414,7 @@ stages:
           compilation_date: !anystr
           type: !anystr
           max_agents: !anystr
-          openssl_support: yes
+          openssl_support: !anystr
           ruleset_version: !anystr
           tz_offset: !anystr
           tz_name: !anystr
@@ -422,7 +422,7 @@ stages:
   - name: Request (worker)
 
     request:
-      url: http://localhost:55000/worker-1/master/info
+      url: http://localhost:55000/cluster/worker-1/info
 
     response:
       status_code: 200
@@ -433,10 +433,64 @@ stages:
           compilation_date: !anystr
           type: !anystr
           max_agents: !anystr
-          openssl_support: yes
+          openssl_support: !anystr
           ruleset_version: !anystr
           tz_offset: !anystr
           tz_name: !anystr
+
+---
+test_name: GET /cluster/{node_id}/configuration
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: !anything
+          cis-cat: !anything
+          cluster: !anything
+          command: !anything
+          global: !anything
+          localfile: !anything
+          open-scap: !anything
+          osquery: !anything
+          remote: !anything
+          rootcheck: !anything
+          ruleset: !anything
+          syscheck: !anything
+          syscollector: !anything
+          vulnerability-detector: !anything
+
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: !anything
+          cis-cat: !anything
+          cluster: !anything
+          command: !anything
+          global: !anything
+          localfile: !anything
+          open-scap: !anything
+          osquery: !anything
+          remote: !anything
+          rootcheck: !anything
+          ruleset: !anything
+          syscheck: !anything
+          syscollector: !anything
+          vulnerability-detector: !anything
 
 ---
 #test_name: GET /cluster/{node_id}/stats

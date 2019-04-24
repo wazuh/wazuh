@@ -13,6 +13,7 @@ from xml.dom.minidom import parseString
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh import common
 from wazuh.ossec_socket import OssecSocket
+from wazuh.results import WazuhResult
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
 
@@ -436,7 +437,7 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, api_request=False):
     """
     Returns ossec.conf (manager) as dictionary.
 
@@ -468,6 +469,9 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
             data = data[field]  # data[section][field]
         except:
             raise WazuhError(1103)
+
+    if api_request:
+        return WazuhResult({'data': data})
 
     return data
 

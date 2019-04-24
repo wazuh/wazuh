@@ -280,7 +280,10 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
     :param section: Indicates the wazuh configuration section
     :param field: Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     """
-    f_kwargs = {'node_id': node_id, 'section': section, 'field': field}
+    f_kwargs = {'node_id': node_id,
+                'section': section,
+                'field': field,
+                'api_request': True}
 
     dapi = DistributedAPI(f=configuration.get_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
