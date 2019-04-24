@@ -1043,9 +1043,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                         short is_nfs = IsNFS(dir);
                         if( is_nfs == 1 && data->skip_nfs ) {
-                            mdebug2("skip_nfs enabled and %s is flagged as NFS.", dir);
+                            mdebug2("Directory '%s' flagged as NFS when skip_nfs is enabled.", dir);
                             os_malloc(OS_MAXSTR,inv_check_reasons[n_reason]);
-                            sprintf(inv_check_reasons[n_reason],"skip_nfs enabled and %s is flagged as NFS.", dir);
+                            sprintf(inv_check_reasons[n_reason],"Directory '%s' flagged as NFS when skip_nfs is enabled", dir);
                             n_reason++;
                             found = 2;
                         } else {
@@ -1978,9 +1978,9 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
     HKEY oshkey;
     LSTATUS err = RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey);
     if (err == ERROR_ACCESS_DENIED) {
-        merror("ACCESS DENIED FOR %s", full_key_name);
+        merror("Access denied for registry '%s'", full_key_name);
         os_malloc(OS_MAXSTR, inv_check_reasons[*n_reason]);
-        sprintf(inv_check_reasons[*n_reason], "Can't open registry %s. Access is denied", full_key_name);
+        sprintf(inv_check_reasons[*n_reason], "Access denied for registry '%s'", full_key_name);
         (*n_reason)++;
         return 2;
     } else if (err != ERROR_SUCCESS) {
@@ -1991,11 +1991,11 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
                     NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                     (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
-        mdebug2("Unable to read  %s: %s", full_key_name, error_msg);
+        mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
         /* If the key does not exists, testings should also fail */
         *test_result = 2;
         os_malloc(OS_MAXSTR, inv_check_reasons[*n_reason]);
-        sprintf(inv_check_reasons[*n_reason], "Unable to read  %s", full_key_name);
+        sprintf(inv_check_reasons[*n_reason], "Unable to read registry '%s' (%s)", full_key_name, error_msg);
         (*n_reason)++;
         return 2;
     }
