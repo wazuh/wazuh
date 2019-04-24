@@ -14,9 +14,10 @@
 #include "../md5/md5_op.h"
 #include "../sha1/sha1_op.h"
 #include "../sha256/sha256_op.h"
+#include "config/syscheck-config.h"
 
 
-int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode) __attribute((nonnull(1, 3, 4)));
+int OS_MD5_SHA1_SHA256_File(const char *fname, const char *prefilter_cmd, os_md5 md5output, os_sha1 sha1output, os_sha256 sha256output, int mode, size_t max_size) __attribute((nonnull(1, 3, 4)));
 
 #endif
 

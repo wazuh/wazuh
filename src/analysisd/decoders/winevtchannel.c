@@ -231,13 +231,13 @@ int DecodeWinevt(Eventinfo *lf){
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Correlation")) {
-                            } else {
+                            } else if(strlen(child_attr[p]->content) > 0){
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             }
 
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
-                            if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values){
+                            if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values && strlen(child_attr[p]->content) > 0){
                                 for (l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0) {
@@ -256,7 +256,7 @@ int DecodeWinevt(Eventinfo *lf){
                                     }
                                 }
                             } else if (child_attr[p]->content && strcmp(child_attr[p]->content, "(NULL)") != 0
-                                    && strcmp(child_attr[p]->content, "-") != 0){
+                                    && strcmp(child_attr[p]->content, "-") != 0 && strlen(child_attr[p]->content) > 0){
                                 filtered_string = replace_win_format(child_attr[p]->content);
 
                                 if (strcmp(filtered_string, "") && !strcmp(child_attr[p]->element, "Data")){
@@ -284,7 +284,7 @@ int DecodeWinevt(Eventinfo *lf){
                             int h=0;
 
                             while(extra_data_child && extra_data_child[h]){
-                                if(strcmp(extra_data_child[h]->content, "(NULL)") != 0 && strcmp(extra_data_child[h]->content, "-") != 0){
+                                if(strcmp(extra_data_child[h]->content, "(NULL)") != 0 && strcmp(extra_data_child[h]->content, "-") != 0 && strlen(extra_data_child[h]->content) > 0){
                                     filtered_string = replace_win_format(extra_data_child[h]->content);
                                     *extra_data_child[h]->element = tolower(*extra_data_child[h]->element);
                                     cJSON_AddStringToObject(json_extra_in, extra_data_child[h]->element, filtered_string);

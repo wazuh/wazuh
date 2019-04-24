@@ -123,7 +123,7 @@
 #define SK_NO_DB        "(1705): No integrity database found at '%s'."
 #define SK_INV_MSG      "(1755): Invalid syscheck message received."
 #define SK_DUP          "(1756): Duplicated directory given: '%s'."
-#define SK_INV_REG      "(1757): Invalid syscheck registry entry: '%s'."
+#define SK_INV_REG      "(1757): Invalid registry entry: '%s'."
 #define SK_REG_OPEN     "(1758): Unable to open registry key: '%s'."
 #define INV_WDATA_PAR   "Invalid parameter type (%ld) for '%s'."
 

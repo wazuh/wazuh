@@ -43,6 +43,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->skip_nfs = 1;
         sca->alert_msg = NULL;
         sca->queue = -1;
+        sca->interval = WM_DEF_INTERVAL / 2;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = sca;
@@ -145,8 +146,8 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             if (sca->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds.", WM_SCA_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_SCA_CONTEXT.name);
+                sca->interval = 60;
             }
         }
         else if (!strcmp(nodes[i]->element, XML_SCAN_ON_START))
@@ -189,6 +190,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         merror("Policy path is too long at module '%s'. Max path length is %d", WM_SCA_CONTEXT.name,PATH_MAX);
                         OS_ClearNode(children);
                         return OS_INVALID;
+                    } else if (strlen(children[j]->content) == 0) {
+                        merror("Empty policy value at '%s'.", WM_SCA_CONTEXT.name);
+                        OS_ClearNode(children);
+                        return OS_INVALID;
                     }
 
                     if(sca->profile) {
@@ -209,6 +214,12 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 
                         policy->enabled = enabled;
                         policy->policy_id= NULL;
+
+                        if (strstr(children[j]->content, "etc/shared/") != NULL ) {
+                            policy->remote = 1;
+                        } else {
+                            policy->remote = 0;
+                        }
                         
                         os_strdup(children[j]->content,policy->profile);
                         sca->profile[profiles] = policy;
@@ -269,17 +280,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             sca->interval = WM_DEF_INTERVAL;  // 1 day
             mwarn("At module '%s': Interval must be a multiple of one day. New interval value: 1d.", WM_SCA_CONTEXT.name);
         }
-    }
-
-    if (!sca->interval)
-        sca->interval = WM_DEF_INTERVAL / 2;
-
-    sca->request_db_interval = getDefine_Int("sca","request_db_interval",0,60) * 60;
-
-    /* Maximum request interval is the scan interval */
-    if(sca->request_db_interval > sca->interval) {
-       sca->request_db_interval = sca->interval;
-       minfo("The request_db_interval is higher than the interval.");
     }
 
     return 0;

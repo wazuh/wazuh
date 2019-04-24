@@ -26,8 +26,10 @@
     <ignore>/etc/svc/volatile</ignore>
     <ignore>/sys/kernel/security</ignore>
     <ignore>/sys/kernel/debug</ignore>
+    <ignore>/dev/core</ignore>
 
     <!-- File types to ignore -->
+    <ignore type="sregex">^/proc</ignore>
     <ignore type="sregex">.log$|.swp$</ignore>
 
     <!-- Check the file, but never compute the diff -->

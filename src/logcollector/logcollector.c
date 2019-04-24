@@ -19,6 +19,7 @@ static int update_current(logreader **current, int *i, int *j);
 static void set_read(logreader *current, int i, int j);
 static IT_control remove_duplicates(logreader *current, int i, int j);
 static void set_sockets();
+static void files_lock_init(void);
 #ifndef WIN32
 static int check_pattern_expand(int do_seek);
 #endif
@@ -82,11 +83,8 @@ void LogCollectorStart()
     char keepalive[1024];
     logreader *current;
 
-    total_files = 0;
-    current_files = 0;
-
     set_sockets();
-    w_rwlock_init(&files_update_rwlock, NULL);
+    files_lock_init();
 
 #ifndef WIN32
     /* To check for inode changes */
@@ -257,7 +255,7 @@ void LogCollectorStart()
 
     /* Start up message */
     minfo(STARTUP_MSG, (int)getpid());
-    mdebug2(CURRENT_FILES, current_files, maximum_files);
+    mdebug1(CURRENT_FILES, current_files, maximum_files);
 
 #ifndef WIN32
     // Start com request thread
@@ -326,7 +324,7 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
@@ -401,7 +399,7 @@ void LogCollectorStart()
                                 if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0)) {
                                     merror(REM_ERROR, current->file);
                                 } else {
-                                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                                     i--;
                                     continue;
                                 }
@@ -987,7 +985,7 @@ int check_pattern_expand(int do_seek) {
                     globs[j].gfiles[i + 1].file = NULL;
                     globs[j].gfiles[i + 1].target = NULL;
                     current_files++;
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                     if  (!i && !globs[j].gfiles[i].read) {
                         set_read(&globs[j].gfiles[i], i, j);
                     } else {
@@ -1033,7 +1031,7 @@ static IT_control remove_duplicates(logreader *current, int i, int j) {
                 if (result) {
                     merror_exit(REM_ERROR, current->file);
                 } else {
-                    mdebug2(CURRENT_FILES, current_files, maximum_files);
+                    mdebug1(CURRENT_FILES, current_files, maximum_files);
                 }
                 d_control = NEXT_IT;
                 break;
@@ -1513,4 +1511,20 @@ void w_create_input_threads(){
     }
 #endif
     }
+}
+
+void files_lock_init()
+{
+    pthread_rwlockattr_t attr;
+    pthread_rwlockattr_init(&attr);
+
+#ifdef __linux__
+    /* PTHREAD_RWLOCK_PREFER_WRITER_NP is ignored.
+     * Do not use recursive locking.
+     */
+    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
+
+    w_rwlock_init(&files_update_rwlock, &attr);
+    pthread_rwlockattr_destroy(&attr);
 }

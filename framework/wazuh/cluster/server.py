@@ -171,7 +171,7 @@ class AbstractServer:
             if not filter_node.issubset(set(itertools.chain(self.clients.keys(), [self.configuration['node_name']]))):
                 raise exception.WazuhException(1730)
 
-        res = [val.to_dict()['info'] for val in itertools.chain(self.clients.values(), [self])
+        res = [val.to_dict()['info'] for val in itertools.chain([self], self.clients.values())
                if return_node(val.to_dict()['info'])]
 
         if sort is not None:

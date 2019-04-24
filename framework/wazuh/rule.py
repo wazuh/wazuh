@@ -382,10 +382,10 @@ class Rule:
 
             root = load_wazuh_xml(os.path.join(common.ossec_path, rule_path, rule_file))
 
-            for xml_group in root.getchildren():
+            for xml_group in list(root):
                 if xml_group.tag.lower() == "group":
                     general_groups = xml_group.attrib['name'].split(',')
-                    for xml_rule in xml_group.getchildren():
+                    for xml_rule in list(xml_group):
                         # New rule
                         if xml_rule.tag.lower() == "rule":
                             groups = []
@@ -400,7 +400,7 @@ class Rule:
                                 if k != 'id' and k != 'level':
                                     rule.details[k] = xml_rule.attrib[k]
 
-                            for xml_rule_tags in xml_rule.getchildren():
+                            for xml_rule_tags in list(xml_rule):
                                 tag = xml_rule_tags.tag.lower()
                                 value = xml_rule_tags.text
                                 if value == None:
