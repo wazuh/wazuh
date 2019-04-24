@@ -45,14 +45,18 @@ async def get_node(filter_node=None, select=None, api_request=False):
         return {}
 
 
-async def get_health(filter_node=None):
+async def get_health(filter_node=None, api_request=False):
     result = json.loads(await local_client.execute(command=b'get_health',
                                                    data=json.dumps(filter_node).encode(),
                                                    wait_for_complete=False),
                         object_hook=as_wazuh_object)
     if isinstance(result, Exception):
         raise result
-    return WazuhResult({'data': result})
+
+    if api_request:
+        return WazuhResult({'data': result})
+
+    else result
 
 
 async def get_agents(filter_node=None, filter_status=None):

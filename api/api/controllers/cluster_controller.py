@@ -76,7 +76,8 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'select': select,
-                'filter_type': type_}
+                'filter_type': type_,
+                'api_request': True}
 
     dapi = DistributedAPI(f=cluster_control.get_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -128,7 +129,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {}
+    f_kwargs = {'api_request': True}
 
     dapi = DistributedAPI(f=cluster_control.get_health,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -153,7 +154,8 @@ def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filter_node': node_id}
+    f_kwargs = {'filter_node': node_id,
+                'api_request': True}
 
     dapi = DistributedAPI(f=cluster_control.get_health,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
