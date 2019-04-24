@@ -137,7 +137,7 @@ class Rule:
 
 
     @staticmethod
-    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None):
+    def get_rules_files(status=None, path=None, file=None, offset=0, limit=common.database_limit, sort=None, search=None, download=None):
         """
         Gets a list of the rule files.
 
@@ -148,6 +148,7 @@ class Rule:
         :param limit: Maximum number of items to return.
         :param sort: Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
         :param search: Looks for items with the specified string.
+        :param download: Looks for downloaded items with the specified string.
         :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
         """
         data = []
@@ -208,6 +209,9 @@ class Rule:
                 data.remove(d)
                 continue
             if file and file != d['file']:
+                data.remove(d)
+                continue
+            if download and download != d['file']:
                 data.remove(d)
                 continue
 

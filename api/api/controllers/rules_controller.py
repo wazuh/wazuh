@@ -237,7 +237,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
         search = parse_api_param(search, 'search')
 
     f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search, 'status': status, 'file':file,
+                'search': search, 'status': status, 'file': file,
                 'path': path, 'download': download}
 
     dapi = DistributedAPI(f=Rule.get_rules_files,
@@ -272,6 +272,13 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
     :param rule_id: Filters by rule ID
     :type rule_id: str
     """
+
+    if sort:
+        sort = parse_api_param(sort, 'sort')
+
+    if search:
+        search = parse_api_param(search, 'search')
+
     f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': sort,
                 'search': search}
 
@@ -284,6 +291,9 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
+
+    if isinstance(data, WazuhError):
+        return data, 200
 
     if data['totalItems'] == 0:
         return data, 200

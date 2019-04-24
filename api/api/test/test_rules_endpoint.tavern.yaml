@@ -1237,63 +1237,203 @@ stages:
       method: GET
       params:
         download: 0350-amazon_rules.xml
-        limit: 1
 
     response:
       status_code: 200
       body:
         items: [
-        {
-          "file": "0010-rules_config.xml",
-          "path": "ruleset/rules",
-          "status": "enabled"
-        }
+          {
+            "file": "0350-amazon_rules.xml",
+            "path": "ruleset/rules",
+            "status": "enabled"
+          }
         ]
-        totalItems: 111
+        totalItems: 1
 ---
 
-#---
-#
-#test_name: GET /rules/{id}
-#
-#stages:
-#  - name: Try to show a rule with a existent id
-#
-#    request:
-#      url: http://localhost:55000/rules/1
-#      method: GET
-#
-#    response:
-#      status_code: 200
-#      body:
-#        items: {
-#          "description": "Generic template for all syslog rules.",
-#          "details": {
-#            "category": "syslog",
-#            "noalert": "1"
-#          },
-#          "file": "0010-rules_config.xml",
-#          "gdpr": [],
-#          "groups": [
-#            "syslog"
-#          ],
-#          "id": 1,
-#          "level": 0,
-#          "path": "ruleset/rules",
-#          "pci": [],
-#          "status": "enabled"
-#        }
-#        totalItems: 1
-#
-#  - name: Try to show a rule with a nonexistent id
-#
-#    request:
-#      url: http://localhost:55000/rules/999999999
-#      method: GET
-#
-#    response:
-#      status_code: 200
-#      body:
-#        items: []
-#        totalItems: 0
-#---
+---
+
+test_name: GET /rules/{id}
+
+stages:
+  - name: Try to show a rule with a existent id
+
+    request:
+      url: http://localhost:55000/rules/1002
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        items: {
+          "description": "Unknown problem somewhere in the system.",
+          "details": {
+            "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
+          },
+          "file": "0020-syslog_rules.xml",
+          "gdpr": [],
+          "groups": [
+            "gpg13_4.3",
+            "syslog",
+            "errors"
+          ],
+          "id": 1002,
+          "level": 2,
+          "path": "ruleset/rules",
+          "pci": [],
+          "status": "enabled"
+        }
+        totalItems: 1
+
+  - name: Try to show a rule with a existent id, limit = 1, offset = 0
+
+    request:
+      url: http://localhost:55000/rules/1002
+      method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        items: {
+          "description": "Unknown problem somewhere in the system.",
+          "details": {
+            "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
+          },
+          "file": "0020-syslog_rules.xml",
+          "gdpr": [],
+          "groups": [
+            "gpg13_4.3",
+            "syslog",
+            "errors"
+          ],
+          "id": 1002,
+          "level": 2,
+          "path": "ruleset/rules",
+          "pci": [],
+          "status": "enabled"
+        }
+        totalItems: 1
+
+  - name: Try to show a rule with a existent id, limit = 0
+
+    request:
+      url: http://localhost:55000/rules/1002
+      method: GET
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter sort
+
+    request:
+      url: http://localhost:55000/rules/1002
+      method: GET
+      params:
+        sort: -file
+
+    response:
+      status_code: 200
+      body:
+        items: {
+          "description": "Unknown problem somewhere in the system.",
+          "details": {
+            "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
+          },
+          "file": "0020-syslog_rules.xml",
+          "gdpr": [],
+          "groups": [
+            "gpg13_4.3",
+            "syslog",
+            "errors"
+          ],
+          "id": 1002,
+          "level": 2,
+          "path": "ruleset/rules",
+          "pci": [],
+          "status": "enabled"
+        }
+        totalItems: 1
+
+  - name: Filter search error
+
+    request:
+      url: http://localhost:55000/rules/1002
+      method: GET
+      params:
+        search: error
+
+    response:
+      status_code: 200
+      body:
+        items: {
+          "description": "Unknown problem somewhere in the system.",
+          "details": {
+            "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
+          },
+          "file": "0020-syslog_rules.xml",
+          "gdpr": [],
+          "groups": [
+            "gpg13_4.3",
+            "syslog",
+            "errors"
+          ],
+          "id": 1002,
+          "level": 2,
+          "path": "ruleset/rules",
+          "pci": [],
+          "status": "enabled"
+        }
+        totalItems: 1
+
+  - name: Invalid filter
+
+    request:
+      url: http://localhost:55000/rules/1002
+      method: GET
+      params:
+        random: True
+
+    response:
+      status_code: 400
+      body:
+        detail: "Extra query parameter(s) random not in spec"
+        status: 400
+        title: null
+        type: "about:blank"
+
+  - name: Bad rule id
+
+    request:
+      url: http://localhost:55000/rules/abc
+      method: GET
+
+    response:
+      status_code: 404
+      body:
+        detail: !anystr
+        status: 404
+        title: "Not Found"
+        type: "about:blank"
+
+  - name: No rule
+
+    request:
+      url: http://localhost:55000/rules/9999999999
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        items: []
+        totalItems: 0
+---
