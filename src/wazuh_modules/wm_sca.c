@@ -1106,9 +1106,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 /* Switch the values if ! is present */
                 if (negate) {
-                    if (found) {
+                    if (found == 1) {
                         found = 0;
-                    } else {
+                    } else if (found == 0){
                         found = 1;
                     }
                 }
