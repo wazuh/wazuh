@@ -14,6 +14,7 @@
 
 #ifndef ARGV0
 #define ARGV0 "ossec-analysisd"
+#define _ANALYSIS_DAEMON_
 #endif
 
 #include <time.h>

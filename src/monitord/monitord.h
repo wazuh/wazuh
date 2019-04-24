@@ -34,6 +34,7 @@ int delete_old_agent(const char *agent_id);
 /* Parse readed config into JSON format */
 cJSON *getMonitorInternalOptions(void);
 cJSON *getReportsOptions(void);
+cJSON *getMonitorLogging(void);
 size_t moncom_dispatch(char * command, char ** output);
 size_t moncom_getconfig(const char * section, char ** output);
 void * moncom_main(__attribute__((unused)) void * arg);

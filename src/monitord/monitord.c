@@ -254,3 +254,32 @@ cJSON *getReportsOptions(void) {
 
     return root;
 }
+
+cJSON *getMonitorLogging(void) {
+    char *json_format = "json_format";
+    char *plain_format = "plain_format";
+    char *compress_rotation = "compress_rotation";
+    char *rotation_size = "rotation_size";
+    char *rotation_interval = "rotation_interval";
+    char *saved_rotations = "saved_rotations";
+    cJSON *root;
+    cJSON *logging;
+
+
+    root = cJSON_CreateObject();
+    logging = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "logging", logging);
+
+    if (mond.enabled) {
+        cJSON_AddStringToObject(logging, plain_format, mond.ossec_log_plain ? "yes" : "no");
+        cJSON_AddStringToObject(logging, json_format, mond.ossec_log_json ? "yes" : "no");
+        if (mond.rotation_enabled) {
+            cJSON_AddStringToObject(logging, compress_rotation, mond.compress_rotation ? "yes" : "no");
+            cJSON_AddNumberToObject(logging, rotation_size, mond.size_rotate);
+            cJSON_AddNumberToObject(logging, saved_rotations, mond.rotate);
+            cJSON_AddNumberToObject(logging, rotation_interval, mond.interval);
+        }
+    }
+
+    return root;
+}

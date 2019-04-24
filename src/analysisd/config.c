@@ -331,3 +331,52 @@ cJSON *getManagerLabelsConfig(void) {
 
     return root;
 }
+
+cJSON *getAnalysisLoggingConfig(void) {
+    char *json_format = "json_format";
+    char *plain_format = "plain_format";
+    char *compress_rotation = "compress_rotation";
+    char *rotation_size = "rotation_size";
+    char *rotation_interval = "rotation_interval";
+    char *saved_rotations = "saved_rotations";
+    cJSON *root;
+
+    if (!Config.archives_enabled && !Config.alerts_enabled)  {
+        root = getLoggingConfig();
+    } else {
+        cJSON *log_type;
+        cJSON *logging;
+
+        root = cJSON_CreateObject();
+        logging = cJSON_CreateObject();
+        cJSON_AddItemToObject(root, "logging", logging);
+
+        if (Config.archives_enabled) {
+            log_type = cJSON_CreateObject();
+            cJSON_AddStringToObject(log_type, plain_format, Config.archives_log_plain ? "yes" : "no");
+            cJSON_AddStringToObject(log_type, json_format, Config.log_archives_json ? "yes" : "no");
+            if (Config.alerts_rotation_enabled) {
+                cJSON_AddStringToObject(log_type, compress_rotation, Config.archives_compress_rotation ? "yes" : "no");
+                cJSON_AddNumberToObject(log_type, rotation_size, Config.archives_max_size);
+                cJSON_AddNumberToObject(log_type, saved_rotations, Config.archives_rotate);
+                cJSON_AddNumberToObject(log_type, rotation_interval, Config.archives_interval);
+            }
+            cJSON_AddItemToObject(logging, "archives", log_type);
+        }
+
+        if (Config.alerts_enabled) {
+            log_type = cJSON_CreateObject();
+            cJSON_AddStringToObject(log_type, plain_format, Config.alerts_log_plain ? "yes" : "no");
+            cJSON_AddStringToObject(log_type, json_format, Config.alerts_log_json ? "yes" : "no");
+            if (Config.alerts_rotation_enabled) {
+                cJSON_AddStringToObject(log_type, compress_rotation, Config.alerts_compress_rotation ? "yes" : "no");
+                cJSON_AddNumberToObject(log_type, rotation_size, Config.alerts_max_size);
+                cJSON_AddNumberToObject(log_type, saved_rotations, Config.alerts_rotate);
+                cJSON_AddNumberToObject(log_type, rotation_interval, Config.alerts_interval);
+            }
+            cJSON_AddItemToObject(logging, "alerts", log_type);
+        }
+    }
+
+    return root;
+}
