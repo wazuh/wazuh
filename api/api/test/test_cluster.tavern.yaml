@@ -514,7 +514,7 @@ stages:
           disabled: !anystr
           frequency: !anystr
           rootkit_files: !anything
-          rootkit_trojans: !anystr
+          rootkit_trojans: !anything
           skip_nfs: !anystr
           system_audit: !anything
 
@@ -583,7 +583,7 @@ stages:
           disabled: !anystr
           frequency: !anystr
           rootkit_files: !anything
-          rootkit_trojans: !anystr
+          rootkit_trojans: !anything
           skip_nfs: !anystr
           system_audit: !anything
 
@@ -631,168 +631,198 @@ stages:
           scan_on_start: !anystr
 
 ---
-#test_name: GET /cluster/{node_id}/stats
-#stages:
-#  - name: Cluster stats (master)
-#
-#    request:
-#      url: http://localhost:55000/cluster/{node_id}/stats
-#      method: GET
-#      params:
-#        node_id: master
-#
-#    response:
-#        status_code: 200
-#        data:
-#          body:
-#            alerts: !anything
-#            events: !anyint
-#            hour: !anyint
-#            syscheck: !anyint
-#            firewall: !anyint
-#            totalAlerts: !anyint
+test_name: GET /cluster/{node_id}/stats
 
-#  - name: Cluster stats (worker)
-#
-#    request:
-#      url: http://localhost:55000/cluster/{node_id}/stats
-#      method: GET
-#      params:
-#        node_id: master
-#
-#    response:
-#        status_code: 200
-#        body:
-#          - hour:
-#            alerts:
-#              - sigid:
-#                level:
-#                times:
-#              - sigid:
-#                level:
-#                times:
-#              - sigid:
-#                level:
-#                times:
-#            totalAlerts:
-#            events:
-#            firewall:
-#          - hour:
-#            alerts:
-#              - sigid:
-#                level:
-#                times:
-#              - sigid:
-#                level:
-#                times:
-#            totalAlerts:
-#            events:
-#            syscheck:
-#            firewall:
+strict:
+  - body
 
-#  - name: Unexisting node stats
-#
-#    request:
-#      url: http://localhost:55000/cluster/{node_id}/stats
-#      method: GET
-#      params:
-#        node_id: unexisting_node
-#
-#    response:
-#        status_code: 400
-#        body:
-#          code: 3022
-#          dapi_errors:
-#          detail: !anystr
-#          title: !anystr
-#          type: !anystr
-#
-#  - name: Hourly node stats
-#
-#    request:
-#      url: http://localhost:55000/cluster/{node_id}/stats/hourly
-#      method: GET
-#      params:
-#        node_id: master
-#
-#    response:
-#        status_code: 200
-#        body:
-#          averages:
-#            -
-#          interactions: 0
-#
-#  - name: Weekly node stats
-#
-#    request:
-#      url: http://localhost:55000/cluster/{node_id}/stats/weekly
-#      method: GET
-#      params:
-#        node_id: master
-#
-#    response:
-#        status_code: 200
-#        body:
+stages:
 
-#  - name: Analysisd stats (master)
-#
-#    request:
-#      url: http://localhost:55000/cluster/master/stats/analysisd
-#      method: GET
-#      params:
-#        node_id: master
-#
-#    response:
-#        status_code: 200
-#        body:
-#          data:
-#            total_events_decoded: !anyint
-#            syscheck_events_decoded: !anyint
-#            syscheck_edps: !anyint
-#            syscollector_events_decoded: !anyint
-#            syscollector_edps: !anyint
-#            rootcheck_events_decoded: !anyint
-#            rootcheck_edps: !anyint
-#            sca_events_decoded: !anyint
-#            sca_edps: !anyint
-#            hostinfo_events_decoded: !anyint
-#            hostinfo_edps: !anyint
-#            winevt_events_decoded: !anyint
-#            winevt_edps: !anyint
-#            other_events_decoded: !anyint
-#            other_events_edps: !anyint
-#            events_processed: !anyint
-#            events_edps: !anyint
-#            events_received: !anyint
-#            events_dropped: !anyint
-#            alerts_written: !anyint
-#            firewall_written: !anyint
-#            fts_written: !anyint
-#            syscheck_queue_usage: !anyint
-#            syscheck_queue_size: !anyint
-#            syscollector_queue_usage: !anyint
-#            syscollector_queue_size: !anyint
-#            rootcheck_queue_usage: !anyint
-#            rootcheck_queue_size: !anyint
-#            sca_queue_usage: !anyint
-#            sca_queue_size: !anyint
-#            hostinfo_queue_usage: !anyint
-#            hostinfo_queue_size: !anyint
-#            winevt_queue_usage: !anyint
-#            winevt_queue_size: !anyint
-#            event_queue_usage: !anyint
-#            event_queue_size: !anyint
-#            rule_matching_queue_usage: !anyint
-#            rule_matching_queue_size: !anyint
-#            alerts_queue_usage: !anyint
-#            alerts_queue_size: !anyint
-#            firewall_queue_usage: !anyint
-#            firewall_queue_size: !anyint
-#            statistical_queue_usage: !anyint
-#            statistical_queue_size: !anyint
-#            archives_queue_usage: !anyint
-#            archives_queue_size: !anyint
-#
+  - name: Cluster stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data: !anything
+
+  - name: Cluster stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data: !anything
+
+  - name: Unexisting node stats
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/stats
+      method: GET
+
+    response:
+        status_code: 500  ## should be 400
+        body:
+          code: 1000
+          dapi_errors: !anything
+          detail: !anystr
+          status: 500
+          title: !anystr
+          type: !anystr
+
+  - name: Hourly node stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/hourly
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            averages: !anything
+            interactions: !anyint
+
+  - name: Hourly node stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/hourly
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            averages: !anything
+            interactions: !anyint
+
+  - name: Weekly node stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/weekly
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            Mon:
+              hours: !anything
+              interactions: !anyint
+            Tue:
+              hours: !anything
+              interactions: !anyint
+            Wed:
+              hours: !anything
+              interactions: !anyint
+            Thu:
+              hours: !anything
+              interactions: !anyint
+            Fri:
+              hours: !anything
+              interactions: !anyint
+            Sat:
+              hours: !anything
+              interactions: !anyint
+            Sun:
+              hours: !anything
+              interactions: !anyint
+
+  - name: Weekly node stats (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/stats/weekly
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            Mon:
+              hours: !anything
+              interactions: !anyint
+            Tue:
+              hours: !anything
+              interactions: !anyint
+            Wed:
+              hours: !anything
+              interactions: !anyint
+            Thu:
+              hours: !anything
+              interactions: !anyint
+            Fri:
+              hours: !anything
+              interactions: !anyint
+            Sat:
+              hours: !anything
+              interactions: !anyint
+            Sun:
+              hours: !anything
+              interactions: !anyint
+
+  - name: Analysisd stats (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/stats/analysisd
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            total_events_decoded: !anyint
+            syscheck_events_decoded: !anyint
+            syscheck_edps: !anyint
+            syscollector_events_decoded: !anyint
+            syscollector_edps: !anyint
+            rootcheck_events_decoded: !anyint
+            rootcheck_edps: !anyint
+            sca_events_decoded: !anyint
+            sca_edps: !anyint
+            hostinfo_events_decoded: !anyint
+            hostinfo_edps: !anyint
+            winevt_events_decoded: !anyint
+            winevt_edps: !anyint
+            other_events_decoded: !anyint
+            other_events_edps: !anyint
+            events_processed: !anyint
+            events_edps: !anyint
+            events_received: !anyint
+            events_dropped: !anyint
+            alerts_written: !anyint
+            firewall_written: !anyint
+            fts_written: !anyint
+            syscheck_queue_usage: !anyint
+            syscheck_queue_size: !anyint
+            syscollector_queue_usage: !anyint
+            syscollector_queue_size: !anyint
+            rootcheck_queue_usage: !anyint
+            rootcheck_queue_size: !anyint
+            sca_queue_usage: !anyint
+            sca_queue_size: !anyint
+            hostinfo_queue_usage: !anyint
+            hostinfo_queue_size: !anyint
+            winevt_queue_usage: !anyint
+            winevt_queue_size: !anyint
+            event_queue_usage: !anyint
+            event_queue_size: !anyint
+            rule_matching_queue_usage: !anyint
+            rule_matching_queue_size: !anyint
+            alerts_queue_usage: !anyint
+            alerts_queue_size: !anyint
+            firewall_queue_usage: !anyint
+            firewall_queue_size: !anyint
+            statistical_queue_usage: !anyint
+            statistical_queue_size: !anyint
+            archives_queue_usage: !anyint
+            archives_queue_size: !anyint
+
 #  - name: Remoted stats (master)
 #
 #    request:

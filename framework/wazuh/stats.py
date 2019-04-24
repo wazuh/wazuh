@@ -195,7 +195,7 @@ def analysisd():
 
     :return: A dictionary with the stats of analysisd.
     """
-    return get_daemons_stats(common.analysisd_stats)
+    return WazuhResult({'data': get_daemons_stats(common.analysisd_stats)})
 
 
 def remoted():
@@ -203,5 +203,5 @@ def remoted():
     Returns the stats of remoted.
 
     :return: A dictionary with the stats of remoted.
-        """
-    return get_daemons_stats(common.remoted_stats)
+    """
+    return WazuhResult({'data': get_daemons_stats(common.remoted_stats)})
