@@ -73,10 +73,10 @@ class Wazuh:
             return self.to_dict() == other.to_dict()
         return False
 
-    def to_dict(self, api_request=False):
+    def to_dict(self):
         return {'path': self.path, 'version': self.version, 'compilation_date': self.installation_date, 'type': self.type, 'max_agents': self.max_agents, 'openssl_support': self.openssl_support, 'ruleset_version': self.ruleset_version, 'tz_offset': self.tz_offset, 'tz_name': self.tz_name}
 
-    def get_ossec_init(self):
+    def get_ossec_init(self, api_request=False):
         """
         Gets information from /etc/ossec-init.conf.
 

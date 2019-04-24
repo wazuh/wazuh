@@ -396,6 +396,49 @@ stages:
           disabled: false
 
 ---
+test_name: GET /cluster/{node_id}/info
+
+stages:
+
+  - name: Request (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/info
+
+    response:
+      status_code: 200
+      body:
+        data:
+          path: !anystr
+          version: !anystr
+          compilation_date: !anystr
+          type: !anystr
+          max_agents: !anystr
+          openssl_support: yes
+          ruleset_version: !anystr
+          tz_offset: !anystr
+          tz_name: !anystr
+
+  - name: Request (worker)
+
+    request:
+      url: http://localhost:55000/worker-1/master/info
+
+    response:
+      status_code: 200
+      body:
+        data:
+          path: !anystr
+          version: !anystr
+          compilation_date: !anystr
+          type: !anystr
+          max_agents: !anystr
+          openssl_support: yes
+          ruleset_version: !anystr
+          tz_offset: !anystr
+          tz_name: !anystr
+
+---
 #test_name: GET /cluster/{node_id}/stats
 #stages:
 #  - name: Cluster stats (master)
