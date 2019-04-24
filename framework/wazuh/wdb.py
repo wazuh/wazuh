@@ -10,6 +10,7 @@ import socket
 import re
 import json
 import struct
+from typing import List
 
 
 class WazuhDBConnection:
@@ -33,6 +34,10 @@ class WazuhDBConnection:
     def __query_input_validation(self, query):
         """
         Checks input queries have the correct format
+
+        Accepted query formats:
+        - agent 000 sql sql_sentence
+        - global sql sql_sentence
         """
         query_elements = query.split(" ")
         sql_first_index = 2 if query_elements[0] == 'agent' else 1
@@ -89,6 +94,20 @@ class WazuhDBConnection:
                 to_lower = True
 
         return new_query
+
+    def delete_agents_db(self, agents_id: List[str]):
+        """
+        Delete agents db through wazuh-db service
+
+        :param agents_id: strings of agents
+        :return: dict received from wazuh db in the form: {"agents": {"ID": "MESSAGE"}}, where MESSAGE may be one
+        of the following:
+        - Ok
+        - Invalid agent ID
+        - DB waiting for deletion
+        - DB not found
+        """
+        return self._send(f"wazuhdb remove {' '.join(agents_id)}")
 
     def execute(self, query, count=False, delete=False, update=False):
         """
