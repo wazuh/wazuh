@@ -1173,7 +1173,7 @@ stages:
           wazuh-modulesd:osquery: !anything
           wazuh-modulesd:syscollector: !anything
 
-- name: Request (worker)
+  - name: Request (worker)
 
     request:
       url: http://localhost:55000/cluster/worker-1/logs/summary
