@@ -95,9 +95,10 @@ class Connection:
 
     def fetch(self):
         """
-        Return next tuple
+        Return next tuple value
         """
-        return self.__cur.fetchone()
+        next_val = self.__cur.fetchone()
+        return next(iter(next_val.values())) if isinstance(next_val, dict) else next_val
 
     def vacuum(self):
         """

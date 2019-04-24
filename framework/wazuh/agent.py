@@ -610,7 +610,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute("SELECT name FROM agent WHERE (id = 0)")
-        manager_name = str(conn.fetch()[0])
+        manager_name = str(conn.fetch())
 
         if name == manager_name:
             raise WazuhException(1705, name)
@@ -754,7 +754,7 @@ class Agent:
         query = "SELECT :attr FROM agent WHERE id = :id"
         request = {'attr':attr, 'id': self.id}
         conn.execute(query, request)
-        query_value = str(conn.fetch()[0])
+        query_value = str(conn.fetch())
 
         return query_value
 
@@ -902,7 +902,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM agent WHERE name = :name", {'name': agent_name})
         try:
-            agent_id = str(conn.fetch()[0]).zfill(3)
+            agent_id = str(conn.fetch()).zfill(3)
         except TypeError as e:
             raise WazuhException(1701, agent_name)
 
@@ -947,7 +947,7 @@ class Agent:
         conn = Connection(db_global[0])
         conn.execute("SELECT id FROM `group` WHERE name = :name", {'name': group_name})
         try:
-            group_id = conn.fetch()[0]
+            group_id = conn.fetch()
         except TypeError as e:
             raise WazuhException(1701, group_name)
 
@@ -1215,8 +1215,6 @@ class Agent:
                 if id_group == None:
                     continue
 
-                id_group = id_group[0]
-
                 # Group count
                 query = "SELECT {0} FROM belongs WHERE id_group = :id"
                 request = {'id': id_group}
@@ -1226,7 +1224,7 @@ class Agent:
                 merged_sum = get_hash(full_entry + "/merged.mg", hash_algorithm)
                 conf_sum   = get_hash(full_entry + "/agent.conf", hash_algorithm)
 
-                item = {'count':conn.fetch()[0], 'name': entry}
+                item = {'count': conn.fetch(), 'name': entry}
 
                 if merged_sum:
                     item['mergedSum'] = merged_sum
@@ -1810,7 +1808,7 @@ class Agent:
 
         conn = Connection(db_global[0])
         conn.execute('select count(*) from agent where `group` = :group_name', {'group_name': multigroup_name})
-        return int(conn.fetch()[0])
+        return int(conn.fetch())
 
 
     @staticmethod

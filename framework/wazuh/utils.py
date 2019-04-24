@@ -641,7 +641,7 @@ class SQLiteBackend(AbstractDatabaseBackend):
 
     def execute(self, query, request, count=False):
         self.conn.execute(query, request)
-        return self._get_data() if not count else next(iter(self.conn.fetch().values()))
+        return self._get_data() if not count else self.conn.fetch()
 
 
 class WazuhDBBackend(AbstractDatabaseBackend):
