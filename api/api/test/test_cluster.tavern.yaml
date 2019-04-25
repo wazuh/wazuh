@@ -255,10 +255,10 @@ stages:
         select: wrong_field
 
     response:
-      status_code: 500  ## should be 400
+      status_code: 400
       body:
         detail: !anystr
-        status: 500  ## should be 400
+        status: 400
         title: !anystr
         type: !anystr
 
