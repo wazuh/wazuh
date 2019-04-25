@@ -572,7 +572,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
-    snprintf(newsum, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
+    snprintf(newsum, sizeof(newsum), "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
         str_perm,
         str_owner,
@@ -616,7 +616,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
         sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
-    snprintf(newsum, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
+    snprintf(newsum, sizeof(newsum), "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u",
         str_size,
         (str_perm) ? str_perm : "",
         (owner == 0) && sid ? "" : sid,

@@ -98,7 +98,8 @@ All notable changes to this project will be documented in this file.
 - Fixed bug when processing symbolic links in Whodata. ([#3025](https://github.com/wazuh/wazuh/pull/3025))
 - Fixed option for ignoring paths in rootcheck. ([#3058](https://github.com/wazuh/wazuh/pull/3058))
 - Allow Wazuh service on MacOSX to be available without restart. ([#3119](https://github.com/wazuh/wazuh/pull/3119))
-
+- Ensure `internal_options.conf` file is overwritten on Windows upgrades. ([#3153](https://github.com/wazuh/wazuh/pull/3153))
+- Fixed the reading of the setting `attempts` of the Docker module. ([#3067](https://github.com/wazuh/wazuh/pull/3067))
 
 ## [v3.8.2]
 
