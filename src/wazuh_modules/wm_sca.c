@@ -926,7 +926,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #endif
 
                     mdebug2("Checking file: '%s'.", f_value);
-                    if (wm_sca_check_file(f_value, pattern)) {
+                    if (wm_sca_check_file(f_value, pattern) == 0) {
                         mdebug2("Found file.");
                         found = 1;
                     }
@@ -1322,25 +1322,31 @@ static int wm_sca_check_file(char * const file, char * const pattern)
     }
     
     /* by default, assume a positive rule, i.e, an IN rule */
-    int in_operation = 1;
+    int nin_operation = 1;
     char *pattern_ref = pattern;
-    if (strncmp(pattern_ref, "IN ", 3) == 0) {
-        in_operation = 1;
-        pattern_ref += 3;
-    } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
-        in_operation = 0;
-        pattern_ref += 4;
-    } else if (!strstr(pattern_ref, " && ")) {
-        mdebug2("Rule without IN/NIN: %s", pattern_ref);
-        /*a single negated minterm is a NIN rule*/
-        if (strchr(pattern_ref, '!')) {
-           in_operation = 0;
-           mdebug2("Negation found, is a NIN rule");
+    
+    if (pattern_ref) {
+        if (strncmp(pattern_ref, "IN ", 3) == 0) {
+            nin_operation = 0;
+            pattern_ref += 3;
+        } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+            nin_operation = 1;
+            pattern_ref += 4;
+        } else if (!strstr(pattern_ref, " && ")) {
+            mdebug2("Rule without IN/NIN: %s", pattern_ref);
+            /*a single negated minterm is a NIN rule*/
+            if (*pattern_ref == '!') {
+                nin_operation = 1;
+                pattern_ref++;
+                mdebug2("Negation found, is a IN rule");
+            } else {
+                mdebug2("Negation not found, is an NIN rule");
+                nin_operation = 0;
+            }
         } else {
-            mdebug2("Negation found, is an IN rule");
-        }
-    } else {
-        mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+            mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+            return 1;
+        }   
     }
 
     int result_accumulator = 0;
@@ -1364,20 +1370,22 @@ static int wm_sca_check_file(char * const file, char * const pattern)
                     mdebug2("Result for %s(%s) -> 1", pattern, file);
                     os_free(file_list);
                     fclose(fp);
-                    return in_operation ? result : !result;
+                    mdebug2("%s %d", nin_operation ? "IN":"NIN", result);
+                    return nin_operation ? result : !result;
                 }
             }
 
             fclose(fp);
         } else if (w_is_file(file)) {
             /* If we don't have a pattern, just check if the file/dir is there */
-            result_accumulator = 1;
+            result_accumulator = 0;
         }
     }
 
     mdebug2("Result for %s(%s) -> %d", pattern, file, result_accumulator);
+    mdebug2("%s %d", nin_operation ? "IN":"NIN", result_accumulator);
     os_free(file_list);
-    return in_operation ? result_accumulator : !result_accumulator;
+    return nin_operation ? result_accumulator : !result_accumulator;
 }
 
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
@@ -1438,6 +1446,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
         }
     } else {
         mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+        return 1;
     }
 
     int i;
@@ -1619,6 +1628,7 @@ static int wm_sca_is_process(char *pattern, OSList *p_list)
         }
     } else {
         mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+        return 1;
     }
 
     l_node = OSList_GetFirstNode(p_list);
@@ -1916,6 +1926,7 @@ static int wm_sca_winreg_querykey(HKEY hKey,
                 }
             } else {
                 mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+                return 1;
             }
             
             int result = wm_sca_pt_matches(var_storage, pattern_ref);
