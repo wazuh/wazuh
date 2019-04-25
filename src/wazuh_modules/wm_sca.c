@@ -47,7 +47,7 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan);  // Do scan
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan);  // Do scan
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan,int id);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
@@ -398,7 +398,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
             char path[PATH_MAX] = {0};
             OSStore *vars = NULL;
             cJSON * object = NULL;
-            OSList *plist = NULL;
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
 
@@ -440,7 +439,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             yaml_document_delete(&document);
 
-            //plist = w_os_get_process_list();
             cJSON *policy = cJSON_GetObjectItem(object, "policy");
             cJSON *variables = cJSON_GetObjectItem(object, "variables");
             cJSON *profiles = cJSON_GetObjectItem(object, "checks");
@@ -498,7 +496,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements) {
-                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan) == 0){
+                if(wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan) == 0){
                     requirements_satisfied = 1;
                 }
             }
@@ -515,7 +513,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
 
-                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan) != 0) {
+                if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -539,9 +537,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 wm_sca_reset_summary();
             }
 
-            w_del_plist(plist);
-            plist = NULL;
-
     next:
             if(fp){
                 fclose(fp);
@@ -557,10 +552,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(vars) {
                 OSStore_Free(vars);
-            }
-
-            if(plist) {
-                w_del_plist(plist);
             }
         }
         first_scan = 0;
@@ -775,7 +766,7 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan) {
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan) {
 
     int type = 0, condition = 0, invalid = 0;
     char *nbuf = NULL;
@@ -787,6 +778,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     int id_check_p = 0;
     cJSON *c_title = NULL;
     cJSON *c_condition = NULL;
+    OSList *p_list = NULL;
 
     /* Initialize variables */
     memset(buf, '\0', sizeof(buf));
@@ -1052,6 +1044,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 /* Check for a process */
                 else if (type == WM_SCA_TYPE_PROCESS) {
+                    if (!p_list) {
+                        p_list = w_os_get_process_list();
+                    }
                     mdebug2("Checking process: '%s'", value);
                     if (wm_sca_is_process(value, p_list)) {
                         mdebug2("Process found.");
@@ -1199,6 +1194,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
 /* Clean up memory */
 clean_return:
+    os_free(p_list);
     os_free(name);
 
     return ret_val;
