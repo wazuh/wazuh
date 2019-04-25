@@ -9,11 +9,36 @@ stages:
     id: login_get_token
   - name: Try to show the rules of the system
 
-    request:
+    request: &general_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
+      params:
+        limit: 1
+        offset: 0
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &rules_response
+            - description: !anystr
+              details: !anything
+              file: !anystr
+              gdpr: !anything
+              groups: !anything
+              id: !anyint
+              level: !anyint
+              path: !anystr
+              pci: !anything
+              status: !anystr
+          totalItems: !anyint
+
+  - name: Try to show the rules of the system, offset = 0
+
+    request:
+      <<: *general_rules_request
       params:
         limit: 2
         offset: 0
@@ -22,141 +47,71 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Generic template for all syslog rules.",
-              "details": {
-                "category": "syslog",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "syslog"
-              ],
-              "id": 1,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "Generic template for all firewall rules.",
-              "details": {
-                "category": "firewall",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "firewall"
-              ],
-              "id": 2,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 2168
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+      save:
+        body:
+          second_rule: data.items.1
+
+  - name: Try to show the rules of the system, offset = 1
+
+    request:
+      <<: *general_rules_request
+      params:
+        limit: 2
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+          - description: "{second_rule.description}"
+            file: "{second_rule.file}"
+            status: "{second_rule.status}"
+          - <<: *rules_response
+          totalItems: !anyint
 
   - name: Try to show the rules of the system, without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *general_rules_request
 
     response:
       status_code: 200
       body:
         data:
-          totalItems: 2168
+          totalItems: !anyint
 
   - name: Try to show the rules of the system with a existent state
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *general_rules_request
       params:
         list_status: disabled
+        limit: 2
 
     response:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Successful login during non-business hours.",
-              "details": {
-                "if_group": "authentication_success",
-                "time": "6 pm - 8:30 am"
-              },
-              "file": "0215-policy_rules.xml",
-              "gdpr": [
-                "IV_35.7.d",
-                "IV_32.2"
-              ],
-              "groups": [
-                "login_time",
-                "gpg13_7.1",
-                "gpg13_7.2",
-                "policy_violation"
-              ],
-              "id": 17101,
-              "level": 9,
-              "path": "ruleset/rules",
-              "pci": [
-                "10.2.5",
-                "10.6.1"
-              ],
-              "status": "disabled"
-            },
-            {
-              "description": "Successful login during weekend.",
-              "details": {
-                "if_group": "authentication_success",
-                "weekday": "weekends"
-              },
-              "file": "0215-policy_rules.xml",
-              "gdpr": [
-                "IV_35.7.d",
-                "IV_32.2"
-              ],
-              "groups": [
-                "login_day",
-                "gpg13_7.1",
-                "gpg13_7.2",
-                "policy_violation"
-              ],
-              "id": 17102,
-              "level": 9,
-              "path": "ruleset/rules",
-              "pci": [
-                "10.2.5",
-                "10.6.1"
-              ],
-              "status": "disabled"
-            }
-          ]
-          totalItems: 2
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Try to get all rules with limit = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *general_rules_request
       params:
         limit: 0
 
     response:
       status_code: 400
-      body:
+      body: &error_response
         detail: !anystr
         status: 400
         title: "Bad Request"
@@ -165,10 +120,7 @@ stages:
   - name: Sort the rules
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *general_rules_request
       params:
         sort: -file
         limit: 2
@@ -177,67 +129,23 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "sshd: authentication failed from IP 1.1.1.1.",
-              "details": {
-                "if_sid": "5716",
-                "srcip": "1.1.1.1"
-              },
-              "file": "local_rules.xml",
-              "gdpr": [],
-              "groups": [
-                "authentication_failed",
-                "local",
-                "syslog",
-                "sshd"
-              ],
-              "id": 100001,
-              "level": 5,
-              "path": "etc/rules",
-              "pci": [
-                "10.2.4",
-                "10.2.5"
-              ],
-              "status": "enabled"
-            },
-            {
-              "description": "Group of Security Configuration Assessment rules",
-              "details": {
-                "category": "ossec",
-                "decoded_as": "sca",
-                "options": "no_full_log"
-              },
-              "file": "0570-sca_rules.xml",
-              "gdpr": [
-                "IV_35.7.d"
-              ],
-              "groups": [
-                "wazuh",
-                "sca"
-              ],
-              "id": 19000,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 2168
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Sort without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
+      params:
+        sort: -file
 
     response:
       status_code: 200
       body:
         data:
-          totalItems: 2168
+          totalItems: !anyint
 
   - name: Search in rules
 
@@ -254,51 +162,18 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Generic template for all web rules.",
-              "details": {
-                "category": "web-log",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "web-log"
-              ],
-              "id": 4,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "Generic template for all web proxy rules.",
-              "details": {
-                "category": "squid",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "squid"
-              ],
-              "id": 5,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 119
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+      save:
+        body:
+          rule_id: data.items.0.id
 
   - name: Search without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         search: web
 
@@ -306,21 +181,18 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 119
+          totalItems: !anyint
 
   - name: Invalid parameter
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         noexist: nothing
 
     response:
       status_code: 400
-      body:
+      body: &error_null
         detail: "Extra query parameter(s) noexist not in spec"
         status: 400
         title: null
@@ -329,47 +201,32 @@ stages:
   - name: Invalid status
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         list_status: aCtIvE
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Invalid parameters - Extra fields
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         list_status: enabled
-        random: True
+        noexist: True
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 
   - name: Filters status
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         list_status: enabled
         limit: 2
@@ -378,51 +235,15 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Generic template for all syslog rules.",
-              "details": {
-                "category": "syslog",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "syslog"
-              ],
-              "id": 1,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "Generic template for all firewall rules.",
-              "details": {
-                "category": "firewall",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "firewall"
-              ],
-              "id": 2,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 2166
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter status without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         list_status: enabled
 
@@ -430,7 +251,7 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 2166
+          totalItems: !anyint
 
   - name: Try to show the rules of the system with a non-existent state
 
@@ -445,18 +266,12 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter group
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         group: web
         limit: 2
@@ -465,52 +280,15 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Apache messages grouped.",
-              "details": {
-                "decoded_as": "apache-errorlog"
-              },
-              "file": "0250-apache_rules.xml",
-              "gdpr": [],
-              "groups": [
-                "apache",
-                "web"
-              ],
-              "id": 30100,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "Apache error messages grouped.",
-              "details": {
-                "if_sid": "30100",
-                "match": "^[error] "
-              },
-              "file": "0250-apache_rules.xml",
-              "gdpr": [],
-              "groups": [
-                "apache",
-                "web"
-              ],
-              "id": 30101,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 107
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter group without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         group: web
 
@@ -518,15 +296,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 107
+          totalItems: !anyint
 
   - name: Try to show the rules by levels
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         level: 2
         limit: 2
@@ -535,57 +310,15 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Windows application monitor event.",
-              "details": {
-                "if_sid": "510",
-                "match": "^Application Found"
-              },
-              "file": "0015-ossec_rules.xml",
-              "gdpr": [],
-              "groups": [
-                "rootcheck",
-                "ossec"
-              ],
-              "id": 514,
-              "level": 2,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "File missing. Root access unrestricted.",
-              "details": {
-                "match": "^Couldn't open /etc/securetty"
-              },
-              "file": "0020-syslog_rules.xml",
-              "gdpr": [
-                "IV_35.7.d"
-              ],
-              "groups": [
-                "gpg13_4.1",
-                "syslog",
-                "errors"
-              ],
-              "id": 1001,
-              "level": 2,
-              "path": "ruleset/rules",
-              "pci": [
-                "10.2.4"
-              ],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 50
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter levels without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         level: 2
 
@@ -593,33 +326,24 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 50
+          totalItems: !anyint
 
   - name: Try to show the rules by levels (invalid interval)
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         level: 2-4-5
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter path
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         path: ruleset/rules
         limit: 2
@@ -628,51 +352,15 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Generic template for all syslog rules.",
-              "details": {
-                "category": "syslog",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "syslog"
-              ],
-              "id": 1,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "Generic template for all firewall rules.",
-              "details": {
-                "category": "firewall",
-                "noalert": "1"
-              },
-              "file": "0010-rules_config.xml",
-              "gdpr": [],
-              "groups": [
-                "firewall"
-              ],
-              "id": 2,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 2167
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter path without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         path: ruleset/rules
 
@@ -680,15 +368,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 2167
+          totalItems: !anyint
 
   - name: Filter file
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         file: 0350-amazon_rules.xml
         limit: 2
@@ -697,63 +382,19 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "AWS alert.",
-              "details": {
-                "decoded_as": "json",
-                "integration": "aws"
-              },
-              "file": "0350-amazon_rules.xml",
-              "gdpr": [],
-              "groups": [
-                "amazon",
-                "aws"
-              ],
-              "id": 80200,
-              "level": 0,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "AWS Cloudtrail: $(aws.eventSource) - $(aws.eventName).",
-              "details": {
-                "aws.source": "cloudtrail",
-                "if_sid": "80200",
-                "list": {
-                  "field": "aws.eventName",
-                  "lookup": "match_key",
-                  "name": "etc/lists/amazon/aws-eventnames"
-                }
-              },
-              "file": "0350-amazon_rules.xml",
-              "gdpr": [
-                "IV_35.7.d"
-              ],
-              "groups": [
-                "aws_cloudtrail",
-                "amazon",
-                "aws"
-              ],
-              "id": 80202,
-              "level": 3,
-              "path": "ruleset/rules",
-              "pci": [
-                "10.6.1"
-              ],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 43
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
+      save:
+        body:
+          pci_value: data.items.1.pci.0
+          gdpr_value: data.items.1.gdpr.0
 
   - name: Filter file without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
         file: 0350-amazon_rules.xml
 
@@ -761,169 +402,67 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 43
+          totalItems: !anyint
 
   - name: Filter pci
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
-        pci: 11.4
+        pci: "{pci_value}"
         limit: 2
 
     response:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Log file size reduced.",
-              "details": {
-                "if_sid": "500",
-                "match": "^ossec: File size reduced"
-              },
-              "file": "0015-ossec_rules.xml",
-              "gdpr": [
-                "IV_35.7.d"
-              ],
-              "groups": [
-                "attacks",
-                "gpg13_10.1",
-                "ossec"
-              ],
-              "id": 592,
-              "level": 8,
-              "path": "ruleset/rules",
-              "pci": [
-                "10.5.2",
-                "11.4"
-              ],
-              "status": "enabled"
-            },
-            {
-              "description": "Host Blocked by firewall-drop.sh Active Response",
-              "details": {
-                "if_sid": "600",
-                "script": "firewall-drop.sh",
-                "type": "add"
-              },
-              "file": "0015-ossec_rules.xml",
-              "gdpr": [
-                "IV_35.7.d"
-              ],
-              "groups": [
-                "active_response",
-                "gpg13_4.13",
-                "ossec"
-              ],
-              "id": 601,
-              "level": 3,
-              "path": "ruleset/rules",
-              "pci": [
-                "11.4"
-              ],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 270
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter pci without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
-        pci: 11.4
+        pci: "{pci_value}"
 
     response:
       status_code: 200
       body:
         data:
-          totalItems: 270
+          totalItems: !anyint
 
   - name: Filter gdpr
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
-        gdpr: II_5.1.f
+        gdpr: "{gdpr_value}"
         limit: 2
 
     response:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "description": "Syscheck Audit: $(extra_data)",
-              "details": {
-                "if_sid": "500",
-                "match": "^ossec: Audit:"
-              },
-              "file": "0015-ossec_rules.xml",
-              "gdpr": [
-                "II_5.1.f",
-                "IV_35.7.d"
-              ],
-              "groups": [
-                "syscheck",
-                "ossec"
-              ],
-              "id": 517,
-              "level": 7,
-              "path": "ruleset/rules",
-              "pci": [],
-              "status": "enabled"
-            },
-            {
-              "description": "Integrity checksum changed.",
-              "details": {
-                "category": "ossec",
-                "decoded_as": "syscheck_integrity_changed"
-              },
-              "file": "0015-ossec_rules.xml",
-              "gdpr": [
-                "II_5.1.f"
-              ],
-              "groups": [
-                "syscheck",
-                "gpg13_4.11",
-                "ossec"
-              ],
-              "id": 550,
-              "level": 7,
-              "path": "ruleset/rules",
-              "pci": [
-                "11.5"
-              ],
-              "status": "enabled"
-            }
-          ]
-          totalItems: 23
+          items:
+            - <<: *rules_response
+            - <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter gdpr without limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *general_rules_request
       params:
-        gdpr: II_5.1.f
+        gdpr: "{gdpr_value}"
 
     response:
       status_code: 200
       body:
         data:
-          totalItems: 23
+          totalItems: !anyint
 
 ---
 
@@ -939,7 +478,7 @@ stages:
     id: login_get_token
   - name: Try to show the rules by requeriment pci
 
-    request:
+    request: &pci_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
       method: GET
       headers:
@@ -949,15 +488,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 38
+          totalItems: !anyint
 
   - name: Try to show the rules by requeriment pci, limit and offset
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *pci_rules_request
       params:
         limit: 1
         offset: 0
@@ -966,36 +502,25 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "1.1.1"
-          ]
-          totalItems: 38
+          items: !anything
+          totalItems: !anyint
 
   - name: Try to show the rules by requeriment pci, limit = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *pci_rules_request
       params:
         limit: 0
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *pci_rules_request
       params:
         sort: "-"
 
@@ -1003,15 +528,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 38
+          totalItems: !anyint
 
   - name: Filter search
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *pci_rules_request
       params:
         search: 10
 
@@ -1019,40 +541,20 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "10.1",
-            "10.2.1",
-            "10.2.2",
-            "10.2.4",
-            "10.2.5",
-            "10.2.6",
-            "10.2.7",
-            "10.4",
-            "10.5.2",
-            "10.5.5",
-            "10.6",
-            "10.6.1",
-            "6.5.10"
-          ]
-          totalItems: 13
+          items: !anything
+          totalItems: !anyint
 
   - name: Invalid filter
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/pci"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *pci_rules_request
       params:
-        random: True
+        noexist: True
 
     response:
       status_code: 400
       body:
-        detail: "Extra query parameter(s) random not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 ---
 test_name: GET /rules/gdpr
 
@@ -1064,7 +566,7 @@ stages:
     id: login_get_token
   - name: Try to show the rules by requeriment gdpr
 
-    request:
+    request: &gdpr_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
       method: GET
       headers:
@@ -1074,21 +576,13 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "II_5.1.f",
-            "IV_30.1.g",
-            "IV_32.2",
-            "IV_35.7.d"
-          ]
-          totalItems: 4
+          items: !anything
+          totalItems: !anyint
 
   - name: Try to show the rules by requeriment gdpr, limit = 1, offset = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *gdpr_rules_request
       params:
         limit: 1
         offset: 0
@@ -1097,36 +591,25 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "II_5.1.f"
-          ]
-          totalItems: 4
+          items: !anything
+          totalItems: !anyint
 
   - name: Try to show the rules by requeriment gdpr, limit = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *gdpr_rules_request
       params:
         limit: 0
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *gdpr_rules_request
       params:
         sort: "-"
 
@@ -1134,21 +617,13 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "IV_35.7.d",
-            "IV_32.2",
-            "IV_30.1.g",
-            "II_5.1.f"
-          ]
-          totalItems: 4
+          items: !anything
+          totalItems: !anyint
 
   - name: Filter search
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *gdpr_rules_request
       params:
         search: 30
 
@@ -1156,28 +631,20 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "IV_30.1.g"
-          ]
-          totalItems: 1
+          items: !anything
+          totalItems: !anyint
 
   - name: Invalid filter
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/gdpr"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *gdpr_rules_request
       params:
-        random: True
+        noexist: True
 
     response:
       status_code: 400
       body:
-        detail: "Extra query parameter(s) random not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 
   - name: Try to show the rules by invalid requeriment (XgdprY)
 
@@ -1208,7 +675,7 @@ stages:
     id: login_get_token
   - name: Try to show the groups of rules
 
-    request:
+    request: &groups_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
       method: GET
       headers:
@@ -1218,15 +685,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 318
+          totalItems: !anyint
 
   - name: Try to show the groups of rules, limit and offset
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *groups_rules_request
       params:
         offset: 0
         limit: 1
@@ -1235,36 +699,25 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "access_control"
-          ]
-          totalItems: 318
+          items: !anything
+          totalItems: !anyint
 
   - name: Try to show the groups of rules, limit = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *groups_rules_request
       params:
         limit: 0
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *groups_rules_request
       params:
         sort: "-"
 
@@ -1272,15 +725,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 318
+          totalItems: !anyint
 
   - name: Filter search
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *groups_rules_request
       params:
         search: web
 
@@ -1288,30 +738,20 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            "web",
-            "web-log",
-            "web_scan"
-          ]
-          totalItems: 3
+          items: !anything
+          totalItems: !anyint
 
   - name: Invalid filter
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/groups"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *groups_rules_request
       params:
-        random: nothing
+        noexist: nothing
 
     response:
       status_code: 400
       body:
-        detail: "Extra query parameter(s) random not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 ---
 
 ---
@@ -1325,7 +765,7 @@ stages:
     id: login_get_token
   - name: Get the rules files
 
-    request:
+    request: &files_rules_request
       url: "{protocol:s}://{host:s}:{port:d}/rules/files"
       method: GET
       headers:
@@ -1335,15 +775,12 @@ stages:
       status_code: 200
       body:
         data:
-          totalItems: 112
+          totalItems: !anyint
 
   - name: Get the rules files, limit = 1, offset = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         limit: 1
         offset: 0
@@ -1352,40 +789,28 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "file": "0010-rules_config.xml",
-              "path": "ruleset/rules",
-              "status": "enabled"
-            }
-          ]
-          totalItems: 112
+          items: &file_response
+            - file: !anystr
+              path: !anystr
+              status: !anystr
+          totalItems: !anyint
 
   - name: Get the rules files, limit = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         limit: 0
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         sort: "-file"
         limit: 1
@@ -1394,22 +819,14 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "file": "local_rules.xml",
-              "path": "etc/rules",
-              "status": "enabled"
-            }
-          ]
-          totalItems: 112
+          items:
+            - <<: *file_response
+          totalItems: !anyint
 
   - name: Filter search
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         search: web
 
@@ -1417,64 +834,40 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "file": "0245-web_rules.xml",
-              "path": "ruleset/rules",
-              "status": "enabled"
-            },
-            {
-              "file": "0270-web_appsec_rules.xml",
-              "path": "ruleset/rules",
-              "status": "enabled"
-            }
-          ]
-          totalItems: 2
+          items:
+            - <<: *file_response
+            - <<: *file_response
+          totalItems: !anyint
 
   - name: Invalid filter
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
-        random: True
+        noexist: True
 
     response:
       status_code: 400
       body:
-        detail: "Extra query parameter(s) random not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 
   - name: Invalid filter - Extra field
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         list_status: enabled
-        random: True
+        noexist: True
 
     response:
       status_code: 400
       body:
-        detail: "Extra query parameter(s) random not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 
   - name: Filter status
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         list_status: enabled
 
@@ -1483,15 +876,12 @@ stages:
       body:
         data:
           items: !anything
-          totalItems: 112
+          totalItems: !anyint
 
   - name: Filter status again
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         list_status: enabled
         limit: 1
@@ -1500,22 +890,14 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "file": "0010-rules_config.xml",
-              "path": "ruleset/rules",
-              "status": "enabled"
-            }
-          ]
-          totalItems: 112
+          items:
+            - <<: *file_response
+          totalItems: !anyint
 
   - name: Filter search enabled
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         search: enabled
         limit: 1
@@ -1524,22 +906,14 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "file": "0010-rules_config.xml",
-              "path": "ruleset/rules",
-              "status": "enabled"
-            }
-          ]
-          totalItems: 111
+          items:
+            - <<: *file_response
+          totalItems: !anyint
 
   - name: Filter download
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *files_rules_request
       params:
         download: 0350-amazon_rules.xml
 
@@ -1547,14 +921,9 @@ stages:
       status_code: 200
       body:
         data:
-          items: [
-            {
-              "file": "0350-amazon_rules.xml",
-              "path": "ruleset/rules",
-              "status": "enabled"
-            }
-          ]
-          totalItems: 1
+          items:
+            - <<: *file_response
+          totalItems: !anyint
 ---
 
 ---
@@ -1569,8 +938,8 @@ stages:
     id: login_get_token
   - name: Try to show a rule with a existent id
 
-    request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/1002"
+    request: &id_rules_request
+      url: "{protocol:s}://{host:s}:{port:d}/rules/{rule_id:d}"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1579,33 +948,14 @@ stages:
       status_code: 200
       body:
         data:
-          items: {
-            "description": "Unknown problem somewhere in the system.",
-            "details": {
-              "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
-            },
-            "file": "0020-syslog_rules.xml",
-            "gdpr": [],
-            "groups": [
-              "gpg13_4.3",
-              "syslog",
-              "errors"
-            ],
-            "id": 1002,
-            "level": 2,
-            "path": "ruleset/rules",
-            "pci": [],
-            "status": "enabled"
-          }
-          totalItems: 1
+          items:
+            <<: *rules_response
+          totalItems: !anyint
 
   - name: Try to show a rule with a existent id, limit = 1, offset = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/1002"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *id_rules_request
       params:
         limit: 1
         offset: 0
@@ -1614,51 +964,26 @@ stages:
       status_code: 200
       body:
         data:
-          items: {
-            "description": "Unknown problem somewhere in the system.",
-            "details": {
-              "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
-            },
-            "file": "0020-syslog_rules.xml",
-            "gdpr": [],
-            "groups": [
-              "gpg13_4.3",
-              "syslog",
-              "errors"
-            ],
-            "id": 1002,
-            "level": 2,
-            "path": "ruleset/rules",
-            "pci": [],
-            "status": "enabled"
-          }
-          totalItems: 1
+          items:
+            <<: *rules_response
+          totalItems: !anyint
 
   - name: Try to show a rule with a existent id, limit = 0
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/1002"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *id_rules_request
       params:
         limit: 0
 
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *error_response
 
   - name: Filter sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/1002"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *id_rules_request
       params:
         sort: -file
 
@@ -1666,33 +991,14 @@ stages:
       status_code: 200
       body:
         data:
-          items: {
-            "description": "Unknown problem somewhere in the system.",
-            "details": {
-              "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
-            },
-            "file": "0020-syslog_rules.xml",
-            "gdpr": [],
-            "groups": [
-              "gpg13_4.3",
-              "syslog",
-              "errors"
-            ],
-            "id": 1002,
-            "level": 2,
-            "path": "ruleset/rules",
-            "pci": [],
-            "status": "enabled"
-          }
-          totalItems: 1
+          items:
+            <<: *rules_response
+          totalItems: !anyint
 
   - name: Filter search error
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/1002"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *id_rules_request
       params:
         search: error
 
@@ -1700,43 +1006,20 @@ stages:
       status_code: 200
       body:
         data:
-          items: {
-            "description": "Unknown problem somewhere in the system.",
-            "details": {
-              "match": "core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted"
-            },
-            "file": "0020-syslog_rules.xml",
-            "gdpr": [],
-            "groups": [
-              "gpg13_4.3",
-              "syslog",
-              "errors"
-            ],
-            "id": 1002,
-            "level": 2,
-            "path": "ruleset/rules",
-            "pci": [],
-            "status": "enabled"
-          }
-          totalItems: 1
+          items: []
+          totalItems: !anyint
 
   - name: Invalid filter
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/rules/1002"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      <<: *id_rules_request
       params:
-        random: True
+        noexist: True
 
     response:
       status_code: 400
       body:
-        detail: "Extra query parameter(s) random not in spec"
-        status: 400
-        title: null
-        type: "about:blank"
+        <<: *error_null
 
   - name: Bad rule id
 
@@ -1767,5 +1050,5 @@ stages:
       body:
         data:
           items: []
-          totalItems: 0
+          totalItems: !anyint
 ---
