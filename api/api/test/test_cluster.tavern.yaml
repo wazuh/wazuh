@@ -1336,31 +1336,73 @@ test_name: POST /cluster/{node_id}/files
 
 stages:
 
-#  - name: Upload ossec.conf (master)
-#
-#    request:
-#      url: http://localhost:55000/cluster/master/files
-#      params:
-#        path: etc/ossec.conf
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          contents: !anystr
-#
-#  - name: Upload ossec.conf (worker)
-#
-#    request:
-#      url: http://localhost:55000/cluster/worker-1/files
-#      params:
-#        path: etc/ossec.conf
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#          contents: !anystr
+  #### Save master ossec.conf
+  - name: Get ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf_master: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  #### Save worker ossec.conf
+  - name: Get ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf_worker: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Upload ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      data: "{ossec_conf_master}"
+      headers:
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Upload ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      data: "{ossec_conf_worker}"
+      headers:
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
 
   - name: Upload new rules
 
@@ -1604,7 +1646,8 @@ test_name: DELETE /cluster/{node_id}/files
 
 stages:
 
-  - name: Delete rules file
+  - &delete_rules_file
+    name: Delete rules file
 
     request:
       url: http://localhost:55000/cluster/master/files
@@ -1701,7 +1744,7 @@ stages:
         type: !anystr
 
 ---
-test_name: GET /cluster/configuration/validation (OK)
+test_name: GET /cluster/configuration/validation (master OK, worker OK)
 
 stages:
 
@@ -1741,17 +1784,18 @@ stages:
         status: OK
 
 ---
-test_name: GET /cluster/configuration/validation (KO)
+test_name: GET /cluster/configuration/validation (master KO, worker OK)
 
 stages:
 
   #### Upload corrupted rules file
-  - name: Upload new rules
+  - &upload_corrupted_rules
+    name: Upload new rules
 
     request:
       url: http://localhost:55000/cluster/master/files
       method: POST
-      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
       headers:
         content-type: application/octet-stream
       params:
@@ -1770,10 +1814,73 @@ stages:
     response:
       status_code: 200
       body:
-        status: OK
+        details: !anything
+        status: !anything
 
 ---
 test_name: GET /cluster/{node_id}/configuration/validation (master KO, worker OK)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+  #### Delete corrupted rules file
+  - *delete_rules_file
+
+---
+test_name: GET /cluster/configuration/validation (master OK, worker KO)
+
+stages:
+  #### Upload corrupted ossec.conf in worker node
+  - name: Upload corrupted ossec.conf to worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"aaa\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/ossec.conf
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Request validation
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: !anything
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master OK, worker KO)
 
 stages:
 
@@ -1795,18 +1902,119 @@ stages:
     response:
       status_code: 200
       body:
-        status: OK
+        details: !anything
+        status: KO
 
-  #### Delete corrupted rules file
-  - name: Delete rules file
+---
+test_name: GET /cluster/configuration/validation (master KO, worker KO)
+
+stages:
+
+  #### Upload corrupted rules file
+  - *upload_corrupted_rules
+
+  - name: Request validation
 
     request:
-      url: http://localhost:55000/cluster/master/files
-      method: DELETE
+      url: http://localhost:55000/cluster/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: !anything
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master KO, worker KO)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  #### Restore worker configuration
+  - name: Restore ossec.conf in worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      method: POST
+      data: "{ossec_conf_worker}"
+      headers:
+        content-type: application/octet-stream
       params:
-        path: etc/rules/new-rules.xml
+        path: etc/ossec.conf
+        overwrite: True
 
     response:
       status_code: 200
       body:
         message: !anystr
+
+  #### Delete corrupted rules file
+  - *delete_rules_file
+
+---
+test_name: PUT /cluster/restart
+
+stages:
+
+  - name: Restart cluster
+    delay_before: 10
+    request:
+      url: http://localhost:55000/cluster/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+    delay_after: 20
+
+---
+test_name: PUT /cluster/{node_id}/restart
+
+stages:
+
+  - name: Restart worker node
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Restart master node
+
+    request:
+      url: http://localhost:55000/cluster/master/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+
