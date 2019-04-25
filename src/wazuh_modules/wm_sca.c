@@ -1194,11 +1194,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
 
 /* Clean up memory */
 clean_return:
-    os_free(p_list);
+    w_del_plist(p_list);
     os_free(name);
 
     return ret_val;
-
 }
 
 static void wm_sca_set_condition(char *c_cond, int *condition) {
