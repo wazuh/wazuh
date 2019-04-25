@@ -1433,7 +1433,7 @@ stages:
     response:
       status_code: 500 ### should be 400
       body:
-        code: 3009
+        code: 1000 ### should be 3022
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -1512,7 +1512,7 @@ stages:
     response:
       status_code: 500 ## should be 400
       body:
-        code: 3009
+        code: 1000 ## should be 3022
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -1591,7 +1591,7 @@ stages:
     response:
       status_code: 500  ## should be 400
       body:
-        code: 3009
+        code: 1000  ## should be 3022
         dapi_errors: !anything
         detail: !anystr
         remediation: !anystr
@@ -1599,3 +1599,214 @@ stages:
         title: !anystr
         type: !anystr
 
+---
+test_name: DELETE /cluster/{node_id}/files
+
+stages:
+
+  - name: Delete rules file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting rules file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Delete decoder file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting decoder file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Delete CDB list file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting CDB list file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /cluster/configuration/validation (OK)
+
+stages:
+
+  - name: Request validation
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master OK, worker OK)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+---
+test_name: GET /cluster/configuration/validation (KO)
+
+stages:
+
+  #### Upload corrupted rules file
+  - name: Upload new rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716\n <srcip>1.1.1.1</srcip>\n <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Request validation
+
+    request:
+      url: http://localhost:55000/cluster/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+---
+test_name: GET /cluster/{node_id}/configuration/validation (master KO, worker OK)
+
+stages:
+
+  - name: Request validation (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+  - name: Request validation (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+  #### Delete corrupted rules file
+  - name: Delete rules file
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: DELETE
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
