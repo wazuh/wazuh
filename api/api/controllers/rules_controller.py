@@ -10,6 +10,7 @@ from api.models.list_metadata import ListMetadata
 from api.models.rules_files_model import RulesFiles
 from api.models.rules_model import Rules as RulesModel
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param
+from ..util import format_data
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
 from wazuh.exception import WazuhException, WazuhError
@@ -80,6 +81,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
             rules_list.append(rule)
 
         data['items'] = rules_list
+        data = format_data(data)
 
     return data, 200
 
@@ -120,6 +122,7 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(data)
 
     return data, 200
 
@@ -160,6 +163,7 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(data)
 
     return data, 200
 
@@ -200,6 +204,7 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(data)
 
     return data, 200
 
@@ -249,6 +254,7 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(data)
 
     return data, 200
 
@@ -291,13 +297,14 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
                           logger=logger
                           )
     data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(data)
 
     if isinstance(data, WazuhError):
         return data, 200
 
-    if data['totalItems'] == 0:
-        return data, 200
-    elif data['totalItems'] == 1:
-        return {'items': data['items'][0].to_dict(), 'totalItems': data['totalItems']}, 200
-    else:
+    if data['data']['totalItems'] == 1:
+        data['data'] = {'items': data['data']['items'][0].to_dict(), 'totalItems': data['data']['totalItems']}
+    elif data['data']['totalItems'] > 1 or data['data']['totalItems'] < 0:
         raise WazuhError(1206)
+
+    return data, 200
