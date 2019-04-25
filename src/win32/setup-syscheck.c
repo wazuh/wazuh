@@ -10,7 +10,8 @@
 
 #include "setup-shared.h"
 #include "os_xml/os_xml.h"
-
+#include "../error_messages/error_messages.h"
+#include <errno.h>
 #define OSSEC_CONFIG_TMP  ".tmp.ossec.conf"
 
 
@@ -54,8 +55,12 @@ int main(int argc, char **argv)
 
     /* Rename config files */
     unlink(OSSECLAST);
-    rename(OSSECCONF, OSSECLAST);
-    rename(OSSEC_CONFIG_TMP, OSSECCONF);
+    if (rename(OSSECCONF, OSSECLAST)) {
+        printf(RENAME_ERROR, OSSECCONF, OSSECLAST, errno, strerror(errno));
+    }
+    if (rename(OSSEC_CONFIG_TMP, OSSECCONF)) {
+        printf(RENAME_ERROR, OSSEC_CONFIG_TMP, OSSECCONF, errno, strerror(errno));
+    }
 
     return (0);
 }

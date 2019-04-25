@@ -22,4 +22,10 @@ void gettime(struct timespec *ts);
 void time_sub(struct timespec * a, const struct timespec * b);
 
 #endif // WIN32
+
+#ifdef WIN32
+long long int get_windows_time_epoch();
+long long int get_windows_file_time_epoch(FILETIME ft);
+#endif
+
 #endif // TIME_OP_H
