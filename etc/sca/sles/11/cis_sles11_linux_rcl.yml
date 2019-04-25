@@ -566,8 +566,8 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 # Section 3.2 - Network Parameters (Host and Router)
  - id: 7044
    title: "Ensure source routed packets are not accepted"
@@ -704,7 +704,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*MaxAuthTries\s+4\s*$;'
+     - 'f:/etc/ssh/sshd_config -> !r:^\s*MaxAuthTries\s+4\s*$;'
  - id: 7055
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
@@ -740,7 +740,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*PermitRootLogin\.+no;'
+     - 'f:/etc/ssh/sshd_config -> !r:^\s*PermitRootLogin\.+no;'
  - id: 7058
    title: "Ensure SSH PermitEmptyPasswords is disabled"
    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
@@ -752,7 +752,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:$sshd_file -> !r:^\s*PermitEmptyPasswords\.+no;'
+     - 'f:/etc/ssh/sshd_config -> !r:^\s*PermitEmptyPasswords\.+no;'
 # Section 6.2 - User and Group Settings
  - id: 7059
    title: "Ensure password fields are not empty"

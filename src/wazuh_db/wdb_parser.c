@@ -12,6 +12,8 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
+#define WDB_RESPONSE_BEGIN_SIZE 16
+
 int wdb_parse(char * input, char * output) {
     char * actor;
     char * id;
@@ -70,6 +72,11 @@ int wdb_parse(char * input, char * output) {
             merror("Couldn't open DB for agent '%s'", sagent_id);
             snprintf(output, OS_MAXSTR + 1, "err Couldn't open DB for agent %d", agent_id);
             return -1;
+        }
+
+        if (wdb->remove) {
+            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+            return 0;
         }
 
         mdebug2("Agent %s query: %s", sagent_id, query);
@@ -239,6 +246,11 @@ int wdb_parse(char * input, char * output) {
                     result = -1;
                 }
             }
+        } else if (strcmp(query, "remove") == 0) {
+            wdb_remove_database(wdb);
+            snprintf(output, OS_MAXSTR + 1, "ok");
+
+            return result;
         } else if (strcmp(query, "begin") == 0) {
             if (wdb_begin2(wdb) < 0) {
                 mdebug1("DB(%s) Cannot begin transaction.", sagent_id);
@@ -278,6 +290,30 @@ int wdb_parse(char * input, char * output) {
         }
         wdb_leave(wdb);
         return result;
+    } else if (strcmp(actor, "wazuhdb") == 0) {
+        query = next;
+
+        if (next = wstr_chr(query, ' '), !next) {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err Invalid DB query syntax, near '%.32s'", query);
+            return -1;
+        }
+        *next++ = '\0';
+
+        if(strcmp(query, "remove") == 0) {
+            data = wdb_remove_multiple_agents(next);
+            out = cJSON_PrintUnformatted(data);
+            snprintf(output, OS_MAXSTR + 1, "ok %s", out);
+            os_free(out);
+            cJSON_Delete(data);
+        } else {
+            mdebug1("Invalid DB query syntax.");
+            mdebug2("DB query error near: %s", query);
+            snprintf(output, OS_MAXSTR + 1, "err No agents id provided");
+            return -1;
+        }
+        return result;
     } else {
         mdebug1("DB(%s) Invalid DB query actor: %s", sagent_id, actor);
         snprintf(output, OS_MAXSTR + 1, "err Invalid DB query actor: '%.32s'", actor);
@@ -289,7 +325,7 @@ int wdb_parse_syscheck(wdb_t * wdb, char * input, char * output) {
     char * curr;
     char * next;
     char * checksum;
-    char buffer[OS_MAXSTR + 1];
+    char buffer[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE];
     int ftype;
     int result;
     long ts;
@@ -447,11 +483,11 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     if (strcmp(curr, "query") == 0) {
 
         int pm_id;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         pm_id = strtol(curr,NULL,10);
-        
+
         result = wdb_sca_find(wdb, pm_id, result_found);
 
         switch (result) {
@@ -710,7 +746,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_global") == 0) {
 
         char *name;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         name = curr;
@@ -722,7 +758,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 snprintf(output, OS_MAXSTR + 1, "ok not found");
                 break;
             case 1:
-                snprintf(output, OS_MAXSTR + 1, "ok found %s",result_found);
+                snprintf(output, OS_MAXSTR + 1, "ok found %s", result_found);
                 break;
             default:
                 mdebug1("Cannot query Security Configuration Assessment.");
@@ -798,7 +834,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_results") == 0) {
 
         char * policy_id;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy_id = curr;
@@ -821,7 +857,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_scan") == 0) {
 
         char *policy_id;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy_id = curr;
@@ -843,7 +879,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         return result;
     } else if (strcmp(curr, "query_policies") == 0) {
 
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
 
@@ -865,7 +901,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_policy") == 0) {
 
         char *policy;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy = curr;
@@ -888,7 +924,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
     } else if (strcmp(curr, "query_policy_sha256") == 0) {
 
         char *policy;
-        char result_found[OS_MAXSTR + 1] = {0};
+        char result_found[OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE] = {0};
 
         curr = next;
         policy = curr;

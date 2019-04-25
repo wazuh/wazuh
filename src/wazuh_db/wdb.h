@@ -123,6 +123,7 @@ typedef struct wdb_t {
     time_t last;
     pthread_mutex_t mutex;
     struct wdb_t * next;
+    int remove;
 } wdb_t;
 
 typedef struct wdb_config {
@@ -296,6 +297,9 @@ int wdb_update_groups(const char *dirname);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
+
+/* Remove agents databases from id's list. */
+cJSON *wdb_remove_multiple_agents(char *agent_list);
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name);
@@ -491,6 +495,8 @@ void wdb_close_all();
 void wdb_commit_old();
 
 void wdb_close_old();
+
+void wdb_remove_database(wdb_t *wdb);
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 
