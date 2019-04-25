@@ -60,9 +60,9 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_TIMEOUT)) {
-            ciscat->timeout = strtoul(nodes[i]->content, NULL, 0);
+            ciscat->timeout = atol(nodes[i]->content);
 
-            if (ciscat->timeout == 0 || ciscat->timeout == UINT_MAX) {
+            if (ciscat->timeout <= 0 || ciscat->timeout >= UINT_MAX) {
                 merror("Invalid timeout at module '%s'", WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -127,9 +127,9 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
 
                     cur_eval->profile = strdup(children[j]->content);
                 } else if (!strcmp(children[j]->element, XML_TIMEOUT)) {
-                    cur_eval->timeout = strtoul(children[j]->content, NULL, 0);
+                    cur_eval->timeout = atol(children[j]->content);
 
-                    if (cur_eval->timeout == 0 || cur_eval->timeout == UINT_MAX) {
+                    if (cur_eval->timeout <= 0 || cur_eval->timeout >= UINT_MAX) {
                         merror("Invalid timeout at module '%s'", WM_CISCAT_CONTEXT.name);
                         OS_ClearNode(children);
                         return OS_INVALID;
@@ -159,7 +159,7 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             char *endptr;
             ciscat->interval = strtoul(nodes[i]->content, &endptr, 0);
 
-            if (ciscat->interval == 0 || ciscat->interval == UINT_MAX) {
+            if (ciscat->interval <= 0 || ciscat->interval >= UINT_MAX) {
                 merror("Invalid interval at module '%s'", WM_CISCAT_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -190,8 +190,8 @@ int wm_ciscat_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             }
 
             if (ciscat->interval < 60) {
-                merror("At module '%s': Interval must be greater than 60 seconds.", WM_CISCAT_CONTEXT.name);
-                return OS_INVALID;
+                mwarn("At module '%s': Interval must be greater than 60 seconds. New interval value: 60s.", WM_CISCAT_CONTEXT.name);
+                ciscat->interval = 60;
             }
         } else if (!strcmp(nodes[i]->element, XML_SCAN_DAY)) {
             if (!OS_StrIsNum(nodes[i]->content)) {

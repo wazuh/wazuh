@@ -22,6 +22,18 @@
 #include <aclapi.h>
 #endif
 
+#ifndef WIN32
+#include <setjmp.h>
+
+static __thread sigjmp_buf env_alrm;
+static void sigalrm_handler(int signo)
+{
+    (void)signo;
+    /* restore env */
+    siglongjmp(env_alrm, 5);
+}
+#endif
+
 /* Vista product information */
 #ifdef WIN32
 
@@ -864,6 +876,44 @@ int MergeAppendFile(const char *finalpath, const char *files, const char *tag, i
     }
 
     return (1);
+}
+
+int checkBinaryFile(const char *f_name){
+    FILE *fp;
+    char str[OS_MAXSTR + 1];
+    fpos_t fp_pos;
+    long offset;
+    long rbytes;
+
+    str[OS_MAXSTR] = '\0';
+
+    fp = fopen(f_name,"r");
+
+     if (!fp) {
+        merror("Unable to open file '%s' due to [(%d)-(%s)].", f_name, errno, strerror(errno));
+        return 1;
+    }
+
+    /* Get initial file location */
+    fgetpos(fp, &fp_pos);
+
+    for (offset = w_ftell(fp); fgets(str, OS_MAXSTR + 1, fp) != NULL; offset += rbytes) {
+        rbytes = w_ftell(fp) - offset;
+
+        /* Get the last occurrence of \n */
+        if (str[rbytes - 1] == '\n') {
+            str[rbytes - 1] = '\0';
+
+            if ((long)strlen(str) != rbytes - 1)
+            {
+                mdebug2("Line contains some zero-bytes (valid=%ld / total=%ld).", (long)strlen(str), rbytes - 1);
+                fclose(fp);
+                return 1;
+            }
+        }
+    }
+    fclose(fp);
+    return 0;
 }
 
 int MergeFiles(const char *finalpath, char **files, const char *tag)
@@ -2649,3 +2699,39 @@ int w_uncompress_gzfile(const char *gzfilesrc, const char *gzfiledst) {
 
     return 0;
 }
+
+#ifndef WIN32
+size_t w_fread_timeout(void *ptr, size_t size, size_t nitems, FILE *stream, int timeout){
+
+    size_t read_count = 0;
+
+    /* set long jump */
+    int val = sigsetjmp(env_alrm, 1);
+
+    if (!val) {
+        
+        /* setup signal handler */
+        if (signal(SIGALRM, &sigalrm_handler) == SIG_ERR)
+            return (0);
+
+        /* setup alarm */
+        alarm(timeout);
+
+        /* read */
+        read_count = fread(ptr, size, nitems, stream);
+
+    } else {
+        errno = EINTR;
+        /* To escalate the timeout error to the calling function, we set read_count to
+        the first value which fread cannot return ever */
+        read_count = (size * nitems) + 1;
+    }
+
+    /* unset signal handler and alarm */
+    signal(SIGALRM, NULL);
+    alarm(0);
+
+    return (read_count);
+
+}
+#endif
