@@ -73,9 +73,9 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
 static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
-static int wm_sca_check_file(char *file, char *pattern); // Check file
+static int wm_sca_check_file(char * const file, char * const pattern); // Check file
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data); // Read command output
-static int wm_sca_pt_matches(const char *str, char *pattern); // Check pattern match
+int wm_sca_pt_matches(const char * const str, const char * const pattern); // Check pattern match
 static int wm_sca_check_dir(const char *dir, const char *file, char *pattern); // Check dir
 static int wm_sca_is_process(char *value, OSList *p_list); // Check is a process
 
@@ -1313,19 +1313,7 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-int accumulate (const int in_operation, int acc, const int value)
-{
-    /* not founds checking for */
-    if (in_operation) {
-        acc |= value;
-    } else {
-        /* while checking for NOT-IN, every not-found is a success */
-        acc *= !value;
-    }
-    return acc;
-}
-
-static int wm_sca_check_file(char *file, char *pattern)
+static int wm_sca_check_file(char * const file, char * const pattern)
 {
     char buf[OS_SIZE_2048 + 1];
 
@@ -1333,26 +1321,34 @@ static int wm_sca_check_file(char *file, char *pattern)
         return 0;
     }
     
-    int result_accumulator = 0;
+    /* by default, assume a positive rule, i.e, an IN rule */
     int in_operation = 1;
     char *pattern_ref = pattern;
     if (strncmp(pattern_ref, "IN ", 3) == 0) {
-        result_accumulator = 0;
         in_operation = 1;
         pattern_ref += 3;
     } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
-        result_accumulator = 1;
         in_operation = 0;
         pattern_ref += 4;
+    } else if (!strstr(pattern_ref, " && ")) {
+        mdebug2("Rule without IN/NIN: %s", pattern_ref);
+        /*a single negated minterm is a NIN rule*/
+        if (strchr(pattern_ref, '!')) {
+           in_operation = 0;
+           mdebug2("Negation found, is a NIN rule");
+        } else {
+            mdebug2("Negation found, is an IN rule");
+        }
     } else {
-        merror("Rule %s is missing operator IN/NIN. Skipping.", pattern_ref);
-        return 0;
+        mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
     }
 
-    char *remaining_str = file;
+    int result_accumulator = 0;
+    char *file_list = NULL;
+    os_strdup(file, file_list);
+    char *file_list_ref = file_list;
     char *file_element = NULL;
-    while ((file_element = strtok_r(remaining_str, ",", &remaining_str))) {
-        /* If we don't have a pattern, just check if the file/dir is there */
+    while ((file_element = strtok_r(file_list_ref, ",", &file_list_ref))) {
         if (pattern_ref) {
             FILE *fp = fopen(file_element, "r");
             if (!fp) {
@@ -1363,16 +1359,25 @@ static int wm_sca_check_file(char *file, char *pattern)
                 os_trimcrlf(buf);
                 int result = wm_sca_pt_matches(buf, pattern_ref);
                 mdebug2("%s(%s) -> %d", pattern, buf, result);
-                result_accumulator = accumulate(in_operation, result_accumulator, result);
+                if (result) {
+                    mdebug2("Match found. Skipping the rest.");
+                    mdebug2("Result for %s(%s) -> 1", pattern, file);
+                    os_free(file_list);
+                    fclose(fp);
+                    return in_operation ? result : !result;
+                }
             }
 
             fclose(fp);
         } else if (w_is_file(file)) {
-            return 1;
+            /* If we don't have a pattern, just check if the file/dir is there */
+            result_accumulator = 1;
         }
     }
+
     mdebug2("Result for %s(%s) -> %d", pattern, file, result_accumulator);
-    return result_accumulator;
+    os_free(file_list);
+    return in_operation ? result_accumulator : !result_accumulator;
 }
 
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
@@ -1413,19 +1418,43 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
     }
 
     os_free(cmd_output);
-    int pt_result = 1;
+
+    int in_operation = 1;
+    char *pattern_ref = pattern;
+    if (strncmp(pattern_ref, "IN ", 3) == 0) {
+        in_operation = 1;
+        pattern_ref += 3;
+    } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+        in_operation = 0;
+        pattern_ref += 4;
+    } else if (!strstr(pattern_ref, " && ")) {
+        mdebug2("Rule without IN/NIN: %s", pattern_ref);
+        /*a single negated minterm is a NIN rule*/
+        if (strchr(pattern_ref, '!')) {
+           in_operation = 0;
+           mdebug2("Negation found, is a NIN rule");
+        } else {
+            mdebug2("Negation found, is an IN rule");
+        }
+    } else {
+        mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+    }
+
     int i;
     for (i=0; output_line[i] != NULL; i++) {
         char *buf = output_line[i];
         os_trimcrlf(buf);
-        int result = wm_sca_pt_matches(buf, pattern);
-        mdebug2("%s(%s) -> %d", pattern, buf, result);
-        pt_result |= result;
+        int result = wm_sca_pt_matches(buf, pattern_ref);
+        if (result){
+            free_strarray(output_line);
+            mdebug2("Result for %s(%s) -> 1", pattern, command);
+            return in_operation ? result : !result;
+        }
     }
 
     free_strarray(output_line);
-    mdebug2("Result for %s(%s) -> %d", pattern, command, pt_result);
-    return pt_result;
+    mdebug2("Result for %s(%s) -> 0", pattern, command);
+    return in_operation ? 0 : 1;
 }
 
 int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
@@ -1478,7 +1507,7 @@ int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
     return 0;
 }
 
-static int wm_sca_pt_matches(const char *str, char *pattern)
+int wm_sca_pt_matches(const char * const str, const char * const pattern)
 {
     if (str == NULL) {
         return 0;
@@ -1486,10 +1515,10 @@ static int wm_sca_pt_matches(const char *str, char *pattern)
     //mdebug2("Testing rule %s\n", pattern);
     char *pattern_copy = NULL;
     os_strdup(pattern, pattern_copy);
-    char *pattern_copy_remaining_ref = pattern_copy;
+    char *pattern_copy_ref = pattern_copy;
     char *minterm = NULL;
     int test_result = 1;
-    while ((minterm = strtok_r(pattern_copy_remaining_ref, " && ", &pattern_copy_remaining_ref))) {
+    while ((minterm = strtok_r(pattern_copy_ref, " && ", &pattern_copy_ref))) {
         int negated = 0;
         if ((*minterm) == '!'){
             minterm++;
@@ -1561,31 +1590,51 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
 }
 
 /* Check if a process is running */
-static int wm_sca_is_process(char *value, OSList *p_list)
+static int wm_sca_is_process(char *pattern, OSList *p_list)
 {
     OSListNode *l_node;
     if (p_list == NULL) {
         return (0);
     }
-    if (!value) {
+    if (!pattern) {
         return (0);
+    }
+
+    int in_operation = 1;
+    char *pattern_ref = pattern;
+    if (strncmp(pattern_ref, "IN ", 3) == 0) {
+        in_operation = 1;
+        pattern_ref += 3;
+    } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+        in_operation = 0;
+        pattern_ref += 4;
+    } else if (!strstr(pattern_ref, " && ")) {
+        mdebug2("Rule without IN/NIN: %s", pattern_ref);
+        /*a single negated minterm is a NIN rule*/
+        if (strchr(pattern_ref, '!')) {
+           in_operation = 0;
+           mdebug2("Negation found, is a NIN rule");
+        } else {
+            mdebug2("Negation found, is an IN rule");
+        }
+    } else {
+        mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
     }
 
     l_node = OSList_GetFirstNode(p_list);
     while (l_node) {
-        W_Proc_Info *pinfo;
+        const W_Proc_Info *pinfo = (W_Proc_Info *)l_node->data;
 
-        pinfo = (W_Proc_Info *)l_node->data;
-
-        /* Check if value matches */
-        if (wm_sca_pt_matches(pinfo->p_path, value)) {
-            return (1);
+        const int result = wm_sca_pt_matches(pinfo->p_path, pattern_ref);
+        if (result){
+            mdebug2("Result for %s(%s) -> 1", pattern, pinfo->p_path);
+            return in_operation ? result : !result;
         }
 
         l_node = OSList_GetNextNode(p_list);
     }
 
-    return (0);
+    return in_operation ? 0 : 1;
 }
 
 // Destroy data
@@ -1848,10 +1897,32 @@ static int wm_sca_winreg_querykey(HKEY hKey,
             }
 
             /* Check if value matches */
-            if (wm_sca_pt_matches(var_storage, reg_value)) {
-                return (1);
+            int in_operation = 1;
+            char *pattern_ref = reg_value;
+            if (strncmp(pattern_ref, "IN ", 3) == 0) {
+                in_operation = 1;
+                pattern_ref += 3;
+            } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+                in_operation = 0;
+                pattern_ref += 4;
+            } else if (!strstr(pattern_ref, " && ")) {
+                mdebug2("Rule without IN/NIN: %s", pattern_ref);
+                /*a single negated minterm is a NIN rule*/
+                if (strchr(pattern_ref, '!')) {
+                in_operation = 0;
+                mdebug2("Negation found, is a NIN rule");
+                } else {
+                    mdebug2("Negation found, is an IN rule");
+                }
+            } else {
+                mdebug2("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
             }
-
+            
+            int result = wm_sca_pt_matches(var_storage, pattern_ref);
+            if (result){
+                mdebug2("Result for %s(%s) -> 1", reg_value, var_storage);
+                return in_operation ? result : !result;
+            }
             return (0);
         }
     }
