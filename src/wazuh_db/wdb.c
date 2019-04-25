@@ -764,7 +764,7 @@ int wdb_close(wdb_t * wdb) {
         if (result == SQLITE_OK) {
             if (wdb->remove) {
                 mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
-                if (remove(path)) {
+                if (unlink(path)) {
                     mwarn("Couldn'n delete wazuh database: '%s'", path);
                     return -1;
                 }
@@ -890,10 +890,10 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
 
                 if (strcmp(agent, "000") != 0) {
                     // Check if file not exists
-                    if (access(path, F_OK) != -1) {
+                    if (IsFile(path) == 0) {
                         if (wdb = wdb_open_agent2(agent_id), !wdb) {
                             mdebug1("Removing db for agent '%s'", agent);
-                            if (remove(path)) {
+                            if (unlink(path)) {
                                 mwarn("Couldn'n delete wazuh database: '%s'", path);
                             }
                             n++;
