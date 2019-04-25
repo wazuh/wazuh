@@ -52,6 +52,17 @@ stages:
         ]
         totalItems: 2168
 
+  - name: Try to show the rules of the system, without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 2168
+
   - name: Try to show the rules of the system with a existent state
 
     request:
@@ -125,7 +136,7 @@ stages:
       url: http://localhost:55000/rules
       method: GET
       params:
-        list_status: notexist
+        limit: 0
 
     response:
       status_code: 400
@@ -195,6 +206,17 @@ stages:
         ]
         totalItems: 2168
 
+  - name: Sort without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 2168
+
   - name: Search in rules
 
     request:
@@ -243,6 +265,19 @@ stages:
             "status": "enabled"
           }
         ]
+        totalItems: 119
+
+  - name: Search without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        search: web
+
+    response:
+      status_code: 200
+      body:
         totalItems: 119
 
   - name: Invalid parameter
@@ -344,6 +379,19 @@ stages:
         ]
         totalItems: 2166
 
+  - name: Filter status without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        list_status: enabled
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 2166
+
   - name: Try to show the rules of the system with a non-existent state
 
     request:
@@ -411,6 +459,19 @@ stages:
         ]
         totalItems: 107
 
+  - name: Filter group without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        group: web
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 107
+
   - name: Try to show the rules by levels
 
     request:
@@ -465,6 +526,19 @@ stages:
             "status": "enabled"
           }
         ]
+        totalItems: 50
+
+  - name: Filter levels without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        level: 2
+
+    response:
+      status_code: 200
+      body:
         totalItems: 50
 
   - name: Try to show the rules by levels (invalid interval)
@@ -533,6 +607,19 @@ stages:
         ]
         totalItems: 2167
 
+  - name: Filter path without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        path: ruleset/rules
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 2167
+
   - name: Filter file
 
     request:
@@ -593,6 +680,19 @@ stages:
             "status": "enabled"
           }
         ]
+        totalItems: 43
+
+  - name: Filter file without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        file: 0350-amazon_rules.xml
+
+    response:
+      status_code: 200
+      body:
         totalItems: 43
 
   - name: Filter pci
@@ -659,6 +759,19 @@ stages:
         ]
         totalItems: 270
 
+  - name: Filter pci without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        pci: 11.4
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 270
+
   - name: Filter gdpr
 
     request:
@@ -717,6 +830,19 @@ stages:
             "status": "enabled"
           }
         ]
+        totalItems: 23
+
+  - name: Filter gdpr without limit
+
+    request:
+      url: http://localhost:55000/rules
+      method: GET
+      params:
+        gdpr: II_5.1.f
+
+    response:
+      status_code: 200
+      body:
         totalItems: 23
 
 ---
