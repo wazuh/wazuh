@@ -23,6 +23,7 @@ void check_rc_files(const char *basedir, FILE *fp)
     char *file;
     char *name;
     char *link;
+    char * _file_name;
 
     int _errors = 0;
     int _total = 0;
@@ -170,7 +171,9 @@ void check_rc_files(const char *basedir, FILE *fp)
             snprintf(file_path, OS_SIZE_1024, "%s%c%s", basedir, PATH_SEP, file);
         }
 
-        char * _file_name = strrchr(file_path, PATH_SEP);
+        if (_file_name = strrchr(file_path, PATH_SEP), !_file_name) {
+            continue;
+        }
         _file_name++;
 
         char _path[OS_SIZE_1024 + 1];
