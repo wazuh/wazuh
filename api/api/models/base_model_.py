@@ -4,6 +4,7 @@ import six
 import typing
 
 from api import util
+from typing import List
 
 T = typing.TypeVar('T')
 
@@ -69,3 +70,117 @@ class Model(object):
     def __ne__(self, other):
         """Returns true if both objects are not equal"""
         return not self == other
+
+
+class AllOf:
+
+    def __init__(self, *models):
+        self.models = models
+
+    def to_dict(self):
+        result = {}
+        for model in self.models:
+            result.update(model.to_dict())
+        return result
+
+
+class Data(Model):
+
+    def __init__(self, data: Model = None):  # noqa: E501
+        """Data - a model defined in Swagger
+
+        :param data: The data of this Data.  # noqa: E501
+        :type data: Model
+        """
+        self.swagger_types = {
+            'data': Model
+        }
+
+        self.attribute_map = {
+            'data': 'data'
+        }
+
+        self._data = data
+
+    @classmethod
+    def from_dict(cls, dikt) -> 'Data':
+        """Returns the dict as a model
+
+        :param dikt: A dict.
+        :type: dict
+        :return: The data of this Data.  # noqa: E501
+        :rtype: Data
+        """
+        return util.deserialize_model(dikt, cls)
+
+    @property
+    def data(self) -> Model:
+        """Gets the data of this Data.
+
+
+        :return: The data of this Data.
+        :rtype: Model
+        """
+        return self._data
+
+    @data.setter
+    def data(self, data: Model):
+        """Sets the data of this Data.
+
+
+        :param data: The data of this Data.
+        :type data: Model
+        """
+
+        self._data = data
+
+
+class Items(Model):
+
+    def __init__(self, items: List[Model] = None):  # noqa: E501
+        """Items - a model defined in Swagger
+
+        :param items: The items of this Items.  # noqa: E501
+        :type items: Model
+        """
+        self.swagger_types = {
+            'items': List[Model]
+        }
+
+        self.attribute_map = {
+            'items': 'items'
+        }
+
+        self._items = items
+
+    @classmethod
+    def from_dict(cls, dikt) -> 'Items':
+        """Returns the dict as a model
+
+        :param dikt: A dict.
+        :type: dict
+        :return: The Items of this Items.  # noqa: E501
+        :rtype: Items
+        """
+        return util.deserialize_model(dikt, cls)
+
+    @property
+    def items(self) -> List[Model]:
+        """Gets the items of this Data.
+
+
+        :return: The items of this Data.
+        :rtype: Model
+        """
+        return self._items
+
+    @items.setter
+    def items(self, items: List[Model]):
+        """Sets the items of this Items.
+
+
+        :param items: The items of this Items.
+        :type items: Model
+        """
+
+        self._items = items
