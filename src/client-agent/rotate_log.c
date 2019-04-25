@@ -35,84 +35,6 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
     int __ossec_rsec;
     time_t m_timespec;
 
-    unsigned int enabled:1;
-    unsigned int rotation_enabled:1;
-    unsigned int compress_rotation:1;
-    unsigned int ossec_log_plain:1;
-    unsigned int ossec_log_json:1;
-    OSList *ossec_rotation_files;
-    long int max_size;
-    long int interval;
-    int rotate;
-    char *end;
-    char *xml_res;
-
-    OS_XML xml;
-
-    const char * new_log_format[] = {"ossec_config", "logging", "log", "format", NULL};
-    const char * xml_enabled[] = {"ossec_config", "logging", "log", "enabled", NULL};
-    const char * xml_rotation_enabled[] = {"ossec_config", "logging", "log", "rotation", "enabled", NULL};
-    const char * xml_rotation_max_size[] = {"ossec_config", "logging", "log", "rotation", "max_size", NULL};
-    const char * xml_rotation_interval[] = {"ossec_config", "logging", "log", "rotation", "interval", NULL};
-    const char * xml_rotation_rotate[] = {"ossec_config", "logging", "log", "rotation", "rotate", NULL};
-    const char * xml_rotation_compress[] = {"ossec_config", "logging", "log", "rotation", "compress", NULL};
-
-    if (OS_ReadXML(isChroot() ? OSSECCONF : DEFAULTCPATH, &xml) < 0){
-        OS_ClearXML(&xml);
-        merror_exit(XML_ERROR, isChroot() ? OSSECCONF : DEFAULTCPATH, xml.err, xml.err_line);
-    }
-
-    if (xml_res = OS_GetOneContentforElement(&xml, new_log_format), !xml_res){
-        ossec_log_plain = 1;
-        ossec_log_json = 0;
-    } else {
-        char *format;
-        int format_it = 0;
-        format = strtok(xml_res, delim);
-
-        while (format) {
-            if (*format && !strncmp(format, "json", strlen(format))) {
-                ossec_log_json = 1;
-                format = strtok(NULL, delim);
-                format_it++;
-            } else if (*format && !strncmp(format, "plain", strlen(format))) {
-                ossec_log_plain = 1;
-                format = strtok(NULL, delim);
-                format_it++;
-            } else {
-                merror(XML_VALUEERR,"format",xml_res);
-                OS_ClearXML(&xml);
-                return(OS_INVALID);
-            }
-        }
-        os_free(xml_res);
-    }
-
-    if (xml_res = OS_GetOneContentforElement(&xml, xml_enabled), !xml_res){
-        enabled = 1;
-    } else {
-        enabled = strtol(xml_res, &end, 10);
-        if (*end != '\0') {
-            merror(XML_VALUEERR, "enabled", xml_res);
-            OS_ClearXML(&xml);
-            return OS_INVALID;
-        }
-        os_free(xml_res);
-    }
-
-    if (xml_res = OS_GetOneContentforElement(&xml, xml_rotation_enabled), !xml_res){
-        rotation_enabled = 1;
-    } else {
-        rotation_enabled = strtol(xml_res, &end, 10);
-        if (*end != '\0') {
-            merror(XML_VALUEERR, "enabled", xml_res);
-            OS_ClearXML(&xml);
-            return OS_INVALID;
-        }
-        os_free(xml_res);
-    }
-
-
     mwarn("The following internal options will be deprecated in the next version: compress, keep_log_days, day_wait, size_rotate_read and daily_rotations."
           "Please, use the 'logging' configuration block instead.");
 
@@ -154,6 +76,15 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
 #endif
 
 
+    monitor_config mond;
+    const char *cfg = (isChroot() ? OSSECCONF : DEFAULTCPATH);
+    int c;
+    c = 0;
+    c |= CROTMONITORD;
+    if (ReadConfig(c, cfg, &mond, NULL) < 0) {
+        merror_exit(CONFIG_ERROR, cfg);
+    }
+
     // If the deletion of old logs isn't disabled
     if(mond.rotate != -1) {
         mond.log_list_plain = get_rotation_list("logs", ".log");
@@ -161,6 +92,8 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         purge_rotation_list(mond.log_list_plain, mond.rotate);
         purge_rotation_list(mond.log_list_json, mond.rotate);
     }
+
+    mond.daily_rotations = 100;
 
     while (1) {
         now = time(NULL);
