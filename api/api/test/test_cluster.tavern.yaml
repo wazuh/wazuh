@@ -1299,3 +1299,81 @@ stages:
       body:
         data:
           contents: !anystr
+
+  - name: Get file with wrong path (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: wrong_path/file.xml
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get file with empty path (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path:
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: POST /cluster/{node_id}/files
+
+stages:
+
+#  - name: Post ossec.conf (master)
+#
+#    request:
+#      url: http://localhost:55000/cluster/master/files
+#      params:
+#        path: etc/ossec.conf
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          contents: !anystr
+#
+#  - name: Post ossec.conf (worker)
+#
+#    request:
+#      url: http://localhost:55000/cluster/worker-1/files
+#      params:
+#        path: etc/ossec.conf
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          contents: !anystr
+
+  - name: Post new rules (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr

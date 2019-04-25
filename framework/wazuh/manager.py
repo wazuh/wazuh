@@ -198,44 +198,27 @@ def ossec_log_summary(months=3, api_request=False):
     return categories
 
 
-def upload_file(tmp_file, path, content_type, overwrite=False):
+def upload_file(path=None, content=None, overwrite=False):
     """
     Updates a group file
 
-    :param tmp_file: Relative path of file name from origin
     :param path: Path of destination of the new file
-    :param content_type: Content type of file from origin
+    :param content: Content of file to be uploaded
     :param overwrite: True for updating existing files, False otherwise
     :return: Confirmation message in string
     """
-    try:
-        # if file already exists and overwrite is False, raise exception
-        if not overwrite and exists(join(common.ossec_path, path)):
-            raise WazuhException(1905)
+    # if file already exists and overwrite is False, raise exception
+    if not overwrite and exists(join(common.ossec_path, path)):
+        raise WazuhException(1905)
 
-        try:
-            with open(join(common.ossec_path, tmp_file)) as f:
-                file_data = f.read()
-        except IOError:
-            raise WazuhException(1005)
-        except Exception:
-            raise WazuhException(1000)
+    if len(content) == 0:
+        raise WazuhException(1112)
 
-        if len(file_data) == 0:
-            raise WazuhException(1112)
+    # for CDB lists
+    if re.match(r'^etc/lists', path):
+        return upload_list(content, path)
 
-        if content_type == 'application/xml':
-            return upload_xml(file_data, path)
-        elif content_type == 'application/octet-stream':
-            return upload_list(file_data, path)
-        else:
-            raise WazuhException(1016)
-    finally:
-        # delete temporary file from API
-        try:
-            remove(join(common.ossec_path, tmp_file))
-        except OSError:
-            raise WazuhException(1903)
+    return upload_xml(content, path)
 
 
 def upload_xml(xml_file, path):
