@@ -74,6 +74,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     snprintf(new_path_json, PATH_MAX, "%s", LOGJSONFILE);
     // logs
     strcpy(base_dir, "logs");
+    snprintf(tag, OS_FLSIZE, "logs");
 #else
     char *base_dir;
     os_strdup(old_file, dir);

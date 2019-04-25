@@ -46,8 +46,11 @@ rotation_list *get_rotation_list(char *tag, char *ext) {
     } if(!strncmp(tag, "archives", strlen(tag))) {
         TAG = EVENTS;
     }
-
+#ifndef WIN32
     snprintf(logs_path, PATH_MAX, "%s%s", !isChroot() ? DEFAULTDIR : "", TAG);
+#else
+    snprintf(logs_path, PATH_MAX, "%s", TAG);
+#endif
     year_list = get_rotation_node_list(logs_path, NULL, NULL, NULL, NULL);
     rot_list = calloc(1, sizeof(rotation_list));
 
