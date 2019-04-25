@@ -11,6 +11,7 @@
 
 #include "wmodules.h"
 #include <os_net/os_net.h>
+#include <sys/stat.h>
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
 
@@ -44,15 +45,16 @@ typedef struct request_dump_t {
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
-static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result);
+static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan);  // Do scan
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan,int id);  // Send summary
+static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);  // Do scan
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
 static void wm_sca_summary_increment_passed();
 static void wm_sca_summary_increment_failed();
+static void wm_sca_summary_increment_invalid();
 static void wm_sca_reset_summary();
 static int wm_sca_send_alert(wm_sca_t * data,cJSON *json_alert); // Send alert
 static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJSON *event,int check_index,int policy_index);
@@ -73,18 +75,18 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
 static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
-static int wm_sca_check_file(char *file, char *pattern); // Check file
-static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data); // Read command output
+static int wm_sca_check_file(char *file, char *pattern, char **reason); // Check file
+static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
 static int wm_sca_pt_check_negate(const char *pattern); // Check pattern negate
 static int wm_sca_pt_matches(const char *str, char *pattern); // Check pattern match
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern); // Check dir
+static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason); // Check dir
 static int wm_sca_is_process(char *value, OSList *p_list); // Check is a process
 
 #ifdef WIN32
-static int wm_check_registry_entry(char * const value);
-static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value);
+static int wm_check_registry_entry(char * const value, char **reason);
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason);
 static char *wm_sca_os_winreg_getkey(char *reg_entry);
-static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, int * test_result);
+static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, int * test_result, char **reason);
 static int wm_sca_winreg_querykey(HKEY hKey,__attribute__((unused))char *p_key,__attribute__((unused)) char *full_key_name,char *reg_option, char *reg_value);
 static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
@@ -100,6 +102,7 @@ const wm_context WM_SCA_CONTEXT = {
 
 static unsigned int summary_passed = 0;
 static unsigned int summary_failed = 0;
+static unsigned int summary_invalid = 0;
 
 OSHash **cis_db;
 char **last_sha256;
@@ -392,6 +395,7 @@ static int wm_sca_start(wm_sca_t * data) {
 static void wm_sca_read_files(wm_sca_t * data) {
     FILE *fp;
     int i = 0;
+    int checks_number = 0;
     static int first_scan = 1;
 
     /* Read every policy monitoring file */
@@ -504,7 +508,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements) {
-                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan) == 0){
+                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0){
                     requirements_satisfied = 1;
                 }
             }
@@ -521,10 +525,9 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 time_t time_end = 0;
                 time_start = time(NULL);
 
+                minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
-                minfo("Starting evaluation of policy: '%s", data->profile[i]->profile);
-
-                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan) != 0) {
+                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -537,7 +540,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 /* Send summary */
                 if(integrity_hash && integrity_hash_file) {
                     wm_delay(1000 * data->summary_delay);
-                    wm_sca_send_summary(data,id,summary_passed,summary_failed,policy,time_start,time_end,integrity_hash, integrity_hash_file, first_scan,cis_db_index);
+                    wm_sca_send_summary(data,id,summary_passed,summary_failed,summary_invalid,policy,time_start,time_end,integrity_hash,integrity_hash_file,first_scan,cis_db_index,checks_number);
                     snprintf(last_sha256[cis_db_index] ,sizeof(os_sha256),"%s",integrity_hash);
                 }
 
@@ -786,14 +789,16 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan) {
+static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan,int *checks_number) {
 
-    int type = 0, condition = 0, invalid = 0;
+    int type = 0, condition = 0;
     char *nbuf = NULL;
     char buf[OS_SIZE_1024 + 2];
     char root_dir[OS_SIZE_1024 + 2];
     char final_file[2048 + 1];
     char *name = NULL;
+    char *reason = NULL;
+
     int ret_val = 0;
     int id_check_p = 0;
     cJSON *c_title = NULL;
@@ -823,7 +828,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         }
 
         check_count++;
-        invalid = 0;
 
         c_title = cJSON_GetObjectItem(profile, "title");
         c_condition = cJSON_GetObjectItem(profile, "condition");
@@ -937,9 +941,12 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     #endif
 
                     mdebug2("Checking file: '%s'.", f_value);
-                    if (wm_sca_check_file(f_value, pattern)) {
+                    int val = wm_sca_check_file(f_value, pattern, &reason);
+                    if (val == 1) {
                         mdebug2("Found file.");
-                        found = 1;
+                        found = val;
+                    } else if (val == 2) {
+                        found = val;
                     }
                     char _b_msg[OS_SIZE_1024 + 1];
                     _b_msg[OS_SIZE_1024] = '\0';
@@ -949,44 +956,51 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 /* Check for a command */
                 else if (type == WM_SCA_TYPE_COMMAND) {
 
-                    if (!data->remote_commands && remote_policy) {
-                        mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
-                        invalid = 1;
-                        break;
-                    }
-
                     char *pattern = NULL;
                     char *f_value = NULL;
 
                     pattern = wm_sca_get_pattern(value);
                     f_value = value;
 
-                    /* Get any variable */
-                    if (value[0] == '$') {
-                        f_value = (char *) OSStore_Get(vars, value);
-                        if (!f_value) {
-                            merror(WM_SCA_INVALID_RKCL_VAR, value);
-                            continue;
+                    if (!data->remote_commands && remote_policy) {
+                        mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
+                        if (reason == NULL) {
+                            os_malloc(OS_MAXSTR, reason);
+                            sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
+                            found = 2;
                         }
                     }
 
-                    mdebug2("Running command: '%s'.", f_value);
-                    if (wm_sca_read_command(f_value, pattern,data)) {
-                        mdebug2("Command returned found.");
-                        found = 1;
-                    } else {
-                        mdebug2("Command returned not found.");
+                    if (found != 2) {
+                        /* Get any variable */
+                        if (value[0] == '$') {
+                            f_value = (char *) OSStore_Get(vars, value);
+                            if (!f_value) {
+                                merror(WM_SCA_INVALID_RKCL_VAR, value);
+                                continue;
+                            }
+                        }
+
+                        mdebug2("Running command: '%s'.", f_value);
+                        int val = wm_sca_read_command(f_value, pattern, data, &reason);
+                        if (val == 1) {
+                            mdebug2("Command returned found.");
+                            found = 1;
+                        } else if (val == 2){
+                            mdebug2("Command returned not found.");
+                            found = 2;
+                        }
+                        char _b_msg[OS_SIZE_1024 + 1];
+                        _b_msg[OS_SIZE_1024] = '\0';
+                        snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
+                        append_msg_to_vm_scat(data, _b_msg);
                     }
-                    char _b_msg[OS_SIZE_1024 + 1];
-                    _b_msg[OS_SIZE_1024] = '\0';
-                    snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
-                    append_msg_to_vm_scat(data, _b_msg);
                 }
 
     #ifdef WIN32
                 /* Check for a registry entry */
                 else if (type == WM_SCA_TYPE_REGISTRY) {
-                    found = wm_check_registry_entry(value);
+                    found = wm_check_registry_entry(value, &reason);
 
                     char _b_msg[OS_SIZE_1024 + 1];
                     _b_msg[OS_SIZE_1024] = '\0';
@@ -1032,12 +1046,21 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                         short is_nfs = IsNFS(dir);
                         if( is_nfs == 1 && data->skip_nfs ) {
-                            mdebug2("skip_nfs enabled and %s is flagged as NFS.", dir);
+                            mdebug2("Directory '%s' flagged as NFS when skip_nfs is enabled.", dir);
+                            if (reason == NULL) {
+                                os_malloc(OS_MAXSTR, reason);
+                                sprintf(reason,"Directory '%s' flagged as NFS when skip_nfs is enabled", dir);
+                            }
+                            found = 2;
                         } else {
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
-                            if (wm_sca_check_dir(dir, file, pattern)) {
+                            int val = wm_sca_check_dir(dir, file, pattern, &reason);
+                            if (val == 1) {
                                 mdebug2("Found dir.");
                                 found = 1;
+                            } else if (val == 2) {
+                                found = 2;
+                                break;
                             }
                         }
 
@@ -1078,15 +1101,20 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 /* Switch the values if ! is present */
                 if (negate) {
-                    if (found) {
+                    if (found == 1) {
                         found = 0;
-                    } else {
+                    } else if (found == 0){
                         found = 1;
                     }
                 }
 
+                /* If not applicable, return g_found = 2 */
+                if (found == 2) {
+                    g_found = 2;
+                    break;
+                }
                 /* Check the conditions */
-                if (condition & WM_SCA_COND_ANY) {
+                else if (condition & WM_SCA_COND_ANY) {
                     mdebug2("Condition ANY.");
                     if (found) {
                         g_found = 1;
@@ -1108,6 +1136,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         g_found = -1;
                     }
                 }
+
+                os_free(reason);
             }
 
             /* if the loop breaks, rule_cp shall be released.
@@ -1118,83 +1148,98 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 if (not_found == -1){ g_found = 0;} else {g_found = 1;}
             }
 
-            /* Alert if necessary */
+            /* Determine if requirements are satisfied */
             int i = 0;
-            if (g_found == 1) {
-                char **p_alert_msg = data->alert_msg;
-                if (!requirements_scan) {
-                    wm_sca_summary_increment_failed();
-                    cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed");
-
-                    if(event){
-                        if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                            wm_sca_send_event_check(data,event);
-                        }
-                        cJSON_Delete(event);
-                    } else {
-                        merror("Building event for check: %s. Set debug mode for more information.", name);
-                        ret_val = 1;
-                    }
-                }
-
-                for (i=0; data->alert_msg[i]; i++){
-                    free(data->alert_msg[i]);
-                    data->alert_msg[i] = NULL;
-                }
-
-                if (requirements_scan == 1){
+            if (requirements_scan) {
+                if (g_found == 1) {
                     wm_sca_reset_summary();
-                    goto clean_return;
-                }
-            } else {
-                char **p_alert_msg = data->alert_msg;
-                if (!requirements_scan) {
-                    wm_sca_summary_increment_passed();
-                    cJSON *event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed");
-
-                    if(event){
-                        if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                            wm_sca_send_event_check(data,event);
-                        }
-                        cJSON_Delete(event);
-                    } else {
-                        merror("Building event for check: %s. Set debug mode for more information.", name);
-                        ret_val = 1;
-                    }
-                }
-
-                for (i=0; data->alert_msg[i]; i++){
-                    free(data->alert_msg[i]);
-                    data->alert_msg[i] = NULL;
-                }
-
+                } else if (g_found == -1 || g_found == 0) {
                     if (condition & WM_SCA_COND_REQ) {
-                        if (requirements_scan == 1){
-                            ret_val = 1;
-                        }
-                        goto clean_return;
+                        ret_val = 1;
                     }
-
-                if (requirements_scan == 1){
                     wm_sca_reset_summary();
-                    goto clean_return;
+                } else if (g_found == 2) {
+                    merror("Checking requirements (%s)", reason);
+                    ret_val = 1;
+                    wm_sca_reset_summary();
                 }
+
+                for (i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
+                }
+                goto clean_return;
             }
 
-            if (invalid) {  // Ignore this check
-                check_count--;
-                // Free resources
-                int j = 0;
-                while (data->alert_msg[j]) {
-                    free(data->alert_msg[j]);
-                    data->alert_msg[j] = NULL;
-                    j++;
+            /* Alert if necessary */
+            if (g_found == 1) {
+                char **p_alert_msg = data->alert_msg;
+                wm_sca_summary_increment_failed();
+                cJSON *event = NULL;
+                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",reason);
+
+                if(event){
+                    if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !first_scan) {
+                        wm_sca_send_event_check(data,event);
+                    }
+                    cJSON_Delete(event);
+                } else {
+                    merror("Building event for check: %s. Set debug mode for more information.", name);
+                    ret_val = 1;
                 }
-                if (!nbuf) {
+
+                for (i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
+                }
+
+            } else if (g_found == -1 || g_found == 0) {
+                char **p_alert_msg = data->alert_msg;
+                wm_sca_summary_increment_passed();
+                cJSON *event = NULL;
+                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",reason);
+
+                if(event){
+                    if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !first_scan) {
+                        wm_sca_send_event_check(data,event);
+                    }
+                    cJSON_Delete(event);
+                } else {
+                    merror("Building event for check: %s. Set debug mode for more information.", name);
+                    ret_val = 1;
+                }
+
+                for (i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
+                }
+
+                if (condition & WM_SCA_COND_REQ) {
                     goto clean_return;
                 }
-                os_free(name);
-                continue;
+
+            } else {
+                char **p_alert_msg = data->alert_msg;
+                wm_sca_summary_increment_invalid();
+                cJSON *event = NULL;
+
+                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"",reason);
+
+                if(event){
+                    if(wm_sca_check_hash(cis_db[cis_db_index],"",profile,event,id_check_p,cis_db_index) && !first_scan) {
+                        wm_sca_send_event_check(data,event);
+                    }
+                    cJSON_Delete(event);
+                } else {
+                    merror("Building event for check: %s. Set debug mode for more information.", name);
+                    ret_val = 1;
+                }
+
+                for (i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
+                }
+                os_free(reason);
             }
 
             /* End if we don't have anything else */
@@ -1208,8 +1253,11 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
         id_check_p++;
     }
 
+    *checks_number = check_count;
+
 /* Clean up memory */
 clean_return:
+    os_free(reason);
     os_free(name);
 
     return ret_val;
@@ -1324,16 +1372,17 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_sca_check_file(char *file, char *pattern)
+static int wm_sca_check_file(char *file, char *pattern, char **reason)
 {
     char *split_file;
     int full_negate = 0;
     int pt_result = 0;
     FILE *fp;
     char buf[OS_SIZE_2048 + 1];
+    int ret_val = 0;
 
     if (file == NULL) {
-        return (0);
+        goto cleanup;
     }
 
     /* Check if the file is divided */
@@ -1348,10 +1397,22 @@ static int wm_sca_check_file(char *file, char *pattern)
         /* If we don't have a pattern, just check if the file/dir is there */
         if (pattern == NULL) {
             if (w_is_file(file)) {
-                return (1);
+                ret_val = 1;
+
+                goto cleanup;
             }
         } else {
             full_negate = wm_sca_pt_check_negate(pattern);
+
+            if (!w_is_file(file)) {
+                if (*reason == NULL){
+                    os_malloc(OS_MAXSTR, *reason);
+                    sprintf(*reason, "File %s not found", file);
+                }
+
+                ret_val = 2;
+                goto cleanup;
+            }
             /* Check for content in the file */
             fp = fopen(file, "r");
             if (fp) {
@@ -1377,7 +1438,8 @@ static int wm_sca_check_file(char *file, char *pattern)
                     if ((pt_result == 1 && full_negate == 0) ) {
                         mdebug2("Alerting file %s on line %s", file, buf);
                         fclose(fp);
-                        return (1);
+                        ret_val = 1;
+                        goto cleanup;
                     } else if ((pt_result == 0 && full_negate == 1) ) {
                         /* Found a full+negate match so no longer need to search
                          * break out of loop and make sure the full negate does
@@ -1393,7 +1455,8 @@ static int wm_sca_check_file(char *file, char *pattern)
 
                 if (full_negate == 1) {
                     mdebug2("Full_negate alerting - file %s", file);
-                    return (1);
+                    ret_val = 1;
+                    goto cleanup;
                 }
             }
         }
@@ -1406,13 +1469,15 @@ static int wm_sca_check_file(char *file, char *pattern)
             }
         }
 
-
     } while (split_file);
 
-    return (0);
+    ret_val = 0;
+
+cleanup:
+    return ret_val;
 }
 
-static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
+static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, char **reason)
 {
     int full_negate = 0;
     int pt_result = 0;
@@ -1421,7 +1486,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
         return (0);
     }
 
-    /* If we don't have a pattern, just check if the file/dir is there */
+    /* If we don't have a pattern, return 1 */
     if (pattern == NULL) {
         return (1);
     } else {
@@ -1431,12 +1496,21 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data)
         int result_code;
 
         if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
-            if (result_code == EXECVE_ERROR) {
-                mdebug1("Can't run command(%s): path is invalid or file has insufficient permissions.",command);
-            } else {
-                mdebug1("Error executing [%s]", command);
+            if (*reason == NULL){
+                os_malloc(OS_MAXSTR, *reason);
+                if (result_code == EXECVE_ERROR) {
+                    mdebug1("Invalid path or permissions running command '%s'",command);
+                    sprintf(*reason, "Invalid path or permissions running command '%s'",command);
+                } else if (result_code == 1) {
+                    mdebug1("Timeout overtaken running command '%s'", command);
+                    sprintf(*reason, "Timeout overtaken running command '%s'", command);
+                } else {
+                    mdebug1("Internal error running command '%s'", command);
+                    sprintf(*reason, "Internal error running command '%s'", command);
+                }
             }
-            return 0;
+            os_free(cmd_output);
+            return 2;
         } else if (result_code != 0) {
             mdebug1("Command (%s) returned code %d.", command, result_code);
         }
@@ -1631,9 +1705,11 @@ static int wm_sca_pt_matches(const char *str, char *pattern)
     return (ret_code);
 }
 
-static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
+static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason)
 {
     int ret_code = 0;
+    int result_dir;
+    int result_file;
     char f_name[PATH_MAX + 2];
     struct dirent *entry;
     struct stat statbuf_local;
@@ -1642,6 +1718,14 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
     f_name[PATH_MAX + 1] = '\0';
 
     dp = opendir(dir);
+
+    if (!dp && file != NULL){
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Directory %s not found", dir);
+        }
+        return (2);
+    }
     if (!dp) {
         return (0);
     }
@@ -1659,15 +1743,21 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
         /* Check if the read entry matches the provided file name */
         if (strncasecmp(file, "r:", 2) == 0) {
             if (OS_Regex(file + 2, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern)) {
+                result_file = wm_sca_check_file(f_name, pattern, reason);
+                if (result_file == 1) {
                     ret_code = 1;
+                } else if (result_file == 2) {
+                    ret_code = 2;
                 }
             }
         } else {
             /* ... otherwise try without regex */
             if (OS_Match2(file, entry->d_name)) {
-                if (wm_sca_check_file(f_name, pattern)) {
+                result_file = wm_sca_check_file(f_name, pattern, reason);
+                if (result_file == 1) {
                     ret_code = 1;
+                } else if (result_file == 2) {
+                    ret_code = 2;
                 }
             }
         }
@@ -1675,8 +1765,11 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
         /* Check if file is a directory */
         if (lstat(f_name, &statbuf_local) == 0) {
             if (S_ISDIR(statbuf_local.st_mode)) {
-                if (wm_sca_check_dir(f_name, file, pattern)) {
+                result_dir = wm_sca_check_dir(f_name, file, pattern, reason);
+                if (result_dir == 1) {
                     ret_code = 1;
+                } else if (result_dir == 2) {
+                    ret_code = 2;
                 }
             }
         }
@@ -1722,7 +1815,7 @@ void wm_sca_destroy(wm_sca_t * data) {
 
 #ifdef WIN32
 
-static int wm_check_registry_entry(char * const value)
+static int wm_check_registry_entry(char * const value, char **reason)
 {
     /* Look for additional entries in the registry and a pattern to match. */
     char *entry = wm_sca_get_pattern(value);
@@ -1730,18 +1823,20 @@ static int wm_check_registry_entry(char * const value)
 
     mdebug1("Checking registry: '%s\\%s'...", value, entry);
 
-    const int ret = wm_sca_is_registry(value, entry, pattern);
+    const int ret = wm_sca_is_registry(value, entry, pattern, reason);
     if (ret == 1) {
         mdebug2("registry found.");
         return 1;
     } else if (ret == -1) {
         mdebug2("registry not found.");
+    } else if (ret == 2) {
+        return 2;
     }
 
     return 0;
 }
 
-static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value) {
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason) {
     char *rk;
     rk = wm_sca_os_winreg_getkey(entry_name);
     if (wm_sca_sub_tree == NULL || rk == NULL) {
@@ -1751,11 +1846,19 @@ static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_valu
 
     int test_results_32 = 0;
     int test_results_64 = 0;
+    int returned_value_32 = 0;
+    int returned_value_64 = 0;
+
+    returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, &test_results_64, reason);
+    returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, &test_results_32, reason);
+
+    if (returned_value_32 == 2 || returned_value_64 == 2 || test_results_32 == 2 || test_results_64 == 2) {
+        return 2;
+    }
 
     // most likely to find it in the 64bit registry nowadays. Comes first to leverage short-circuit evaluation.
-
-    const int found = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, &test_results_64)
-                   || wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, &test_results_32);
+    const int found = returned_value_32 || returned_value_64;
+    
     const int test_results = test_results_32 || test_results_64;
     mdebug2("Reading registry 32/64b key %s\\%s -> %s) -> found?: %d, test results: %d", entry_name, reg_option, reg_value, found, test_results);
 
@@ -1813,11 +1916,18 @@ static char *wm_sca_os_winreg_getkey(char *reg_entry)
 }
 
 static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,
-                         char *reg_option, char *reg_value, int * test_result)
+                         char *reg_option, char *reg_value, int * test_result, char **reason)
 {
     HKEY oshkey;
     LSTATUS err = RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey);
-    if (err != ERROR_SUCCESS) {
+    if (err == ERROR_ACCESS_DENIED) {
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Access denied for registry '%s'", full_key_name);
+        }
+        merror("Access denied for registry '%s'", full_key_name);
+        return 2;
+    } else if (err != ERROR_SUCCESS) {
         char error_msg[OS_SIZE_1024 + 1];
         error_msg[OS_SIZE_1024] = '\0';
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
@@ -1825,10 +1935,14 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
                     NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                     (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
-        mdebug2("Unable to read  %s: %s", full_key_name, error_msg);
+        mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
         /* If the key does not exists, testings should also fail */
-        *test_result = 0;
-        return 0;
+        *test_result = 2;
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
+        }
+        return 2;
     }
 
     /* If the key does exists, a test for existance succeeds  */
@@ -2007,7 +2121,8 @@ static char *wm_sca_getrootdir(char *root_dir, int dir_size)
 }
 #endif
 
-static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,cJSON *policy,int start_time,int end_time,char * integrity_hash,char *integrity_hash_file, int first_scan,int id) {
+static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time,char * integrity_hash,char *integrity_hash_file, int first_scan,int id,int checks_number) {
+
     cJSON *json_summary = cJSON_CreateObject();
 
     cJSON_AddStringToObject(json_summary, "type", "summary");
@@ -2044,22 +2159,19 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
 
     cJSON_AddNumberToObject(json_summary, "passed", passed);
     cJSON_AddNumberToObject(json_summary, "failed", failed);
+    cJSON_AddNumberToObject(json_summary, "invalid", invalid);
 
     float passedf = passed;
     float failedf = failed;
-    float score = ((passedf/(failedf+passedf)))* 100;
+    float score = ((passedf/(failedf+passedf))) * 100;
 
+    cJSON_AddNumberToObject(json_summary, "total_checks", checks_number);
     cJSON_AddNumberToObject(json_summary, "score", score);
 
     cJSON_AddNumberToObject(json_summary, "start_time", start_time);
     cJSON_AddNumberToObject(json_summary, "end_time", end_time);
 
-    if(integrity_hash) {
-        cJSON_AddStringToObject(json_summary, "hash", integrity_hash);
-    } else {
-        cJSON_AddStringToObject(json_summary, "hash", "error_calculating_hash");
-    }
-
+    cJSON_AddStringToObject(json_summary, "hash", integrity_hash);
     cJSON_AddStringToObject(json_summary, "hash_file", integrity_hash_file);
 
     if (first_scan) {
@@ -2086,7 +2198,7 @@ static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event) {
     return 0;
 }
 
-static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result) {
+static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason) {
     cJSON *json_alert = cJSON_CreateObject();
     cJSON_AddStringToObject(json_alert, "type", "check");
     cJSON_AddNumberToObject(json_alert, "id", id);
@@ -2275,7 +2387,14 @@ static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg
        os_free(final_str_command);
     }
 
-    cJSON_AddStringToObject(check, "result", result);
+    if (!strcmp(result, "")) {
+        cJSON_AddStringToObject(check, "status", "Not applicable");
+        if (reason) {
+            cJSON_AddStringToObject(check, "reason", reason);
+        }
+    } else {
+        cJSON_AddStringToObject(check, "result", result);
+    }
 
     if(!policy_id->valuestring) {
         mdebug1("Field 'id' must be a string");
@@ -2318,7 +2437,11 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
     cis_db_info_t *elem;
 
     os_calloc(1, sizeof(cis_db_info_t), elem);
-    os_strdup(result, elem->result);
+    if (!result) {
+	    elem->result = "";
+	} else {
+	    os_strdup(result,elem->result);
+	}
 
     cJSON *obj = cJSON_Duplicate(event,1);
     elem->event = NULL;
@@ -2655,9 +2778,14 @@ static void wm_sca_summary_increment_failed() {
     summary_failed++;
 }
 
+static void wm_sca_summary_increment_invalid() {
+    summary_invalid++;
+}
+
 static void wm_sca_reset_summary() {
     summary_failed = 0;
     summary_passed = 0;
+    summary_invalid = 0;
 }
 
 cJSON *wm_sca_dump(const wm_sca_t *data) {
