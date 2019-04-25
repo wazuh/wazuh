@@ -118,7 +118,7 @@ int wdb_sca_find(wdb_t * wdb, int pm_id, char * output) {
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 1));
+            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 1));
             return 1;
             break;
         case SQLITE_DONE:
@@ -224,7 +224,7 @@ int wdb_sca_global_find(wdb_t * wdb, char *name, char * output) {
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 1));
+            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 1));
             return 1;
             break;
         case SQLITE_DONE:
@@ -273,7 +273,7 @@ int wdb_sca_policy_get_id(wdb_t * wdb, char * output) {
 
 end:
     if(has_result) {
-        snprintf(output,OS_MAXSTR,"%s",str);
+        snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", str);
         os_free(str);
         return 1;
     }
@@ -458,7 +458,7 @@ int wdb_sca_scan_find(wdb_t * wdb, char *policy_id, char * output) {
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s %d",sqlite3_column_text(stmt, 1),sqlite3_column_int(stmt, 2));
+            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s %d", sqlite3_column_text(stmt, 1),sqlite3_column_int(stmt, 2));
             return 1;
             break;
         case SQLITE_DONE:
@@ -490,7 +490,7 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output) {
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 0));
+            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
             return 1;
             break;
         case SQLITE_DONE:
@@ -521,7 +521,7 @@ int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output) {
 
     switch (sqlite3_step(stmt)) {
         case SQLITE_ROW:
-            snprintf(output,OS_MAXSTR,"%s",sqlite3_column_text(stmt, 0));
+            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", sqlite3_column_text(stmt, 0));
             return 1;
             break;
         case SQLITE_DONE:
@@ -781,7 +781,7 @@ end:
         if(str) {
             os_sha256 hash;
             OS_SHA256_String(str,hash);
-            snprintf(output,OS_MAXSTR,"%s",hash);
+            snprintf(output, OS_MAXSTR - WDB_RESPONSE_BEGIN_SIZE, "%s", hash);
             os_free(str);
         }
         return 1;
