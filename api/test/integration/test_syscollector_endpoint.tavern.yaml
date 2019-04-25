@@ -69,7 +69,7 @@ stages:
           master-node:
             error: "Not a valid select field"
         detail: "Not a valid select field"
-        remediation: "The valid fields are: board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, scan_id, scan_time"
+        remediation: "Use a valid field"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -144,13 +144,13 @@ stages:
           master-node:
             error: "Not a valid select field"
         detail: "Not a valid select field"
-        remediation: "The valid fields are: board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, scan_id, scan_time"
+        remediation: "Use a valid field"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
 
 ---
-test_name: GET /syscollector/{agent_id}/os
+test_name: GET /syscollector/{agent_id}/packages
 
 includes:
   - !include common.yaml
@@ -184,22 +184,191 @@ stages:
     response:
       status_code: 200
       body:
-        items: [
-          {
-            architecture: !anystr,
-            description: !anystr,
-            format: !anystr,
-            multiarch: !anystr,
-            name: !anystr,
-            priority: !anystr,
+        items:
+          -
+            architecture: !anystr
+            description: !anystr
+            format: !anystr
+            multiarch: !anystr
+            name: !anystr
+            priority: !anystr
             scan:
-              id: !anyint,
-              time: !anystr,
-            section: !anystr,
-            size: !anyint,
-            source: !anystr,
-            vendor: !anystr,
+              id: !anyint
+              time: !anystr
+            section: !anystr
+            size: !anyint
+            source: !anystr
+            vendor: !anystr
             version: !anystr
-          }
-        ]
+
+
+  - name: Multiple selectors
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        select: scan_id,description,architecture
+
+    response:
+      status_code: 200
+      body:
+        totalItems: 283
+
+  - name: Multiple selectors with limit
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        select: scan_id,description,architecture
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items:
+          -
+            architecture: !anystr
+            description: !anystr
+            scan_id: !anyint
+
+  - name: Not allowed selector
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 400
+      body:
+        code: 1724
+        dapi_errors:
+          master-node:
+            error: "Not a valid select field"
+        detail: "Not a valid select field"
+        remediation: "Use a valid field"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Limit and offset
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        offset: 0
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        items:
+          -
+            architecture: !anystr
+            description: !anystr
+            format: !anystr
+            multiarch: !anystr
+            name: !anystr
+            priority: !anystr
+            scan:
+              id: !anyint
+              time: !anystr
+            section: !anystr
+            size: !anyint
+            source: !anystr
+            vendor: !anystr
+            version: !anystr
+
+  - name: Wrong limit
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        offset: 0
+        limit: 1a
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Invalid limit
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        offset: 0
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: "Bad Request"
+        type: "about:blank"
+
+  - name: Filter sort
+
+    request:
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+      params:
+        sort: -name
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        items:
+          -
+            architecture: !anystr
+            description: !anystr
+            format: !anystr
+            name: !anystr
+            priority: !anystr
+            scan:
+              id: !anyint
+              time: !anystr
+            section: !anystr
+            size: !anyint
+            vendor: !anystr
+            version: !anystr
+            multiarch: !anystr
+          -
+            architecture: !anystr
+            description: !anystr
+            format: !anystr
+            name: !anystr
+            priority: !anystr
+            scan:
+              id: !anyint
+              time: !anystr
+            section: !anystr
+            size: !anyint
+            vendor: !anystr
+            version: !anystr
 ---

@@ -5,7 +5,7 @@
 import asyncio
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.syscollector as syscollector
 
@@ -78,7 +78,7 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
                 'broadcast': broadcast, 'netsmask': netmask}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netaddr_agent,
@@ -148,7 +148,7 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
                'tx_dropped': tx_dropped, 'rx_dropped': rx_dropped}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netiface_agent,
@@ -196,7 +196,7 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
     filters = {'iface': iface, 'type': type, 'gateway': gateway, 'dhcp': dhcp}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_netproto_agent,
@@ -276,7 +276,7 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
                'format': format, 'package_version': package_version}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_packages_agent,
@@ -332,7 +332,7 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
                'remote_ip': remote_ip, 'tx_queue': tx_queue, 'state': state}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_ports_agent,
@@ -406,7 +406,7 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
               'sgroup': sgroup, 'suser': suser}
 
     f_kwargs = {'agent_id': agent_id, 'offset': offset, 'limit': limit,
-                'select': select, 'sort': sort, 'search': search,
+                'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
                 'filters': filters}
 
     dapi = DistributedAPI(f=syscollector.get_processes_agent,
