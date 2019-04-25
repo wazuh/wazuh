@@ -1517,6 +1517,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
         }
     } else {
         merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+        free_strarray(output_line);
         return 0;
     }
 
@@ -2374,7 +2375,7 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
 
     os_calloc(1, sizeof(cis_db_info_t), elem);
     if (!result) {
-	    elem->result = "";
+	    os_strdup("",elem->result);
 	} else {
 	    os_strdup(result,elem->result);
 	}
@@ -2394,7 +2395,7 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
                 return 0;
             }
         } else {
-            if(strcmp(result,hashed_result->result) == 0) {
+            if(strcmp(elem->result,hashed_result->result) == 0) {
                 alert = 0;
             }
 
