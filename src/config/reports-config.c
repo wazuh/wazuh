@@ -215,7 +215,7 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
     rotation_config->rotate = -1;
     rotation_config->rotation_enabled = 1;
     rotation_config->compress_rotation = 1;
-    rotation_config->ossec_log_plain = 0;
+    rotation_config->ossec_log_plain = 1;
     rotation_config->ossec_log_json = 0;
 
     /* Reading the XML */
@@ -318,9 +318,6 @@ int Read_RotationMonitord(const OS_XML *xml, XML_NODE node, void *config, __attr
                                     break;
                                 case 2:
                                     switch (c) {
-                                        case 'd':
-                                            rotation_config->interval *= 86400;
-                                            break;
                                         case 'h':
                                             rotation_config->interval *= 3600;
                                             break;

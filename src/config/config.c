@@ -403,8 +403,8 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
     Config->alerts_rotate = -1;
     Config->alerts_rotation_enabled = 1;
     Config->alerts_compress_rotation = 1;
-    Config->alerts_log_plain = 0;
-    Config->alerts_log_json = 0;
+    Config->alerts_log_plain = 1;
+    Config->alerts_log_json = 1;
 
     Config->archives_enabled = 0;
     Config->archives_max_size = 0;
@@ -515,9 +515,6 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     break;
                                 case 2:
                                     switch (c) {
-                                        case 'd':
-                                            Config->alerts_interval *= 86400;
-                                            break;
                                         case 'h':
                                             Config->alerts_interval *= 3600;
                                             break;
@@ -683,9 +680,6 @@ int Read_RotationAnalysisd(const OS_XML *xml, XML_NODE node, void *config, __att
                                     break;
                                 case 2:
                                     switch (c) {
-                                        case 'd':
-                                            Config->archives_interval *= 86400;
-                                            break;
                                         case 'h':
                                             Config->archives_interval *= 3600;
                                             break;
