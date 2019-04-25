@@ -2487,6 +2487,14 @@ components:
       schema:
         type: string
         format: etc_path
+    get_files_path:
+      in: query
+      name: path
+      description: Filepath to return.
+      required: true
+      schema:
+        type: string
+        format: get_files_path
     overwrite:
       in: query
       name: overwrite
@@ -5819,7 +5827,7 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/node_id'
-        - $ref: '#/components/parameters/path'
+        - $ref: '#/components/parameters/get_files_path'
       responses:
         '200':
           description: 'File contents'

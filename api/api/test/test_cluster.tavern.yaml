@@ -1220,3 +1220,82 @@ stages:
       status_code: 200
       body:
         data:
+          contents: !anystr
+
+  - name: Get ossec.conf (worker)
+
+    request:
+      url: http://localhost:55000/cluster/worker-1/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get local rules (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: etc/rules/local_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get rules (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: ruleset/rules/0350-amazon_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get local decoder (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: etc/decoders/local_decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get decoder (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: ruleset/decoders/0005-wazuh_decoders.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get CDB list (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: etc/lists/audit-keys
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
