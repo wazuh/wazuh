@@ -11,7 +11,6 @@ import re
 from shutil import move
 from xml.dom.minidom import parseString
 from wazuh.exception import WazuhError, WazuhInternalError
-from wazuh.agent import Agent
 from wazuh import common
 from wazuh.utils import cut_array, load_wazuh_xml
 import subprocess
