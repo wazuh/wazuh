@@ -797,7 +797,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     char root_dir[OS_SIZE_1024 + 2];
     char final_file[2048 + 1];
     char *name = NULL;
-    int n_reason = 0;
     char *reason = NULL;
 
     int ret_val = 0;
@@ -993,7 +992,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         _b_msg[OS_SIZE_1024] = '\0';
                         snprintf(_b_msg, OS_SIZE_1024, " Command: %s", f_value);
                         append_msg_to_vm_scat(data, _b_msg);
-                        n_reason++;
                     }
                 }
 
@@ -1047,8 +1045,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         short is_nfs = IsNFS(dir);
                         if( is_nfs == 1 && data->skip_nfs ) {
                             mdebug2("Directory '%s' flagged as NFS when skip_nfs is enabled.", dir);
-                            os_malloc(OS_MAXSTR, reason);
-                            sprintf(reason,"Directory '%s' flagged as NFS when skip_nfs is enabled", dir);
+                            if (reason == NULL) {
+                                os_malloc(OS_MAXSTR, reason);
+                                sprintf(reason,"Directory '%s' flagged as NFS when skip_nfs is enabled", dir);
+                            }
                             found = 2;
                         } else {
                             mdebug2("%s => is_nfs=%d, skip_nfs=%d", dir, is_nfs, data->skip_nfs);
@@ -1492,17 +1492,20 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
         int result_code;
 
         if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
-            os_malloc(OS_MAXSTR, *reason);
-            if (result_code == EXECVE_ERROR) {
-                mdebug1("Invalid path or permissions running command '%s'",command);
-                sprintf(*reason, "Invalid path or permissions running command '%s'",command);
-            } else if (result_code == 1) {
-                mdebug1("Timeout overtaken running command '%s'", command);
-                sprintf(*reason, "Timeout overtaken running command '%s'", command);
-            } else {
-                mdebug1("Internal error running command '%s'", command);
-                sprintf(*reason, "Internal error running command '%s'", command);
+            if (*reason == NULL){
+                os_malloc(OS_MAXSTR, *reason);
+                if (result_code == EXECVE_ERROR) {
+                    mdebug1("Invalid path or permissions running command '%s'",command);
+                    sprintf(*reason, "Invalid path or permissions running command '%s'",command);
+                } else if (result_code == 1) {
+                    mdebug1("Timeout overtaken running command '%s'", command);
+                    sprintf(*reason, "Timeout overtaken running command '%s'", command);
+                } else {
+                    mdebug1("Internal error running command '%s'", command);
+                    sprintf(*reason, "Internal error running command '%s'", command);
+                }
             }
+            os_free(cmd_output);
             return 2;
         } else if (result_code != 0) {
             mdebug1("Command (%s) returned code %d.", command, result_code);
@@ -1914,9 +1917,11 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
     HKEY oshkey;
     LSTATUS err = RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey);
     if (err == ERROR_ACCESS_DENIED) {
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Access denied for registry '%s'", full_key_name);
+        }
         merror("Access denied for registry '%s'", full_key_name);
-        os_malloc(OS_MAXSTR, *reason);
-        sprintf(*reason, "Access denied for registry '%s'", full_key_name);
         return 2;
     } else if (err != ERROR_SUCCESS) {
         char error_msg[OS_SIZE_1024 + 1];
@@ -1929,8 +1934,10 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
         mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
         /* If the key does not exists, testings should also fail */
         *test_result = 2;
-        os_malloc(OS_MAXSTR, *reason);
-        sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
+        }
         return 2;
     }
 
