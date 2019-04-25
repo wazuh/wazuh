@@ -386,21 +386,18 @@ MailMsg *OS_RecvMailQ_JSON(file_queue *fileq, MailConfig *Mail, MailMsg **msg_sm
 
     // Get full_log field content
     json_field = cJSON_GetObjectItem(al_json,"full_log");
-    if (!json_field) {
-        goto end;
+    if (json_field) {
+        log_size = strlen(json_field->valuestring) + 4;
+
+        /* If size left is small than the size of the log, stop it */
+        if (body_size <= log_size) {
+            goto end;
+        }
+
+        strncpy(logs, json_field->valuestring, body_size);
+        strncpy(logs + log_size, "\r\n", body_size - log_size);
+        body_size -= log_size;
     }
-
-    log_size = strlen(json_field->valuestring) + 4;
-
-    /* If size left is small than the size of the log, stop it */
-    if (body_size <= log_size) {
-        goto end;
-    }
-
-    strncpy(logs, json_field->valuestring, body_size);
-    strncpy(logs + log_size, "\r\n", body_size - log_size);
-    body_size -= log_size;
-
 
     json_object = cJSON_GetObjectItem(al_json,"syscheck");
 
