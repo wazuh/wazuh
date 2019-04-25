@@ -143,15 +143,16 @@ class WazuhException(Exception):
         1722: 'Incorrect format for group_id. Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255',
         1723: 'Hash algorithm not available',
         1724: {'message': 'Not a valid select field',
-               'remediation': 'Insert a valid field'},
+               'remediation': 'Use a valid field'},
         1725: 'Error registering a new agent',
         1726: 'Ossec authd is not running',
         1727: 'Error listing group files',
         1728: {'message': 'Invalid node type',
-               'remediation': 'Valid types are `master` and `worker`'},
+               'remediation': 'Valid types are "master" and "worker"'},
         1729: 'Agent status not valid. Valid statuses are Active, Disconnected, Pending and Never Connected.',
         1730: {'message': 'Node does not exist',
-               'remediation': ''},
+               'remediation': 'Make sure the name is correct and that the node is up. You can check it using '
+                              '[`cluster_control -l`](https://documentation.wazuh.com/current/user-manual/reference/tools/cluster_control.html#get-connected-nodes)'},
         1731: 'Agent is not eligible for removal',
         1732: 'No agents selected',
         1733: 'Bad formatted version. Version must follow this pattern: vX.Y.Z .',
@@ -239,7 +240,30 @@ class WazuhException(Exception):
         3022: {'message': 'Unknown node ID',
                'remediation': 'Check the name of the node'},
         3023: {'message': 'Worker node is not connected to master',
-               'remediation': ''}
+               'remediation': 'Check the cluster.log located at WAZUH_HOME/logs/cluster.log file to see if there are '
+                              'connection errors. Restart the `wazuh-manager` service.'},
+        3024: "Length of command exceeds limit defined in wazuh.cluster.common.Handler.cmd_len.",
+        3025: {'message': "Could not decrypt message",
+               'remediation': "Check the cluster key is correct in the worker's "
+                              "[ossec.conf](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#key)"
+                              " is the same that the master's."},
+        3026: "Error sending request: Memory error. Request chunk size divided by 2.",
+        3027: "Unknown received task name",
+        3028: {'message': "Worker node ID already exists",
+               'remediation': "Change one of the two [worker names](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#node-name)"
+                              " and restart the `wazuh-manager` service."},
+        3029: {"message": "Connected worker with same name as the master",
+               "remediation": "Change the [worker name](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#node-name)"
+                              " and restart the `wazuh-manager` service in the node"},
+        3030: {'message': 'Worker does not belong to the same cluster',
+               'remediation': "Change the [cluster name](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/cluster.html#name)"
+                              " in the worker configuration to match the master's and restart the `wazuh-manager` service"},
+        3031: {'message': "Worker and master versions are not the same",
+               'remediation': "[Update](https://documentation.wazuh.com/current/installation-guide/upgrading/index.html)"
+                              " both master and worker to the same version."},
+        3032: "Could not forward DAPI request. Connection not available.",
+        3033: "Payload length exceeds limit defined in wazuh.cluster.common.Handler.request_chunk.",
+        3034: "Error sending file. File not found."
 
         # > 9000: Authd
     }
@@ -344,5 +368,12 @@ class WazuhError(WazuhException):
     """
     This type of exception is raised as a controlled response to a bad request from user
     that cannot be performed properly
+    """
+    pass
+
+
+class WazuhClusterError(WazuhException):
+    """
+    This type of exception is raised inside the cluster.
     """
     pass
