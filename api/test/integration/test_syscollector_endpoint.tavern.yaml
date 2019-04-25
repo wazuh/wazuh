@@ -1,0 +1,59 @@
+---
+test_name: GET /rules
+
+stages:
+  - name: Get the OS of an agent
+
+    request:
+      url: http://localhost:55000/syscollector/000/os
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        architecture: !anystr
+        hostname: !anystr
+        os:
+          codename: !anystr
+          major: !anystr
+          minor: !anystr
+          name: !anystr
+          platform: !anystr
+          version: !anystr
+        release: !anystr
+        scan:
+          id: !anyint
+          time: !anystr
+        sysname: !anystr
+        version: !anystr
+
+  - name: Filter select
+
+    request:
+      url: http://localhost:55000/syscollector/000/os
+      method: GET
+      params:
+        select: os_version,sysname,release
+
+    response:
+      status_code: 200
+      body:
+        os_version: !anystr
+        release: !anystr
+        sysname: !anystr
+
+  - name: Invalid selector
+
+    request:
+      url: http://localhost:55000/syscollector/000/os
+      method: GET
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 200
+      body:
+        os_version: !anystr
+        release: !anystr
+        sysname: !anystr
+---
