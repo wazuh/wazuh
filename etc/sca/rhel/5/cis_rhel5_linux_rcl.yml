@@ -288,7 +288,7 @@ checks:
     - CCE-3977-6
    condition: any
    rules:
-     - 'f:/etc/grub.conf -> !r:selinux=0;'
+     - 'f:/etc/grub.conf -> r:selinux=0;'
 # 1.4.2 Set selinux state
  - id: 5518
    title: "Set the SELinux State"
@@ -302,7 +302,7 @@ checks:
     - CCE-3999-0
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUX=enforcing;'
+     - 'f:/etc/selinux/config -> !r:SELINUX=enforcing;'
 # 1.4.3 Set seliux policy
  - id: 5519
    title: "Set the SELinux Policy"
@@ -316,7 +316,7 @@ checks:
     - CCE-3624-4
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUXTYPE=targeted;'
+     - 'f:/etc/selinux/config -> !r:SELINUXTYPE=targeted;'
 # 1.4.4 Remove SETroubleshoot
  - id: 5520
    title: "Remove SETroubleshoot"
@@ -711,8 +711,8 @@ checks:
     - CCE-4155-8
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 ###############################################
 # 4.2 Modify Network Parameters (Host and Router)
 ###############################################

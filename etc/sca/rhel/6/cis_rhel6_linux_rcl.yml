@@ -82,7 +82,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;'
+     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:noexec;'
 # 1.1.6 Build considerations - Partition scheme.
  - id: 6004
    title: "Ensure separate partition exists for /var"
@@ -249,7 +249,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/grub.conf -> !r:selinux=0;'
+     - 'f:/etc/grub.conf -> r:selinux=0;'
 # 1.6.1.2 Set selinux state
  - id: 6017
    title: "Ensure the SELinux state is enforcing"
@@ -262,7 +262,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUX=enforcing;'
+     - 'f:/etc/selinux/config -> !r:SELINUX=enforcing;'
 # 1.6.1.3 Set seliux policy
  - id: 6018
    title: "Ensure SELinux policy is configured"
@@ -274,7 +274,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/selinux/config -> r:SELINUXTYPE=targeted;'
+     - 'f:/etc/selinux/config -> !r:SELINUXTYPE=targeted;'
 # 1.6.1.4 Remove SETroubleshoot
  - id: 6019
    title: "Ensure SETroubleshoot is not installed"
@@ -631,8 +631,8 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 ###############################################
 # 3.2 Modify Network Parameters (Host and Router)
 ###############################################
@@ -676,6 +676,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/default/log_martians -> 0;'
 # 3.2.5 Enable Ignore Broadcast Requests (Scored)
  - id: 6048
    title: "Ensure broadcast ICMP requests are ignored"
