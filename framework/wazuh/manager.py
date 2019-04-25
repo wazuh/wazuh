@@ -21,7 +21,7 @@ from typing import Dict
 import fcntl
 
 from wazuh import common
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 from wazuh.results import WazuhResult
 from wazuh.utils import previous_month, cut_array, sort_array, search_array, tail, load_wazuh_xml
 from wazuh import configuration
@@ -209,10 +209,10 @@ def upload_file(path=None, content=None, overwrite=False):
     """
     # if file already exists and overwrite is False, raise exception
     if not overwrite and exists(join(common.ossec_path, path)):
-        raise WazuhException(1905)
+        raise WazuhError(1905)
 
     if len(content) == 0:
-        raise WazuhException(1112)
+        raise WazuhError(1112)
 
     # for CDB lists
     if re.match(r'^etc/lists', path):
@@ -248,27 +248,27 @@ def upload_xml(xml_file, path):
             tmp_file.write(final_xml)
         chmod(tmp_file_path, 0o640)
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except ExpatError:
-        raise WazuhException(1113)
+        raise WazuhInternalError(1113)
     except Exception as e:
-        raise WazuhException(1000, str(e))
+        raise WazuhInternal(1000, str(e))
 
     try:
         # check xml format
         try:
             load_wazuh_xml(tmp_file_path)
         except Exception as e:
-            raise WazuhException(1113, str(e))
+            raise WazuhError(1113, str(e))
 
         # move temporary file to group folder
         try:
             new_conf_path = join(common.ossec_path, path)
             move(tmp_file_path, new_conf_path)
         except Error:
-            raise WazuhException(1016)
+            raise WazuhInternalError(1016)
         except Exception:
-            raise WazuhException(1000)
+            raise WazuhInternalError(1000)
 
         return WazuhResult({'message': 'File updated successfully'})
 
@@ -299,18 +299,18 @@ def upload_list(list_file, path):
                 tmp_file.write(element.strip() + '\n')
         chmod(tmp_file_path, 0o640)
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except Exception:
-        raise WazuhException(1000)
+        raise WazuhInternalError(1000)
 
     # move temporary file to group folder
     try:
         new_conf_path = join(common.ossec_path, path)
         move(tmp_file_path, new_conf_path)
     except Error:
-        raise WazuhException(1016)
+        raise WazuhInternalError(1016)
     except Exception:
-        raise WazuhException(1000)
+        raise WazuhInternalError(1000)
 
     return WazuhResult({'message': 'File updated successfully'})
 
@@ -326,17 +326,17 @@ def get_file(path, validation=False):
 
     # validate CDB lists files
     if validation and re.match(r'^etc/lists', path) and not validate_cdb_list(path):
-        raise WazuhException(1800, {'path': path})
+        raise WazuhError(1800, {'path': path})
 
     # validate XML files
     if validation and not validate_xml(path):
-        raise WazuhException(1113)
+        raise WazuhError(1113)
 
     try:
         with open(full_path) as f:
             output = f.read()
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
 
     return WazuhResult({'data': {'contents': output}})
 
@@ -351,7 +351,7 @@ def validate_xml(path):
         with open(full_path) as f:
             parseString('<root>' + f.read() + '</root>')
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
     except ExpatError:
         return False
 
@@ -374,7 +374,7 @@ def validate_cdb_list(path):
                 if not re.match(regex_cdb, line):
                     return False
     except IOError:
-        raise WazuhException(1005)
+        raise WazuhInternalError(1005)
 
     return True
 
