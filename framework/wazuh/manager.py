@@ -355,7 +355,7 @@ def get_file(path, validation=False):
     except IOError:
         raise WazuhException(1005)
 
-    return output
+    return WazuhResult({'data': {'contents': output}})
 
 def validate_xml(path):
     """

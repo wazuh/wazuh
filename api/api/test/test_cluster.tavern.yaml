@@ -1203,3 +1203,20 @@ stages:
           wazuh-modulesd:oscap: !anything
           wazuh-modulesd:osquery: !anything
           wazuh-modulesd:syscollector: !anything
+
+---
+test_name: GET /cluster/{node_id}/files
+
+stages:
+
+  - name: Get ossec.conf (master)
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
