@@ -1606,7 +1606,10 @@ int w_msg_hash_queues_push(const char *str, char *file, unsigned long size, logt
         msg = (w_msg_queue_t *)OSHash_Get(msg_queues_table, targets[i].log_socket->name);
 
         w_mutex_unlock(&mutex);
-        w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
+
+        if (msg) {
+            w_msg_queue_push(msg, str, file, size, &targets[i], queue_mq);
+        }
     }
 
     return 0;
