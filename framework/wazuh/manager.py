@@ -270,7 +270,7 @@ def upload_xml(xml_file, path):
         except Exception:
             raise WazuhException(1000)
 
-        return 'File updated successfully'
+        return WazuhResult({'message': 'File updated successfully'})
 
     except Exception as e:
         # remove created temporary file if an exception happens
@@ -312,7 +312,7 @@ def upload_list(list_file, path):
     except Exception:
         raise WazuhException(1000)
 
-    return 'File updated successfully'
+    return WazuhResult({'message': 'File updated successfully'})
 
 
 def get_file(path, validation=False):
