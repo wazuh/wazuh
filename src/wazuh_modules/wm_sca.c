@@ -1396,16 +1396,7 @@ static int wm_sca_check_file(char *file, char *pattern, char **reason)
                 ret_val = 1;
 
                 goto cleanup;
-            } else {
-                if (*reason == NULL){
-                    os_malloc(OS_MAXSTR, *reason);
-                    sprintf(*reason, "File %s not found", file);
-                }
-
-                ret_val = 2;
-                goto cleanup;
             }
-
         } else {
             full_negate = wm_sca_pt_check_negate(pattern);
 
