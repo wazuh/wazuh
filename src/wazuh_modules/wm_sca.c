@@ -957,20 +957,20 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 /* Check for a command */
                 else if (type == WM_SCA_TYPE_COMMAND) {
 
+                    char *pattern = NULL;
+                    char *f_value = NULL;
+
+                    pattern = wm_sca_get_pattern(value);
+                    f_value = value;
+
                     if (!data->remote_commands && remote_policy) {
                         mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
                         os_malloc(OS_MAXSTR, reason);
-                        sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", value);
+                        sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
                         found = 2;
                     }
 
                     if (found != 2) {
-                        char *pattern = NULL;
-                        char *f_value = NULL;
-
-                        pattern = wm_sca_get_pattern(value);
-                        f_value = value;
-
                         /* Get any variable */
                         if (value[0] == '$') {
                             f_value = (char *) OSStore_Get(vars, value);
