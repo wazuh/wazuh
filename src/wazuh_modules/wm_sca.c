@@ -1318,7 +1318,7 @@ static int wm_sca_check_file(char * const file, char * const pattern)
     
     char *pattern_ref = pattern;
 
-    /* by default, assume a positive rule, i.e, an NIN rule */
+    /* by default, assume a negative rule, i.e, an NIN rule */
     int nin_operation = 1;
     if (pattern_ref) {
         if (strncmp(pattern_ref, "IN ", 3) == 0) {
@@ -1365,7 +1365,7 @@ static int wm_sca_check_file(char * const file, char * const pattern)
                     mdebug2("Result for %s(%s) -> 1", pattern, file);
                     os_free(file_list);
                     fclose(fp);
-                    mdebug2("%s %d", nin_operation ? "IN":"NIN", result);
+                    mdebug2("%s %d", nin_operation ? "NIN":"IN", result);
                     return nin_operation ? result : !result;
                 }
             }
@@ -1378,7 +1378,7 @@ static int wm_sca_check_file(char * const file, char * const pattern)
     }
 
     mdebug2("Result for %s(%s) -> %d", pattern, file, result_accumulator);
-    mdebug2("%s %d", nin_operation ? "IN":"NIN", result_accumulator);
+    mdebug2("%s %d", nin_operation ? "NIN":"IN", result_accumulator);
     os_free(file_list);
     return nin_operation ? result_accumulator : !result_accumulator;
 }
@@ -1594,57 +1594,31 @@ static int wm_sca_check_dir(const char *dir, const char *file, char *pattern)
 }
 
 /* Check if a process is running */
-static int wm_sca_is_process(char *pattern, OSList *p_list)
+static int wm_sca_is_process(char *value, OSList *p_list)
 {
     OSListNode *l_node;
     if (p_list == NULL) {
         return (0);
     }
-    if (!pattern) {
+    if (!value) {
         return (0);
-    }
-
-    char *pattern_ref = pattern;
-    /* by default, assume a positive rule, i.e, an NIN rule */
-    int nin_operation = 1;
-    if (pattern_ref) {
-        if (strncmp(pattern_ref, "IN ", 3) == 0) {
-            nin_operation = 0;
-            pattern_ref += 3;
-        } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
-            nin_operation = 1;
-            pattern_ref += 4;
-        } else if (!strstr(pattern_ref, " && ")) {
-            mdebug2("Rule without IN/NIN: %s", pattern_ref);
-            /*a single negated minterm is a NIN rule*/
-            if (*pattern_ref == '!') {
-                nin_operation = 1;
-                pattern_ref++;
-                mdebug2("Negation found, is a IN rule");
-            } else {
-                mdebug2("Negation not found, is an NIN rule");
-                nin_operation = 0;
-            }
-        } else {
-            merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
-            return 1;
-        }   
     }
 
     l_node = OSList_GetFirstNode(p_list);
     while (l_node) {
-        const W_Proc_Info *pinfo = (W_Proc_Info *)l_node->data;
+        W_Proc_Info *pinfo;
 
-        const int result = wm_sca_pt_matches(pinfo->p_path, pattern_ref);
-        if (result){
-            mdebug2("Result for %s(%s) -> 1", pattern, pinfo->p_path);
-            return nin_operation ? result : !result;
+        pinfo = (W_Proc_Info *)l_node->data;
+
+        /* Check if value matches */
+        if (wm_sca_pt_matches(pinfo->p_path, value)) {
+            return (1);
         }
 
         l_node = OSList_GetNextNode(p_list);
     }
 
-    return nin_operation ? 0 : 1;
+    return (0);
 }
 
 // Destroy data
@@ -1907,7 +1881,7 @@ static int wm_sca_winreg_querykey(HKEY hKey,
             }
 
             /* Check if value matches */
-            /* by default, assume a positive rule, i.e, an NIN rule */
+            /* by default, assume a negative rule, i.e, an NIN rule */
             int nin_operation = 1;
             if (pattern_ref) {
                 if (strncmp(pattern_ref, "IN ", 3) == 0) {
@@ -1922,9 +1896,9 @@ static int wm_sca_winreg_querykey(HKEY hKey,
                     if (*pattern_ref == '!') {
                         nin_operation = 1;
                         pattern_ref++;
-                        mdebug2("Negation found, is a IN rule");
+                        mdebug2("Negation found, is a NIN rule");
                     } else {
-                        mdebug2("Negation not found, is an NIN rule");
+                        mdebug2("Negation not found, is an IN rule");
                         nin_operation = 0;
                     }
                 } else {
