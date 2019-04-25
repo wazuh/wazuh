@@ -1689,7 +1689,10 @@ void * w_output_thread(void * args){
     w_message_t *message;
     w_msg_queue_t *msg_queue;
 
-    msg_queue = OSHash_Get(msg_queues_table,queue_name);
+    if (msg_queue = OSHash_Get(msg_queues_table, queue_name), !msg_queue) {
+        mwarn("Could not found the '%s'.", queue_name);
+        return NULL;
+    }
 
     while(1)
     {
