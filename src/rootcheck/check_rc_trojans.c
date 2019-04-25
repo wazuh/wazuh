@@ -26,7 +26,7 @@ void check_rc_trojans(const char *basedir, FILE *fp)
 #ifndef WIN32
     const char *(all_paths[]) = {"bin", "sbin", "usr/bin", "usr/sbin", NULL};
 #else
-    const char *(all_paths[]) = {"C:\\Windows\\", "D:\\Windows\\", NULL};
+    const char *(all_paths[]) = {"Windows\\", NULL};
 #endif
 
     mtdebug1(ARGV0, "Starting on check_rc_trojans");
@@ -78,9 +78,9 @@ void check_rc_trojans(const char *basedir, FILE *fp)
 
         /* Try with all possible paths */
         while (all_paths[i] != NULL) {
-            if (*file != '/') {
-                snprintf(file_path, OS_SIZE_1024, "%s/%s/%s", basedir,
-                         all_paths[i],
+            if (*file != PATH_SEP) {
+                snprintf(file_path, OS_SIZE_1024, "%s%c%s%c%s", basedir, PATH_SEP,
+                         all_paths[i], PATH_SEP,
                          file);
             } else {
                 strncpy(file_path, file, OS_SIZE_1024);

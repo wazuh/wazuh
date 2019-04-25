@@ -1130,15 +1130,15 @@
                   "doc_values": "true"
                 },
                 "passed": {
-                  "type": "keyword",
+                  "type": "integer",
                   "doc_values": "true"
                 },
                 "failed": {
-                  "type": "keyword",
+                  "type": "integer",
                   "doc_values": "true"
                 },
                 "score": {
-                  "type": "keyword",
+                  "type": "long",
                   "doc_values": "true"
                 },
                 "check": {
@@ -1384,6 +1384,34 @@
                       "doc_values": "true"
                     },
                     "parentImage": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "categoryId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategoryId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategoryGuid": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "auditPolicyChangesId": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "category": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "subcategory": {
+                      "type": "keyword",
+                      "doc_values": "true"
+                    },
+                    "auditPolicyChanges": {
                       "type": "keyword",
                       "doc_values": "true"
                     }
