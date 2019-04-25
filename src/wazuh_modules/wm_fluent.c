@@ -453,7 +453,7 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
 
     randombytes(salt, sizeof(salt));
     if (gethostname(hostname, sizeof(hostname) - 1)) {
-        mwarn("Unable to get hostname of '%s' due to: '%s'", hostname, strerror(errno));
+        mwarn("Unable to get hostname due to: '%s'.", strerror(errno));
         return OS_INVALID;
     }
 

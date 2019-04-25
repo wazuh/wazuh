@@ -604,7 +604,7 @@ void LogCollectorStart()
                 } else {
 #ifdef WIN32
                     if (!current->command && strcmp(current->logformat,EVENTCHANNEL) && strcmp(current->logformat,EVENTLOG)) {
-                        
+
                         int file_exists = 1;
                         HANDLE h1;
 
@@ -999,7 +999,7 @@ int update_current(logreader **current, int *i, int *j)
                 return NEXT_IT;
             }
         }
-        
+
         /* Check expanded files */
         *current = &globs[*j].gfiles[*i];
         if (!(*current)->file) {
@@ -1248,11 +1248,7 @@ static void check_pattern_expand_excluded() {
                 if(found) {
                     int result;
 
-                    if (j < 0) {
-                        result = Remove_Localfile(&logff, k, 0, 1,NULL);
-                    } else {
-                        result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
-                    }
+                    result = Remove_Localfile(&(globs[j].gfiles), k, 1, 0,&globs[j]);
 
                     if (result) {
                         merror_exit(REM_ERROR,g.gl_pathv[glob_offset]);
