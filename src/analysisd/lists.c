@@ -34,7 +34,7 @@ int Lists_OP_LoadList(char *listfile)
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 
-    snprintf(a_filename, OS_MAXSTR - 1, "%s", listfile);
+    snprintf(a_filename, OS_MAXSTR, "%s", listfile);
     if ((strchr(a_filename, '/') == NULL)) {
         /* default to ruleset/rules/ if a path is not given */
         snprintf(b_filename, OS_MAXSTR, "ruleset/rules/%.65516s", a_filename);
