@@ -1169,7 +1169,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
 
                 if (requirements_scan == 1){
-                    os_free(reason);
                     wm_sca_reset_summary();
                     goto clean_return;
                 }
@@ -1200,13 +1199,11 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     if (requirements_scan == 1){
                         ret_val = 1;
                     }
-                    os_free(reason);
                     goto clean_return;
                 }
 
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
-                    os_free(reason);
                     goto clean_return;
                 }
 
@@ -1236,7 +1233,6 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 if (requirements_scan == 1){
                     wm_sca_reset_summary();
-                    os_free(reason);
                     goto clean_return;
                 }
             }
@@ -1257,6 +1253,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
 /* Clean up memory */
 clean_return:
+    os_free(reason);
     os_free(name);
 
     return ret_val;
