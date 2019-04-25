@@ -2484,14 +2484,20 @@ void * w_log_rotate_thread(__attribute__((unused)) void * args){
     struct tm *p;
     char mon[4] = {0};
 
-    Config.log_archives_plain = get_rotation_list("archives", ".log");
-    Config.log_archives_json = get_rotation_list("archives", ".json");
-    Config.log_alerts_plain = get_rotation_list("alerts", ".log");
-    Config.log_alerts_json = get_rotation_list("alerts", ".json");
-    purge_rotation_list(Config.log_archives_plain, Config.archives_rotate);
-    purge_rotation_list(Config.log_archives_json, Config.archives_rotate);
-    purge_rotation_list(Config.log_alerts_plain, Config.alerts_rotate);
-    purge_rotation_list(Config.log_alerts_json, Config.alerts_rotate);
+    if(Config.archives_rotate != -1) {
+        Config.log_archives_plain = get_rotation_list("archive", ".log");
+        Config.log_archives_json = get_rotation_list("archive", ".json");
+        purge_rotation_list(Config.log_archives_plain, Config.archives_rotate);
+        purge_rotation_list(Config.log_archives_json, Config.archives_rotate);
+    }
+
+    if(Config.alerts_rotate != -1) {
+        Config.log_alerts_plain = get_rotation_list("alerts", ".log");
+        Config.log_alerts_json = get_rotation_list("alerts", ".json");
+        purge_rotation_list(Config.log_alerts_plain, Config.alerts_rotate);
+        purge_rotation_list(Config.log_alerts_json, Config.alerts_rotate);
+    }
+
     while(1){
         time(&current_time);
         p = localtime(&c_time);

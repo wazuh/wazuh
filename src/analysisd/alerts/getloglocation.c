@@ -191,7 +191,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                     if(unlink(previous_log) == -1) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
-                    add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
+                    if(Config.alerts_rotate != -1) {
+                        add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
+                    }
                 }
                 os_free(previous_log);
             }
@@ -207,7 +209,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                     if(unlink(previous_log) == -1) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
-                    add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
+                    if(Config.alerts_rotate != -1) {
+                        add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
+                    }
                 }
                 os_free(previous_log);
             }
@@ -227,7 +231,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                     if(unlink(previous_log) == -1) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
-                    add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
+                    if(Config.archives_rotate != -1) {
+                        add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
+                    }
                 }
                 os_free(previous_log);
             }
@@ -243,7 +249,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                     if(unlink(previous_log) == -1) {
                         merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                     }
-                    add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
+                    if(Config.archives_rotate != -1) {
+                        add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
+                    }
                 }
                 os_free(previous_log);
             }
@@ -265,7 +273,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 if(unlink(previous_log) == -1) {
                     merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                 }
-                add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
+                if(Config.alerts_rotate != -1) {
+                    add_new_rotation_node(Config.log_alerts_plain, __alogfile, Config.alerts_rotate);
+                }
             }
             os_free(previous_log);
             __alerts_rsec = local_timespec.tv_sec;
@@ -282,7 +292,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 if(unlink(previous_log) == -1) {
                     merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                 }
-                add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
+                if(Config.alerts_rotate != -1) {
+                    add_new_rotation_node(Config.log_alerts_json, __jlogfile, Config.alerts_rotate);
+                }
             }
             os_free(previous_log);
             __alerts_rsec = local_timespec.tv_sec;
@@ -303,7 +315,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 if(unlink(previous_log) == -1) {
                     merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                 }
-                add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
+                if(Config.archives_rotate != -1) {
+                    add_new_rotation_node(Config.log_archives_plain, __elogfile, Config.archives_rotate);
+                }
             }
             os_free(previous_log);
             __archives_rsec = local_timespec.tv_sec;
@@ -320,7 +334,9 @@ void OS_RotateLogs(int day,int year,char *mon) {
                 if(unlink(previous_log) == -1) {
                     merror("Unable to delete '%s' due to '%s'", previous_log, strerror(errno));
                 }
-                add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
+                if(Config.archives_rotate != -1) {
+                    add_new_rotation_node(Config.log_archives_json, __ejlogfile, Config.archives_rotate);
+                }
             }
             os_free(previous_log);
             __archives_rsec = local_timespec.tv_sec;
