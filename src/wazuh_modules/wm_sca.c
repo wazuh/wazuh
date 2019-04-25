@@ -1218,7 +1218,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     goto clean_return;
                 }
 
-            } else {
+            } else {    // g_found = 2 -> error executing a check
                 char **p_alert_msg = data->alert_msg;
                 wm_sca_summary_increment_invalid();
                 cJSON *event = NULL;
