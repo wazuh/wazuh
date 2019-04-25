@@ -655,9 +655,8 @@ void wdb_commit_old() {
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
             mdebug2("Committing database for agent %s", node->agent_id);
             if (node->remove) {
-                if (wdb_close(node) != 0) {
-                    w_mutex_unlock(&node->mutex);
-                }
+                wdb_close(node);
+                w_mutex_unlock(&node->mutex);
                 w_mutex_unlock(&pool_mutex);
                 return;
             } else {
