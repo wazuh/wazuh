@@ -1143,24 +1143,44 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 if (not_found == -1){ g_found = 0;} else {g_found = 1;}
             }
 
-            /* Alert if necessary */
+            /* Determine if requirements are satisfied */
             int i = 0;
-            if (g_found == 1) {
-                char **p_alert_msg = data->alert_msg;
-                if (!requirements_scan) {
-                    wm_sca_summary_increment_failed();
-                    cJSON *event = NULL;
-                        event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",reason);
-
-                    if(event){
-                        if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                            wm_sca_send_event_check(data,event);
-                        }
-                        cJSON_Delete(event);
-                    } else {
-                        merror("Building event for check: %s. Set debug mode for more information.", name);
+            if (requirements_scan) {
+                if (g_found == 1) {
+                    wm_sca_reset_summary();
+                } else if (g_found == -1 || g_found == 0) {
+                    if (condition & WM_SCA_COND_REQ) {
                         ret_val = 1;
                     }
+                    wm_sca_reset_summary();
+                } else if (g_found == 2) {
+                    merror("Checking requirements (%s)", reason);
+                    ret_val = 1;
+                    wm_sca_reset_summary();
+                }
+
+                for (i=0; data->alert_msg[i]; i++){
+                    free(data->alert_msg[i]);
+                    data->alert_msg[i] = NULL;
+                }
+                goto clean_return;
+            }
+
+            /* Alert if necessary */
+            if (g_found == 1) {
+                char **p_alert_msg = data->alert_msg;
+                wm_sca_summary_increment_failed();
+                cJSON *event = NULL;
+                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"failed",reason);
+
+                if(event){
+                    if(wm_sca_check_hash(cis_db[cis_db_index],"failed",profile,event,id_check_p,cis_db_index) && !first_scan) {
+                        wm_sca_send_event_check(data,event);
+                    }
+                    cJSON_Delete(event);
+                } else {
+                    merror("Building event for check: %s. Set debug mode for more information.", name);
+                    ret_val = 1;
                 }
 
                 for (i=0; data->alert_msg[i]; i++){
@@ -1168,26 +1188,20 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     data->alert_msg[i] = NULL;
                 }
 
-                if (requirements_scan == 1){
-                    wm_sca_reset_summary();
-                    goto clean_return;
-                }
             } else if (g_found == -1 || g_found == 0) {
                 char **p_alert_msg = data->alert_msg;
-                if (!requirements_scan) {
-                    wm_sca_summary_increment_passed();
-                    cJSON *event = NULL;
-                    event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",reason);
+                wm_sca_summary_increment_passed();
+                cJSON *event = NULL;
+                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"passed",reason);
 
-                    if(event){
-                        if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                            wm_sca_send_event_check(data,event);
-                        }
-                        cJSON_Delete(event);
-                    } else {
-                        merror("Building event for check: %s. Set debug mode for more information.", name);
-                        ret_val = 1;
+                if(event){
+                    if(wm_sca_check_hash(cis_db[cis_db_index],"passed",profile,event,id_check_p,cis_db_index) && !first_scan) {
+                        wm_sca_send_event_check(data,event);
                     }
+                    cJSON_Delete(event);
+                } else {
+                    merror("Building event for check: %s. Set debug mode for more information.", name);
+                    ret_val = 1;
                 }
 
                 for (i=0; data->alert_msg[i]; i++){
@@ -1196,44 +1210,29 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 }
 
                 if (condition & WM_SCA_COND_REQ) {
-                    if (requirements_scan == 1){
-                        ret_val = 1;
-                    }
-                    goto clean_return;
-                }
-
-                if (requirements_scan == 1){
-                    wm_sca_reset_summary();
                     goto clean_return;
                 }
 
             } else {
                 char **p_alert_msg = data->alert_msg;
-                if (!requirements_scan) {
-                    wm_sca_summary_increment_invalid();
-                    cJSON *event = NULL;
+                wm_sca_summary_increment_invalid();
+                cJSON *event = NULL;
 
-                    event = wm_sca_build_event(profile,policy,p_alert_msg,id,"",reason);
+                event = wm_sca_build_event(profile,policy,p_alert_msg,id,"",reason);
 
-                    if(event){
-                        if(wm_sca_check_hash(cis_db[cis_db_index],"",profile,event,id_check_p,cis_db_index) && !requirements_scan && !first_scan) {
-                            wm_sca_send_event_check(data,event);
-                        }
-                        cJSON_Delete(event);
-                    } else {
-                        merror("Building event for check: %s. Set debug mode for more information.", name);
-                        ret_val = 1;
+                if(event){
+                    if(wm_sca_check_hash(cis_db[cis_db_index],"",profile,event,id_check_p,cis_db_index) && !first_scan) {
+                        wm_sca_send_event_check(data,event);
                     }
+                    cJSON_Delete(event);
+                } else {
+                    merror("Building event for check: %s. Set debug mode for more information.", name);
+                    ret_val = 1;
                 }
 
                 for (i=0; data->alert_msg[i]; i++){
                     free(data->alert_msg[i]);
                     data->alert_msg[i] = NULL;
-                }
-
-                if (requirements_scan == 1){
-                    wm_sca_reset_summary();
-                    goto clean_return;
                 }
             }
             os_free(reason);
