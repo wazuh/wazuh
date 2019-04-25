@@ -2616,5 +2616,7 @@ class Agent:
             except (IOError, KeyError):
                 # the file can't be opened and therefore the group has not been synced
                 return {'synced': False}
+            except WazuhError as e:
+                raise WazuhError(e.code)
             except Exception as e:
                 raise WazuhInternalError(1739, str(e))

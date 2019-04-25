@@ -124,13 +124,13 @@ class WazuhException(Exception):
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
         1701: {'message': 'Agent does not exist',
-               'remediation': 'Please, make the following call to find all available agent `curl -u foo:bar -X GET "http://localhost:55000/agents?select=id"`'
+               'remediation': 'Please, make the following call to find all available agents `curl -u foo:bar -X GET "http://localhost:55000/agents?select=id"`'
                },
         1702: {'message': 'Unable to restart agent(s)',
                'remediation': 'Please make sure the agent exists and is active and is not the manager'
                },
-        1703: {'message': 'Action not available',
-               'remediation': 'This action is not available for Manager (Agent 000)'
+        1703: {'message': 'Action not available for Manager (Agent 000)',
+               'remediation': 'Please, make the following call to find all available agents `curl -u foo:bar -X GET "http://localhost:55000/agents?select=id"`, and ensure you select an agent other than 000'
                },
         1704: 'Unable to load requested info from agent db',
         1705: {'message': 'There is an agent with the same name',

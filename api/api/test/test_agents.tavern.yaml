@@ -1270,3 +1270,76 @@ stages:
           status: 400
           title: Bad Request
           type: about:blank
+
+---
+test_name: GET /agents/:agent_id/group/is_sync
+
+marks:
+  - usefixtures:
+      - agents_test
+
+stages:
+  - name: Try get sync agent 000 (manager)
+
+    request:
+      url: http://localhost:55000/agents/000/group/is_sync
+      method: GET
+
+    response: 
+      status_code: 400
+      body:
+        code: 1703
+        dapi_errors:
+          master-node:
+            error: "Action not available for Manager (Agent 000)"
+            logfile: "WAZUH_HOME/logs/api.log"
+        detail: "Action not available for Manager (Agent 000)"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Try get sync not existing agent
+
+    request:
+      url: http://localhost:55000/agents/999/group/is_sync
+      method: GET
+
+    response:
+      status_code: 400
+      body:
+        code: 1701
+        dapi_errors:
+          master-node:
+            error: "Agent does not exist"
+            logfile: "WAZUH_HOME/logs/api.log"
+        detail: "Agent does not exist"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        status: 400
+        title: "Wazuh Error"
+        type: "about:blank"
+
+  - name: Try get sync agent by name
+
+    request:
+      url: http://localhost:55000/agents/bad_id/group/is_sync
+      method: GET
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: Bad Request
+        type: about:blank
+
+  - name: Get agent sync
+
+    request:
+      url: http://localhost:55000/agents/001/group/is_sync
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        synced: true
