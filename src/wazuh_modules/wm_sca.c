@@ -96,7 +96,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 const wm_context WM_SCA_CONTEXT = {
     SCA_WM_NAME,
     (wm_routine)wm_sca_main,
-    (wm_routine)wm_sca_destroy,
+    (wm_routine)(void *)wm_sca_destroy,
     (cJSON * (*)(const void *))wm_sca_dump
 };
 
@@ -129,7 +129,7 @@ void * wm_sca_main(wm_sca_t * data) {
     if (!data->profile || data->profile[0] == NULL) {
         minfo("No policies defined. Exiting.");
         pthread_exit(NULL);
-    }     
+    }
 
     data->msg_delay = 1000000 / wm_max_eps;
     data->summary_delay = 3; /* Seconds to wait for summary sending */
@@ -1558,7 +1558,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
                 full_negate = 0;
                 break;
             }
-         
+
         }
 
         if (full_negate == 1) {
@@ -1941,10 +1941,10 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
         sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
         return 2;
     }
-    
+
     /* If the key does exists, a test for existance succeeds  */
     *test_result = 1;
-    
+
     /* If option is set, set test_result as the value of query key */
     if (reg_option) {
         *test_result = wm_sca_winreg_querykey(oshkey, subkey, full_key_name, reg_option, reg_value);
@@ -2569,7 +2569,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
                 wm_delay(1000 * time);
                 mdebug1("Dumping results to SCA DB for policy index '%u'",request->policy_index);
             }
-          
+
             int scan_id = -1;
             w_rwlock_wrlock(&dump_rwlock);
 
@@ -2595,7 +2595,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
             }
 
             wm_delay(5000);
-           
+
             int elements_sent = i - 1;
             mdebug1("Sending end of dump control event");
 
@@ -2678,7 +2678,7 @@ void wm_sca_push_request_win(char * msg){
                     if(strcmp(data_win->profile[i]->policy_id,db) == 0){
                         request_dump_t *request;
                         os_calloc(1, sizeof(request_dump_t),request);
-                         
+
                         request->policy_index = i;
                         request->first_scan = atoi(first_scan);
 
@@ -2748,7 +2748,7 @@ static void * wm_sca_request_thread(wm_sca_t * data) {
                         if(strcmp(data->profile[i]->policy_id,db) == 0){
                             request_dump_t *request;
                             os_calloc(1, sizeof(request_dump_t),request);
-                         
+
                             request->policy_index = i;
                             request->first_scan = atoi(first_scan);
 

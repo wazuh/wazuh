@@ -585,8 +585,8 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 # Section 3.2 - Network Parameters (Host and Router)
  - id: 7545
    title: "Ensure source routed packets are not accepted"

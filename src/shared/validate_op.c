@@ -94,11 +94,11 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
             merror(FGETS_ERROR, def_file, buf);
             continue;
         }
-        
+
         /* Prepare buf_pt to access the value for this option */
         *buf_pt = '\0';
         buf_pt++;
-        
+
         /* Remove possible whitespaces between the low name and the equal sign */
         i = (strlen(tmp_buffer) - 1);
         while(tmp_buffer[i] == ' ')
@@ -106,15 +106,15 @@ static char *_read_file(const char *high_name, const char *low_name, const char 
             tmp_buffer[i] = '\0';
             i--;
         }
-        
+
         /* Check for the low name */
         if (strcmp(tmp_buffer, low_name) != 0) {
             continue;
         }
-        
+
         /* Ignore possible whitespaces between the equal sign and the value for this option */
         while(*buf_pt == ' ') buf_pt++;
-        
+
         /* Remove newlines or anything that will cause errors */
         tmp_buffer = strrchr(buf_pt, '\n');
         if (tmp_buffer) {
@@ -605,16 +605,16 @@ char *OS_IsValidTime(const char *time_str)
         return (NULL);
     }
 
-    os_calloc(13, sizeof(char), ret);
+    os_calloc(16, sizeof(char), ret);
 
     /* Fix dump hours */
     if (strcmp(first_hour, second_hour) > 0) {
-        snprintf(ret, 12, "!%s%s", second_hour, first_hour);
+        snprintf(ret, 16, "!%s%s", second_hour, first_hour);
         return (ret);
     }
 
     /* For the normal times */
-    snprintf(ret, 12, "%c%s%s", ng == 0 ? '.' : '!', first_hour, second_hour);
+    snprintf(ret, 16, "%c%s%s", ng == 0 ? '.' : '!', first_hour, second_hour);
 
     return (ret);
 }
