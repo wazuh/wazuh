@@ -236,8 +236,10 @@ class WazuhException(Exception):
         3020: {'message': 'Timeout sending request',
                'remediation': ''},
         3021: 'Timeout executing API request',
-        3022: 'Unknown node ID',
-        3023: 'Worker node is not connected to master'
+        3022: {'message': 'Unknown node ID',
+               'remediation': 'Check the name of the node'},
+        3023: {'message': 'Worker node is not connected to master',
+               'remediation': ''}
 
         # > 9000: Authd
     }

@@ -16,8 +16,9 @@ import fcntl
 from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import cluster as metadata
-from wazuh import common, utils, WazuhException
+from wazuh import common, utils,
 from wazuh.cluster.dapi import dapi
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):
@@ -138,7 +139,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             elif client in self.server.clients:
                 result = (await self.server.clients[client].send_request(b'dapi', request_id.encode() + b' ' + request)).decode()
             else:
-                raise WazuhException(3022, client)
+                raise WazuhError(3022, client)
         else:
             result = (await self.send_request(b'dapi', request_id.encode() + b' ' + data)).decode()
         if result.startswith('Error'):

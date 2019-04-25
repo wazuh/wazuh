@@ -10,7 +10,7 @@ import uvloop
 from wazuh import common, exception
 from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -128,7 +128,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
     def send_file_request(self, path, node_name):
         if node_name not in self.server.node.clients:
-            raise WazuhException(3022)
+            raise WazuhError(3022)
         else:
             req = asyncio.create_task(self.server.node.clients[node_name].send_file(path))
             req.add_done_callback(self.get_send_file_response)
