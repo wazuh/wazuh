@@ -499,7 +499,6 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
     /* Generate new checksum */
     newsum[0] = '\0';
-    newsum[OS_MAXSTR] = '\0';
     if (S_ISREG(statbuf.st_mode))
     {
         if (sha1sum || md5sum || sha256sum) {

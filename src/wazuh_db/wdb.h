@@ -41,6 +41,8 @@
 
 #define WDB_MULTI_GROUP_DELIM '-'
 
+#define WDB_RESPONSE_BEGIN_SIZE 16
+
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
 typedef enum wdb_stmt {

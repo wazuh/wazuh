@@ -63,10 +63,12 @@ int wdb_send_query(char *wazuhdb_query, char **output) {
 
             if (OS_SendSecureTCP(wdb_socket, size + 1, wazuhdb_query)) {
                 mterror(ARGV0, "in send reattempt (%d) '%s'.", errno, strerror(errno));
+                close(wdb_socket);
                 return retval;
             }
         } else {
             mterror(ARGV0, "in send (%d) '%s'.", errno, strerror(errno));
+            close(wdb_socket);
             return retval;
         }
     }
@@ -77,6 +79,7 @@ int wdb_send_query(char *wazuhdb_query, char **output) {
 
     if (select(wdb_socket + 1, &fdset, NULL, NULL, &timeout) < 0) {
         mterror(ARGV0, "in select (%d) '%s'.", errno, strerror(errno));
+        close(wdb_socket);
         return retval;
     }
     retval = -1;
@@ -94,6 +97,7 @@ int wdb_send_query(char *wazuhdb_query, char **output) {
         mterror(ARGV0, "no response from wazuh-db.");
     }
 
+    close(wdb_socket);
     return retval;
 }
 

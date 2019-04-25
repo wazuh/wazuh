@@ -375,11 +375,11 @@ int wdb_remove_agent_db(int id, const char * name) {
     snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db", isChroot() ? "/" : "", WDB_DIR, id, name);
 
     if (!remove(path)) {
-        snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
+        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-shm", isChroot() ? "/" : "", WDB_DIR, id, name);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }
-        snprintf(path, PATH_MAX, "%s%s/agents/%03d-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
+        snprintf(path_aux, PATH_MAX, "%s%s/agents/%03d-%s.db-wal", isChroot() ? "/" : "", WDB_DIR, id, name);
         if (remove(path_aux) < 0) {
             mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
         }

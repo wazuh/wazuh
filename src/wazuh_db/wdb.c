@@ -655,7 +655,9 @@ void wdb_commit_old() {
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
             mdebug2("Committing database for agent %s", node->agent_id);
             if (node->remove) {
-                wdb_close(node);
+                if (wdb_close(node) != 0) {
+                    w_mutex_unlock(&node->mutex);
+                }
                 w_mutex_unlock(&pool_mutex);
                 return;
             } else {
@@ -762,7 +764,7 @@ int wdb_close(wdb_t * wdb) {
         if (result == SQLITE_OK) {
             if (wdb->remove) {
                 mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
-                if (remove(path)) {
+                if (unlink(path)) {
                     mwarn("Couldn'n delete wazuh database: '%s'", path);
                     return -1;
                 }
@@ -888,10 +890,10 @@ cJSON *wdb_remove_multiple_agents(char *agent_list) {
 
                 if (strcmp(agent, "000") != 0) {
                     // Check if file not exists
-                    if (access(path, F_OK) != -1) {
+                    if (IsFile(path) == 0) {
                         if (wdb = wdb_open_agent2(agent_id), !wdb) {
                             mdebug1("Removing db for agent '%s'", agent);
-                            if (remove(path)) {
+                            if (unlink(path)) {
                                 mwarn("Couldn'n delete wazuh database: '%s'", path);
                             }
                             n++;

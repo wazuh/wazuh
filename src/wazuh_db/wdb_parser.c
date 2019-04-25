@@ -12,7 +12,6 @@
 #include "wdb.h"
 #include "external/cJSON/cJSON.h"
 
-#define WDB_RESPONSE_BEGIN_SIZE 16
 
 int wdb_parse(char * input, char * output) {
     char * actor;
