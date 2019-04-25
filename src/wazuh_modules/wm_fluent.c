@@ -452,7 +452,10 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
     assert(helo);
 
     randombytes(salt, sizeof(salt));
-    gethostname(hostname, sizeof(hostname) - 1);
+    if (gethostname(hostname, sizeof(hostname) - 1)) {
+        mwarn("Unable to get hostname of '%s' due to: '%s'", hostname, strerror(errno));
+        return OS_INVALID;
+    }
 
     /* Compute shared key hex digest */
 
