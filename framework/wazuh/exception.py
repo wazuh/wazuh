@@ -57,7 +57,7 @@ class WazuhException(Exception):
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
         1111: "Remote group file updates are only available in 'agent.conf' file",
-        1112: {'Empty files are not supported',
+        1112: {'message': 'Empty files are not supported',
               'remediation': 'Try to upload another file'},
         1113: {'message': 'XML syntax error',
                'remediation': 'Verify XML syntax'},
