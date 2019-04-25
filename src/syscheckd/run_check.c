@@ -366,7 +366,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
-        char alert_msg[OS_SIZE_6144 + 1];
+        char alert_msg[OS_SIZE_6144 + OS_SIZE_2048];
         char wd_sum[OS_SIZE_6144 + 1];
         int pos;
 

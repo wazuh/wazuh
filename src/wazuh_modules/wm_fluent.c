@@ -61,7 +61,7 @@ static int wm_fluent_check_config(wm_fluent_t * fluent);
 const wm_context WM_FLUENT_CONTEXT = {
     FLUENT_WM_NAME,
     (wm_routine)wm_fluent_main,
-    (wm_routine)wm_fluent_destroy,
+    (wm_routine)(void *)wm_fluent_destroy,
     (cJSON * (*)(const void *))wm_fluent_dump
 };
 
