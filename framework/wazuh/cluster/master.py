@@ -16,7 +16,7 @@ import fcntl
 from wazuh.agent import Agent
 from wazuh.cluster import server, cluster, common as c_common
 from wazuh import cluster as metadata
-from wazuh import common, utils,
+from wazuh import common, utils
 from wazuh.cluster.dapi import dapi
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 
