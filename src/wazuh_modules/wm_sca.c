@@ -1378,7 +1378,7 @@ static int wm_sca_check_file(char * const file, char * const pattern)
             fclose(fp);
         } else if (w_is_file(file)) {
             /* If we don't have a pattern, just check if the file/dir is there */
-            result_accumulator = 0;
+            result_accumulator = 1;
         }
     }
 
