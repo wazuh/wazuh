@@ -964,9 +964,11 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                     if (!data->remote_commands && remote_policy) {
                         mwarn("Ignoring check for policy '%s'. The internal option 'sca.remote_commands' is disabled.", cJSON_GetObjectItem(policy, "name")->valuestring);
-                        os_malloc(OS_MAXSTR, reason);
-                        sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
-                        found = 2;
+                        if (reason == NULL) {
+                            os_malloc(OS_MAXSTR, reason);
+                            sprintf(reason,"Ignoring check for running command '%s'. The internal option 'sca.remote_commands' is disabled", f_value);
+                            found = 2;
+                        }
                     }
 
                     if (found != 2) {
@@ -1109,6 +1111,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                 /* If not applicable, return g_found = 2 */
                 if (found == 2) {
                     g_found = 2;
+                    break;
                 }
                 /* Check the conditions */
                 else if (condition & WM_SCA_COND_ANY) {
@@ -1133,6 +1136,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                         g_found = -1;
                     }
                 }
+
+                os_free(reason);
             }
 
             /* if the loop breaks, rule_cp shall be released.
@@ -1234,8 +1239,8 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
                     free(data->alert_msg[i]);
                     data->alert_msg[i] = NULL;
                 }
+                os_free(reason);
             }
-            os_free(reason);
 
             /* End if we don't have anything else */
             if (!nbuf) {
