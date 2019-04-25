@@ -400,7 +400,7 @@ checks:
      - cis: "6.1.5"
    condition: any
    rules:
-     - 'd:/Users -> ^Guest$;'
+     - 'd:/Users/Guest;'
 # 6.2 Turn on filename extensions (Scored)
  - id: 3032
    title: "Turn on filename extensions (Scored)"
