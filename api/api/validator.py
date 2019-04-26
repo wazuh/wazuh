@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-
+import dateutil.parser
 from typing import Dict, List, Tuple
 from xml.etree import ElementTree as ET
 import os
@@ -176,3 +176,13 @@ def format_timeframe(value):
 @draft4_format_checker.checks("wazuh_key")
 def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
+
+
+# @draft4_format_checker.checks("date-time")
+# def format_datetime(value):
+#     try:
+#         dateutil.parser.parse(value)
+#         return True
+#     except Exception as e:
+#         return False
+
