@@ -1513,7 +1513,7 @@ static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, cha
            in_operation = 0;
            mdebug2("Negation found, is a NIN rule");
         } else {
-            mdebug2("Negation found, is an IN rule");
+            mdebug2("Negation not found, is an IN rule");
         }
     } else {
         merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
