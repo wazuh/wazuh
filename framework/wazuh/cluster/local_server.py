@@ -10,7 +10,7 @@ import uvloop
 from wazuh import common, exception
 from wazuh.cluster import server, common as c_common, client
 from wazuh.cluster.dapi import dapi
-from wazuh.exception import WazuhException
+from wazuh.exception import WazuhClusterError
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -58,7 +58,14 @@ class LocalServerHandler(server.AbstractServerHandler):
 
     def get_send_file_response(self, future):
         result = future.result()
-        asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
+        send_res = asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
+        send_res.add_done_callback(self.send_res_callback)
+
+    def send_res_callback(self, future):
+        if not future.cancelled():
+            exc = future.exception()
+            if exc:
+                self.logger.error(exc)
 
 
 class LocalServer(server.AbstractServer):
@@ -128,7 +135,7 @@ class LocalServerHandlerMaster(LocalServerHandler):
 
     def send_file_request(self, path, node_name):
         if node_name not in self.server.node.clients:
-            raise WazuhException(3022)
+            raise WazuhClusterError(3022)
         else:
             req = asyncio.create_task(self.server.node.clients[node_name].send_file(path))
             req.add_done_callback(self.get_send_file_response)
@@ -149,14 +156,10 @@ class LocalServerHandlerWorker(LocalServerHandler):
     def process_request(self, command: bytes, data: bytes):
         self.logger.debug2("Command received: {}".format(command))
         if command == b'dapi':
-            api_call_name = json.loads(data.decode())['function']
-            if api_call_name not in {'/cluster/nodes', '/cluster/nodes/:node_name', '/cluster/healthcheck'}:
-                if self.server.node.client is None:
-                    raise WazuhException(3023)
-                asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
-                return b'ok', b'Added request to API requests queue'
-            else:
-                return self.send_request_to_master(command=b'dapi_cluster', arguments=data)
+            if self.server.node.client is None:
+                raise WazuhClusterError(3023)
+            asyncio.create_task(self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data))
+            return b'ok', b'Added request to API requests queue'
         else:
             return super().process_request(command, data)
 
@@ -168,25 +171,20 @@ class LocalServerHandlerWorker(LocalServerHandler):
 
     def send_request_to_master(self, command: bytes, arguments: bytes):
         if self.server.node.client is None:
-            raise WazuhException(3023)
+            raise WazuhClusterError(3023)
         else:
             request = asyncio.create_task(self.server.node.client.send_request(command, arguments))
             request.add_done_callback(functools.partial(self.get_api_response, command))
             return b'ok', b'Sent request to master node'
 
     def get_api_response(self, in_command, future):
-        result = future.result()
-        if result.startswith(b'Error'):
-            result = json.dumps(exception.WazuhException(3000, result.decode()).to_dict()).encode()
-        elif result.startswith(b'WazuhException'):
-            _, code, message = result.decode().split(' ', 2)
-            result = json.dumps(exception.WazuhException(int(code), message).to_dict()).encode()
-        asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
-                                              data=result))
+        send_res = asyncio.create_task(self.send_request(command=b'dapi_res' if in_command == b'dapi' else b'control_res',
+                                                         data=future.result()))
+        send_res.add_done_callback(self.send_res_callback)
 
     def send_file_request(self, path, node_name):
         if self.server.node.client is None:
-            raise WazuhException(3023)
+            raise WazuhClusterError(3023)
         else:
             req = asyncio.create_task(self.server.node.client.send_file(path))
             req.add_done_callback(self.get_send_file_response)
