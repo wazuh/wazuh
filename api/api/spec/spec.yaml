@@ -2615,10 +2615,7 @@ components:
       description: Filters files with the specified hash (md5, sha256 or sha1)
       schema:
         type: string
-        enum:
-          - md5
-          - sha256
-          - sha1
+        format: hash
     ram_free:
       in: query
       name: ram_free
