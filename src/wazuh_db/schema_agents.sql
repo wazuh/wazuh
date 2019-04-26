@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     mtime INTEGER,
     inode INTEGER,
     sha256 TEXT,
-    attributes INTEGER DEFAULT 0
+    attributes INTEGER DEFAULT 0,
+    symbolic_path TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pm_event (
@@ -227,7 +228,8 @@ CREATE TABLE IF NOT EXISTS sca_policy (
    file TEXT,
    id TEXT,
    description TEXT,
-   `references` TEXT
+   `references` TEXT,
+   hash_file TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sca_scan_info (
@@ -253,11 +255,19 @@ CREATE TABLE IF NOT EXISTS sca_check (
    process TEXT,
    directory TEXT,
    registry TEXT,
+   command TEXT,
    `references` TEXT,
    result TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS policy_id_index ON sca_check (policy_id);
+
+CREATE TABLE IF NOT EXISTS sca_check_rules (
+  id_check INTEGER REFERENCES sca_check (id),
+  `type` TEXT,
+  rule TEXT,
+  PRIMARY KEY (id_check, `type`, rule)
+);
 
 CREATE TABLE IF NOT EXISTS sca_check_compliance (
    id_check INTEGER REFERENCES sca_check (id),

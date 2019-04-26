@@ -25,7 +25,9 @@ if [ -r "/etc/os-release" ]; then
     if [ "X$DIST_SUBVER" = "X" ]; then
         DIST_SUBVER="0"
     fi
-else
+fi
+
+if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
     # CentOS
     if [ -r "/etc/centos-release" ]; then
         DIST_NAME="centos"

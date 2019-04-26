@@ -130,7 +130,7 @@ void run_notify()
 
     rand_keepalive_str2(keep_alive_random, KEEPALIVE_SIZE);
 
-#ifdef __linux__
+#if defined (__linux__) || defined (__MACH__)
     char *agent_ip;
     int sock;
     char label_ip[50];

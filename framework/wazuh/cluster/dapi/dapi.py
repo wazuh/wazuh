@@ -4,6 +4,13 @@
 import asyncio
 import itertools
 import json
+import operator
+import random
+from typing import Dict, Union, Tuple
+from wazuh.cluster import local_client, cluster, common as c_common
+from wazuh.cluster.dapi import requests_list as rq
+from wazuh import exception, agent, common, utils
+from wazuh import manager
 import logging
 import operator
 import os
@@ -113,10 +120,30 @@ class DistributedAPI:
         except Exception as e:
             if self.debug:
                 raise
+
             self.logger.error(f'Unhandled exception: {str(e)}', exc_info=True)
             return exception.WazuhInternalError(1000,
                                                 extra_message=str(e),
                                                 dapi_errors=self.get_error_info(e))
+
+    def check_wazuh_status(self):
+        """
+        There are some services that are required for wazuh to correctly process API requests. If any of those services
+        is not running, the API must raise an exception indicating that:
+            * It's not ready yet to process requests if services are restarting
+            * There's an error in any of those services that must be adressed before using the API if any service is
+              in failed status.
+            * Wazuh must be started before using the API is the services are stopped.
+
+        The basic services wazuh needs to be running are: wazuh-modulesd, ossec-remoted, ossec-analysisd, ossec-execd and wazuh-db
+        """
+        if self.f == manager.status:
+            return
+        basic_services = ('wazuh-modulesd', 'ossec-remoted', 'ossec-analysisd', 'ossec-execd', 'wazuh-db')
+        status = operator.itemgetter(*basic_services)(manager.status())
+        for status_name, exc_code in [('failed', 1019), ('restarting', 1017), ('stopped', 1018)]:
+            if status_name in status:
+                raise exception.WazuhError(exc_code, status)
 
     async def execute_local_request(self) -> str:
         """
@@ -132,8 +159,10 @@ class DistributedAPI:
         try:
             before = time.time()
 
+            self.check_wazuh_status()
+
             timeout = None if self.wait_for_complete \
-                           else self.cluster_items['intervals']['communication']['timeout_api_request']
+                           else self.cluster_items['intervals']['communication']['timeout_api_exe']
 
             if self.is_async:
                 task = run_local()
@@ -195,8 +224,6 @@ class DistributedAPI:
                                                    node_name),
                          object_hook=c_common.as_wazuh_object)
         os.remove(os.path.join(common.ossec_path, self.f_kwargs['tmp_file']))
-        if res.startswith(b'Error'):
-            return exception.WazuhInternalError(extra_message=res.decode())
 
     async def execute_remote_request(self) -> Dict:
         """
@@ -347,9 +374,9 @@ class APIRequestQueue:
 
             if task_id.startswith(b'Error'):
                 self.logger.error(task_id.decode())
-                result = await node.send_request(b'dapi_err', name_2.encode() + task_id, b'dapi_err')
+                result = await node.send_request(b'dapi_err', name_2.encode() + task_id)
             else:
-                result = await node.send_request(b'dapi_res', name_2.encode() + task_id, b'dapi_err')
+                result = await node.send_request(b'dapi_res', name_2.encode() + task_id)
             if result.startswith(b'Error'):
                 self.logger.error(result.decode())
 

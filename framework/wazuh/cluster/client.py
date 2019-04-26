@@ -8,6 +8,7 @@ from wazuh.cluster import common, cluster
 import logging
 import time
 import itertools
+import traceback
 
 
 class AbstractClientManager:
@@ -120,7 +121,7 @@ class AbstractClient(common.Handler):
 
     def connection_result(self, future_result):
         response_msg = future_result.result()[0]
-        if response_msg.startswith(b'Error'):
+        if isinstance(response_msg, Exception):
             self.logger.error("Could not connect to master: {}.".format(response_msg))
             self.transport.close()
         else:
@@ -147,7 +148,8 @@ class AbstractClient(common.Handler):
         if exc is None:
             self.logger.info('The master closed the connection')
         else:
-            self.logger.error("Connection closed due to an unhandled error: {}".format(exc))
+            self.logger.error(f"Connection closed due to an unhandled error: {exc}\n"
+                              f"{''.join(traceback.format_tb(exc.__traceback__))}")
 
         if not self.on_con_lost.done():
             self.on_con_lost.set_result(True)
@@ -184,20 +186,29 @@ class AbstractClient(common.Handler):
         return b'ok-c', data
 
     async def client_echo(self):
+        """
+        Sends a Keep alive to the server every self.cluster_items['intervals']['worker']['keep_alive'] seconds.
+
+        The client will disconnect from the server tf more than
+        self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts'] attempts in a row are failed
+
+        This asyncio task will be started as soon as the client connects to the server and will be always running.
+        """
         keep_alive_logger = self.setup_task_logger("Keep Alive")
         # each subtask must have its own local logger defined
         n_attempts = 0  # number of failed attempts to send a keep alive to server
         while not self.on_con_lost.done():
             if self.connected:
-                result = await self.send_request(b'echo-c', b'keepalive')
-                if result.startswith(b'Error'):
+                try:
+                    result = await self.send_request(b'echo-c', b'keepalive')
+                    keep_alive_logger.info(result.decode())
+                    n_attempts = 0  # set failed attempts to 0 when the last one was successful
+                except Exception as e:
+                    keep_alive_logger.error(f"Error sending keep alive: {e}")
                     n_attempts += 1
                     if n_attempts >= self.cluster_items['intervals']['worker']['max_failed_keepalive_attempts']:
                         keep_alive_logger.error("Maximum number of failed keep alives reached. Disconnecting.")
                         self.transport.close()
-                else:
-                    n_attempts = 0  # set failed attempts to 0 when the last one was successful
-                keep_alive_logger.info(result.decode())
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['keep_alive'])
 

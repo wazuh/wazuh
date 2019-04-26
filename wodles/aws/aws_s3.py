@@ -93,27 +93,27 @@ class WazuhIntegration:
                                             metadata (
                                             key 'text' NOT NULL,
                                             value 'text' NOT NULL,
-                                            PRIMARY KEY (key, value))
+                                            PRIMARY KEY (key, value));
                                         """
 
-        self.sql_check_metadata_version = """
+        self.sql_get_metadata_version = """
                                         SELECT
                                             value
                                         FROM
                                             metadata
                                         WHERE
-                                            key='version'
+                                            key='version';
                                         """
 
-        self.sql_find_table_metadata = """
-                                    SELECT
-                                        tbl_name
-                                    FROM
-                                        sqlite_master
-                                    WHERE
-                                        type='table' AND
-                                        name='metadata';
-                                    """
+        self.sql_find_table = """
+                                SELECT
+                                    tbl_name
+                                FROM
+                                    sqlite_master
+                                WHERE
+                                    type='table' AND
+                                    name='{name}';
+                                """
 
         self.sql_insert_version_metadata = """
                                         INSERT INTO metadata (
@@ -121,13 +121,27 @@ class WazuhIntegration:
                                             value)
                                         VALUES (
                                             'version',
-                                            '{wazuh_version}')"""
+                                            '{wazuh_version}');"""
 
-        self.sql_delete_trail_progress = """
-                                        DROP TABLE trail_progress;
+        self.sql_update_version_metadata = """
+                                        UPDATE
+                                            metadata
+                                        SET
+                                            value='{wazuh_version}'
+                                        WHERE
+                                            key='version';
                                         """
 
-        self.wazuh_path = open('/etc/ossec-init.conf').readline().split('"')[1]
+        self.sql_drop_table = """
+                            DROP TABLE {table};
+                            """
+
+        # get path and version from ossec.init.conf
+        with open('/etc/ossec-init.conf') as f:
+            lines = f.readlines()
+            re_ossec_init = re.compile(r'^([A-Z]+)={1}"{1}([\w\/.]+)"{1}$')
+            self.wazuh_path = re.search(re_ossec_init, lines[0]).group(2)
+            self.wazuh_version = re.search(re_ossec_init, lines[2]).group(2)
         self.wazuh_queue = '{0}/queue/ossec/queue'.format(self.wazuh_path)
         self.wazuh_wodle = '{0}/wodles/aws'.format(self.wazuh_path)
         self.msg_header = "1:Wazuh-AWS:"
@@ -141,27 +155,57 @@ class WazuhIntegration:
         self.db_cursor = self.db_connector.cursor()
         if bucket:
             self.bucket = bucket
-        self.wazuh_version = '3.8'
+        self.old_version = None  # for DB migration if it is necessary
         self.check_metadata_version()
+
+    def migrate_from_38(self, **kwargs):
+        self.db_maintenance(**kwargs)
+        self.db_connector.commit()
+
+    def migrate(self, **kwargs):
+        regex_version = re.compile(r'^v?(\d.\d){1}')
+        old_version = re.search(regex_version, self.old_version).group(1).replace('.', '')
+        current_version = re.search(regex_version, self.wazuh_version).group(1).replace('.', '')
+        if old_version < current_version:
+            migration_method_name = 'migrate_from_{}'.format(old_version)
+            if hasattr(self, migration_method_name):
+                migration_method = getattr(self, migration_method_name)
+                # do migration from 3.8 version
+                if old_version == '38':
+                    migration_method(**kwargs)
 
     def check_metadata_version(self):
         try:
-            query_metadata = self.db_connector.execute(self.sql_find_table_metadata)
-            metadata = query_metadata.fetchone()[0]
-            # if not exist metadata table, an AttributeError will happen
-            query_version = self.db_connector.execute(self.sql_check_metadata_version)
-            metadata_version = query_version.fetchone()[0]
-        except Exception:
-            # create metadate table
-            self.db_connector.execute(self.sql_create_metadata_table)
-            # insert wazuh version value
-            self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
-            # delete old table (trail_progress), only for buckets services
-            self.db_connector.commit()
-            try:
-                self.db_connector.execute(self.sql_delete_trail_progress)
-            except Exception:
-                pass
+            query_metadata = self.db_connector.execute(self.sql_find_table.format(name='metadata'))
+            metadata = True if query_metadata.fetchone() else False
+            if metadata:
+                query_version = self.db_connector.execute(self.sql_get_metadata_version)
+                metadata_version = query_version.fetchone()[0]
+                # update Wazuh version in metadata table
+                if metadata_version != self.wazuh_version:
+                    self.old_version = metadata_version
+                    self.db_connector.execute(self.sql_update_version_metadata.format(wazuh_version=self.wazuh_version))
+                    self.db_connector.commit()
+            else:
+                # create metadate table
+                self.db_connector.execute(self.sql_create_metadata_table)
+                # insert wazuh version value
+                self.db_connector.execute(self.sql_insert_version_metadata.format(wazuh_version=self.wazuh_version))
+                self.db_connector.commit()
+                # delete old tables if its exist
+                self.delete_deprecated_tables()
+        except Exception as e:
+            print('ERROR: Error creating metadata table: {}'.format(e))
+            sys.exit(5)
+
+    def delete_deprecated_tables(self):
+        query_tables = self.db_connector.execute(self.sql_find_table_names)
+        tables = query_tables.fetchall()
+        for table in tables:
+            if 'log_progress' in table:
+                self.db_connector.execute(self.sql_drop_table.format(table='log_progress'))
+            elif 'trail_progress' in table:
+                self.db_connector.execute(self.sql_drop_table.format(table='trail_progress'))
 
     def get_client(self, access_key, secret_key, profile, iam_role_arn, service_name, bucket, region=None):
         conn_args = {}
@@ -311,7 +355,7 @@ class AWSBucket(WazuhIntegration):
                             bucket_path='{bucket_path}' AND
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
-                            log_key='{log_name}'"""
+                            log_key='{log_name}';"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
@@ -326,7 +370,7 @@ class AWSBucket(WazuhIntegration):
                                 '{aws_region}',
                                 '{log_key}',
                                 DATETIME('now'),
-                                '{created_date}')"""
+                                '{created_date}');"""
 
         self.sql_create_table = """
                             CREATE TABLE
@@ -372,23 +416,33 @@ class AWSBucket(WazuhIntegration):
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
-                                rowid NOT IN
-                                (SELECT ROWID
+                                log_key <=
+                                (SELECT log_key
                                     FROM
                                     {table_name}
                                     WHERE
+                                        bucket_path='{bucket_path}' AND
+                                        aws_account_id='{aws_account_id}' AND
+                                        aws_region='{aws_region}'
+                                    ORDER BY
+                                        log_key DESC
+                                    LIMIT 1
+                                    OFFSET {retain_db_records});"""
+
+        self.sql_count_region = """
+                                SELECT
+                                    count(*)
+                                FROM
+                                    {table_name}
+                                WHERE
                                     bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}' AND
-                                    aws_region='{aws_region}'
-                                    ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
+                                    aws_region='{aws_region}';"""
 
         self.db_name = 's3_cloudtrail'
         WazuhIntegration.__init__(self, access_key=access_key, secret_key=secret_key,
             aws_profile=profile, iam_role_arn=iam_role_arn, bucket=bucket, service_name='s3')
-        self.legacy_db_table_name = 'log_progress'
-        self.retain_db_records = 1000
+        self.retain_db_records = 500
         self.reparse = reparse
         self.only_logs_after = datetime.strptime(only_logs_after, "%Y%m%d")
         self.skip_on_error = skip_on_error
@@ -449,16 +503,44 @@ class AWSBucket(WazuhIntegration):
         if self.db_table_name not in tables:
             self.create_table()
 
-    def db_maintenance(self, aws_account_id, aws_region):
+    def db_count_region(self, aws_account_id, aws_region):
+        """Counts the number of rows in DB for a region
+        :param aws_account_id: AWS account ID
+        :type aws_account_id: str
+        :param aws_region: AWS region
+        :param aws_region: str
+        :rtype: int
+        """
+        try:
+            query_count_region = self.db_connector.execute(
+                self.sql_count_region.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    retain_db_records=self.retain_db_records
+                ))
+            return query_count_region.fetchone()[0]
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    error_msg=e))
+            sys.exit(10)
+
+    def db_maintenance(self, aws_account_id=None, aws_region=None):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(self.sql_db_maintenance.format(
-                bucket_path=self.bucket_path,
-                table_name=self.db_table_name,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                retain_db_records=self.retain_db_records
-            ))
+            if self.db_count_region(aws_account_id, aws_region) \
+                > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    bucket_path=self.bucket_path,
+                    table_name=self.db_table_name,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    retain_db_records=self.retain_db_records
+                ))
         except Exception as e:
             print(
                 "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
@@ -552,6 +634,9 @@ class AWSBucket(WazuhIntegration):
         if 'sourceIPAddress' in event['aws'] and re.match(r'\d+\.\d+.\d+.\d+', event['aws']['sourceIPAddress']):
             event['aws']['source_ip_address'] = event['aws']['sourceIPAddress']
 
+        if 'tags' in event['aws'] and not isinstance(event['aws']['tags'], dict):
+            event['aws']['tags'] = {'value': event['aws']['tags']}
+
         return event
 
     def decompress_file(self, log_key):
@@ -631,7 +716,7 @@ class AWSBucket(WazuhIntegration):
                 # Send the message
                 self.send_msg(event_msg)
 
-    def iter_files_in_bucket(self, aws_account_id, aws_region):
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None):
         try:
             bucket_files = self.client.list_objects_v2(**self.build_s3_filter_args(aws_account_id, aws_region))
 
@@ -661,7 +746,7 @@ class AWSBucket(WazuhIntegration):
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -693,7 +778,7 @@ class AWSBucket(WazuhIntegration):
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
                 # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
                 self.db_connector.commit()
         except SystemExit:
             raise
@@ -784,9 +869,11 @@ class AWSLogsBucket(AWSBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
+                if self.old_version:
+                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 self.iter_files_in_bucket(aws_account_id, aws_region)
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -895,12 +982,14 @@ class AWSConfigBucket(AWSLogsBucket):
                 if regions == []:
                     continue
             for aws_region in regions:
+                if self.old_version:
+                    self.migrate(aws_account_id=aws_account_id, aws_region=aws_region)
                 debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # for processing logs day by day
                 date_list = self.get_date_list(aws_account_id, aws_region)
                 for date in date_list:
                     self.iter_files_in_bucket(aws_account_id, aws_region, date)
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def add_zero_to_day(self, date):
         # add zero to days with one digit
@@ -976,7 +1065,7 @@ class AWSConfigBucket(AWSLogsBucket):
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file)
             # optimize DB
-            self.db_maintenance(aws_account_id, aws_region)
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -1008,7 +1097,7 @@ class AWSConfigBucket(AWSLogsBucket):
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file)
                 # optimize DB
-                self.db_maintenance(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
                 self.db_connector.commit()
         except SystemExit:
             raise
@@ -1114,7 +1203,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                             aws_account_id='{aws_account_id}' AND
                             aws_region='{aws_region}' AND
                             flow_log_id='{flow_log_id}' AND
-                            log_key='{log_key}'"""
+                            log_key='{log_key}';"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
@@ -1131,7 +1220,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 '{flow_log_id}',
                                 '{log_key}',
                                 DATETIME('now'),
-                                '{created_date}')"""
+                                '{created_date}');"""
 
         self.sql_create_table = """
                             CREATE TABLE
@@ -1182,18 +1271,30 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                                 aws_account_id='{aws_account_id}' AND
                                 aws_region='{aws_region}' AND
                                 flow_log_id='{flow_log_id}' AND
-                                rowid NOT IN
-                                (SELECT ROWID
+                                log_key <=
+                                (SELECT log_key
                                     FROM
-                                    {table_name}
+                                        {table_name}
                                     WHERE
+                                        bucket_path='{bucket_path}' AND
+                                        aws_account_id='{aws_account_id}' AND
+                                        aws_region='{aws_region}' AND
+                                        flow_log_id='{flow_log_id}'
+                                    ORDER BY
+                                        log_key DESC
+                                    LIMIT 1
+                                    OFFSET {retain_db_records});"""
+
+        self.sql_count_region = """
+                                SELECT
+                                    count(*)
+                                FROM
+                                    {table_name}
+                                WHERE
                                     bucket_path='{bucket_path}' AND
                                     aws_account_id='{aws_account_id}' AND
                                     aws_region='{aws_region}' AND
-                                    flow_log_id='{flow_log_id}'
-                                    ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
+                                    flow_log_id='{flow_log_id}';"""
 
     def load_information_from_file(self, log_key):
         with self.decompress_file(log_key=log_key) as f:
@@ -1280,21 +1381,55 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     self.secret_key, aws_region)
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
+                    if self.old_version:
+                        self.migrate(aws_account_id=aws_account_id, aws_region=aws_region,
+                            flow_log_id=flow_log_id)
                     date_list = self.get_date_list(aws_account_id, aws_region, flow_log_id)
                     for date in date_list:
                         self.iter_files_in_bucket(aws_account_id, aws_region, date, flow_log_id)
 
-    def db_maintenance(self, aws_account_id, aws_region, flow_log_id):
+    def db_count_region(self, aws_account_id, aws_region, flow_log_id):
+        """Counts the number of rows in DB for a region
+        :param aws_account_id: AWS account ID
+        :type aws_account_id: str
+        :param aws_region: AWS region
+        :type aws_region: str
+        :param flow_log_id: Flow log ID
+        :type flow_log_id: str
+        :rtype: int
+        """
+        try:
+            query_count_region = self.db_connector.execute(
+                self.sql_count_region.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    flow_log_id=flow_log_id,
+                    retain_db_records=self.retain_db_records
+                ))
+            return query_count_region.fetchone()[0]
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    error_msg=e))
+            sys.exit(10)
+
+    def db_maintenance(self, aws_account_id=None, aws_region=None, flow_log_id=None):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(self.sql_db_maintenance.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=aws_account_id,
-                aws_region=aws_region,
-                flow_log_id=flow_log_id,
-                retain_db_records=self.retain_db_records
-            ))
+            if self.db_count_region(aws_account_id, aws_region, flow_log_id) \
+                > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=aws_account_id,
+                    aws_region=aws_region,
+                    flow_log_id=flow_log_id,
+                    retain_db_records=self.retain_db_records
+                ))
         except Exception as e:
             print("ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {error_msg}".format(
                 aws_account_id=aws_account_id,
@@ -1374,7 +1509,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                 self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
             # optimize DB
-            self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region,
+                flow_log_id=flow_log_id)
             self.db_connector.commit()
             # iterate if there are more logs
             while bucket_files['IsTruncated']:
@@ -1407,7 +1543,8 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                         self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
                     self.mark_complete(aws_account_id, aws_region, bucket_file, flow_log_id)
                 # optimize DB
-                self.db_maintenance(aws_account_id, aws_region, flow_log_id)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region,
+                    flow_log_id=flow_log_id)
                 self.db_connector.commit()
         except SystemExit:
             raise
@@ -1448,7 +1585,7 @@ class AWSCustomBucket(AWSBucket):
         else:
             self.db_table_name = 'custom'
         AWSBucket.__init__(self, **kwargs)
-        self.retain_db_records = 1000  # in firehouse logs there are no regions/users, this number must be increased
+        self.retain_db_records = 500
         # get STS client
         self.sts_client = self.get_sts_client(kwargs['access_key'], kwargs['secret_key'])
         # get account ID
@@ -1462,7 +1599,7 @@ class AWSCustomBucket(AWSBucket):
                           WHERE
                             bucket_path='{bucket_path}' AND
                             aws_account_id='{aws_account_id}' AND
-                            log_key='{log_key}'"""
+                            log_key='{log_key}';"""
 
         self.sql_mark_complete = """
                             INSERT INTO {table_name} (
@@ -1475,7 +1612,7 @@ class AWSCustomBucket(AWSBucket):
                                 '{aws_account_id}',
                                 '{log_key}',
                                 DATETIME('now'),
-                                '{created_date}')"""
+                                '{created_date}');"""
 
         self.sql_create_table = """
                             CREATE TABLE
@@ -1517,16 +1654,26 @@ class AWSCustomBucket(AWSBucket):
                             WHERE
                                 bucket_path='{bucket_path}' AND
                                 aws_account_id='{aws_account_id}' AND
-                                rowid NOT IN
-                                (SELECT ROWID
+                                log_key <=
+                                (SELECT log_key
                                     FROM
-                                    {table_name}
+                                        {table_name}
                                     WHERE
-                                    bucket_path='{bucket_path}' AND
-                                    aws_account_id='{aws_account_id}'
+                                        bucket_path='{bucket_path}' AND
+                                        aws_account_id='{aws_account_id}'
                                     ORDER BY
-                                    ROWID DESC
-                                    LIMIT {retain_db_records})"""
+                                        log_key DESC
+                                    LIMIT 1
+                                    OFFSET {retain_db_records});"""
+
+        self.sql_count_custom = """
+                                SELECT
+                                    count(*)
+                                FROM
+                                    {table_name}
+                                WHERE
+                                    bucket_path='{bucket_path}' AND
+                                    aws_account_id='{aws_account_id}';"""
 
     def load_information_from_file(self, log_key):
         def json_event_generator(data):
@@ -1575,10 +1722,8 @@ class AWSCustomBucket(AWSBucket):
         # Only <self.retain_db_records> logs for each region are stored in DB. Using self.bucket as region name
         # would prevent to loose lots of logs from different buckets.
         # no iterations for accounts_id or regions on custom buckets
-        account_id = ''
-        regions = ''
-        self.iter_files_in_bucket(account_id, regions)
-        self.db_maintenance('', self.bucket)
+        self.iter_files_in_bucket()
+        self.db_maintenance()
 
     def already_processed(self, downloaded_file, aws_account_id, aws_region):
         cursor = self.db_connector.execute(self.sql_already_processed.format(
@@ -1608,15 +1753,38 @@ class AWSCustomBucket(AWSBucket):
                 debug("+++ Error marking log {} as completed: {}".format(log_file['Key'], e), 2)
                 raise e
 
-    def db_maintenance(self, aws_account_id, aws_region):
+    def db_count_custom(self):
+        """Counts the number of rows in DB for a region
+        :param aws_account_id: AWS account ID
+        :type aws_account_id: str
+        :rtype: int
+        """
+        try:
+            query_count_custom = self.db_connector.execute(
+                self.sql_count_custom.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=self.aws_account_id,
+                    retain_db_records=self.retain_db_records
+                ))
+            return query_count_custom.fetchone()[0]
+        except Exception as e:
+            print(
+                "ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
+                    bucket_path=self.bucket_path,
+                    error_msg=e))
+            sys.exit(10)
+
+    def db_maintenance(self, **kwargs):
         debug("+++ DB Maintenance", 1)
         try:
-            self.db_connector.execute(self.sql_db_maintenance.format(
-                table_name=self.db_table_name,
-                bucket_path=self.bucket_path,
-                aws_account_id=self.aws_account_id,
-                retain_db_records=self.retain_db_records
-            ))
+            if self.db_count_custom() > self.retain_db_records:
+                self.db_connector.execute(self.sql_db_maintenance.format(
+                    table_name=self.db_table_name,
+                    bucket_path=self.bucket_path,
+                    aws_account_id=self.aws_account_id,
+                    retain_db_records=self.retain_db_records
+                ))
         except Exception as e:
             print(
                 "ERROR: Failed to execute DB cleanup - Path: {bucket_path}: {error_msg}".format(
@@ -1762,14 +1930,14 @@ class AWSService(WazuhIntegration):
                             rowid NOT IN
                             (SELECT ROWID
                                 FROM
-                                {table_name}
+                                    {table_name}
                                 WHERE
-                                service_name='{service_name}' AND
-                                aws_account_id='{aws_account_id}' AND
-                                aws_region='{aws_region}'
+                                    service_name='{service_name}' AND
+                                    aws_account_id='{aws_account_id}' AND
+                                    aws_region='{aws_region}'
                                 ORDER BY
-                                scan_date DESC
-                                LIMIT {retain_db_records})"""
+                                    scan_date DESC
+                                LIMIT {retain_db_records});"""
 
     def get_last_log_date(self):
         return '{Y}-{m}-{d} 00:00:00.0'.format(Y=self.only_logs_after[0:4],
