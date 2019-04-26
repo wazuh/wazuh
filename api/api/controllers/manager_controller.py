@@ -17,7 +17,7 @@ from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.exception import WazuhException, WazuhError, WazuhInternalError
 
 loop = asyncio.get_event_loop()
-logger = logging.getLogger('manager_controller')
+logger = logging.getLogger('wazuh')
 
 
 @exception_handler
