@@ -9,7 +9,7 @@ stages:
     id: login_get_token
   - name: Get the OS of an agent
 
-    request:
+    request: &os_request
       method: GET
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
       headers:
@@ -18,61 +18,62 @@ stages:
     response:
       status_code: 200
       body:
-        architecture: !anystr
-        hostname: !anystr
-        os:
-          codename: !anystr
-          major: !anystr
-          minor: !anystr
-          name: !anystr
-          platform: !anystr
+        data:
+          architecture: !anystr
+          hostname: !anystr
+          os:
+            codename: !anystr
+            major: !anystr
+            minor: !anystr
+            name: !anystr
+            platform: !anystr
+            version: !anystr
+          release: !anystr
+          scan:
+            id: !anyint
+            time: !anystr
+          sysname: !anystr
           version: !anystr
-        release: !anystr
-        scan:
-          id: !anyint
-          time: !anystr
-        sysname: !anystr
-        version: !anystr
+      save:
+        body:
+          os_version: data.os.version
+          release: data.release
+          sysname: data.sysname
 
   - name: Filter select
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *os_request
       params:
         select: os_version,sysname,release
 
     response:
       status_code: 200
       body:
-        os_version: !anystr
-        release: !anystr
-        sysname: !anystr
+        data:
+          os_version: "{os_version}"
+          release: "{release}"
+          sysname: "{sysname}"
 
   - name: Invalid selector
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/os"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *os_request
       params:
         select: wrongParam
 
-    response:
+    response: &error_response
       status_code: 400
       body:
-        code: 1724
+        code: !anyint
         dapi_errors:
           master-node:
-            error: "Not a valid select field"
-        detail: "Not a valid select field"
-        remediation: "Use a valid field"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
 
 ---
 test_name: GET /syscollector/{agent_id}/os
@@ -85,7 +86,7 @@ stages:
     id: login_get_token
   - name: Hardware of an agent
 
-    request:
+    request: &hardware_request
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hardware"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -94,60 +95,51 @@ stages:
     response:
       status_code: 200
       body:
-        board_serial: !anything
-        cpu:
-          cores: !anything
-          mhz: !anything
-          name: !anything
-        ram:
-          free: !anything
-          total: !anything
-          usage: !anything
-        scan:
-          id: !anything
-          time: !anything
+        data:
+          board_serial: !anything
+          cpu:
+            cores: !anything
+            mhz: !anything
+            name: !anything
+          ram:
+            free: !anything
+            total: !anything
+            usage: !anything
+          scan:
+            id: !anything
+            time: !anything
+      save:
+        body:
+          board_serial: data.board_serial
+          cpu_name: data.cpu.name
+          ram_total: data.ram.total
 
   - name: Filter select
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hardware"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *hardware_request
       params:
         select: ram_free,board_serial,cpu_name,ram_total
 
     response:
       status_code: 200
       body:
-        board_serial: !anything
-        cpu_name: !anything
-        ram:
-          free: !anything
-          total: !anything
+        data:
+          board_serial: "{board_serial}"
+          cpu_name: "{cpu_name}"
+          ram:
+            free: !anything
+            total: !int "{ram_total}"
 
   - name: Not allowed selector
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/hardware"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *hardware_request
       params:
         select: wrongParam
 
     response:
-      status_code: 400
-      body:
-        code: 1724
-        dapi_errors:
-          master-node:
-            error: "Not a valid select field"
-        detail: "Not a valid select field"
-        remediation: "Use a valid field"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+      <<: *error_response
 
 ---
 test_name: GET /syscollector/{agent_id}/packages
@@ -160,7 +152,7 @@ stages:
     id: login_get_token
   - name: Packages of an agent, no limit
 
-    request:
+    request: &packages_request
       url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -169,61 +161,58 @@ stages:
     response:
       status_code: 200
       body:
-        totalItems: 283
+        data:
+          totalItems: !anyint
 
   - name: Packages of and agent
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         limit: 1
 
     response:
       status_code: 200
       body:
-        items:
-          -
-            architecture: !anystr
-            description: !anystr
-            format: !anystr
-            multiarch: !anystr
-            name: !anystr
-            priority: !anystr
-            scan:
-              id: !anyint
-              time: !anystr
-            section: !anystr
-            size: !anyint
-            source: !anystr
-            vendor: !anystr
-            version: !anystr
+        data:
+          items: &packages_response
+            -
+              architecture: !anystr
+              description: !anystr
+              format: !anystr
+              name: !anystr
+              priority: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              section: !anystr
+              size: !anyint
+              vendor: !anystr
+              version: !anystr
+      save:
+        body:
+          scan_id: data.items.0.scan.id
+          description: data.items.0.description
+          architecture: data.items.0.architecture
 
 
   - name: Multiple selectors
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         select: scan_id,description,architecture
 
     response:
       status_code: 200
       body:
-        totalItems: 283
+        data:
+          totalItems: !anyint
 
   - name: Multiple selectors with limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         select: scan_id,description,architecture
         limit: 1
@@ -231,80 +220,84 @@ stages:
     response:
       status_code: 200
       body:
-        items:
-          -
-            architecture: !anystr
-            description: !anystr
-            scan_id: !anyint
+        data:
+          items:
+            -
+              architecture: "{architecture}"
+              description: "{description}"
+              scan_id: !int "{scan_id}"
 
   - name: Not allowed selector
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         select: wrongParam
 
     response:
-      status_code: 400
-      body:
-        code: 1724
-        dapi_errors:
-          master-node:
-            error: "Not a valid select field"
-        detail: "Not a valid select field"
-        remediation: "Use a valid field"
-        status: 400
-        title: "Wazuh Error"
-        type: "about:blank"
+      <<: *error_response
 
   - name: Limit and offset
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         offset: 0
-        limit: 1
+        limit: 2
 
     response:
       status_code: 200
       body:
-        items:
-          -
-            architecture: !anystr
-            description: !anystr
-            format: !anystr
-            multiarch: !anystr
-            name: !anystr
-            priority: !anystr
-            scan:
-              id: !anyint
-              time: !anystr
-            section: !anystr
-            size: !anyint
-            source: !anystr
-            vendor: !anystr
-            version: !anystr
+        data:
+          items:
+            - <<: *packages_response
+            - <<: *packages_response
+      save:
+        body:
+          sort_response: data.items.1
+
+  - name: Limit and offset test
+
+    request:
+      <<: *packages_request
+      params:
+        offset: 1
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - architecture: "{sort_response.architecture}"
+              description: "{sort_response.description}"
+              format: "{sort_response.format}"
+              name: "{sort_response.name}"
+              priority: "{sort_response.priority}"
+              scan:
+                id: !int "{sort_response.scan.id}"
+                time: "{sort_response.scan.time}"
+              section: "{sort_response.section}"
+              size: !int "{sort_response.size}"
+              vendor: "{sort_response.vendor}"
+              version: "{sort_response.version}"
+            - <<: *packages_response
+      save:
+        body:
+          expected_name: data.items.0.name
+          expected_vendor: data.items.0.vendor
 
   - name: Wrong limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         offset: 0
         limit: 1a
 
     response:
       status_code: 400
-      body:
+      body: &bad_request
         detail: !anystr
         status: 400
         title: "Bad Request"
@@ -313,10 +306,7 @@ stages:
   - name: Invalid limit
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         offset: 0
         limit: 0
@@ -324,18 +314,12 @@ stages:
     response:
       status_code: 400
       body:
-        detail: !anystr
-        status: 400
-        title: "Bad Request"
-        type: "about:blank"
+        <<: *bad_request
 
   - name: Filter sort
 
     request:
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      method: GET
+      <<: *packages_request
       params:
         sort: -name
         limit: 2
@@ -343,32 +327,102 @@ stages:
     response:
       status_code: 200
       body:
-        items:
-          -
-            architecture: !anystr
-            description: !anystr
-            format: !anystr
-            name: !anystr
-            priority: !anystr
-            scan:
-              id: !anyint
-              time: !anystr
-            section: !anystr
-            size: !anyint
-            vendor: !anystr
-            version: !anystr
-            multiarch: !anystr
-          -
-            architecture: !anystr
-            description: !anystr
-            format: !anystr
-            name: !anystr
-            priority: !anystr
-            scan:
-              id: !anyint
-              time: !anystr
-            section: !anystr
-            size: !anyint
-            vendor: !anystr
-            version: !anystr
+        data:
+          items:
+            - <<: *packages_response
+            - <<: *packages_response
+
+  - name: Filter sort 2
+
+    request:
+      <<: *packages_request
+      params:
+        sort: name
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+            - <<: *packages_response
+
+  - name: Wrong sort
+
+    request:
+      <<: *packages_request
+      params:
+        sort: wronParam
+
+    response:
+      status_code: 400
+      body: &error_remediation_response
+        code: !anyint
+        dapi_errors:
+          master-node:
+            error: !anystr
+        detail: !anystr
+        remediation: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+  - name: Get with limit
+
+    request:
+      <<: *packages_request
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+  - name: Search an expected name
+
+    request:
+      <<: *packages_request
+      params:
+        search: "{expected_name}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+  - name: Search an expected vendor
+
+    request:
+      <<: *packages_request
+      params:
+        search: ubuntu
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+  - name: Filter by vendor
+
+    request:
+      <<: *packages_request
+      params:
+        vendor: "Ubuntu Core"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
 ---
