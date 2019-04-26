@@ -410,13 +410,27 @@ stages:
         data:
           items:
             - <<: *packages_response
-
-  - name: Filter by vendor
+# Wait for frontend response
+#  - name: Filter by vendor
+#
+#    request:
+#      <<: *packages_request
+#      params:
+#        vendor: "Ubuntu Core"
+#        limit: 1
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#          items:
+#            - <<: *packages_response
+  - name: Search an expected name
 
     request:
       <<: *packages_request
       params:
-        vendor: "Ubuntu Core"
+        name: "binutils"
         limit: 1
 
     response:
@@ -425,4 +439,41 @@ stages:
         data:
           items:
             - <<: *packages_response
+    save:
+      body:
+        name: data.items.0.name
+
+  - name: Filter by name
+
+    request:
+      <<: *packages_request
+      params:
+        name: "{name}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+    save:
+      body:
+        architecture: data.items.0.architecture
+
+  - name:
+
+    request:
+      <<: *packages_request
+      params:
+        architecture: "{architecture}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
 ---
