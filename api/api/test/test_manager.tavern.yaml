@@ -406,7 +406,7 @@ stages:
       status_code: 200
       body:
         data:
-        contents: !anystr
+          contents: !anystr
 
   - name: Get local rules
 
@@ -419,7 +419,7 @@ stages:
       status_code: 200
       body:
         data:
-        contents: !anystr
+          contents: !anystr
 
   - name: Get local decoder
 
@@ -432,7 +432,7 @@ stages:
       status_code: 200
       body:
         data:
-        contents: !anystr
+          contents: !anystr
 
   - name: Get CDB list
 
@@ -478,23 +478,41 @@ stages:
         type: !anystr
 
 ---
-test_name: POST /manager/files
-
-stages:
-
-  #### Save ossec.conf
-  - name: Get ossec.conf
-
-    request:
-      url: http://localhost:55000/manager/files
-      params:
-        path: etc/ossec.conf
-
-    response:
-      save:
-        body:
-          ossec_conf: data.contents
-      status_code: 200
-      body:
-        data:
-          contents: !anystr
+#test_name: POST /manager/files
+#
+#stages:
+#
+#  #### Save ossec.conf
+#  - name: Get ossec.conf
+#
+#    request:
+#      url: http://localhost:55000/manager/files
+#      params:
+#        path: etc/ossec.conf
+#
+#    response:
+#      save:
+#        body:
+#          ossec_conf: data.contents
+#      status_code: 200
+#      body:
+#        data:
+#          contents: !anystr
+#
+#  - name: Upload ossec.conf (master)
+#
+#    request:
+#      url: http://localhost:55000/manager/files
+#      data: "{ossec_conf}"
+#      headers:
+#        content-type: application/octet-stream
+#      params:
+#        overwrite: True
+#        path: etc/ossec.conf
+#
+#    response:
+#      status_code: 200
+#      body:
+#        data:
+#         contents: !anystr
+#
