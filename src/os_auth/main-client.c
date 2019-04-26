@@ -343,10 +343,11 @@ int main(int argc, char **argv)
     sbio = BIO_new_socket(sock, BIO_NOCLOSE);
     SSL_set_bio(ssl, sbio, sbio);
 
+    ERR_clear_error();
     ret = SSL_connect(ssl);
     if (ret <= 0) {
-        ERR_print_errors_fp(stderr);
-        merror("SSL error (%d). Exiting.", ret);
+        merror("SSL error (%d). Connection refused by the manager. Maybe the port specified is incorrect. Exiting.", SSL_get_error(ssl, ret));
+        ERR_print_errors_fp(stderr);  // This function empties the error queue
         free(buf);
         exit(1);
     }

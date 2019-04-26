@@ -41,6 +41,8 @@
 
 #define WDB_MULTI_GROUP_DELIM '-'
 
+#define WDB_RESPONSE_BEGIN_SIZE 16
+
 #define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
 
 typedef enum wdb_stmt {
@@ -95,9 +97,11 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_GLOBAL_UPDATE,
     WDB_STMT_SCA_GLOBAL_FIND,
     WDB_STMT_SCA_INSERT_COMPLIANCE,
+    WDB_STMT_SCA_INSERT_RULES,
     WDB_STMT_SCA_FIND_SCAN,
     WDB_STMT_SCA_SCAN_INFO_UPDATE_START,
     WDB_STMT_SCA_POLICY_FIND,
+    WDB_STMT_SCA_POLICY_SHA256,
     WDB_STMT_SCA_POLICY_INSERT,
     WDB_STMT_SCA_CHECK_UPDATE_SCAN_ID,
     WDB_STMT_SCA_CHECK_GET_ALL_RESULTS,
@@ -106,6 +110,7 @@ typedef enum wdb_stmt {
     WDB_STMT_SCA_CHECK_DELETE,
     WDB_STMT_SCA_SCAN_INFO_DELETE,
     WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE,
+    WDB_STMT_SCA_CHECK_RULES_DELETE,
     WDB_STMT_SCA_CHECK_FIND,
     WDB_STMT_SCA_CHECK_DELETE_DISTINCT,
     WDB_STMT_SIZE
@@ -120,6 +125,7 @@ typedef struct wdb_t {
     time_t last;
     pthread_mutex_t mutex;
     struct wdb_t * next;
+    int remove;
 } wdb_t;
 
 typedef struct wdb_config {
@@ -205,13 +211,13 @@ int wdb_update_pm(sqlite3 *db, const rk_event_t *event);
 int wdb_sca_find(wdb_t * wdb, int pm_id, char * output);
 
 /* Update a configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_update(wdb_t * wdb, char * result, int pm_id,int scan_id);
+int wdb_sca_update(wdb_t * wdb, char * result, int id,int scan_id, char * status, char * reason);
 
 /* Insert configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id);
+int wdb_sca_save(wdb_t * wdb, int id,int scan_id,char * title,char *description,char *rationale,char *remediation, char * file,char * directory,char * process,char * registry,char * reference,char * result,char * policy_id,char * command,char *status,char *reason);
 
 /* Insert scan info configuration assessment entry. Returns ID on success or -1 on error (new) */
-int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int score,char * hash);
+int wdb_sca_scan_info_save(wdb_t * wdb, int start_scan, int end_scan, int scan_id,char * policy_id,int pass,int fail,int invalid, int total_checks,int score,char * hash);
 
 /* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_scan_info_update(wdb_t * wdb, char * module, int end_scan);
@@ -221,6 +227,9 @@ int wdb_sca_global_find(wdb_t * wdb, char *name, char * output);
 
 /* Insert global configuration assessment compliance entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_compliance_save(wdb_t * wdb, int id_check, char *key, char *value);
+
+/* Insert the rules of the policy checks,. Returns number of affected rows or -1 on error.  */
+int wdb_sca_rules_save(wdb_t * wdb, int id_check, char *type, char *rule);
 
 /* Update global configuration assessment entry. Returns number of affected rows or -1 on error.  */
 int wdb_sca_global_update(wdb_t * wdb, int scan_id, char *name,char *description,char *references,int pass,int failed,int score);
@@ -232,7 +241,7 @@ int wdb_sca_check_update_scan_id(wdb_t * wdb, int scan_id_old, int scan_id_new,c
 int wdb_sca_scan_find(wdb_t * wdb, char *policy_id, char * output);
 
 /* Update scan info configuration assessment entry. Returns number of affected rows or -1 on error.  */
-int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int score,char * hash);
+int wdb_sca_scan_info_update_start(wdb_t * wdb, char * policy_id, int start_scan,int end_scan,int scan_id,int pass,int fail,int invalid,int total_checks,int score,char * hash);
 
 /* Look for a scan policy entry in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output);
@@ -241,7 +250,7 @@ int wdb_sca_policy_find(wdb_t * wdb, char *id, char * output);
 int wdb_sca_checks_get_result(wdb_t * wdb, char * policy_id, char * output);
 
 /* Insert policy entry. Returns number of affected rows or -1 on error.  */
-int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references);
+int wdb_sca_policy_info_save(wdb_t * wdb,char *name,char * file,char * id,char * description,char *references, char *hash_file);
 
 /* Gets the result of all policies in Wazuh DB. Returns 1 if found, 0 if not, or -1 on error. (new) */
 int wdb_sca_policy_get_id(wdb_t * wdb, char * output);
@@ -258,8 +267,14 @@ int wdb_sca_scan_info_delete(wdb_t * wdb,char * policy_id);
 /* Delete a configuration assessment check compliances. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_compliances_delete(wdb_t * wdb);
 
+/* Delete a configuration assessment check rules. Returns 0 on success or -1 on error (new) */
+int wdb_sca_check_rules_delete(wdb_t * wdb);
+
 /* Delete distinct configuration assessment check. Returns 0 on success or -1 on error (new) */
 int wdb_sca_check_delete_distinct(wdb_t * wdb,char * policy_id,int scan_id);
+
+/* Gets the policy SHA256. Returns 1 if found, 0 if not or -1 on error */
+int wdb_sca_policy_sha256(wdb_t * wdb, char *id, char * output);
 
 /* Insert agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_insert_agent(int id, const char *name, const char *ip, const char *register_ip, const char *key, const char *group, int keep_date);
@@ -284,6 +299,9 @@ int wdb_update_groups(const char *dirname);
 
 /* Delete agent. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_agent(int id);
+
+/* Remove agents databases from id's list. */
+cJSON *wdb_remove_multiple_agents(char *agent_list);
 
 /* Delete group. It opens and closes the DB. Returns 0 on success or -1 on error. */
 int wdb_remove_group_db(const char *name);
@@ -479,6 +497,8 @@ void wdb_close_all();
 void wdb_commit_old();
 
 void wdb_close_old();
+
+void wdb_remove_database(wdb_t *wdb);
 
 cJSON * wdb_exec(sqlite3 * db, const char * sql);
 

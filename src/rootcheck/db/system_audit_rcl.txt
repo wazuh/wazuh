@@ -89,10 +89,10 @@ d:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:'3.4.8';
 d:$web_dirs -> ^application_top.php$ -> r:'osCommerce 2.2-;
 
 ## Looking for known backdoors
-[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode {PCI_DSS: 6.5, 6.6, 11.4}] [any] []
+[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode) {PCI_DSS: 6.5, 6.6, 11.4}] [any] []
 d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo;
 
-[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST {PCI_DSS: 6.5, 6.6, 11.4}] [any] []
+[Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST)) {PCI_DSS: 6.5, 6.6, 11.4}] [any] []
 d:$web_dirs -> .php$ -> r:eval\(base64_decode\(\S_POST;
 
 [Web vulnerability - .htaccess file compromised {PCI_DSS: 6.5, 6.6, 11.4}] [any] [http://blog.sucuri.net/2011/05/understanding-htaccess-attacks-part-1.html]

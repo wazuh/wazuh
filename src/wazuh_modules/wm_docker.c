@@ -27,7 +27,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf);         // Dump docker co
 const wm_context WM_DOCKER_CONTEXT = {
     "docker-listener",
     (wm_routine)wm_docker_main,
-    (wm_routine)wm_docker_destroy,
+    (wm_routine)(void *)wm_docker_destroy,
     (cJSON * (*)(const void *))wm_docker_dump
 };
 
@@ -80,7 +80,7 @@ void* wm_docker_main(wm_docker_t *docker_conf) {
 
         os_free(output);
 
-        if (attempts > docker_conf->attempts) {
+        if (attempts >= docker_conf->attempts) {
             mterror(WM_DOCKER_LOGTAG, "Maximum attempts reached to run the listener. Exiting...");
             pthread_exit(NULL);
         }
@@ -103,7 +103,7 @@ cJSON *wm_docker_dump(const wm_docker_t *docker_conf) {
     if (docker_conf->flags.enabled) cJSON_AddStringToObject(wm_docker,"disabled","no"); else cJSON_AddStringToObject(wm_docker,"disabled","yes");
     if (docker_conf->flags.run_on_start) cJSON_AddStringToObject(wm_docker,"run_on_start","yes"); else cJSON_AddStringToObject(wm_docker,"run_on_start","no");
     cJSON_AddNumberToObject(wm_docker,"interval",docker_conf->interval);
-
+    cJSON_AddNumberToObject(wm_docker, "attempts", docker_conf->attempts);
     cJSON_AddItemToObject(root,"docker-listener",wm_docker);
 
     return root;

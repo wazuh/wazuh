@@ -347,7 +347,7 @@ int main(int argc, char **argv)
             final_mask[128] = '\0';
             getNetmask(keys.keyentries[i]->ip->netmask,
                        final_mask, 128);
-            snprintf(final_ip, 128, "%s%s", keys.keyentries[i]->ip->ip,
+            snprintf(final_ip, sizeof(final_ip), "%s%s", keys.keyentries[i]->ip->ip,
                      final_mask);
 
             if (!(csv_output || json_output))

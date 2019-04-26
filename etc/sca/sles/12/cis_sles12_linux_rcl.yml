@@ -57,7 +57,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nodev;'
  - id: 7502
    title: "Ensure nosuid option set on /tmp partition"
    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
@@ -68,7 +68,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nosuid;'
  - id: 7503
    title: "Ensure noexec option set on /tmp partition"
    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
@@ -80,7 +80,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:noexec;'
  - id: 7504
    title: "Ensure separate partition exists for /var"
    description: "The /var directory is used by daemons and other system services to temporarily store dynamic data. Some directories created by these processes may be world-writable."
@@ -92,7 +92,7 @@ checks:
     - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r^# && !r:/var;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var;'
  - id: 7505
    title: "Ensure separate partition exists for /var/log"
    description: "The /var/log directory is used by system services to store log data."
@@ -105,7 +105,7 @@ checks:
     - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/var/log;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log;'
  - id: 7506
    title: "Ensure separate partition exists for /var/log/audit"
    description: "The auditing daemon, auditd , stores log data in the /var/log/audit directory."
@@ -118,7 +118,7 @@ checks:
     - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/var/log/audit;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log/audit;'
  - id: 7507
    title: "Ensure separate partition exists for /home"
    description: "The /home directory is used to support disk storage needs of local users."
@@ -130,7 +130,7 @@ checks:
     - https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> ^# && !r:/home;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home;'
  - id: 7508
    title: "Ensure nodev option set on /home partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
@@ -141,7 +141,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/home && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home && r:nodev;'
  - id: 7509
    title: "Ensure nodev option set on /dev/shm partition"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
@@ -152,7 +152,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nodev;'
  - id: 7510
    title: "Ensure nosuid option set on /dev/shm partition"
    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
@@ -163,7 +163,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nosuid;'
  - id: 7511
    title: "Ensure noexec option set on /dev/shm partition"
    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
@@ -175,7 +175,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:noexec;'
  - id: 7512
    title: "Ensure nodev option set on removable media partitions"
    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
@@ -186,7 +186,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nodev;'
  - id: 7513
    title: "Ensure nosuid option set on removable media partitions"
    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
@@ -197,7 +197,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nosuid;'
  - id: 7514
    title: "Ensure noexec option set on removable media partitions"
    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
@@ -209,7 +209,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:noexec;'
 # Section 1.4 - Secure Boot Settings
  - id: 7515
    title: "Ensure bootloader password is set"
@@ -222,7 +222,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/boot/grub2/grub.cfg -> !r:^# && !r:password;'
+     - 'f:/boot/grub2/grub.cfg -> NIN !r:^# && r:password;'
 # Section 1.5 - Additional Process Hardening
  - id: 7516
    title: "Ensure core dumps are restricted"
@@ -234,7 +234,7 @@ checks:
     - cis_csc: "13"
    condition: any
    rules:
-     - 'f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;'
+     - 'f:/etc/security/limits.conf -> NIN !r:^# && r:hard\.+core\.+0;'
  - id: 7517
    title: "Ensure address space layout randomization (ASLR) is enabled"
    description: "Address space layout randomization (ASLR) is an exploit mitigation technique which randomly arranges the address space of key data areas of a process."
@@ -257,8 +257,8 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/chargen -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/chargen-udp -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/chargen -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/chargen-udp -> IN !r:^# && r:disable && r:no;'
  - id: 7519
    title: "Ensure daytime services are not enabled"
    description: "daytime is a network service that responds with the server's current date and time. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -269,8 +269,8 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/daytime -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/daytime-udp -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/daytime -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/daytime-udp -> IN !r:^# && r:disable && r:no;'
  - id: 7520
    title: "Ensure discard services are not enabled"
    description: "discard is a network service that simply discards all data it receives. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -281,8 +281,8 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/discard -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/discard-udp -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/discard -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/discard-udp -> IN !r:^# && r:disable && r:no;'
  - id: 7521
    title: "Ensure echo services are not enabled"
    description: "echo is a network service that responds to clients with the data sent to it by the client. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -293,8 +293,8 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/echo -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/echo-udp -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/echo -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/echo-udp -> IN !r:^# && r:disable && r:no;'
  - id: 7522
    title: "Ensure time services are not enabled"
    description: "timeis a network service that responds with the server's current date and time as a 32 bit integer. This service is intended for debugging and testing purposes. It is recommended that this service be disabled."
@@ -305,8 +305,8 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/time -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/time-udp -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/time -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/time-udp -> IN !r:^# && r:disable && r:no;'
  - id: 7523
    title: "Ensure rsh server is not enabled"
    description: "The Berkeley rsh-server ( rsh , rlogin , rexec ) package contains legacy services that exchange credentials in clear-text."
@@ -318,9 +318,9 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rlogin -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rsh -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/shell -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/rexec@.service -> r:ExecStart;'
      - 'f:/usr/lib/systemd/system/rlogin@.service -> r:ExecStart;'
      - 'f:/usr/lib/systemd/system/rsh@.service -> r:ExecStart;'
@@ -335,7 +335,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/talk -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/ntalk.service -> r:Exec;'
  - id: 7525
    title: "Ensure telnet server is not enabled"
@@ -348,7 +348,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/telnet -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/telnet@.service -> r:ExecStart=-/usr/sbin/in.telnetd;'
  - id: 7526
    title: "Ensure tftp server is not enabled"
@@ -361,7 +361,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/tftpd -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/tftp.service -> r:Exec;'
  - id: 7527
    title: "Ensure rsync service is not enabled"
@@ -397,7 +397,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/ntp.conf -> r:restrict default kod nomodify notrap nopeer noquery && r:^server;'
+     - 'f:/etc/ntp.conf -> IN r:restrict default kod nomodify notrap nopeer noquery && r:^server;'
      - 'f:/etc/sysconfig/ntpd -> r:OPTIONS="-u ntp:ntp -p /var/run/ntpd.pid";'
  - id: 7530
    title: "Ensure X Window System is not installed"
@@ -471,7 +471,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/vsftpd -> IN !r:^# && r:disable && r:no;'
  - id: 7536
    title: "Ensure HTTP server is not enabled"
    description: "HTTP or web servers provide the ability to host web site content."
@@ -494,8 +494,8 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/cyrus-imapd -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/dovecot -> IN !r:^# && r:disable && r:no;'
  - id: 7538
    title: "Ensure Samba is not enabled"
    description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Small Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
@@ -585,8 +585,8 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 0;'
-     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 0;'
+     - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
+     - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 # Section 3.2 - Network Parameters (Host and Router)
  - id: 7545
    title: "Ensure source routed packets are not accepted"
@@ -699,7 +699,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+1;'
  - id: 7554
    title: "Ensure SSH LogLevel is set to INFO"
    description: "The INFO parameter specifies that login and logout activity will be logged."
@@ -711,7 +711,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && !r:LogLevel\.+INFO;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && !r:LogLevel\.+INFO;'
  - id: 7555
    title: "Ensure SSH MaxAuthTries is set to 4 or less"
    description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
@@ -723,7 +723,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:MaxAuthTries && !r:3\s*$;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:MaxAuthTries && !r:3\s*$;'
      - 'f:/etc/ssh/sshd_config -> r:^#\s*MaxAuthTries;'
      - 'f:/etc/ssh/sshd_config -> !r:MaxAuthTries;'
  - id: 7556
@@ -737,7 +737,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\.+no;'
  - id: 7557
    title: "Ensure SSH HostbasedAuthentication is disabled"
    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
@@ -749,7 +749,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:HostbasedAuthentication\.+yes;'
  - id: 7558
    title: "Ensure SSH root login is disabled"
    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
@@ -761,7 +761,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\.+yes;'
      - 'f:/etc/ssh/sshd_config -> r:^#\s*PermitRootLogin;'
  - id: 7559
    title: "Ensure SSH PermitEmptyPasswords is disabled"
@@ -774,7 +774,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:^PermitEmptyPasswords\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:^PermitEmptyPasswords\.+yes;'
      - 'f:/etc/ssh/sshd_config -> r:^#\s*PermitEmptyPasswords;'
 # Section 6.2 - User and Group Settings
  - id: 7560
@@ -800,4 +800,4 @@ checks:
     - pci_dss: "10.2.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;'
+     - 'f:/etc/passwd -> IN !r:^# && !r:^root: && r:^\w+:\w+:0:;'

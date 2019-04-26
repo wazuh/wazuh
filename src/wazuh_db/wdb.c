@@ -10,6 +10,7 @@
  */
 
 #include "wdb.h"
+#include "wazuh_modules/wmodules.h"
 
 #ifdef WIN32
 #define getuid() 0
@@ -24,13 +25,13 @@ static const char *SQL_INSERT_INFO = "INSERT INTO info (key, value) VALUES (?, ?
 static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_STMT[] = {
-    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes FROM fim_entry WHERE file = ?;",
+    "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
     "SELECT 1 FROM fim_entry WHERE file = ?",
-    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ? WHERE file = ?;",
+    "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+    "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
     "DELETE FROM fim_entry WHERE file = ?;",
     "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
-    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes FROM fim_entry WHERE date < ?;",
+    "SELECT file, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
     "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor, os_build, os_platform, sysname, release, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
     "DELETE FROM sys_osinfo;",
     "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, triaged) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
@@ -66,19 +67,21 @@ static const char *SQL_STMT[] = {
     "SELECT fim_first_check FROM scan_info WHERE module = ?;",
     "SELECT fim_second_check FROM scan_info WHERE module = ?;",
     "SELECT fim_third_check FROM scan_info WHERE module = ?;",
-    "SELECT id,result FROM sca_check WHERE id = ?;",
-    "UPDATE sca_check SET result = ?, scan_id = ? WHERE id = ?;",
-    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);",
-    "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,score,hash) VALUES (?,?,?,?,?,?,?,?);",
-    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
+    "SELECT id,result,status FROM sca_check WHERE id = ?;",
+    "UPDATE sca_check SET result = ?, scan_id = ?, status = ?, reason = ? WHERE id = ?;",
+    "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,status,reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
+    "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
     "INSERT INTO sca_global (scan_id,name,description,`references`,pass,failed,score) VALUES(?,?,?,?,?,?,?);",
     "UPDATE sca_global SET scan_id = ?, name = ?, description = ?, `references` = ?, pass = ?, failed = ?, score = ? WHERE name = ?;",
     "SELECT name FROM sca_global WHERE name = ?;",
     "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
+    "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
     "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
-    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ? , score = ?, hash = ? WHERE policy_id = ?;",
+    "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
     "SELECT id FROM sca_policy WHERE id = ?;",
-    "INSERT INTO sca_policy (name,file,id,description,`references`) VALUES(?,?,?,?,?);",
+    "SELECT hash_file FROM sca_policy WHERE id = ?;",
+    "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
     "UPDATE sca_check SET scan_id = ? WHERE policy_id = ?;",
     "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
     "SELECT id FROM sca_policy;",
@@ -86,6 +89,7 @@ static const char *SQL_STMT[] = {
     "DELETE FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_scan_info WHERE policy_id = ?;",
     "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
+    "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
     "SELECT id FROM sca_check WHERE policy_id = ?;",
     "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;"
 };
@@ -185,6 +189,14 @@ wdb_t * wdb_open_agent2(int agent_id) {
     w_mutex_lock(&pool_mutex);
 
     if (wdb = (wdb_t *)OSHash_Get(open_dbs, sagent_id), wdb) {
+        // Checking if database was removed to avoid create it again
+        if (wdb->remove) {
+            w_mutex_lock(&wdb->mutex);
+            wdb->last = time(NULL);
+            w_mutex_unlock(&wdb->mutex);
+            w_mutex_unlock(&pool_mutex);
+            return wdb;
+        }
         goto success;
     }
 
@@ -560,11 +572,12 @@ wdb_t * wdb_init(sqlite3 * db, const char * agent_id) {
     wdb->db = db;
     w_mutex_init(&wdb->mutex, NULL);
     os_strdup(agent_id, wdb->agent_id);
+    wdb->remove = 0;
     return wdb;
 }
 
 void wdb_destroy(wdb_t * wdb) {
-    free(wdb->agent_id);
+    os_free(wdb->agent_id);
     pthread_mutex_destroy(&wdb->mutex);
     free(wdb);
 }
@@ -641,7 +654,14 @@ void wdb_commit_old() {
 
         if (node->transaction && time(NULL) - node->last > config.commit_time) {
             mdebug2("Committing database for agent %s", node->agent_id);
-            wdb_commit2(node);
+            if (node->remove) {
+                wdb_close(node);
+                w_mutex_unlock(&node->mutex);
+                w_mutex_unlock(&pool_mutex);
+                return;
+            } else {
+                wdb_commit2(node);
+            }
         }
 
         w_mutex_unlock(&node->mutex);
@@ -721,8 +741,11 @@ cJSON * wdb_exec(sqlite3 * db, const char * sql) {
 }
 
 int wdb_close(wdb_t * wdb) {
+    char path[OS_FLSIZE];
     int result;
     int i;
+
+    snprintf(path, OS_FLSIZE, "%s%s/%s.db", isChroot() ? "/" : "", WDB2_DIR, wdb->agent_id);
 
     if (wdb->refcount == 0) {
         if (wdb->transaction) {
@@ -738,6 +761,14 @@ int wdb_close(wdb_t * wdb) {
         result = sqlite3_close_v2(wdb->db);
 
         if (result == SQLITE_OK) {
+            if (wdb->remove) {
+                mdebug1("Removing db for agent '%s' ref:'%d' trans:'%d'", wdb->agent_id, wdb->refcount, wdb->transaction);
+                if (unlink(path)) {
+                    mwarn("Couldn'n delete wazuh database: '%s'", path);
+                    return -1;
+                }
+            }
+
             wdb_pool_remove(wdb);
             wdb_destroy(wdb);
             return 0;
@@ -809,4 +840,89 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     }
 
     return result;
+}
+
+/* Delete database. Returns 0 on success or -1 on error. */
+void wdb_remove_database(wdb_t *wdb) {
+    // Marked for deletion. Avoid creating the bd again after deleting it.
+    if (wdb) {
+        wdb->remove = 1;
+        wdb->transaction = 1;
+        wdb_leave(wdb);
+    }
+}
+
+cJSON *wdb_remove_multiple_agents(char *agent_list) {
+    cJSON *response = NULL;
+    cJSON *json_agents = NULL;
+    wdb_t *wdb;
+    char **agents;
+    char *next;
+    char *json_formated;
+    char path[PATH_MAX];
+    char agent[OS_SIZE_128];
+    long int agent_id;
+    int n = 0;
+
+    if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
+        return json_agents;
+    }
+
+    response = cJSON_CreateObject();
+    cJSON_AddItemToObject(response, "agents", json_agents = cJSON_CreateObject());
+
+    // Get agents id separated by whitespace
+    agents = wm_strtok(agent_list);
+
+    while (agents && agents[n]) {
+        if (strcmp(agents[n], "") != 0) {
+            next = agents[n + 1];
+            agent_id = strtol(agents[n], &next, 10);
+
+            // Check for valid ID
+            if ((errno == ERANGE) || (errno == EINVAL) || *next) {
+                mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
+                cJSON_AddStringToObject(json_agents, agents[n], "Invalid agent ID");
+            } else {
+                snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
+                snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
+
+                if (strcmp(agent, "000") != 0) {
+                    // Check if file not exists
+                    if (IsFile(path) == 0) {
+                        if (wdb = wdb_open_agent2(agent_id), !wdb) {
+                            mdebug1("Removing db for agent '%s'", agent);
+                            if (unlink(path)) {
+                                mwarn("Couldn'n delete wazuh database: '%s'", path);
+                            }
+                            n++;
+                            continue;
+                        }
+
+                        if (wdb->remove) {
+                            mdebug1("Message received from an deleted agent('%s'), ignoring", wdb->agent_id);
+                            cJSON_AddStringToObject(json_agents, agent, "DB waiting for deletion");
+                            n++;
+                            continue;
+                        }
+
+                        cJSON_AddStringToObject(json_agents, agent, "ok");
+                        wdb_remove_database(wdb);
+                        minfo("Agent %s. Database marked for deletion", agents[n]);
+                    } else {
+                        cJSON_AddStringToObject(json_agents, agent, "DB not found");
+                    }
+                } else {
+                    cJSON_AddStringToObject(json_agents, agent, "Can't delete");
+                }
+            }
+        }
+        n++;
+    }
+
+    free(agents);
+    json_formated = cJSON_PrintUnformatted(response);
+    mdebug1("Deleting databases. JSON output: %s", json_formated);
+    os_free(json_formated);
+    return response;
 }

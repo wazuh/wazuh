@@ -211,7 +211,7 @@ Eventinfo *Search_LastSids(Eventinfo *my_lf, RuleInfo *rule, __attribute__((unus
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -431,7 +431,7 @@ Eventinfo *Search_LastGroups(Eventinfo *my_lf, RuleInfo *rule, __attribute__((un
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -619,7 +619,7 @@ Eventinfo *Search_LastEvents(Eventinfo *my_lf, RuleInfo *rule, regex_matching *r
         /* We avoid multiple triggers for the same rule
          * or rules with a lower level.
          */
-        else if (lf->matched >= rule->level) {
+        if (lf->matched >= rule->level) {
             lf = NULL;
             goto end;
         }
@@ -743,6 +743,7 @@ void Zero_Eventinfo(Eventinfo *lf)
     lf->previous = NULL;
     lf->labels = NULL;
     lf->sk_tag = NULL;
+    lf->sym_path = NULL;
 
     lf->user_id = NULL;
     lf->user_name = NULL;
@@ -923,6 +924,9 @@ void Free_Eventinfo(Eventinfo *lf)
     }
     if (lf->sk_tag) {
         free(lf->sk_tag);
+    }
+    if (lf->sym_path) {
+        free(lf->sym_path);
     }
     if (lf->win_perm_before) {
         free(lf->win_perm_before);
@@ -1434,6 +1438,8 @@ void w_copy_event_for_log(Eventinfo *lf,Eventinfo *lf_cpy){
         }
         lf_cpy->last_events[index] = NULL;
     }
+
+    w_strdup(lf->sym_path, lf_cpy->sym_path);
 
     lf_cpy->labels = labels_dup(lf->labels);
     lf_cpy->decoder_syscheck_id = lf->decoder_syscheck_id;

@@ -14,8 +14,7 @@ from wazuh.ossec_socket import OssecSocket, OssecSocketJSON
 from wazuh.database import Connection
 from wazuh.wdb import WazuhDBConnection
 from wazuh.InputValidator import InputValidator
-from wazuh import manager
-from wazuh import common
+from wazuh import manager, common, configuration
 from glob import glob
 from datetime import date, datetime, timedelta
 from base64 import b64encode
@@ -59,7 +58,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
         self.remove_extra_fields = remove_extra_fields
 
     def _filter_status(self, status_filter):
-        status_filter['value'] = status_filter['value'].lower()
+        # set the status value to lowercase in case it's a string. If not, the value will be return unmodified.
+        status_filter['value'] = getattr(status_filter['value'], 'lower', lambda: status_filter['value'])()
         result = datetime.now() - timedelta(seconds=common.limit_seconds)
         self.request['time_active'] = result.strftime('%Y-%m-%d %H:%M:%S')
 
@@ -133,7 +133,8 @@ class WazuhDBQueryAgents(WazuhDBQuery):
 
     def _parse_legacy_filters(self):
         if 'older_than' in self.legacy_filters:
-            self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
+            if self.legacy_filters['older_than'] is not None:
+                self.q += (';' if self.q else '') + "(lastKeepAlive>{0};status!=neverconnected,dateAdd>{0};status=neverconnected)".format(self.legacy_filters['older_than'])
             del self.legacy_filters['older_than']
         WazuhDBQuery._parse_legacy_filters(self)
 
@@ -433,7 +434,6 @@ class Agent:
 
         return data
 
-
     def _remove_manual(self, backup=False, purge=False):
         """
         Deletes the agent.
@@ -441,126 +441,104 @@ class Agent:
         :param purge: Delete definitely from key store.
         :return: Message.
         """
-
-        # Get info from DB
+        # Check if agent exists
         self._load_info_from_DB()
 
         f_keys_temp = '{0}.tmp'.format(common.client_keys)
-        open(f_keys_temp, 'a').close()
 
-        f_keys_st = stat(common.client_keys)
-        chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
-        chmod(f_keys_temp, f_keys_st.st_mode)
+        try:
+            agent_found = False
+            with open(common.client_keys) as client_keys, open(f_keys_temp, 'w') as client_keys_tmp:
+                try:
+                    for line in client_keys.readlines():
+                        id, name, ip, key = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+                        if self.id == id and name[0] not in ('#!'):
+                            if not purge:
+                                client_keys_tmp.write('{0} !{1} {2} {3}\n'.format(id, name, ip, key))
 
-        f_tmp = open(f_keys_temp, 'w')
-        agent_found = False
-        with open(common.client_keys) as f_k:
-            for line in f_k.readlines():
-                line_data = line.strip().split(' ')  # 0 -> id, 1 -> name, 2 -> ip, 3 -> key
+                            agent_found = True
+                        else:
+                            client_keys_tmp.write(line)
+                except Exception as e:
+                    remove(f_keys_temp)
+                    raise e
 
-                if self.id == line_data[0] and line_data[1][0] not in ('#!'):
-                    if not purge:
-                        f_tmp.write('{0} !{1} {2} {3}\n'.format(line_data[0], line_data[1], line_data[2], line_data[3]))
+            if not agent_found:
+                remove(f_keys_temp)
+                raise WazuhException(1701, self.id)
+            else:
+                f_keys_st = stat(common.client_keys)
+                chown(f_keys_temp, common.ossec_uid, common.ossec_gid)
+                chmod(f_keys_temp, f_keys_st.st_mode)
+        except Exception as e:
+            raise WazuhException(1746, str(e))
 
-                    agent_found = True
-                else:
-                    f_tmp.write(line)
-        f_tmp.close()
+        # Tell wazuhbd to delete agent database
+        wdb_conn = WazuhDBConnection()
+        wdb_conn.delete_agents_db([self.id])
 
-        if not agent_found:
-            remove(f_keys_temp)
-            raise WazuhException(1701, self.id)
+        try:
+            # remove agent from groups
+            db_global = glob(common.database_path_global)
+            if not db_global:
+                raise WazuhException(1600)
 
-        # Overwrite client.keys
-        move(f_keys_temp, common.client_keys)
+            conn = Connection(db_global[0])
+            conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
+            conn.commit()
+        except Exception as e:
+            raise WazuhException(1747, str(e))
 
-        # Remove rid file
-        rids_file = '{0}/queue/rids/{1}'.format(common.ossec_path, self.id)
-        if path.exists(rids_file):
-            remove(rids_file)
+        try:
+            # Remove rid file
+            rids_file = path.join(common.ossec_path, 'queue/rids', self.id)
+            if path.exists(rids_file):
+                remove(rids_file)
 
-        # get agent's group
-        group_name = ""
-        group_path = "{}/{}".format(common.groups_path, self.id)
+            if backup:
+                # Create backup directory
+                # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
+                date_part = date.today().strftime('%Y/%b/%d')
+                main_agent_backup_dir = path.join(common.backup_path,
+                                                  f'agents/{date_part}/{self.id}-{self.name}-{self.registerIP}')
+                agent_backup_dir = main_agent_backup_dir
 
-        if path.exists(group_path):
-            with open(group_path) as f:
-                group_name = f.read().replace('\n', '')
-                f.close()
-
-        if not backup:
-            # Remove agent files
-            agent_files = [
-                '{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP),
-                '{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP),
-                '{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id),
-                '{}/queue/db/{}.db'.format(common.ossec_path, self.id),
-                '{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id),
-                '{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id),
-                '{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id),
-                '{}/queue/diff/{}'.format(common.ossec_path, self.name)
-            ]
-
-            for agent_file in filter(path.exists, agent_files):
-                if path.isdir(agent_file):
-                    rmtree(agent_file)
-                else:
-                    remove(agent_file)
-
-        else:
-            # Create backup directory
-            # /var/ossec/backup/agents/yyyy/Mon/dd/id-name-ip[tag]
-            date_part = date.today().strftime('%Y/%b/%d')
-            main_agent_backup_dir = '{0}/agents/{1}/{2}-{3}-{4}'.format(common.backup_path, date_part, self.id, self.name, self.registerIP)
-            agent_backup_dir = main_agent_backup_dir
-
-            not_agent_dir = True
-            i = 0
-            while not_agent_dir:
-                if path.exists(agent_backup_dir):
-                    i += 1
-                    agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
-                else:
-                    makedirs(agent_backup_dir)
-                    chmod_r(agent_backup_dir, 0o750)
-                    not_agent_dir = False
+                not_agent_dir = True
+                i = 0
+                while not_agent_dir:
+                    if path.exists(agent_backup_dir):
+                        i += 1
+                        agent_backup_dir = '{0}-{1}'.format(main_agent_backup_dir, str(i).zfill(3))
+                    else:
+                        makedirs(agent_backup_dir)
+                        chmod_r(agent_backup_dir, 0o750)
+                        not_agent_dir = False
+            else:
+                agent_backup_dir = ''
 
             # Move agent file
             agent_files = [
                 ('{0}/queue/agent-info/{1}-{2}'.format(common.ossec_path, self.name, self.registerIP), '{0}/agent-info'.format(agent_backup_dir)),
                 ('{0}/queue/rootcheck/({1}) {2}->rootcheck'.format(common.ossec_path, self.name, self.registerIP), '{0}/rootcheck'.format(agent_backup_dir)),
                 ('{0}/queue/agent-groups/{1}'.format(common.ossec_path, self.id), '{0}/agent-group'.format(agent_backup_dir)),
-                ('{}/queue/db/{}.db'.format(common.ossec_path, self.id), '{}/queue_db'.format(agent_backup_dir)),
-                ('{}/queue/db/{}.db-wal'.format(common.ossec_path, self.id), '{}/queue_db_wal'.format(agent_backup_dir)),
-                ('{}/queue/db/{}.db-shm'.format(common.ossec_path, self.id), '{}/queue_db_shm'.format(agent_backup_dir)),
                 ('{}/var/db/agents/{}-{}.db'.format(common.ossec_path, self.name, self.id), '{}/var_db'.format(agent_backup_dir)),
                 ('{}/queue/diff/{}'.format(common.ossec_path, self.name), '{}/diff'.format(agent_backup_dir))
             ]
 
             for agent_file, backup_file in agent_files:
-                if path.exists(agent_file) and not path.exists(backup_file):
-                    rename(agent_file, backup_file)
+                if path.exists(agent_file):
+                    if not backup:
+                        if path.isdir(agent_file):
+                            rmtree(agent_file)
+                        else:
+                            remove(agent_file)
+                    elif not path.exists(backup_file):
+                        rename(agent_file, backup_file)
 
-        # remove agent from groups
-        db_global = glob(common.database_path_global)
-        if not db_global:
-            raise WazuhException(1600)
-
-        conn = Connection(db_global[0])
-        conn.execute('delete from belongs where id_agent = :id_agent', {'id_agent': int(self.id)})
-        conn.commit()
-
-        # remove multigroup if not being used
-        multi_group_list = []
-        for filename in listdir("{0}".format(common.groups_path)):
-            try:
-                file = open("{0}/{1}".format(common.groups_path,filename),"r")
-                group_readed = file.read()
-                group_readed = group_readed.strip()
-                multi_group_list.append(group_readed)
-                file.close()
-            except Exception:
-                continue
+            # Overwrite client.keys
+            move(f_keys_temp, common.client_keys)
+        except Exception as e:
+            raise WazuhException(1748, str(e))
 
         return 'Agent deleted successfully.'
 
@@ -2464,22 +2442,10 @@ class Agent:
         return Agent(agent_id).upgrade_custom(file_path=file_path, installer=installer)
 
 
-    def getconfig(self, component, configuration):
+    def getconfig(self, component, config):
         """
         Read agent loaded configuration.
         """
-        sockets_path = common.ossec_path + "/queue/ossec/"
-
-        components = ["agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                      "monitor", "request", "syscheck", "wmodules"]
-
-        # checks if the component is correct
-        if component not in components:
-            raise WazuhException(1101, "Invalid target")
-
-        if component == "analysis" and (configuration == "rules" or configuration == "decoders"):
-            raise WazuhException(1101, "Could not get requested section")
-
         # checks if agent version is compatible with this feature
         self._load_info_from_DB()
         if self.version is None:
@@ -2490,47 +2456,7 @@ class Agent:
         if agent_version < required_version:
             raise WazuhException(1735, "Minimum required version is " + str(required_version))
 
-        if int(self.id) == 0:
-            dest_socket = sockets_path + component
-            command = "getconfig " + configuration
-        else:
-            dest_socket = sockets_path + "request"
-            command = str(self.id).zfill(3) + " " + component + " getconfig " + configuration
-
-        # Socket connection
-        try:
-            s = OssecSocket(dest_socket)
-        except Exception as e:
-            if int(self.id) == 0:
-                raise WazuhException(1013,"The component might be disabled")
-            else:
-                raise WazuhException(1013,str(e))
-
-        # Generate message
-        msg = "{0}".format(command)
-
-        # Send message
-        s.send(msg.encode())
-
-        # Receive response
-        try:
-            # Receive data length
-            data = s.receive().decode().split(" ", 1)
-            rec_msg_ok = data[0]
-            rec_msg = data[1]
-        except IndexError:
-            raise WazuhException(1014, "Data could not be received")
-
-        s.close()
-
-        if rec_msg_ok.startswith( 'ok' ):
-            msg = loads(rec_msg)
-            return msg
-        else:
-            if "No such file or directory" in rec_msg:
-                raise WazuhException(1013,"The component might be disabled")
-            else:
-                raise WazuhException(1101, rec_msg.replace("err ", ""))
+        return configuration.get_active_configuration(self.id, component, config)
 
     @staticmethod
     def get_config(agent_id, component, configuration):
@@ -2540,16 +2466,13 @@ class Agent:
         :param agent_id: Agent ID.
         :return: Loaded configuration in JSON.
         """
-        if not component or not configuration:
-            raise WazuhException(1307)
-
         my_agent = Agent(agent_id)
         my_agent._load_info_from_DB()
 
         if my_agent.status != "Active":
             raise WazuhException(1740)
 
-        return my_agent.getconfig(component=component, configuration=configuration)
+        return my_agent.getconfig(component=component, config=configuration)
 
     @staticmethod
     def get_sync_group(agent_id):
@@ -2574,3 +2497,45 @@ class Agent:
                 return {'synced': False}
             except Exception as e:
                 raise WazuhException(1739, str(e))
+
+    @staticmethod
+    def get_agent_conf(group_id=None, offset=0, limit=common.database_limit, filename='agent.conf', return_format=None):
+        """
+        Returns agent.conf as dictionary.
+
+        :return: agent.conf as dictionary.
+        """
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+        return configuration.get_agent_conf(group_id, offset, limit, filename, return_format)
+
+    @staticmethod
+    def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
+        """
+        Returns the configuration file as dictionary.
+
+        :return: configuration file as dictionary.
+        """
+
+        if group_id:
+            if not Agent.group_exists(group_id):
+                raise WazuhException(1710, group_id)
+
+        return configuration.get_file_conf(filename, group_id, type_conf, return_format)
+
+    @staticmethod
+    def upload_group_file(group_id, tmp_file, file_name='agent.conf'):
+        """
+        Updates a group file
+        :param group_id: Group to update
+        :param tmp_file: Relative path of temporary file to upload
+        :param file_name: File name to update
+        :return: Confirmation message in string
+        """
+        # check if the group exists
+        if not Agent.group_exists(group_id):
+            raise WazuhException(1710)
+
+        return configuration.upload_group_file(group_id, tmp_file, file_name)

@@ -38,10 +38,10 @@ void init_magic(magic_t *cookie_ptr)
 
     if (!*cookie_ptr) {
         const char *err = magic_error(*cookie_ptr);
-        merror("Can't init libmagic: %s", err ? err : "unknown");
+        merror(FIM_ERROR_LIBMAGIC_START, err ? err : "unknown");
     } else if (magic_load(*cookie_ptr, NULL) < 0) {
         const char *err = magic_error(*cookie_ptr);
-        merror("Can't load magic file: %s", err ? err : "unknown");
+        merror(FIM_ERROR_LIBMAGIC_LOAD, err ? err : "unknown");
         magic_close(*cookie_ptr);
         *cookie_ptr = 0;
     }
@@ -55,6 +55,7 @@ static void read_internal(int debug_level)
     syscheck.sleep_after = getDefine_Int("syscheck", "sleep_after", 1, 9999);
     syscheck.rt_delay = getDefine_Int("syscheck", "rt_delay", 1, 1000);
     syscheck.max_depth = getDefine_Int("syscheck", "default_max_depth", 1, 320);
+    syscheck.file_max_size = (size_t)getDefine_Int("syscheck", "file_max_size", 0, 4095) * 1024 * 1024;
 
 #ifndef WIN32
     syscheck.max_audit_entries = getDefine_Int("syscheck", "max_audit_entries", 1, 4096);
@@ -91,11 +92,12 @@ int fim_initialize() {
 #endif
     // Duplicate hash table to check for deleted files
     syscheck.last_check = OSHash_Create();
-    
-    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) merror_exit("At fim_initialize(): OSHash_Create() failed");
-    
+
+    if (!syscheck.fp || !syscheck.local_hash || !syscheck.last_check) {
+        merror_exit(FIM_CRITICAL_ERROR_HASH_CREATE, "fim_initialize()", strerror(errno));
+    }
     OSHash_SetFreeDataPointer(syscheck.fp, (void (*)(void *))free_syscheck_node_data);
-    
+
     return 0;
 }
 
@@ -123,10 +125,10 @@ int Start_win32_Syscheck()
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         /* Disabled */
         if (!syscheck.dir) {
-            minfo(SK_NO_DIR);
+            minfo(FIM_DIRECTORY_NOPROVIDED);
             dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
-            minfo(SK_NO_DIR);
+            minfo(FIM_DIRECTORY_NOPROVIDED);
         }
 
         syscheck.dir[0] = NULL;
@@ -142,7 +144,7 @@ int Start_win32_Syscheck()
         }
         syscheck.registry[0].entry = NULL;
 
-        minfo("Syscheck disabled.");
+        minfo(FIM_DISABLED);
     }
 
     /* Rootcheck config */
@@ -161,7 +163,7 @@ int Start_win32_Syscheck()
             if (syscheck.opts[r] & CHECK_WHODATA) {
                 if (!whodata_notification) {
                     whodata_notification = 1;
-                    minfo("Whodata mode is not compatible with this version of Windows.");
+                    minfo(FIM_REALTIME_INCOMPATIBLE);
                 }
                 syscheck.opts[r] &= ~CHECK_WHODATA;
                 syscheck.opts[r] |= CHECK_REALTIME;
@@ -174,7 +176,7 @@ int Start_win32_Syscheck()
         /* Print options */
         r = 0;
         while (syscheck.registry[r].entry != NULL) {
-            minfo("Monitoring registry entry: '%s%s'.", syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
+            minfo(FIM_MONITORING_REGISTRY, syscheck.registry[r].entry, syscheck.registry[r].arch == ARCH_64BIT ? " [x64]" : "");
             r++;
         }
 
@@ -182,37 +184,38 @@ int Start_win32_Syscheck()
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
-            minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
-            if (syscheck.tag[r] != NULL)
-                mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
+            minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            if (syscheck.tag && syscheck.tag[r] != NULL) {
+                mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
+            }
             r++;
         }
 
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo("Ignoring: '%s'", syscheck.ignore[r]);
+                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo("Ignoring sregex: '%s'", syscheck.ignore_regex[r]->raw);
+                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print registry ignores. */
         if(syscheck.registry_ignore)
             for (r = 0; syscheck.registry_ignore[r].entry != NULL; r++)
-                minfo("Ignoring registry: '%s'", syscheck.registry_ignore[r].entry);
+                minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.registry_ignore[r].entry);
 
         /* Print sregex registry ignores. */
         if(syscheck.registry_ignore_regex)
             for (r = 0; syscheck.registry_ignore_regex[r].regex != NULL; r++)
-                minfo("Ignoring registry sregex: '%s'", syscheck.registry_ignore_regex[r].regex->raw);
+                minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.registry_ignore_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;
             while (syscheck.nodiff[r] != NULL) {
-                minfo("No diff for file: '%s'", syscheck.nodiff[r]);
+                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }
@@ -327,12 +330,12 @@ int main(int argc, char **argv)
     } else if ((r == 1) || (syscheck.disabled == 1)) {
         if (!syscheck.dir) {
             if (!test_config) {
-                minfo(SK_NO_DIR);
+                minfo(FIM_DIRECTORY_NOPROVIDED);
             }
             dump_syscheck_entry(&syscheck, "", 0, 0, NULL, 0, NULL, -1);
         } else if (!syscheck.dir[0]) {
             if (!test_config) {
-                minfo(SK_NO_DIR);
+                minfo(FIM_DIRECTORY_NOPROVIDED);
             }
         }
 
@@ -345,7 +348,7 @@ int main(int argc, char **argv)
         }
 
         if (!test_config) {
-            minfo("Syscheck disabled.");
+            minfo(FIM_DISABLED);
         }
     }
 
@@ -391,12 +394,12 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
     if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
-        minfo("Cannot connect to queue '%s' (%d)'%s'. Waiting 5 seconds to reconnect.", DEFAULTQPATH, errno, strerror(errno));
+        minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 5);
 
         sleep(5);
         if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
             /* more 10 seconds of wait */
-            minfo("Cannot connect to queue '%s' (%d)'%s'. Waiting 10 seconds to reconnect.", DEFAULTQPATH, errno, strerror(errno));
+            minfo(FIM_WAITING_QUEUE, DEFAULTQPATH, errno, strerror(errno), 10);
             sleep(10);
             if ((syscheck.queue = StartMQ(DEFAULTQPATH, WRITE)) < 0) {
                 merror_exit(QUEUE_FATAL, DEFAULTQPATH);
@@ -413,27 +416,33 @@ int main(int argc, char **argv)
         r = 0;
         while (syscheck.dir[r] != NULL) {
             char optstr[ 1024 ];
-            minfo("Monitoring directory: '%s', with options %s.", syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+
+            if (!syscheck.converted_links[r]) {
+                minfo(FIM_MONITORING_DIRECTORY, syscheck.dir[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            } else {
+                minfo(FIM_MONITORING_LDIRECTORY, syscheck.dir[r], syscheck.converted_links[r], syscheck_opts2str(optstr, sizeof( optstr ), syscheck.opts[r]));
+            }
+
             if (syscheck.tag && syscheck.tag[r] != NULL)
-                mdebug1("Adding tag '%s' to directory '%s'.", syscheck.tag[r], syscheck.dir[r]);
+                mdebug1(FIM_TAG_ADDED, syscheck.tag[r], syscheck.dir[r]);
             r++;
         }
 
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo("Ignoring: '%s'", syscheck.ignore[r]);
+                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo("Ignoring sregex: '%s'", syscheck.ignore_regex[r]->raw);
+                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;
             while (syscheck.nodiff[r] != NULL) {
-                minfo("No diff for file: '%s'", syscheck.nodiff[r]);
+                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }
@@ -443,11 +452,11 @@ int main(int argc, char **argv)
         while (syscheck.dir[r] != NULL) {
             if (syscheck.opts[r] & CHECK_REALTIME) {
   #ifdef INOTIFY_ENABLED
-                minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
+                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
   #elif defined(WIN32)
-                minfo("Directory set for real time monitoring: '%s'.", syscheck.dir[r]);
+                minfo(FIM_REALTIME_MONITORING_DIRECTORY, syscheck.dir[r]);
   #else
-                mwarn("Ignoring flag for real time monitoring on directory: '%s'.", syscheck.dir[r]);
+                mwarn(FIM_WARN_REALTIME_DISABLED, syscheck.dir[r]);
   #endif
             }
             r++;
@@ -467,9 +476,9 @@ int main(int argc, char **argv)
 #ifdef ENABLE_AUDIT
         int out = audit_init();
         if (out < 0)
-            mwarn("Audit events reader thread not started.");
+            mwarn(FIM_WARN_AUDIT_THREAD_NOSTARTED);
 #else
-        merror("Audit support not built. Whodata is not available.");
+        merror(FIM_ERROR_WHODATA_AUDIT_SUPPORT);
 #endif
     }
 

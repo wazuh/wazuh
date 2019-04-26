@@ -17,6 +17,13 @@ policy:
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
+requirements:
+  title: "Check that the Windows platform is Windows Server 2012 R2"
+  description: "Requirements for running the CIS benchmark Member Server L2 under Windows Server 2012 R2"
+  condition: "any required"
+  rules:
+     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows Server 2012 R2;'
+
 checks:
 # Section 2.3.7 - Interactive logon
   - id: 9500

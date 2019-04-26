@@ -54,7 +54,7 @@ void agent_help()
 /* syscheck main thread */
 void *skthread()
 {
-    minfo("Starting syscheckd thread.");
+    minfo("Starting file integrity monitoring thread.");
 
     Start_win32_Syscheck();
 
@@ -89,7 +89,9 @@ int main(int argc, char **argv)
         mypath[0] = '.';
         mypath[1] = '\0';
     }
-    chdir(mypath);
+    if (chdir(mypath) < 0) {
+        merror_exit(CHDIR_ERROR, mypath, errno, strerror(errno));
+    }
     getcwd(mypath, OS_MAXSTR - 1);
     snprintf(myfinalpath, OS_MAXSTR, "\"%s\\%s\"", mypath, myfile);
 
@@ -589,6 +591,17 @@ char *get_win_agent_ip(){
             } while ((dwRetVal == ERROR_BUFFER_OVERFLOW) && (Iterations < MAX_TRIES));
         }
 
+        if (checkVista()) {
+            if (sys_library = LoadLibrary("syscollector_win_ext.dll"), sys_library) {
+                _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
+                if (!_get_network_vista){
+                    dwRetVal = GetLastError();
+                    mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
+                    goto end;
+                }
+            }
+        }
+
         if (dwRetVal == NO_ERROR) {
             pCurrAddresses = pAddresses;
             while (pCurrAddresses) {
@@ -606,14 +619,6 @@ char *get_win_agent_ip(){
                 }
 
                 if (checkVista()) {
-                    sys_library = LoadLibrary("syscollector_win_ext.dll");
-                    if (sys_library != NULL){
-                        _get_network_vista = (CallFunc)GetProcAddress(sys_library, "get_network_vista");
-                        if (!_get_network_vista){
-                            dwRetVal = GetLastError();
-                            mterror(WM_SYS_LOGTAG, "Unable to access 'get_network_vista' on syscollector_win_ext.dll.");
-                        }
-                    }
                     /* Call function get_network_vista() in syscollector_win_ext.dll */
                     string = _get_network_vista(pCurrAddresses, 0, NULL);
                 } else {
@@ -632,6 +637,7 @@ char *get_win_agent_ip(){
                             if (metric && metric->valueint < min_metric) {
                                 cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                                 cJSON *address = cJSON_GetArrayItem(addresses,0);
+                                free(agent_ip);
                                 os_strdup(address->valuestring, agent_ip);
                                 min_metric = metric->valueint;
                             }
@@ -639,6 +645,7 @@ char *get_win_agent_ip(){
                         else{
                             cJSON *addresses = cJSON_GetObjectItem(ipv4, "address");
                             cJSON *address = cJSON_GetArrayItem(addresses,0);
+                            free(agent_ip);
                             os_strdup(address->valuestring, agent_ip);
                             free(string);
                             cJSON_Delete(object);
@@ -652,6 +659,13 @@ char *get_win_agent_ip(){
             }
         }
     }
+
+end:
+
+    if (pAddresses) {
+        win_free((HLOCAL)pAddresses);
+    }
+
     return agent_ip;
 }
 

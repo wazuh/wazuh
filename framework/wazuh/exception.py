@@ -29,10 +29,13 @@ class WazuhException(Exception):
         1014: 'Error communicating with socket',
         1015: 'Error agent version is null. Was the agent ever connected?',
         1016: 'Error moving file',
+        1017: 'Wazuh is restarting',
+        1018: 'Wazuh is stopped. Start Wazuh before using the API.',
+        1019: 'There is a failed process. Review that before using the API.',
 
         # Configuration: 1100 - 1199
         1100: 'Error checking configuration',
-        1101: 'Error getting configuration',
+        1101: 'Requested component does not exist',
         1102: 'Invalid section',
         1103: 'Invalid field in section',
         1104: 'Invalid type',
@@ -47,6 +50,9 @@ class WazuhException(Exception):
         1113: "XML syntax error",
         1114: "Wazuh syntax error",
         1115: "Error executing verify-agent-conf",
+        1116: "Requested component configuration does not exist",
+        1117: "Unable to connect with component. The component might be disabled.",
+        1118: "Could not request component configuration",
 
         # Rule: 1200 - 1299
         1200: 'Error reading rules from ossec.conf',
@@ -86,11 +92,12 @@ class WazuhException(Exception):
         1603: 'Invalid status. Valid statuses are: all, solved and outstanding',
         1604: 'Impossible to run FIM scan due to agent is not active',
         1605: 'Impossible to run policy monitoring scan due to agent is not active',
-        1650: 'Active response - Bad arguments',
+        1650: 'Active response - Command not specified',
         1651: 'Active response - Agent is not active',
         1652: 'Active response - Unable to run command',
-        1653: 'Active response - Agent not available',
+        1653: 'Active response - Agent ID not specified',
         1654: 'Unable to clear rootcheck database',
+        1655: 'Active response - Command not available',
 
         # Agents: 1700 - 1799
         1700: 'Bad arguments. Accepted arguments: [id] or [name and ip]',
@@ -139,6 +146,9 @@ class WazuhException(Exception):
         1743: 'Error running Wazuh syntax validator',
         1744: 'Invalid chunk size',
         1745: "Agent only belongs to 'default' and it cannot be unset from this group.",
+        1746: "Could not parse current client.keys file",
+        1747: "Could not remove agent group assigment from database",
+        1748: "Could not remove agent files",
 
         # CDB List: 1800 - 1899
         1800: 'Bad format in CDB list {path}',
@@ -158,7 +168,7 @@ class WazuhException(Exception):
         2000: 'No such database file',
         2001: 'Incompatible version of SQLite',
         2002: 'Maximum attempts exceeded for sqlite3 execute',
-        2003: 'Error in database request',
+        2003: 'Error in wazuhdb request',
         2004: 'Database query not valid',
         2005: 'Could not connect to wdb socket',
         2006: 'Received JSON from Wazuh DB is not correctly formatted',
