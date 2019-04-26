@@ -84,7 +84,7 @@ def get_cluster_items_worker_intervals():
     return get_cluster_items()['intervals']['worker']
 
 
-def read_config(config_file=common.ossec_conf, api_request=False):
+def read_config(config_file=common.ossec_conf):
     cluster_default_configuration = {
         'disabled': False,
         'node_type': 'master',
@@ -145,22 +145,16 @@ def read_config(config_file=common.ossec_conf, api_request=False):
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
         config_cluster['node_type'] = 'worker'
 
-    if api_request:
-        return WazuhResult({'data': config_cluster})
-
     return config_cluster
 
 
-def get_node(api_request=False):
+def get_node():
     data = {}
     config_cluster = read_config()
 
     data["node"]    = config_cluster["node_name"]
     data["cluster"] = config_cluster["name"]
     data["type"]    = config_cluster["node_type"]
-
-    if api_request:
-        return WazuhResult({'data': data})
 
     return data
 
@@ -172,14 +166,11 @@ def check_cluster_status():
     return read_config()['disabled']
 
 
-def get_status_json(api_request=False):
+def get_status_json():
     enabled = {'enabled': 'no' if check_cluster_status() else 'yes'}
     running = {'running': 'yes' if status()['wazuh-clusterd'] == 'running' else 'no'}
 
     result = {**enabled, **running}
-
-    if api_request:
-        return WazuhResult({'data': result})
 
     return result
 

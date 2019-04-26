@@ -437,7 +437,7 @@ def _ar_conf2json(file_path):
 
 
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, api_request=False):
+def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf):
     """
     Returns ossec.conf (manager) as dictionary.
 
@@ -469,9 +469,6 @@ def get_ossec_conf(section=None, field=None, conf_file=common.ossec_conf, api_re
             data = data[field]  # data[section][field]
         except:
             raise WazuhError(1103)
-
-    if api_request:
-        return WazuhResult({'data': data})
 
     return data
 

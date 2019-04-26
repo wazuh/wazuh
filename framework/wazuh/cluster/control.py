@@ -24,7 +24,7 @@ async def get_nodes(filter_node=None, offset=0, limit=common.database_limit,
     return result
 
 
-async def get_node(filter_node=None, select=None, api_request=False):
+async def get_node(filter_node=None, select=None):
     arguments = {'filter_node': filter_node, 'offset': 0, 'limit': common.database_limit, 'sort': None, 'search': None,
                  'select': select, 'filter_type': 'all'}
     node_info_array = json.loads(await local_client.execute(command=b'get_nodes', data=json.dumps(arguments).encode(),
@@ -34,23 +34,18 @@ async def get_node(filter_node=None, select=None, api_request=False):
         raise node_info_array
 
     if len(node_info_array['items']) > 0:
-        if api_request:
-            return WazuhResult({'data': node_info_array['items'][0]})
         return node_info_array['items'][0]
     else:
         return {}
 
 
-async def get_health(filter_node=None, api_request=False):
+async def get_health(filter_node=None):
     result = json.loads(await local_client.execute(command=b'get_health',
                                                    data=json.dumps(filter_node).encode(),
                                                    wait_for_complete=False),
                         object_hook=as_wazuh_object)
     if isinstance(result, Exception):
         raise result
-
-    if api_request:
-        return WazuhResult({'data': result})
 
     return result
 

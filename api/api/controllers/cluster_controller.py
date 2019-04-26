@@ -34,7 +34,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
     :type wait_for_complete: bool
     :rtype: object
     """
-    f_kwargs = {'api_request': True}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=cluster.get_node,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -44,7 +44,7 @@ def get_cluster_node(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -103,8 +103,7 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
     :param select: Select which fields to return (separated by comma)
     """
     f_kwargs = {'filter_node': node_id,
-                'select': select,
-                'api_request': True}
+                'select': select}
 
     dapi = DistributedAPI(f=cluster_control.get_node,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -114,7 +113,7 @@ def get_cluster_node_info(node_id, pretty=False, wait_for_complete=False, select
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -128,7 +127,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'api_request': True}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=cluster_control.get_health,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -138,7 +137,7 @@ def get_healthcheck(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -153,8 +152,7 @@ def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'filter_node': node_id,
-                'api_request': True}
+    f_kwargs = {'filter_node': node_id}
 
     dapi = DistributedAPI(f=cluster_control.get_health,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -164,7 +162,7 @@ def get_healthcheck_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -178,7 +176,7 @@ def get_status(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'api_request': True}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=cluster.get_status_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -188,7 +186,7 @@ def get_status(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -202,7 +200,7 @@ def get_config(pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'api_request': True}
+    f_kwargs = {}
 
     dapi = DistributedAPI(f=cluster.read_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -212,7 +210,7 @@ def get_config(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -227,8 +225,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id,
-                'api_request': True}
+    f_kwargs = {'node_id': node_id}
 
     dapi = DistributedAPI(f=manager.status,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -238,7 +235,7 @@ def get_status_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -253,8 +250,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id,
-                'api_request': True}
+    f_kwargs = {'node_id': node_id}
 
     dapi = DistributedAPI(f=Wazuh(common.ossec_path).get_ossec_init,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -264,7 +260,7 @@ def get_info_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -283,8 +279,7 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
     """
     f_kwargs = {'node_id': node_id,
                 'section': section,
-                'field': field,
-                'api_request': True}
+                'field': field}
 
     dapi = DistributedAPI(f=configuration.get_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -294,7 +289,7 @@ def get_configuration_node(node_id, pretty=False, wait_for_complete=False, secti
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -321,7 +316,10 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
         month = str(today.month)
         day = str(today.day)
 
-    f_kwargs = {'node_id': node_id, 'year': year, 'month': month, 'day': day}
+    f_kwargs = {'node_id': node_id,
+                'year': year,
+                'month': month,
+                'day': day}
 
     dapi = DistributedAPI(f=stats.totals,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -459,8 +457,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'category': category,
-                'type_log': type_log,
-                'api_request': True}
+                'type_log': type_log}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -470,7 +467,7 @@ def get_log_node(node_id, pretty=False, wait_for_complete=False, offset=0, limit
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -485,8 +482,7 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id,
-                'api_request': True}
+    f_kwargs = {'node_id': node_id}
 
     dapi = DistributedAPI(f=manager.ossec_log_summary,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -496,7 +492,7 @@ def get_log_summary_node(node_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -512,7 +508,8 @@ def get_files_node(node_id, path, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id, 'path': path}
+    f_kwargs = {'node_id': node_id,
+                'path': path}
 
     dapi = DistributedAPI(f=manager.get_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -554,7 +551,9 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
     except AttributeError:
         return 'Body is empty', 400
 
-    f_kwargs = {'node_id': node_id, 'path': path, 'overwrite': overwrite,
+    f_kwargs = {'node_id': node_id,
+                'path': path,
+                'overwrite': overwrite,
                 'content': body}
 
     dapi = DistributedAPI(f=manager.upload_file,
@@ -581,7 +580,8 @@ def delete_files_node(node_id, path, pretty=False, wait_for_complete=False):
     :param pretty: Show results in human-readable format
     :param wait_for_complete: Disable timeout response
     """
-    f_kwargs = {'node_id': node_id, 'path': path}
+    f_kwargs = {'node_id': node_id,
+                'path': path}
 
     dapi = DistributedAPI(f=manager.delete_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

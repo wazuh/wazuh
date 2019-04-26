@@ -30,7 +30,7 @@ _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 execq_lockfile = join(common.ossec_path, "var/run/.api_execq_lock")
 
 
-def status(api_request: bool=False) -> Dict:
+def status() -> Dict:
     """
     Returns the Manager processes that are running.
     :return: Dictionary (keys: status, daemon).
@@ -57,9 +57,6 @@ def status(api_request: bool=False) -> Dict:
         else:
             data[process] = 'stopped'
 
-    if api_request:
-        return WazuhResult({'data': data})
-
     return data
 
 
@@ -84,8 +81,7 @@ def __get_ossec_log_fields(log):
 
 
 def ossec_log(type_log='all', category='all', months=3, offset=0,
-              limit=common.database_limit, sort=None, search=None,
-              api_request=False):
+              limit=common.database_limit, sort=None, search=None):
     """
     Gets logs from ossec.log.
 
@@ -148,13 +144,10 @@ def ossec_log(type_log='all', category='all', months=3, offset=0,
 
     result = {'items': cut_array(logs, offset, limit), 'totalItems': len(logs)}
 
-    if api_request:
-        return WazuhResult({'data': result})
-
     return result
 
 
-def ossec_log_summary(months=3, api_request=False):
+def ossec_log_summary(months=3):
     """
     Summary of ossec.log.
 
@@ -191,9 +184,6 @@ def ossec_log_summary(months=3, api_request=False):
                 categories[category][log_type] += 1
             else:
                 continue
-
-    if api_request:
-        return WazuhResult({'data': categories})
 
     return categories
 
