@@ -10,7 +10,7 @@ import logging
 import wazuh.configuration as configuration
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.util import remove_nones_to_dict, exception_handler, format_data
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, format_data
 from wazuh import common
 from wazuh import Wazuh
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -245,8 +245,8 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
-                'sort': sort,
-                'search':search,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
                 'category': category,
                 'type_log': type_log}
 

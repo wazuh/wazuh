@@ -98,4 +98,241 @@ stages:
         body:
           data: !anything
 
-  
+  - name: Hourly stats
+
+    request:
+      url: http://localhost:55000/manager/stats/hourly
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            averages: !anything
+            interactions: !anyint
+
+  - name: Weekly stats
+
+    request:
+      url: http://localhost:55000/manager/stats/weekly
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            Mon:
+              hours: !anything
+              interactions: !anyint
+            Tue:
+              hours: !anything
+              interactions: !anyint
+            Wed:
+              hours: !anything
+              interactions: !anyint
+            Thu:
+              hours: !anything
+              interactions: !anyint
+            Fri:
+              hours: !anything
+              interactions: !anyint
+            Sat:
+              hours: !anything
+              interactions: !anyint
+            Sun:
+              hours: !anything
+              interactions: !anyint
+
+  - name: Analysisd stats
+
+    request:
+      url: http://localhost:55000/manager/stats/analysisd
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            total_events_decoded: !anyfloat
+            syscheck_events_decoded: !anyfloat
+            syscheck_edps: !anyfloat
+            syscollector_events_decoded: !anyfloat
+            syscollector_edps: !anyfloat
+            rootcheck_events_decoded: !anyfloat
+            rootcheck_edps: !anyfloat
+            sca_events_decoded: !anyfloat
+            sca_edps: !anyfloat
+            hostinfo_events_decoded: !anyfloat
+            hostinfo_edps: !anyfloat
+            winevt_events_decoded: !anyfloat
+            winevt_edps: !anyfloat
+            other_events_decoded: !anyfloat
+            other_events_edps: !anyfloat
+            events_processed: !anyfloat
+            events_edps: !anyfloat
+            events_received: !anyfloat
+            events_dropped: !anyfloat
+            alerts_written: !anyfloat
+            firewall_written: !anyfloat
+            fts_written: !anyfloat
+            syscheck_queue_usage: !anyfloat
+            syscheck_queue_size: !anyfloat
+            syscollector_queue_usage: !anyfloat
+            syscollector_queue_size: !anyfloat
+            rootcheck_queue_usage: !anyfloat
+            rootcheck_queue_size: !anyfloat
+            sca_queue_usage: !anyfloat
+            sca_queue_size: !anyfloat
+            hostinfo_queue_usage: !anyfloat
+            hostinfo_queue_size: !anyfloat
+            winevt_queue_usage: !anyfloat
+            winevt_queue_size: !anyfloat
+            event_queue_usage: !anyfloat
+            event_queue_size: !anyfloat
+            rule_matching_queue_usage: !anyfloat
+            rule_matching_queue_size: !anyfloat
+            alerts_queue_usage: !anyfloat
+            alerts_queue_size: !anyfloat
+            firewall_queue_usage: !anyfloat
+            firewall_queue_size: !anyfloat
+            statistical_queue_usage: !anyfloat
+            statistical_queue_size: !anyfloat
+            archives_queue_usage: !anyfloat
+            archives_queue_size: !anyfloat
+
+  - name: Remoted stats
+
+    request:
+      url: http://localhost:55000/manager/stats/remoted
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            queue_size: !anyfloat
+            total_queue_size: !anyfloat
+            tcp_sessions: !anyfloat
+            evt_count: !anyfloat
+            ctrl_msg_count: !anyfloat
+            discarded_count: !anyfloat
+            msg_sent: !anyfloat
+            recv_bytes: !anyfloat
+
+---
+test_name: GET /manager/logs
+strict:
+  - body
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items: !anything
+            totalItems: !anyint
+
+  - name: Filters -> limit=4
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+      params:
+        limit: 4
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - &manager_log
+                description: !anystr
+                level: !anystr
+                tag: !anystr
+                timestamp: !anystr
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> limit=2, sort=-level
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+      params:
+        limit: 2
+        sort: -level
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> offset=3, limit=3
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+      params:
+        limit: 3
+        offset: 3
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> offset=3, type_log=info, limit=4
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+      params:
+        limit: 4
+        offset: 3
+        type_log: info
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+              - <<: *manager_log
+            totalItems: !anyint
+
+  - name: Filters -> category=ossec-analysisd, limit=1
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+      params:
+        category: ossec-analysisd
+        limit: 1
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+            totalItems: !anyint
