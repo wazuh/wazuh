@@ -244,7 +244,7 @@ class WazuhException(Exception):
         3018: 'Error sending request',
         3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, try again in the master node: {MASTER_IP}',
         3020: {'message': 'Timeout sending request',
-               'remediation': ''},
+               'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
         3022: {'message': 'Unknown node ID',
                'remediation': 'Check the name of the node'},
