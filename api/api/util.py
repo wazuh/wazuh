@@ -252,7 +252,8 @@ def format_data(data: typing.Dict) -> typing.Dict:
 
 
 def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
-    """Parses an str parameter from the API query and returns a dictionary the framework can process
+    """
+    Parses an str parameter from the API query and returns a dictionary the framework can process
 
     :param param: Str parameter coming from the API.
     :param param_type: Type of parameter -> search or sort
@@ -267,7 +268,8 @@ def parse_api_param(param: str, param_type: str) -> [typing.Dict, None]:
 
 
 def _parse_search_param(search: str) -> typing.Dict:
-    """Parses search str param coming from the API query into a dictionary the framework can process.
+    """
+    Parses search str param coming from the API query into a dictionary the framework can process.
 
     :param search: Search parameter coming from the API query
     :return: A dictionary like {'value': 'ubuntu', 'negation': False}
@@ -277,10 +279,24 @@ def _parse_search_param(search: str) -> typing.Dict:
 
 
 def _parse_sort_param(sort: str) -> [typing.Dict, None]:
-    """Parses sort str param coming from the API query into a dictionary the framework can process.
+    """
+    Parses sort str param coming from the API query into a dictionary the framework can process.
 
     :param sort: Sort parameter coming from the API query
     :return: A dictionary like {"fields":["field1", "field1"], "order": "desc"}
     """
     sort_fields = sort[(1 if sort[0] == '-' or sort[0] == '+' else 0):]
     return {'fields': sort_fields.split(','), 'order': 'desc' if sort[0] == '-' else 'asc'}
+
+
+def raise_if_exc(obj):
+    """
+    Checks if obj is an Exception a raises it. Otherwise it is returned
+
+    :param obj: object to be checked
+    :return: obj only if it is not an Exception instance
+    """
+    if isinstance(obj, Exception):
+        raise obj
+    else:
+        return obj
