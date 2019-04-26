@@ -496,4 +496,85 @@ stages:
           items:
             - <<: *packages_response
 
+  - name: Wrong filter
+
+    request:
+      <<: *packages_request
+      params:
+        format: "{format}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+
+---
+test_name: GET /syscollector/{agent_id}/processes
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Processes of an agent, no limit
+
+    request: &processes_request
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Processes of an agent with limit = 1
+
+    request:
+      <<: *processes_request
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - argvs: !anystr
+              cmd: !anystr
+              egroup: !anystr
+              euser: !anystr
+              fgroup: !anystr
+              name: !anystr
+              nice: !anyint
+              nlwp: !anyint
+              pgrp: !anyint
+              pid: !anystr
+              ppid: !anyint
+              priority: !anyint
+              processor: !anyint
+              resident: !anyint
+              rgroup: !anystr
+              ruser: !anystr
+              scan:
+                id: !anyint
+                time: !anystr
+              session: !anyint
+              sgroup: !anystr
+              share: !anyint
+              size: !anyint
+              start_time: !anyint
+              state: !anystr
+              stime: !anyint
+              suser: !anystr
+              tgid: !anyint
+              tty: !anyint
+              utime: !anyint
+              vm_size: !anyint
 ---
