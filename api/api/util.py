@@ -235,7 +235,7 @@ def exception_handler(f):
     return handle_exception
 
 
-def format_data(data: Dict) -> Dict:
+def format_data(data: typing.Dict) -> typing.Dict:
     """
     Formats data to API format
 
