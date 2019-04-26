@@ -48,7 +48,7 @@ static int wm_sca_start(wm_sca_t * data);  // Start
 static cJSON *wm_sca_build_event(cJSON *profile,cJSON *policy,char **p_alert_msg,int id,char *result,char *reason);
 static int wm_sca_send_event_check(wm_sca_t * data,cJSON *event);  // Send check event
 static void wm_sca_read_files(wm_sca_t * data);  // Read policy monitoring files
-static int wm_sca_do_scan(OSList *plist,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);  // Do scan
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan, int *checks_number);  // Do scan
 static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed, unsigned int failed,unsigned int invalid,cJSON *policy,int start_time,int end_time, char * integrity_hash, char * integrity_hash_file, int first_scan, int id, int checks_number);  // Send summary
 static int wm_sca_check_policy(cJSON *policy, cJSON *profiles);
 static int wm_sca_check_requirements(cJSON *requirements);
@@ -75,12 +75,11 @@ static int wm_sca_get_vars(cJSON *variables,OSStore *vars);
 static void wm_sca_set_condition(char *c_cond, int *condition); // Set condition
 static char * wm_sca_get_value(char *buf, int *type); // Get value
 static char * wm_sca_get_pattern(char *value); // Get pattern
-static int wm_sca_check_file(char *file, char *pattern, char **reason); // Check file
+static int wm_sca_check_file(char * const file, char * const pattern, char **reason); // Check file
 static int wm_sca_read_command(char *command, char *pattern, wm_sca_t * data, char **reason); // Read command output
-static int wm_sca_pt_check_negate(const char *pattern); // Check pattern negate
-static int wm_sca_pt_matches(const char *str, char *pattern); // Check pattern match
+static int wm_sca_pt_matches(const char * const str, const char * const pattern); // Check pattern match
 static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason); // Check dir
-static int wm_sca_is_process(char *value, OSList *p_list); // Check is a process
+static int wm_sca_is_process(char *value, OSList *p_list); // Check process
 
 #ifdef WIN32
 static int wm_check_registry_entry(char * const value, char **reason);
@@ -408,7 +407,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
             char path[PATH_MAX] = {0};
             OSStore *vars = NULL;
             cJSON * object = NULL;
-            OSList *plist = NULL;
             cJSON *requirements_array = NULL;
             int cis_db_index = i;
 
@@ -450,7 +448,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             yaml_document_delete(&document);
 
-            plist = w_os_get_process_list();
             cJSON *policy = cJSON_GetObjectItem(object, "policy");
             cJSON *variables = cJSON_GetObjectItem(object, "variables");
             cJSON *profiles = cJSON_GetObjectItem(object, "checks");
@@ -508,7 +505,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
             }
 
             if(requirements) {
-                if(wm_sca_do_scan(plist,requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0){
+                if(wm_sca_do_scan(requirements_array,vars,data,id,policy,1,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) == 0){
                     requirements_satisfied = 1;
                 }
             }
@@ -527,7 +524,7 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
                 minfo("Starting evaluation of policy: '%s'", data->profile[i]->profile);
 
-                if (wm_sca_do_scan(plist,profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
+                if (wm_sca_do_scan(profiles,vars,data,id,policy,0,cis_db_index,data->profile[i]->remote,first_scan,&checks_number) != 0) {
                     merror("Evaluating the policy file: '%s. Set debug mode for more detailed information.", data->profile[i]->profile);
                 }
                 mdebug1("Calculating hash for scanned results.");
@@ -553,9 +550,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
                 w_rwlock_unlock(&dump_rwlock);
             }
 
-            w_del_plist(plist);
-            plist = NULL;
-
     next:
             if(fp){
                 fclose(fp);
@@ -571,10 +565,6 @@ static void wm_sca_read_files(wm_sca_t * data) {
 
             if(vars) {
                 OSStore_Free(vars);
-            }
-
-            if(plist) {
-                w_del_plist(plist);
             }
         }
         first_scan = 0;
@@ -789,7 +779,7 @@ static int wm_sca_check_requirements(cJSON *requirements) {
     return retval;
 }
 
-static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan,int *checks_number) {
+static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int id,cJSON *policy,int requirements_scan,int cis_db_index,unsigned int remote_policy,int first_scan,int *checks_number) {
 
     int type = 0, condition = 0;
     char *nbuf = NULL;
@@ -803,6 +793,7 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
     int id_check_p = 0;
     cJSON *c_title = NULL;
     cJSON *c_condition = NULL;
+    OSList *p_list = NULL;
 
     /* Initialize variables */
     memset(buf, '\0', sizeof(buf));
@@ -1086,6 +1077,9 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 
                 /* Check for a process */
                 else if (type == WM_SCA_TYPE_PROCESS) {
+                    if (!p_list) {
+                        p_list = w_os_get_process_list();
+                    }
                     mdebug2("Checking process: '%s'", value);
                     if (wm_sca_is_process(value, p_list)) {
                         mdebug2("Process found.");
@@ -1258,10 +1252,10 @@ static int wm_sca_do_scan(OSList *p_list,cJSON *profile_check,OSStore *vars,wm_s
 /* Clean up memory */
 clean_return:
     os_free(reason);
+    w_del_plist(p_list);
     os_free(name);
 
     return ret_val;
-
 }
 
 static void wm_sca_set_condition(char *c_cond, int *condition) {
@@ -1372,337 +1366,252 @@ static char *wm_sca_get_pattern(char *value)
     return (NULL);
 }
 
-static int wm_sca_check_file(char *file, char *pattern, char **reason)
+static int wm_sca_check_file(char * const file, char * const pattern, char **reason)
 {
-    char *split_file;
-    int full_negate = 0;
-    int pt_result = 0;
-    FILE *fp;
-    char buf[OS_SIZE_2048 + 1];
-    int ret_val = 0;
 
-    if (file == NULL) {
-        goto cleanup;
+    if (!file) {
+        return 0;
     }
 
-    /* Check if the file is divided */
-    split_file = strchr(file, ',');
-    if (split_file) {
-        *split_file = '\0';
-        split_file++;
+    if (pattern && !w_is_file(file)) {
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "File %s not found", file);
+        }
+        return 2;
     }
+    
+    char *pattern_ref = pattern;
 
-    /* Get each file */
-    do {
-        /* If we don't have a pattern, just check if the file/dir is there */
-        if (pattern == NULL) {
-            if (w_is_file(file)) {
-                ret_val = 1;
-
-                goto cleanup;
+    /* by default, assume a negative rule, i.e, an NIN rule */
+    int in_operation = 1;
+    if (pattern_ref) {
+        if (strncmp(pattern_ref, "IN ", 3) == 0) {
+            in_operation = 1;
+            pattern_ref += 3;
+        } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+            in_operation = 0;
+            pattern_ref += 4;
+        } else if (!strstr(pattern_ref, " && ")) {
+            mdebug2("Rule without IN/NIN: %s", pattern_ref);
+            /*a single negated minterm is a NIN rule*/
+            if (*pattern_ref == '!') {
+                in_operation = 0;
+                pattern_ref++;
+                mdebug2("Negation found, is a NIN rule");
+            } else {
+                mdebug2("Negation not found, is an IN rule");
+                in_operation = 1;
             }
         } else {
-            full_negate = wm_sca_pt_check_negate(pattern);
+            merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+            return 0;
+        }   
+    }
 
-            if (!w_is_file(file)) {
-                if (*reason == NULL){
-                    os_malloc(OS_MAXSTR, *reason);
-                    sprintf(*reason, "File %s not found", file);
-                }
-
-                ret_val = 2;
-                goto cleanup;
+    int result_accumulator = pattern_ref ? 0 : 1;
+    char *file_list = NULL;
+    os_strdup(file, file_list);
+    char *file_list_ref = file_list;
+    char *file_element = NULL;
+    while ((file_element = strtok_r(file_list_ref, ",", &file_list_ref))) {
+        if (pattern_ref) {
+            FILE *fp = fopen(file_element, "r");
+            if (!fp) {
+                continue;
             }
-            /* Check for content in the file */
-            fp = fopen(file, "r");
-            if (fp) {
 
-                buf[OS_SIZE_2048] = '\0';
-                while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
-                    char *nbuf;
+            char buf[OS_SIZE_2048 + 1];
 
-                    /* Remove end of line */
-                    nbuf = strchr(buf, '\n');
-                    if (nbuf) {
-                        *nbuf = '\0';
-                    }
-#ifdef WIN32
-                    /* Remove end of line */
-                    nbuf = strchr(buf, '\r');
-                    if (nbuf) {
-                        *nbuf = '\0';
-                    }
-#endif
-                    /* Matched */
-                    pt_result = wm_sca_pt_matches(buf, pattern);
-                    if ((pt_result == 1 && full_negate == 0) ) {
-                        mdebug2("Alerting file %s on line %s", file, buf);
-                        fclose(fp);
-                        ret_val = 1;
-                        goto cleanup;
-                    } else if ((pt_result == 0 && full_negate == 1) ) {
-                        /* Found a full+negate match so no longer need to search
-                         * break out of loop and make sure the full negate does
-                         * not alert.
-                         */
-                        mdebug2("Found a complete match for full_negate");
-                        full_negate = 0;
-                        break;
-                    }
-                }
-
-                fclose(fp);
-
-                if (full_negate == 1) {
-                    mdebug2("Full_negate alerting - file %s", file);
-                    ret_val = 1;
-                    goto cleanup;
+            while (fgets(buf, OS_SIZE_2048, fp) != NULL) {
+                os_trimcrlf(buf);
+                int result = wm_sca_pt_matches(buf, pattern_ref);
+                mdebug2("%s(%s) -> %d", pattern, buf, result);
+                if (result) {
+                    mdebug2("Match found. Skipping the rest.");
+                    mdebug2("Result for %s(%s) -> 1", pattern, file);
+                    os_free(file_list);
+                    fclose(fp);
+                    mdebug2("%s %d", in_operation ? "IN":"NIN", result);
+                    return in_operation ? result : !result;
                 }
             }
+
+            fclose(fp);
+        } else {
+            /* If we don't have a pattern, just check if the file/dir is there */
+            result_accumulator *= w_is_file(file);
         }
+    }
 
-        if (split_file) {
-            file = split_file;
-            split_file = strchr(split_file, ',');
-            if (split_file) {
-                split_file++;
-            }
-        }
-
-    } while (split_file);
-
-    ret_val = 0;
-
-cleanup:
-    return ret_val;
+    mdebug2("Result for %s(%s) -> %d", pattern, file, result_accumulator);
+    mdebug2("%s %d", in_operation ? "IN":"NIN", result_accumulator);
+    os_free(file_list);
+    return in_operation ? result_accumulator : !result_accumulator;
 }
 
 static int wm_sca_read_command(char *command, char *pattern,wm_sca_t * data, char **reason)
 {
-    int full_negate = 0;
-    int pt_result = 0;
-
     if (command == NULL) {
-        return (0);
+        return 0;
     }
 
-    /* If we don't have a pattern, return 1 */
     if (pattern == NULL) {
-        return (1);
-    } else {
-        full_negate = wm_sca_pt_check_negate(pattern);
-        /* Check for content in the file */
-        char *cmd_output = NULL;
-        int result_code;
-
-        if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
-            if (*reason == NULL){
-                os_malloc(OS_MAXSTR, *reason);
-                if (result_code == EXECVE_ERROR) {
-                    mdebug1("Invalid path or permissions running command '%s'",command);
-                    sprintf(*reason, "Invalid path or permissions running command '%s'",command);
-                } else if (result_code == 1) {
-                    mdebug1("Timeout overtaken running command '%s'", command);
-                    sprintf(*reason, "Timeout overtaken running command '%s'", command);
-                } else {
-                    mdebug1("Internal error running command '%s'", command);
-                    sprintf(*reason, "Internal error running command '%s'", command);
-                }
-            }
-            os_free(cmd_output);
-            return 2;
-        } else if (result_code != 0) {
-            mdebug1("Command (%s) returned code %d.", command, result_code);
-        }
-
-        if(!cmd_output) {
-            return 0;
-        }
-
-        char **output_line;
-        output_line = OS_StrBreak('\n', cmd_output, 256);
-
-        if(!output_line) {
-            mdebug1("Command output '%s' has not ending line  '\n' character",cmd_output);
-            os_free(cmd_output);
-            return 0;
-        }
-
-        os_free(cmd_output);
-
-        int i;
-        for (i=0; output_line[i] != NULL; i++) {
-            char *buf = output_line[i];
-            mdebug2("Checking output '%s' for pattern match",buf);
-
-#ifdef WIN32
-            char *nbuf;
-            /* Remove end of line */
-            nbuf = strchr(buf, '\r');
-            if (nbuf) {
-                *nbuf = '\0';
-            }
-#endif
-            /* Matched */
-            pt_result = wm_sca_pt_matches(buf, pattern);
-            if ((pt_result == 1 && full_negate == 0) ) {
-                free_strarray(output_line);
-                return (1);
-            } else if ((pt_result == 0 && full_negate == 1) ) {
-                /* Found a full+negate match so no longer need to search
-                    * break out of loop and make sure the full negate does
-                    * not alert.
-                    */
-                mdebug2("Found a complete match for full_negate");
-                full_negate = 0;
-                break;
-            }
-
-        }
-
-        if (full_negate == 1) {
-            free_strarray(output_line);
-            return (1);
-        }
-
-        free_strarray(output_line);
+        return 1;
     }
 
-    return (0);
-}
+    char *cmd_output = NULL;
+    int result_code;
 
-/* Check if the pattern is all negate values */
-static int wm_sca_pt_check_negate(const char *pattern)
-{
-    char *mypattern = NULL;
-    os_strdup(pattern, mypattern);
-    char *tmp_pt = mypattern;
-    char *tmp_pattern = mypattern;
-
-    while (tmp_pt != NULL) {
-        /* First look for " && " */
-        tmp_pt = strchr(tmp_pattern, ' ');
-        if (tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ') {
-            *tmp_pt = '\0';
-            tmp_pt += 4;
-        } else {
-            tmp_pt = NULL;
-        }
-
-        if (*tmp_pattern != '!') {
-            free(mypattern);
-            return 0;
-        }
-
-        tmp_pattern = tmp_pt;
-    }
-
-    mdebug2("Pattern: %s is fill_negate", pattern);
-    free(mypattern);
-    return (1);
-}
-
-static int wm_sca_pt_matches(const char *str, char *pattern)
-{
-    int neg = 0;
-    int ret_code = 0;
-    char *tmp_pt = pattern;
-    char *tmp_ret = NULL;
-
-    if (str == NULL) {
-        return (0);
-    }
-
-    while (tmp_pt != NULL) {
-        /* First look for " && " */
-        tmp_pt = strchr(pattern, ' ');
-        if (tmp_pt && tmp_pt[1] == '&' && tmp_pt[2] == '&' && tmp_pt[3] == ' ') {
-            /* Mark pointer to clean it up */
-            tmp_ret = tmp_pt;
-
-            *tmp_pt = '\0';
-            tmp_pt += 4;
-        } else {
-            tmp_pt = NULL;
-        }
-
-        /* Check for negate values */
-        neg = 0;
-        ret_code = 0;
-        if (*pattern == '!') {
-            pattern++;
-            neg = 1;
-        }
-
-        /* Do the actual comparison */
-        if (strncasecmp(pattern, "=:", 2) == 0) {
-            pattern += 2;
-            if (strcasecmp(pattern, str) == 0) {
-                ret_code = 1;
-            }
-        } else if (strncasecmp(pattern, "r:", 2) == 0) {
-            pattern += 2;
-            if (OS_Regex(pattern, str)) {
-                ret_code = 1;
-            }
-        } else if (strncasecmp(pattern, "<:", 2) == 0) {
-            pattern += 2;
-            if (strcmp(pattern, str) < 0) {
-                ret_code = 1;
-            }
-        } else if (strncasecmp(pattern, ">:", 2) == 0) {
-            pattern += 2;
-            if (strcmp(pattern, str) > 0) {
-                ret_code = 1;
-            }
-        } else {
-#ifdef WIN32
-            char final_file[2048 + 1];
-
-            /* Try to get Windows variable */
-            if (*pattern == '%') {
-                final_file[0] = '\0';
-                final_file[2048] = '\0';
-
-                ExpandEnvironmentStrings(pattern, final_file, 2047);
+    if( wm_exec(command,&cmd_output,&result_code,data->commands_timeout,NULL) < 0 )  {
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            if (result_code == EXECVE_ERROR) {
+                mdebug1("Invalid path or permissions running command '%s'",command);
+                sprintf(*reason, "Invalid path or permissions running command '%s'",command);
+            } else if (result_code == 1) {
+                mdebug1("Timeout overtaken running command '%s'", command);
+                sprintf(*reason, "Timeout overtaken running command '%s'", command);
             } else {
-                strncpy(final_file, pattern, 2047);
-            }
-
-            /* Compare against the expanded variable */
-            if (strcasecmp(final_file, str) == 0) {
-                ret_code = 1;
-            }
-#else
-            if (strcasecmp(pattern, str) == 0) {
-                ret_code = 1;
-            }
-#endif
-        }
-        /* Fix tmp_ret entry */
-        if (tmp_ret != NULL) {
-            *tmp_ret = ' ';
-            tmp_ret = NULL;
-        }
-
-        /* If we have "!", return true if we don't match */
-        if (neg == 1) {
-            if (ret_code) {
-                ret_code = 0;
-                break;
-            }
-        } else {
-            if (!ret_code) {
-                ret_code = 0;
-                break;
+                mdebug1("Internal error running command '%s'", command);
+                sprintf(*reason, "Internal error running command '%s'", command);
             }
         }
-
-        ret_code = 1;
-        pattern = tmp_pt;
+        os_free(cmd_output);
+        return 2;
+    } else if (result_code != 0) {
+        mdebug1("Command (%s) returned code %d.", command, result_code);
     }
 
-    return (ret_code);
+    if(!cmd_output) {
+        return 0;
+    }
+
+    char **output_line;
+    output_line = OS_StrBreak('\n', cmd_output, 256);
+
+    if(!output_line) {
+        mdebug1("Command output '%s' has not ending line  '\n' character",cmd_output);
+        os_free(cmd_output);
+        return 0;
+    }
+
+    os_free(cmd_output);
+
+    int in_operation = 1;
+    char *pattern_ref = pattern;
+    if (strncmp(pattern_ref, "IN ", 3) == 0) {
+        in_operation = 1;
+        pattern_ref += 3;
+    } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+        in_operation = 0;
+        pattern_ref += 4;
+    } else if (!strstr(pattern_ref, " && ")) {
+        mdebug2("Rule without IN/NIN: %s", pattern_ref);
+        /*a single negated minterm is a NIN rule*/
+        if (strchr(pattern_ref, '!')) {
+           in_operation = 0;
+           mdebug2("Negation found, is a NIN rule");
+        } else {
+            mdebug2("Negation not found, is an IN rule");
+        }
+    } else {
+        merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+        free_strarray(output_line);
+        return 0;
+    }
+
+    int i;
+    for (i=0; output_line[i] != NULL; i++) {
+        char *buf = output_line[i];
+        os_trimcrlf(buf);
+        int result = wm_sca_pt_matches(buf, pattern_ref);
+        if (result){
+            free_strarray(output_line);
+            mdebug2("Result for %s(%s) -> 1", pattern, command);
+            return in_operation ? result : !result;
+        }
+    }
+
+    free_strarray(output_line);
+    mdebug2("Result for %s(%s) -> 0", pattern, command);
+    return in_operation ? 0 : 1;
+}
+
+int wm_sca_test_positive_minterm(char * const minterm, const char * const str)
+{
+    char *pattern_ref = minterm;
+    if (strncasecmp(pattern_ref, "=:", 2) == 0) {
+        pattern_ref += 2;
+        if (strcasecmp(pattern_ref, str) == 0) {
+            return 1;
+        }
+    } else if (strncasecmp(pattern_ref, "r:", 2) == 0) {
+        pattern_ref += 2;
+        if (OS_Regex(pattern_ref, str)) {
+            return 1;
+        }
+    } else if (strncasecmp(pattern_ref, "<:", 2) == 0) {
+        pattern_ref += 2;
+        if (strcmp(pattern_ref, str) < 0) {
+            return 1;
+        }
+    } else if (strncasecmp(pattern_ref, ">:", 2) == 0) {
+        pattern_ref += 2;
+        if (strcmp(pattern_ref, str) > 0) {
+            return 1;
+        }
+    } else {
+#ifdef WIN32
+        char final_file[2048 + 1];
+
+        /* Try to get Windows variable */
+        if (*pattern_ref == '%') {
+            final_file[0] = '\0';
+            final_file[2048] = '\0';
+
+            ExpandEnvironmentStrings(pattern_ref, final_file, 2047);
+        } else {
+            strncpy(final_file, pattern_ref, 2047);
+        }
+
+        /* Compare against the expanded variable */
+        if (strcasecmp(final_file, str) == 0) {
+            return 1;
+        }
+#else
+        if (strcasecmp(pattern_ref, str) == 0) {
+            return 1;
+        }
+#endif
+    }
+    return 0;
+}
+
+int wm_sca_pt_matches(const char * const str, const char * const pattern)
+{
+    if (str == NULL) {
+        return 0;
+    }
+    //mdebug2("Testing rule %s\n", pattern);
+    char *pattern_copy = NULL;
+    os_strdup(pattern, pattern_copy);
+    char *pattern_copy_ref = pattern_copy;
+    char *minterm = NULL;
+    int test_result = 1;
+    while ((minterm = strtok_r(pattern_copy_ref, " && ", &pattern_copy_ref))) {
+        int negated = 0;
+        if ((*minterm) == '!'){
+            minterm++;
+            negated = 1;
+        }
+        const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str);
+        test_result *= minterm_result;
+        mdebug2("Testing buf \"%s\" with minterm %s%s -> %d", str, negated ? "!" : "", minterm, minterm_result);
+    }
+    mdebug2("Rule test result: %d", test_result);
+    os_free(pattern_copy);
+    return test_result;
 }
 
 static int wm_sca_check_dir(const char *dir, const char *file, char *pattern, char **reason)
@@ -2089,11 +1998,39 @@ static int wm_sca_winreg_querykey(HKEY hKey,
             }
 
             /* Check if value matches */
-            if (wm_sca_pt_matches(var_storage, reg_value)) {
-                return (1);
+            /* by default, assume a positive rule, i.e, an IN rule */
+            int in_operation = 1;
+            char *pattern_ref = reg_value;
+            if (pattern_ref) {
+                if (strncmp(pattern_ref, "IN ", 3) == 0) {
+                    in_operation = 1;
+                    pattern_ref += 3;
+                } else if (strncmp(pattern_ref, "NIN ", 4) == 0) {
+                    in_operation = 0;
+                    pattern_ref += 4;
+                } else if (!strstr(pattern_ref, " && ")) {
+                    mdebug2("Rule without IN/NIN: %s", pattern_ref);
+                    /*a single negated minterm is a NIN rule*/
+                    if (*pattern_ref == '!') {
+                        in_operation = 0;
+                        pattern_ref++;
+                        mdebug2("Negation found, is a NIN rule");
+                    } else {
+                        mdebug2("Negation not found, is an IN rule");
+                        in_operation = 1;
+                    }
+                } else {
+                    merror("Complex rule without IN/NIN: %s. Invalid.", pattern_ref);
+                    return 0;
+                }   
             }
-
-            return (0);
+            
+            int result = wm_sca_pt_matches(var_storage, pattern_ref);
+            if (result){
+                mdebug2("Result for %s(%s) -> 1", reg_value, var_storage);
+                return in_operation ? result : !result;
+            }
+            return in_operation ? 0 : 1;
         }
     }
 
@@ -2438,7 +2375,7 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
 
     os_calloc(1, sizeof(cis_db_info_t), elem);
     if (!result) {
-	    elem->result = "";
+	    os_strdup("",elem->result);
 	} else {
 	    os_strdup(result,elem->result);
 	}
@@ -2458,7 +2395,7 @@ static int wm_sca_check_hash(OSHash *cis_db_hash,char *result,cJSON *profile,cJS
                 return 0;
             }
         } else {
-            if(strcmp(result,hashed_result->result) == 0) {
+            if(strcmp(elem->result,hashed_result->result) == 0) {
                 alert = 0;
             }
 
