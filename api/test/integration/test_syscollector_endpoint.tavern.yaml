@@ -410,7 +410,8 @@ stages:
         data:
           items:
             - <<: *packages_response
-# Wait for frontend response
+
+# We can't test this cause -> https://github.com/wazuh/wazuh/issues/3184
 #  - name: Filter by vendor
 #
 #    request:
@@ -425,6 +426,7 @@ stages:
 #        data:
 #          items:
 #            - <<: *packages_response
+
   - name: Search an expected name
 
     request:
@@ -439,9 +441,9 @@ stages:
         data:
           items:
             - <<: *packages_response
-    save:
-      body:
-        name: data.items.0.name
+      save:
+        body:
+          name: data.items.0.name
 
   - name: Filter by name
 
@@ -457,16 +459,34 @@ stages:
         data:
           items:
             - <<: *packages_response
-    save:
-      body:
-        architecture: data.items.0.architecture
+      save:
+        body:
+          architecture: data.items.0.architecture
 
-  - name:
+  - name: Filter by architecture
 
     request:
       <<: *packages_request
       params:
         architecture: "{architecture}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *packages_response
+      save:
+        body:
+          format: data.items.0.format
+
+  - name: Filter by format
+
+    request:
+      <<: *packages_request
+      params:
+        format: "{format}"
         limit: 1
 
     response:
