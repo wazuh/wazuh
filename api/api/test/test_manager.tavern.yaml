@@ -1,0 +1,101 @@
+---
+test_name: GET /manager/status
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/manager/status
+      method: GET
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anystr
+          ossec-analysisd: !anystr
+          ossec-authd: !anystr
+          ossec-csyslogd: !anystr
+          ossec-dbd: !anystr
+          ossec-monitord: !anystr
+          ossec-execd: !anystr
+          ossec-integratord: !anystr
+          ossec-logcollector: !anystr
+          ossec-maild: !anystr
+          ossec-remoted: !anystr
+          ossec-reportd: !anystr
+          ossec-syscheckd: !anystr
+          wazuh-clusterd: !anystr
+          wazuh-modulesd: !anystr
+
+---
+test_name: GET /manager/info
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/manager/info
+
+    response:
+      status_code: 200
+      body:
+        data:
+          path: !anystr
+          version: !anystr
+          compilation_date: !anystr
+          type: !anystr
+          max_agents: !anystr
+          openssl_support: !anystr
+          ruleset_version: !anystr
+          tz_offset: !anystr
+          tz_name: !anystr
+
+---
+test_name: GET /manager/configuration
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/manager/configuration
+
+    response:
+      status_code: 200
+      body:
+        data:
+          auth: !anything
+          cis-cat: !anything
+          cluster: !anything
+          command: !anything
+          global: !anything
+          localfile: !anything
+          open-scap: !anything
+          osquery: !anything
+          remote: !anything
+          rootcheck: !anything
+          ruleset: !anything
+          syscheck: !anything
+          syscollector: !anything
+          vulnerability-detector: !anything
+
+---
+test_name: GET /manager/stats
+
+stages:
+
+  - name: Manager stats
+
+    request:
+      url: http://localhost:55000/manager/stats
+      method: GET
+
+    response:
+        status_code: 200
+        body:
+          data: !anything
+
+  

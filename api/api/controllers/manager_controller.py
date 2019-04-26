@@ -125,7 +125,7 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -149,7 +149,7 @@ def get_stats_hourly(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -173,7 +173,7 @@ def get_stats_weekly(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -197,7 +197,7 @@ def get_stats_analysisd(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -221,7 +221,7 @@ def get_stats_remoted(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
