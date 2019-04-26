@@ -45,6 +45,7 @@ int send_syscheck_msg(const char *msg)
         /* Try to send it again */
         SendMSG(syscheck.queue, msg, SYSCHECK, SYSCHECK_MQ);
     }
+    minfo("Sending msg to the server: '%s'", msg);
     return (0);
 }
 
@@ -337,6 +338,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 {
     int size = 0, perm = 0, owner = 0, group = 0, md5sum = 0, sha1sum = 0, sha256sum = 0, mtime = 0, inode = 0;
     struct stat statbuf;
+    struct stat statbuf_lnk;
     os_md5 mf_sum;
     os_sha1 sf_sum;
     os_sha256 sf256_sum;
@@ -361,7 +363,6 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 #ifdef WIN32
     if (stat(file_name, &statbuf) < 0)
 #else
-    struct stat statbuf_lnk;
 
     if (lstat(file_name, &statbuf) < 0)
 #endif
@@ -512,16 +513,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 #ifndef WIN32
     /* If it is a link, check if the actual file is valid */
     else if (S_ISLNK(statbuf.st_mode)) {
-        if (stat(file_name, &statbuf_lnk) == 0) {
-            if (S_ISREG(statbuf_lnk.st_mode)) {
-                if (sha1sum || md5sum || sha256sum) {
-                    /* Generate checksums of the file */
-                    if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
-                        return 0;
-                    }
-                }
-            }
-        }
+        stat(file_name, &statbuf_lnk);
     }
 
     if (size == 0){
@@ -563,13 +555,21 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     if (mtime == 0){
         *str_mtime = '\0';
     } else {
-        sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_mtime, "%ld",(long)statbuf_lnk.st_mtime);
+        } else {
+            sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
+        }
     }
 
     if (inode == 0){
         *str_inode = '\0';
     } else {
-        sprintf(str_inode, "%ld", (long)statbuf.st_ino);
+        if (S_ISLNK(statbuf.st_mode)) {
+            sprintf(str_inode, "%ld",(long)statbuf_lnk.st_ino);
+        } else {
+            sprintf(str_inode, "%ld", (long)statbuf.st_ino);
+        }
     }
 
     snprintf(newsum, OS_SIZE_4096, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
