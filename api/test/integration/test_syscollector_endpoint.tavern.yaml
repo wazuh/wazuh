@@ -254,7 +254,7 @@ stages:
             - <<: *packages_response
       save:
         body:
-          sort_response: data.items.1
+          offset_test: data.items.1
 
   - name: Limit and offset test
 
@@ -269,18 +269,18 @@ stages:
       body:
         data:
           items:
-            - architecture: "{sort_response.architecture}"
-              description: "{sort_response.description}"
-              format: "{sort_response.format}"
-              name: "{sort_response.name}"
-              priority: "{sort_response.priority}"
+            - architecture: "{offset_test.architecture}"
+              description: "{offset_test.description}"
+              format: "{offset_test.format}"
+              name: "{offset_test.name}"
+              priority: "{offset_test.priority}"
               scan:
-                id: !int "{sort_response.scan.id}"
-                time: "{sort_response.scan.time}"
-              section: "{sort_response.section}"
-              size: !int "{sort_response.size}"
-              vendor: "{sort_response.vendor}"
-              version: "{sort_response.version}"
+                id: !int "{offset_test.scan.id}"
+                time: "{offset_test.scan.time}"
+              section: "{offset_test.section}"
+              size: !int "{offset_test.size}"
+              vendor: "{offset_test.vendor}"
+              version: "{offset_test.version}"
             - <<: *packages_response
       save:
         body:
@@ -523,7 +523,7 @@ stages:
   - name: Processes of an agent, no limit
 
     request: &processes_request
-      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/packages"
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/processes"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -545,7 +545,7 @@ stages:
       status_code: 200
       body:
         data:
-          items:
+          items: &processes_response
             - argvs: !anystr
               cmd: !anystr
               egroup: !anystr
@@ -577,4 +577,179 @@ stages:
               tty: !anyint
               utime: !anyint
               vm_size: !anyint
+      save:
+        body:
+          tty: data.items.0.tty
+          sgroup: data.items.0.sgroup
+          share: data.items.0.share
+          session: data.items.0.session
+          scan_id: data.items.0.scan.id
+
+  - name: Select by
+
+    request:
+      <<: *processes_request
+      params:
+        select: tty,sgroup,share,session,scan_id
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - scan_id: !int "{scan_id}"
+              session: !int "{session}"
+              sgroup: "{sgroup}"
+              share: !int "{share}"
+              tty: !int "{tty}"
+
+  - name: Wrong param
+
+    request:
+      <<: *processes_request
+      params:
+        select: wrongParam
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: offset and limit
+
+    request:
+      <<: *processes_request
+      params:
+        offset: 0
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *processes_response
+            - <<: *processes_response
+      save:
+        body:
+          offset_test: data.items.1
+
+  - name: offset and limit check
+
+    request:
+      <<: *processes_request
+      params:
+        offset: 1
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - argvs: "{offset_test.argvs}"
+              cmd: "{offset_test.cmd}"
+              egroup: "{offset_test.egroup}"
+              euser: "{offset_test.euser}"
+              fgroup: "{offset_test.fgroup}"
+              name: "{offset_test.name}"
+              nice: !int "{offset_test.nice}"
+              nlwp: !int "{offset_test.nlwp}"
+              pgrp: !int "{offset_test.pgrp}"
+              pid: "{offset_test.pid}"
+              ppid: !int "{offset_test.ppid}"
+              priority: !int "{offset_test.priority}"
+              processor: !int "{offset_test.processor}"
+              resident: !int "{offset_test.resident}"
+              rgroup: "{offset_test.rgroup}"
+              ruser: "{offset_test.ruser}"
+              scan:
+                id: !int "{offset_test.scan.id}"
+                time: "{offset_test.scan.time}"
+              session: !int "{offset_test.session}"
+              sgroup: "{offset_test.sgroup}"
+              share: !int "{offset_test.share}"
+              size: !int "{offset_test.size}"
+              start_time: !int "{offset_test.start_time}"
+              state: "{offset_test.state}"
+              stime: !int "{offset_test.stime}"
+              suser: "{offset_test.suser}"
+              tgid: !int "{offset_test.tgid}"
+              tty: !int "{offset_test.tty}"
+              utime: !int "{offset_test.utime}"
+              vm_size: !int "{offset_test.vm_size}"
+            - <<: *processes_response
+
+  - name: Wrong limit
+
+    request:
+      <<: *processes_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body: &error_spec
+        detail: !anystr
+        status: !anyint
+        title: !anystr
+        type: !anystr
+
+---
+test_name: GET /syscollector/{agent_id}/processes/{search, sort, select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - argvs
+        - cmd
+        - egroup
+        - euser
+        - fgroup
+        - name
+        - nice
+        - nlwp
+        - pgrp
+        - pid
+        - ppid
+        - priority
+        - processor
+        - resident
+        - rgroup
+        - ruser
+        - scan_id
+        - session
+        - sgroup
+        - share
+        - size
+        - start_time
+        - state
+        - stime
+        - suser
+        - tgid
+        - tty
+        - utime
+        - vm_size
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Processes of an agent, sort
+
+    request:
+      <<: *processes_request
+      params:
+        sort: "{field}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          - <<: *processes_response
+
 ---
