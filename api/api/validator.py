@@ -11,7 +11,7 @@ from jsonschema import draft4_format_checker
 
 from wazuh import common
 
-_alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:]+$')
+_alphanumeric_param = re.compile(r'^[\w,\-\.\+\s\:\/]+$')
 _array_numbers = re.compile(r'^\d+(,\d+)*$')
 _array_names = re.compile(r'^[\w\-\.]+(,[\w\-\.]+)*$')
 _base64 = re.compile(r'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -19,7 +19,7 @@ _boolean = re.compile(r'^true$|^false$')
 _cdb_list = re.compile(r'^#?[\w\s-]+:{1}(#?[\w\s-]+|)$')
 _dates = re.compile(r'^\d{8}$')
 _empty_boolean = re.compile(r'^$|(^true$|^false$)')
-_hashes = re.compile(r'^[\da-fA-F]{32}(?:[\da-fA-F]{8})?$|(?:[\da-fA-F]{32})?$')
+_hashes = re.compile(r'^(?:[\da-fA-F]{32})?$|(?:[\da-fA-F]{40})?$|(?:[\da-fA-F]{64})?$')
 _ips = re.compile(
     r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/(?:[0-9]|[1-2][0-9]|3[0-2])){0,1}$|^any$|^ANY$')
 _names = re.compile(r'^[\w\-\.]+$')
