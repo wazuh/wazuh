@@ -9,8 +9,9 @@ import logging
 from api.models.list_metadata import ListMetadata
 from api.models.rules_files_model import RulesFiles
 from api.models.rules_model import Rules as RulesModel
+from ..models.base_model_ import Data
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param
-from ..util import format_data
+from ..util import raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 from wazuh.rule import Rule
 from wazuh.exception import WazuhException, WazuhError
@@ -51,15 +52,8 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
     :param gdpr: Filters by GDPR requirement.
     :type gdpr: str
     """
-
-    if sort:
-        sort = parse_api_param(sort, 'sort')
-
-    if search:
-        search = parse_api_param(search, 'search')
-
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search, 'status': list_status, 'group': group,
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'), 'status': list_status, 'group': group,
                 'level': level, 'file': file, 'path': path,
                 'pci': pci, 'gdpr': gdpr}
 
@@ -71,7 +65,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     if isinstance(data, dict):
         # get rules as dict
@@ -81,7 +75,7 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
             rules_list.append(rule)
 
         data['items'] = rules_list
-        data = format_data(data)
+        data = Data(data)
 
     return data, 200
 
@@ -103,15 +97,8 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
     :param search: Looks for elements with the specified string
     :type search: str
     """
-
-    if sort:
-        sort = parse_api_param(sort, 'sort')
-
-    if search:
-        search = parse_api_param(search, 'search')
-
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
 
     dapi = DistributedAPI(f=Rule.get_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -121,8 +108,8 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = Data(data)
 
     return data, 200
 
@@ -144,15 +131,8 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
     :param search: Looks for elements with the specified string
     :type search: str
     """
-
-    if sort:
-        sort = parse_api_param(sort, 'sort')
-
-    if search:
-        search = parse_api_param(search, 'search')
-
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
 
     dapi = DistributedAPI(f=Rule.get_pci,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -162,8 +142,8 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = Data(data)
 
     return data, 200
 
@@ -185,15 +165,8 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
     :param search: Looks for elements with the specified string
     :type search: str
     """
-
-    if sort:
-        sort = parse_api_param(sort, 'sort')
-
-    if search:
-        search = parse_api_param(search, 'search')
-
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search}
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
 
     dapi = DistributedAPI(f=Rule.get_gdpr,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -203,8 +176,8 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = Data(data)
 
     return data, 200
 
@@ -234,15 +207,8 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
     :param download: Download the specified file.
     :type download: str
     """
-
-    if sort:
-        sort = parse_api_param(sort, 'sort')
-
-    if search:
-        search = parse_api_param(search, 'search')
-
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search, 'status': status, 'file': file,
+    f_kwargs = {'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'), 'status': status, 'file': file,
                 'path': path, 'download': download}
 
     dapi = DistributedAPI(f=Rule.get_rules_files,
@@ -253,8 +219,8 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = Data(data)
 
     return data, 200
 
@@ -278,15 +244,8 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
     :param rule_id: Filters by rule ID
     :type rule_id: str
     """
-
-    if sort:
-        sort = parse_api_param(sort, 'sort')
-
-    if search:
-        search = parse_api_param(search, 'search')
-
-    f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': sort,
-                'search': search}
+    f_kwargs = {'id': rule_id, 'offset': offset, 'limit': limit, 'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search')}
 
     dapi = DistributedAPI(f=Rule.get_rules,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -296,15 +255,15 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    data = Data(data)
 
     if isinstance(data, WazuhError):
         return data, 200
 
-    if data['data']['totalItems'] == 1:
-        data['data'] = {'items': data['data']['items'][0].to_dict(), 'totalItems': data['data']['totalItems']}
-    elif data['data']['totalItems'] > 1 or data['data']['totalItems'] < 0:
+    if data.data['totalItems'] == 1:
+        data.data = {'items': data.data['items'][0].to_dict(), 'totalItems': data.data['totalItems']}
+    elif data.data['totalItems'] > 1 or data.data['totalItems'] < 0:
         raise WazuhError(1206)
 
     return data, 200
