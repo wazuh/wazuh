@@ -42,8 +42,6 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
     char *dir = NULL;
     char new_path_json[PATH_MAX];
     char compressed_path[PATH_MAX];
-    char rename_path[PATH_MAX];
-    char old_rename_path[PATH_MAX];
     char tag[OS_FLSIZE];
     struct tm tm;
     time_t now;
@@ -122,24 +120,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
         /* Rotate compressed logs if needed */
         if (counter == daily_rotations) {
-            if (daily_rotations == 1 && counter == 1) {
-                snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d.log", month_dir, tag, tm.tm_mday);
-            } else {
-                snprintf(rename_path, PATH_MAX, "%s/ossec-%s-%02d.log.gz", month_dir, tag, tm.tm_mday);
-                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-001.log.gz", month_dir, tag, tm.tm_mday);
-                counter = 1;
-                while (counter < daily_rotations) {
-                    if (rename_ex(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
-                        os_free(dir);
-                        return NULL;
-                    }
-                    counter++;
-                    snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
-                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log.gz", month_dir, tag, tm.tm_mday, counter);
-                }
-                snprintf(new_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.log", month_dir, tag, tm.tm_mday, counter - 1);
-            }
+            mdebug2("The internal_option 'daily_rotations' has been deprecated. It's being ignored in the log rotation.");
         }
 
         if (!IsFile(old_file)) {
@@ -167,24 +148,7 @@ char *w_rotate_log(char *old_file, int compress, int keep_log_days, int new_day,
 
         /* Rotate compressed logs if needed */
         if (counter == daily_rotations) {
-            if (daily_rotations == 1 && counter == 1) {
-                snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d.json", month_dir, tag, tm.tm_mday);
-            } else {
-                snprintf(rename_path, PATH_MAX, "%s/ossec-%s-%02d.json.gz", month_dir, tag, tm.tm_mday);
-                snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-001.json.gz", month_dir, tag, tm.tm_mday);
-                counter = 1;
-                while (counter < daily_rotations) {
-                    if (rename_ex(old_rename_path, rename_path) != 0) {
-                        merror("Couldn't rename compressed log '%s' to '%s': '%s'", old_rename_path, rename_path, strerror(errno));
-                        os_free(dir);
-                        return NULL;
-                    }
-                    counter++;
-                    snprintf(rename_path, PATH_MAX, "%s", old_rename_path);
-                    snprintf(old_rename_path, PATH_MAX, "%s/ossec-%s-%02d-%03d.json.gz", month_dir, tag, tm.tm_mday, counter);
-                }
-                snprintf(new_path_json, PATH_MAX, "%s/ossec-%s-%02d-%03d.json", month_dir, tag, tm.tm_mday, counter - 1);
-            }
+            mdebug2("The internal_option 'daily_rotations' has been deprecated. It's being ignored in the log rotation.");
         }
 
         if (!IsFile(old_file)) {

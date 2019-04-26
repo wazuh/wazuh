@@ -93,8 +93,6 @@ void * w_rotate_log_thread(__attribute__((unused)) void * arg) {
         purge_rotation_list(mond.log_list_json, mond.rotate);
     }
 
-    mond.daily_rotations = 100;
-
     while (1) {
         now = time(NULL);
         localtime_r(&now, &tm);

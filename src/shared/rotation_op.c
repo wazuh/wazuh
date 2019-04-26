@@ -262,7 +262,7 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
         rotation_node *r_node = node;
 
         if(unlink(node->string_value) == -1) {
-            merror("Unable to delete '%s' due to '%s'", node->string_value, strerror(errno));
+            mdebug1("Unable to delete '%s' due to '%s'", node->string_value, strerror(errno));
         } else {
             mdebug2("Removing the rotated file '%s'.", node->string_value);
         }
@@ -272,7 +272,9 @@ void purge_rotation_list(rotation_list *list, int keep_files) {
         } else {
             list->first = node->next;
         }
-        node->next->prev = node->prev;
+        if(node->next) {
+            node->next->prev = node->prev;
+        }
 
         node = node->prev;
         free(r_node->string_value);
@@ -293,13 +295,16 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
     }
     list->last = new_node;
     list->count++;
+    if(!list->first) {
+        list->first = list->last;
+    }
 
     if(list->count > keep_files) {
         if(unlink(list->first->string_value) == -1) {
             char compressed_log[OS_FLSIZE+3];
             snprintf(compressed_log, OS_FLSIZE+3, "%s.gz", list->first->string_value);
             if(unlink(compressed_log) == -1) {
-                merror("Unable to delete '%s' due to '%s'", compressed_log, strerror(errno));
+                mdebug1("Unable to delete '%s' due to '%s'", compressed_log, strerror(errno));
             } else {
                 mdebug2("Removing the rotated file '%s'.", list->first->string_value);
             }
@@ -308,8 +313,10 @@ void add_new_rotation_node(rotation_list *list, char *value, int keep_files) {
         }
         mdebug2("Removing the rotated file '%s'.", list->first->string_value);
         r_node = list->first;
-        list->first = list->first->next;
-        list->first->prev = NULL;
+        if(list->first){
+            list->first = list->first->next;
+            list->first->prev = NULL;
+        }
         free(r_node->string_value);
         free(r_node);
         list->count--;
