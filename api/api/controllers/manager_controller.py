@@ -10,7 +10,7 @@ import logging
 import wazuh.configuration as configuration
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.util import remove_nones_to_dict, exception_handler
+from api.util import remove_nones_to_dict, exception_handler, format_data
 from wazuh import common
 from wazuh import Wazuh
 from wazuh.cluster.dapi.dapi import DistributedAPI
@@ -39,7 +39,7 @@ def get_status(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -63,7 +63,7 @@ def get_info(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -89,7 +89,7 @@ def get_configuration(pretty=False, wait_for_complete=False, section=None, field
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -108,7 +108,7 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
         try:
             year, month, day = date.split('-')
         except ValueError:
-            return 'Date format is wrong', 400
+            raise WazuhError(1412)
     else:
         today = datetime.datetime.now()
         year = str(today.year)
@@ -242,8 +242,12 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
     :param category: Filter by category of log.
     :param type_log: Filters by log level.
     """
-    f_kwargs = {'offset': offset, 'limit': limit, 'sort': sort,
-                'search':search, 'category': category, 'type_log': type_log}
+    f_kwargs = {'offset': offset,
+                'limit': limit,
+                'sort': sort,
+                'search':search,
+                'category': category,
+                'type_log': type_log}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -253,7 +257,7 @@ def get_log(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=No
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -277,7 +281,7 @@ def get_log_summary(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -325,14 +329,14 @@ def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
     try:
         content_type = connexion.request.headers['Content-type']
     except KeyError:
-        return 'Content-type header is mandatory', 400
+        raise WazuhError(1910)
     # parse body to utf-8
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        return 'Error parsing body request to UTF-8', 400
+        raise WazuhError(1911)
     except AttributeError:
-        return 'Body is empty', 400
+        raise WazuhError(1912)
 
     f_kwargs = {'path': path, 'overwrite': overwrite, 'content': body}
 
