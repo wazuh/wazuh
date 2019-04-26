@@ -24,11 +24,11 @@ requirements:
   condition: "any required"
   rules:
      - 'f:/etc/redhat-release -> r:^Red Hat Enterprise Linux \S+ release 7;'
-     - 'f:/etc/redhat-release -> r:^CentOS && r:release 7;'
-     - 'f:/etc/redhat-release -> r:^Cloud && r:release 7;'
-     - 'f:/etc/redhat-release -> r:^Oracle && r:release 7;'
-     - 'f:/etc/redhat-release -> r:^Better && r:release 7;'
-     - 'f:/etc/redhat-release -> r:^OpenVZ && r:release 7;'
+     - 'f:/etc/redhat-release -> IN r:^CentOS && r:release 7;'
+     - 'f:/etc/redhat-release -> IN r:^Cloud && r:release 7;'
+     - 'f:/etc/redhat-release -> IN r:^Oracle && r:release 7;'
+     - 'f:/etc/redhat-release -> IN r:^Better && r:release 7;'
+     - 'f:/etc/redhat-release -> IN r:^OpenVZ && r:release 7;'
 
 variables:
   $sshd_file: /etc/ssh/sshd_config;
@@ -60,7 +60,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nodev;'
 # 1.1.4 /tmp: nosuid
  - id: 6502
    title: "Ensure nosuid option set on /tmp partition"
@@ -72,7 +72,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:nosuid;'
 # 1.1.5 /tmp: noexec
  - id: 6503
    title: "Ensure noexec option set on /tmp partition"
@@ -85,7 +85,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/tmp && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/tmp && r:noexec;'
 # 1.1.6 Build considerations - Partition scheme.
  - id: 6504
    title: "Ensure separate partition exists for /var"
@@ -98,7 +98,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r^# && !r:/var;'
+     - 'f:/etc/fstab -> NIN !r^# && r:/var;'
 # 1.1.7 bind mount /var/tmp to /tmp
  - id: 6505
    title: "Ensure separate partition exists for /var/tmp"
@@ -109,7 +109,7 @@ checks:
     - cis: "1.1.7"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && !r:/var/tmp;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/tmp;'
 # 1.1.11 /var/log: partition
  - id: 6506
    title: "Ensure separate partition exists for /var/log"
@@ -123,7 +123,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && !r:/var/log;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log;'
 # 1.1.12 /var/log/audit: partition
  - id: 6507
    title: "Ensure separate partition exists for /var/log/audit"
@@ -137,7 +137,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && !r:/var/log/audit;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/var/log/audit;'
 # 1.1.13 /home: partition
  - id: 6508
    title: "Ensure separate partition exists for /home"
@@ -150,7 +150,7 @@ checks:
     - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && !r:/home;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home;'
 # 1.1.14 /home: nodev
  - id: 6509
    title: "Ensure nodev option set on /home partition"
@@ -162,7 +162,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/home && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/home && r:nodev;'
 # 1.1.18 nodev on removable media partitions (not scored)
  - id: 6510
    title: "Ensure nodev option set on removable media partitions"
@@ -174,7 +174,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nodev;'
 # 1.1.19 nosuid on removable media partitions (not scored)
  - id: 6511
    title: "Ensure nosuid option set on removable media partitions"
@@ -186,7 +186,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:nosuid;'
 # 1.1.20 noexec on removable media partitions (not scored)
  - id: 6512
    title: "Ensure noexec option set on removable media partitions"
@@ -199,7 +199,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/media && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/media && r:noexec;'
 # 1.1.15 /dev/shm: nodev
  - id: 6513
    title: "Ensure nodev option set on /dev/shm partition"
@@ -211,7 +211,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nodev;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nodev;'
 # 1.1.16 /dev/shm: nosuid
  - id: 6514
    title: "Ensure nosuid option set on /dev/shm partition"
@@ -223,7 +223,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:nosuid;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:nosuid;'
 # 1.1.17 /dev/shm: noexec
  - id: 6515
    title: "Ensure noexec option set on /dev/shm partition"
@@ -236,7 +236,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/etc/fstab -> !r:^# && r:/dev/shm && !r:noexec;'
+     - 'f:/etc/fstab -> NIN !r:^# && r:/dev/shm && r:noexec;'
 ###############################################
 # 1.6 Configure SELinux
 ###############################################
@@ -320,7 +320,7 @@ checks:
     - pci_dss: "2.2.4"
    condition: any
    rules:
-     - 'f:/boot/grub2/grub.cfg -> !r:^# && !r:password;'
+     - 'f:/boot/grub2/grub.cfg -> NIN !r:^# && r:password;'
 ###############################################
 # 1.5  Additional Process Hardening
 ###############################################
@@ -335,7 +335,7 @@ checks:
     - cis_csc: "13"
    condition: any
    rules:
-     - 'f:/etc/security/limits.conf -> !r:^# && !r:hard\.+core\.+0;'
+     - 'f:/etc/security/limits.conf -> NIN !r:^# && r:hard\.+core\.+0;'
 # 1.5.3 Enable Randomized Virtual Memory Region Placement (Scored)
  - id: 6523
    title: "Ensure address space layout randomization (ASLR) is enabled"
@@ -366,7 +366,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/telnet -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/telnet -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/telnet@.service -> r:ExecStart=-/usr/sbin/in.telnetd;'
 # 2.2.17 Remove rsh-server (Scored)
  - id: 6525
@@ -380,9 +380,9 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/rlogin -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/rsh -> !r:^# && r:disable && r:no;'
-     - 'f:/etc/xinetd.d/shell -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rlogin -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/rsh -> IN !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/shell -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/rexec@.service -> r:ExecStart;'
      - 'f:/usr/lib/systemd/system/rlogin@.service -> r:ExecStart;'
      - 'f:/usr/lib/systemd/system/rsh@.service -> r:ExecStart;'
@@ -426,7 +426,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/tftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/tftpd -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/tftp.service -> r:Exec;'
 # 2.1.18 Remove talk-server (Scored)
  - id: 6529
@@ -440,7 +440,7 @@ checks:
     - pci_dss: "2.2.3"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/talk -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/talk -> IN !r:^# && r:disable && r:no;'
      - 'f:/usr/lib/systemd/system/ntalk.service -> r:Exec;'
 # 2.1.7 Remove xinetd (Scored)
  - id: 6530
@@ -465,7 +465,7 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/chargen-dgram -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/chargen-dgram -> IN !r:^# && r:disable && r:no;'
 # 2.1.1 Disable chargen-stream (Scored)
  - id: 6532
    title: "Ensure chargen services are not enabled"
@@ -477,7 +477,7 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/chargen-stream -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/chargen-stream -> IN !r:^# && r:disable && r:no;'
 # 2.1.2 Disable daytime-dgram (Scored)
  - id: 6533
    title: "Ensure daytime services are not enabled"
@@ -489,7 +489,7 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/daytime-dgram -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/daytime-dgram -> IN !r:^# && r:disable && r:no;'
 # 2.1.2 Disable daytime-stream (Scored)
  - id: 6534
    title: "Ensure daytime services are not enabled"
@@ -501,7 +501,7 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/daytime-stream -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/daytime-stream -> IN !r:^# && r:disable && r:no;'
 # 2.1.4 Disable echo-dgram (Scored)
  - id: 6535
    title: "Ensure echo services are not enabled"
@@ -513,7 +513,7 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/echo-dgram -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/echo-dgram -> IN !r:^# && r:disable && r:no;'
 # 2.1.4 Disable echo-stream (Scored)
  - id: 6536
    title: "Ensure echo services are not enabled"
@@ -525,7 +525,7 @@ checks:
     - cis_csc: "9.1"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/echo-stream -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/echo-stream -> IN !r:^# && r:disable && r:no;'
 # 2.2.2 Remove X Windows (Scored)
  - id: 6537
    title: "Ensure X Window System is not installed"
@@ -578,7 +578,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/ntp.conf -> r:restrict default kod nomodify notrap nopeer noquery && r:^server;'
+     - 'f:/etc/ntp.conf -> IN r:restrict default kod nomodify notrap nopeer noquery && r:^server;'
      - 'f:/etc/sysconfig/ntpd -> r:OPTIONS="-u ntp:ntp -p /var/run/ntpd.pid";'
 # 2.2.7 Disable NFS and RPC (Not Scored)
  - id: 6541
@@ -606,7 +606,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/vsftpd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/vsftpd -> IN !r:^# && r:disable && r:no;'
 # 2.2.10 Remove HTTP Server (Not Scored)
  - id: 6543
    title: "Ensure HTTP server is not enabled"
@@ -631,7 +631,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/cyrus-imapd -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/cyrus-imapd -> IN !r:^# && r:disable && r:no;'
  - id: 6545
    title: "Ensure IMAP and POP3 server is not enabled"
    description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
@@ -643,7 +643,7 @@ checks:
     - pci_dss: "2.2.2"
    condition: any
    rules:
-     - 'f:/etc/xinetd.d/dovecot -> !r:^# && r:disable && r:no;'
+     - 'f:/etc/xinetd.d/dovecot -> IN !r:^# && r:disable && r:no;'
 # 2.2.12 Remove Samba (Not Scored)
  - id: 6546
    title: "Ensure Samba is not enabled"
@@ -844,7 +844,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:Protocol\.+1;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+1;'
 # 5.2.3 Set LogLevel to INFO (Scored)
  - id: 6560
    title: "Ensure SSH LogLevel is set to INFO"
@@ -857,7 +857,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && !r:LogLevel\.+INFO;'
+     - 'f:/etc/ssh/sshd_config -> NIN !r:^# && r:LogLevel\.+INFO;'
 # 5.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
  - id: 6561
    title: "Ensure SSH MaxAuthTries is set to 4 or less"
@@ -883,7 +883,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:IgnoreRhosts\.+no;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\.+no;'
 # 5.2.7 Set SSH HostbasedAuthentication to No (Scored)
  - id: 6563
    title: "Ensure SSH HostbasedAuthentication is disabled"
@@ -896,7 +896,7 @@ checks:
     - pci_dss: "4.1"
    condition: any
    rules:
-     - 'f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\.+yes;'
+     - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:HostbasedAuthentication\.+yes;'
 # 5.2.8 Disable SSH Root Login (Scored)
  - id: 6564
    title: "Ensure SSH root login is disabled"
@@ -941,7 +941,7 @@ checks:
     - pci_dss: "10.2.5"
    condition: any
    rules:
-     - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:;'
+     - 'f:/etc/passwd -> IN !r:^# && !r:^root: && r:^\w+:\w+:0:;'
 # Other/Legacy Tests
  - id: 6567
    title: "Account with empty password present"

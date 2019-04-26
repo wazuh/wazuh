@@ -77,8 +77,8 @@ checks:
      - https://support.apple.com/en-us/HT202491
    condition: any
    rules:
-     - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate -> r:^\s*ConfigDataInstall\s*= && !r\s*1;;'
-     - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate -> r:^\s*CriticalUpdateInstall\s*= && !r\s*1;;'
+     - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate -> NIN r:^\s*ConfigDataInstall\s*= && r\s*1;;'
+     - 'c:defaults read /Library/Preferences/com.apple.SoftwareUpdate -> NIN r:^\s*CriticalUpdateInstall\s*= && r\s*1;;'
 # 1.5 Enable macOS update installs (Scored)
  - id: 14004
    title: "Enable macOS update installs (Scored)"
@@ -262,11 +262,11 @@ checks:
      - cis: "3.2"
    condition: any
    rules:
-     - 'f:/etc/security/audit_control -> r:^flags && !r:lo;'
-     - 'f:/etc/security/audit_control -> r:^flags && !r:ad;'
-     - 'f:/etc/security/audit_control -> r:^flags && !r:fd;'
-     - 'f:/etc/security/audit_control -> r:^flags && !r:fm;'
-     - 'f:/etc/security/audit_control -> r:^flags && !r:-all;'
+     - 'f:/etc/security/audit_control -> NIN r:^flags && r:lo;'
+     - 'f:/etc/security/audit_control -> NIN r:^flags && r:ad;'
+     - 'f:/etc/security/audit_control -> NIN r:^flags && r:fd;'
+     - 'f:/etc/security/audit_control -> NIN r:^flags && r:fm;'
+     - 'f:/etc/security/audit_control -> NIN r:^flags && r:-all;'
 # 4.1 Disable Bonjour advertising service (Scored)
  - id: 14020
    title: "Disable Bonjour advertising service (Scored)"
