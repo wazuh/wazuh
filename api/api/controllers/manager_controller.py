@@ -125,7 +125,8 @@ def get_stats(pretty=False, wait_for_complete=False, date=None):
                           pretty=pretty,
                           logger=logger
                           )
-    data = format_data(loop.run_until_complete(dapi.distribute_function()))
+    # 'data' field is included, do not use 'format_data'
+    data = loop.run_until_complete(dapi.distribute_function())
 
     return data, 200
 
