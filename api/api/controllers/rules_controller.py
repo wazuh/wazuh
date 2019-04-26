@@ -75,9 +75,9 @@ def get_rules(pretty=False, wait_for_complete=False, offset=0, limit=None, sort=
             rules_list.append(rule)
 
         data['items'] = rules_list
-        data = Data(data)
+        response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -109,9 +109,9 @@ def get_rules_groups(pretty=False, wait_for_complete=False, offset=0, limit=None
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    data = Data(data)
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -143,9 +143,9 @@ def get_rules_pci(pretty=False, wait_for_complete=False, offset=0, limit=None, s
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    data = Data(data)
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -177,9 +177,9 @@ def get_rules_gdpr(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    data = Data(data)
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -220,9 +220,9 @@ def get_rules_files(pretty=False, wait_for_complete=False, offset=0, limit=None,
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    data = Data(data)
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -256,14 +256,14 @@ def get_rules_id(pretty=False, wait_for_complete=False, offset=0, limit=None, so
                           logger=logger
                           )
     data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
-    data = Data(data)
+    response = Data(data)
 
     if isinstance(data, WazuhError):
-        return data, 200
+        return response, 200
 
-    if data.data['totalItems'] == 1:
-        data.data = {'items': data.data['items'][0].to_dict(), 'totalItems': data.data['totalItems']}
-    elif data.data['totalItems'] > 1 or data.data['totalItems'] < 0:
+    if response.data['totalItems'] == 1:
+        response.data = {'items': response.data['items'][0].to_dict(), 'totalItems': response.data['totalItems']}
+    elif response.data['totalItems'] > 1 or response.data['totalItems'] < 0:
         raise WazuhError(1206)
 
-    return data, 200
+    return response, 200
