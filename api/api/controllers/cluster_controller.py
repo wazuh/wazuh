@@ -549,9 +549,9 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        return WazuhError(1911)
+        raise WazuhError(1911)
     except AttributeError:
-        return WazuhError(1912)
+        raise WazuhError(1912)
 
     f_kwargs = {'node_id': node_id,
                 'path': path,
