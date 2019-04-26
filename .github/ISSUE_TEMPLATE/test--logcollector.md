@@ -31,6 +31,18 @@ assignees: ''
 - [ ] Check that the multi-line logs are taken correctly.
 - [ ] Check that no duplicate files are scanned (entered multiple times).
 
+## New options
+
+Use reference: (https://github.com/wazuh/wazuh/issues/2987)
+
+- [ ] Check wildcard exclusion pattern.
+- [ ] Check ignore binaries.
+- [ ] Check age files.
+- [ ] Check UCS-2 files are read on Windows with ignore binaries enabled.
+- [ ] Check all options together, set debug mode to see discarded files.
+- [ ] Check the remote configuration is being read correctly with all options.
+- [ ] Modify `logcollector.vcheck_files` internal option and set it to 1 second. Do the tests.
+
 ## Performance
 
 - [ ] Monitor the memory wasted by Logcollector in the previous operations.
