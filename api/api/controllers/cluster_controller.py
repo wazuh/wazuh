@@ -14,6 +14,7 @@ import wazuh.configuration as configuration
 from wazuh import Wazuh
 from wazuh import common
 from wazuh.cluster.dapi.dapi import DistributedAPI
+from wazuh.exception import WazuhError
 import wazuh.manager as manager
 import wazuh.stats as stats
 
@@ -309,7 +310,8 @@ def get_stats_node(node_id, pretty=False, wait_for_complete=False, date=None):
         try:
             year, month, day = date.split('-')
         except ValueError:
-            return 'Date format is wrong', 400
+            raise WazuhError(1412)
+
     else:
         today = datetime.datetime.now()
         year = str(today.year)
@@ -541,15 +543,15 @@ def post_files_node(body, node_id, path, overwrite=False, pretty=False, wait_for
     try:
         content_type = connexion.request.headers['Content-type']
     except KeyError:
-        return 'Content-type header is mandatory', 400
+        raise WazuhError(1910)
 
     # parse body to utf-8
     try:
         body = body.decode('utf-8')
     except UnicodeDecodeError:
-        return 'Error parsing body request to UTF-8', 400
+        return WazuhError(1911)
     except AttributeError:
-        return 'Body is empty', 400
+        return WazuhError(1912)
 
     f_kwargs = {'node_id': node_id,
                 'path': path,

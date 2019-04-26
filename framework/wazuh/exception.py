@@ -195,6 +195,13 @@ class WazuhException(Exception):
                'remediation': 'Write a valid `path` for place the file to be uploaded'},
         1909: {'message': 'Content of file is empty',
                'remediation': 'Try to upload another file not empty'},
+        1910: {'message': 'Content-type header is mandatory',
+               'remediation': 'Please, visit [official documentation](https://documentation.wazuh.com/current/user-manual/api/reference.html#update-local-file-at-any-cluster-node)'
+                              ' to get more information about how to configure a cluster'},
+        1911: {'message': 'Error parsing body request to UTF-8',
+               'remediation': 'Please, check if the file content to be uploaded is right'},
+        1912: {'message': 'Body is empty',
+               'remediation': 'Please, check the content of the file to be uploaded'},
 
         # Database:
         2000: 'No such database file',
