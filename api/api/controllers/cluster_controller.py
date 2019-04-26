@@ -7,7 +7,7 @@ import connexion
 import datetime
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, format_data
 import wazuh.cluster.cluster as cluster
 import wazuh.cluster.control as cluster_control
 import wazuh.configuration as configuration
@@ -76,8 +76,7 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
                 'select': select,
-                'filter_type': type_,
-                'api_request': True}
+                'filter_type': type_}
 
     dapi = DistributedAPI(f=cluster_control.get_nodes,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -87,7 +86,7 @@ def get_cluster_nodes(pretty=False, wait_for_complete=False, offset=0, limit=Non
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = format_data(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
