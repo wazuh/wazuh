@@ -1,0 +1,37 @@
+# common.yaml
+---
+name: Common test information
+description: File with information such as global variables or repeteable stages to use with integration tests
+
+# Common variables
+variables:
+  protocol: http
+  host: localhost
+  port: 55000
+  user: wazuh
+  pass: wazuh
+
+# Authentication stage
+# Reusable test stage for authentication
+stages:
+  - id: login_get_token
+    name: Login and acquire token
+    request:
+      url: "{protocol:s}://{user:s}:{pass:s}@{host:s}:{port:d}/security/user/authenticate"
+      method: GET
+      headers:
+        accept: application/json
+    response:
+      status_code: 200
+      body:
+        # Make sure a token exists
+        $ext:
+          function: tavern.testutils.helpers:validate_jwt
+          extra_kwargs:
+            jwt_key: "token"
+            options:
+              verify_signature: false
+      save:
+        # Saves a jwt token returned as 'token' in the body as 'test_login_token'
+        body:
+          test_login_token: token

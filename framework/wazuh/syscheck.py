@@ -127,7 +127,7 @@ def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, s
     :return: Dictionary: {'items': array of items, 'totalItems': Number of items (without applying the limit)}
     """
     parameters = {"date", "mtime", "file", "size", "perm", "uname", "gname", "md5", "sha1", "sha256", "inode", "gid",
-                  "uid", "type"}
+                  "uid", "type", "attributes", "symbolic_path"}
     summary_parameters = {"date", "mtime", "file"}
 
     if select is None:

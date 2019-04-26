@@ -55,6 +55,8 @@ static int read_dev_dir(const char *dir_name)
     int i;
     DIR *dp;
     struct dirent *entry;
+    char f_name[PATH_MAX + 2];
+    char f_dir[PATH_MAX + 2];
 
     /* When will these people learn that /dev is not
      * meant to store log files or other kind of texts?
@@ -77,10 +79,10 @@ static int read_dev_dir(const char *dir_name)
                                  };
 
     /* Full path ignore */
-    const char *(ignore_dev_full_path[]) = {"/dev/shm/sysconfig",
-                                            "/dev/bus/usb/.usbfs",
-                                            "/dev/shm",
-                                            "/dev/gpmctl",
+    const char *(ignore_dev_full_path[]) = {"shm/sysconfig",
+                                            "bus/usb/.usbfs",
+                                            "shm",
+                                            "gpmctl",
                                             NULL
                                            };
 
@@ -97,8 +99,6 @@ static int read_dev_dir(const char *dir_name)
 
     /* Iterate over all files in the directory */
     while ((entry = readdir(dp)) != NULL) {
-        char f_name[PATH_MAX + 2];
-
         /* Ignore . and ..  */
         if (strcmp(entry->d_name, ".") == 0 ||
                 strcmp(entry->d_name, "..") == 0) {
@@ -117,18 +117,24 @@ static int read_dev_dir(const char *dir_name)
             continue;
         }
 
-        f_name[PATH_MAX + 1] = '\0';
+        *f_name = '\0';
         snprintf(f_name, PATH_MAX + 1, "%s/%s", dir_name, entry->d_name);
 
         /* Do not look for the full ignored files */
         for (i = 0; ignore_dev_full_path[i] != NULL; i++) {
-            if (strcmp(ignore_dev_full_path[i], f_name) == 0) {
+            snprintf(f_dir, PATH_MAX + 1, "%s/%s", dir_name, ignore_dev_full_path[i]);
+            if (strcmp(f_dir, f_name) == 0) {
                 break;
             }
         }
 
         /* Check against the full path */
         if (ignore_dev_full_path[i] != NULL) {
+            continue;
+        }
+
+        /* Do not look for the user ignored paths and files */
+        if (check_ignore(f_name)) {
             continue;
         }
 

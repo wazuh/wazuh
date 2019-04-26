@@ -13,3 +13,4 @@ from api.models.all_agents import AllAgents
 from api.models.api_response import ApiResponse
 from api.models.list_metadata import ListMetadata
 from api.models.token_response import TokenResponse
+from api.models.basic_info import BasicInfo
