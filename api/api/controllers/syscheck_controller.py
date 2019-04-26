@@ -6,9 +6,10 @@ import asyncio
 import connexion
 import logging
 
-from api.util import remove_nones_to_dict, exception_handler, parse_api_param
+from api.util import remove_nones_to_dict, exception_handler, parse_api_param, raise_if_exc
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.syscheck as syscheck
+from api.models.base_model_ import Data
 
 
 loop = asyncio.get_event_loop()
@@ -34,7 +35,7 @@ def put_syscheck(pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -92,9 +93,10 @@ def get_syscheck_agent(agent_id, pretty=False, wait_for_complete=False, offset=0
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -118,7 +120,7 @@ def put_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -144,7 +146,7 @@ def delete_syscheck_agent(agent_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
 
     return data, 200
 
@@ -170,6 +172,7 @@ def get_last_scan_agent(agent_id, pretty=False, wait_for_complete=False):
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
