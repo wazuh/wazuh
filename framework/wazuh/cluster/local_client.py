@@ -42,27 +42,20 @@ class LocalClientHandler(client.AbstractClient):
             self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
-        elif command == b'dapi_err' or command == b'err':
-            self.response = json.dumps(exception.WazuhInternalError(3009, extra_message=data.decode()),
-                                       cls=WazuhJSONEncoder).encode()
+        elif command == b'dapi_err':
+            self.response = data
             self.response_available.set()
             return b'ok', b'Response received'
         else:
             return super().process_request(command, data)
 
     def process_error_from_peer(self, data: bytes):
-        if data.startswith(b'WazuhException'):
-            type_error, code, message = data.split(b' ', 2)
-            self.response = json.dumps(exception.WazuhInternalError(int(code), extra_message=message.decode()),
-                                       cls=WazuhJSONEncoder).encode()
-            self.response_available.set()
-            extra_msg = b'' if b': ' not in message else message.split(b':', 1)[1]
-            return type_error + b' ' + code + b' ' + extra_msg
-        else:
-            self.response = json.dumps(exception.WazuhInternalError(3009, extra_message=data.decode()),
-                                       cls=WazuhJSONEncoder).encode()
-            self.response_available.set()
-            return b"Error processing request: " + data
+        """
+        Errors from the cluster come already formatted into JSON format. Therefore they must be returned the same
+        """
+        self.response = data
+        self.response_available.set()
+        return data
 
 
 class LocalClient(client.AbstractClientManager):
@@ -99,12 +92,7 @@ class LocalClient(client.AbstractClientManager):
 
     async def send_api_request(self):
         result = (await self.protocol.send_request(self.command, self.data)).decode()
-        if result.startswith('Error'):
-            raise exception.WazuhException(3009, result)
-        elif result.startswith('WazuhException'):
-            _, code, message = result.split(' ', 2)
-            raise exception.WazuhException(int(code), message)
-        elif result == 'There are no connected worker nodes':
+        if result == 'There are no connected worker nodes':
             request_result = {}
         else:
             if self.command == b'dapi' or self.command == b'dapi_forward' or self.command == b'send_file' or \
