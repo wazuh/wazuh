@@ -336,3 +336,165 @@ stages:
             items:
               - <<: *manager_log
             totalItems: !anyint
+
+  - name: Filters -> category=ossec-syscheckd, limit=1
+
+    request:
+      url: http://localhost:55000/manager/logs
+      method: GET
+      params:
+        category: ossec-syscheckd
+        limit: 1
+
+    response:
+        status_code: 200
+        body:
+          data:
+            items:
+              - <<: *manager_log
+            totalItems: !anyint
+
+---
+test_name: GET /manager/logs/summary
+
+stages:
+
+  - name: Request
+
+    request:
+      url: http://localhost:55000/manager/logs/summary
+
+    response:
+      status_code: 200
+      body:
+        data:
+          ossec-agentlessd: !anything
+          ossec-analysisd: !anything
+          ossec-authd: !anything
+          ossec-authd: !anything
+          ossec-csyslogd: !anything
+          ossec-dbd: !anything
+          ossec-execd: !anything
+          ossec-integratord: !anything
+          ossec-logcollector: !anything
+          ossec-monitord: !anything
+          ossec-remoted: !anything
+          ossec-rootcheck: !anything
+          ossec-syscheckd: !anything
+          wazuh-db: !anything
+          wazuh-modulesd: !anything
+          wazuh-modulesd:ciscat: !anything
+          wazuh-modulesd:database: !anything
+          wazuh-modulesd:download: !anything
+          wazuh-modulesd:oscap: !anything
+          wazuh-modulesd:osquery: !anything
+          wazuh-modulesd:syscollector: !anything
+
+---
+test_name: GET /manager/files
+
+stages:
+
+  - name: Get ossec.conf
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+        contents: !anystr
+
+  - name: Get local rules
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/rules/local_rules.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+        contents: !anystr
+
+  - name: Get local decoder
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/decoders/local_decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        data:
+        contents: !anystr
+
+  - name: Get CDB list
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/lists/audit-keys
+
+    response:
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Get file with wrong path
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: wrong_path/file.xml
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Get file with empty path
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path:
+
+    response:
+      status_code: 400
+      body:
+        detail: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+---
+test_name: POST /manager/files
+
+stages:
+
+  #### Save ossec.conf
+  - name: Get ossec.conf
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
