@@ -5,12 +5,23 @@ marks:
   - usefixtures:
       - agents_test
 
+marks:
+  - usefixtures:
+      - agents_test
+
+includes:
+  - !include common.yaml
+
 stages:
+  - type: ref
+    id: login_get_token
   - name: Try remove not existing agents
 
     request:
-      url: http://localhost:55000/agents
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents_ids: 998,999
 
@@ -37,8 +48,10 @@ stages:
   - name: Try remove agent 000 (manager)
 
     request:
-      url: http://localhost:55000/agents
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents_ids: '000'
 
@@ -60,8 +73,10 @@ stages:
   - name: Try remove agent by name
 
     request:
-      url: http://localhost:55000/agents
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents_ids: bad_id
 
@@ -76,8 +91,10 @@ stages:
   - name: Remove agents
 
     request:
-      url: http://localhost:55000/agents
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents_ids: 004,005
         older_than: '1s'
@@ -102,8 +119,10 @@ stages:
   - name: Try remove agent 000 (manager)
 
     request:
-      url: http://localhost:55000/agents/000
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response: &error_delete_agent
       status_code: 200
@@ -120,8 +139,10 @@ stages:
   - name: Try remove not existing agent
 
     request:
-      url: http://localhost:55000/agents/999
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       <<: *error_delete_agent
@@ -132,8 +153,10 @@ stages:
   - name: Try remove agent by name
 
     request:
-      url: http://localhost:55000/agents/bad_id
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -146,8 +169,10 @@ stages:
   - name: Remove an agent
 
     request:
-      url: http://localhost:55000/agents/006
+      url: "{protocol:s}://{host:s}:{port:d}/agents/006"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         purge: True
 
@@ -169,19 +194,21 @@ stages:
   - name: Try remove group from agent 000 (manager)
 
     request:
-      url: http://localhost:55000/agents/000/group
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
       body:
-        code: 1734
+        code: 1703
         dapi_errors:
           master-node:
-            "error": "Error unsetting agent group: Agent 000 doesn't belong to any group"
+            "error": "Action not available for Manager (Agent 000)"
             "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Error unsetting agent group: Agent 000 doesn't belong to any group"
-        remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
+        detail: "Action not available for Manager (Agent 000)"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`, and ensure you select an agent other than 000"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -189,8 +216,10 @@ stages:
   - name: Try remove group not exist agent
 
     request:
-      url: http://localhost:55000/agents/999/group
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -201,7 +230,7 @@ stages:
             "error": "Agent does not exist: 999"
             "logfile": "WAZUH_HOME/logs/api.log"
         detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -209,8 +238,10 @@ stages:
   - name: Try remove group bad agent ID
 
     request:
-      url: http://localhost:55000/agents/bad_id/group
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -223,8 +254,10 @@ stages:
   - name: Remove groups
 
     request:
-      url: http://localhost:55000/agents/001/group
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         purge: True
 
@@ -244,19 +277,21 @@ stages:
   - name: Try remove group from agent 000 (manager)
 
     request:
-      url: http://localhost:55000/agents/000/group/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/dmz"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
       body:
-        code: 1734
+        code: 1703
         dapi_errors:
           master-node:
-            "error": "Error unsetting agent group: Agent 000 doesn't belong to any group"
+            "error": "Action not available for Manager (Agent 000)"
             "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Error unsetting agent group: Agent 000 doesn't belong to any group"
-        remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
+        detail: "Action not available for Manager (Agent 000)"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -264,8 +299,10 @@ stages:
   - name: Try remove group not exist agent
 
     request:
-      url: http://localhost:55000/agents/999/group/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/dmz"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -276,7 +313,7 @@ stages:
             "error": "Agent does not exist: 999"
             "logfile": "WAZUH_HOME/logs/api.log"
         detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -284,8 +321,10 @@ stages:
   - name: Try remove group bad agent ID
 
     request:
-      url: http://localhost:55000/agents/bad_id/group/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/dmz"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -298,8 +337,10 @@ stages:
   - name: Remove not exist group
 
     request:
-      url: http://localhost:55000/agents/001/group/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         purge: True
 
@@ -309,9 +350,9 @@ stages:
         code: 1734
         dapi_errors:
           master-node:
-            "error": "Error unsetting agent group: Agent 001 doesn't belong to group dmz"
+            "error": "Error unsetting agent group"
             "logfile": "WAZUH_HOME/logs/api.log"
-        detail: "Error unsetting agent group: Agent 001 doesn't belong to group dmz"
+        detail: "Error unsetting agent group"
         remediation: "Agent does not belong to any group, to add the agent to a group follow: [official documentation](https://documentation.wazuh.com/3.x/user-manual/agents/grouping-agents.html)"
         status: 400
         title: "Wazuh Error"
@@ -320,8 +361,10 @@ stages:
   - name: Create new group
 
     request:
-      url: http://localhost:55000/agents/groups/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmz"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -331,8 +374,10 @@ stages:
   - name: Put group to agent
 
     request:
-      url: http://localhost:55000/agents/001/group/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -342,13 +387,15 @@ stages:
   - name: Remove group
 
     request:
-      url: http://localhost:55000/agents/001/group/dmz
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmz"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
       body:
-        message: "Group 'dmz' unset for agent '001'."
+        message: "Agent 001 set to group default."
 
 ---
 test_name: DELETE /agents/group/:group_id
@@ -361,8 +408,10 @@ stages:
   - name: Try remove not exist group
 
     request:
-      url: http://localhost:55000/agents/group/dmztest
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents: 001,002
 
@@ -375,7 +424,7 @@ stages:
             "error": "The group does not exist"
             "logfile": "WAZUH_HOME/logs/api.log"
         detail: "The group does not exist"
-        remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+        remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -383,8 +432,10 @@ stages:
   - name: Create new group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -394,8 +445,10 @@ stages:
   - name: Put group to agent
 
     request:
-      url: http://localhost:55000/agents/001/group/dmztest
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -405,8 +458,10 @@ stages:
   - name: Try remove group agent 000
 
     request:
-      url: http://localhost:55000/agents/group/dmztest
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '000'
 
@@ -415,14 +470,20 @@ stages:
       body:
         affected_agents: []
         failed_ids:
-          - '000'
-        message: Some agents were not removed to group dmztest
+          - error:
+              code: 1703
+              message: "Action not available for Manager (Agent 000)"
+              remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
+            id: "000"
+        message: Some agents were not removed from group dmztest
 
   - name: Try remove group not exist agents
 
     request:
-      url: http://localhost:55000/agents/group/dmztest
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents: 998,999
 
@@ -431,15 +492,25 @@ stages:
       body:
         affected_agents: []
         failed_ids:
-          - '998'
-          - '999'
-        message: Some agents were not removed to group dmztest
+          - error:
+              code: 1701
+              message: "Agent does not exist: 998"
+              remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+            id: "998"
+          - error:
+              code: 1701
+              message: "Agent does not exist: 999"
+              remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+            id: "999"
+        message: Some agents were not removed from group dmztest
 
   - name: Remove group
 
     request:
-      url: http://localhost:55000/agents/group/dmztest
+      url: "{protocol:s}://{host:s}:{port:d}/agents/group/dmztest"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_agents: '001'
 
@@ -448,7 +519,7 @@ stages:
       body:
         affected_agents: 
           - '001'
-        message: All selected agents were removed to group dmztest
+        message: All selected agents were removed from group dmztest
 
 ---
 test_name: DELETE /agents/groups
@@ -461,8 +532,10 @@ stages:
   - name: Try remove not exist groups
 
     request:
-      url: http://localhost:55000/agents/groups
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_groups: dmztest1,dmztest2
 
@@ -474,12 +547,12 @@ stages:
           - error:
               code: 1710
               message: "The group does not exist: dmztest1"
-              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
             id: dmztest1
           - error:
               code: 1710
               message: "The group does not exist: dmztest2"
-              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
             id: dmztest2
         ids: []
         message: Some groups were not removed
@@ -487,8 +560,10 @@ stages:
   - name: Create new group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest1
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -498,8 +573,10 @@ stages:
   - name: Create other new group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest2
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -509,8 +586,10 @@ stages:
   - name: Put group 1 to agent
 
     request:
-      url: http://localhost:55000/agents/001/group/dmztest1
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest1"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -520,8 +599,10 @@ stages:
   - name: Put group 2 to agent
 
     request:
-      url: http://localhost:55000/agents/002/group/dmztest2
+      url: "{protocol:s}://{host:s}:{port:d}/agents/002/group/dmztest2"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -531,8 +612,10 @@ stages:
   - name: Remove group
 
     request:
-      url: http://localhost:55000/agents/groups
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
       params:
         list_groups: dmztest1,dmztest2
 
@@ -558,8 +641,10 @@ stages:
   - name: Try remove not exist groups
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest1
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -569,7 +654,7 @@ stages:
           - error:
               code: 1710
               message: "The group does not exist: dmztest1"
-              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"http://localhost:55000/agents/groups\"`"
+              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
             id: dmztest1
         ids: []
         message: Some groups were not removed
@@ -577,8 +662,10 @@ stages:
   - name: Create new group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest1
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -588,8 +675,10 @@ stages:
   - name: Create other new group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest2
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -599,8 +688,10 @@ stages:
   - name: Put group to agent
 
     request:
-      url: http://localhost:55000/agents/001/group/dmztest1
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/dmztest1"
       method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -610,8 +701,10 @@ stages:
   - name: Remove group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest1
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest1"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -625,8 +718,10 @@ stages:
   - name: Remove other group
 
     request:
-      url: http://localhost:55000/agents/groups/dmztest2
+      url: "{protocol:s}://{host:s}:{port:d}/agents/groups/dmztest2"
       method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -647,8 +742,10 @@ stages:
   - name: Basic response agents
 
     request: &get_agents
-      url: http://localhost:55000/agents
+      url: "{protocol:s}://{host:s}:{port:d}/agents"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -1164,8 +1261,10 @@ stages:
   - name: Basic response agent
 
     request: &get_agent
-      url: http://localhost:55000/agents/000
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
@@ -1193,8 +1292,10 @@ stages:
   - name: Try show not existing agent
 
     request:
-      url: http://localhost:55000/agents/999
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -1205,7 +1306,7 @@ stages:
             "error": "Agent does not exist: 999"
             "logfile": "WAZUH_HOME/logs/api.log"
         detail: "Agent does not exist: 999"
-        remediation: "Please, make the following call to find all available agent `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -1282,8 +1383,10 @@ stages:
   - name: Try get sync agent 000 (manager)
 
     request:
-      url: http://localhost:55000/agents/000/group/is_sync
+      url: "{protocol:s}://{host:s}:{port:d}/agents/000/group/is_sync"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response: 
       status_code: 400
@@ -1294,7 +1397,7 @@ stages:
             error: "Action not available for Manager (Agent 000)"
             logfile: "WAZUH_HOME/logs/api.log"
         detail: "Action not available for Manager (Agent 000)"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`, and ensure you select an agent other than 000"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -1302,8 +1405,10 @@ stages:
   - name: Try get sync not existing agent
 
     request:
-      url: http://localhost:55000/agents/999/group/is_sync
+      url: "{protocol:s}://{host:s}:{port:d}/agents/999/group/is_sync"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -1314,7 +1419,7 @@ stages:
             error: "Agent does not exist"
             logfile: "WAZUH_HOME/logs/api.log"
         detail: "Agent does not exist"
-        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+        remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents?select=id\"`"
         status: 400
         title: "Wazuh Error"
         type: "about:blank"
@@ -1322,8 +1427,10 @@ stages:
   - name: Try get sync agent by name
 
     request:
-      url: http://localhost:55000/agents/bad_id/group/is_sync
+      url: "{protocol:s}://{host:s}:{port:d}/agents/bad_id/group/is_sync"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 400
@@ -1336,10 +1443,12 @@ stages:
   - name: Get agent sync
 
     request:
-      url: http://localhost:55000/agents/001/group/is_sync
+      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/is_sync"
       method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
 
     response:
       status_code: 200
       body:
-        synced: true
+        synced: !anybool

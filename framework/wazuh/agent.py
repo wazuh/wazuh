@@ -771,7 +771,7 @@ class Agent:
 
         msg = "Group '{0}' removed.".format(group_id)
 
-        return {'msg': msg, 'affected_agents': ids}
+        return {'message': msg, 'affected_agents': ids}
 
 
     def get_agent_attr(self, attr):
@@ -1632,9 +1632,9 @@ class Agent:
 
             final_dict = {}
             if failed_ids:
-                final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+                final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
             else:
-                final_dict = {'msg': message, 'affected_agents': affected_agents}
+                final_dict = {'message': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1643,7 +1643,7 @@ class Agent:
         """
         Unset a group to a list of agents.
 
-        :param agent_id: List of Agent IDs.
+        :param agent_id_list: List of Agent IDs.
         :param group_id: Group ID.
         :return: Confirmation message.
         """
@@ -1670,9 +1670,9 @@ class Agent:
                 message = f'Some agents were not removed from group {group_id}'
 
         if failed_ids:
-            final_dict = {'msg': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
+            final_dict = {'message': message, 'affected_agents': affected_agents, 'failed_ids': failed_ids}
         else:
-            final_dict = {'msg': message, 'affected_agents': affected_agents}
+            final_dict = {'message': message, 'affected_agents': affected_agents}
 
         return final_dict
 
@@ -1811,14 +1811,17 @@ class Agent:
         if not force:
             Agent(agent_id).get_basic_information()
 
+        if agent_id == "000":
+            raise WazuhError(1703)
+
         # get agent's group
         group_name = Agent.get_agents_group_file(agent_id)
         group_list = group_name.split(',')
         # check agent belongs to group group_id
         if group_id not in group_list:
-            raise WazuhException(1734)
+            raise WazuhError(1734)
         elif group_id == 'default' and len(group_list) == 1:
-            raise WazuhException(1745)
+            raise WazuhError(1745)
         # remove group from group_list
         group_list.remove(group_id)
         if len(group_list) > 1:
@@ -1864,6 +1867,9 @@ class Agent:
         # Check if agent exists
         if not force:
             Agent(agent_id).get_basic_information()
+
+        if agent_id == '000':
+            raise WazuhError(1703)
 
         # Check if multi group still exists in other agents
         group_name = Agent.get_agents_group_file(agent_id)
