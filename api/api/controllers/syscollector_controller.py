@@ -8,7 +8,8 @@ import logging
 from api.util import remove_nones_to_dict, exception_handler, parse_api_param
 from wazuh.cluster.dapi.dapi import DistributedAPI
 import wazuh.syscollector as syscollector
-from ..util import format_data
+from ..util import raise_if_exc
+from ..models.base_model_ import Data
 
 
 loop = asyncio.get_event_loop()
@@ -39,10 +40,10 @@ def get_hardware_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -91,10 +92,10 @@ def get_network_address_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -162,10 +163,10 @@ def get_network_interface_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -211,10 +212,10 @@ def get_network_protocol_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -241,10 +242,10 @@ def get_os_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -293,10 +294,10 @@ def get_packages_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -350,10 +351,10 @@ def get_ports_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -425,7 +426,7 @@ def get_processes_info(agent_id, pretty=False, wait_for_complete=False,
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
-    data = format_data(data)
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
