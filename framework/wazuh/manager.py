@@ -418,7 +418,7 @@ def restart():
         fcntl.lockf(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
-    return "Restarting manager"
+    return WazuhResult({'message': 'Restarting manager'})
 
 
 def _check_wazuh_xml(files):
