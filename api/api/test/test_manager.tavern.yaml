@@ -572,29 +572,6 @@ stages:
       body:
         message: !anystr
 
-  - name: Upload rules to unexisting node (overwrite=false)
-
-    request:
-      url: http://localhost:55000/cluster/unexisting-node/files
-      method: POST
-      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
-      headers:
-        content-type: application/octet-stream
-      params:
-        path: etc/rules/new-rules.xml
-        overwrite: True
-
-    response:
-      status_code: 500 ### should be 400
-      body:
-        code: 1000 ### should be 3022
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 500
-        title: !anystr
-        type: !anystr
-
   - name: Upload new decoder
 
     request:
@@ -706,29 +683,6 @@ stages:
       status_code: 200
       body:
         message: !anystr
-
-  - name: Upload CDB list to unexisting node
-
-    request:
-      url: http://localhost:55000/cluster/unexisting-node/files
-      method: POST
-      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
-      headers:
-        content-type: application/octet-stream
-      params:
-        path: etc/lists/new-list
-        overwrite: False
-
-    response:
-      status_code: 500  ## should be 400
-      body:
-        code: 1000  ## should be 3022
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 500
-        title: !anystr
-        type: !anystr
 
 ---
 test_name: DELETE /manager/files
