@@ -826,8 +826,8 @@ test_name: PUT /manager/restart
 
 stages:
 
-  - name: Restart cluster
-    delay_before: 10
+  - name: Restart manager
+
     request:
       url: http://localhost:55000/manager/restart
       method: PUT
