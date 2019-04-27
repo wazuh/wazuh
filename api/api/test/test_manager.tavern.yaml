@@ -808,8 +808,7 @@ test_name: GET /manager/validation (KO)
 stages:
 
   #### Upload corrupted rules file
-  - &upload_corrupted_rules
-    name: Upload new rules
+  - name: Upload new rules
 
     request:
       url: http://localhost:55000/cluster/master/files
@@ -821,3 +820,19 @@ stages:
         path: etc/rules/new-rules.xml
   
   - *manager_validation
+
+---
+test_name: PUT /manager/restart
+
+stages:
+
+  - name: Restart cluster
+    delay_before: 10
+    request:
+      url: http://localhost:55000/manager/restart
+      method: PUT
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
