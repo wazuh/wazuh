@@ -651,29 +651,6 @@ stages:
       body:
         message: !anystr
 
-  - name: Upload decoder to unexisting node
-
-    request:
-      url: http://localhost:55000/cluster/unexisting-node/files
-      method: POST
-      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
-      headers:
-        content-type: application/octet-stream
-      params:
-        path: etc/decoders/new-decoder.xml
-        overwrite: True
-
-    response:
-      status_code: 500 ## should be 400
-      body:
-        code: 1000 ## should be 3022
-        dapi_errors: !anything
-        detail: !anystr
-        remediation: !anystr
-        status: 500
-        title: !anystr
-        type: !anystr
-
   - name: Upload new CDB list
 
     request:
@@ -855,3 +832,38 @@ stages:
         title: !anystr
         type: !anystr
 
+---
+test_name: GET /manager/configuration/validation (OK)
+
+stages:
+
+  - &manager_validation
+    name: Request validation
+
+    request:
+      url: http://localhost:55000/manager/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        status: OK
+
+---
+test_name: GET /manager/validation (KO)
+
+stages:
+
+  #### Upload corrupted rules file
+  - &upload_corrupted_rules
+    name: Upload new rules
+
+    request:
+      url: http://localhost:55000/cluster/master/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+  
+  - *manager_validation
