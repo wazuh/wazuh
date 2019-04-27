@@ -791,8 +791,7 @@ test_name: GET /manager/configuration/validation (OK)
 
 stages:
 
-  - &manager_validation
-    name: Request validation
+  - name: Request validation
 
     request:
       url: http://localhost:55000/manager/configuration/validation
@@ -808,7 +807,7 @@ test_name: GET /manager/validation (KO)
 stages:
 
   #### Upload corrupted rules file
-  - name: Upload new rules
+  - name: Upload corrupted
 
     request:
       url: http://localhost:55000/manager/files
@@ -819,12 +818,23 @@ stages:
       params:
         path: etc/rules/new-rules.xml
 
-       response:
-        status_code: 200
-        body:
-          message: !anystr
-  
-  - *manager_validation
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Request validation
+
+    request:
+      url: http://localhost:55000/manager/configuration/validation
+
+    response:
+      status_code: 200
+      body:
+        details: !anything
+        status: KO
+
+  - *delete_rules_file
 
 ---
 test_name: PUT /manager/restart
@@ -832,7 +842,7 @@ test_name: PUT /manager/restart
 stages:
 
   - name: Restart manager
-
+    delay_before: 5
     request:
       url: http://localhost:55000/manager/restart
       method: PUT
