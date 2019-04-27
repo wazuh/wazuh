@@ -478,41 +478,380 @@ stages:
         type: !anystr
 
 ---
-#test_name: POST /manager/files
-#
-#stages:
-#
-#  #### Save ossec.conf
-#  - name: Get ossec.conf
-#
-#    request:
-#      url: http://localhost:55000/manager/files
-#      params:
-#        path: etc/ossec.conf
-#
-#    response:
-#      save:
-#        body:
-#          ossec_conf: data.contents
-#      status_code: 200
-#      body:
-#        data:
-#          contents: !anystr
-#
-#  - name: Upload ossec.conf (master)
-#
-#    request:
-#      url: http://localhost:55000/manager/files
-#      data: "{ossec_conf}"
-#      headers:
-#        content-type: application/octet-stream
-#      params:
-#        overwrite: True
-#        path: etc/ossec.conf
-#
-#    response:
-#      status_code: 200
-#      body:
-#        data:
-#         contents: !anystr
-#
+test_name: POST /manager/files
+
+stages:
+
+  #### Save ossec.conf
+  - name: Get ossec.conf
+
+    request:
+      url: http://localhost:55000/manager/files
+      params:
+        path: etc/ossec.conf
+
+    response:
+      save:
+        body:
+          ossec_conf: data.contents
+      status_code: 200
+      body:
+        data:
+          contents: !anystr
+
+  - name: Upload ossec.conf
+
+    request:
+      url: http://localhost:55000/manager/files
+      data: "{ossec_conf}"
+      headers:
+        content-type: application/octet-stream
+      params:
+        overwrite: True
+        path: etc/ossec.conf
+
+    response:
+      status_code: 200
+      body:
+        data:
+         contents: !anystr
+
+  - name: Upload new rules
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n    <!--   NEW RULE    -->\n    <rule id=\"111111\" level=\"5\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload rules (overwrite=false)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload rules (overwrite=true)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload rules to unexisting node (overwrite=false)
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/files
+      method: POST
+      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n <rule id=\"111111\" level=\"5\">\n <if_sid>5716</if_sid>\n <srcip>1.1.1.1</srcip>\n  <description>sshd: authentication failed from IP 1.1.1.1.</description>\n <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n </rule>\n </group>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/rules/new-rules.xml
+        overwrite: True
+
+    response:
+      status_code: 500 ### should be 400
+      body:
+        code: 1000 ### should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Upload new decoder
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload decoder (overwrite=false)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload decoder (overwrite=true)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload decoder to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/files
+      method: POST
+      data: "<!-- NEW Local Decoders -->\n <decoder name=\"local_decoder_example\">\n <program_name>NEW DECODER</program_name>\n </decoder>\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/decoders/new-decoder.xml
+        overwrite: True
+
+    response:
+      status_code: 500 ## should be 400
+      body:
+        code: 1000 ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Upload new CDB list
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload CDB list (overwrite=false)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: False
+
+    response:
+      status_code: 400
+      body:
+        code: 1905
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 400
+        title: !anystr
+        type: !anystr
+
+  - name: Upload CDB list (overwrite=true)
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: True
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Upload CDB list to unexisting node
+
+    request:
+      url: http://localhost:55000/cluster/unexisting-node/files
+      method: POST
+      data: "test-wazuh-w:write\ntest-wazuh-r:read\ntest-wazuh-a:attribute\ntest-wazuh-x:execute\ntest-wazuh-c:command\n"
+      headers:
+        content-type: application/octet-stream
+      params:
+        path: etc/lists/new-list
+        overwrite: False
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000  ## should be 3022
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+---
+test_name: DELETE /manager/files
+
+stages:
+
+  - &delete_rules_file
+    name: Delete rules file
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: DELETE
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting rules file
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: DELETE
+      params:
+        path: etc/rules/new-rules.xml
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Delete decoder file
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: DELETE
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting decoder file
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: DELETE
+      params:
+        path: etc/decoders/new-decoder.xml
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+
+  - name: Delete CDB list file
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: DELETE
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 200
+      body:
+        message: !anystr
+
+  - name: Delete unexisting CDB list file
+
+    request:
+      url: http://localhost:55000/manager/files
+      method: DELETE
+      params:
+        path: etc/lists/new-list
+
+    response:
+      status_code: 500  ## should be 400
+      body:
+        code: 1000
+        dapi_errors: !anything
+        detail: !anystr
+        remediation: !anystr
+        status: 500
+        title: !anystr
+        type: !anystr
+

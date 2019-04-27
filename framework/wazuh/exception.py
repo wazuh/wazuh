@@ -17,7 +17,7 @@ class WazuhException(Exception):
         # Wazuh: 0999 - 1099
         999: 'Incompatible version of Python',
         1000: {'message': 'Wazuh Internal Error'
-               },
+               'remediation': 'Please, check `ossec.log` for getting more information about the error'},
         1001: 'Error importing module',
         1002: 'Error executing command',
         1003: 'Command output not in json',
