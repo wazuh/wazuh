@@ -339,7 +339,9 @@ def post_files(body, overwrite=False, pretty=False, wait_for_complete=False,
     except AttributeError:
         raise WazuhError(1912)
 
-    f_kwargs = {'path': path, 'overwrite': overwrite, 'content': body}
+    f_kwargs = {'path': path,
+                'overwrite': overwrite,
+                'content': body}
 
     dapi = DistributedAPI(f=manager.upload_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

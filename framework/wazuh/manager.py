@@ -384,7 +384,7 @@ def delete_file(path):
     else:
         raise WazuhException(1906)
 
-    return 'File was deleted'
+    return WazuhResult({'message': 'File was deleted'})
 
 
 def restart():
