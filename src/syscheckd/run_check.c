@@ -683,11 +683,11 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
     char *conv_link;
 
     syscheck.sym_checker_interval = checker_sleep;
-    minfo(FIM_LINKCHECK_START, checker_sleep);
+    mdebug1(FIM_LINKCHECK_START, checker_sleep);
 
     while (1) {
         sleep(checker_sleep);
-        minfo(FIM_LINKCHECK_START, checker_sleep);
+        mdebug1(FIM_LINKCHECK_START, checker_sleep);
 
         for (i = 0; syscheck.dir[i]; i++) {
             if (syscheck.converted_links[i]) {
