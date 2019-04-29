@@ -427,8 +427,8 @@ stages:
       status_code: 200
       body:
         data:
-          start: !anystr
-          end: !anystr
+          start: !anything
+          end: !anything
 
 ---
 test_name: DELETE /syscheck/{agent_id}
@@ -453,7 +453,7 @@ stages:
 
     request:
       method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
+      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
       headers:
         Authorization: "Bearer {test_login_token}"
 
