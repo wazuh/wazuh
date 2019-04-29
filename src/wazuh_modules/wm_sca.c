@@ -1105,13 +1105,17 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                 /* If not applicable, return g_found = 2 */
                 if (found == 2) {
                     g_found = 2;
-                    break;
+                    if (condition & WM_SCA_COND_ALL) {
+                        break;
+                    }
                 }
                 /* Check the conditions */
                 else if (condition & WM_SCA_COND_ANY) {
                     mdebug2("Condition ANY.");
-                    if (found) {
+                    if (found == 1) {
                         g_found = 1;
+                        os_free(reason);
+                        break;
                     }
                 } else if (condition & WM_SCA_COND_NON) {
                     mdebug2("Condition NON.");
