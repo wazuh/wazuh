@@ -503,6 +503,7 @@ stages:
 
     request:
       url: http://localhost:55000/manager/files
+      method: POST
       data: "{ossec_conf}"
       headers:
         content-type: application/octet-stream
@@ -513,8 +514,7 @@ stages:
     response:
       status_code: 200
       body:
-        data:
-         contents: !anystr
+        message: !anystr
 
   - name: Upload new rules
 
