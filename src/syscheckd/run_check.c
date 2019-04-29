@@ -363,7 +363,6 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 #ifdef WIN32
     if (stat(file_name, &statbuf) < 0)
 #else
-
     if (lstat(file_name, &statbuf) < 0)
 #endif
     {
@@ -378,6 +377,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
             return 0;
         }
 #endif
+
         alert_msg[sizeof(alert_msg) - 1] = '\0';
 
         // Extract the whodata sum here to not include it in the hash table
@@ -500,8 +500,7 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
 
     /* Generate new checksum */
     newsum[0] = '\0';
-    if (S_ISREG(statbuf.st_mode))
-    {
+    if (S_ISREG(statbuf.st_mode)) {
         if (sha1sum || md5sum || sha256sum) {
             /* Generate checksums of the file */
             if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum, sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
@@ -511,10 +510,6 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     }
 
 #ifndef WIN32
-    /* If it is a link, check if the actual file is valid */
-    else if (S_ISLNK(statbuf.st_mode)) {
-        stat(file_name, &statbuf_lnk);
-    }
 
     if (size == 0){
         *str_size = '\0';
@@ -525,51 +520,31 @@ int c_read_file(const char *file_name, const char *linked_file, const char *olds
     if (perm == 0){
         *str_perm = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode)) {
-            sprintf(str_perm,"%ld",(long)statbuf_lnk.st_mode);
-        } else {
-            sprintf(str_perm, "%ld", (long)statbuf.st_mode);
-        }
+        sprintf(str_perm, "%ld", (long)statbuf.st_mode);
     }
 
     if (owner == 0){
         *str_owner = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode)) {
-            sprintf(str_owner,"%ld",(long)statbuf_lnk.st_uid);
-        } else {
-            sprintf(str_owner, "%ld", (long)statbuf.st_uid);
-        }
+        sprintf(str_owner, "%ld", (long)statbuf.st_uid);
     }
 
     if (group == 0){
         *str_group = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode)) {
-            sprintf(str_group,"%ld",(long)statbuf_lnk.st_gid);
-        } else {
-            sprintf(str_group, "%ld", (long)statbuf.st_gid);
-        }
+        sprintf(str_group, "%ld", (long)statbuf.st_gid);
     }
 
     if (mtime == 0){
         *str_mtime = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode)) {
-            sprintf(str_mtime, "%ld",(long)statbuf_lnk.st_mtime);
-        } else {
-            sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
-        }
+        sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
     }
 
     if (inode == 0){
         *str_inode = '\0';
     } else {
-        if (S_ISLNK(statbuf.st_mode)) {
-            sprintf(str_inode, "%ld",(long)statbuf_lnk.st_ino);
-        } else {
-            sprintf(str_inode, "%ld", (long)statbuf.st_ino);
-        }
+        sprintf(str_inode, "%ld", (long)statbuf.st_ino);
     }
 
     snprintf(newsum, OS_SIZE_4096, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
