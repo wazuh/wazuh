@@ -89,7 +89,7 @@ add_parameter () {
 set_vars () {
     export WAZUH_MANAGER_IP=$(launchctl getenv WAZUH_MANAGER_IP)
     export WAZUH_PROTOCOL=$(launchctl getenv WAZUH_PROTOCOL)
-    export WAZUH_SERVER_PORT=$(launchctl getenv WAZUH_SERVER_PORT)
+    export WAZUH_MANAGER_PORT=$(launchctl getenv WAZUH_MANAGER_PORT)
     export WAZUH_NOTIFY_TIME=$(launchctl getenv WAZUH_NOTIFY_TIME)
     export WAZUH_TIME_RECONNECT=$(launchctl getenv WAZUH_TIME_RECONNECT)
     export WAZUH_AUTHD_SERVER=$(launchctl getenv WAZUH_AUTHD_SERVER)
@@ -106,7 +106,7 @@ unset_vars() {
 
     OS=$1
 
-    vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_SERVER_PORT WAZUH_NOTIFY_TIME \
+    vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM)
 
@@ -160,7 +160,7 @@ main () {
 
         # Options to be modified in ossec.conf
         edit_value_tag "protocol" "$(tolower ${WAZUH_PROTOCOL})"
-        edit_value_tag "port" ${WAZUH_SERVER_PORT}
+        edit_value_tag "port" ${WAZUH_MANAGER_PORT}
         edit_value_tag "notify_time" ${WAZUH_NOTIFY_TIME}
         edit_value_tag "time-reconnect" ${WAZUH_TIME_RECONNECT}
 
