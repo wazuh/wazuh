@@ -641,15 +641,15 @@ stages:
       <<: *processes_request
       params:
         offset: 1
-        limit: 2
+        limit: 1
 
     response:
       status_code: 200
+      strict: false
       body:
         data:
           items:
-            - argvs: "{offset_test.argvs}"
-              cmd: "{offset_test.cmd}"
+            - cmd: "{offset_test.cmd}"
               egroup: "{offset_test.egroup}"
               euser: "{offset_test.euser}"
               fgroup: "{offset_test.fgroup}"
@@ -679,7 +679,6 @@ stages:
               tty: !int "{offset_test.tty}"
               utime: !int "{offset_test.utime}"
               vm_size: !int "{offset_test.vm_size}"
-            - <<: *processes_response
 
   - name: Wrong limit
 
@@ -773,3 +772,791 @@ stages:
           totalItems: !anyint
 
 ---
+
+---
+test_name: GET /syscollector/{agent_id}/ports
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Ports of an agent
+
+    request: &port_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/ports"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+  - name: Ports of an agent, limit
+
+    request:
+      <<: *port_request
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &port_response
+            - inode: !anyint
+              local:
+                ip: !anystr
+                port: !anyint
+              protocol: !anystr
+              remote:
+                ip: !anystr
+                port: !anyint
+              rx_queue: !anyint
+              scan:
+                id: !anyint
+                time: !anystr
+              state: !anystr
+              tx_queue: !anyint
+      save:
+        body:
+          expected_protocol: data.items.0.protocol
+          expected_local_ip: data.items.0.local.ip
+          expected_local_port: data.items.0.local.port
+          expected_remote_ip: data.items.0.remote.ip
+          expected_tx_queue: data.items.0.tx_queue
+          expected_state: data.items.0.state
+
+  - name: Filter protocol
+
+    request:
+      <<: *port_request
+      params:
+        protocol: "{expected_protocol}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+            - <<: *port_response
+
+  - name: Filter local_ip
+
+    request:
+      <<: *port_request
+      params:
+        local_ip: "{expected_local_ip}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+            - <<: *port_response
+
+  - name: Filter local port
+
+    request:
+      <<: *port_request
+      params:
+        local_port: "{expected_local_port}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+            - <<: *port_response
+
+  - name: Filter remote_ip
+
+    request:
+      <<: *port_request
+      params:
+        remote_ip: "{expected_remote_ip}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+            - <<: *port_response
+
+  - name: Filter tx_queue
+
+    request:
+      <<: *port_request
+      params:
+        tx_queue: "{expected_tx_queue}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+            - <<: *port_response
+
+  - name: Filter status
+    request:
+      <<: *port_request
+      params:
+        state: "{expected_state}"
+        limit: 2
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - <<: *port_response
+            - <<: *port_response
+
+  - name: Not allowed selector
+
+    request:
+      <<: *port_request
+      params:
+        select: wrong
+
+    response:
+      <<: *error_response
+
+  - name: Wrong limit
+
+    request:
+      <<: *port_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong filter
+
+    request:
+      <<: *port_request
+      params:
+        wrongFilter: true
+
+    response:
+      status_code: 400
+
+  - name: Invalid sort
+
+    request:
+      <<: *port_request
+      params:
+        select: wrong
+
+    response:
+      <<: *error_response
+
+---
+
+---
+test_name: GET /syscollector/{agent_id}/port?{sort,select}
+
+marks:
+  - parametrize:
+      key: field
+      vals:
+        - inode
+        - local_ip
+        - local_port
+        - protocol
+        - remote_ip
+        - remote_port
+        - rx_queue
+        - scan_id
+        - scan_time
+        - state
+        - tx_queue
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Port of an agent, select
+
+    request:
+      <<: *port_request
+      params:
+        select: "{field}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
+
+  - name: Port of an agent, sort
+
+    request:
+      <<: *port_request
+      params:
+        sort: "{field}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          totalItems: !anyint
+
+---
+test_name: GET /syscollector/{agent_id}/netaddr
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Netaddress of an agent
+
+    request: &netaddr_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netaddr"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netaddr_response
+            - address: !anystr
+              broadcast: !anystr
+              iface: !anystr
+              netmask: !anystr
+              proto: !anystr
+              scan_id: !anyint
+          totalItems: !anyint
+      save:
+        body:
+          expected_broadcast: data.items.0.broadcast
+          expected_proto: data.items.0.proto
+          expected_address: data.items.0.address
+          expected_netmask: data.items.0.netmask
+          expected_iface: data.items.0.iface
+
+  - name: Search broadcast
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_broadcast}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - broadcast: "{expected_broadcast}"
+
+  - name: Search protocol
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_proto}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: "{expected_proto}"
+
+  - name: Search address
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_address}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - address: "{expected_address}"
+
+  - name: Search netmask
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_netmask}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - netmask: "{expected_netmask}"
+
+  - name: Search iface
+    request:
+      <<: *netaddr_request
+      params:
+        search: "{expected_iface}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Select proto, netmask, broadcast
+
+    request:
+      <<: *netaddr_request
+      params:
+        select: proto,broadcast,netmask
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - proto: !anystr
+              netmask: !anystr
+              broadcast: !anystr
+
+  - name: Not allowed selector
+
+    request:
+      <<: *netaddr_request
+      params:
+        select: wrongSelector
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Pagination
+
+    request:
+      <<: *netaddr_request
+      params:
+        limit: 1
+        offset: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: []
+          totalItems: 1
+
+  - name: Wrong limit
+
+    request:
+      <<: *netaddr_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+
+    request:
+      <<: *netaddr_request
+      params:
+        wrong: 0
+
+    response:
+      status_code: 400
+
+  - name: Invalid sort
+
+    request:
+      <<: *netaddr_request
+      params:
+        sort: -wrong
+
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/netproto
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Netprotocol of an agent
+
+    request: &netproto_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netproto"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netproto_response
+            - dhcp: !anystr
+              gateway: !anystr
+              iface: !anystr
+              type: !anystr
+              scan_id: !anyint
+          totalItems: !anyint
+      save:
+        body:
+          expected_dhcp: data.items.0.dhcp
+          expected_gateway: data.items.0.gateway
+          expected_type: data.items.0.type
+          expected_scan_id: data.items.0.scan_id
+          expected_iface: data.items.0.iface
+
+  - name: Select proto, netmask, broadcast
+
+    request:
+      <<: *netproto_request
+      params:
+        select: iface,gateway,dhcp
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: !anystr
+              gateway: !anystr
+              dhcp: !anystr
+
+  - name: Search dhcp
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_dhcp}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - dhcp: "{expected_dhcp}"
+
+  - name: Search gateway
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_gateway}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - gateway: "{expected_gateway}"
+
+  - name: Search type
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_type}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{expected_type}"
+
+  - name: Search scan_id
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_scan_id}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - scan_id: !int "{expected_scan_id}"
+
+  - name: Search iface
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_iface}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Not allowed selector
+
+    request:
+      <<: *netproto_request
+      params:
+        select: wrongSelector
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Wrong limit
+
+    request:
+      <<: *netproto_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+
+    request:
+      <<: *netproto_request
+      params:
+        wrong: 0
+
+    response:
+      status_code: 400
+
+  - name: Invalid sort
+
+    request:
+      <<: *netproto_request
+      params:
+        sort: -wrong
+
+    response:
+      <<: *error_response
+
+---
+test_name: GET /syscollector/{agent_id}/netiface
+
+includes:
+  - !include common.yaml
+
+stages:
+  - type: ref
+    id: login_get_token
+  - name: Netiface of an agent
+
+    request: &netiface_request
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/000/netiface"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items: &netiface_response
+            - mac: !anystr
+              mtu: !anyint
+              name: !anystr
+              rx:
+                bytes: !anyint
+                dropped: !anyint
+                errors: !anyint
+                packets: !anyint
+               scan:
+                 id: !anyint
+                 time: !anystr
+               state: !anystr
+               tx:
+                 bytes: !anyint
+                 dropped: !anyint
+                 errors: !anyint
+                 packets: !anyint
+               type: !anystr
+          totalItems: !anyint
+      save:
+        body:
+          expected_dhcp: data.items.0.dhcp
+          expected_gateway: data.items.0.gateway
+          expected_type: data.items.0.type
+          expected_scan_id: data.items.0.scan_id
+          expected_iface: data.items.0.iface
+
+  - name: Select proto, netmask, broadcast
+
+    request:
+      <<: *netproto_request
+      params:
+        select: iface,gateway,dhcp
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: !anystr
+              gateway: !anystr
+              dhcp: !anystr
+
+  - name: Search dhcp
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_dhcp}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - dhcp: "{expected_dhcp}"
+
+  - name: Search gateway
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_gateway}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - gateway: "{expected_gateway}"
+
+  - name: Search type
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_type}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - type: "{expected_type}"
+
+  - name: Search scan_id
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_scan_id}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - scan_id: !int "{expected_scan_id}"
+
+  - name: Search iface
+    request:
+      <<: *netproto_request
+      params:
+        search: "{expected_iface}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        data:
+          items:
+            - iface: "{expected_iface}"
+
+  - name: Not allowed selector
+
+    request:
+      <<: *netproto_request
+      params:
+        select: wrongSelector
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_remediation_response
+
+  - name: Wrong limit
+
+    request:
+      <<: *netproto_request
+      params:
+        limit: 0
+
+    response:
+      status_code: 400
+      body:
+        <<: *error_spec
+
+  - name: Wrong param
+
+    request:
+      <<: *netproto_request
+      params:
+        wrong: 0
+
+    response:
+      status_code: 400
+
+  - name: Invalid sort
+
+    request:
+      <<: *netproto_request
+      params:
+        sort: -wrong
+
+    response:
+      <<: *error_response

@@ -45,6 +45,7 @@ components:
 
     ApiError:
       type: object
+      nullable: true
       required:
         - type
         - title
@@ -1539,7 +1540,7 @@ components:
           type: string
           description: Package priority.
         size:
-          type: string
+          type: integer
           description: Installed package size in bytes.
         description:
           type: string
