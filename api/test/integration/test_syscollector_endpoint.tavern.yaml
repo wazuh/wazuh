@@ -697,7 +697,7 @@ stages:
         type: !anystr
 
 ---
-test_name: GET /syscollector/{agent_id}/processes/{search, sort, select}
+test_name: GET /syscollector/{agent_id}/processes?{sort,select}
 
 marks:
   - parametrize:
@@ -745,11 +745,31 @@ stages:
       <<: *processes_request
       params:
         sort: "{field}"
+        limit: 1
 
     response:
       status_code: 200
       body:
         data:
-          - <<: *processes_response
+          totalItems: !anyint
+
+  - name: Processes of an agent, select
+
+    request:
+      <<: *processes_request
+      params:
+        select: "{field}"
+        limit: 1
+
+    response:
+      status_code: 200
+      body:
+        $ext:
+          # Check response item keys are the selected keys
+          function: tavern_utils:test_select_key
+          extra_kwargs:
+            select_key: "{field:s}"
+        data:
+          totalItems: !anyint
 
 ---
