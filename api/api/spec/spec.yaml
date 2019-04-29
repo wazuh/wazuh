@@ -604,7 +604,7 @@ components:
                 level:
                   type: integer
                   format: int32
-                  minimum: 3
+                  minimum: 0
                   maximum: 15
                   description: Alert level
                 times:
