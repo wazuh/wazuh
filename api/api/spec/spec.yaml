@@ -852,36 +852,36 @@ components:
       type: object
       properties:
         queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Usage of the queue to storage events from agents.
         total_queue_size:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Total queue size to store events from agents.
         tcp_sessions:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of TCP active sessions during the last five seconds.
         evt_count:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of events sent to Analysisd during the last five seconds.
         ctrl_msg_count:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of control messages received from all agents during the last five seconds.
         discarded_count:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of discarded events received from agents during the last five seconds.
         msg_sent:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of messages sent to the agents during the last five seconds.
         recv_bytes:
-          type: integer
-          format: int32
+          type: number
+          format: float
           description: Number of received bytes from all agents during the last five seconds.
 
     WazuhLogs:
