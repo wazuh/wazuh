@@ -562,7 +562,7 @@ checks:
      - 'f:/usr/lib/systemd/system/ypbind.service -> r:Exec;'
 # Section 3.1 - Network Parameters (Host Only)
  - id: 7543
-   title: "Ensure IP forwarding is disabled"
+   title: "Ensure IPv4 forwarding is disabled"
    description: "The net.ipv4.ip_forward flag is used to tell the system whether it can forward packets or not."
    rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
    remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv4.ip_forward = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv4.ip_forward=0 # sysctl -w net.ipv4.route.flush=1"
@@ -573,8 +573,19 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/ip_forward -> 1;'
-     - 'f:/proc/sys/net/ipv6/ip_forward -> 1;'
  - id: 7544
+   title: "Ensure IPv6 forwarding is disabled"
+   description: "The net.ipv6.conf.all.forwarding flag is used to tell the system whether it can forward packets or not."
+   rationale: "Setting the flag to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
+   remediation: "Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: net.ipv6.conf.all.forwarding = 0.  Run the following commands to set the active kernel parameters: # sysctl -w net.ipv6.conf.all.forwarding=0 # sysctl -w net.ipv6.route.flush=1"
+   compliance:
+    - cis: "3.1.1"
+    - cis_csc: "3, 11"
+    - pci_dss: "2.2.4"
+   condition: any
+   rules:
+     - 'f:/proc/sys/net/ipv6/ip_forward -> 1;'
+ - id: 7545
    title: "Ensure packet redirect sending is disabled"
    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
@@ -588,7 +599,7 @@ checks:
      - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> 1;'
      - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> 1;'
 # Section 3.2 - Network Parameters (Host and Router)
- - id: 7545
+ - id: 7546
    title: "Ensure source routed packets are not accepted"
    description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
    rationale: "Setting net.ipv4.conf.all.accept_source_route and net.ipv4.conf.default.accept_source_route to 0 disables the system from accepting source routed packets. Assume this system was capable of routing packets to Internet routable addresses on one interface and private addresses on another interface. Assume that the private addresses were not routable to the Internet routable addresses and vice versa. Under normal routing circumstances, an attacker from the Internet routable addresses could not use the system as a way to reach the private address systems. If, however, source routed packets were allowed, they could be used to gain access to the private address systems as the route could be specified, rather than rely on routing protocols that did not allow this routing."
@@ -600,7 +611,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/accept_source_route -> 1;'
- - id: 7546
+ - id: 7547
    title: "Ensure ICMP redirects are not accepted"
    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
    rationale: "Attackers could use bogus ICMP redirect messages to maliciously alter the system routing tables and get them to send packets to incorrect networks and allow your system packets to be captured."
@@ -613,7 +624,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/accept_redirects -> 1;'
      - 'f:/proc/sys/net/ipv4/conf/default/accept_redirects -> 1;'
- - id: 7547
+ - id: 7548
    title: "Ensure secure ICMP redirects are not accepted"
    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
@@ -626,7 +637,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/secure_redirects -> 1;'
      - 'f:/proc/sys/net/ipv4/conf/default/secure_redirects -> 1;'
- - id: 7548
+ - id: 7549
    title: "nsure suspicious packets are logged"
    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
    rationale: "Enabling this feature and logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
@@ -638,7 +649,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/log_martians -> 0;'
- - id: 7549
+ - id: 7550
    title: "Ensure broadcast ICMP requests are ignored"
    description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
    rationale: "Accepting ICMP echo and timestamp requests with broadcast or multicast destinations for your network could be used to trick your host into starting (or participating) in a Smurf attack. A Smurf attack relies on an attacker sending large amounts of ICMP broadcast messages with a spoofed source address. All hosts receiving this message and responding would send echo-reply messages back to the spoofed address, which is probably not routable. If many hosts respond to the packets, the amount of traffic on the network could be significantly multiplied."
@@ -650,7 +661,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> 0;'
- - id: 7550
+ - id: 7551
    title: "Ensure bogus ICMP responses are ignored"
    description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
@@ -662,7 +673,7 @@ checks:
    condition: any
    rules:
      - 'f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> 0;'
- - id: 7551
+ - id: 7552
    title: "Ensure Reverse Path Filtering is enabled"
    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
    rationale: "Setting these flags is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
@@ -675,7 +686,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/conf/all/rp_filter -> 0;'
      - 'f:/proc/sys/net/ipv4/conf/default/rp_filter -> 0;'
- - id: 7552
+ - id: 7553
    title: "Ensure TCP SYN Cookies is enabled"
    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. SYN cookies allow the system to keep accepting valid connections, even if under a denial of service attack."
@@ -688,7 +699,7 @@ checks:
    rules:
      - 'f:/proc/sys/net/ipv4/tcp_syncookies -> 0;'
 # Section 5.2 - SSH Server Configuration
- - id: 7553
+ - id: 7554
    title: "Ensure SSH Protocol is set to 2"
    description: "SSH supports two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
    rationale: "SSH v1 suffers from insecurities that do not affect SSH v2."
@@ -700,7 +711,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:Protocol\.+1;'
- - id: 7554
+ - id: 7555
    title: "Ensure SSH LogLevel is set to INFO"
    description: "The INFO parameter specifies that login and logout activity will be logged."
    rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information. INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field."
@@ -712,7 +723,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && !r:LogLevel\.+INFO;'
- - id: 7555
+ - id: 7556
    title: "Ensure SSH MaxAuthTries is set to 4 or less"
    description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
    rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
@@ -726,7 +737,7 @@ checks:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:MaxAuthTries && !r:3\s*$;'
      - 'f:/etc/ssh/sshd_config -> r:^#\s*MaxAuthTries;'
      - 'f:/etc/ssh/sshd_config -> !r:MaxAuthTries;'
- - id: 7556
+ - id: 7557
    title: "Ensure SSH IgnoreRhosts is enabled"
    description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
    rationale: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: IgnoreRhosts yes"
@@ -738,7 +749,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:IgnoreRhosts\.+no;'
- - id: 7557
+ - id: 7558
    title: "Ensure SSH HostbasedAuthentication is disabled"
    description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts , or /etc/hosts.equiv , along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
    rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
@@ -750,7 +761,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:HostbasedAuthentication\.+yes;'
- - id: 7558
+ - id: 7559
    title: "Ensure SSH root login is disabled"
    description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
    rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident"
@@ -763,7 +774,7 @@ checks:
    rules:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:PermitRootLogin\.+yes;'
      - 'f:/etc/ssh/sshd_config -> r:^#\s*PermitRootLogin;'
- - id: 7559
+ - id: 7560
    title: "Ensure SSH PermitEmptyPasswords is disabled"
    description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
    rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system"
@@ -777,7 +788,7 @@ checks:
      - 'f:/etc/ssh/sshd_config -> IN !r:^# && r:^PermitEmptyPasswords\.+yes;'
      - 'f:/etc/ssh/sshd_config -> r:^#\s*PermitEmptyPasswords;'
 # Section 6.2 - User and Group Settings
- - id: 7560
+ - id: 7561
    title: "Ensure password fields are not empty"
    description: "An account with an empty password field means that anybody may log in as that user without providing a password."
    rationale: "All accounts must have passwords or be locked to prevent the account from being used by an unauthorized user."
@@ -789,7 +800,7 @@ checks:
    condition: any
    rules:
      - 'f:/etc/shadow -> r:^\w+::;'
- - id: 7561
+ - id: 7562
    title: "Ensure root is the only UID 0 account"
    description: "Any account with UID 0 has superuser privileges on the system."
    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."

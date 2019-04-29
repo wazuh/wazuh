@@ -85,8 +85,8 @@ static int wm_sca_is_process(char *value, OSList *p_list); // Check process
 static int wm_check_registry_entry(char * const value, char **reason);
 static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason);
 static char *wm_sca_os_winreg_getkey(char *reg_entry);
-static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, int * test_result, char **reason);
-static int wm_sca_winreg_querykey(HKEY hKey,__attribute__((unused))char *p_key,__attribute__((unused)) char *full_key_name,char *reg_option, char *reg_value);
+static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,char *reg_option, char *reg_value, char **reason);
+static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char *reg_value, char **reason);
 static char *wm_sca_getrootdir(char *root_dir, int dir_size);
 #endif
 
@@ -1105,13 +1105,17 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                 /* If not applicable, return g_found = 2 */
                 if (found == 2) {
                     g_found = 2;
-                    break;
+                    if (condition & WM_SCA_COND_ALL) {
+                        break;
+                    }
                 }
                 /* Check the conditions */
                 else if (condition & WM_SCA_COND_ANY) {
                     mdebug2("Condition ANY.");
-                    if (found) {
+                    if (found == 1) {
                         g_found = 1;
+                        os_free(reason);
+                        break;
                     }
                 } else if (condition & WM_SCA_COND_NON) {
                     mdebug2("Condition NON.");
@@ -1130,8 +1134,10 @@ static int wm_sca_do_scan(cJSON *profile_check,OSStore *vars,wm_sca_t * data,int
                         g_found = -1;
                     }
                 }
-
-                os_free(reason);
+                
+                if (g_found != 2) {
+                    os_free(reason);
+                }
             }
 
             /* if the loop breaks, rule_cp shall be released.
@@ -1599,7 +1605,8 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
     char *pattern_copy_ref = pattern_copy;
     char *minterm = NULL;
     int test_result = 1;
-    while ((minterm = strtok_r(pattern_copy_ref, " && ", &pattern_copy_ref))) {
+
+    while ((minterm = w_strtok_r_str_delim(" && ", &pattern_copy_ref))) {
         int negated = 0;
         if ((*minterm) == '!'){
             minterm++;
@@ -1607,8 +1614,9 @@ int wm_sca_pt_matches(const char * const str, const char * const pattern)
         }
         const int minterm_result = negated ^ wm_sca_test_positive_minterm (minterm, str);
         test_result *= minterm_result;
-        mdebug2("Testing buf \"%s\" with minterm %s%s -> %d", str, negated ? "!" : "", minterm, minterm_result);
+        mdebug2("Testing buf \"%s\" with minterm \"%s%s\" -> %d", str, negated ? "!" : "", minterm, minterm_result);
     }
+
     mdebug2("Rule test result: %d", test_result);
     os_free(pattern_copy);
     return test_result;
@@ -1730,49 +1738,38 @@ static int wm_check_registry_entry(char * const value, char **reason)
     char *entry = wm_sca_get_pattern(value);
     char *pattern = entry ? wm_sca_get_pattern(entry) : NULL;
 
-    mdebug1("Checking registry: '%s\\%s'...", value, entry);
+    mdebug1("Checking registry: '%s -> %s -> %s'", value, entry, pattern);
 
-    const int ret = wm_sca_is_registry(value, entry, pattern, reason);
-    if (ret == 1) {
-        mdebug2("registry found.");
-        return 1;
-    } else if (ret == -1) {
-        mdebug2("registry not found.");
-    } else if (ret == 2) {
-        return 2;
-    }
-
-    return 0;
+    const int ret_value = wm_sca_is_registry(value, entry, pattern, reason);
+    mdebug2("Check Result %s %s %s -> %d", value, entry, pattern, ret_value);
+    return ret_value;
 }
 
-static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason) {
-    char *rk;
-    rk = wm_sca_os_winreg_getkey(entry_name);
+static int wm_sca_is_registry(char *entry_name, char *reg_option, char *reg_value, char **reason)
+{
+    mdebug2("wm_sca_is_registry: %s %s %s", entry_name, reg_option, reg_value);
+    char *rk = wm_sca_os_winreg_getkey(entry_name);
+
     if (wm_sca_sub_tree == NULL || rk == NULL) {
-        merror(SK_INV_REG, entry_name);
-        return (0);
-    }
-
-    int test_results_32 = 0;
-    int test_results_64 = 0;
-    int returned_value_32 = 0;
-    int returned_value_64 = 0;
-
-    returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, &test_results_64, reason);
-    returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, &test_results_32, reason);
-
-    if (returned_value_32 == 2 || returned_value_64 == 2 || test_results_32 == 2 || test_results_64 == 2) {
+         if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Invalid registry entry: '%s'", entry_name);
+        }
+        merror("Invalid registry entry: '%s'", entry_name);
         return 2;
     }
+    int returned_value_64 = wm_sca_test_key(rk, entry_name, KEY_WOW64_64KEY, reg_option, reg_value, reason);
+    int returned_value_32 = wm_sca_test_key(rk, entry_name, KEY_WOW64_32KEY, reg_option, reg_value, reason);
 
-    // most likely to find it in the 64bit registry nowadays. Comes first to leverage short-circuit evaluation.
-    const int found = returned_value_32 || returned_value_64;
-    
-    const int test_results = test_results_32 || test_results_64;
-    mdebug2("Reading registry 32/64b key %s\\%s -> %s) -> found?: %d, test results: %d", entry_name, reg_option, reg_value, found, test_results);
+    int ret_value = 0;
+    if (returned_value_32 == 2 && returned_value_64 == 2) {
+        ret_value = 2;
+    } else if (returned_value_32 == 1 || returned_value_64 == 1) {
+        ret_value = 1;
+    }
 
-    // unable to open the entry (not found) -> ret -1
-    return found ? test_results : -1;
+    mdebug2("Final result for registry %s -> %s -> %s: Result %d", entry_name, reg_option, reg_value, ret_value);
+    return ret_value;
 }
 
 static char *wm_sca_os_winreg_getkey(char *reg_entry)
@@ -1825,7 +1822,7 @@ static char *wm_sca_os_winreg_getkey(char *reg_entry)
 }
 
 static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch,
-                         char *reg_option, char *reg_value, int * test_result, char **reason)
+                         char *reg_option, char *reg_value, char **reason)
 {
     HKEY oshkey;
     LSTATUS err = RegOpenKeyEx(wm_sca_sub_tree, subkey, 0, KEY_READ | arch, &oshkey);
@@ -1845,8 +1842,12 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
                     (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
 
         mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
-        /* If the key does not exists, testings should also fail */
-        *test_result = 2;
+
+        /* If registry not found and no key is requested -> return pass */
+        if (!reg_option) {
+            return 0;
+        }
+
         if (*reason == NULL){
             os_malloc(OS_MAXSTR, *reason);
             sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
@@ -1855,21 +1856,19 @@ static int wm_sca_test_key(char *subkey, char *full_key_name, unsigned long arch
     }
 
     /* If the key does exists, a test for existance succeeds  */
-    *test_result = 1;
+    int ret_val = 1;
 
     /* If option is set, set test_result as the value of query key */
     if (reg_option) {
-        *test_result = wm_sca_winreg_querykey(oshkey, subkey, full_key_name, reg_option, reg_value);
+        ret_val = wm_sca_winreg_querykey(oshkey, full_key_name, reg_option, reg_value, reason);
+        mdebug2("Query key: %s -> %s -> %d", reg_option, reg_value, ret_val);
     }
 
     RegCloseKey(oshkey);
-    return 1;
+    return ret_val;
 }
 
-static int wm_sca_winreg_querykey(HKEY hKey,
-        __attribute__((unused))char *p_key,
-        __attribute__((unused)) char *full_key_name,
-                         char *reg_option, char *reg_value)
+static int wm_sca_winreg_querykey(HKEY hKey, const char *full_key_name, char *reg_option, char *reg_value, char **reason)
 {
     int rc;
     DWORD i, j;
@@ -1904,8 +1903,22 @@ static int wm_sca_winreg_querykey(HKEY hKey,
     rc = RegQueryInfoKey(hKey, class_name_b, &class_name_s, NULL,
                          &subkey_count, NULL, NULL, &value_count,
                          NULL, NULL, NULL, NULL);
+
     if (rc != ERROR_SUCCESS) {
-        return (0);
+        char error_msg[OS_SIZE_1024 + 1];
+        error_msg[OS_SIZE_1024] = '\0';
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+                    | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                    NULL, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                    (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
+
+        mdebug2("Unable to read registry '%s': %s", full_key_name, error_msg);
+
+        if (*reason == NULL){
+            os_malloc(OS_MAXSTR, *reason);
+            sprintf(*reason, "Unable to read registry '%s' (%s)", full_key_name, error_msg);
+        }
+        return 2;
     }
 
     /* Get values (if available) */
@@ -1930,8 +1943,21 @@ static int wm_sca_winreg_querykey(HKEY hKey,
                               NULL, &data_type, (LPBYTE)data_buffer, &data_size);
 
             /* No more values available */
-            if (rc != ERROR_SUCCESS) {
-                break;
+            if (rc != ERROR_SUCCESS && rc != ERROR_NO_MORE_ITEMS) {
+                char error_msg[OS_SIZE_1024 + 1];
+                error_msg[OS_SIZE_1024] = '\0';
+                FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
+                            | FORMAT_MESSAGE_MAX_WIDTH_MASK,
+                            NULL, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                            (LPTSTR) &error_msg, OS_SIZE_1024, NULL);
+
+                mdebug2("Unable to enumerate values for registry '%s': %s", full_key_name, error_msg);
+
+                if (*reason == NULL){
+                    os_malloc(OS_MAXSTR, *reason);
+                    sprintf(*reason, "Unable to enumerate values for registry '%s' (%s)", full_key_name, error_msg);
+                }
+                return 2;
             }
 
             /* Check if no value name is specified */
@@ -1945,11 +1971,9 @@ static int wm_sca_winreg_querykey(HKEY hKey,
                 continue;
             }
 
-            /* If a value is not present and the option matches,
-             * we can return ok
-             */
+            /* If a value is not present and the option matches return found */
             if (!reg_value) {
-                return (1);
+                return 1;
             }
 
             /* Write value into a string */
@@ -2033,8 +2057,11 @@ static int wm_sca_winreg_querykey(HKEY hKey,
             return in_operation ? 0 : 1;
         }
     }
-
-    return (0);
+    if (*reason == NULL && reg_value){
+        os_malloc(OS_MAXSTR, *reason);
+        sprintf(*reason, "Key '%s' not found for registry '%s'", reg_option, full_key_name);
+    }
+    return reg_value ? 2 : 0;
 }
 
 static char *wm_sca_getrootdir(char *root_dir, int dir_size)
@@ -2101,6 +2128,10 @@ static int wm_sca_send_summary(wm_sca_t * data, int scan_id,unsigned int passed,
     float passedf = passed;
     float failedf = failed;
     float score = ((passedf/(failedf+passedf))) * 100;
+
+    if (passed == 0 && failed == 0) {
+        score = 0;
+    }
 
     cJSON_AddNumberToObject(json_summary, "total_checks", checks_number);
     cJSON_AddNumberToObject(json_summary, "score", score);
@@ -2536,7 +2567,7 @@ static void *wm_sca_dump_db_thread(wm_sca_t * data) {
 
             wm_delay(5000);
 
-            int elements_sent = i - 1;
+            int elements_sent = i;
             mdebug1("Sending end of dump control event");
 
             wm_sca_send_dump_end(data,elements_sent,data->profile[request->policy_index]->policy_id,scan_id);

@@ -269,7 +269,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
         os_free(wd_sum);
         os_free(alert_msg);
         free(esc_linked_file);
-        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, '-'));
+        return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 0, silent));
     }
 
     if (fim_check_restrict (file_name, restriction) == 1) {
@@ -300,14 +300,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 #ifndef WIN32
             if (S_ISLNK(statbuf.st_mode)) {
                 if (stat(file_name, &statbuf_lnk) == 0) {
-                    if (S_ISREG(statbuf_lnk.st_mode)) {
-                        if (OS_MD5_SHA1_SHA256_File(file_name, syscheck.prefilter_cmd, mf_sum,sf_sum, sf256_sum, OS_BINARY, syscheck.file_max_size) < 0) {
-                            os_free(wd_sum);
-                            os_free(alert_msg);
-                            free(esc_linked_file);
-                            return 0;
-                        }
-                    } else if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
+                    if (S_ISDIR(statbuf_lnk.st_mode)) { /* This points to a directory */
                         if (!(opts & CHECK_FOLLOW)) {
                             mdebug2(FIM_SIMBOLIC_LINK_DISABLE);
                             os_free(alert_msg);
@@ -318,7 +311,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                             os_free(alert_msg);
                             os_free(wd_sum);
                             free(esc_linked_file);
-                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, '-'));
+                            return (read_dir(file_name, linked_file, dir_position, NULL, max_depth-1, 1, silent));
                         }
                     }
                 } else {
@@ -338,7 +331,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
                 os_free(wd_sum);
                 os_free(alert_msg);
                 free(esc_linked_file);
-                return 0;
+                return -1;
             }
         }
 
@@ -418,71 +411,37 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
 #else
             if (opts & CHECK_SIZE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
-                    } else {
-                        sprintf(str_size,"%ld",(long)statbuf.st_size);
-                    }
-                } else {
-                    sprintf(str_size,"%ld",(long)statbuf.st_size);
-                }
+                sprintf(str_size, "%ld", (long)statbuf.st_size);
             } else {
                 *str_size = '\0';
             }
 
             if (opts & CHECK_PERM) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_perm,"%d",(int)statbuf_lnk.st_mode);
-                } else {
-                    sprintf(str_perm,"%d",(int)statbuf.st_mode);
-                }
+                sprintf(str_perm, "%d", (int)statbuf.st_mode);
             } else {
                 *str_perm = '\0';
             }
 
             if (opts & CHECK_OWNER) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_owner,"%d",(int)statbuf_lnk.st_uid);
-                } else {
-                    sprintf(str_owner,"%d",(int)statbuf.st_uid);
-                }
+                sprintf(str_owner, "%d", (int)statbuf.st_uid);
             } else {
                 *str_owner = '\0';
             }
 
             if (opts & CHECK_GROUP) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_group,"%d",(int)statbuf_lnk.st_gid);
-                } else {
-                    sprintf(str_group,"%d",(int)statbuf.st_gid);
-                }
+                sprintf(str_group, "%d", (int)statbuf.st_gid);
             } else {
                 *str_group = '\0';
             }
 
             if (opts & CHECK_MTIME) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
-                    } else {
-                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                    }
-                } else {
-                    sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                }
+                sprintf(str_mtime, "%ld", (long)statbuf.st_mtime);
             } else {
                 *str_mtime = '\0';
             }
 
-            if (opts & CHECK_FOLLOW) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                } else {
-                    sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                }
-            } else {
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
+            if (opts & CHECK_INODE) {
+                sprintf(str_inode, "%ld", (long)statbuf.st_ino);
             }
 
             snprintf(alert_msg, OS_MAXSTR, "%c%c%c%c%c%c%c%c%c%c%c%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u",
@@ -555,23 +514,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
             }
 
 #ifdef WIN32
-            if (opts & CHECK_SIZE) {
-                sprintf(str_size,"%ld",(long)statbuf.st_size);
-            } else {
-                *str_size = '\0';
-            }
-
-            if (opts & CHECK_MTIME) {
-                sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-            } else {
-                *str_mtime = '\0';
-            }
-
-            if (opts & CHECK_INODE) {
-                sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-            } else {
-                *str_inode = '\0';
-            }
 
             snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s::%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
                 str_size,
@@ -595,78 +537,6 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             os_free(user);
 #else
-            if (opts & CHECK_SIZE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_size,"%ld",(long)statbuf_lnk.st_size);
-                    } else {
-                        sprintf(str_size,"%ld",(long)statbuf.st_size);
-                    }
-                } else {
-                    sprintf(str_size,"%ld",(long)statbuf.st_size);
-                }
-            } else {
-                *str_size = '\0';
-            }
-
-            if (opts & CHECK_PERM) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_perm,"%d",(int)statbuf_lnk.st_mode);
-                } else {
-                    sprintf(str_perm,"%d",(int)statbuf.st_mode);
-                }
-            } else {
-                *str_perm = '\0';
-            }
-
-            if (opts & CHECK_OWNER) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_owner,"%d",(int)statbuf_lnk.st_uid);
-                } else {
-                    sprintf(str_owner,"%d",(int)statbuf.st_uid);
-                }
-            } else {
-                *str_owner = '\0';
-            }
-
-            if (opts & CHECK_GROUP) {
-                if (S_ISLNK(statbuf.st_mode)) {
-                    sprintf(str_group,"%d",(int)statbuf_lnk.st_gid);
-                } else {
-                    sprintf(str_group,"%d",(int)statbuf.st_gid);
-                }
-            } else {
-                *str_group = '\0';
-            }
-
-            if (opts & CHECK_MTIME) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_mtime,"%ld",(long)statbuf_lnk.st_mtime);
-                    } else {
-                        sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                    }
-                } else {
-                    sprintf(str_mtime,"%ld",(long)statbuf.st_mtime);
-                }
-            } else {
-                *str_mtime = '\0';
-            }
-
-            if (opts & CHECK_INODE) {
-                if (opts & CHECK_FOLLOW) {
-                    if (S_ISLNK(statbuf.st_mode)) {
-                        sprintf(str_inode,"%ld",(long)statbuf_lnk.st_ino);
-                    } else {
-                        sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                    }
-                } else {
-                    sprintf(str_inode,"%ld",(long)statbuf.st_ino);
-                }
-            } else {
-                *str_inode = '\0';
-            }
-
             snprintf(alert_msg, OS_MAXSTR, "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%u!%s:%s:%s:%c %s%s%s",
                 str_size,
                 str_perm,
@@ -709,7 +579,7 @@ static int read_file(const char *file_name, const char *linked_file, int dir_pos
 
             /* If it returns < 0, we have already alerted */
             if (c_read_file(file_name, linked_file, buf, c_sum, NULL) < 0) {
-              goto end;
+                goto end;
             }
 
             w_mutex_lock(&lastcheck_mutex);

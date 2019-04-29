@@ -96,7 +96,7 @@ ifneq (,$(filter ${USE_AUDIT},yes y Y 1))
 endif
 else
 ifeq (${uname_S},AIX)
-		DEFINES+=-DAIX
+		DEFINES+=-DAIX -D__unix
 		DEFINES+=-DHIGHFIRST
 		OSSEC_CFLAGS+=-pthread
 		OSSEC_LDFLAGS+=-pthread
