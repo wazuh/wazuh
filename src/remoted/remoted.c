@@ -75,7 +75,7 @@ void HandleRemote(int uid)
             if (OS_SetKeepalive(logr.sock) < 0){
                 merror("OS_SetKeepalive failed with error '%s'", strerror(errno));
             }
-#ifndef CLIENT
+#ifdef _REMOTED_KEEPALIVE_
             else {
                 OS_SetKeepalive_Options(logr.sock, tcp_keepidle, tcp_keepintvl, tcp_keepcnt);
             }

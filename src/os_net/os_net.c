@@ -545,7 +545,7 @@ int OS_SetKeepalive(int socket)
     return setsockopt(socket, SOL_SOCKET, SO_KEEPALIVE, (void *)&keepalive, sizeof(keepalive));
 }
 
-#ifndef CLIENT
+#ifdef _REMOTED_KEEPALIVE_
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt)
 {
     if (setsockopt(socket, SOL_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {

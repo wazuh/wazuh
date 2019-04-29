@@ -16,6 +16,10 @@
 #ifndef __OS_NET_H
 #define __OS_NET_H
 
+#if !defined(CLIENT) && !defined(Darwin)
+#define _REMOTED_KEEPALIVE_ 1
+#endif
+
 /* OS_Bindport*
  * Bind a specific port (protocol and a ip).
  * If the IP is not set, it is going to use ADDR_ANY
@@ -89,7 +93,7 @@ int OS_SetKeepalive(int socket);
 /*
  * Enable SO_KEEPALIVE options for TCP
  */
-#ifndef CLIENT
+#ifdef _REMOTED_KEEPALIVE_
 void OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
 #endif
 /* Set the delivery timeout for a socket
