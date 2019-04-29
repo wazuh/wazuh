@@ -44,9 +44,11 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->alert_msg = NULL;
         sca->queue = -1;
         sca->interval = WM_DEF_INTERVAL / 2;
+        sca->profile = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = sca;
+        profiles = 0;
     } 
 
     sca = module->data;
