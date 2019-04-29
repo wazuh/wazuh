@@ -5,10 +5,6 @@ marks:
   - usefixtures:
       - agents_test
 
-marks:
-  - usefixtures:
-      - agents_test
-
 includes:
   - !include common.yaml
 
@@ -28,22 +24,23 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1701
-              message: !anystr
-              remediation: !anystr
-            id: '998'
-          - error:
-              code: 1701
-              message: !anystr
-              remediation: !anystr
-            id: '999'
-        message: Some agents were not removed
-        older_than: 7d
-        total_affected_agents: 0
-        total_failed_ids: 2
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: '998'
+            - error:
+                code: 1701
+                message: !anystr
+                remediation: !anystr
+              id: '999'
+          message: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 2
     
   - name: Try remove agent 000 (manager)
 
@@ -58,17 +55,18 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1703
-              message: !anystr
-              remediation: !anystr
-            id: '000'
-        message: Some agents were not removed
-        older_than: 7d
-        total_affected_agents: 0
-        total_failed_ids: 1
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1703
+                message: !anystr
+                remediation: !anystr
+              id: '000'
+          message: Some agents were not removed
+          older_than: 7d
+          total_affected_agents: 0
+          total_failed_ids: 1
 
   - name: Try remove agent by name
 
@@ -103,10 +101,11 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: ["004","005"]
-        message: All selected agents were removed
-        older_than: 1s
-        total_affected_agents: 2
+        data:
+          affected_agents: ["004","005"]
+          message: All selected agents were removed
+          older_than: 1s
+          total_affected_agents: 2
 
 ---
 test_name: DELETE /agents/:agent_id
@@ -127,14 +126,15 @@ stages:
     response: &error_delete_agent
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1703
-              message: !anystr
-              remediation: !anystr
-            id: '000'
-        message: Some agents were not removed
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1703
+                message: !anystr
+                remediation: !anystr
+              id: '000'
+          message: Some agents were not removed
 
   - name: Try remove not existing agent
 
@@ -147,8 +147,9 @@ stages:
     response:
       <<: *error_delete_agent
       body:
-        failed_ids:
-          - id: '999'
+        data:
+          failed_ids:
+            - id: '999'
 
   - name: Try remove agent by name
 
@@ -179,9 +180,9 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: ["006"]
-        message: All selected agents were removed
-
+        data:
+          affected_agents: ["006"]
+          message: All selected agents were removed
 
 ---
 test_name: DELETE /agents/:agent_id/group
@@ -264,7 +265,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: Group unset for agent '001'.
+        data:
+          message: Group unset for agent '001'.
 
 ---
 test_name: DELETE /agents/:agent_id/group/:group_id
@@ -369,7 +371,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmz' created."
+        data:
+          message: "Group 'dmz' created."
 
   - name: Put group to agent
 
@@ -382,7 +385,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmz' added to agent '001'."
+        data:
+          message: "Group 'dmz' added to agent '001'."
 
   - name: Remove group
 
@@ -395,7 +399,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Agent 001 set to group default."
+        data:
+          message: "Agent 001 set to group default."
 
 ---
 test_name: DELETE /agents/group/:group_id
@@ -440,7 +445,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest' created."
+        data:
+          message: "Group 'dmztest' created."
 
   - name: Put group to agent
 
@@ -453,7 +459,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest' added to agent '001'."
+        data:
+          message: "Group 'dmztest' added to agent '001'."
 
   - name: Try remove group agent 000
 
@@ -468,14 +475,15 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1703
-              message: "Action not available for Manager (Agent 000)"
-              remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
-            id: "000"
-        message: Some agents were not removed from group dmztest
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1703
+                message: "Action not available for Manager (Agent 000)"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`, and ensure you select an agent other than 000"
+              id: "000"
+          message: Some agents were not removed from group dmztest
 
   - name: Try remove group not exist agents
 
@@ -490,19 +498,20 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1701
-              message: "Agent does not exist: 998"
-              remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
-            id: "998"
-          - error:
-              code: 1701
-              message: "Agent does not exist: 999"
-              remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
-            id: "999"
-        message: Some agents were not removed from group dmztest
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1701
+                message: "Agent does not exist: 998"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+              id: "998"
+            - error:
+                code: 1701
+                message: "Agent does not exist: 999"
+                remediation: "Please, make the following call to find all available agents `curl -u foo:bar -X GET \"http://localhost:55000/agents?select=id\"`"
+              id: "999"
+          message: Some agents were not removed from group dmztest
 
   - name: Remove group
 
@@ -517,9 +526,10 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: 
-          - '001'
-        message: All selected agents were removed from group dmztest
+        data:
+          affected_agents: 
+            - '001'
+          message: All selected agents were removed from group dmztest
 
 ---
 test_name: DELETE /agents/groups
@@ -542,20 +552,21 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1710
-              message: "The group does not exist: dmztest1"
-              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-            id: dmztest1
-          - error:
-              code: 1710
-              message: "The group does not exist: dmztest2"
-              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-            id: dmztest2
-        ids: []
-        message: Some groups were not removed
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest1"
+                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
+              id: dmztest1
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest2"
+                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
+              id: dmztest2
+          ids: []
+          message: Some groups were not removed
 
   - name: Create new group
 
@@ -568,7 +579,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest1' created."
+        data:
+          message: "Group 'dmztest1' created."
     
   - name: Create other new group
 
@@ -581,7 +593,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest2' created."
+        data:
+          message: "Group 'dmztest2' created."
 
   - name: Put group 1 to agent
 
@@ -594,7 +607,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest1' added to agent '001'."
+        data:
+          message: "Group 'dmztest1' added to agent '001'."
 
   - name: Put group 2 to agent
 
@@ -607,7 +621,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest2' added to agent '002'."
+        data:
+          message: "Group 'dmztest2' added to agent '002'."
 
   - name: Remove group
 
@@ -622,13 +637,14 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents:
-          - '001'
-          - '002'
-        ids:
-          - dmztest1
-          - dmztest2
-        message: All selected groups were removed
+        data:
+          affected_agents:
+            - '001'
+            - '002'
+          ids:
+            - dmztest1
+            - dmztest2
+          message: All selected groups were removed
 
 ---
 test_name: DELETE /agents/groups/:group_id
@@ -649,15 +665,16 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        failed_ids:
-          - error:
-              code: 1710
-              message: "The group does not exist: dmztest1"
-              remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
-            id: dmztest1
-        ids: []
-        message: Some groups were not removed
+        data:
+          affected_agents: []
+          failed_ids:
+            - error:
+                code: 1710
+                message: "The group does not exist: dmztest1"
+                remediation: "Please, make the following call to find all available groups `curl -u foo:bar -X GET \"{protocol:s}://{host:s}:{port:d}/agents/groups\"`"
+              id: dmztest1
+          ids: []
+          message: Some groups were not removed
 
   - name: Create new group
 
@@ -670,7 +687,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest1' created."
+        data:
+          message: "Group 'dmztest1' created."
     
   - name: Create other new group
 
@@ -683,7 +701,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest2' created."
+        data:
+          message: "Group 'dmztest2' created."
 
   - name: Put group to agent
 
@@ -696,7 +715,8 @@ stages:
     response:
       status_code: 200
       body:
-        message: "Group 'dmztest1' added to agent '001'."
+        data:
+          message: "Group 'dmztest1' added to agent '001'."
 
   - name: Remove group
 
@@ -709,11 +729,12 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents:
-          - '001'
-        ids:
-          - dmztest1
-        message: All selected groups were removed
+        data:
+          affected_agents:
+            - '001'
+          ids:
+            - dmztest1
+          message: All selected groups were removed
 
   - name: Remove other group
 
@@ -726,10 +747,11 @@ stages:
     response:
       status_code: 200
       body:
-        affected_agents: []
-        ids:
-          - dmztest2
-        message: All selected groups were removed
+        data:
+          affected_agents: []
+          ids:
+            - dmztest2
+          message: All selected groups were removed
 
 ---
 test_name: GET /agents
@@ -750,8 +772,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Pagination
 
@@ -765,18 +788,19 @@ stages:
       status_code: 200
       save:
         body:
-          expected_os_platform: items.0.os.platform
-          expected_os_version: items.0.os.version
-          expected_os_name: items.0.os.name
-          expected_manager_host: items.0.manager
-          expected_node_name: items.0.node_name
-          expected_name: items.0.name
-          expected_ip: items.0.ip
+          expected_os_platform: data.items.0.os.platform
+          expected_os_version: data.items.0.os.version
+          expected_os_name: data.items.0.os.name
+          expected_manager_host: data.items.0.manager
+          expected_node_name: data.items.0.node_name
+          expected_name: data.items.0.name
+          expected_ip: data.items.0.ip
       body:
-        items:
-          - status: Active
-            id: '000'
-        totalItems: !anyint
+        data:
+          items:
+            - status: Active
+              id: '000'
+          totalItems: !anyint
 
   - name: Try show agents with limit 0
 
@@ -803,8 +827,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with wrong sort
 
@@ -836,9 +861,10 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-          id: '000'
-        totalItems: !anyint
+        data:
+          items: !anything
+            id: '000'
+          totalItems: !anyint
 
   - name: Try show agents with wrong search
 
@@ -850,8 +876,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter select one field
 
@@ -863,8 +890,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
   
   - name: Filter select multiple fields
 
@@ -876,8 +904,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not allowed selector
 
@@ -904,15 +933,15 @@ stages:
     request:
       <<: *get_agents
       params:
-        select: param_ñ_test
+        select: param_%_test
 
     response:
       status_code: 400
       body:
         detail: !anystr
-          status: 400
-          title: Bad Request
-          type: about:blank
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Filter by agent version
 
@@ -924,8 +953,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not existed version
 
@@ -937,8 +967,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent OS Platform
 
@@ -950,8 +981,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
   
   - name: Try show agents with not existed OS Platform
 
@@ -963,8 +995,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent OS Version
 
@@ -976,8 +1009,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not existed OS Version
 
@@ -989,8 +1023,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent OS Name
 
@@ -1002,8 +1037,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not existed OS Name
 
@@ -1015,8 +1051,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent Node Name
 
@@ -1028,8 +1065,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
   
   - name: Try show agents with not existed Node Name
 
@@ -1041,8 +1079,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent name
 
@@ -1054,8 +1093,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not existed agent name
 
@@ -1067,8 +1107,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent IP
 
@@ -1080,8 +1121,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not existed OS Name
 
@@ -1093,8 +1135,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent ManagerHost
 
@@ -1106,8 +1149,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
   
   - name: Try show agents with not existed ManagerHost
 
@@ -1119,8 +1163,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter by agent status
 
@@ -1132,8 +1177,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
   
   - name: Filter by agent status 2
 
@@ -1145,8 +1191,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with not existed status
 
@@ -1159,9 +1206,9 @@ stages:
       status_code: 400
       body:
         detail: !anystr
-          status: 400
-          title: Bad Request
-          type: about:blank
+        status: 400
+        title: Bad Request
+        type: about:blank
 
   - name: Filter agents by group
 
@@ -1173,8 +1220,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
   
   - name: Try show agents with not existed group
 
@@ -1186,8 +1234,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: 0
+        data:
+          items: !anything
+          totalItems: 0
 
   - name: Filter agents by query
 
@@ -1199,8 +1248,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with bad query
 
@@ -1232,8 +1282,9 @@ stages:
     response:
       status_code: 200
       body:
-        items: !anything
-        totalItems: !anyint
+        data:
+          items: !anything
+          totalItems: !anyint
 
   - name: Try show agents with bad older_than
 
@@ -1246,9 +1297,9 @@ stages:
       status_code: 400
       body:
         detail: !anystr
-          status: 400
-          title: Bad Request
-          type: about:blank
+        status: 400
+        title: Bad Request
+        type: about:blank
 
 ---
 test_name: GET /agents/:agent_id
@@ -1268,26 +1319,27 @@ stages:
 
     response:
       status_code: 200
-      body: 
-        dateAdd: !anystr
-        id: "000"
-        ip: !anystr
-        lastKeepAlive: !anystr
-        manager: !anystr
-        name: !anystr
-        node_name: !anystr
-        os:
-          arch: !anystr
-          codename: !anystr
-          major: !anystr
-          minor: !anystr
+      body:
+        data: 
+          dateAdd: !anystr
+          id: "000"
+          ip: !anystr
+          lastKeepAlive: !anystr
+          manager: !anystr
           name: !anystr
-          platform: !anystr
-          uname: !anystr
+          node_name: !anystr
+          os:
+            arch: !anystr
+            codename: !anystr
+            major: !anystr
+            minor: !anystr
+            name: !anystr
+            platform: !anystr
+            uname: !anystr
+            version: !anystr
+          registerIP: !anystr
+          status: !anystr
           version: !anystr
-        registerIP: !anystr
-        status: !anystr
-        version: !anystr
 
   - name: Try show not existing agent
 
@@ -1321,8 +1373,9 @@ stages:
     response:
       status_code: 200
       body:
-        os:
-          platform: !anystr
+        data:
+          os:
+            platform: !anystr
   
   - name: Filter select multiple fields
 
@@ -1334,8 +1387,9 @@ stages:
     response:
       status_code: 200
       body:
-        dateAdd: !anystr
-        status: !anystr
+        data:
+          dateAdd: !anystr
+          status: !anystr
 
   - name: Try show agents with not allowed selector
 
@@ -1362,15 +1416,15 @@ stages:
     request:
       <<: *get_agent
       params:
-        select: param_ñ_test
+        select: param_%_test
 
     response:
       status_code: 400
       body:
         detail: !anystr
-          status: 400
-          title: Bad Request
-          type: about:blank
+        status: 400
+        title: Bad Request
+        type: about:blank
 
 ---
 test_name: GET /agents/:agent_id/group/is_sync
@@ -1451,4 +1505,5 @@ stages:
     response:
       status_code: 200
       body:
-        synced: !anybool
+        data:
+          synced: !anybool

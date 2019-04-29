@@ -14,11 +14,14 @@ from ..models.agent_inserted import AgentInserted
 from ..models.agent_added import AgentAdded
 from ..util import parse_api_param
 from wazuh.exception import WazuhException
-from ..util import remove_nones_to_dict, exception_handler
+from ..util import remove_nones_to_dict, exception_handler, raise_if_exc
+from ..models.base_model_ import Data
 
 loop = asyncio.get_event_loop()
 logger = logging.getLogger('wazuh')
 
+#import pydevd
+#pydevd.settrace('172.17.0.1', port=12345, stdoutToServer=True, stderrToServer=True)
 
 @exception_handler
 def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', purge=None, status=None, older_than=None):  # noqa: E501
@@ -56,9 +59,10 @@ def delete_agents(pretty=False, wait_for_complete=False, list_agents_ids='all', 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, select=None, sort=None, search=None,
@@ -138,9 +142,10 @@ def get_all_agents(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
@@ -162,9 +167,10 @@ def restart_all_agents(pretty=True, wait_for_complete=False):  # noqa: E501
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
@@ -201,9 +207,10 @@ def add_agent(pretty=False, wait_for_complete=False):  # noqa: E501
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False):  # noqa: E501
@@ -234,9 +241,10 @@ def delete_agent(agent_id, pretty=False, wait_for_complete=False, purge=False): 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # noqa: E501
@@ -267,9 +275,10 @@ def get_agent(agent_id, pretty=False, wait_for_complete=False, select=None):  # 
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -305,9 +314,10 @@ def get_agent_config(agent_id, component, configuration, pretty=False, wait_for_
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -334,9 +344,11 @@ def delete_agent_group(agent_id, pretty=False, wait_for_complete=False):  # noqa
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
 
-    return data, 200
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
+
+    return response, 200
 
 @exception_handler
 def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -364,9 +376,10 @@ def get_sync_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa: E5
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -396,9 +409,10 @@ def delete_agent_single_group(agent_id, group_id, pretty=False, wait_for_complet
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -432,9 +446,10 @@ def put_agent_single_group(agent_id, group_id, force_single_group=False, pretty=
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -462,9 +477,10 @@ def get_agent_key(agent_id, pretty=False, wait_for_complete=False):  # noqa: E50
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -492,9 +508,10 @@ def put_restart_agent(agent_id, pretty=False, wait_for_complete=False):  # noqa:
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 #Not work
 def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=None, version=None, use_http=False, force=False ):  # noqa: E501
@@ -533,9 +550,10 @@ def put_upgrade_agent(agent_id, pretty=False, wait_for_complete=False, wpk_repo=
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 #Not work
 def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, file_path=None, installer=None):  # noqa: E501
@@ -568,9 +586,10 @@ def put_upgrade_custom_agent(agent_id, pretty=False, wait_for_complete=False, fi
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -598,9 +617,10 @@ def put_new_agent(agent_name, pretty=False, wait_for_complete=False):  # noqa: E
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -631,9 +651,10 @@ def get_agent_upgrade(agent_id, timeout=3, pretty=False, wait_for_complete=False
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -663,9 +684,10 @@ def delete_multiple_agent_group(list_agents, group_id, pretty=False, wait_for_co
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -703,9 +725,10 @@ def post_multiple_agent_group(group_id, pretty=False, wait_for_complete=False, a
                         logger=logger
                         )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -733,9 +756,10 @@ def delete_list_group(list_groups, pretty=False, wait_for_complete=False):  # no
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -776,9 +800,10 @@ def get_list_group(pretty=False, wait_for_complete=False, offset=0, limit=None, 
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 @exception_handler
 def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
@@ -806,9 +831,10 @@ def delete_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -860,9 +886,10 @@ def get_agent_in_group(group_id, pretty=False, wait_for_complete=False, offset=0
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -890,9 +917,10 @@ def put_group(group_id, pretty=False, wait_for_complete=False):  # noqa: E501
                           pretty=pretty,
                           logger=logger
                           )
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -927,9 +955,10 @@ def get_group_config(group_id, pretty=False, wait_for_complete=False, offset=0, 
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -973,9 +1002,10 @@ def post_group_config(body, group_id, pretty=False, wait_for_complete=False, off
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1019,9 +1049,10 @@ def get_group_files(group_id, pretty=False, wait_for_complete=False, offset=0, l
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1059,9 +1090,10 @@ def get_group_file(group_id, file_name, pretty=False, wait_for_complete=False, t
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1108,9 +1140,10 @@ def post_group_file(body, group_id, file_name, pretty=False, wait_for_complete=F
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1159,9 +1192,10 @@ def insert_agent(pretty=False, wait_for_complete=False):  # noqa: E501
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1193,9 +1227,10 @@ def get_agent_by_name(agent_name, pretty=False, wait_for_complete=False, select=
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1239,9 +1274,10 @@ def get_agent_no_group(pretty=False, wait_for_complete=False, offset=0, limit=No
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1279,9 +1315,10 @@ def get_agent_outdated(pretty=False, wait_for_complete=False, offset=0, limit=No
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1319,9 +1356,10 @@ def restart_list_agents(pretty=False, wait_for_complete=False):  # noqa: E501
                         logger=logger
                         )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1368,9 +1406,10 @@ def get_agent_fields(pretty=False, wait_for_complete=False, offset=0, limit=None
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
     
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1395,9 +1434,10 @@ def get_agent_summary(pretty=False, wait_for_complete=False,):  # noqa: E501
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
 
-    return data, 200
+    return response, 200
 
 
 @exception_handler
@@ -1438,6 +1478,7 @@ def get_agent_summary_os(pretty=False, wait_for_complete=False, offset=0, limit=
                           logger=logger
                           )
 
-    data = loop.run_until_complete(dapi.distribute_function())
+    data = raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+    response = Data(data)
     
-    return data, 200
+    return response, 200
