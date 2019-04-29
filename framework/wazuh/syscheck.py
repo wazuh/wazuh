@@ -89,7 +89,7 @@ def last_scan(agent_id):
         agent_version = my_agent.get_basic_information(select=['version'])['version']
     except KeyError:
         # if the agent is never connected, it won't have either version (key error) or last scan information.
-        return {'start': 'ND', 'end': 'ND'}
+        return {'start': None, 'end': None}
 
     if agent_version < 'Wazuh v3.7.0':
         db_agent = glob('{0}/{1}-*.db'.format(common.database_path_agents, agent_id))
@@ -106,10 +106,10 @@ def last_scan(agent_id):
     else:
         fim_scan_info = my_agent._load_info_from_agent_db(table='scan_info', select={'end_scan', 'start_scan'},
                                                           filters={'module': 'fim'})[0]
-        end = 'ND' if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
-        start = 'ND' if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        end = None if not fim_scan_info['end_scan'] else datetime.fromtimestamp(float(fim_scan_info['end_scan'])).strftime('%Y-%m-%d %H:%M:%S')
+        start = None if not fim_scan_info['start_scan'] else datetime.fromtimestamp(float(fim_scan_info['start_scan'])).strftime('%Y-%m-%d %H:%M:%S')
         # if start is 'ND', end will be as well.
-        return {'start': start, 'end': 'ND' if start == 'ND' else end}
+        return {'start': start, 'end': None if start is None else end}
 
 
 def files(agent_id=None, summary=False, offset=0, limit=common.database_limit, sort=None, search=None, select=None, filters={}):
